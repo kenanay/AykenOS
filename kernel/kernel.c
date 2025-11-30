@@ -86,7 +86,7 @@ static void kernel_early_init(ayken_boot_info_t *boot)
     // ------------------------------------------------------------------------
     cpu_init();
     gdt_init();
-    idt_init();
+    interrupts_install();
     isr_init_stubs();
     fb_print("[OK] CPU + GDT + IDT + ISR.\n");
 

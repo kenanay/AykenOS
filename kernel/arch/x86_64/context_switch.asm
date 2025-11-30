@@ -13,6 +13,16 @@ context_switch:
     mov [rdi +32], rbx
     mov [rdi +40], rbp
 
+    ; Save RIP/RSP/RFLAGS/CR3
+    mov rax, [rsp]
+    mov [rdi +48], rax
+    mov [rdi +56], rsp
+    pushfq
+    pop rax
+    mov [rdi +64], rax
+    mov rax, cr3
+    mov [rdi +72], rax
+
     ; Load new registers
     mov r15, [rsi + 0]
     mov r14, [rsi + 8]
@@ -25,9 +35,13 @@ context_switch:
     mov rax, [rsi +48]    ; rip
     mov rcx, [rsi +56]    ; rsp
     mov rdx, [rsi +64]    ; rflags
+    mov r8,  [rsi +72]    ; cr3
+
+    mov cr3, r8
 
     mov rsp, rcx
     push rdx
+    popfq
     push rax
     ret
 
@@ -43,8 +57,11 @@ switch_to_first:
     mov rax, [rdi +48]    ; rip
     mov rcx, [rdi +56]    ; rsp
     mov rdx, [rdi +64]    ; rflags
+    mov r8,  [rdi +72]    ; cr3
 
+    mov cr3, r8
     mov rsp, rcx
     push rdx
+    popfq
     push rax
     ret
