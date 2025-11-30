@@ -2,7 +2,7 @@
 #include "../drivers/console/fb_console.h"
 #include "ayken_core_lm.h"
 #include "ayken_core_lm_format.h"
-#include "../fs/vfs.h"                  // vfs_open, vfs_read, vfs_close (varsayım)
+#include "../include/fs.h"              // vfs_open, vfs_read, vfs_close
 
 #define AYKEN_CORE_LM_BASE_VA  0xFFFFA00000000000ULL
 #define AYKEN_CORE_LM_MAX_SIZE (64ULL * 1024 * 1024)  // max 64MB model
