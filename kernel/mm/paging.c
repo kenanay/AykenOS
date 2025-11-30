@@ -29,7 +29,7 @@ typedef uint64_t ayken_pte_t;
 
 #define AYKEN_PT_ENTRIES          512
 
-// Page table entry flag bits (x86_64)
+#ifndef AYKEN_PTE_PRESENT
 #define AYKEN_PTE_PRESENT         (1ULL << 0)
 #define AYKEN_PTE_WRITABLE        (1ULL << 1)
 #define AYKEN_PTE_USER            (1ULL << 2)
@@ -45,11 +45,12 @@ typedef uint64_t ayken_pte_t;
 #define AYKEN_PTE_TABLE_FLAGS     (AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE)
 
 // Kernel page’leri için temel flag seti:
+#define AYKEN_PTE_ADDR_MASK       0x000FFFFFFFFFF000ULL
+#endif
+
 #define AYKEN_PTE_KERNEL_FLAGS    (AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE | AYKEN_PTE_GLOBAL)
 
 // Adresi entry'den çekmek için maske
-#define AYKEN_PTE_ADDR_MASK       0x000FFFFFFFFFF000ULL
-
 // Eski isimlerle uyum için (istersen kullanabilirsin)
 #define PAGE_PRESENT   AYKEN_PTE_PRESENT
 #define PAGE_RW        AYKEN_PTE_WRITABLE
@@ -85,10 +86,20 @@ static inline uint64_t virt_to_phys(const void *virt)
     return ((uint64_t)virt - KERNEL_VIRT_BASE);
 }
 
+void *paging_phys_to_virt(uint64_t phys)
+{
+    return phys_to_virt(phys);
+}
+
 // CR3 yükleme helper
 static inline void load_cr3(uint64_t phys_addr)
 {
     __asm__ volatile ("mov %0, %%cr3" :: "r"(phys_addr) : "memory");
+}
+
+void paging_load_cr3(uint64_t phys_addr)
+{
+    load_cr3(phys_addr);
 }
 
 
@@ -154,10 +165,13 @@ static ayken_pte_t *get_or_create_table(ayken_pte_t *table,
 //         Örn: AYKEN_PTE_USER vermek istiyorsan user-space page demektir.
 // ============================================================================
 
-void paging_map_page(uint64_t virt_addr, uint64_t phys_addr, uint64_t flags)
+static void paging_map_page_into_root(ayken_pte_t *root,
+                                      uint64_t virt_addr,
+                                      uint64_t phys_addr,
+                                      uint64_t flags)
 {
-    if (g_kernel_pml4_phys == 0 || g_kernel_pml4 == NULL) {
-        fb_print("[AykenOS][paging] ERROR: paging_init() not called.\n");
+    if (!root) {
+        fb_print("[AykenOS][paging] ERROR: invalid PML4 root.\n");
         return;
     }
 
@@ -166,27 +180,47 @@ void paging_map_page(uint64_t virt_addr, uint64_t phys_addr, uint64_t flags)
     uint16_t i_pd   = PD_INDEX(virt_addr);
     uint16_t i_pt   = PT_INDEX(virt_addr);
 
-    // 1) PML4 → PDPT
-    ayken_pte_t *pdpt = get_or_create_table(g_kernel_pml4,
-                                            i_pml4,
-                                            AYKEN_PTE_TABLE_FLAGS);
+    uint64_t table_flags = AYKEN_PTE_TABLE_FLAGS;
+    if (flags & AYKEN_PTE_USER)
+        table_flags |= AYKEN_PTE_USER;
+
+    ayken_pte_t *pdpt = get_or_create_table(root, i_pml4, table_flags);
     if (!pdpt) return;
 
-    // 2) PDPT → PD
-    ayken_pte_t *pd = get_or_create_table(pdpt,
-                                          i_pdpt,
-                                          AYKEN_PTE_TABLE_FLAGS);
+    ayken_pte_t *pd = get_or_create_table(pdpt, i_pdpt, table_flags);
     if (!pd) return;
 
-    // 3) PD → PT
-    ayken_pte_t *pt = get_or_create_table(pd,
-                                          i_pd,
-                                          AYKEN_PTE_TABLE_FLAGS);
+    ayken_pte_t *pt = get_or_create_table(pd, i_pd, table_flags);
     if (!pt) return;
 
-    // 4) PT → gerçek page mapping
-    uint64_t entry_flags = AYKEN_PTE_KERNEL_FLAGS | flags;
+    uint64_t entry_flags = AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE;
+    if (flags & AYKEN_PTE_USER)
+        entry_flags |= AYKEN_PTE_USER;
+    else
+        entry_flags |= AYKEN_PTE_GLOBAL;
+
+    entry_flags |= (flags & ~(AYKEN_PTE_USER));
+
     pt[i_pt] = (phys_addr & AYKEN_PTE_ADDR_MASK) | entry_flags;
+}
+
+void paging_map_page(uint64_t virt_addr, uint64_t phys_addr, uint64_t flags)
+{
+    if (g_kernel_pml4_phys == 0 || g_kernel_pml4 == NULL) {
+        fb_print("[AykenOS][paging] ERROR: paging_init() not called.\n");
+        return;
+    }
+
+    paging_map_page_into_root(g_kernel_pml4, virt_addr, phys_addr, flags);
+}
+
+void paging_map_page_in_pml4(uint64_t pml4_phys,
+                             uint64_t virt_addr,
+                             uint64_t phys_addr,
+                             uint64_t flags)
+{
+    ayken_pte_t *root = (ayken_pte_t *)phys_to_virt(pml4_phys);
+    paging_map_page_into_root(root, virt_addr, phys_addr, flags);
 }
 
 
@@ -274,6 +308,26 @@ uint64_t paging_get_phys(uint64_t virt)
     if (!(pte & AYKEN_PTE_PRESENT)) return 0;
 
     return (pte & AYKEN_PTE_ADDR_MASK);
+}
+
+uint64_t paging_get_kernel_pml4_phys(void)
+{
+    return g_kernel_pml4_phys;
+}
+
+uint64_t paging_create_user_pml4(void)
+{
+    uint64_t new_pml4_phys = paging_alloc_page_table();
+    if (!new_pml4_phys)
+        return 0;
+
+    ayken_pte_t *new_root = (ayken_pte_t *)phys_to_virt(new_pml4_phys);
+
+    for (int i = AYKEN_PT_ENTRIES / 2; i < AYKEN_PT_ENTRIES; ++i) {
+        new_root[i] = g_kernel_pml4[i];
+    }
+
+    return new_pml4_phys;
 }
 
 

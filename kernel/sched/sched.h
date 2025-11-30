@@ -5,19 +5,14 @@
 #include <stdint.h>
 #include "proc.h"
 
-// Process durumları
-typedef enum {
-    PROC_READY = 0,
-    PROC_RUNNING,
-    PROC_BLOCKED,
-    PROC_ZOMBIE
-} proc_state_t;
-
 // Scheduler API
 void sched_init(void);
 void sched_add(proc_t *proc);
 void sched_yield(void);
 void sched_start(void);
+void sched_block_current(void);
+void sched_wake(proc_t *proc);
+void sched_wake_all(void *wait_obj);
 
 extern proc_t *current_proc;
 
