@@ -23,12 +23,13 @@ proc_t *proc_create_kernel_thread(void (*func)(void))
     uint64_t stack = (uint64_t)kmalloc(4096);
     p->stack_top = stack + 4096;
 
+    p->pml4_phys = paging_get_phys(KERNEL_VIRT_BASE); // geçici çözüm
+
     // Context ayarla
     p->context.rip = (uint64_t)func;
     p->context.rsp = p->stack_top;
     p->context.rflags = 0x202;
-
-    p->pml4_phys = paging_get_phys(KERNEL_VIRT_BASE); // geçici çözüm
+    p->context.cr3 = p->pml4_phys;
 
     // Ready queue'ya ekle
     sched_add(p);

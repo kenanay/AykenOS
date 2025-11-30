@@ -10,6 +10,7 @@ typedef struct cpu_context {
     uint64_t rip;
     uint64_t rsp;
     uint64_t rflags;
+    uint64_t cr3;
 } cpu_context_t;
 
 typedef struct proc {
