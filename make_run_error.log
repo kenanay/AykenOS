@@ -1,0 +1,18 @@
+Access denied - KERNEL
+File not found - -TYPE
+File not found - F
+File not found - -NAME
+Access denied - KERNEL/ARCH/X86_64
+File not found - -TYPE
+File not found - F
+File not found - -NAME
+Access denied - KERNEL
+File not found - -TYPE
+File not found - F
+File not found - -NAME
+Access denied - KERNEL/ARCH/X86_64
+File not found - -TYPE
+File not found - F
+File not found - -NAME
+ld.lld: error: no input files
+make: *** [kernel.elf] Hata 1

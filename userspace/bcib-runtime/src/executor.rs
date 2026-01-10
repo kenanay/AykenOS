@@ -1,0 +1,304 @@
+use core::arch::asm;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
+
+use bcib::{BcibBuffer, DecodeError};
+
+/// Syscall base offset for v2 interface (1000-1009 range).
+const SYS_V2_BASE: u64 = 1000;
+/// Syscall numbers aligned with kernel/sys/syscall_v2.h
+const SYS_V2_SUBMIT_EXECUTION: u64 = SYS_V2_BASE + 3;
+const SYS_V2_WAIT_RESULT: u64 = SYS_V2_BASE + 4;
+
+/// Capability resource kinds supported by the executor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapabilityResource {
+    Execution,
+}
+
+/// Simple capability permissions bitmask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityPermission(pub u64);
+impl CapabilityPermission {
+    pub const EXECUTE: Self = CapabilityPermission(1 << 0);
+}
+
+/// Capability token bound to an execution submission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityToken {
+    pub id: u64,
+    pub resource_type: CapabilityResource,
+    pub permissions: CapabilityPermission,
+    pub expires_at: Option<u64>,
+}
+
+/// Minimal capability manager placeholder for Phase 2.3 Ring3 runtime.
+#[derive(Debug, Default)]
+pub struct CapabilityManager {
+    active_tokens: HashSet<u64>,
+}
+
+impl CapabilityManager {
+    pub fn bind(&mut self, token: &CapabilityToken) -> Result<(), ExecutionError> {
+        self.active_tokens.insert(token.id);
+        Ok(())
+    }
+
+    pub fn revoke(&mut self, token_id: u64) {
+        self.active_tokens.remove(&token_id);
+    }
+}
+
+/// Execution context state tracked per submission.
+#[derive(Debug, Clone)]
+pub struct ExecutionContext {
+    pub id: u64,
+    pub active_container: Option<String>,
+    pub string_pool: Vec<String>,
+    pub logger_enabled: bool,
+}
+
+impl ExecutionContext {
+    pub fn new(id: u64) -> Self {
+        Self {
+            id,
+            active_container: None,
+            string_pool: Vec::new(),
+            logger_enabled: true,
+        }
+    }
+}
+
+/// BCIB graph wrapper used for syscall submission.
+#[derive(Debug, Clone, Copy)]
+pub struct BcibGraph<'a> {
+    data: &'a [u8],
+}
+
+impl<'a> BcibGraph<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { data }
+    }
+
+    pub fn as_ptr(&self) -> *const u8 {
+        self.data.as_ptr()
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    /// Validate BCIB header/opcode set before submitting to Ring0.
+    pub fn validate(&self) -> Result<(), ExecutionError> {
+        BcibBuffer::decode(self.data).map(|_| ()).map_err(ExecutionError::from)
+    }
+}
+
+/// Errors raised during BCIB execution submission.
+#[derive(Debug)]
+pub enum ExecutionError {
+    InvalidGraph(&'static str),
+    Decode(DecodeError),
+    Syscall(i64),
+    Capability(&'static str),
+}
+
+impl From<DecodeError> for ExecutionError {
+    fn from(err: DecodeError) -> Self {
+        ExecutionError::Decode(err)
+    }
+}
+
+impl fmt::Display for ExecutionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExecutionError::InvalidGraph(msg) => write!(f, "invalid BCIB graph: {}", msg),
+            ExecutionError::Decode(err) => write!(f, "BCIB decode failed: {}", err),
+            ExecutionError::Syscall(code) => write!(f, "syscall returned error {}", code),
+            ExecutionError::Capability(msg) => write!(f, "capability error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ExecutionError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ExecutionError::Decode(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+/// Ring3 BCIB executor responsible for validating and submitting graphs.
+pub struct BcibExecutor {
+    pub execution_contexts: HashMap<u64, ExecutionContext>,
+    pub capability_manager: CapabilityManager,
+    next_execution_id: u64,
+}
+
+impl BcibExecutor {
+    pub fn new() -> Self {
+        Self {
+            execution_contexts: HashMap::new(),
+            capability_manager: CapabilityManager::default(),
+            next_execution_id: 1,
+        }
+    }
+
+    fn allocate_execution_id(&mut self) -> u64 {
+        let id = self.next_execution_id;
+        self.next_execution_id += 1;
+        id
+    }
+
+    /// Submit BCIB graph to Ring0 via SYS_V2_SUBMIT_EXECUTION.
+    ///
+    /// Validates BCIB header/opcodes, allocates execution ID, binds a
+    /// capability token locally, and forwards the buffer to Ring0 using the
+    /// execution-centric syscall path (1000-1009 range).
+    pub fn submit_execution(&mut self, graph: &BcibGraph) -> Result<u64, ExecutionError> {
+        if graph.is_empty() {
+            return Err(ExecutionError::InvalidGraph("BCIB graph is empty"));
+        }
+
+        // Validate BCIB structure (magic, version, opcode set)
+        graph.validate()?;
+
+        let execution_id = self.allocate_execution_id();
+        let token = CapabilityToken {
+            id: execution_id,
+            resource_type: CapabilityResource::Execution,
+            permissions: CapabilityPermission::EXECUTE,
+            expires_at: None,
+        };
+
+        self.capability_manager
+            .bind(&token)
+            .map_err(|_| ExecutionError::Capability("capability bind failed"))?;
+
+        // Submit to Ring0. Kernel may return its own execution ID; prefer that
+        // if it is positive, otherwise fall back to our allocated ID.
+        let result = unsafe {
+            syscall_v2(
+                SYS_V2_SUBMIT_EXECUTION,
+                graph.as_ptr() as u64,
+                graph.len() as u64,
+                execution_id,
+                0,
+            )
+        };
+
+        if (result as i64) < 0 {
+            self.capability_manager.revoke(token.id);
+            return Err(ExecutionError::Syscall(result as i64));
+        }
+
+        let final_id = if result != 0 { result } else { execution_id };
+        self.execution_contexts
+            .entry(final_id)
+            .or_insert_with(|| ExecutionContext::new(final_id));
+
+        Ok(final_id)
+    }
+
+    /// Wait for execution result via SYS_V2_WAIT_RESULT (placeholder wiring).
+    pub fn wait_result(&self, execution_id: u64, timeout_ms: u64) -> Result<u64, ExecutionError> {
+        let result = unsafe { syscall_v2(SYS_V2_WAIT_RESULT, execution_id, timeout_ms, 0, 0) };
+        if (result as i64) < 0 {
+            return Err(ExecutionError::Syscall(result as i64));
+        }
+        Ok(result)
+    }
+}
+
+/// Low-level syscall shim using INT 0x80 (aligns with existing Ring3 callers).
+#[inline(always)]
+unsafe fn syscall_v2(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64) -> u64 {
+    let ret: u64;
+    asm!(
+        "int 0x80",
+        in("rax") num,
+        in("rdi") arg1,
+        in("rsi") arg2,
+        in("rdx") arg3,
+        in("r10") arg4,
+        lateout("rax") ret,
+        options(nostack, preserves_flags)
+    );
+    ret
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_submit_execution_empty_graph() {
+        let mut executor = BcibExecutor::new();
+        let empty_graph = BcibGraph::new(&[]);
+        
+        let result = executor.submit_execution(&empty_graph);
+        assert!(result.is_err());
+        
+        if let Err(ExecutionError::InvalidGraph(msg)) = result {
+            assert_eq!(msg, "BCIB graph is empty");
+        } else {
+            panic!("Expected InvalidGraph error for empty graph");
+        }
+    }
+
+    #[test]
+    fn test_execution_id_allocation() {
+        let mut executor = BcibExecutor::new();
+        
+        let id1 = executor.allocate_execution_id();
+        let id2 = executor.allocate_execution_id();
+        
+        assert_eq!(id1, 1);
+        assert_eq!(id2, 2);
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_bcib_graph_creation() {
+        let test_data = b"test_bcib_data";
+        let graph = BcibGraph::new(test_data);
+        
+        assert_eq!(graph.len(), test_data.len());
+        assert!(!graph.is_empty());
+        assert_eq!(graph.as_ptr(), test_data.as_ptr());
+    }
+
+    #[test]
+    fn test_capability_manager() {
+        let mut manager = CapabilityManager::default();
+        let token = CapabilityToken {
+            id: 123,
+            resource_type: CapabilityResource::Execution,
+            permissions: CapabilityPermission::EXECUTE,
+            expires_at: None,
+        };
+
+        assert!(manager.bind(&token).is_ok());
+        assert!(manager.active_tokens.contains(&123));
+        
+        manager.revoke(123);
+        assert!(!manager.active_tokens.contains(&123));
+    }
+
+    #[test]
+    fn test_execution_context_creation() {
+        let ctx = ExecutionContext::new(42);
+        
+        assert_eq!(ctx.id, 42);
+        assert!(ctx.active_container.is_none());
+        assert!(ctx.string_pool.is_empty());
+        assert!(ctx.logger_enabled);
+    }
+}

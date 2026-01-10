@@ -1,0 +1,124 @@
+Checking build dependencies...
+All required build tools found
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/proc/proc.c -o kernel/proc/proc.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/ui/ayken_logo_128.c -o kernel/drivers/ui/ayken_logo_128.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/ui/ayken_logo_256.c -o kernel/drivers/ui/ayken_logo_256.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/ui/logo_animator.c -o kernel/drivers/ui/logo_animator.o
+kernel/drivers/ui/logo_animator.c:54:4: warning: excess elements in array initializer [-Wexcess-initializers]
+   54 |    -164,-166,-168,-170,-172,-173,-175,-177,
+      |    ^~~~
+kernel/drivers/ui/logo_animator.c:113:19: warning: incompatible pointer types assigning to 'const unsigned int (*)[256]' from 'const uint32_t[128][128]' (aka 'const unsigned int[128][128]') [-Wincompatible-pointer-types]
+  113 |         g_logo    = ayken_logo128;
+      |                   ^ ~~~~~~~~~~~~~
+2 warnings generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/console/kernel.c -o kernel/drivers/console/kernel.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/console/keyboard.c -o kernel/drivers/console/keyboard.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/console/simple_shell.c -o kernel/drivers/console/simple_shell.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/console/fb_console.c -o kernel/drivers/console/fb_console.o
+kernel/drivers/console/fb_console.c:32:23: warning: unused variable 'COL_SPLASH_BG' [-Wunused-const-variable]
+   32 | static const uint32_t COL_SPLASH_BG = 0x00101020; // koyu lacivertimsı
+      |                       ^~~~~~~~~~~~~
+kernel/drivers/console/fb_console.c:33:23: warning: unused variable 'COL_BAR_FRAME' [-Wunused-const-variable]
+   33 | static const uint32_t COL_BAR_FRAME = 0x00FFFFFF;
+      |                       ^~~~~~~~~~~~~
+kernel/drivers/console/fb_console.c:34:23: warning: unused variable 'COL_BAR_FILL' [-Wunused-const-variable]
+   34 | static const uint32_t COL_BAR_FILL  = 0x0040A0FF;
+      |                       ^~~~~~~~~~~~
+3 warnings generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/drivers/console/font8x16.c -o kernel/drivers/console/font8x16.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/kernel.c -o kernel/kernel.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sched/sched.c -o kernel/sched/sched.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sys/capability_manager.c -o kernel/sys/capability_manager.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sys/syscall.c -o kernel/sys/syscall.o
+kernel/sys/syscall.c:26:12: warning: unused variable 'next_fd' [-Wunused-variable]
+   26 | static int next_fd = 3; // 0=stdin, 1=stdout, 2=stderr (şimdilik kullanılmıyor)
+      |            ^~~~~~~
+1 warning generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sys/capability_test.c -o kernel/sys/capability_test.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sys/syscall_v2.c -o kernel/sys/syscall_v2.o
+kernel/sys/syscall_v2.c:275:68: warning: unused parameter 'arg4' [-Wunused-parameter]
+  275 |                             uint64_t arg2, uint64_t arg3, uint64_t arg4)
+      |                                                                    ^
+1 warning generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/sys/syscall_hybrid_test.c -o kernel/sys/syscall_hybrid_test.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/ai/ayken_core_lm.c -o kernel/ai/ayken_core_lm.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/ai/lm_tokenizer.c -o kernel/ai/lm_tokenizer.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/ai/lm_runtime.c -o kernel/ai/lm_runtime.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/ai/ai_system_tuner.c -o kernel/ai/ai_system_tuner.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/ai/ai_boot_analyzer.c -o kernel/ai/ai_boot_analyzer.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/arch/x86_64/pic.c -o kernel/arch/x86_64/pic.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/arch/x86_64/timer.c -o kernel/arch/x86_64/timer.o
+kernel/arch/x86_64/timer.c:18:5: warning: interrupt service routine should only call a function with attribute 'no_caller_saved_registers' [-Winterrupt-service-routine]
+   18 |     sched_yield();
+      |     ^
+kernel/arch/x86_64/../../sched/sched.h:11:6: note: 'sched_yield' declared here
+   11 | void sched_yield(void);
+      |      ^
+kernel/arch/x86_64/timer.c:19:5: warning: interrupt service routine should only call a function with attribute 'no_caller_saved_registers' [-Winterrupt-service-routine]
+   19 |     pic_send_eoi(0);
+      |     ^
+kernel/arch/x86_64/pic.h:5:6: note: 'pic_send_eoi' declared here
+    5 | void pic_send_eoi(uint8_t irq);
+      |      ^
+2 warnings generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/arch/x86_64/cpu.c -o kernel/arch/x86_64/cpu.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/arch/x86_64/interrupts.c -o kernel/arch/x86_64/interrupts.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -mcmodel=kernel -c kernel/arch/x86_64/gdt_idt.c -o kernel/arch/x86_64/gdt_idt.o
+kernel/arch/x86_64/gdt_idt.c:226:13: warning: unused function 'idt_set_gate_local' [-Wunused-function]
+  226 | static void idt_set_gate_local(uint8_t num, void (*handler)(void), uint8_t flags)
+      |             ^~~~~~~~~~~~~~~~~~
+1 warning generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/lib/string.c -o kernel/lib/string.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/mm/paging.c -o kernel/mm/paging.o
+kernel/mm/paging.c:92:24: warning: unused function 'virt_to_phys' [-Wunused-function]
+   92 | static inline uint64_t virt_to_phys(const void *virt)
+      |                        ^~~~~~~~~~~~
+1 warning generated.
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/mm/phys_mem.c -o kernel/mm/phys_mem.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/mm/kheap.c -o kernel/mm/kheap.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/fs/ring3_vfs_demo.c -o kernel/fs/ring3_vfs_demo.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/fs/vfs_proxy_test.c -o kernel/fs/vfs_proxy_test.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/fs/devfs.c -o kernel/fs/devfs.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/fs/userspace_devfs_stubs.c -o kernel/fs/userspace_devfs_stubs.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c kernel/fs/vfs.c -o kernel/fs/vfs.o
+kernel/fs/vfs.c:27:15: warning: unused function 'strlen' [-Wunused-function]
+   27 | static size_t strlen(const char *s) {
+      |               ^~~~~~
+kernel/fs/vfs.c:33:12: warning: unused function 'strcmp' [-Wunused-function]
+   33 | static int strcmp(const char *s1, const char *s2) {
+      |            ^~~~~~
+kernel/fs/vfs.c:41:14: warning: unused function 'strcpy' [-Wunused-function]
+   41 | static char *strcpy(char *dest, const char *src) {
+      |              ^~~~~~
+3 warnings generated.
+nasm -f elf64 kernel/arch/x86_64/context_switch.asm -o kernel/arch/x86_64/context_switch.o
+clang --target=x86_64-elf -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector -mno-red-zone -c userspace/libayken/scheduler_stubs.c -o userspace/libayken/scheduler_stubs.o
+userspace/libayken/scheduler_stubs.c:203:53: warning: unused parameter 'old_state' [-Wunused-parameter]
+  203 | int scheduler_notify_state_change(proc_t *proc, int old_state, int new_state)
+      |                                                     ^
+userspace/libayken/scheduler_stubs.c:203:68: warning: unused parameter 'new_state' [-Wunused-parameter]
+  203 | int scheduler_notify_state_change(proc_t *proc, int old_state, int new_state)
+      |                                                                    ^
+2 warnings generated.
+ld.lld -T linker.ld -nostdlib -z max-page-size=0x1000 -o kernel.elf kernel/proc/proc.o kernel/drivers/ui/ayken_logo_128.o kernel/drivers/ui/ayken_logo_256.o kernel/drivers/ui/logo_animator.o kernel/drivers/console/kernel.o kernel/drivers/console/keyboard.o kernel/drivers/console/simple_shell.o kernel/drivers/console/fb_console.o kernel/drivers/console/font8x16.o kernel/kernel.o kernel/sched/sched.o kernel/sys/capability_manager.o kernel/sys/syscall.o kernel/sys/capability_test.o kernel/sys/syscall_v2.o kernel/sys/syscall_hybrid_test.o kernel/ai/ayken_core_lm.o kernel/ai/lm_tokenizer.o kernel/ai/lm_runtime.o kernel/ai/ai_system_tuner.o kernel/ai/ai_boot_analyzer.o kernel/arch/x86_64/pic.o kernel/arch/x86_64/timer.o kernel/arch/x86_64/cpu.o kernel/arch/x86_64/interrupts.o kernel/arch/x86_64/gdt_idt.o kernel/lib/string.o kernel/mm/paging.o kernel/mm/phys_mem.o kernel/mm/kheap.o kernel/fs/ring3_vfs_demo.o kernel/fs/vfs_proxy_test.o kernel/fs/devfs.o kernel/fs/userspace_devfs_stubs.o kernel/fs/vfs.o kernel/arch/x86_64/context_switch.o userspace/libayken/scheduler_stubs.o
+clang -ffreestanding -fshort-wchar -mno-red-zone -Wall -Wextra -Itools/gnu-efi/inc -Itools/gnu-efi/inc/x86_64 -Ikernel/include -target x86_64-pc-win32-coff -c bootloader/efi/efi_main.c -o bootloader/efi/efi_main.efi.o
+clang -ffreestanding -fshort-wchar -mno-red-zone -Wall -Wextra -Itools/gnu-efi/inc -Itools/gnu-efi/inc/x86_64 -Ikernel/include -target x86_64-pc-win32-coff -c bootloader/efi/ayken_boot.c -o bootloader/efi/ayken_boot.efi.o
+bootloader/efi/ayken_boot.c:112:51: warning: incompatible pointer types passing 'UINTN *' (aka 'unsigned long long *') to parameter of type 'UINT32 *' (aka 'unsigned int *') [-Wincompatible-pointer-types]
+  112 |             &map_size, map, &map_key, &desc_size, &desc_ver);
+      |                                                   ^~~~~~~~~
+1 warning generated.
+clang -ffreestanding -fshort-wchar -mno-red-zone -Wall -Wextra -Itools/gnu-efi/inc -Itools/gnu-efi/inc/x86_64 -Ikernel/include -target x86_64-pc-win32-coff -c bootloader/efi/elf_loader.c -o bootloader/efi/elf_loader.efi.o
+bootloader/efi/elf_loader.c:14:28: warning: unused variable 'FileIO' [-Wunused-variable]
+   14 |     EFI_FILE_IO_INTERFACE *FileIO;
+      |                            ^~~~~~
+1 warning generated.
+clang -ffreestanding -fshort-wchar -mno-red-zone -Wall -Wextra -Itools/gnu-efi/inc -Itools/gnu-efi/inc/x86_64 -Ikernel/include -target x86_64-pc-win32-coff -c bootloader/efi/paging.c -o bootloader/efi/paging.efi.o
+clang -ffreestanding -fshort-wchar -mno-red-zone -Wall -Wextra -Itools/gnu-efi/inc -Itools/gnu-efi/inc/x86_64 -Ikernel/include -target x86_64-pc-win32-coff -c bootloader/efi/efistubs.c -o bootloader/efi/efistubs.efi.o
+lld-link /nodefaultlib /subsystem:efi_application /entry:efi_main /base:0x100000 /out:bootloader/efi/BOOTX64.EFI bootloader/efi/efi_main.efi.o bootloader/efi/ayken_boot.efi.o bootloader/efi/elf_loader.efi.o bootloader/efi/paging.efi.o bootloader/efi/efistubs.efi.o
+./tools/build/make_efi_img.sh
+[*] FAT32 EFI image oluşturuluyor...
+[mformat]
+[mkdir EFI/BOOT]
+[BOOTX64.EFI kopyalanıyor]
+[kernel.elf kopyalanıyor]
+[*] EFI.img hazır!

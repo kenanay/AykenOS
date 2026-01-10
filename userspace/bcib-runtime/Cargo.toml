@@ -1,0 +1,13 @@
+[package]
+name = "bcib-runtime"
+version = "0.1.0"
+edition = "2021"
+authors = ["AykenOS"]
+
+[dependencies]
+bcib = { path = "../../ayken-core/crates/bcib" }
+dsl-parser = { path = "../dsl-parser" }
+
+[[example]]
+name = "submit_execution_demo"
+path = "examples/submit_execution_demo.rs"

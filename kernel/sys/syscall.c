@@ -1,0 +1,56 @@
+// kernel/sys/syscall.c
+// AykenOS Phase 2.5 - Execution-Centric Syscall Interface Only
+//
+// This file implements the final syscall interface with only the 10 execution-centric
+// syscalls. All POSIX-like syscalls have been removed as part of the architectural
+// transformation to a data-centric, AI-native operating system.
+//
+// Requirements: AC-6 - Ring0 contains exactly 10 syscalls, no POSIX syscalls remain
+
+#include <stdint.h>
+#include <stddef.h>
+#include "../arch/x86_64/interrupts.h"
+#include "../drivers/console/fb_console.h"
+#include "syscall_v2.h"  // Include v2 syscall interface
+
+uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
+                         uint64_t arg2, uint64_t arg3, uint64_t arg4);
+
+// Basit INT 0x80 giriş noktası (interrupt frame pointer bekler)
+extern void syscall_isr(struct interrupt_frame *frame);
+
+void syscall_init(void)
+{
+    fb_print("[syscall] Installing INT 0x80 gate for execution-centric syscalls only.\n");
+    idt_set_gate(0x80, syscall_isr, 0xEE); // Present | DPL=3 | interrupt gate
+}
+
+// ============================================================================
+// EXECUTION-CENTRIC SYSCALL DISPATCHER (Phase 2.5 - Final Implementation)
+// ============================================================================
+//
+// This dispatcher implements the final syscall interface with only the 10
+// execution-centric syscalls. All POSIX-like syscalls have been removed.
+// 
+// Syscall Numbering Plan (Final):
+// - 1000-1009 range: Execution-centric (v2) syscalls (user space numbers)
+// - 0-9 range: Internal kernel mapping for v2 syscalls
+// - All other ranges: Invalid (return -ENOSYS)
+//
+// Requirements: AC-6 - Only 10 execution-centric syscalls remain
+
+uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
+                         uint64_t arg2, uint64_t arg3, uint64_t arg4)
+{
+    // Route based on Final Syscall Numbering Plan
+    if (syscall_num >= 1000 && syscall_num <= 1009) {
+        // Execution-centric syscalls (v2) - Convert to 0-9 range for v2 handler
+        return syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
+    } else {
+        // Invalid syscall number - only 1000-1009 range is valid
+        fb_print("[syscall] ENOSYS: invalid syscall number ");
+        fb_print_int(syscall_num);
+        fb_print(" (valid range: 1000-1009 only)\n");
+        return (uint64_t)-38; // -ENOSYS
+    }
+}

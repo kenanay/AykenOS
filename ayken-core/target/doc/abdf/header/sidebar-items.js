@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ABDF_MAGIC","ABDF_VERSION"],"struct":["AbdfHeader"]};

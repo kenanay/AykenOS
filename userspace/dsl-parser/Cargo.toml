@@ -1,0 +1,17 @@
+[package]
+name = "dsl-parser"
+version = "0.1.0"
+edition = "2021"
+authors = ["AykenOS"]
+description = "Hierarchical DSL parser for AykenOS Phase 2 data-centric architecture"
+license = "MIT"
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "hierarchical_demo"
+path = "examples/hierarchical_demo.rs"
+
+[dependencies]

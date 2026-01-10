@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "ai-runtime",
+    "bcib-runtime",
+    "dsl-parser",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"

@@ -1,0 +1,13 @@
+[package]
+name = "ayken-core-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "basic_usage"
+path = "basic_usage.rs"
+
+[dependencies]
+abdf = { path = "../crates/abdf" }
+bcib = { path = "../crates/bcib" }
+abdf-builder = { path = "../crates/abdf-builder" }

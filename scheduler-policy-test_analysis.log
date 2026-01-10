@@ -1,0 +1,8 @@
+{
+    "test_name": "scheduler-policy-test",
+    "duration": 16,
+    "success": false,
+    "boot_stages": [""]
+    "error_detected": false,
+    "timeout_reached": 1
+}
