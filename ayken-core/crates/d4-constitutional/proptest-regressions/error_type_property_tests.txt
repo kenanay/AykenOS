@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ba51e3553246362a445377480fd3abc60172894f45f1fffb27830893586b7528 # shrinks to contract_scenario = ContractViolationScenario { component: D1Component, findings: [], violations: [], recommendations: [] }, gate_scenario = GateDecisionScenario { readiness_analysis: GateReadinessAnalysis { gate_phase: Initialization, readiness_status: NotReady, completion_percentage: 0.0, blocking_issues: [], advisory_notes: [] }, transition_findings: [TransitionFinding { finding_type: TransitionBlocked, from_state: "a", to_state: "A", analysis_result: "a", recommendations: [] }], permission_analysis: PermissionAnalysis { required_permissions: [], available_permissions: [], permission_gaps: [], authorization_recommendations: [] }, fingerprint_analysis: FingerprintAnalysis { current_fingerprint: "Aaa0aAAa0AAaAAa0aa000aA0aA0A0A0A", expected_fingerprint: None, fingerprint_validity: Valid, variation_analysis: [], integrity_status: Verified }, overall_readiness_score: 0.0 }, constitutional_scenario = SystemInitialization { reason: "a" }

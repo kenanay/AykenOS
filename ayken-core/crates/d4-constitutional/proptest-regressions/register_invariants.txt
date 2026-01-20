@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4ec72cde665d5cbc40114165349b49ab3c2838480889a6329dcd8963f7626868 # shrinks to allocations = [], spill_overhead_percentage = 0.0, allocation_overhead_percentage = 0.0, register_reuse_rate = 0.0, bounds_check_overhead = 0.0
+cc 02a51dae6df70f01c8e2ea20b8596dda65346f52305808d733b0730e348305fa # shrinks to allocations = [], spill_overhead_percentage = -0.11358297323383548, allocation_overhead_percentage = 0.0, register_reuse_rate = 0.0, bounds_check_overhead = 0.0
+cc 360ab789a91573235ef28e4966d578f2a133efc9ee4d51f2874c945d9b9c2123 # shrinks to allocations = [AllocationDecision { virtual_register: VirtualRegisterId(0), physical_register: None, spill_location: Some(SpillLocation { memory_address: 0, size_bytes: 8 }), decision_timestamp: LogicalTimestamp(1000), decision_context: AllocationContext { ir_fingerprint: "fingerprint_0", optimization_level: Debug, target_architecture: X86_64, available_registers: [] } }], spill_overhead_percentage = -2.495335943023641, allocation_overhead_percentage = 0.0, register_reuse_rate = 0.0, bounds_check_overhead = 0.0

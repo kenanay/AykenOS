@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 32a73b35943c9adbf6e94519269fb7c581376477a3bf620059a16dfcedd60c76 # shrinks to actions = [(RuleEnforcement, D1Component, "0Aa A00 Aa", {})], seed = 0

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 70a2a4becae4991b048a7fa86827a8bd99cd4e06ea1dde02f19b5e000797f38b # shrinks to requester = JITCompiler, target_component = D1Component, proposal_operation = AllocationConstraint, allocation_decision = AllocationDecision { virtual_register: VirtualRegisterId(0), physical_register: None, spill_location: None, decision_timestamp: 2026-01-18T15:20:43.050381Z, decision_context: AllocationContext { ir_fingerprint: "fingerprint_0", optimization_level: Debug, target_architecture: X86_64, available_registers: [] } }
