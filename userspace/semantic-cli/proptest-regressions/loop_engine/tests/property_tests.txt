@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8bd450aaa8437c8353f6cc0d169b517eed5ebfea7ac9c1036cb21fa9529d30fe # shrinks to cases = [FingerprintTestCase { context: LoopContext { loop_id: LoopID("collision-test-0"), iteration_limit: 100, budget_timeout: 1000, budget_measurement: IterationCount, accumulator_type: Number, loop_body: "aaaaa" }, pattern: AccumulatorPattern { accumulators: {"aaa": LoopAccumulator { value: Number(0.0), expected_type: Number, name: "aaa" }} }, control_decisions: [], iteration_count: 1, loop_type: While }]
+cc 944f4fe8dd19e83c687277d3b0df26376981921778b90ca056e2625e2fdf2e24 # shrinks to values = [Array([]), List([])]
+cc f7058fb043c8e0250744f22f592a7e4ae778279f6a983e24db87fbcb4a65d63f # shrinks to values = [Number(NaN), Number(NaN)]
+cc e78486f345c124040ef002fb74dd20abf621842e093f95c2b72c6858b46847a0 # shrinks to values = [List([Number(NaN)]), Array([Number(NaN)])]
+cc 51d7693a8b6496d7ddaf23cb6c12d09474419a44876db6711f8fd5ae695bf4c9 # shrinks to base_case = FingerprintTestCase { context: LoopContext { loop_id: LoopID("aaa"), iteration_limit: 1, budget_timeout: 100, budget_measurement: IterationCount, accumulator_type: Number, loop_body: "a aaa" }, pattern: AccumulatorPattern { accumulators: {"aaa": LoopAccumulator { value: Number(0.0), expected_type: Number, name: "aaa" }} }, control_decisions: [], iteration_count: 0, loop_type: While }

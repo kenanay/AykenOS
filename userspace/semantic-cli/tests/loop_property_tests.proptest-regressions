@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 7ca0a0bdd1a50724916c40c3cf7d81534610de51ee2264ecbd0b62fa9b04ec11 # shrinks to mut instruction = For { id: LoopID("prop-for-0-0--1"), range: LoopRange { start: 0, end: 0, step: -1 }, iterator_var: "i", body: "test-body", config: LoopConfig { iteration_limit: 10000, budget_timeout: 1000000, budget_measurement: IterationCount, initial_accumulator: Boolean(false), accumulator_type: Number, error_recovery: Abort }, location: SourceLocation { line: 1, column: 1, offset: 0 } }, limit = 1
+cc 8b135193526cc504805763f063369676d19ced9b0d6a42c7cd60cedbcced27ad # shrinks to instruction = For { id: LoopID("prop-for--94-7-1"), range: LoopRange { start: -94, end: 7, step: 1 }, iterator_var: "i", body: "test-body", config: LoopConfig { iteration_limit: 10000, budget_timeout: 1000000, budget_measurement: IterationCount, initial_accumulator: Number(0.0), accumulator_type: Number, error_recovery: Abort }, location: SourceLocation { line: 1, column: 1, offset: 0 } }, parallelism = 2
+cc f96f670db85e6c8643b2c7c1b4da72bde5abf99342bf759f56e513aa00dd79d6 # shrinks to mut instruction = ForEach { id: LoopID("prop-foreach"), collection: Literal(Array([Number(0.0), Number(0.0), Number(0.0), Number(0.0), Number(0.0), Number(0.0)])), collection_type: Array, iterator_var: "item", body: "test-body", config: LoopConfig { iteration_limit: 10000, budget_timeout: 1000000, budget_measurement: IterationCount, initial_accumulator: Number(0.0), accumulator_type: Number, error_recovery: Abort }, location: SourceLocation { line: 1, column: 1, offset: 0 } }, limit = 6

@@ -1,0 +1,96 @@
+[package]
+name = "semantic-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kenan AY"]
+description = "AykenOS Semantic CLI - Natural language DSL to BCIB compiler"
+license = "MIT"
+
+[[bin]]
+name = "semantic-cli"
+path = "src/main.rs"
+
+[dependencies]
+# Parser combinators
+nom = "7.1"
+
+# REPL
+rustyline = "13.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Caching
+lru = "0.12"
+
+# Async runtime (for executor)
+tokio = { version = "1.35", features = ["full"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Hashing (for BCIB metadata)
+sha2 = "0.10"
+blake3 = "1.5"
+hex = "0.4"
+
+# Random number generation (for mock data)
+rand = "0.8"
+
+# Parallelism (data-parallel execution)
+rayon = "1.8"
+
+# CPU core detection (for thread pool sizing)
+num_cpus = "1.16"
+
+[dev-dependencies]
+# Property-based testing
+proptest = "1.4"
+
+# Benchmarking
+criterion = "0.5"
+
+# Test utilities
+pretty_assertions = "1.4"
+
+[[bench]]
+name = "performance_benchmarks"
+harness = false
+
+[[bench]]
+name = "parallelism_benchmarks"
+harness = false
+
+[[bench]]
+name = "memory_validation"
+harness = false
+
+[features]
+default = ["phase2-implementation"]
+
+# Phase enforcement features
+phase1-spec-only = []
+phase2-implementation = []
+phase3-hardening = []
+
+# Constitutional enforcement features
+constitutional-compliance = []
+development-mode = []
+
+# D3 Loop Support Design feature
+d3_loop_spec = []
