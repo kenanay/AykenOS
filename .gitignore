@@ -52,9 +52,15 @@ Thumbs.db
 # Toolchain downloads
 *.tar.xz
 *.tar.gz
+*.tar
 *.zip
 binutils-*/
 gcc-*/
+
+# Large build files
+build/EFI.img
+ayken/target/debug/incremental/*/s-*/dep-graph.bin
+ayken/target/debug/incremental/*/s-*/query-cache.bin
 
 # Test artifacts
 test_results/
