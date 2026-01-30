@@ -6,7 +6,7 @@
 
 ## 🌍 Platform Support Overview
 
-AykenOS development environment **tam multi-platform desteği** sağlar:
+AykenOS VS Code geliştirme ortamı **tam multi-platform desteği** sağlar:
 
 | Platform | Script Support | Toolchain | Performance | Recommendation |
 |----------|----------------|-----------|-------------|----------------|
@@ -278,7 +278,7 @@ steps:
 
 ## 🎉 Conclusion
 
-**AykenOS development environment şimdi tam multi-platform!** 
+**AykenOS VS Code geliştirme ortamı şimdi tam multi-platform!** 
 
 ✅ **Tamamlanan özellikler:**
 - Her platform için native script desteği

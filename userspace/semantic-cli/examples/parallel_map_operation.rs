@@ -355,6 +355,7 @@ fn format_value_short(value: &Value) -> String {
         }
         Value::Number(n) => format!("{:.2}", n),
         Value::Boolean(b) => b.to_string(),
+        Value::Array(_) | Value::List(_) | Value::SortedMap(_) => "[Composite]".to_string(),
     }
 }
 

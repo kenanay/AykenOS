@@ -1,1 +1,0 @@
-searchState.loadedDescShard("basic_usage", 0, "Basic ABDF and BCIB usage examples")

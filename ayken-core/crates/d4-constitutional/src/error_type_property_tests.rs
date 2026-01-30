@@ -10,10 +10,18 @@
 //! - Report type specificity maintained during report propagation
 //! - Violation reports include violation-type-specific context and remediation recommendations
 
-use crate::errors::*;
+use crate::errors::specification_reports::{
+    ContractFinding, ContractViolationType, GatePhase, ReadinessStatus, 
+    TransitionFindingType, PermissionType, FingerprintValidity,
+    ContractViolationReport, GateReadinessAnalysis, TransitionFinding, 
+    PermissionAnalysis, FingerprintAnalysis, ContractViolation, ContractRecommendation,
+    RecommendationPriority, Permission, AuthorityLevel, PermissionGap, FingerprintVariation,
+    IntegrityStatus, GateDecisionReport
+};
+use crate::errors::{ConstitutionalError, SpecificationReport, SpecificationViolation, ViolationType};
 use crate::testing::*;
 use crate::types::*;
-use crate::templates::TemplateType;
+use crate::bmode::templates::TemplateType;
 use proptest::prelude::*;
 use std::collections::BTreeMap;
 

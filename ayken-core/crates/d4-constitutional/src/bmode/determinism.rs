@@ -144,7 +144,7 @@ pub struct FailureScenario {
     pub scenario_id: String,
     pub scenario_type: FailureType,
     pub trigger_conditions: Vec<TriggerCondition>,
-    pub expected_responses: BTreeMap<ComponentId, RecommendedSystemAction>,
+    pub expected_responses: BTreeMap<ComponentId, RecommendedSystemResponse>,
     pub determinism_requirements: DeterminismRequirements,
 }
 
@@ -168,9 +168,9 @@ pub struct TriggerCondition {
     pub parameters: BTreeMap<String, String>,
 }
 
-/// Recommended system actions in response to failures (B-MODE)
+/// Recommended system responses in response to failures (B-MODE)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RecommendedSystemAction {
+pub enum RecommendedSystemResponse {
     RecommendDisableOptimization,
     RecommendFallbackToSafeMode,
     RecommendLogAndContinue,
@@ -703,7 +703,7 @@ impl DeterminismAnalyzer for DefaultDeterminismAnalyzer {
         // Analyze expected responses for B-MODE compliance
         for (component, action) in &scenario.expected_responses {
             match action {
-                RecommendedSystemAction::RecommendDisableOptimization => {
+                RecommendedSystemResponse::RecommendDisableOptimization => {
                     report.add_finding(SpecificationFinding {
                         finding_type: FindingType::SpecificationCompliance,
                         component: *component,
@@ -712,7 +712,7 @@ impl DeterminismAnalyzer for DefaultDeterminismAnalyzer {
                         location: ValidationLocation::new(*component),
                     });
                 }
-                RecommendedSystemAction::RecommendTermination => {
+                RecommendedSystemResponse::RecommendTermination => {
                     report.add_finding(SpecificationFinding {
                         finding_type: FindingType::SpecificationCompliance,
                         component: *component,

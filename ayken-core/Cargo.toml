@@ -3,6 +3,7 @@ members = [
     "crates/abdf",
     "crates/bcib",
     "crates/abdf-builder",
+    "crates/d4-constitutional",
     "examples",
 ]
 

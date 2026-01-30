@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["SegmentKind"],"struct":["MetaContainer","SegmentDescriptor"]};

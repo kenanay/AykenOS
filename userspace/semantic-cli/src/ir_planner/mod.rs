@@ -12,6 +12,7 @@
 use crate::execution_plan::{ExecutionPlan, IRInstruction, BlockTerminator, RegisterId, BlockId};
 use crate::bcib::{Value, ComparisonOp, LogicalOperator, FilterExpression};
 use crate::context::ContextManager;
+use crate::memory::ExecutionPools;
 use std::collections::HashMap;
 
 // Parallelism imports (optional - only available when phase2-implementation feature is enabled)
@@ -39,6 +40,8 @@ pub struct IRExecutor {
     execution_state: ExecutionState,
     /// Replay recorder for step-by-step debugging
     replay_recorder: ReplayRecorder,
+    /// Object pools for memory optimization (Phase 4.3.3.1)
+    pools: ExecutionPools,
     /// Optional parallel executor (only available with phase2-implementation feature)
     #[cfg(feature = "phase2-implementation")]
     parallel_executor: Option<Box<dyn ParallelExecutor>>,
@@ -55,6 +58,7 @@ impl IRExecutor {
             context_manager: ContextManager::new(),
             execution_state: ExecutionState::new(),
             replay_recorder: ReplayRecorder::new(),
+            pools: ExecutionPools::with_capacity(16), // Pre-allocate for warmup
             #[cfg(feature = "phase2-implementation")]
             parallel_executor: None,
             #[cfg(feature = "phase2-implementation")]
@@ -69,6 +73,7 @@ impl IRExecutor {
             context_manager,
             execution_state: ExecutionState::new(),
             replay_recorder: ReplayRecorder::new(),
+            pools: ExecutionPools::with_capacity(16), // Pre-allocate for warmup
             #[cfg(feature = "phase2-implementation")]
             parallel_executor: None,
             #[cfg(feature = "phase2-implementation")]
@@ -96,6 +101,23 @@ impl IRExecutor {
         self
     }
     
+    /// Get pool statistics for performance monitoring (Phase 4.3.3.1)
+    pub fn pool_stats(&self) -> &crate::memory::PoolStats {
+        self.pools.stats()
+    }
+    
+    /// Get current pool sizes for monitoring (Phase 4.3.3.1)
+    pub fn pool_sizes(&self) -> crate::memory::PoolSizes {
+        self.pools.pool_sizes()
+    }
+    
+    /// Manually clear pools (for testing or explicit cleanup)
+    /// 
+    /// **Constitutional Rule:** Pools are automatically cleared after each execution
+    pub fn clear_pools(&mut self) {
+        self.pools.clear_all();
+    }
+    
     /// Check if parallelism is enabled
     #[cfg(feature = "phase2-implementation")]
     pub fn is_parallelism_enabled(&self) -> bool {
@@ -118,11 +140,19 @@ impl IRExecutor {
         // Check if we should use parallel execution
         #[cfg(feature = "phase2-implementation")]
         if self.should_use_parallel_execution(&plan)? {
-            return self.execute_parallel_path(plan);
+            let result = self.execute_parallel_path(plan);
+            // Constitutional Rule: Clear pools after execution (no cross-run leakage)
+            self.pools.clear_all();
+            return result;
         }
         
         // Use sequential execution (default path)
-        self.execute_sequential_path(plan)
+        let result = self.execute_sequential_path(plan);
+        
+        // Constitutional Rule: Clear pools after execution (no cross-run leakage)
+        self.pools.clear_all();
+        
+        result
     }
     
     /// Execute using sequential path (original implementation)
@@ -214,6 +244,9 @@ impl IRExecutor {
         // Get replay trace
         let trace = self.replay_recorder.finalize_trace()?;
         
+        // Constitutional Rule: Clear pools after execution (no cross-run leakage)
+        self.pools.clear_all();
+        
         Ok((result, trace))
     }
     
@@ -224,14 +257,16 @@ impl IRExecutor {
             reason: e.to_string() 
         })?;
         
-        // Reset execution state
-        self.execution_state = ExecutionState::new();
-        self.execution_state.current_block = plan.entry_block;
+        // Reset execution state using pooling (Phase 4.3.3.1)
+        let mut new_execution_state = self.pools.borrow_execution_state();
+        new_execution_state.current_block = plan.entry_block;
+        self.execution_state = new_execution_state;
         
-        // Initialize register file
-        self.register_file.clear();
+        // Initialize register file using pooling (Phase 4.3.3.1)
+        self.register_file = self.pools.borrow_register_file();
         
-        // Initialize replay recorder
+        // Initialize replay recorder using pooling (Phase 4.3.3.1)
+        self.replay_recorder = self.pools.borrow_replay_recorder();
         self.replay_recorder.initialize(plan.compute_determinism_fingerprint());
         
         Ok(())

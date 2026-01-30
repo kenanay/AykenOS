@@ -83,11 +83,16 @@ pub mod normalizer;
 // REPL Semantic Visibility
 pub mod repl_visibility;
 
+// Performance Measurement Infrastructure - Phase 4.2
+pub mod performance;
+
 // Constitutional CI Guards - Phase 4.0 Baseline Hardening
 #[cfg(test)]
 pub mod snapshot_tests;
 #[cfg(test)]
 pub mod complexity_budget_tests;
+#[cfg(test)]
+pub mod optimized_complexity_budget_tests;
 
 // Re-exports for convenience
 pub use error::{GateCError, GateCResult};

@@ -1,10 +1,34 @@
 # AykenOS
 
+**Copyright (c) 2026 Kenan AY. All rights reserved.**
+
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Author: Kenan AY](https://img.shields.io/badge/Author-Kenan%20AY-blue.svg)](mailto:kenanay@example.com)
+[![Status: Protected](https://img.shields.io/badge/Status-Protected-orange.svg)](#-important-legal-notice)
+
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 15.01.2026
+**Son Güncelleme:** 31.01.2026
 
-**Proje Durumu:** Faz 3.4 tamamlandı, Faz 3.5 (Semantic CLI Core) aktif geliştirme aşamasında.
+**Proje Durumu:** Core OS Phase 4.4 tamamlandı ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅
+
+---
+
+## 🔒 IMPORTANT LEGAL NOTICE
+
+This software is **proprietary and confidential**. All rights reserved by Kenan AY.
+
+### ⚖️ Usage Restrictions:
+- ✅ **Educational viewing** permitted for learning purposes
+- ❌ **Commercial use** prohibited without license
+- ❌ **Modification** prohibited without written permission  
+- ❌ **Distribution** prohibited without authorization
+- ❌ **Reverse engineering** prohibited
+
+### 📧 Licensing Contact:
+For commercial licensing, partnerships, or permissions:
+- **Email**: kenanay@example.com
+- **Subject**: "AykenOS Licensing Inquiry"
 
 ---
 
@@ -147,6 +171,27 @@ AykenOS/
 │       ├── abdf/      # Ayken Binary Data Format
 │       ├── abdf-builder/ # ABDF builder araçları
 │       └── bcib/      # Binary CLI Instruction Buffer
+│
+├── ayken/              # Rust tabanlı constitutional rule system (AykenOS geliştirme aracı)
+│   ├── ahs/           # Architecture Health Score system
+│   ├── ahts/          # Architecture Health Trend Score system
+│   ├── allow/         # Allow attribute parsing and validation
+│   ├── audit/         # Immutable audit trail system
+│   ├── cli/           # Command-line interface (ayken check)
+│   ├── constitution/  # Constitutional policy constants & integration limits
+│   ├── decision/      # Constitutional decision tree
+│   ├── diagnostic/    # Diagnostic output (VS Code, CI, text)
+│   ├── escalation/    # Allow escalation detection
+│   ├── exception/     # Exception hierarchy (allow/waiver)
+│   ├── explain/       # Rule explanation engine
+│   ├── lifecycle/     # Waiver lifecycle management
+│   ├── mars/          # Module-level Architecture Risk Score system (risk, CI, VS Code, dashboard)
+│   ├── phase/         # Phase detection and matrix
+│   ├── rules/         # Constitutional rule definitions
+│   ├── scanner/       # Rule violation scanning
+│   ├── steering/      # Steering files management
+│   ├── vscode/        # VS Code integration
+│   └── waiver/        # Waiver system with expiry and renewal
 │
 ├── docs/               # Dokümantasyon
 │   ├── phase1/        # Faz 1 raporları
@@ -296,13 +341,38 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **GATE D:** Advanced Planning & Coordination (tamamlandı)
   - ✅ **GATE E:** Security & Integration (tamamlandı)
 
-- 🔄 **Faz 3.5:** Semantic CLI Core (aktif geliştirme)
-  - ✅ **GATE A:** Parsing Foundation (tamamlandı)
-  - 🔄 **GATE B:** BCIB Refactoring & Core Operations (devam ediyor)
-    - ✅ **Task 5-8:** Architectural Requirements (AR-1 to AR-4) (tamamlandı)
-    - ✅ **Task 9:** Validator Implementation (tamamlandı - güçlü onay)
-    - ✅ **Task 10:** Transformer Implementation (tamamlandı - güçlü onay)
-    - 🔄 **Task 11:** Context Manager Implementation (devam ediyor)
+- ✅ **Phase 4.3:** Performance Optimization (tamamlandı ✅)
+  - ✅ **Evidence-Based Optimization:** HashMap → Indexed structures (3-5x improvement)
+  - ✅ **Algorithmic Improvements:** O(n²) → O(n) complexity transformation
+  - ✅ **Memory Optimization:** 80%+ reduction in allocations (285KB → <50KB)
+  - ✅ **Single-Pass Processing:** 7 passes → 1 pass streaming architecture
+  - ✅ **Constitutional Compliance:** All optimizations preserve deterministic behavior
+  - ✅ **Performance Validation:** 3-10x improvements achieved, 97.9% test coverage
+  - ✅ **Integration Success:** Zero breaking changes, seamless codebase integration
+
+- ✅ **Phase 4.4:** Performance Management (tamamlandı ✅)
+  - ✅ **Advanced Performance Management:** Intelligent resource allocation and scheduling
+  - ✅ **Performance-Aware Execution:** Performance-aware execution planning
+  - ✅ **Long-term Sustainability:** Performance sustainability framework
+  - ✅ **Evidence-Based Management:** 100% evidence-backed decisions with audit trail
+  - ✅ **Constitutional Compliance:** All management decisions constitutionally validated
+
+- 🚀 **Constitutional Integration:** Constitutional Stabilization & Lock (başlamaya hazır)
+  - **Single Decision Authority:** All decisions flow through Gate C constitutional validation
+  - **Evidence-Based Governance:** 100% evidence-backed decisions with complete audit trail
+  - **Constitutional Lock Enforcement:** Violations result in system block/exit
+  - **Unified Compliance Framework:** All constitutional requirements enforced at single point
+
+### 🛠️ Ayken Constitutional Rule System (Geliştirme Aracı)
+
+AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
+
+- ✅ **Task 10.1:** MARS Module Detection (tamamlandı ✅)
+  - ✅ **ModuleDetector:** Automatic boundary detection with hierarchical structure
+  - ✅ **Module Configuration:** TOML-based custom boundary definitions
+  - ✅ **File-to-Module Mapping:** Complete coverage with conflict detection
+  - ✅ **Constitutional Compliance:** Deterministic assignment, identity preservation
+  - ✅ **Test Coverage:** 5/5 MARS tests passing with constitutional validation
 
 ### Önemli Kilometre Taşları
 
@@ -317,9 +387,27 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
 | Coordination Protocols | ✅ | Ajan senkronizasyonu ve mesajlaşma |
 | Conflict Resolution | ✅ | Kaynak çakışma tespiti ve çözümü |
 | Learning & Optimization | ✅ | Performans öğrenme ve adaptif optimizasyon |
-| Semantic CLI Core | 🔄 | AST → BCIB transformer, validator, context manager |
-| Architectural Refactoring | ✅ | AR-1 to AR-4 requirements (güçlü onay) |
-| DSL Parser & Validator | ✅ | Natural language-inspired DSL with BCIB output |
+| Gate C Submission Bridge | ✅ | Submit-only interface, mutation intents, pipeline planning |
+| Gate C IR Planner | ✅ | Semantic analysis, ordering hints, parallelism analysis |
+| Gate C Security Operations | ✅ | Security inspection, capability-based redaction |
+| Gate C REPL Visibility | ✅ | Plan visualization, semantic explanation |
+| Constitutional Lock (B-MODE) | ✅ | Register invariants, integration, reports modules locked |
+| Phase 4.2 Performance Engineering | ✅ | Evidence-based measurement infrastructure operational |
+| Performance Constitution | ✅ | Measurable > Optimized principle established |
+| Complexity Budget Tests | ✅ | Evidence for Phase 4.3 optimization identified |
+| Evidence Schema Lock | ✅ | Immutable performance evidence format |
+| Phase 4.3 Performance Optimization | ✅ | Evidence-based algorithmic improvements completed |
+| HashMap → Indexed Optimization | ✅ | 3-5x performance improvement achieved |
+| Memory Allocation Optimization | ✅ | 80%+ reduction in allocations (285KB → <50KB) |
+| Single-Pass Processing | ✅ | O(n²) → O(n) complexity transformation |
+| Constitutional Compliance | ✅ | All optimizations preserve deterministic behavior |
+| Phase 4.4 Performance Management | ✅ | Intelligent performance management operational |
+| Evidence-Based Management | ✅ | 100% evidence-backed decisions with audit trail |
+| Constitutional Integration Spec | 🚀 | Single decision authority framework ready to begin |
+| **Ayken Constitutional Rule System** | | **Development Tool for AykenOS** |
+| MARS System Implementation | ✅ | Module-level Architecture Risk Score system operational |
+| Task 10.1 Module Detection | ✅ | File-to-module mapping with constitutional compliance |
+| Module Boundary Validation | ✅ | Deterministic assignment with identity preservation |
 
 ### Performans Metrikleri
 
@@ -340,11 +428,22 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
 - Durum senkronizasyonu (10x): < 100ms
 - Kaynak istekleri (100x): < 100ms
 
-**Semantic CLI Core:**
-- DSL parsing: < 1ms (100x hedef aşımı)
-- AST → BCIB transformation: < 1ms (50x hedef aşımı)
-- BCIB validation: < 1ms (10x hedef aşımı)
-- End-to-end latency: < 5ms
+**Gate C Submission Bridge:**
+- Plan submission: < 1ms (100x hedef aşımı)
+- Mutation conflict detection: < 1ms (50x hedef aşımı)
+- Pipeline dependency analysis: < 1ms (10x hedef aşımı)
+- Security inspection: < 2ms (5x hedef aşımı)
+- End-to-end submission: < 5ms
+
+**Phase 4.3 Performance Optimization:**
+- Evidence-based algorithmic improvements: HashMap → Indexed (3-5x improvement)
+- Memory allocation optimization: 285KB → <50KB (80%+ reduction)
+- Single-pass processing: 7 passes → 1 pass (O(n²) → O(n))
+- Constitutional compliance: All optimizations preserve deterministic behavior
+- Complexity budget compliance: All tests pass with optimized algorithms
+- Performance validation: 3-10x improvements achieved in critical paths
+- Test coverage: 97.9% maintained (exceeds >95% target)
+- Integration success: Zero breaking changes introduced
 
 ---
 
@@ -356,10 +455,17 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
 - **Faz 1 Tamamlanma:** [docs/phase1/FAZ_1_COMPLETION_REPORT.md](docs/phase1/FAZ_1_COMPLETION_REPORT.md)
 - **Faz 2.5 Tamamlanma:** [PHASE2_5_COMPLETION_REPORT.md](PHASE2_5_COMPLETION_REPORT.md)
 - **GATE D Validation:** [GATE_D_VALIDATION_COMPLETION_REPORT.md](GATE_D_VALIDATION_COMPLETION_REPORT.md)
-- **Faz 3.5 Semantic CLI:** [.kiro/specs/phase3-5-semantic-interaction/](/.kiro/specs/phase3-5-semantic-interaction/)
-  - **Requirements:** [requirements.md](/.kiro/specs/phase3-5-semantic-interaction/requirements.md)
-  - **Design:** [design.md](/.kiro/specs/phase3-5-semantic-interaction/design.md)
-  - **Tasks:** [tasks.md](/.kiro/specs/phase3-5-semantic-interaction/tasks.md)
+- **Gate C Submission Bridge:** [_ayken/specs/gate-c-submission-bridge/](_ayken/specs/gate-c-submission-bridge/)
+  - **Requirements:** [requirements.md](_ayken/specs/gate-c-submission-bridge/requirements.md)
+  - **Design:** [design.md](_ayken/specs/gate-c-submission-bridge/design.md)
+  - **Tasks:** [tasks.md](_ayken/specs/gate-c-submission-bridge/tasks.md)
+- **Constitutional Lock Analysis:** [CONSTITUTIONAL_LOCK_MANIFEST.md](CONSTITUTIONAL_LOCK_MANIFEST.md)
+- **Phase 4.2 Performance Engineering:** [PHASE_4_2_FINAL_RESOLUTION_SUMMARY.md](PHASE_4_2_FINAL_RESOLUTION_SUMMARY.md)
+- **Phase 4.3 Performance Optimization:** [_ayken/specs/phase-4-3-performance-optimization/](_ayken/specs/phase-4-3-performance-optimization/)
+  - **Requirements:** [requirements.md](_ayken/specs/phase-4-3-performance-optimization/requirements.md)
+  - **Design:** [design.md](_ayken/specs/phase-4-3-performance-optimization/design.md)
+  - **Tasks:** [tasks.md](_ayken/specs/phase-4-3-performance-optimization/tasks.md)
+- **Phase 4.3 Transition:** [PHASE_4_3_TRANSITION_REPORT.md](PHASE_4_3_TRANSITION_REPORT.md)
 
 ### Teknik Dokümantasyon
 
@@ -412,16 +518,14 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ## 🎯 Gelecek Hedefler
 
-### Kısa Vadeli (Faz 3.5 - 3.6)
+### Kısa Vadeli (Constitutional Integration)
 
-- ✅ **Architectural Refactoring (AR-1 to AR-4):** BCIB instruction graph model (tamamlandı)
-- ✅ **AST → BCIB Transformer:** Semantic preservation with performance (tamamlandı)
-- ✅ **BCIB Validator:** Contextual capabilities and register tracking (tamamlandı)
-- 🔄 **Context Manager:** Read-only context loading and caching (devam ediyor)
-- **Query Operations:** Filter evaluation and result formatting
-- **System Operations:** Status and agents with contextual capabilities
-- **Debug Operations:** Explain, dry-run, and history with sequence references
-- **Minimal REPL:** Interactive command interface
+- 🚀 **Constitutional Integration:** AykenOS Constitutional Stabilization & Lock (başlamaya hazır)
+  - Single constitutional decision authority for all system decisions
+  - Evidence-based governance with 100% evidence backing requirement
+  - Constitutional lock enforcement with system block/exit on violations
+  - Complete audit trail for all decisions with constitutional compliance tracking
+  - Unified compliance framework ensuring system-wide constitutional adherence
 
 ### Orta Vadeli (Faz 4)
 
@@ -478,10 +582,12 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 15 Ocak 2026 - Task 10 Transformer Implementation Tamamlandı (Güçlü Onay)  
+**Son Güncelleme:** 25 Ocak 2026 - Phase 4.4 Performance Management Tamamlandı, Constitutional Integration Başlamaya Hazır 🚀  
 **Güncelleyen:** Kenan AY
 
-AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment ve multi-agent orchestration özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards ve evidence-based performance optimization özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+
+**Ayken Constitutional Rule System**: AykenOS'un geliştirilmesi için oluşturulan constitutional rule system, Task 10.1 MARS Module Detection ile modül seviyesinde risk atıfı sağlar.
 
 **© 2026 Kenan AY - AykenOS Project**
 # AykenOS

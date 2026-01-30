@@ -43,6 +43,7 @@ pub mod fingerprint;
 pub mod d2_integration;
 pub mod deterministic_partitioner;
 pub mod stable_index_mapping;
+#[cfg(test)]
 pub mod tests;
 
 // Private modules with enforced boundaries

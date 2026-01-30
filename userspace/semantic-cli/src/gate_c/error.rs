@@ -90,26 +90,26 @@ pub enum SubmissionError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SubmissionErrorCode {
     /// Orchestrator unavailable
-    ORCH_UNAVAILABLE,
+    OrchUnavailable,
     /// Invalid plan
-    INVALID_PLAN,
+    InvalidPlan,
     /// Capability denied
-    CAPABILITY_DENIED,
+    CapabilityDenied,
     /// Network error
-    NETWORK_ERROR,
+    NetworkError,
     /// Serialization error
-    SERIALIZATION_ERROR,
+    SerializationError,
 }
 
 impl SubmissionError {
     /// Get stable error code for deterministic testing and audit logs
     pub fn error_code(&self) -> SubmissionErrorCode {
         match self {
-            SubmissionError::OrchestratorUnavailable => SubmissionErrorCode::ORCH_UNAVAILABLE,
-            SubmissionError::InvalidPlan(_) => SubmissionErrorCode::INVALID_PLAN,
-            SubmissionError::CapabilityDenied(_) => SubmissionErrorCode::CAPABILITY_DENIED,
-            SubmissionError::NetworkError(_) => SubmissionErrorCode::NETWORK_ERROR,
-            SubmissionError::SerializationError(_) => SubmissionErrorCode::SERIALIZATION_ERROR,
+            SubmissionError::OrchestratorUnavailable => SubmissionErrorCode::OrchUnavailable,
+            SubmissionError::InvalidPlan(_) => SubmissionErrorCode::InvalidPlan,
+            SubmissionError::CapabilityDenied(_) => SubmissionErrorCode::CapabilityDenied,
+            SubmissionError::NetworkError(_) => SubmissionErrorCode::NetworkError,
+            SubmissionError::SerializationError(_) => SubmissionErrorCode::SerializationError,
         }
     }
 }
@@ -117,11 +117,11 @@ impl SubmissionError {
 impl ErrorCode for SubmissionError {
     fn code(&self) -> &'static str {
         match self.error_code() {
-            SubmissionErrorCode::ORCH_UNAVAILABLE => "GATE_C_SUBMISSION_ORCH_UNAVAILABLE",
-            SubmissionErrorCode::INVALID_PLAN => "GATE_C_SUBMISSION_INVALID_PLAN",
-            SubmissionErrorCode::CAPABILITY_DENIED => "GATE_C_SUBMISSION_CAPABILITY_DENIED",
-            SubmissionErrorCode::NETWORK_ERROR => "GATE_C_SUBMISSION_NETWORK_ERROR",
-            SubmissionErrorCode::SERIALIZATION_ERROR => "GATE_C_SUBMISSION_SERIALIZATION_ERROR",
+            SubmissionErrorCode::OrchUnavailable => "GATE_C_SUBMISSION_ORCH_UNAVAILABLE",
+            SubmissionErrorCode::InvalidPlan => "GATE_C_SUBMISSION_INVALID_PLAN",
+            SubmissionErrorCode::CapabilityDenied => "GATE_C_SUBMISSION_CAPABILITY_DENIED",
+            SubmissionErrorCode::NetworkError => "GATE_C_SUBMISSION_NETWORK_ERROR",
+            SubmissionErrorCode::SerializationError => "GATE_C_SUBMISSION_SERIALIZATION_ERROR",
         }
     }
 }
@@ -386,15 +386,15 @@ mod tests {
     #[test]
     fn test_submission_error_codes() {
         let error = SubmissionError::OrchestratorUnavailable;
-        assert_eq!(error.error_code(), SubmissionErrorCode::ORCH_UNAVAILABLE);
+        assert_eq!(error.error_code(), SubmissionErrorCode::OrchUnavailable);
         assert_eq!(error.code(), "GATE_C_SUBMISSION_ORCH_UNAVAILABLE");
         
         let error = SubmissionError::InvalidPlan("test".to_string());
-        assert_eq!(error.error_code(), SubmissionErrorCode::INVALID_PLAN);
+        assert_eq!(error.error_code(), SubmissionErrorCode::InvalidPlan);
         assert_eq!(error.code(), "GATE_C_SUBMISSION_INVALID_PLAN");
         
         let error = SubmissionError::CapabilityDenied("test".to_string());
-        assert_eq!(error.error_code(), SubmissionErrorCode::CAPABILITY_DENIED);
+        assert_eq!(error.error_code(), SubmissionErrorCode::CapabilityDenied);
         assert_eq!(error.code(), "GATE_C_SUBMISSION_CAPABILITY_DENIED");
     }
 

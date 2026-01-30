@@ -1,1 +1,0 @@
-ld.lld -T linker.ld -nostdlib -z max-page-size=0x1000 -o kernel.elf  

@@ -66,16 +66,16 @@ pub struct TriggerConditionSpec {
 /// Component response matrix specification
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComponentResponseMatrix {
-    pub d1_response: RecommendedSystemAction,
-    pub d2_response: RecommendedSystemAction,
-    pub d3_response: RecommendedSystemAction,
-    pub d4_response: RecommendedSystemAction,
+    pub d1_response: RecommendedSystemResponse,
+    pub d2_response: RecommendedSystemResponse,
+    pub d3_response: RecommendedSystemResponse,
+    pub d4_response: RecommendedSystemResponse,
     pub coordination_protocol: CoordinationProtocolSpec,
 }
 
-/// Recommended system actions (B-MODE)
+/// Recommended system responses (B-MODE)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RecommendedSystemAction {
+pub enum RecommendedSystemResponse {
     RecommendDisableOptimization,
     RecommendFallbackToSafeMode,
     RecommendLogAndContinue,
@@ -167,7 +167,7 @@ pub struct RecoveryPathSpec {
 pub struct FailureResponseRequirementsReport {
     pub scenario_type: FailureScenarioType,
     pub required_components: Vec<ComponentId>,
-    pub required_responses: Vec<RecommendedSystemAction>,
+    pub required_responses: Vec<RecommendedSystemResponse>,
     pub determinism_compliance: bool,
     pub recovery_path_defined: bool,
     pub constitutional_compliance: bool,
@@ -179,7 +179,7 @@ pub struct FailureResponseRequirementsReport {
 pub struct CacheFailureAnalysisSpec {
     pub failure_type: CacheFailureType,
     pub failure_context: CacheFailureContext,
-    pub recommended_action: RecommendedSystemAction,
+    pub recommended_response: RecommendedSystemResponse,
     pub recommended_cache_state: CacheState,
     pub recovery_specification: CacheRecoverySpec,
 }
@@ -262,10 +262,10 @@ impl DefaultFailureMatrixAnalyzer {
                 },
             ],
             component_responses: ComponentResponseMatrix {
-                d1_response: RecommendedSystemAction::RecommendLogAndContinue,
-                d2_response: RecommendedSystemAction::RecommendLogAndContinue,
-                d3_response: RecommendedSystemAction::RecommendFallbackToSafeMode,
-                d4_response: RecommendedSystemAction::RecommendDisableOptimization,
+                d1_response: RecommendedSystemResponse::RecommendLogAndContinue,
+                d2_response: RecommendedSystemResponse::RecommendLogAndContinue,
+                d3_response: RecommendedSystemResponse::RecommendFallbackToSafeMode,
+                d4_response: RecommendedSystemResponse::RecommendDisableOptimization,
                 coordination_protocol: CoordinationProtocolSpec {
                     protocol_type: ProtocolType::TwoPhaseCommit,
                     timeout_specification: TimeoutSpec {
@@ -311,10 +311,10 @@ impl DefaultFailureMatrixAnalyzer {
                 },
             ],
             component_responses: ComponentResponseMatrix {
-                d1_response: RecommendedSystemAction::RecommendLogAndContinue,
-                d2_response: RecommendedSystemAction::RecommendLogAndContinue,
-                d3_response: RecommendedSystemAction::RecommendLogAndContinue,
-                d4_response: RecommendedSystemAction::RecommendLogAndContinue,
+                d1_response: RecommendedSystemResponse::RecommendLogAndContinue,
+                d2_response: RecommendedSystemResponse::RecommendLogAndContinue,
+                d3_response: RecommendedSystemResponse::RecommendLogAndContinue,
+                d4_response: RecommendedSystemResponse::RecommendLogAndContinue,
                 coordination_protocol: CoordinationProtocolSpec {
                     protocol_type: ProtocolType::BestEffort,
                     timeout_specification: TimeoutSpec {
@@ -353,7 +353,7 @@ impl DefaultFailureMatrixAnalyzer {
                 current_cache_state: CacheState::Enabled,
                 system_load: SystemLoadLevel::Medium,
             },
-            recommended_action: RecommendedSystemAction::RecommendDisableOptimization,
+            recommended_response: RecommendedSystemResponse::RecommendDisableOptimization,
             recommended_cache_state: CacheState::Disabled,
             recovery_specification: CacheRecoverySpec {
                 recovery_steps: vec![
@@ -459,13 +459,13 @@ impl FailureMatrixAnalyzer for DefaultFailureMatrixAnalyzer {
         for (response, component) in responses {
             // Check that responses are B-MODE compliant (recommendations, not actions)
             match response {
-                RecommendedSystemAction::RecommendDisableOptimization |
-                RecommendedSystemAction::RecommendFallbackToSafeMode |
-                RecommendedSystemAction::RecommendLogAndContinue |
-                RecommendedSystemAction::RecommendEscalateToHigherLevel |
-                RecommendedSystemAction::RecommendTermination |
-                RecommendedSystemAction::RecommendDisableCache |
-                RecommendedSystemAction::RecommendReduceOptimizationLevel => {
+                RecommendedSystemResponse::RecommendDisableOptimization |
+                RecommendedSystemResponse::RecommendFallbackToSafeMode |
+                RecommendedSystemResponse::RecommendLogAndContinue |
+                RecommendedSystemResponse::RecommendEscalateToHigherLevel |
+                RecommendedSystemResponse::RecommendTermination |
+                RecommendedSystemResponse::RecommendDisableCache |
+                RecommendedSystemResponse::RecommendReduceOptimizationLevel => {
                     report.add_finding(SpecificationFinding {
                         finding_type: FindingType::SpecificationCompliance,
                         component,
@@ -570,10 +570,10 @@ pub fn create_failure_scenario_specification(
 
 /// Helper function to create a component response matrix
 pub fn create_component_response_matrix(
-    d1_response: RecommendedSystemAction,
-    d2_response: RecommendedSystemAction,
-    d3_response: RecommendedSystemAction,
-    d4_response: RecommendedSystemAction,
+    d1_response: RecommendedSystemResponse,
+    d2_response: RecommendedSystemResponse,
+    d3_response: RecommendedSystemResponse,
+    d4_response: RecommendedSystemResponse,
 ) -> ComponentResponseMatrix {
     ComponentResponseMatrix {
         d1_response,

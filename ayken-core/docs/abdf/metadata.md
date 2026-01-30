@@ -2,7 +2,7 @@
 
 _(Ayken Binary Data Format - Metadata Layer)_  
 **Status:** Draft  
-**Author:** AykenOS Project  
+**Author:** Kenan AY  
 **License:** Open Spec – Source Required Attribution
 
 ## 1. Overview

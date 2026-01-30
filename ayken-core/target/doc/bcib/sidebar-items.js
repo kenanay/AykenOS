@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["BCIB_MAGIC","BCIB_VERSION"],"enum":["BcibOpcode"],"struct":["BcibHeader","BcibInstruction"]};

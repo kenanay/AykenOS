@@ -2,7 +2,8 @@
 members = [
     "ai-runtime",
     "bcib-runtime",
-    "dsl-parser",
+    "dsl-parser", "orchestration",
+    "semantic-cli",
 ]
 resolver = "2"
 

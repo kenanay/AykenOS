@@ -3,8 +3,43 @@
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026
 
-**Last Updated:** January 1, 2026  
-**Faz 1 Status:** 85% Complete (17/19 components)
+**Last Updated:** January 30, 2026  
+**Constitutional Lock Status:** 3 modules permanently locked  
+**Current Phase:** Phase 11 (ARRE) - Complete ✅  
+**Project Status:** Constitutional Rule System Phases 1-11 complete ✅
+
+---
+
+## 🔒 Constitutional Lock Documentation
+
+### Critical Governance Documents
+1. **[CONSTITUTIONAL_LOCK_MANIFEST.md](../../CONSTITUTIONAL_LOCK_MANIFEST.md)** - Main governance document
+   - RFC process definition
+   - Scope boundaries
+   - Prohibited modifications
+   - Constitutional guarantees
+
+2. **[D4_REGISTER_INVARIANTS_CONSTITUTIONAL_LOCK_SUMMARY.md](../../D4_REGISTER_INVARIANTS_CONSTITUTIONAL_LOCK_SUMMARY.md)** - Register invariants lock status
+   - Implementation details
+   - Test validation results
+   - Enhanced semantic analysis
+
+3. **[BMODE_REPORTS_CONSTITUTIONAL_LOCK_SUMMARY.md](../../BMODE_REPORTS_CONSTITUTIONAL_LOCK_SUMMARY.md)** - B-MODE reports lock status
+   - Immutable builder patterns
+   - f64 safety measures
+   - Type consolidation
+
+4. **[BMODE_CONSTITUTIONAL_CORE_LOCK_SUMMARY.md](../../BMODE_CONSTITUTIONAL_CORE_LOCK_SUMMARY.md)** - B-MODE Constitutional Core lock status ✨ **YENİ!**
+   - Phase 0.5 constitutional analysis
+   - 10 core files permanent lock
+   - Mimari uyum analizi (B-MODE purity)
+   - Ring0/Ring3 değerlendirmesi
+   - Attack surface = 0 validation
+
+### Locked Module Documentation
+1. **[register_invariants/README.md](../../ayken-core/crates/d4-constitutional/src/bmode/register_invariants/README.md)** - Register analysis documentation
+2. **[integration/README.md](../../ayken-core/crates/d4-constitutional/src/bmode/integration/README.md)** - Integration pipeline documentation
+3. **[D4-Constitutional README.md](../../ayken-core/crates/d4-constitutional/README.md)** - Main constitutional framework documentation
 
 ---
 
@@ -39,11 +74,27 @@
    - Before/after for each feature
    - Estimated effort for remaining work
 
+4. **[GATE_B_VALIDATION_COMPLETION_REPORT.md](GATE_B_VALIDATION_COMPLETION_REPORT.md)** - GATE B validation results
+   - Architectural requirements (AR-1 to AR-4) validation
+   - Core operations implementation status
+   - Performance metrics and test results
+   - 202/203 tests passing (99.5% success rate)
+
+5. **[TECHNICAL_PROGRESS_CHECKLIST.md](TECHNICAL_PROGRESS_CHECKLIST.md)** - Comprehensive progress tracking
+   - Phase-by-phase completion status
+   - Architectural requirements tracking
+   - Test coverage analysis
+   - Performance metrics monitoring
+   - Constitutional lock status
+
 ### Project Documentation
 - **[PROJECT_STATUS_REPORT.md](PROJECT_STATUS_REPORT.md)** - Current project state (updated)
 - **[BUILD_FIXES_COMPLETE.md](BUILD_FIXES_COMPLETE.md)** - Build system notes
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Directory layout
 - **[README.md](README.md)** - Main project README
+- **[MARS_CONFIG.md](../../ayken/steering/MARS_CONFIG.md)** - MARS constitutional configuration template
+- **[AHTS_CONFIG.md](../../ayken/steering/AHTS_CONFIG.md)** - AHTS constitutional configuration template
+- **[MARS README.md](../../ayken/mars/README.md)** - MARS module documentation
 
 ### Guides & References
 - **[QUICK_START_USB.md](QUICK_START_USB.md)** - USB boot instructions

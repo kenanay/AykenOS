@@ -1,0 +1,16 @@
+{
+  "name": "ayken",
+  "owner": "ayken",
+  "fileLocation": "absolute",
+  "pattern": [
+    {
+      "regexp": "^(.+):(\\d+):(\\d+) \\[(ERROR|WARN|INFO|HINT)\\] ([A-Z0-9._-]+) — (.+)$",
+      "file": 1,
+      "line": 2,
+      "column": 3,
+      "severity": 4,
+      "code": 5,
+      "message": 6
+    }
+  ]
+}

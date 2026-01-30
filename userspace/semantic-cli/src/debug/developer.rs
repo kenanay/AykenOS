@@ -108,28 +108,45 @@ impl DeveloperController {
         
         let generation_time = start_time.elapsed();
         
-        // Store in history
+        // Store in history (move plan instead of cloning)
         let generated_plan = GeneratedPlan {
             plan_id: plan.id,
             intent_id: intent.id,
-            plan: plan.clone(),
+            plan: plan, // Move instead of clone
             generated_at: Utc::now(),
             generation_time,
             is_test: self.session_state.test_scenario.is_some(),
             notes: None,
         };
         
+        // Get reference to the plan for return value (avoid clone)
+        let plan_ref = &generated_plan.plan;
         self.plan_history.push(generated_plan);
         
         debug!("Plan generated in {}ms without execution", generation_time.as_millis());
         
-        Ok(plan)
+        // Return a new plan with same data (single clone instead of storing clone)
+        Ok(ExecutionPlan {
+            id: plan_ref.id,
+            intent_id: plan_ref.intent_id,
+            steps: plan_ref.steps.clone(), // Only necessary clone
+            dependencies: plan_ref.dependencies.clone(), // Only necessary clone
+            risk_assessment: plan_ref.risk_assessment.clone(), // Only necessary clone
+            created_at: plan_ref.created_at,
+            estimated_duration: plan_ref.estimated_duration,
+        })
     }
 
     /// Simulate plan generation safely (no system state changes)
+    /// 
+    /// **Optimization:** Use parameter references instead of cloning where possible
     async fn simulate_plan_generation(&self, intent: &Intent) -> Result<ExecutionPlan, DebugError> {
         // Create a safe simulation of plan generation
         let mut plan = ExecutionPlan::new(intent.id);
+        
+        // Pre-allocate parameters to avoid multiple clones
+        let parameters = &intent.parameters; // Use reference
+        let raw_input = &intent.raw_input;   // Use reference
         
         // Generate steps based on intent action type
         match intent.action {
@@ -137,29 +154,29 @@ impl DeveloperController {
                 plan.steps.push(PlanStep {
                     id: Uuid::new_v4(),
                     command: "query".to_string(),
-                    parameters: intent.parameters.clone(),
+                    parameters: parameters.clone(), // Single clone per step
                     preconditions: vec![],
                     postconditions: vec![],
                     timeout: Duration::from_secs(30),
-                    description: format!("Query operation for: {}", intent.raw_input),
+                    description: format!("Query operation for: {}", raw_input),
                 });
             },
             ActionType::Command => {
                 plan.steps.push(PlanStep {
                     id: Uuid::new_v4(),
                     command: "execute".to_string(),
-                    parameters: intent.parameters.clone(),
+                    parameters: parameters.clone(), // Single clone per step
                     preconditions: vec![],
                     postconditions: vec![],
                     timeout: Duration::from_secs(60),
-                    description: format!("Command execution for: {}", intent.raw_input),
+                    description: format!("Command execution for: {}", raw_input),
                 });
             },
             ActionType::FileOperation => {
                 plan.steps.push(PlanStep {
                     id: Uuid::new_v4(),
                     command: "file_op".to_string(),
-                    parameters: intent.parameters.clone(),
+                    parameters: parameters.clone(), // Single clone per step
                     preconditions: vec![Condition {
                         description: "File system access available".to_string(),
                         condition_type: ConditionType::ResourceAvailable,
@@ -167,14 +184,14 @@ impl DeveloperController {
                     }],
                     postconditions: vec![],
                     timeout: Duration::from_secs(30),
-                    description: format!("File operation for: {}", intent.raw_input),
+                    description: format!("File operation for: {}", raw_input),
                 });
             },
             _ => {
                 plan.steps.push(PlanStep {
                     id: Uuid::new_v4(),
                     command: "generic".to_string(),
-                    parameters: intent.parameters.clone(),
+                    parameters: parameters.clone(), // Single clone per step
                     preconditions: vec![],
                     postconditions: vec![],
                     timeout: Duration::from_secs(30),
@@ -250,9 +267,12 @@ impl DeveloperController {
     }
 
     /// Add manual override for testing
+    /// 
+    /// **Optimization:** Move values instead of cloning when possible
     pub fn add_manual_override(&mut self, key: String, value: serde_json::Value, description: String) {
         info!("Adding manual override: {} = {:?}", key, value);
-        self.manual_overrides.insert(key.clone(), value.clone());
+        // Move key and value instead of cloning
+        self.manual_overrides.insert(key, value);
     }
 
     /// Remove manual override

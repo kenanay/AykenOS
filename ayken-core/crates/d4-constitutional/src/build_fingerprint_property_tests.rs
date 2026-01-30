@@ -74,7 +74,7 @@ pub fn component_id_strategy() -> impl Strategy<Value = ComponentId> {
         Just(ComponentId::D1Component),
         Just(ComponentId::D2Component),
         Just(ComponentId::D3Component),
-        Just(ComponentId::D4Component),
+        Just(ComponentId::D4RegisterAllocator),
         Just(ComponentId::TemplateSpecRegistry),
     ]
 }
@@ -183,8 +183,7 @@ proptest! {
         prop_assert!(!report.fingerprint_analysis.fingerprint_spec.build_epoch.as_str().is_empty(),
             "Gate readiness analysis must include build epoch information");
         
-        prop_assert!(report.fingerprint_analysis.analysis_timestamp.value() >= 0,
-            "Gate readiness analysis must include fingerprint analysis timestamp");
+        // Timestamp validity is guaranteed by DeterministicClock and LogicalTimestamp newtype
         
         // Readiness score must be influenced by fingerprint validity
         let fingerprint_valid = report.fingerprint_analysis.validity_analysis.is_valid;
@@ -286,9 +285,8 @@ proptest! {
     fn prop_fingerprint_history_maintained_with_readiness_records(context in gate_readiness_context_strategy()) {
         let report = DefaultGateReadinessAnalyzer::analyze_gate_readiness(&context);
         
-        // Report must contain fingerprint analysis with timestamp
-        prop_assert!(report.fingerprint_analysis.analysis_timestamp.value() >= 0,
-            "Fingerprint analysis must have valid timestamp for history tracking");
+        // Timestamp validity is guaranteed by DeterministicClock and LogicalTimestamp newtype
+        // Report must contain fingerprint analysis for history tracking
         
         // Report must contain gate analysis with completion tracking
         prop_assert!(report.gate_analysis.completion_percentage >= 0.0 && report.gate_analysis.completion_percentage <= 100.0,

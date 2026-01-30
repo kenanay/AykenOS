@@ -1,10 +1,55 @@
 {
-  "C_Cpp_Runner.cCompilerPath": "gcc",
-  "C_Cpp_Runner.cppCompilerPath": "g++",
+  "C_Cpp_Runner.cCompilerPath": "",
+  "C_Cpp_Runner.cppCompilerPath": "",
   "C_Cpp_Runner.debuggerPath": "gdb",
+  "C_Cpp_Runner.enableWarnings": false,
+  "C_Cpp_Runner.warningsAsError": false,
+  "C_Cpp_Runner.includeSearch": [
+    "*",
+    "**/*"
+  ],
+  "C_Cpp_Runner.excludeSearch": [
+    "**/build",
+    "**/build/**",
+    "**/.*",
+    "**/.*/**",
+    "**/.vscode",
+    "**/.vscode/**"
+  ],
+  "task.autoDetect": "off",
+  "cmake.configureOnOpen": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "never"
+  },
+  "C_Cpp.errorSquiggles": "Disabled",
+  "terminal.integrated.env.osx": {
+    "CC": "ayken",
+    "CXX": "ayken"
+  },
+  "rust-analyzer.checkOnSave.enable": false,
+  "git.ignoreLimitWarning": true,
+  "problemMatcher.problemMatchers": [
+    {
+      "name": "ayken",
+      "owner": "ayken",
+      "fileLocation": "absolute",
+      "pattern": [
+        {
+          "regexp": "^(.+):(\\d+):(\\d+) \\[(ERROR|WARN|INFO|HINT)\\] ([A-Z0-9._-]+) — (.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "code": 5,
+          "message": 6
+        }
+      ]
+    }
+  ],
+  "problems.autoReveal": true,
+  "C_Cpp_Runner.msvcBatchPath": "",
   "C_Cpp_Runner.cStandard": "",
   "C_Cpp_Runner.cppStandard": "",
-  "C_Cpp_Runner.msvcBatchPath": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat",
   "C_Cpp_Runner.useMsvc": false,
   "C_Cpp_Runner.warnings": [
     "-Wall",
@@ -33,32 +78,13 @@
     "/w44265",
     "/w14928"
   ],
-  "C_Cpp_Runner.enableWarnings": true,
-  "C_Cpp_Runner.warningsAsError": false,
   "C_Cpp_Runner.compilerArgs": [],
   "C_Cpp_Runner.linkerArgs": [],
   "C_Cpp_Runner.includePaths": [],
-  "C_Cpp_Runner.includeSearch": [
-    "*",
-    "**/*"
-  ],
-  "C_Cpp_Runner.excludeSearch": [
-    "**/build",
-    "**/build/**",
-    "**/.*",
-    "**/.*/**",
-    "**/.vscode",
-    "**/.vscode/**"
-  ],
   "C_Cpp_Runner.useAddressSanitizer": false,
   "C_Cpp_Runner.useUndefinedSanitizer": false,
   "C_Cpp_Runner.useLeakSanitizer": false,
   "C_Cpp_Runner.showCompilationTime": false,
   "C_Cpp_Runner.useLinkTimeOptimization": false,
-  "C_Cpp_Runner.msvcSecureNoWarnings": false,
-  "geminicodeassist.agentDebugMode": true,
-  "geminicodeassist.agentYoloMode": true,
-  "geminicodeassist.chat.defaultCodeBlockDisplay": "Expanded",
-  "git.ignoreLimitWarning": true,
-  "kiroAgent.configureMCP": "Disabled"
+  "C_Cpp_Runner.msvcSecureNoWarnings": false
 }

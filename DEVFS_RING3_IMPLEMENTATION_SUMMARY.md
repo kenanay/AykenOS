@@ -154,7 +154,7 @@ Application → Kernel DevFS Stubs → Ring3 DevFS Library → Capability tokens
 ### Modified Files
 - `kernel/kernel.c` - Added DevFS initialization
 - `kernel/sys/phase2_validation_test.c` - Enhanced DevFS testing
-- `.kiro/specs/ayken-architectural-transformation/tasks.md` - Updated task status
+- `_ayken/specs/ayken-architectural-transformation/tasks.md` - Updated task status
 
 ### Existing Files (Previously Implemented)
 - `userspace/libayken/devfs.h` - Ring3 DevFS API
@@ -182,6 +182,6 @@ The implementation fully satisfies the requirements for "DevFS operations work e
 
 ---
 
-**Implementation completed by:** Kiro AI Assistant  
+**Implementation completed by:** Kenan AY  
 **AykenOS Phase 2.2 - Ring3 Runtime Development**  
 **© 2026 AykenOS Project**

@@ -103,6 +103,9 @@ out/
 # !ayken/auth/mod.rs
 # !ayken/bin/main.rs
 
+# Submodules and external dependencies
+tools/gnu-efi/
+
 # Ensure protection files are never ignored
 !LICENSE
 !SECURITY.md

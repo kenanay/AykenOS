@@ -59,6 +59,10 @@ pub enum SemanticCLIError {
     #[error("Security error: {message}")]
     SecurityError { message: String, code: ErrorCode },
 
+    /// Audit error (audit trail operations fail)
+    #[error("Audit error: {message}")]
+    AuditError { message: String, code: ErrorCode },
+
     /// I/O error
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
@@ -102,6 +106,7 @@ pub enum ErrorCode {
     E400, // Execution failed
     E401, // Timeout
     E402, // Resource exhausted
+    E420, // Evidence incomplete
 
     // Context errors (E500-E599)
     E500, // Context load failed
@@ -110,6 +115,22 @@ pub enum ErrorCode {
     // Security errors (E600-E699)
     E600, // Capability check failed
     E601, // Unauthorized access
+
+    // Audit errors (E700-E799)
+    E700, // Audit trail creation failed
+    E701, // Audit integrity check failed
+    E702, // Audit record corruption
+
+    // System errors (E800-E899)
+    E800, // System timestamp error
+    E801, // File system error
+    E802, // Serialization error
+    E803, // Network error
+
+    // Constitutional errors (E900-E999)
+    E900, // Constitutional violation - critical
+    E901, // Evidence requirement violation
+    E902, // Decision boundary violation
 }
 
 impl fmt::Display for ErrorCode {
@@ -210,6 +231,22 @@ impl SemanticCLIError {
         }
     }
 
+    /// Create an audit error
+    pub fn audit_error(message: impl Into<String>, code: ErrorCode) -> Self {
+        Self::AuditError {
+            message: message.into(),
+            code,
+        }
+    }
+
+    /// Create a system error
+    pub fn system_error(message: impl Into<String>, code: ErrorCode) -> Self {
+        Self::ExecutionError {
+            message: message.into(),
+            code,
+        }
+    }
+
     /// Get error code
     pub fn code(&self) -> Option<ErrorCode> {
         match self {
@@ -220,6 +257,7 @@ impl SemanticCLIError {
             Self::ExecutionError { code, .. } => Some(*code),
             Self::ContextError { code, .. } => Some(*code),
             Self::SecurityError { code, .. } => Some(*code),
+            Self::AuditError { code, .. } => Some(*code),
             _ => None,
         }
     }

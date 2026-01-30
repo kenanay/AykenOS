@@ -12,9 +12,9 @@
 
 use crate::compliance::{ComplianceAnalyzer, ValidationComplianceAnalyzer, ValidationInput};
 use crate::errors::{ContractViolationReport, GateDecisionReport};
-use crate::templates::{TemplateSpecRegistry, TemplateSpecRegistryImpl, TemplateType};
+use crate::bmode::templates::{TemplateSpecAnalyzer, DefaultTemplateSpecAnalyzer, TemplateType};
 use crate::types::{ComponentId, Severity};
-use crate::validation_location::{LocationTracker, DefaultLocationTracker, ValidationLocation};
+use crate::bmode::validation_location::{ValidationLocationAnalyzer, DefaultValidationLocationAnalyzer, ValidationLocation};
 use proptest::prelude::*;
 use proptest::strategy::ValueTree;
 use std::collections::BTreeMap;
@@ -246,7 +246,7 @@ fn test_compliance_analysis_purity(scenario: &BModeOperationScenario) {
 
 /// Test template specification operations for B-MODE purity
 fn test_template_specification_purity(scenario: &BModeOperationScenario) {
-    let registry = TemplateSpecRegistryImpl::new();
+    let registry = DefaultTemplateSpecAnalyzer::new();
     
     for template_type in &scenario.template_types {
         // Requirement 5.3: Operation should produce specifications without runtime enforcement code
@@ -266,12 +266,14 @@ fn test_template_specification_purity(scenario: &BModeOperationScenario) {
         // This is verified by the fact that we're calling analyze_template_completeness
         
         // Test template specification (not execution)
-        let template_spec = registry.specify_template_requirements(template_type.clone());
+        let template_catalog = registry.catalog();
+        let template_spec = template_catalog.specifications.get(template_type).unwrap();
         assert_eq!(template_spec.template_type, *template_type,
             "Template specification should specify requirements, not execute them");
         
         // Verify specification is immutable
-        let template_spec2 = registry.specify_template_requirements(template_type.clone());
+        let template_catalog2 = registry.catalog();
+        let template_spec2 = template_catalog2.specifications.get(template_type).unwrap();
         assert_eq!(template_spec.template_type, template_spec2.template_type,
             "Template specification should be immutable");
     }
@@ -279,10 +281,10 @@ fn test_template_specification_purity(scenario: &BModeOperationScenario) {
 
 /// Test validation location tracking for B-MODE purity
 fn test_validation_location_tracking_purity(scenario: &BModeOperationScenario) {
-    let mut tracker = DefaultLocationTracker::new(scenario.component);
+    let analyzer = DefaultValidationLocationAnalyzer::new(scenario.component);
     
     // Requirement 5.3: Operation should produce specifications without runtime enforcement code
-    let location = tracker.create_location();
+    let location = analyzer.get_current_location();
     
     // Verify the operation produces a specification (ValidationLocation) not an execution result
     assert_eq!(location.component, scenario.component,
@@ -290,20 +292,20 @@ fn test_validation_location_tracking_purity(scenario: &BModeOperationScenario) {
     
     // Requirement 5.4: Operation should not perform runtime state changes
     // Test immutability by running the same operation multiple times
-    let location2 = tracker.create_location();
+    let location2 = analyzer.get_current_location();
     assert_eq!(location.component, location2.component,
         "Location tracking should be immutable - same input produces same output");
     
-    // Requirement 5.5: Function names use create_* pattern (B-MODE naming for immutable operations)
-    // This is verified by the fact that we're calling create_location, not execute_location
+    // Requirement 5.5: Function names use get_* pattern (B-MODE naming for immutable operations)
+    // This is verified by the fact that we're calling get_current_location, not execute_location
     
     // Test context operations are immutable (using ValidationLocation methods)
-    let with_context = ValidationLocation::new(scenario.component).with_structure("test_struct".to_string());
+    let with_context = ValidationLocation::new(scenario.component).with_metadata("structure_name".to_string(), "test_struct".to_string());
     assert_eq!(with_context.component, scenario.component,
         "Context operations should produce new specifications, not mutate existing ones");
     
     // Original location should be unchanged (immutability)
-    let location3 = tracker.create_location();
+    let location3 = analyzer.get_current_location();
     assert_eq!(location.component, location3.component,
         "Original location should remain unchanged after context operations");
 }
@@ -417,26 +419,26 @@ mod unit_tests {
     
     #[test]
     fn test_template_specification_is_pure_bmode() {
-        let registry = TemplateSpecRegistryImpl::new();
+        let registry = DefaultTemplateSpecAnalyzer::new();
         
         // Test that template specification follows B-MODE principles
-        let spec1 = registry.specify_template_requirements(TemplateType::FailureMatrix);
-        let spec2 = registry.specify_template_requirements(TemplateType::FailureMatrix);
+        let catalog1 = registry.catalog();
+        let catalog2 = registry.catalog();
         
         // B-MODE Requirement: Same input produces same output (immutability)
-        assert_eq!(spec1.template_type, spec2.template_type);
+        assert_eq!(catalog1.specifications.len(), catalog2.specifications.len());
         
         // B-MODE Requirement: Produces specification, not execution
-        assert_eq!(spec1.template_type, TemplateType::FailureMatrix);
+        assert!(catalog1.specifications.contains_key(&TemplateType::FailureMatrix));
     }
     
     #[test]
     fn test_validation_location_tracking_is_pure_bmode() {
-        let mut tracker = DefaultLocationTracker::new(ComponentId::D4RegisterAllocator);
+        let analyzer = DefaultValidationLocationAnalyzer::new(ComponentId::D4RegisterAllocator);
         
         // Test that location tracking follows B-MODE principles
-        let location1 = tracker.create_location();
-        let location2 = tracker.create_location();
+        let location1 = analyzer.get_current_location();
+        let location2 = analyzer.get_current_location();
         
         // B-MODE Requirement: Same input produces same output (immutability)
         assert_eq!(location1.component, location2.component);
@@ -445,9 +447,9 @@ mod unit_tests {
         assert_eq!(location1.component, ComponentId::D4RegisterAllocator);
         
         // Test immutable context operations
-        let with_context = ValidationLocation::new(ComponentId::D4RegisterAllocator).with_structure("test".to_string());
+        let with_context = ValidationLocation::new(ComponentId::D4RegisterAllocator).with_metadata("structure_name".to_string(), "test".to_string());
         assert_eq!(location1.component, with_context.component); // Component unchanged
-        assert_ne!(location1.structure_name, with_context.structure_name); // Structure changed in new instance
+        assert_ne!(location1.metadata.get("structure_name"), with_context.metadata.get("structure_name")); // Structure changed in new instance
     }
     
     #[test]

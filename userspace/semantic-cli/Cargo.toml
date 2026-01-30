@@ -35,6 +35,9 @@ lru = "0.12"
 # Async runtime (for executor)
 tokio = { version = "1.35", features = ["full"] }
 
+# Command line interface
+clap = { version = "4.4", features = ["derive"] }
+
 # Logging
 log = "0.4"
 env_logger = "0.11"
@@ -58,6 +61,10 @@ rayon = "1.8"
 # CPU core detection (for thread pool sizing)
 num_cpus = "1.16"
 
+# Performance optimization dependencies (Phase 4.3)
+bit-set = "0.5"
+smallvec = "1.11"
+
 [dev-dependencies]
 # Property-based testing
 proptest = "1.4"
@@ -67,6 +74,9 @@ criterion = "0.5"
 
 # Test utilities
 pretty_assertions = "1.4"
+
+# Temporary directories for testing
+tempfile = "3.8"
 
 [[bench]]
 name = "performance_benchmarks"
@@ -94,3 +104,8 @@ development-mode = []
 
 # D3 Loop Support Design feature
 d3_loop_spec = []
+
+# Performance measurement features (Phase 4.3)
+debug-performance-tests = []
+detailed-measurement-logging = []
+replay-recording = []

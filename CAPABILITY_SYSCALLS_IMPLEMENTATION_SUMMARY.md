@@ -3,7 +3,7 @@
 **Task:** 2.1.2.2 - Implement capability syscalls  
 **Status:** COMPLETED  
 **Date:** January 3, 2026  
-**Author:** Kiro AI Assistant
+**Author:** Kenan AY
 
 ## Overview
 

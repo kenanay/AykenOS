@@ -37,6 +37,15 @@ fn build_bcib_from_dsl(commands: &[&str]) -> Result<Vec<u8>, ParseError> {
                     buf.add(BcibInstruction::nop());
                 }
             }
+            dsl_parser::Command::List { .. } => {
+                buf.add(BcibInstruction::nop()); // List command maps to NOP for now
+            }
+            dsl_parser::Command::Help { .. } => {
+                buf.add(BcibInstruction::nop()); // Help command maps to NOP for now
+            }
+            dsl_parser::Command::Exit => {
+                buf.add(BcibInstruction::end()); // Exit command maps to end instruction
+            }
         }
     }
 

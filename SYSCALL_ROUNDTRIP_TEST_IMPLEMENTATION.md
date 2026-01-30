@@ -1,7 +1,7 @@
 # Syscall Round-Trip Test Implementation Report
 
 **Task:** 1.5.2.2 Implement syscall round-trip test  
-**Author:** Kiro AI Assistant  
+**Author:** Kenan AY  
 **Date:** January 3, 2026  
 **Status:** IMPLEMENTED - Ready for Testing
 

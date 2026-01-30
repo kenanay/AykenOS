@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "problemMatchers": [
+    {
+      "name": "ayken",
+      "owner": "ayken",
+      "fileLocation": "absolute",
+      "pattern": [
+        {
+          "regexp": "^(.+):(\\d+):(\\d+) \\[(ERROR|WARN|INFO|HINT)\\] ([A-Z0-9._-]+) — (.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "code": 5,
+          "message": 6
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "label": "ayken-constitutional-check",
+      "type": "shell",
+      "command": "ayken",
+      "args": ["check", "--path", "${workspaceFolder}", "--format", "ci"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": ["$ayken"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

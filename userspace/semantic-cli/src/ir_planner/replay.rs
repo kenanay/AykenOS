@@ -103,6 +103,16 @@ impl ReplayRecorder {
     pub fn is_recording(&self) -> bool {
         self.recording_enabled
     }
+    
+    /// Clear all recorded data for pooling reuse
+    /// 
+    /// **Constitutional Rule:** Must clear all state to prevent cross-run leakage
+    pub fn clear(&mut self) {
+        self.recording_enabled = false;
+        self.execution_plan_fingerprint.clear();
+        self.steps.clear();
+        self.context_snapshots.clear();
+    }
 }
 
 impl Default for ReplayRecorder {

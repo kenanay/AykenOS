@@ -1,75 +1,23 @@
+//! 🔒 CONSTITUTIONAL LOCK ACTIVE
+//!
+//! This module is under PERMANENT CONSTITUTIONAL LOCK.
+//! ❌ Enforcement logic is strictly forbidden.
+//! ❌ Runtime imports are forbidden.
+//! ❌ &mut self is forbidden.
+//!
+//! Any change requires a Constitutional RFC.
+//!
 //! B-MODE Specification Reports for D4 Constitutional Framework
 //!
 //! This module defines B-MODE specific report types that extend the base
 //! SpecificationReport with B-MODE specific analysis and recommendations.
 //! 
-//! MERGED FROM ROOT: Also contains the pure B-MODE output types that replace
-//! Result<()> returns for all specification operations.
+//! SINGLE SOURCE OF TRUTH: This module imports SpecificationReport from errors
+//! module and extends it with B-MODE specific functionality.
 
-use crate::types::{ComponentId, DeterministicClock, SpecLocation, Severity};
+use crate::errors::{SpecificationReport, SpecificationViolation};
+use crate::types::{ComponentId, DeterministicClock, Severity};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-
-/// Single truth output for all B-MODE operations (MERGED FROM ROOT)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SpecificationReport {
-    pub compliant: bool,
-    pub violations: Vec<SpecViolation>,
-    pub notes: Vec<String>,
-}
-
-impl SpecificationReport {
-    /// Create a new compliant report
-    pub fn compliant() -> Self {
-        Self {
-            compliant: true,
-            violations: vec![],
-            notes: vec![],
-        }
-    }
-    
-    /// Create a new non-compliant report with violations
-    pub fn non_compliant(violations: Vec<SpecViolation>) -> Self {
-        Self {
-            compliant: violations.is_empty(),
-            violations,
-            notes: vec![],
-        }
-    }
-    
-    /// Add a note to the report
-    pub fn with_note(mut self, note: String) -> Self {
-        self.notes.push(note);
-        self
-    }
-    
-    /// Add multiple notes to the report
-    pub fn with_notes(mut self, notes: Vec<String>) -> Self {
-        self.notes.extend(notes);
-        self
-    }
-}
-
-/// Specification violation (not runtime error) (MERGED FROM ROOT)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SpecViolation {
-    pub code: String,
-    pub severity: Severity,
-    pub location: SpecLocation,
-    pub message: String,
-}
-
-impl SpecViolation {
-    /// Create a new specification violation
-    pub fn new(code: &str, severity: Severity, location: SpecLocation, message: &str) -> Self {
-        Self {
-            code: code.to_string(),
-            severity,
-            location,
-            message: message.to_string(),
-        }
-    }
-}
 
 /// B-MODE specific specification report extensions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -121,12 +69,21 @@ pub enum ActionPriority {
 }
 
 /// Compliance assessment for B-MODE
+/// 
+/// ⚠️ FLOATING POINT SAFETY NOTICE
+/// 
+/// - f64 values are used for reporting ONLY
+/// - MUST NOT derive Eq / Ord
+/// - MUST NOT be used as HashMap keys
+/// - MUST NOT participate in deterministic ordering
+/// 
+/// All comparisons MUST use normalized or epsilon-based logic.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComplianceAssessment {
-    pub overall_bmode_compliance: f64, // Normalized to 6 decimal places
-    pub purity_score: f64,
-    pub immutability_score: f64,
-    pub specification_score: f64,
+    pub overall_bmode_compliance: f64, // Normalized to 6 decimal places - NO Eq/Ord!
+    pub purity_score: f64,             // Normalized to 6 decimal places - NO Eq/Ord!
+    pub immutability_score: f64,       // Normalized to 6 decimal places - NO Eq/Ord!
+    pub specification_score: f64,      // Normalized to 6 decimal places - NO Eq/Ord!
     pub areas_for_improvement: Vec<String>,
 }
 
@@ -153,10 +110,18 @@ impl BModeSpecificationReport {
         }
     }
 
-    /// Add a recommended action
-    pub fn add_recommended_action(&mut self, action: RecommendedAction) {
+    /// Add a recommended action (B-MODE: immutable pattern)
+    pub fn with_recommended_action(mut self, action: RecommendedAction) -> Self {
         self.recommended_actions.push(action);
         self.update_compliance_assessment();
+        self
+    }
+
+    /// Add multiple recommended actions (B-MODE: immutable pattern)
+    pub fn with_recommended_actions(mut self, actions: Vec<RecommendedAction>) -> Self {
+        self.recommended_actions.extend(actions);
+        self.update_compliance_assessment();
+        self
     }
 
     /// Update compliance assessment based on current state
@@ -249,10 +214,16 @@ pub fn analyze_bmode_compliance(report: SpecificationReport) -> BModeSpecificati
 
     // Analyze violations for B-MODE compliance issues
     for violation in &violations {
-        match violation.code.as_str() {
+        let violation_code = match &violation.violation_type {
+            crate::errors::ViolationType::RuntimeSemanticsMixing => "RUNTIME_SEMANTICS_MIXING",
+            crate::errors::ViolationType::SpecificationIncomplete => "SPECIFICATION_INCOMPLETE",
+            _ => "OTHER_VIOLATION",
+        };
+
+        match violation_code {
             "RUNTIME_SEMANTICS_MIXING" => {
                 bmode_report.bmode_analysis.purity_verified = false;
-                bmode_report.add_recommended_action(create_recommended_action(
+                bmode_report = bmode_report.with_recommended_action(create_recommended_action(
                     RecommendedActionType::SeparateBModeFromRuntime,
                     ComponentId::D4RegisterAllocator, // Default component
                     "Separate B-MODE analysis from runtime enforcement".to_string(),
@@ -262,7 +233,7 @@ pub fn analyze_bmode_compliance(report: SpecificationReport) -> BModeSpecificati
             }
             "SPECIFICATION_INCOMPLETE" => {
                 bmode_report.bmode_analysis.specification_only_verified = false;
-                bmode_report.add_recommended_action(create_recommended_action(
+                bmode_report = bmode_report.with_recommended_action(create_recommended_action(
                     RecommendedActionType::ConvertToSpecification,
                     ComponentId::D4RegisterAllocator, // Default component
                     "Convert operations to specification-only".to_string(),
@@ -272,7 +243,7 @@ pub fn analyze_bmode_compliance(report: SpecificationReport) -> BModeSpecificati
             }
             _ => {
                 // Other violation types may indicate general compliance issues
-                bmode_report.add_recommended_action(create_recommended_action(
+                bmode_report = bmode_report.with_recommended_action(create_recommended_action(
                     RecommendedActionType::AddBModeCompliance,
                     ComponentId::D4RegisterAllocator, // Default component
                     "Improve B-MODE compliance".to_string(),

@@ -2,7 +2,7 @@
 
 *(Binary CLI Instruction Buffer)*  
 **Status:** Draft (Faz 2)  
-**Author:** AykenOS Project  
+**Author:** Kenan AY  
 **License:** Open Spec – Source Required Attribution  
 
 ## 1. Overview

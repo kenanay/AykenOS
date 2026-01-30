@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["DecodeError"],"fn":["decode_abdf"],"struct":["AbdfBuilder","AbdfView"]};

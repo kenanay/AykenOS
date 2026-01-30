@@ -119,43 +119,34 @@ impl DefaultValidationLocationAnalyzer {
 
     /// Analyze component accuracy against expected component
     fn analyze_component_accuracy(&self, location: &ValidationLocation) -> LocationFinding {
-        // Check if component identification seems to be defaulting
-        // Heuristic: If we're in a specific validation phase but component is generic D4RegisterAllocator,
-        // it might be defaulting
-        let potentially_defaulting = match location.validation_phase {
-            ValidationPhase::TemplateApplication => {
-                location.component == ComponentId::D4RegisterAllocator && 
-                location.metadata.get("structure_name").map_or(false, |s| s.contains("Template"))
-            },
-            ValidationPhase::SemanticValidation => {
-                location.component == ComponentId::D4RegisterAllocator &&
-                location.metadata.get("structure_name").map_or(false, |s| s.contains("Semantic"))
-            },
-            ValidationPhase::GateTransitionCheck => {
-                location.component == ComponentId::D4RegisterAllocator &&
-                location.metadata.get("structure_name").map_or(false, |s| s.contains("Gate"))
-            },
-            _ => false, // Other phases are fine with D4RegisterAllocator
+        // Rule-based component validation instead of string heuristics
+        let component_phase_match = match (&location.component, &location.validation_phase) {
+            (ComponentId::TemplateSpecRegistry, ValidationPhase::TemplateApplication) => true,
+            (ComponentId::ConstitutionalRuleEngine, ValidationPhase::ContractValidation) => true,
+            (ComponentId::ConstitutionalRuleEngine, ValidationPhase::ComplianceVerification) => true,
+            (ComponentId::DeterminismEngine, ValidationPhase::SemanticValidation) => true,
+            (ComponentId::SemanticSpecificationRegistry, ValidationPhase::SemanticValidation) => true,
+            (ComponentId::D4RegisterAllocator, _) => true, // D4 can handle any phase
+            _ => false, // Other combinations need verification
         };
 
-        if potentially_defaulting {
+        if component_phase_match {
             LocationFinding {
                 finding_type: LocationFindingType::ComponentAccuracy,
-                description: format!(
-                    "Component identification may be defaulting to D4RegisterAllocator in {:?} phase with structure {:?}",
-                    location.validation_phase,
-                    location.metadata.get("structure_name")
-                ),
-                severity: Severity::Warning,
-                remediation_hint: Some("Verify component identification matches the actual component being validated".to_string()),
+                description: format!("Component {:?} is appropriately matched for {:?} phase", 
+                    location.component, location.validation_phase),
+                severity: Severity::Info,
+                remediation_hint: None,
             }
         } else {
             LocationFinding {
                 finding_type: LocationFindingType::ComponentAccuracy,
-                description: format!("Component {:?} is accurately identified for {:?} phase", 
-                    location.component, location.validation_phase),
-                severity: Severity::Info,
-                remediation_hint: None,
+                description: format!(
+                    "Component {:?} may not be the most appropriate for {:?} phase - consider using specialized component",
+                    location.component, location.validation_phase
+                ),
+                severity: Severity::Warning,
+                remediation_hint: Some("Use component that specializes in the current validation phase".to_string()),
             }
         }
     }

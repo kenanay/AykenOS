@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["abdf_example","bcib_example","main"]};

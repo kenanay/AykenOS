@@ -1,6 +1,6 @@
 # AykenOS Syscall Round-Trip Test Validation Script
 # Task 1.5.2.2 - Syscall Round-Trip Test Validation
-# Author: Kiro AI Assistant
+# Author: Kenan AY
 # Date: January 3, 2026
 
 param(

@@ -1,9 +1,0 @@
-(function() {
-    var implementors = Object.fromEntries([["abdf",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"enum\" href=\"abdf/types/enum.AbdfScalarType.html\" title=\"enum abdf::types::AbdfScalarType\">AbdfScalarType</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"abdf/header/struct.AbdfHeader.html\" title=\"struct abdf::header::AbdfHeader\">AbdfHeader</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"abdf/segment/struct.SegmentDescriptor.html\" title=\"struct abdf::segment::SegmentDescriptor\">SegmentDescriptor</a>"]]],["bcib",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"enum\" href=\"bcib/enum.BcibOpcode.html\" title=\"enum bcib::BcibOpcode\">BcibOpcode</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"bcib/struct.BcibHeader.html\" title=\"struct bcib::BcibHeader\">BcibHeader</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.87.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"bcib/struct.BcibInstruction.html\" title=\"struct bcib::BcibInstruction\">BcibInstruction</a>"]]]]);
-    if (window.register_implementors) {
-        window.register_implementors(implementors);
-    } else {
-        window.pending_implementors = implementors;
-    }
-})()
-//{"start":57,"fragment_lengths":[838,776]}

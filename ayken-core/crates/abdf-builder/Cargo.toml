@@ -1,0 +1,14 @@
+[package]
+name = "abdf-builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+abdf = { path = "../abdf" }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "abdf_benchmark"
+harness = false

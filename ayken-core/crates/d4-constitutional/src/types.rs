@@ -101,6 +101,19 @@ pub struct AllocationConstraints {
     pub performance_hints: Vec<String>,
 }
 
+impl Default for AllocationConstraints {
+    fn default() -> Self {
+        Self {
+            preferred_registers: Vec::new(),
+            excluded_registers: Vec::new(),
+            alignment_requirements: Vec::new(),
+            forbidden_registers: Vec::new(),
+            lifetime_requirements: Vec::new(),
+            performance_hints: Vec::new(),
+        }
+    }
+}
+
 /// Performance requirements
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PerformanceRequirements {
@@ -236,72 +249,9 @@ pub enum OperationType {
     CodeOptimization,
 }
 
-/// Contract finding types
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ContractFinding {
-    InvalidStructure { component: String, reason: String },
-    MissingTemplate { template_type: String },
-    RuleBreach { rule: String, context: String },
-    IncompleteSpecification { specification_type: String, missing_elements: Vec<String> },
-}
-
-/// Contract violation types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ContractViolationType {
-    MissingStructDefinition,
-    MissingTraitDefinition,
-    InvariantViolation,
-    PropertyTestFailure,
-    PerformanceTargetUndefined,
-    IncompleteImplementation,
-}
-
-/// Gate phase for gate decision analysis
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GatePhase {
-    Initialization,
-    Validation,
-    Approval,
-    Implementation,
-}
-
-/// Readiness status for gate analysis
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ReadinessStatus {
-    NotReady,
-    PartiallyReady,
-    Ready,
-    Approved,
-}
-
-/// Transition finding type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TransitionFindingType {
-    TransitionAllowed,
-    TransitionBlocked,
-    TransitionConditional,
-    TransitionRequiresApproval,
-}
-
-/// Permission type for authority analysis
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PermissionType {
-    Read,
-    Write,
-    Execute,
-    Modify,
-    Approve,
-    Override,
-}
-
-/// Fingerprint validity status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FingerprintValidity {
-    Valid,
-    Invalid,
-    Suspicious,
-    RequiresVerification,
-}
+// Note: ContractFinding, ContractViolationType, GatePhase, ReadinessStatus, 
+// TransitionFindingType, PermissionType, and FingerprintValidity are now 
+// defined in errors::specification_reports to avoid duplication
 
 /// Locked behavior specification
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

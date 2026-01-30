@@ -294,6 +294,7 @@ fn demonstrate_mixed_data_verification() -> Result<(), Box<dyn std::error::Error
                     Value::Number(_) => "Number",
                     Value::String(_) => "String",
                     Value::Boolean(_) => "Boolean",
+                    Value::Array(_) | Value::List(_) | Value::SortedMap(_) => "Composite",
                 };
                 *type_counts.entry(type_name).or_insert(0) += 1;
             }
@@ -585,6 +586,7 @@ fn get_value_type(value: &Value) -> &'static str {
         Value::Number(_) => "Number",
         Value::String(_) => "String",
         Value::Boolean(_) => "Boolean",
+        Value::Array(_) | Value::List(_) | Value::SortedMap(_) => "Composite",
     }
 }
 

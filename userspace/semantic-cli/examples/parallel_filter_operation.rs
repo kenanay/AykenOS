@@ -19,7 +19,7 @@ use semantic_cli::parallelism::{
     RayonParallelExecutor, ParallelExecutor, DefaultDecisionEngine, AdaptiveDecisionEngine,
     DefaultMetricsCollector, MetricsCollector, ImmutableContext, ExecutionConfig
 };
-use semantic_cli::ir_executor::IRExecutor;
+use semantic_cli::ir_planner::IRExecutor;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -98,6 +98,7 @@ fn create_filter_ir_block() -> IRBlock {
                     field: "value".to_string(),
                     operator: ComparisonOp::GreaterThan,
                     value: OperandRef::Literal(Value::Number(0.0)),
+                    normalized: false, // Raw filter, not yet normalized
                 },
                 target_register: 1,
             },
@@ -155,7 +156,7 @@ fn execute_manual_parallel_filter(
     let start = Instant::now();
     
     // Create parallelism components
-    let partitioner = ContiguousPartitioner::new();
+    let partitioner = ContiguousPartitioner::default();
     let executor = RayonParallelExecutor::new();
     let merger = StableIndexMerger::new();
     

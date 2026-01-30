@@ -511,6 +511,10 @@ fn count_value_types(data: &[Value]) -> ValueTypeCounts {
             Value::Number(_) => counts.numbers += 1,
             Value::String(_) => counts.strings += 1,
             Value::Boolean(_) => counts.booleans += 1,
+            Value::Array(_) | Value::List(_) | Value::SortedMap(_) => {
+                // Composite values are not allowed at this phase
+                // This is enforced by Gate C determinism guarantees
+            }
         }
     }
     
@@ -594,6 +598,7 @@ fn group_by_type_parallel(data: &[Value]) -> std::collections::HashMap<String, V
                     Value::Number(_) => "numbers",
                     Value::String(_) => "strings",
                     Value::Boolean(_) => "booleans",
+                    Value::Array(_) | Value::List(_) | Value::SortedMap(_) => "composite",
                 };
                 
                 local_groups
