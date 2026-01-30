@@ -1,0 +1,64 @@
+AykenOS Proprietary License
+
+Copyright (c) 2026 Kenan AY. All rights reserved.
+
+IMPORTANT: This software is proprietary and confidential. All rights reserved.
+
+1. DEFINITIONS
+   "Software" means the AykenOS operating system, including all source code, 
+   documentation, binaries, and associated materials.
+   "Licensor" means Kenan AY, the copyright holder.
+   "You" means the individual or entity using the Software.
+
+2. GRANT OF RIGHTS
+   Subject to the terms of this license, Licensor grants You a limited, 
+   non-exclusive, non-transferable, revocable license to:
+   
+   a) View and study the source code for educational purposes only
+   b) Compile and run the Software for personal, non-commercial use
+   c) Create derivative works for personal, non-commercial use
+
+3. RESTRICTIONS
+   You may NOT:
+   
+   a) Use the Software for commercial purposes without written permission
+   b) Distribute, sell, lease, or sublicense the Software
+   c) Remove or modify copyright notices or this license
+   d) Reverse engineer, decompile, or disassemble the Software
+   e) Use the Software in production environments
+   f) Create competing products based on the Software
+   g) Use the Software in any way that violates applicable laws
+
+4. COMMERCIAL USE
+   Commercial use requires a separate commercial license from Licensor.
+   Contact: kenanay@example.com for commercial licensing inquiries.
+
+5. INTELLECTUAL PROPERTY
+   All intellectual property rights in the Software remain with Licensor.
+   This license does not grant any rights to trademarks, service marks,
+   or trade names of Licensor.
+
+6. AUTHENTICATION REQUIREMENT
+   The Software includes authentication mechanisms that verify authorized use.
+   Bypassing, disabling, or circumventing these mechanisms is prohibited.
+
+7. TERMINATION
+   This license terminates automatically if You breach any terms.
+   Upon termination, You must cease all use and destroy all copies.
+
+8. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+   LICENSOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED.
+
+9. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY DAMAGES ARISING FROM
+   THE USE OF THE SOFTWARE.
+
+10. GOVERNING LAW
+    This license is governed by the laws of Turkey.
+
+For commercial licensing, partnerships, or permissions, contact:
+Email: kenanay@example.com
+Subject: "AykenOS Commercial License Inquiry"
+
+© 2026 Kenan AY. All rights reserved.
