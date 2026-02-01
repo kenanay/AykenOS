@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hızlı Başlangıç - AykenOS</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="../index.html">
+                        <h1>AykenOS</h1>
+                        <span class="tagline">Anayasal İşletim Sistemi</span>
+                    </a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="../index.html" class="nav-link">Ana Sayfa</a></li>
+                    <li><a href="../index.html#documentation" class="nav-link">Dokümantasyon</a></li>
+                    <li><a href="https://github.com/kenanay/AykenOS" class="nav-link" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="docs-main">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <nav class="docs-nav">
+                    <h3>Başlangıç</h3>
+                    <ul>
+                        <li><a href="getting-started.html" class="active">Hızlı Başlangıç</a></li>
+                        <li><a href="installation.html">Kurulum Rehberi</a></li>
+                        <li><a href="first-steps.html">İlk Adımlar</a></li>
+                    </ul>
+                    
+                    <h3>Mimari</h3>
+                    <ul>
+                        <li><a href="constitutional-system.html">Anayasal Sistem</a></li>
+                        <li><a href="abdf-format.html">ABDF Formatı</a></li>
+                        <li><a href="bcib-format.html">BCIB Formatı</a></li>
+                    </ul>
+                    
+                    <h3>Geliştirme</h3>
+                    <ul>
+                        <li><a href="development-guide.html">Geliştirici Rehberi</a></li>
+                        <li><a href="api-reference.html">API Referansı</a></li>
+                        <li><a href="contributing.html">Katkıda Bulunma</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <article class="docs-content">
+                <header class="docs-header">
+                    <h1>AykenOS Hızlı Başlangıç</h1>
+                    <p class="docs-subtitle">AykenOS ile ilk adımlarınızı atın ve anayasal işletim sistemi felsefesini keşfedin.</p>
+                </header>
+
+                <section class="docs-section">
+                    <h2>AykenOS Nedir?</h2>
+                    <p>AykenOS, <strong>anayasal yönetişim</strong>, <strong>determinizm</strong> ve <strong>Türk felsefesi</strong> ilkeleri üzerine inşa edilmiş yeni nesil bir işletim sistemidir. Geleneksel işletim sistemlerinden farklı olarak, her kod satırı anayasal kurallara tabi olup, mimari bütünlük sürekli korunur.</p>
+                    
+                    <div class="highlight-box">
+                        <h3>Temel Felsefe</h3>
+                        <ul>
+                            <li><strong>"İstisna = bilinçli karar"</strong> - Her istisna gerekçelendirilmeli</li>
+                            <li><strong>"İyi mimari → istisnasız mimaridir"</strong> - Hedef temiz kod</li>
+                            <li><strong>"Tek snapshot yalan söyler. Trend asla yalan söylemez."</strong> - Sürekli izleme</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Sistem Gereksinimleri</h2>
+                    <div class="requirements-grid">
+                        <div class="requirement-card">
+                            <h3>Donanım</h3>
+                            <ul>
+                                <li>x86_64 veya ARM64 işlemci</li>
+                                <li>Minimum 4GB RAM</li>
+                                <li>20GB disk alanı</li>
+                                <li>UEFI desteği</li>
+                            </ul>
+                        </div>
+                        <div class="requirement-card">
+                            <h3>Geliştirme Ortamı</h3>
+                            <ul>
+                                <li>Rust 1.70+ (stable)</li>
+                                <li>QEMU (test için)</li>
+                                <li>GNU Binutils</li>
+                                <li>VS Code (önerilen)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Hızlı Kurulum</h2>
+                    <div class="step-by-step">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Repository'yi Klonlayın</h3>
+                                <div class="code-block">
+                                    <pre><code>git clone https://github.com/kenanay/AykenOS.git
+cd AykenOS</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Geliştirme Ortamını Hazırlayın</h3>
+                                <div class="code-block">
+                                    <pre><code># macOS için
+./setup.sh
+
+# Windows WSL için
+./setup.ps1</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Projeyi Derleyin</h3>
+                                <div class="code-block">
+                                    <pre><code>make build</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>QEMU'da Test Edin</h3>
+                                <div class="code-block">
+                                    <pre><code>make qemu</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Anayasal Sistem ile Tanışma</h2>
+                    <p>AykenOS'un en önemli özelliği anayasal kural sistemidir. Bu sistem, kodunuzun mimari kurallara uygunluğunu sürekli denetler.</p>
+                    
+                    <h3>İlk Anayasal Kontrol</h3>
+                    <div class="code-block">
+                        <pre><code># Mevcut kodun anayasal durumunu kontrol edin
+ayken check
+
+# VS Code formatında çıktı alın
+ayken check --format vscode
+
+# CI formatında çıktı alın
+ayken check --format ci</code></pre>
+                    </div>
+
+                    <h3>Mimari Sağlık Skoru</h3>
+                    <div class="code-block">
+                        <pre><code># Projenin mimari sağlık skorunu görüntüleyin
+ayken ahs check
+
+# Detaylı rapor alın
+ayken ahs report
+
+# Trend analizi yapın
+ayken ahts trend</code></pre>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Temel Kavramlar</h2>
+                    
+                    <div class="concept-grid">
+                        <div class="concept-card">
+                            <h3>Allow Attribute</h3>
+                            <p>Geçici istisna mekanizması. Anayasal kuralları bilinçli olarak ihlal etmek için kullanılır.</p>
+                            <div class="code-block">
+                                <pre><code>#[ayken::allow(
+    rule = "TIME.INSTANT",
+                    class = "BenchmarkMeasurementOnly",
+                    reason = "Performance ölçümü için gerekli",
+                    expires = "P5"
+                )]</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="concept-card">
+                            <h3>Waiver Sistemi</h3>
+                            <p>Toplu istisna yönetimi için TOML tabanlı sistem. Büyük refaktörler sırasında kullanılır.</p>
+                            <div class="code-block">
+                                <pre><code>[waivers.time_instant_benchmark]
+rule = "TIME.INSTANT"
+files = ["benches/**/*.rs"]
+reason = "Benchmark kodları için gerekli"
+expires = "2026-06-01"</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="concept-card">
+                            <h3>Refaktör Önerileri</h3>
+                            <p>Sistem, anayasal ihlalleri düzeltmek için otomatik refaktör önerileri sunar.</p>
+                            <div class="code-block">
+                                <pre><code># Refaktör önerilerini görüntüleyin
+ayken arre analyze
+
+# Otomatik düzeltmeleri uygulayın
+ayken fix --safe</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>VS Code Entegrasyonu</h2>
+                    <p>AykenOS, VS Code ile tam entegre çalışır ve gerçek zamanlı anayasal denetim sağlar.</p>
+                    
+                    <h3>Kurulum</h3>
+                    <div class="code-block">
+                        <pre><code># VS Code ayarlarını kopyalayın
+cp .vscode/settings.json.template .vscode/settings.json
+cp .vscode/tasks.json.template .vscode/tasks.json</code></pre>
+                    </div>
+
+                    <h3>Özellikler</h3>
+                    <ul>
+                        <li>Gerçek zamanlı anayasal ihlal tespiti</li>
+                        <li>Otomatik refaktör önerileri</li>
+                        <li>Mimari sağlık skoru gösterimi</li>
+                        <li>Quick fix desteği</li>
+                    </ul>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Sonraki Adımlar</h2>
+                    <div class="next-steps">
+                        <div class="next-step-card">
+                            <h3>📚 Detaylı Kurulum</h3>
+                            <p>Tam kurulum rehberi ve yapılandırma seçenekleri</p>
+                            <a href="installation.html" class="btn btn-primary">Kurulum Rehberi</a>
+                        </div>
+                        
+                        <div class="next-step-card">
+                            <h3>🏗️ Mimari Anlayışı</h3>
+                            <p>AykenOS mimarisini ve anayasal sistemi derinlemesine öğrenin</p>
+                            <a href="constitutional-system.html" class="btn btn-primary">Anayasal Sistem</a>
+                        </div>
+                        
+                        <div class="next-step-card">
+                            <h3>💻 Geliştirme</h3>
+                            <p>AykenOS üzerinde geliştirme yapmaya başlayın</p>
+                            <a href="development-guide.html" class="btn btn-primary">Geliştirici Rehberi</a>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Yardım ve Destek</h2>
+                    <div class="help-section">
+                        <div class="help-item">
+                            <h3>🐛 Sorun Bildirimi</h3>
+                            <p>Hata bulduysanız veya öneriniz varsa GitHub Issues kullanın</p>
+                            <a href="https://github.com/kenanay/AykenOS/issues" target="_blank">Issues</a>
+                        </div>
+                        
+                        <div class="help-item">
+                            <h3>💬 Topluluk</h3>
+                            <p>Diğer geliştiricilerle iletişim kurun ve sorularınızı sorun</p>
+                            <a href="https://github.com/kenanay/AykenOS/discussions" target="_blank">Discussions</a>
+                        </div>
+                        
+                        <div class="help-item">
+                            <h3>📖 Dokümantasyon</h3>
+                            <p>Kapsamlı dokümantasyon ve API referansı</p>
+                            <a href="../index.html#documentation">Tüm Dokümantasyon</a>
+                        </div>
+                    </div>
+                </section>
+            </article>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>AykenOS</h4>
+                    <p>Anayasal İşletim Sistemi</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Dokümantasyon</h4>
+                    <ul>
+                        <li><a href="getting-started.html">Hızlı Başlangıç</a></li>
+                        <li><a href="installation.html">Kurulum</a></li>
+                        <li><a href="development-guide.html">Geliştirme</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 AykenOS Projesi. Açık kaynak lisansı altında.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

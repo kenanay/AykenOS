@@ -100,6 +100,7 @@ void kmain(ayken_boot_info_t *boot)
 
     // 6) Artık scheduler'a devrediyoruz
     fb_print("[boot] Kernel init tamamlandi -> scheduler baslatiliyor...\n");
+    fb_print("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
 
     sched_start();
 

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayken OS - Principle-Driven Operating System</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" href="assets/images/ayken-favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="assets/images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="assets/images/AykenOS Logo.png" alt="AykenOS Logo" class="logo-image">
+                    <div class="logo-text">
+                        <h1>Ayken OS</h1>
+                        <span class="tagline">Principle-Driven Operating System</span>
+                    </div>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#home" class="nav-link">Ana Sayfa</a></li>
+                    <li><a href="#about" class="nav-link">Hakkında</a></li>
+                    <li><a href="#architecture" class="nav-link">Mimari</a></li>
+                    <li><a href="documentation.html" class="nav-link">Dokümantasyon</a></li>
+                    <li><a href="#development" class="nav-link">Geliştirme</a></li>
+                    <li><a href="#contact" class="nav-link">İletişim</a></li>
+                    <li class="language-switch">
+                        <button id="lang-toggle" class="lang-btn">EN</button>
+                    </li>
+                </ul>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="home" class="hero">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Ayken OS</h1>
+                    <h2 class="hero-subtitle">Principle-Driven Operating System</h2>
+                    <p class="hero-description">
+                        Determinizm, denetlenebilirlik ve değiştirilemez sistem ilkeleri üzerine inşa edilmiş 
+                        deneysel işletim sistemi. Akademik araştırma ve eğitim amaçlı geliştirilmektedir.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="documentation.html" class="btn btn-primary">Dokümantasyonu İncele</a>
+                        <a href="https://github.com/kenanay/AykenOS" class="btn btn-secondary" target="_blank">GitHub'da Görüntüle</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="constitutional-diagram">
+                        <div class="phase-indicator">Ayken OS Faz 4.4 Tamamlandı</div>
+                        <div class="status-badge">Constitutional Integration Hazır</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Introduction Section -->
+        <section class="video-intro">
+            <div class="container">
+                <div class="video-container">
+                    <div class="video-content">
+                        <h2 class="video-title">AykenOS'u Keşfedin</h2>
+                        <p class="video-description">
+                            Principle-driven mimarisi ve execution-centric paradigması ile AykenOS'un 
+                            nasıl çalıştığını keşfedin. Video üzerine gelerek önizlemeyi başlatın.
+                        </p>
+                    </div>
+                    <div class="video-wrapper">
+                        <video 
+                            id="ayken-intro-video"
+                            class="intro-video"
+                            muted
+                            loop
+                            preload="metadata"
+                            poster="assets/images/video-poster.jpg">
+                            <source src="assets/Videos/AykenOS video intro.mp4" type="video/mp4">
+                            <p>Tarayıcınız video oynatmayı desteklemiyor.</p>
+                        </video>
+                        <div class="video-overlay">
+                            <div class="play-indicator">
+                                <span class="play-icon">▶</span>
+                                <span class="play-text">Hover to Preview</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="about">
+            <div class="container">
+                <h2 class="section-title">Ayken OS Nedir?</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <h3>Principle-Driven Design</h3>
+                        <p>Sistem mimarisinde her bileşen değiştirilemez ilkelere tabi tutulur. Sistem davranışları biçimsel garantiler ile korunur.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>Determinizm</h3>
+                        <p>Sistem davranışları öngörülebilir ve tekrarlanabilir şekilde tasarlanmıştır. Rastgelelik kontrollü ve izlenebilir mekanizmalar ile sağlanır.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="architecture">
+            <div class="container">
+                <h2 class="section-title">Sistem Mimarisi</h2>
+                <div class="arch-overview">
+                    <div class="arch-layer">
+                        <h3>Çekirdek (Kernel)</h3>
+                        <ul>
+                            <li>Ring0 güvenlik modeli</li>
+                            <li>10 temel syscall (1000-1009)</li>
+                            <li>Bellek yönetimi</li>
+                            <li>Execution-centric mimari</li>
+                        </ul>
+                    </div>
+                    <div class="arch-layer">
+                        <h3>Kullanıcı Alanı (Ring3)</h3>
+                        <ul>
+                            <li>VFS/DevFS implementasyonu</li>
+                            <li>BCIB execution engine</li>
+                            <li>AI runtime servisleri</li>
+                            <li>Multi-agent orchestration</li>
+                        </ul>
+                    </div>
+                    <div class="arch-layer">
+                        <h3>Geliştirme Araçları</h3>
+                        <ul>
+                            <li>Ayken CLI (principle enforcement)</li>
+                            <li>AHS/AHTS/MARS sistemleri</li>
+                            <li>VS Code entegrasyonu</li>
+                            <li>Automated validation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Documentation Section -->
+        <section id="documentation" class="documentation">
+            <div class="container">
+                <h2 class="section-title">Dokümantasyon</h2>
+                <div class="docs-grid">
+                    <div class="docs-category">
+                        <h3>Başlangıç</h3>
+                        <ul>
+                            <li><a href="docs/getting-started.html">Hızlı Başlangıç</a></li>
+                            <li><a href="docs/01-baslangic/kurulum-rehberi.html">Kurulum Rehberi</a></li>
+                            <li><a href="docs/01-baslangic/sistem-gereksinimleri.html">Sistem Gereksinimleri</a></li>
+                            <li><a href="docs/01-baslangic/vs-code-kurulumu.html">VS Code Kurulumu</a></li>
+                        </ul>
+                    </div>
+                    <div class="docs-category">
+                        <h3>Mimari</h3>
+                        <ul>
+                            <li><a href="docs/02-mimari/genel-bakis.html">Genel Bakış</a></li>
+                            <li><a href="docs/02-mimari/cekirdek-mimari.html">Çekirdek Mimarisi</a></li>
+                            <li><a href="docs/02-mimari/kullanici-alani.html">Kullanıcı Alanı</a></li>
+                        </ul>
+                    </div>
+                    <div class="docs-category">
+                        <h3>Anayasal Sistem</h3>
+                        <ul>
+                            <li><a href="docs/03-anayasal-sistem/anayasal-yonetisim.html">Anayasal Yönetişim</a></li>
+                            <li><a href="docs/03-anayasal-sistem/kural-sistemi.html">Kural Sistemi</a></li>
+                            <li><a href="docs/03-anayasal-sistem/ahs-sistemi.html">AHS Sistemi</a></li>
+                        </ul>
+                    </div>
+                    <div class="docs-category">
+                        <h3>Geliştirme</h3>
+                        <ul>
+                            <li><a href="docs/04-gelistirme/gelistirici-rehberi.html">Geliştirici Rehberi</a></li>
+                            <li><a href="docs/05-api-referans/cli-komutlari.html">CLI Komutları</a></li>
+                            <li><a href="docs/07-topluluk/katkida-bulunma.html">Katkıda Bulunma</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Development Status -->
+        <section id="development" class="development">
+            <div class="container">
+                <h2 class="section-title">Proje Durumu</h2>
+                <div class="status-overview">
+                    <div class="project-section">
+                        <h3>Ayken OS (İşletim Sistemi)</h3>
+                        <div class="current-phase">
+                            <span class="phase-number">Faz 4.4</span>
+                            <span class="phase-name">Performance Management</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <span class="progress-text">Tamamlandı</span>
+                        </div>
+                        
+                        <div class="completed-phases">
+                            <h4>Tamamlanan Fazlar</h4>
+                            <ul class="phase-list">
+                                <li class="completed">Faz 1: Çekirdek temelinin tamamlanması</li>
+                                <li class="completed">Faz 1.5: Stabilizasyon ve Ring3 doğrulaması</li>
+                                <li class="completed">Faz 2: Execution-centric mimari dönüşümü</li>
+                                <li class="completed">Faz 2.5: Legacy kod temizliği</li>
+                                <li class="completed">Faz 3.4: Multi-Agent Orchestration</li>
+                                <li class="completed">Faz 4.3: Performance Optimization</li>
+                                <li class="completed">Faz 4.4: Performance Management</li>
+                                <li class="in-progress">Constitutional Integration: Hazırlık aşamasında</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="project-section">
+                        <h3>Ayken CLI (Geliştirme Aracı)</h3>
+                        <div class="current-phase">
+                            <span class="phase-number">Task 10.1</span>
+                            <span class="phase-name">MARS Module Detection</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <span class="progress-text">Tamamlandı</span>
+                        </div>
+                        
+                        <div class="completed-phases">
+                            <h4>Constitutional Rule System</h4>
+                            <ul class="phase-list">
+                                <li class="completed">AHS: Architecture Health Score sistemi</li>
+                                <li class="completed">AHTS: Architecture Health Trend Score sistemi</li>
+                                <li class="completed">MARS: Module-level Architecture Risk Score</li>
+                                <li class="completed">Principle enforcement system</li>
+                                <li class="completed">Waiver lifecycle management</li>
+                                <li class="completed">VS Code integration</li>
+                                <li class="completed">Task 10.1: Module Detection</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="metrics">
+                        <h3>Proje Metrikleri</h3>
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <span class="metric-number">10</span>
+                                <span class="metric-label">Syscall (Hedef)</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-number">Ring3</span>
+                                <span class="metric-label">VFS/DevFS</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-number">BCIB</span>
+                                <span class="metric-label">Execution Engine</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-number">25+</span>
+                                <span class="metric-label">System Principles</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="contact">
+            <div class="container">
+                <h2 class="section-title">İletişim</h2>
+                <div class="contact-content">
+                    <div class="contact-info">
+                        <h3>Proje Bilgileri</h3>
+                        <p>Ayken OS açık kaynak kodlu deneysel bir işletim sistemi projesidir. Akademik araştırma ve eğitim amaçlı geliştirilmektedir.</p>
+                        <div class="contact-links">
+                            <a href="https://github.com/kenanay/AykenOS" class="contact-link" target="_blank">
+                                <span class="icon">📁</span>
+                                GitHub Repository
+                            </a>
+                            <a href="mailto:contact@aykenos.org" class="contact-link">
+                                <span class="icon">✉️</span>
+                                E-posta İletişim
+                            </a>
+                        </div>
+                    </div>
+                    <div class="philosophy-quote">
+                        <blockquote>
+                            "Mimari tutarlılık değiştirilemez ilkelerle korunmalıdır"<br>
+                            "Trend analizi tekil veriden daha güvenilirdir"<br>
+                            "Her istisna bilinçli bir tasarım kararıdır"
+                        </blockquote>
+                        <cite>— AykenOS Tasarım İlkeleri</cite>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Ayken OS</h4>
+                    <p>Principle-Driven Operating System</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Bağlantılar</h4>
+                    <ul>
+                        <li><a href="https://github.com/kenanay/AykenOS">GitHub</a></li>
+                        <li><a href="#documentation">Dokümantasyon</a></li>
+                        <li><a href="#development">Geliştirme</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Topluluk</h4>
+                    <ul>
+                        <li><a href="docs/contributing.html">Katkıda Bulun</a></li>
+                        <li><a href="docs/code-of-conduct.html">Davranış Kuralları</a></li>
+                        <li><a href="docs/license.html">Lisans</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Ayken OS Projesi. Akademik araştırma ve eğitim amaçlı açık kaynak projesi.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Video hover functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('ayken-intro-video');
+            const videoWrapper = document.querySelector('.video-wrapper');
+            
+            if (video && videoWrapper) {
+                // Mouse enter - play video
+                videoWrapper.addEventListener('mouseenter', function() {
+                    video.play().then(() => {
+                        videoWrapper.classList.add('playing');
+                    }).catch(error => {
+                        console.log('Video play failed:', error);
+                    });
+                });
+                
+                // Mouse leave - pause video
+                videoWrapper.addEventListener('mouseleave', function() {
+                    video.pause();
+                    videoWrapper.classList.remove('playing');
+                });
+                
+                // Video loaded - hide loading state
+                video.addEventListener('loadeddata', function() {
+                    videoWrapper.classList.add('loaded');
+                });
+                
+                // Handle video errors
+                video.addEventListener('error', function(e) {
+                    console.error('Video error:', e);
+                    const overlay = videoWrapper.querySelector('.video-overlay');
+                    if (overlay) {
+                        overlay.innerHTML = '<div class="error-message">Video yüklenemedi</div>';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

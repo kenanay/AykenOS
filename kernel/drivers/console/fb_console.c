@@ -2,6 +2,7 @@
 #include "fb_console.h"
 #include "font8x16.h"
 #include <stddef.h>
+#include "../../arch/x86_64/port_io.h"
 
 // Kernel'ın yüklendiği sanal bellek başlangıç ofseti (Higher Half Kernel)
 #define KERNEL_VIRTUAL_BASE 0xFFFFFFFF80000000ULL
@@ -25,6 +26,9 @@ static uint32_t text_origin_y = 0; // karakter cinsinden
 
 static uint32_t cursor_x = 0; // text bölgesi içinde
 static uint32_t cursor_y = 0;
+
+// Serial output (COM1) + QEMU debug port
+static int serial_ready = 0;
 
 // Renkler (ARGB)
 static const uint32_t COL_BG = 0x00000000; // siyah
@@ -137,6 +141,41 @@ static inline uint32_t blend_colors(uint32_t fg, uint32_t bg, uint8_t alpha)
     uint8_t b = ((fg_b * alpha) + (bg_b * (255 - alpha))) / 255;
     
     return 0xFF000000 | (r << 16) | (g << 8) | b;
+}
+
+// -----------------------------------------------------
+// Serial output (COM1) + QEMU debug port (0xE9)
+// -----------------------------------------------------
+static void serial_init(void)
+{
+    // Disable interrupts
+    outb(0x3F8 + 1, 0x00);
+    // Enable DLAB
+    outb(0x3F8 + 3, 0x80);
+    // Set baud rate to 38400 (divisor 3)
+    outb(0x3F8 + 0, 0x03);
+    outb(0x3F8 + 1, 0x00);
+    // 8 bits, no parity, one stop bit
+    outb(0x3F8 + 3, 0x03);
+    // Enable FIFO, clear them, with 14-byte threshold
+    outb(0x3F8 + 2, 0xC7);
+    // IRQs enabled, RTS/DSR set
+    outb(0x3F8 + 4, 0x0B);
+    serial_ready = 1;
+}
+
+static void serial_write_char(char c)
+{
+    if (!serial_ready) return;
+    // Wait for transmit buffer empty
+    for (int i = 0; i < 100000; ++i) {
+        if (inb(0x3F8 + 5) & 0x20) {
+            outb(0x3F8 + 0, (uint8_t)c);
+            break;
+        }
+    }
+    // Also mirror to QEMU debug port
+    outb(0xE9, (uint8_t)c);
 }
 
 // -----------------------------------------------------
@@ -307,6 +346,9 @@ void fb_console_init(ayken_boot_info_t *boot)
     text_rows = fb_height / FONT_H;
 
     cursor_x = cursor_y = 0;
+
+    // Initialize serial output for audit-grade logging
+    serial_init();
 }
 
 // Mini-log bölgesi için text alanını sağ alt köşeye taşı
@@ -336,6 +378,7 @@ void fb_set_text_region(uint32_t cols, uint32_t rows)
 // -----------------------------------------------------
 void fb_console_put_char(char c)
 {
+    serial_write_char(c);
     if (!fb) return;
 
     if (c == '\b') {

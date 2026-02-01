@@ -6,6 +6,17 @@
 //! Unauthorized use, modification, or distribution is strictly prohibited.
 
 pub mod auth;
+pub mod architecture;
+pub mod arh;
+pub mod audit;
+pub mod analytics;
+pub mod cde;
+pub mod ci;
+pub mod cli;
+pub mod diagnostic;
+pub mod reporting;
+pub mod steering;
+pub mod waiver;
 
 use std::sync::Once;
 

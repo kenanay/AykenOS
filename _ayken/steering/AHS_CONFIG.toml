@@ -1,0 +1,178 @@
+# Architecture Health Score (AHS) Configuration
+# Constitutional constraints: Can only tighten rules, never soften
+
+[metadata]
+version = "1.0"
+author = "Kenan AY"
+description = "AHS scoring configuration with constitutional constraints"
+last_modified = "2026-01-31"
+
+# Rule weight hierarchy (constitutional minimums - can only increase)
+[rule_weights]
+# DETERMINISM rules (highest priority)
+"DETERMINISM.GLOBAL" = 5.0          # Constitutional minimum: 5.0
+"DETERMINISM.RNG" = 5.0             # Constitutional minimum: 5.0  
+"DETERMINISM.TIME" = 5.0            # Constitutional minimum: 5.0
+
+# MEMORY/ALLOC rules (critical priority)
+"MEMORY.CONTRACT.VIOLATION" = 4.0   # Constitutional minimum: 4.0
+"MEMORY.LEAK" = 4.0                 # Constitutional minimum: 4.0
+"ALLOC.GLOBAL" = 4.0                # Constitutional minimum: 4.0
+"ALLOC.HEAP_DIRECT" = 3.5           # Constitutional minimum: 3.5
+
+# TIME rules (critical priority)
+"TIME.INSTANT" = 4.0                # Constitutional minimum: 4.0
+"TIME.SLEEP" = 3.5                  # Constitutional minimum: 3.5
+"TIME.TIMEOUT" = 3.0                # Constitutional minimum: 3.0
+
+# ERROR rules (important priority)
+"ERROR.UNWRAP" = 2.5                # Constitutional minimum: 2.5
+"ERROR.EXPECT" = 2.5                # Constitutional minimum: 2.5
+"ERROR.PANIC" = 3.0                 # Constitutional minimum: 3.0
+
+# SECURITY rules (critical priority)
+"SECURITY.BOUNDARY.VIOLATION" = 5.0 # Constitutional minimum: 5.0
+"SECURITY.PRIVILEGE.ESCALATION" = 5.0 # Constitutional minimum: 5.0
+"SECURITY.INFORMATION.LEAK" = 4.0   # Constitutional minimum: 4.0
+
+# KERNEL rules (critical priority)
+"KERNEL.SAFETY.CRITICAL" = 5.0      # Constitutional minimum: 5.0
+"KERNEL.RING0.POLICY" = 5.0         # Constitutional minimum: 5.0
+"KERNEL.CAPABILITY.BYPASS" = 5.0    # Constitutional minimum: 5.0
+
+# STYLE rules (lowest priority)
+"STYLE.FORMATTING" = 1.0            # Constitutional minimum: 1.0
+"STYLE.NAMING" = 1.0                # Constitutional minimum: 1.0
+"STYLE.DOCUMENTATION" = 1.5         # Constitutional minimum: 1.5
+
+# Phase multipliers (constitutional minimums - can only increase)
+[phase_multipliers]
+P4_4 = 1.0    # Constitutional minimum: 1.0 (development phase)
+P4_5 = 1.3    # Constitutional minimum: 1.3 (stabilization phase)
+P5 = 2.0      # Constitutional minimum: 2.0 (production phase)
+
+# Health level thresholds (constitutional minimums - can only increase)
+[health_levels]
+clean_threshold = 90      # Constitutional minimum: 90 (90-100: Clean)
+warning_threshold = 75    # Constitutional minimum: 75 (75-89: Warning)
+degraded_threshold = 60   # Constitutional minimum: 60 (60-74: Degraded)
+critical_threshold = 40   # Constitutional minimum: 40 (40-59: Critical)
+# Below 40: Quarantine (automatic)
+
+# CI thresholds by phase (constitutional minimums - can only increase)
+[ci_thresholds]
+P4_4_minimum = 85    # Constitutional minimum: 85
+P4_5_minimum = 90    # Constitutional minimum: 90
+P5_minimum = 95      # Constitutional minimum: 95
+
+# Temporal penalty configuration
+[temporal_penalties]
+age_penalty_divisor = 30        # Days divisor for age penalty (can decrease to make stricter)
+renewal_penalty_multiplier = 1.5 # Multiplier per renewal (constitutional minimum: 1.5)
+
+# Allow escalation penalties (constitutional minimums - can only increase)
+[escalation_penalties]
+three_allows_multiplier = 1.5   # Constitutional minimum: 1.5 (3 allows same rule)
+five_allows_multiplier = 3.0    # Constitutional minimum: 3.0 (5 allows same rule)
+
+# Score regression detection (constitutional minimums - can only decrease to be stricter)
+[regression_detection]
+regression_threshold = 5.0      # Constitutional maximum: 5.0 (points drop = CI FAIL)
+significant_drop_threshold = 3.0 # Constitutional maximum: 3.0 (points drop = WARNING)
+
+# Project-specific customizations (must respect constitutional constraints)
+[project_overrides]
+# Example: Kernel modules have stricter requirements
+# "kernel/**/*.rs" = { phase_multiplier_bonus = 0.5 }
+# "userspace/**/*.rs" = { phase_multiplier_bonus = 0.0 }
+
+# Module-specific weight adjustments (can only increase weights)
+[module_weights]
+# Example: Core kernel modules have higher weights
+# "kernel/mm" = { weight_multiplier = 1.2 }
+# "kernel/sched" = { weight_multiplier = 1.2 }
+
+# Custom rule definitions (must follow constitutional patterns)
+[custom_rules]
+# Projects can define additional rules following constitutional patterns
+# "PROJECT.CUSTOM.RULE" = { weight = 2.0, category = "PROJECT" }
+
+# Validation settings
+[validation]
+enforce_constitutional_minimums = true  # Cannot be disabled
+allow_weight_increases = true           # Can be disabled to lock current weights
+allow_threshold_increases = true        # Can be disabled to lock current thresholds
+require_justification_for_changes = true # Cannot be disabled
+
+# Monitoring and reporting
+[monitoring]
+enable_trend_analysis = true
+enable_regression_detection = true
+enable_escalation_tracking = true
+enable_module_breakdown = true
+
+# Export settings for external tools
+[export]
+enable_json_export = true
+enable_csv_export = true
+enable_prometheus_metrics = true
+enable_grafana_dashboard = true
+
+# Integration settings
+[integration]
+vscode_real_time_updates = true
+ci_fail_on_regression = true
+cli_detailed_breakdown = true
+audit_trail_integration = true
+
+# Constitutional validation rules (IMMUTABLE)
+[constitutional_constraints]
+# These constraints cannot be modified and are enforced by the system
+determinism_minimum_weight = 5.0
+memory_minimum_weight = 4.0
+security_minimum_weight = 4.0
+kernel_minimum_weight = 5.0
+style_maximum_weight = 2.0
+p5_minimum_multiplier = 2.0
+clean_minimum_threshold = 90
+regression_maximum_threshold = 5.0
+
+# Comments and documentation
+[documentation]
+purpose = "AHS configuration with constitutional constraints ensuring architectural quality"
+philosophy = "İyi mimari → istisnasız mimaridir (Good architecture → exception-free architecture)"
+authority = "Kenan AY - Architectural Steward"
+modification_policy = "Can only tighten rules, never soften constitutional requirements"
+
+# Version history
+[[version_history]]
+version = "1.0"
+date = "2026-01-31"
+author = "Kenan AY"
+changes = "Initial constitutional AHS configuration"
+constitutional_review = true
+
+# Usage examples and guidance
+[examples]
+# Example 1: Increasing rule weight for project-specific needs
+# "TIME.INSTANT" = 5.0  # Increased from constitutional minimum of 4.0
+
+# Example 2: Tightening CI thresholds
+# P4_4_minimum = 90     # Increased from constitutional minimum of 85
+
+# Example 3: Stricter regression detection
+# regression_threshold = 3.0  # Decreased from constitutional maximum of 5.0
+
+[guidance]
+weight_increases = "Increase rule weights to emphasize specific architectural concerns"
+threshold_increases = "Increase thresholds to require higher architectural quality"
+multiplier_increases = "Increase phase multipliers to emphasize phase progression"
+regression_tightening = "Decrease regression thresholds to catch smaller quality drops"
+
+# Constitutional guarantee
+[constitutional_guarantee]
+immutable_constraints = true
+enforcement_mandatory = true
+bypass_prohibited = true
+authority = "Constitutional Steward: Kenan AY"
+last_constitutional_review = "2026-01-31"

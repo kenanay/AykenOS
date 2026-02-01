@@ -68,6 +68,16 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+detect_timeout_cmd() {
+    if command_exists "timeout"; then
+        echo "timeout"
+    elif command_exists "gtimeout"; then
+        echo "gtimeout"
+    else
+        echo ""
+    fi
+}
+
 get_command_version() {
     local cmd="$1"
     local version_arg="${2:---version}"
@@ -225,15 +235,31 @@ test_qemu_boot() {
     
     local qemu_output="qemu_output.log"
     local qemu_error="qemu_error.log"
+    local timeout_cmd
+    timeout_cmd="$(detect_timeout_cmd)"
+    if [[ -z "$timeout_cmd" ]]; then
+        warning "No timeout command found; using manual time limit for QEMU"
+        WARNINGS+=("Missing timeout command (using manual QEMU time limit)")
+    fi
     
     # Start QEMU in background
-    timeout "$QEMU_TIMEOUT" qemu-system-x86_64 \
-        -drive format=raw,file=EFI.img \
-        -serial stdio \
-        -display none \
-        -no-reboot \
-        -no-shutdown \
-        > "$qemu_output" 2> "$qemu_error" &
+    if [[ -n "$timeout_cmd" ]]; then
+        "$timeout_cmd" "$QEMU_TIMEOUT" qemu-system-x86_64 \
+            -drive format=raw,file=EFI.img \
+            -serial stdio \
+            -display none \
+            -no-reboot \
+            -no-shutdown \
+            > "$qemu_output" 2> "$qemu_error" &
+    else
+        qemu-system-x86_64 \
+            -drive format=raw,file=EFI.img \
+            -serial stdio \
+            -display none \
+            -no-reboot \
+            -no-shutdown \
+            > "$qemu_output" 2> "$qemu_error" &
+    fi
     
     local qemu_pid=$!
     local boot_success=false

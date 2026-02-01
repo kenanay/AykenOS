@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anayasal Yönetişim - AykenOS</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <link rel="stylesheet" href="../../assets/css/docs.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="../../index.html">
+                        <h1>AykenOS</h1>
+                        <span class="tagline">Anayasal İşletim Sistemi</span>
+                    </a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="../../index.html" class="nav-link">Ana Sayfa</a></li>
+                    <li><a href="../../index.html#documentation" class="nav-link">Dokümantasyon</a></li>
+                    <li><a href="https://github.com/kenanay/AykenOS" class="nav-link" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="docs-main">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <nav class="docs-nav">
+                    <h3>Anayasal Sistem</h3>
+                    <ul>
+                        <li><a href="anayasal-yonetisim.html" class="active">Anayasal Yönetişim</a></li>
+                        <li><a href="kural-sistemi.html">Kural Sistemi</a></li>
+                        <li><a href="allow-sistemi.html">Allow Sistemi</a></li>
+                        <li><a href="waiver-sistemi.html">Waiver Sistemi</a></li>
+                        <li><a href="ahs-sistemi.html">AHS Sistemi</a></li>
+                        <li><a href="ahts-sistemi.html">AHTS Sistemi</a></li>
+                        <li><a href="mars-sistemi.html">MARS Sistemi</a></li>
+                        <li><a href="arre-sistemi.html">ARRE Sistemi</a></li>
+                        <li><a href="arh-sistemi.html">ARH Sistemi</a></li>
+                    </ul>
+                    
+                    <h3>Mimari</h3>
+                    <ul>
+                        <li><a href="../02-mimari/genel-bakis.html">Genel Bakış</a></li>
+                    </ul>
+                    
+                    <h3>Felsefe</h3>
+                    <ul>
+                        <li><a href="../06-felsefe/tasarim-felsefesi.html">Tasarım Felsefesi</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <article class="docs-content">
+                <header class="docs-header">
+                    <h1>Anayasal Yönetişim Sistemi</h1>
+                    <p class="docs-subtitle">AykenOS'un kalbi: Her kod satırının anayasal kurallara tabi olduğu yönetişim modeli.</p>
+                </header>
+
+                <section class="docs-section">
+                    <h2>Anayasal Yönetişim Nedir?</h2>
+                    
+                    <div class="highlight-box">
+                        <h3>Temel Felsefe</h3>
+                        <blockquote>
+                            <p><strong>"İstisna = bilinçli karar"</strong></p>
+                            <p><strong>"İyi mimari → istisnasız mimaridir"</strong></p>
+                            <p><strong>"Tek snapshot yalan söyler. Trend asla yalan söylemez."</strong></p>
+                        </blockquote>
+                        <cite>— AykenOS Anayasal İlkeleri</cite>
+                    </div>
+
+                    <p>Anayasal Yönetişim, geleneksel yazılım geliştirme yaklaşımlarından radikal bir kopuştur. Bu sistemde:</p>
+
+                    <ul>
+                        <li><strong>Her kod satırı</strong> önceden tanımlanmış anayasal kurallara tabidir</li>
+                        <li><strong>Her istisna</strong> gerekçelendirilmeli ve onaylanmalıdır</li>
+                        <li><strong>Her karar</strong> izlenebilir ve denetlenebilir olmalıdır</li>
+                        <li><strong>Sistem</strong> sürekli kendini iyileştirmeye odaklanmalıdır</li>
+                    </ul>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Anayasal Hiyerarşi</h2>
+
+                    <div class="step-by-step">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>NON_OVERRIDABLE Kurallar</h3>
+                                <p><strong>Mutlak anayasal kurallar</strong> - Hiçbir istisna mekanizması bu kuralları geçersiz kılamaz.</p>
+                                
+                                <h4>Kategoriler:</h4>
+                                <ul>
+                                    <li><strong>DETERMINISM.GLOBAL</strong> - Global determinizm ihlalleri</li>
+                                    <li><strong>MEMORY.CONTRACT.VIOLATION</strong> - Bellek sözleşmesi ihlalleri</li>
+                                    <li><strong>KERNEL.SAFETY.CRITICAL</strong> - Kritik kernel güvenlik kuralları</li>
+                                    <li><strong>CONSTITUTIONAL.CORE</strong> - Anayasal çekirdek kurallar</li>
+                                </ul>
+
+                                <div class="alert alert-danger">
+                                    <strong>Uyarı:</strong> NON_OVERRIDABLE kuralların ihlali sistem derlenmesini engeller.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Phase Matrix (Faz Matrisi)</h3>
+                                <p><strong>Faz bazlı davranış kontrolü</strong> - Geliştirme fazına göre kural sertliği değişir.</p>
+                                
+                                <div class="docs-table">
+                                    <table class="docs-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Faz</th>
+                                                <th>Davranış</th>
+                                                <th>Açıklama</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>P4.4</td>
+                                                <td>ALLOW</td>
+                                                <td>Geliştirme aşaması - esnek kurallar</td>
+                                            </tr>
+                                            <tr>
+                                                <td>P4.5</td>
+                                                <td>WARN</td>
+                                                <td>Test aşaması - uyarılar verilir</td>
+                                            </tr>
+                                            <tr>
+                                                <td>P5</td>
+                                                <td>ERROR</td>
+                                                <td>Üretim aşaması - katı kurallar</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Allow Sistemi</h3>
+                                <p><strong>Geçici istisna mekanizması</strong> - Kısa süreli, gerekçeli kural ihlalleri.</p>
+                                
+                                <div class="code-block">
+                                    <pre><code>#[ayken::allow(
+    rule = "TIME.INSTANT",
+    class = "BenchmarkMeasurementOnly",
+    reason = "Performance ölçümü için gerekli",
+    expires = "P5"
+)]
+let start = std::time::Instant::now();</code></pre>
+                                </div>
+
+                                <p><strong>Önemli:</strong> Allow'lar sadece Phase Matrix ERROR döndürdüğünde aktif olur.</p>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>Waiver Sistemi</h3>
+                                <p><strong>Toplu istisna yönetimi</strong> - Büyük refaktörler sırasında kullanılan TOML tabanlı sistem.</p>
+                                
+                                <div class="code-block">
+                                    <pre><code>[waivers.time_instant_benchmark]
+rule = "TIME.INSTANT"
+files = ["benches/**/*.rs"]
+reason = "Benchmark kodları için gerekli"
+expires = "2026-06-01"
+approved_by = "arch-team"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h3>FAIL</h3>
+                                <p><strong>Kural ihlali</strong> - Hiçbir istisna mekanizması devreye girmediğinde sistem derlemesi başarısız olur.</p>
+                                
+                                <div class="alert alert-warning">
+                                    <strong>Felsefe:</strong> Başarısızlık, sistemin anayasal bütünlüğünü korumasının bir göstergesidir.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Constitutional Decision Engine (CDE)</h2>
+
+                    <p>Anayasal Karar Motoru, tüm kod analizlerinin merkezinde yer alan sistemdir. Her kod satırı bu motordan geçer ve anayasal uygunluğu değerlendirilir.</p>
+
+                    <h3>Karar Akışı</h3>
+                    <div class="code-block">
+                        <pre><code>Kod Analizi
+    ↓
+NON_OVERRIDABLE Kontrol → FAIL (eğer ihlal varsa)
+    ↓
+Phase Matrix Kontrol
+    ↓
+┌─ ALLOW → Geç
+├─ WARN → Uyarı ver, geç  
+└─ ERROR → İstisna mekanizmalarını kontrol et
+    ↓
+Allow Attribute Kontrol → Geç (eğer geçerli allow varsa)
+    ↓
+Waiver Kontrol → Geç (eğer geçerli waiver varsa)
+    ↓
+FAIL → Derleme hatası</code></pre>
+                    </div>
+
+                    <h3>CDE Kullanımı</h3>
+                    <div class="code-block">
+                        <pre><code># Anayasal kontrol yap
+ayken check
+
+# Detaylı CDE raporu
+ayken check --format ci
+
+# Sadece belirli kuralları kontrol et
+ayken check --rule TIME.INSTANT
+
+# Belirli dosyaları kontrol et
+ayken check --file src/main.rs</code></pre>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Mimari Sağlık İzleme</h2>
+
+                    <h3>Architecture Health Score (AHS)</h3>
+                    <div class="concept-card">
+                        <p>Sistem mimarisinin genel sağlığını 0-100 arasında skorlayan metrik.</p>
+                        
+                        <h4>Hesaplama Formülü:</h4>
+                        <div class="code-block">
+                            <pre><code>AHS = 100 - Σ(rule_weight × phase_multiplier × (1 + age_penalty) + renewal_penalty)</code></pre>
+                        </div>
+
+                        <h4>Sağlık Seviyeleri:</h4>
+                        <ul>
+                            <li><strong>90-100: Clean</strong> - Mükemmel mimari sağlık</li>
+                            <li><strong>75-89: Warning</strong> - Dikkat gerektiren durumlar</li>
+                            <li><strong>60-74: Degraded</strong> - Müdahale gerekli</li>
+                            <li><strong>&lt;60: Critical</strong> - Acil eylem gerekli</li>
+                        </ul>
+                    </div>
+
+                    <h3>Architecture Health Time-Series (AHTS)</h3>
+                    <div class="concept-card">
+                        <p>AHS skorlarının zaman içindeki değişimini analiz eden sistem.</p>
+                        
+                        <h4>Trend Analizi:</h4>
+                        <ul>
+                            <li><strong>Positive (&gt;+0.2)</strong> - İyileşen mimari</li>
+                            <li><strong>Stable (-0.2 to +0.2)</strong> - Kararlı mimari</li>
+                            <li><strong>Negative (&lt;-0.2)</strong> - Kötüleşen mimari</li>
+                        </ul>
+
+                        <div class="alert alert-info">
+                            <strong>Önemli:</strong> AHTS oscillation (salınım) paternlerini tespit eder - bu mimari panik göstergesidir.
+                        </div>
+                    </div>
+
+                    <h3>Module Architecture Risk Score (MARS)</h3>
+                    <div class="concept-card">
+                        <p>Modül seviyesinde risk değerlendirmesi yapan sistem.</p>
+                        
+                        <h4>Risk Seviyeleri:</h4>
+                        <ul>
+                            <li><strong>0-20: Healthy</strong> - Güvenli modül</li>
+                            <li><strong>21-40: Monitored</strong> - İzleme gerekli</li>
+                            <li><strong>41-60: Risky</strong> - Refaktör planı gerekli</li>
+                            <li><strong>61-80: Critical</strong> - Acil müdahale</li>
+                            <li><strong>81-100: Quarantine</strong> - Karantina gerekli</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Otomatik İyileştirme Sistemleri</h2>
+
+                    <h3>Allow → Refactor Recommendation Engine (ARRE)</h3>
+                    <div class="concept-card">
+                        <p>Allow'ları refaktör önerilerine dönüştüren stratejik rehberlik sistemi.</p>
+                        
+                        <h4>Refaktör Sınıfları:</h4>
+                        <ul>
+                            <li><strong>ClockAbstraction</strong> - TIME.INSTANT ihlalleri için</li>
+                            <li><strong>ErrorBoundary</strong> - ERROR.UNWRAP ihlalleri için</li>
+                            <li><strong>MemoryArena</strong> - ALLOC.GLOBAL ihlalleri için</li>
+                            <li><strong>SeededExecution</strong> - DETERMINISM.RNG ihlalleri için</li>
+                            <li><strong>StateParameterization</strong> - STATE.GLOBAL ihlalleri için</li>
+                            <li><strong>TypedDecision</strong> - LOGIC.BRANCH ihlalleri için</li>
+                        </ul>
+
+                        <div class="code-block">
+                            <pre><code># Refaktör önerilerini görüntüle
+ayken arre analyze
+
+# Belirli modül için öneriler
+ayken arre analyze --module kernel/mm</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>Auto-Refactor Hints (ARH)</h3>
+                    <div class="concept-card">
+                        <p>Somut kod değişiklikleri öneren taktik uygulama sistemi.</p>
+                        
+                        <h4>Hint Türleri:</h4>
+                        <ul>
+                            <li><strong>SafeAutofix</strong> - %95+ güvenli otomatik düzeltmeler</li>
+                            <li><strong>AssistedFix</strong> - İnsan onayı gerektiren düzeltmeler</li>
+                            <li><strong>DesignHint</strong> - Mimari rehberlik ve eğitim</li>
+                        </ul>
+
+                        <div class="code-block">
+                            <pre><code># Güvenli düzeltmeleri uygula
+ayken fix --safe
+
+# Önizleme ile düzeltme
+ayken fix --preview
+
+# Sadece rapor al
+ayken fix --report</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Waiver Yaşam Döngüsü</h2>
+
+                    <div class="step-by-step">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Waiver Oluşturma</h3>
+                                <p>Büyük refaktörler için toplu istisna tanımlama.</p>
+                                
+                                <div class="code-block">
+                                    <pre><code># Yeni waiver oluştur
+ayken waiver create --rule TIME.INSTANT \
+  --files "benches/**/*.rs" \
+  --reason "Performance benchmark refactoring" \
+  --expires "2026-06-01"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Üç Katmanlı Yaşlanma</h3>
+                                <ul>
+                                    <li><strong>Zaman Bazlı</strong> - Tarih geçince otomatik expire</li>
+                                    <li><strong>Kullanım Bazlı</strong> - Maksimum kullanım sayısı</li>
+                                    <li><strong>Faz Bazlı</strong> - Faz ilerledikçe otomatik expire</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Yenileme Süreci</h3>
+                                <p>Maksimum 3 yenileme hakkı, her yenilemede %25 süre kısalması.</p>
+                                
+                                <div class="alert alert-warning">
+                                    <strong>Zorunlu PR Template:</strong> Waiver yenilemeleri için detaylı gerekçelendirme gerekli.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>CI/CD Entegrasyonu</h2>
+
+                    <h3>Progressive Hardening</h3>
+                    <div class="concept-card">
+                        <p>Geliştirme sürecinde anayasal kuralların giderek sıkılaştırılması.</p>
+                        
+                        <h4>CI Thresholds:</h4>
+                        <ul>
+                            <li><strong>P4.4:</strong> AHS &gt; 85 (geliştirme)</li>
+                            <li><strong>P4.5:</strong> AHS &gt; 90 (test)</li>
+                            <li><strong>P5:</strong> AHS &gt; 95 (üretim)</li>
+                        </ul>
+
+                        <div class="code-block">
+                            <pre><code># CI pipeline örneği
+- name: Constitutional Check
+  run: |
+    ayken check --format ci
+    ayken ahs check --threshold 90
+    ayken waiver check-expiry</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>Shameful CI Messages</h3>
+                    <div class="concept-card">
+                        <p>Türk felsefesinden ilham alan "utandırıcı" CI mesajları ile mimari borç görünür kılınır.</p>
+                        
+                        <div class="code-block">
+                            <pre><code>❌ Mimari Borç Tespit Edildi
+   
+   Waiver sayısı: 5 (limit: 3)
+   AHS skoru: 72 (hedef: 90)
+   
+   "Mimari sorunlar lokaldir, bedeli küresel olur"
+   
+   Önerilen eylemler:
+   1. Eski waiver'ları refaktör et
+   2. Allow'ları waiver'a dönüştür
+   3. Mimari sağlık skorunu iyileştir</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>VS Code Entegrasyonu</h2>
+
+                    <h3>Gerçek Zamanlı Anayasal Denetim</h3>
+                    <div class="concept-card">
+                        <p>Kod yazarken anında anayasal uyumluluk kontrolü.</p>
+                        
+                        <h4>Özellikler:</h4>
+                        <ul>
+                            <li>Gerçek zamanlı kural ihlali tespiti</li>
+                            <li>Quick fix önerileri</li>
+                            <li>AHS skoru gösterimi</li>
+                            <li>Refaktör önerileri</li>
+                            <li>Allow/Waiver yönetimi</li>
+                        </ul>
+
+                        <div class="code-block">
+                            <pre><code># VS Code ayarları
+{
+  "ayken.enableRealTimeCheck": true,
+  "ayken.showHealthScore": true,
+  "ayken.autoApplySafeFixes": false,
+  "ayken.shamefulMessages": true
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Anayasal Audit Trail</h2>
+
+                    <h3>Değişmez Denetim İzi</h3>
+                    <div class="concept-card">
+                        <p>Tüm anayasal kararların SHA-256 hash ile korunan değişmez kaydı.</p>
+                        
+                        <div class="code-block">
+                            <pre><code># Audit trail görüntüleme
+ayken audit show
+
+# Belirli tarih aralığı
+ayken audit show --from 2026-01-01 --to 2026-01-31
+
+# Hash doğrulama
+ayken audit verify</code></pre>
+                        </div>
+
+                        <h4>Audit Record Örneği:</h4>
+                        <div class="code-block">
+                            <pre><code>{
+  "timestamp": "2026-01-31T10:30:00Z",
+  "decision": "ALLOW_GRANTED",
+  "rule": "TIME.INSTANT",
+  "file": "src/benchmark.rs:42",
+  "reason": "Performance measurement required",
+  "authority": "Phase Matrix P4.4",
+  "hash": "a1b2c3d4e5f6...",
+  "constitutional_authority": "Kenan AY"
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="docs-section">
+                    <h2>Sonraki Adımlar</h2>
+                    <div class="next-steps">
+                        <div class="next-step-card">
+                            <h3>⚖️ Kural Sistemi</h3>
+                            <p>Anayasal kuralların detaylı incelemesi</p>
+                            <a href="kural-sistemi.html" class="btn btn-primary">Kural Sistemi</a>
+                        </div>
+                        
+                        <div class="next-step-card">
+                            <h3>🎯 Allow Sistemi</h3>
+                            <p>Geçici istisna mekanizması kullanımı</p>
+                            <a href="allow-sistemi.html" class="btn btn-primary">Allow Sistemi</a>
+                        </div>
+                        
+                        <div class="next-step-card">
+                            <h3>📊 AHS Sistemi</h3>
+                            <p>Mimari sağlık skorlama sistemi</p>
+                            <a href="ahs-sistemi.html" class="btn btn-primary">AHS Sistemi</a>
+                        </div>
+                    </div>
+                </section>
+            </article>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>AykenOS</h4>
+                    <p>Anayasal İşletim Sistemi</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Anayasal Sistem</h4>
+                    <ul>
+                        <li><a href="anayasal-yonetisim.html">Anayasal Yönetişim</a></li>
+                        <li><a href="kural-sistemi.html">Kural Sistemi</a></li>
+                        <li><a href="allow-sistemi.html">Allow Sistemi</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 AykenOS Projesi. Açık kaynak lisansı altında.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../../assets/js/main.js"></script>
+</body>
+</html>

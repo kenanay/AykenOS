@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayken OS Dokümantasyon</title>
+    <link rel="stylesheet" href="assets/css/documentation.css">
+    <link rel="icon" href="assets/images/ayken-favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="assets/images/favicon.ico" type="image/x-icon">
+    <!-- MathJax for mathematical formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</head>
+<body>
+    <header class="doc-header">
+        <nav class="doc-navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="assets/images/AykenOS Logo.png" alt="AykenOS Logo" class="logo-image">
+                    <div class="logo-text">
+                        <h1>Ayken OS</h1>
+                        <span class="tagline">Dokümantasyon</span>
+                    </div>
+                </div>
+                <div class="nav-actions">
+                    <a href="index.html" class="nav-link">Ana Sayfa</a>
+                    <button id="theme-toggle" class="theme-btn" title="Tema Değiştir">🌙</button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="doc-container">
+        <!-- Mobile Sidebar Toggle -->
+        <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
+        
+        <!-- Sidebar Navigation -->
+        <aside class="doc-sidebar">
+            <div class="sidebar-content">
+                <div class="search-box">
+                    <input type="text" id="doc-search" placeholder="Dokümantasyonda ara...">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <nav class="doc-nav">
+                    <div class="nav-section">
+                        <h3>1. Başlangıç</h3>
+                        <ul>
+                            <li><a href="#1-1" data-section="1.1">1.1 Giriş</a></li>
+                            <li><a href="#1-2" data-section="1.2">1.2 Kurulum</a></li>
+                            <li><a href="#1-3" data-section="1.3">1.3 Hızlı Başlangıç</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3>2. Sistem Mimarisi</h3>
+                        <ul>
+                            <li><a href="#2-1" data-section="2.1">2.1 Genel Bakış</a></li>
+                            <li><a href="#2-2" data-section="2.2">2.2 Çekirdek Mimarisi</a></li>
+                            <li><a href="#2-3" data-section="2.3">2.3 Ring3 Kullanıcı Alanı</a></li>
+                            <li><a href="#2-4" data-section="2.4">2.4 Execution-Centric Paradigma</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3>3. Sistem Çağrıları</h3>
+                        <ul>
+                            <li><a href="#3-1" data-section="3.1">3.1 Syscall Mimarisi</a></li>
+                            <li><a href="#3-2" data-section="3.2">3.2 Temel Syscall'lar (1000-1009)</a></li>
+                            <li><a href="#3-3" data-section="3.3">3.3 BCIB Execution Engine</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3>4. Veri Formatları</h3>
+                        <ul>
+                            <li><a href="#4-1" data-section="4.1">4.1 ABDF Format</a></li>
+                            <li><a href="#4-2" data-section="4.2">4.2 BCIB Format</a></li>
+                            <li><a href="#4-3" data-section="4.3">4.3 Metadata Yapısı</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3>5. Geliştirme Araçları</h3>
+                        <ul>
+                            <li><a href="#5-1" data-section="5.1">5.1 Ayken CLI</a></li>
+                            <li><a href="#5-2" data-section="5.2">5.2 Principle Enforcement</a></li>
+                            <li><a href="#5-3" data-section="5.3">5.3 AHS/AHTS/MARS</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3>6. API Referansı</h3>
+                        <ul>
+                            <li><a href="#6-1" data-section="6.1">6.1 Kernel API</a></li>
+                            <li><a href="#6-2" data-section="6.2">6.2 Ring3 API</a></li>
+                            <li><a href="#6-3" data-section="6.3">6.3 AI Runtime API</a></li>
+                        </ul>
+                    </div>
+                </nav>
+                
+                <div class="glossary-toggle">
+                    <button id="glossary-btn" class="glossary-button">📚 Terimler Sözlüğü</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="doc-main">
+            <div class="doc-content">
+                <!-- Section 1.1 -->
+                <section id="1-1" class="doc-section active">
+                    <div class="section-header">
+                        <h1>1.1 Giriş</h1>
+                        <div class="section-meta">
+                            <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                            <span class="location">📍 Kütahya, Türkiye</span>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <p>AykenOS, geleneksel işletim sistemi paradigmalarından farklı olarak <term data-term="execution-centric">execution-centric</term> (yürütme merkezli) bir mimari benimseyen deneysel işletim sistemidir.</p>
+                        
+                        <div class="info-box">
+                            <h4>🎯 Proje Hedefleri</h4>
+                            <ul>
+                                <li>Determinizm ve denetlenebilirlik</li>
+                                <li><term data-term="ring3-empowerment">Ring3 empowerment</term> ile güvenlik</li>
+                                <li>AI-native tasarım prensipleri</li>
+                                <li>Principle-driven governance modeli</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>Temel Özellikler</h3>
+                        
+                        <p>AykenOS'un temel özelliklerini şu şekilde özetleyebiliriz:</p>
+                        
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <h4>🔧 Minimal Kernel</h4>
+                                <p>Sadece 10 temel <term data-term="syscall">syscall</term> (1000-1009 aralığı)</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>🛡️ Ring3 Empowerment</h4>
+                                <p>Tüm politika kararları kullanıcı modunda</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>🤖 AI-Native</h4>
+                                <p><term data-term="bcib">BCIB</term> execution engine ile veri-odaklı yürütme</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>⚖️ Principle-Driven</h4>
+                                <p>Değiştirilemez sistem ilkeleri ile yönetişim</p>
+                            </div>
+                        </div>
+                        
+                        <div class="quote-box">
+                            <blockquote>
+                                "Geleneksel işletim sistemleri dosya ve süreç odaklıdır. AykenOS ise veri ve yürütme odaklı bir paradigma benimser."
+                            </blockquote>
+                            <cite>— Kenan AY, AykenOS Tasarım Felsefesi</cite>
+                        </div>
+                    </div>
+                    
+                    <div class="section-navigation">
+                        <button class="nav-btn next-btn" data-next="1-2">Sonraki: 1.2 Kurulum →</button>
+                    </div>
+                </section>
+
+                <!-- Section 1.2 -->
+                <section id="1-2" class="doc-section">
+                    <div class="section-header">
+                        <h1>1.2 Kurulum</h1>
+                        <div class="section-meta">
+                            <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                            <span class="location">📍 Kütahya, Türkiye</span>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <p>AykenOS'u derlemek ve çalıştırmak için gerekli araçlar ve adımlar:</p>
+                        
+                        <h3>Sistem Gereksinimleri</h3>
+                        
+                        <div class="requirements-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Bileşen</th>
+                                        <th>Minimum</th>
+                                        <th>Önerilen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>RAM</td>
+                                        <td>512 MB</td>
+                                        <td>2 GB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Disk</td>
+                                        <td>100 MB</td>
+                                        <td>1 GB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>CPU</td>
+                                        <td>x86_64</td>
+                                        <td>x86_64 + virtualization</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <h3>Geliştirme Araçları</h3>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-title">Gerekli Araçlar</span>
+                                <button class="copy-btn" data-copy="tools">📋</button>
+                            </div>
+                            <pre><code id="tools"># C/Assembly Toolchain
+x86_64-elf-gcc      # Cross-compiler
+x86_64-elf-ld       # Linker
+nasm                # Assembler
+
+# UEFI Bootloader
+clang               # LLVM compiler
+
+# Rust (Opsiyonel)
+cargo               # Rust build tool
+rustc               # Rust compiler
+
+# Test ve Emülasyon
+qemu-system-x86_64  # QEMU emülatör</code></pre>
+                        </div>
+                        
+                        <h3>Derleme Adımları</h3>
+                        
+                        <div class="step-list">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Repository'yi klonlayın</h4>
+                                    <div class="code-block">
+                                        <pre><code>git clone https://github.com/kenanay/AykenOS.git
+cd AykenOS</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Kernel ve bootloader derleyin</h4>
+                                    <div class="code-block">
+                                        <pre><code>make clean
+make all        # kernel.elf ve BOOTX64.EFI oluşturur</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>EFI disk imajı oluşturun</h4>
+                                    <div class="code-block">
+                                        <pre><code>make efi-img    # EFI.img oluşturur</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>QEMU ile test edin</h4>
+                                    <div class="code-block">
+                                        <pre><code>make run        # QEMU ile EFI.img çalıştır</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="warning-box">
+                            <h4>⚠️ Önemli Notlar</h4>
+                            <ul>
+                                <li>Cross-compiler araçlarının PATH'te olduğundan emin olun</li>
+                                <li>QEMU virtualization desteği için BIOS/UEFI ayarlarını kontrol edin</li>
+                                <li>USB boot için ayrı scriptler mevcuttur (make_usb_boot.sh)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section-navigation">
+                        <button class="nav-btn prev-btn" data-prev="1-1">← Önceki: 1.1 Giriş</button>
+                        <button class="nav-btn next-btn" data-next="1-3">Sonraki: 1.3 Hızlı Başlangıç →</button>
+                    </div>
+                </section>
+
+                <!-- Section 2.1 -->
+                <section id="2-1" class="doc-section">
+                    <div class="section-header">
+                        <h1>2.1 Sistem Mimarisi - Genel Bakış</h1>
+                        <div class="section-meta">
+                            <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                            <span class="location">📍 Kütahya, Türkiye</span>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <p>AykenOS mimarisi, geleneksel <term data-term="posix">POSIX</term> tabanlı sistemlerden köklü bir şekilde ayrılır ve <term data-term="execution-centric">execution-centric</term> bir paradigma benimser.</p>
+                        
+                        <h3>Mimari Katmanları</h3>
+                        
+                        <div class="architecture-diagram">
+                            <div class="arch-layer kernel-layer">
+                                <h4>Ring0 - Kernel Space</h4>
+                                <div class="layer-content">
+                                    <p>Minimal çekirdek - sadece mekanizma</p>
+                                    <ul>
+                                        <li>10 temel syscall (1000-1009)</li>
+                                        <li>Bellek yönetimi</li>
+                                        <li>Context switching</li>
+                                        <li>Interrupt handling</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-layer user-layer">
+                                <h4>Ring3 - User Space</h4>
+                                <div class="layer-content">
+                                    <p>Tüm politika kararları burada</p>
+                                    <ul>
+                                        <li><term data-term="vfs">VFS</term> implementasyonu</li>
+                                        <li><term data-term="devfs">DevFS</term> implementasyonu</li>
+                                        <li>AI runtime servisleri</li>
+                                        <li>Multi-agent orchestration</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-layer tools-layer">
+                                <h4>Development Tools</h4>
+                                <div class="layer-content">
+                                    <p>Constitutional governance</p>
+                                    <ul>
+                                        <li>Ayken CLI</li>
+                                        <li><term data-term="ahs">AHS</term>/<term data-term="ahts">AHTS</term>/<term data-term="mars">MARS</term></li>
+                                        <li>VS Code integration</li>
+                                        <li>Automated validation</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h3>Syscall Mimarisi</h3>
+                        
+                        <p>Geleneksel işletim sistemleri yüzlerce syscall içerirken, AykenOS sadece 10 temel syscall kullanır:</p>
+                        
+                        <div class="syscall-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Syscall</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1000</td>
+                                        <td><code>sys_v2_map_memory</code></td>
+                                        <td>Bellek haritalama</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1001</td>
+                                        <td><code>sys_v2_unmap_memory</code></td>
+                                        <td>Bellek haritalama kaldırma</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1002</td>
+                                        <td><code>sys_v2_switch_context</code></td>
+                                        <td>Bağlam değiştirme</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1003</td>
+                                        <td><code>sys_v2_submit_execution</code></td>
+                                        <td><term data-term="bcib">BCIB</term> yürütme gönderimi</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1004</td>
+                                        <td><code>sys_v2_wait_result</code></td>
+                                        <td>Yürütme sonucu bekleme</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="formula-box">
+                            <h4>📊 Syscall Karmaşıklığı Formülü</h4>
+                            <p>Geleneksel sistemlerde syscall karmaşıklığı:</p>
+                            <div class="math-formula">
+                                $$C_{traditional} = O(n \times m)$$
+                            </div>
+                            <p>Burada $n$ = syscall sayısı, $m$ = ortalama parametre sayısı</p>
+                            
+                            <p>AykenOS'ta ise:</p>
+                            <div class="math-formula">
+                                $$C_{ayken} = O(10 + k)$$
+                            </div>
+                            <p>Burada $k$ = <term data-term="bcib">BCIB</term> instruction karmaşıklığı</p>
+                        </div>
+                    </div>
+                    
+                    <div class="section-navigation">
+                        <button class="nav-btn next-btn" data-next="2-2">Sonraki: 2.2 Çekirdek Mimarisi →</button>
+                    </div>
+                </section>
+
+                <!-- Section 1.3 -->
+                <section id="1-3" class="doc-section">
+                    <div class="section-header">
+                        <h1>1.3 Hızlı Başlangıç</h1>
+                        <div class="section-meta">
+                            <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                            <span class="location">📍 Kütahya, Türkiye</span>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <p>AykenOS'u hızlıca test etmek ve çalıştırmak için temel adımlar:</p>
+                        
+                        <h3>QEMU ile Test</h3>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-title">Hızlı Test Komutu</span>
+                                <button class="copy-btn" data-copy="quick-test">📋</button>
+                            </div>
+                            <pre><code id="quick-test"># Repository'yi klonla ve derle
+git clone https://github.com/kenanay/AykenOS.git
+cd AykenOS
+make clean && make all && make efi-img
+
+# QEMU ile çalıştır
+make run</code></pre>
+                        </div>
+                        
+                        <h3>İlk Boot Süreci</h3>
+                        
+                        <p>AykenOS boot edildiğinde şu aşamalar gerçekleşir:</p>
+                        
+                        <div class="step-list">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>UEFI Bootloader</h4>
+                                    <p>EFI bootloader çalışır ve kernel'i yükler</p>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Kernel Initialization</h4>
+                                    <p>Bellek yönetimi, GDT/IDT kurulumu</p>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Ring3 Services</h4>
+                                    <p><term data-term="vfs">VFS</term>, <term data-term="devfs">DevFS</term> ve AI runtime başlatılır</p>
+                                </div>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>User Shell</h4>
+                                    <p>Kullanıcı arayüzü ve komut satırı hazır hale gelir</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-box">
+                            <h4>💡 İlk Komutlar</h4>
+                            <p>AykenOS'ta geleneksel <code>ls</code>, <code>cd</code> komutları yerine <term data-term="bcib">BCIB</term> tabanlı veri-odaklı komutlar kullanılır:</p>
+                            <ul>
+                                <li><code>data list</code> - Veri konteynerlerini listele</li>
+                                <li><code>data query users</code> - Kullanıcı verilerini sorgula</li>
+                                <li><code>exec plan.bcib</code> - BCIB planını yürüt</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section-navigation">
+                        <button class="nav-btn prev-btn" data-prev="1-2">← Önceki: 1.2 Kurulum</button>
+                        <button class="nav-btn next-btn" data-next="2-1">Sonraki: 2.1 Sistem Mimarisi →</button>
+                    </div>
+                </section>
+
+                <!-- Section 2.2 -->
+                <section id="2-2" class="doc-section">
+                    <div class="section-header">
+                        <h1>2.2 Çekirdek Mimarisi</h1>
+                        <div class="section-meta">
+                            <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                            <span class="location">📍 Kütahya, Türkiye</span>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <p>AykenOS çekirdeği, minimal ve <term data-term="execution-centric">execution-centric</term> bir tasarım benimser. Geleneksel monolitik kernel'lardan farklı olarak, sadece temel mekanizmaları içerir.</p>
+                        
+                        <h3>Kernel Bileşenleri</h3>
+                        
+                        <div class="architecture-diagram">
+                            <div class="arch-layer kernel-layer">
+                                <h4>Memory Management</h4>
+                                <div class="layer-content">
+                                    <p>Fiziksel ve sanal bellek yönetimi</p>
+                                    <ul>
+                                        <li>Bitmap tabanlı fiziksel bellek allocator</li>
+                                        <li>4-seviyeli paging (PML4)</li>
+                                        <li>Kernel heap (kmalloc/kfree)</li>
+                                        <li>Higher-half kernel mapping</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-layer user-layer">
+                                <h4>Process Management</h4>
+                                <div class="layer-content">
+                                    <p>Süreç ve context yönetimi</p>
+                                    <ul>
+                                        <li>Preemptive multitasking</li>
+                                        <li>Context switching (100 Hz)</li>
+                                        <li>Ready/blocked kuyrukları</li>
+                                        <li>Per-process virtual memory</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-layer tools-layer">
+                                <h4>System Interface</h4>
+                                <div class="layer-content">
+                                    <p>Minimal syscall arayüzü</p>
+                                    <ul>
+                                        <li>10 temel syscall (1000-1009)</li>
+                                        <li>Interrupt handling</li>
+                                        <li>Timer management</li>
+                                        <li>Capability-based security</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h3>Bellek Yönetimi Formülü</h3>
+                        
+                        <div class="formula-box">
+                            <h4>📊 Bellek Allocation Karmaşıklığı</h4>
+                            <p>Bitmap tabanlı fiziksel bellek allocator:</p>
+                            <div class="math-formula">
+                                $$T_{alloc} = O(\log n + k)$$
+                            </div>
+                            <p>Burada $n$ = toplam sayfa sayısı, $k$ = bitmap tarama süresi</p>
+                            
+                            <p>Virtual memory mapping:</p>
+                            <div class="math-formula">
+                                $$T_{map} = O(4) = O(1)$$
+                            </div>
+                            <p>4-seviyeli paging ile sabit zamanlı erişim</p>
+                        </div>
+                        
+                        <h3>Syscall Mimarisi Detayları</h3>
+                        
+                        <div class="syscall-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Syscall</th>
+                                        <th>Parametreler</th>
+                                        <th>Dönüş Değeri</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>sys_v2_map_memory</code></td>
+                                        <td>addr, size, flags</td>
+                                        <td>mapped_addr</td>
+                                        <td>Bellek bölgesi haritalama</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sys_v2_submit_execution</code></td>
+                                        <td>bcib_buffer, size</td>
+                                        <td>execution_id</td>
+                                        <td><term data-term="bcib">BCIB</term> planı gönderimi</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sys_v2_capability_bind</code></td>
+                                        <td>resource, capability</td>
+                                        <td>token</td>
+                                        <td>Kaynak erişim yetkisi</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-title">Syscall Kullanım Örneği</span>
+                                <button class="copy-btn" data-copy="syscall-example">📋</button>
+                            </div>
+                            <pre><code id="syscall-example">// Bellek haritalama
+void* mapped_addr = sys_v2_map_memory(
+    0x10000000,     // Hedef adres
+    4096,           // Boyut (4KB)
+    MAP_READ | MAP_WRITE  // Flags
+);
+
+// BCIB execution
+uint64_t exec_id = sys_v2_submit_execution(
+    bcib_buffer,    // BCIB binary data
+    buffer_size     // Buffer boyutu
+);
+
+// Sonuç bekleme
+execution_result_t result = sys_v2_wait_result(exec_id);</code></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="section-navigation">
+                        <button class="nav-btn prev-btn" data-prev="2-1">← Önceki: 2.1 Genel Bakış</button>
+                        <button class="nav-btn next-btn" data-next="2-3">Sonraki: 2.3 Ring3 Kullanıcı Alanı →</button>
+                    </div>
+                </section>
+
+                <!-- Add more sections as needed -->
+                
+            </div>
+        </main>
+    </div>
+
+    <!-- Glossary Modal -->
+    <div id="glossary-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📚 Terimler Sözlüğü</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="glossary-search">
+                    <input type="text" id="glossary-search" placeholder="Terim ara...">
+                </div>
+                <div class="glossary-list">
+                    <div class="glossary-item" data-term="execution-centric">
+                        <h4>Execution-Centric</h4>
+                        <p>Yürütme merkezli mimari. Geleneksel dosya/süreç odaklı yaklaşım yerine, veri işleme ve yürütme odaklı paradigma.</p>
+                    </div>
+                    <div class="glossary-item" data-term="ring3-empowerment">
+                        <h4>Ring3 Empowerment</h4>
+                        <p>Kullanıcı modu güçlendirmesi. Tüm politika kararlarının Ring3'te (kullanıcı modunda) alınması prensibi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="syscall">
+                        <h4>Syscall</h4>
+                        <p>System Call - Sistem çağrısı. Kullanıcı programlarının kernel servislerine erişim mekanizması.</p>
+                    </div>
+                    <div class="glossary-item" data-term="bcib">
+                        <h4>BCIB</h4>
+                        <p>Binary CLI Instruction Buffer. AykenOS'un veri-odaklı komut yürütme formatı.</p>
+                    </div>
+                    <div class="glossary-item" data-term="abdf">
+                        <h4>ABDF</h4>
+                        <p>Ayken Binary Data Format. AI/ML modelleri için optimize edilmiş binary veri formatı.</p>
+                    </div>
+                    <div class="glossary-item" data-term="vfs">
+                        <h4>VFS</h4>
+                        <p>Virtual File System. AykenOS'ta Ring3'te implementasyonu bulunan sanal dosya sistemi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="devfs">
+                        <h4>DevFS</h4>
+                        <p>Device File System. Cihaz dosyalarının Ring3'te yönetildiği dosya sistemi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="ahs">
+                        <h4>AHS</h4>
+                        <p>Architecture Health Score. Mimari sağlık skoru sistemi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="ahts">
+                        <h4>AHTS</h4>
+                        <p>Architecture Health Trend Score. Mimari sağlık trend skoru sistemi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="mars">
+                        <h4>MARS</h4>
+                        <p>Module-level Architecture Risk Score. Modül seviyesi mimari risk skoru sistemi.</p>
+                    </div>
+                    <div class="glossary-item" data-term="principle-driven">
+                        <h4>Principle-Driven</h4>
+                        <p>İlke temelli sistem tasarımı. Değiştirilemez sistem ilkeleri ve biçimsel garantiler ile yönetilen mimari yaklaşım.</p>
+                    </div>
+                    <div class="glossary-item" data-term="constitutional-system">
+                        <h4>Constitutional System</h4>
+                        <p>Buradaki 'constitutional' ifadesi hukuki bir anlam taşımaz; sistemin değiştirilemez ilkelerini ve biçimsel yürütme güvencelerini ifade eder. Invariant'lar ve formal sistem sözleşmeleri anlamında kullanılır.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/documentation.js"></script>
+</body>
+</html>

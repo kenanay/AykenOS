@@ -7,7 +7,7 @@ Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detayl
 
 **Güncel Durum:** 
 - **Core OS:** Phase 4.4 tamamlandı ✅ (Phase 4.5 hazırlık aşamasında)
-- **Ayken CLI:** Phase 11 (ARRE) tamamlandı ✅, Phase 12 (ARH) tamamlandı ✅ (Phase 13 hazırlık aşamasında)
+- **Ayken CLI:** Phase 11 (ARRE) tamamlandı ✅, Phase 12 (ARH + Governance Closure) tamamlandı ✅
 - **Not:** Phase 11-12 Ayken CLI geliştirme sürecinde oluşturulan paralel görevlerdir, Phase 4.4'ün devamı değildir
 
 ---
@@ -218,7 +218,7 @@ AykenOS geliştirme sürecinde kullanılan constitutional rule enforcement ve ar
 **Durum:** 
 - **MARS (Task 10.1)** ✅ tamamlandı
 - **ARRE (Task 11.1-11.15)** ✅ tamamlandı (Phase 11)
-- **ARH (Task 12.1-12.20)** ✅ tamamlandı (Phase 12)
+- **ARH (Task 12.1-12.16 + Closure 12.C1–12.C5)** ✅ tamamlandı (Phase 12)
 - **Not:** Task 11.x ve 12.x Ayken CLI geliştirme için oluşturulan paralel görevlerdir
 
 ```text
@@ -328,18 +328,19 @@ ayken/
 │
 ├── arh/                           # 🆕 Auto-Refactor Hints (Phase 12 ✅)
 │   ├── mod.rs                     # ARH public API
+│   ├── assisted_fix_engine.rs     # Assisted fix engine (advisory-only)
 │   ├── approval_workflow.rs       # Refactor approval workflow
-│   ├── assisted_fix_engine.rs     # Assisted fix engine
-│   ├── core_structures.rs         # Core ARH data structures
-│   ├── hint_classification.rs     # Refactor hint classification
-│   ├── preview_generator.rs       # Refactor preview generation
-│   ├── risk_assessment.rs         # Refactor risk assessment
-│   ├── safe_autofix_engine.rs     # Safe automatic fix engine
-│   ├── safe_patterns.rs           # Safe refactor patterns
+│   ├── preview_generator.rs       # Refactor preview generation + validation
 │   ├── signature_analysis.rs      # Code signature analysis
-│   ├── transformation_safety.rs   # Transformation safety validation
-│   ├── workspace_edits.rs         # Workspace edit management
-│   └── [test files]               # Comprehensive test suite
+│   ├── design_hint_engine.rs      # Design hint orchestration
+│   ├── architectural_guidance.rs  # Architectural guidance content
+│   ├── implementation_roadmaps.rs # Advisory roadmaps
+│   ├── educational_content.rs     # Educational guidance content
+│   ├── pattern_matcher.rs         # Pattern matching (deterministic)
+│   ├── context_analyzer.rs        # Context analysis and boundary flags
+│   ├── semantic_analysis.rs       # Semantic safety assessment
+│   ├── confidence_calculator.rs   # Confidence scoring + automation lock
+│   └── [pending modules]          # SafeAutofix, orchestration, CLI/VS Code integration
 │
 ├── allow/                         # Allow Directive System
 │   ├── mod.rs                     # Allow system orchestration
@@ -515,24 +516,26 @@ ayken/
 3. **Context Awareness**: Bağlam farkında refactor önerileri
 4. **Performance Impact**: Performans etkisi analizi
 
-### ARH - Auto-Refactor Hints (Phase 12 ✅)
+### ARH - Auto-Refactor Hints + Governance Closure (Phase 12 ✅)
 
 **Amaç:** Güvenli otomatik refactoring yardımcısı ve hint sistemi.
 
-**Özellikler:**
-- **Safe Autofix Engine**: Güvenli otomatik düzeltme motoru
-- **Risk Assessment**: Refactor risk değerlendirmesi
-- **Preview Generation**: Refactor önizleme oluşturma
-- **Approval Workflow**: Onay iş akışı sistemi
-- **Transformation Safety**: Dönüşüm güvenliği doğrulama
-- **Signature Analysis**: Kod imza analizi
-- **Workspace Edits**: Workspace düzenleme yönetimi
+**Özellikler (Tamamlandı):**
+- **Assisted Fix Engine**: Advisory-only preview ve öneriler
+- **Design Hint Engine**: Mimari rehberlik ve karar desteği
+- **Pattern & Context Analysis**: Deterministik pattern matching ve bağlam analizi
+- **Preview Generation**: Before/after preview + validation
+- **Approval Workflow**: Açık karar adımları ve kernel default-deny
+- **Safe Autofix Engine**: Deterministik güvenli dönüşüm pipeline'ı
+- **Orchestration Engine**: Hint üretimi ve önceliklendirme
+- **VS Code / CLI Entegrasyonları**: Advisory-only actions ve workflow
+- **Governance Closure**: CDE health, outcome feedback, ADN, dead-control gate, system status
 
 **Constitutional Principles:**
 1. **Safety First**: Güvenlik öncelikli yaklaşım
 2. **User Control**: Kullanıcı kontrolü ve onayı
 3. **Transparency**: Şeffaf refactor süreci
-4. **Rollback Support**: Geri alma desteği
+4. **Advisory-Only**: Uygulama yok, sadece rehberlik ve preview
 
 ### MARS - Module-level Architecture Risk Score (Task 10.1 ✅)
 
@@ -1136,7 +1139,7 @@ make validate     # Validation testleri çalıştır
   - ✅ Technical debt explosion detection
   - ✅ Pattern library and learning engine
   - ✅ MARS integration for module-level refactors
-- ✅ **ARH (Phase 12)** - Auto-Refactor Hints System
+- ✅ **ARH (Phase 12)** - Auto-Refactor Hints + Governance Closure
   - ✅ Safe autofix engine with risk assessment
   - ✅ Refactor preview generation
   - ✅ Approval workflow system
@@ -1330,7 +1333,7 @@ Phase 4.3'ün başarılı tamamlanmasıyla Phase 4.4 tamamlandı:
 
 ### Ayken CLI (Constitutional Rule System) - Phase 10.x/11.x/12.x Serisi
 **Phase 11 ARRE - Tamamlandı ✅**
-**Phase 12 ARH - Tamamlandı ✅**
+**Phase 12 ARH + Governance Closure - Tamamlandı ✅**
 
 Ayken CLI geliştirme sürecinde oluşturulan paralel görevler:
 
@@ -1341,8 +1344,10 @@ Ayken CLI geliştirme sürecinde oluşturulan paralel görevler:
 - Technical debt explosion detection
 - Pattern library and learning engine
 
-**Phase 12 - ARH (Auto-Refactor Hints System):**
-- Task 12.1-12.20: Safe autofix engine with comprehensive risk assessment
+**Phase 12 - ARH (Auto-Refactor Hints System + Governance Closure):**
+- Task 12.1-12.15: ARH core, orchestration, CLI/VS Code, enforcement, tests (tamamlandı)
+- Task 12.16: AHTS → ARH AssistedFix mapping contract (tamamlandı)
+- Task 12.C1–12.C5: CDE health, outcome feedback, ADN, dead-control, system status (tamamlandı)
 - Refactor preview generation with detailed impact analysis
 - Approval workflow system with multi-level validation
 - Transformation safety validation
