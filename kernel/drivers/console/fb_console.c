@@ -475,6 +475,17 @@ void fb_putc(char c)
 
 void fb_print(const char *s)
 {
+    // Add debug marker for validation tests
+    serial_write_char('[');
+    serial_write_char('M');
+    serial_write_char('A');
+    serial_write_char('R');
+    serial_write_char('K');
+    serial_write_char('E');
+    serial_write_char('R');
+    serial_write_char(']');
+    serial_write_char(' ');
+    
     fb_console_print(s);
 }
 

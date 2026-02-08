@@ -145,15 +145,10 @@ if [[ -n "$ovmf_code" && -n "$ovmf_vars_copy" ]]; then
         -drive "if=pflash,format=raw,file=${ovmf_vars_copy}"
     )
 fi
-if [[ -n "$ovmf_code" && -n "$ovmf_vars_copy" ]]; then
-    qemu_args+=(
-        -drive "format=raw,file=fat:rw:esp"
-    )
-else
-    qemu_args+=(
-        -drive "format=raw,file=EFI.img"
-    )
-fi
+# Always use EFI.img regardless of OVMF presence
+qemu_args+=(
+    -drive "format=raw,file=EFI.img"
+)
 qemu_args+=(
     -display none
     -no-reboot
@@ -190,6 +185,9 @@ while kill -0 "$qemu_pid" 2>/dev/null; do
     if [[ -f "$LOG_DEBUGCON" ]]; then
         if grep -q -F "$EARLY_MARKER" "$LOG_DEBUGCON"; then
             early_seen=true
+        fi
+        if grep -q -F "$MARKER" "$LOG_DEBUGCON"; then
+            late_seen=true
         fi
     fi
 
