@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 /* Boot ABI version expected by current kernel */
-#define AYKEN_BOOT_ABI_VERSION 1u
+#define AYKEN_BOOT_ABI_VERSION 2u
 
 /*
  * Boot flags bitmask (shared between bootloader and kernel)

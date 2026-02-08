@@ -1,4 +1,5 @@
 # AykenOS Faz 2 Overview
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Felsefe: "AI-native, veri konteyner OS". Faz 2 odağı; veri konteyneri + meta-FS, hiyerarşik DSL kabuk ve bunları çalıştıran hafif runtime çekirdeğini ayağa kaldırmak. AI/GL/çoklu mimari bu fazda yalnızca iskelet ve not seviyesinde.
 

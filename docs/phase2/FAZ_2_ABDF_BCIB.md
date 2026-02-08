@@ -1,4 +1,5 @@
 # Faz 2 - ABDF/BCIB v0.2 Plan
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Goals:
 - Stabilize ABDF and BCIB to v0.2, add UI/GPU types, expand opcode set, lock arg/encoding rules.

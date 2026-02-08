@@ -1,4 +1,5 @@
 # Windows/WSL Setup Guide for AykenOS Development
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Author:** Kenan AY  
 **Project:** AykenOS - Advanced AI-Integrated Operating System  

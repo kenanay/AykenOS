@@ -1,4 +1,5 @@
 # Faz 2 - Multi-Arch Plan
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Targets:
 - Primary: x86_64 (host/UEFI), ARM64 (Raspberry Pi or aarch64 host)

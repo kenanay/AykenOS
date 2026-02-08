@@ -1,4 +1,5 @@
 # Faz 2 - Data Modules
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Goal: minimal handlers per ABDF type for executor.
 

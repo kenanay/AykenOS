@@ -1,19 +1,20 @@
 # AykenOS Roadmap - Güncel Durum (2026)
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## 🎯 Vision
 AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabuk; TinyLLM ajanları kullanıcı modunda; Ring0 yalnızca donanım kapısı ve execution mekanizması.
 
 **Ek Vizyon**: Constitutional Rule System ile mimari yönetişim - "İyi mimari → istisnasız mimaridir"
 
-## 📊 Güncel Durum (Ocak 2026)
+## 📊 Güncel Durum (Şubat 2026)
 
 ### ✅ Tamamlanan Bileşenler
 
 #### Core OS Development (Phase 4.4 OPEN → DEFERRED)
-- **Kernel**: UEFI boot, bellek yönetimi, Ring3 geçişi, DevFS, syscalls, preemptive scheduler
-- **Bootloader**: Multi-architecture support (x86_64, ARM64, RISC-V, RPi, MCU)
-- **Userspace**: Ring3 VFS, semantic CLI, AI runtime, BCIB runtime
-- **Status**: Evidence incomplete; closure deferred to Phase 4.5 (see `docs/roadmap/phase-4-4-status.md`)
+- **Kernel**: UEFI boot, paging, entry bring-up, scheduler/DevFS/syscall mekanizmaları mevcut.
+- **Bootloader**: x86_64 UEFI hattı doğrulanmış; diğer mimariler plan/ön çalışma seviyesinde.
+- **Userspace**: Ring3 policy hattı hedefleniyor; Phase 4.4 evidence henüz kapanmadı.
+- **Status**: Evidence incomplete; closure deferred (see `docs/roadmap/phase-4-4-status.md`)
 
 #### Ayken-Core Data Systems (Phase 2 ✅ COMPLETE)
 - **ABDF v0.2**: MetaContainer, SegmentKind, SegmentDescriptor - Production ready
@@ -30,8 +31,8 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 - **Phase 9**: Architecture Health Time-Series (AHTS) analysis
 - **Phase 10**: Module-level Architecture Risk Score (MARS)
 - **Phase 11**: Allow → Refactor Recommendation Engine (ARRE)
-- **Test Coverage**: 350+ tests passing
-- **Status**: Production-ready architectural governance system
+- **Test Coverage**: 350+ tests reported (audit evidence list required)
+- **Status**: Architectural governance system; audit-grade evidence pending where applicable
 
 ### 🚧 Devam Eden Çalışmalar
 
@@ -47,8 +48,8 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 
 #### Core OS Phase 4.5 (PREPARATION)
 - **Target**: Ring0 minimization, advanced syscall interface
-- **Dependencies**: Phase 12 closure complete (satisfied)
-- **Timeline**: Q2 2026
+- **Dependencies**: Phase 4.4 closure evidence PASS (not yet satisfied)
+- **Timeline**: Q2 2026 (conditional)
 
 ## 🗺️ Roadmap Fazları (Güncellenmiş)
 
@@ -76,12 +77,12 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 - ai.ask command implementation
 - BCIB/DSL bridge
 - Security: human-approved policies
-- **Dependencies**: Phase 12 closure complete (satisfied)
+- **Dependencies**: Phase 12 closure complete (satisfied), Phase 4.4 evidence closure
 
 ### Phase 4: Hardware Expansion 🚧 IN PROGRESS
 **Phase 4.4**: OPEN → DEFERRED - Evidence hardening required
-**Phase 4.5**: 🚧 In preparation - Advanced hardware features
-- ARM/RISC-V validation
+**Phase 4.5**: 🚧 In preparation - Advanced hardware features (conditional)
+- ARM/RISC-V validation (planned)
 - Advanced drivers
 - UI scene graph rendering (OpenGL)
 - Live telemetry dashboard
@@ -152,12 +153,12 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 ### Ring0 Minimal Interface ✅
 - **Syscalls**: 10 minimal syscalls (map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit)
 - **Policy**: All policy (scheduler/VFS/DevFS/AI runtime) in userspace
-- **Status**: Ready for Phase 3 AI integration
+- **Status**: Dependent on Phase 4.4 evidence closure
 
 ## 🛡️ Security & Testing Status
 
 ### Constitutional Security ✅ COMPLETE
-- **350+ Tests**: Comprehensive test coverage across all phases
+- **350+ Tests**: Reported coverage across phases (audit evidence list pending)
 - **Immutable Audit Trail**: SHA-256 integrity, constitutional compliance
 - **Progressive Hardening**: CI gates, waiver limits, renewal processes
 - **Phase Matrix**: Foundational authority system
@@ -173,11 +174,11 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 ### Q1 2026 (Current)
 - ✅ Constitutional Rule System (Phases 1-11) - COMPLETE
 - ✅ Phase 12 ARH + Governance Closure - COMPLETE
-- 📋 Core OS Phase 4.5 preparation
+- 📋 Core OS Phase 4.4 evidence closure in progress
 
 ### Q2 2026
-- 🎯 Core OS Phase 4.5 (Ring0 minimization)
-- 🎯 Phase 3 AI integration start
+- 🎯 Core OS Phase 4.5 (Ring0 minimization, conditional on Phase 4.4 closure)
+- 🎯 Phase 3 AI integration start (conditional)
 
 ### Q3 2026
 - 🎯 Phase 3 AI integration completion
@@ -192,11 +193,11 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 ## 🎯 Key Achievements
 
 ### Technical Milestones ✅
-- **Production-Ready OS**: Kernel, bootloader, userspace complete
+- **Boot & Handoff**: UEFI→kernel entry deterministically validated
 - **Data Container System**: ABDF/BCIB v0.2 production ready
 - **Constitutional Governance**: Complete architectural rule system
-- **Multi-Architecture**: x86_64, ARM64, RISC-V, RPi, MCU support
-- **Zero Technical Debt**: 350+ tests passing, constitutional compliance
+- **Multi-Architecture**: x86_64 validated; other architectures planned/partial
+- **Evidence Discipline**: Phase 4.4 held open until PASS artifacts exist
 
 ### Philosophical Achievements ✅
 - **"İstisna = bilinçli karar"**: Exception = conscious decision
@@ -207,7 +208,7 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 ## 📊 Metrics & Quality
 
 ### Code Quality ✅
-- **350+ Tests Passing**: Comprehensive test coverage
+- **350+ Tests**: Reported for constitutional system (audit evidence list pending)
 - **Zero Warnings**: Clean compilation across all components
 - **Constitutional Compliance**: All code follows architectural rules
 - **Performance Benchmarks**: Optimized data container operations

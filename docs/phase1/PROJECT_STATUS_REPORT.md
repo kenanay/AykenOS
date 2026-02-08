@@ -1,8 +1,12 @@
 # AykenOS - Proje Durum ve İlerleme Raporu
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
 **Tarih:** 03 Ocak 2026  
-**Durum:** Faz 1.5 ≈ %95 TAMAMLANDI — Toolchain kurulumu, Ring3 round-trip testleri ve QEMU entegrasyonu başarıyla tamamlandı. Kod temizliği ve dokümantasyon güncellemeleri devam ediyor.
+**Durum:** Faz 1.5 ≈ %95 TAMAMLANDI (tarihsel kayıt)
+
+**Güncelleme Notu (06 Şubat 2026):**  
+Bu rapor Faz 1.5’in tarihsel durum özetidir. Güncel kanıt ve doğrulama seti için `docs/development/PROJECT_STRUCTURE.md` ve `docs/roadmap/phase-4-4-status.md` referans alınmalıdır. Erken IDT exception teslimatı ve Ring3/syscall doğrulaması Phase 4.4 audit kapsamında yeniden üretilmektedir.
 
 ---
 

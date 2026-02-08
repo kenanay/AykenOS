@@ -126,6 +126,9 @@ uint64_t paging_get_phys(uint64_t virt);
 /** Fiziksel adresi kernel sanal alanına çevirir (higher-half mapping). */
 void    *paging_phys_to_virt(uint64_t phys);
 
+/** Bir sanal adresin PTE değerini döndürür (bulunamazsa 0). */
+uint64_t paging_get_pte(uint64_t virt);
+
 // Kernel heap initialization
 void kheap_init(void);
 

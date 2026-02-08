@@ -1,4 +1,5 @@
 # Build System Integration and Documentation - Implementation Summary
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Author:** Kenan AY  
 **Task:** Phase 1 Critical Fixes - Task 5  

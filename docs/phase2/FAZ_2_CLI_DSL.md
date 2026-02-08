@@ -1,4 +1,5 @@
 # Faz 2 - CLI DSL and Parser
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Scope (Faz 2):
 - Hiyerarşik DSL (> / >> / >[ ]) ile veri konteynerlerini (tabular, log/text) yönetmek.

@@ -1,4 +1,5 @@
 # Ayken Sistem Spesifikasyonları v0.1
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Bu doküman, Ayken CLI (Semantic CLI) ve Ayken Semantic Data System (FS) için hazırlanan yeni nesil etkileşim ve veri saklama paradigmalarını içerir.
 

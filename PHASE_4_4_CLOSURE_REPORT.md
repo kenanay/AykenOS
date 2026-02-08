@@ -1,7 +1,7 @@
 # AykenOS Phase 4.4 Closure Audit Report
 
 **Phase:** 4.4 (Performance Management)
-**Date:** January 31, 2026
+**Date:** February 6, 2026
 **Status:** NOT CLOSED (evidence incomplete)
 **Closure Decision:** OPEN → DEFERRED (Phase 4.5 evidence hardening)
 **Auditor:** Codex (independent execution + evidence collation)
@@ -84,5 +84,21 @@ The minimum evidence set required for closure (Ring3 PASS, QEMU PASS, syscall ro
 - QEMU Boot: WARN/INCONCLUSIVE (missing `timeout`)
 - Ring3 Validation: FAIL (timeout, zero detections)
 - Syscall Roundtrip: FAIL (timeout, zero detections, script errors)
+
+## Addendum: Boot/Handoff Evidence (2026-02-06)
+Recent QEMU debugcon logs validate UEFI→kernel handoff stability, but early exception delivery is not yet proven.
+
+**Artifacts:**
+- `reports/phase_4_4_closure_2026-02-06/qemu_debugcon.log`
+- `reports/phase_4_4_closure_2026-02-06/qemu_boot.log`
+- `reports/phase_4_4_closure_2026-02-06/qemu_boot.err`
+
+**Observed:**
+- Kernel entry bytes match updated stub (`call kmain_real` present).
+- `kmain_real` entry confirmed: `...IBK0[K][EARLY_BOOT_OK]`.
+- CS observed as `0x0038` (UEFI selector) during early kernel entry.
+- No `[EX][#BP]` evidence yet → early IDT delivery remains unverified.
+
+**Impact:** This does not change the closure decision. It strengthens boot/handoff evidence but does not satisfy Phase 4.4 closure requirements.
 
 **Final Verdict:** Phase 4.4 closure evidence is insufficient. Do not advance to Phase 4.5 until PASS artifacts are produced.

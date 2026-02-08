@@ -1,4 +1,5 @@
 # 🔥 AykenOS - USB'den Gerçek Donanımda Çalıştırma Kılavuzu
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Tarih:** 14 Aralık 2025  
 **Platform:** x86_64 UEFI  

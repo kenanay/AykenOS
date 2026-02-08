@@ -7,6 +7,15 @@
 #include "../include/ayken.h"
 #include "../include/gdt_idt.h"
 #include "../drivers/console/fb_console.h"
+#include "../arch/x86_64/port_io.h"
+
+_Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
+_Static_assert(offsetof(cpu_context_t, rsp) == 56, "ctx.rsp offset");
+_Static_assert(offsetof(cpu_context_t, rflags) == 64, "ctx.rflags offset");
+_Static_assert(offsetof(cpu_context_t, cr3) == 72, "ctx.cr3 offset");
+_Static_assert(offsetof(cpu_context_t, cs) == 80, "ctx.cs offset");
+_Static_assert(offsetof(cpu_context_t, ss) == 82, "ctx.ss offset");
+_Static_assert(sizeof(cpu_context_t) == 96, "ctx size");
 
 // Use compiler builtin functions for memory operations
 #define memset __builtin_memset
@@ -16,6 +25,103 @@ static proc_t* proc_table[MAX_PROCS];
 static int next_pid = 1;
 
 void init_process_main(void);
+void kernel_first_entry(void);
+
+static void debugcon_write(const char *s)
+{
+    for (; *s; ++s) {
+        outb(0xE9, (uint8_t)*s);
+    }
+}
+
+static void debugcon_write_char(char c)
+{
+    outb(0xE9, (uint8_t)c);
+}
+
+static void debugcon_hex8(uint8_t v)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    outb(0xE9, (uint8_t)hex[(v >> 4) & 0xF]);
+    outb(0xE9, (uint8_t)hex[v & 0xF]);
+}
+
+static void debugcon_hex64(uint64_t v)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(v >> (i * 4)) & 0xF]);
+    }
+}
+
+static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
+{
+    const uint64_t NX_MASK = (1ULL << 63);
+    if (!pml4_phys) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" PML4=0\n");
+        return;
+    }
+
+    uint64_t *pml4 = (uint64_t *)paging_phys_to_virt(pml4_phys);
+    uint16_t pml4_i = (va >> 39) & 0x1FF;
+    uint16_t pdpt_i = (va >> 30) & 0x1FF;
+    uint16_t pd_i   = (va >> 21) & 0x1FF;
+    uint16_t pt_i   = (va >> 12) & 0x1FF;
+
+    uint64_t pml4e = pml4[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PML4E !P\n");
+        return;
+    }
+    uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PDPTE !P\n");
+        return;
+    }
+    uint64_t *pd = (uint64_t *)paging_phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PDE !P\n");
+        return;
+    }
+    uint64_t *pt = (uint64_t *)paging_phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pte = pt[pt_i];
+    debugcon_write("[PTE] ");
+    debugcon_write(tag);
+    debugcon_write(" VA=");
+    debugcon_hex64(va);
+    debugcon_write(" PTE=");
+    debugcon_hex64(pte);
+    debugcon_write(" P=");
+    debugcon_write_char((pte & AYKEN_PTE_PRESENT) ? '1' : '0');
+    debugcon_write(" U=");
+    debugcon_write_char((pte & AYKEN_PTE_USER) ? '1' : '0');
+    debugcon_write(" W=");
+    debugcon_write_char((pte & AYKEN_PTE_WRITABLE) ? '1' : '0');
+    debugcon_write(" NX=");
+    debugcon_write_char((pte & NX_MASK) ? '1' : '0');
+    debugcon_write(" PA=");
+    debugcon_hex64(pte & AYKEN_PTE_ADDR_MASK);
+    debugcon_write("\n");
+}
 
 static int proc_alloc_pid(void)
 {
@@ -120,6 +226,10 @@ static uint64_t load_flat_image(uint64_t pml4_phys, const uint8_t *image, uint64
     if (image && copy)
         memcpy(dst, image, copy);
 
+    debugcon_write("[CODE]=");
+    debugcon_hex8(dst[0]);
+    outb(0xE9, (uint8_t)'\n');
+
     paging_map_page_in_pml4(pml4_phys, USER_TEXT_BASE, phys,
                             AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
     return USER_TEXT_BASE;
@@ -203,7 +313,7 @@ proc_t *proc_create_kernel_thread(void (*func)(void))
     p->stack_top = stack + 4096;
 
     p->context.rip = (uint64_t)func;
-    p->context.rsp = p->stack_top;
+    p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
     p->context.cr3 = paging_get_kernel_pml4_phys();
 
     sched_add(p);
@@ -218,8 +328,8 @@ static proc_t *proc_create_init_process(void)
     uint64_t stack = (uint64_t)kmalloc(4096);
     p->stack_top = stack + 4096;
 
-    p->context.rip = (uint64_t)init_process_main;
-    p->context.rsp = p->stack_top;
+    p->context.rip = (uint64_t)kernel_first_entry;
+    p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
     p->context.cr3 = paging_get_kernel_pml4_phys();
 
     sched_add(p);
@@ -231,48 +341,83 @@ proc_t *proc_create_user_process(const char *name,
                                  uint64_t image_size,
                                  proc_image_format_t fmt)
 {
+    outb(0xE9, (uint8_t)'U');
     proc_t *p = proc_alloc(PROC_TYPE_USER, name);
-    if (!p)
+    if (!p) {
+        outb(0xE9, (uint8_t)'1');
         return NULL;
+    }
 
     uint64_t user_pml4 = paging_create_user_pml4();
-    if (!user_pml4)
+    if (!user_pml4) {
+        outb(0xE9, (uint8_t)'2');
         return NULL;
+    }
 
     p->pml4_phys = user_pml4;
     p->context.cr3 = user_pml4;
+    debug_dump_pte(user_pml4, (uint64_t)kernel_first_entry, "ktext");
 
     uint64_t entry = load_user_image(fmt, user_pml4, image, image_size);
-    if (!entry)
+    if (!entry) {
+        outb(0xE9, (uint8_t)'3');
         return NULL;
+    }
+    debug_dump_pte(user_pml4, USER_TEXT_BASE, "code");
 
     // User stack: 2 pages in user space
     for (int i = 0; i < 2; ++i) {
         uint64_t phys = phys_alloc_frame();
-        if (!phys)
+        if (!phys) {
+            outb(0xE9, (uint8_t)'4');
             return NULL;
+        }
         uint64_t virt = USER_STACK_TOP - (i + 1) * AYKEN_FRAME_SIZE;
         uint8_t *dst = (uint8_t *)paging_phys_to_virt(phys);
         memset(dst, 0, AYKEN_FRAME_SIZE);
         paging_map_page_in_pml4(user_pml4, virt, phys,
                                 AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
     }
+    debugcon_write("\nUSER_TEXT_BASE\n");
+    debugcon_write("User stack TOP\n");
+    debug_dump_pte(user_pml4, USER_STACK_TOP - AYKEN_FRAME_SIZE, "stack0");
+    debug_dump_pte(user_pml4, USER_STACK_TOP - 2 * AYKEN_FRAME_SIZE, "stack1");
 
     p->stack_top = USER_STACK_TOP;
     p->context.rip = entry;
-    p->context.rsp = p->stack_top;
+    p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
     
     // Allocate kernel stack for Ring0 during Ring3→Ring0 transitions (interrupts/syscalls)
     uint64_t kernel_stack = (uint64_t)kmalloc(4096);
     p->context.rsp0 = kernel_stack + 4096;  // Top of kernel stack
 
+    // Ensure kernel stack is mapped in user CR3 (supervisor-only) for safe iretq.
+    uint64_t kstack_base = kernel_stack & ~(AYKEN_FRAME_SIZE - 1);
+    uint64_t kstack_end = (kernel_stack + 4096 - 1) & ~(AYKEN_FRAME_SIZE - 1);
+    for (uint64_t va = kstack_base; va <= kstack_end; va += AYKEN_FRAME_SIZE) {
+        uint64_t phys = paging_get_phys(va);
+        if (!phys) {
+            fb_print("[proc] ERROR: kernel stack phys lookup failed.\n");
+            return NULL;
+        }
+        paging_map_page_in_pml4(user_pml4, va, phys, AYKEN_PTE_WRITABLE);
+    }
+
+    fb_print("[DBG] USER cr3=");
+    fb_print_hex(p->context.cr3);
+    fb_print(" (pml4_phys=");
+    fb_print_hex(p->pml4_phys);
+    fb_print(")\n");
+
     sched_add(p);
+    outb(0xE9, (uint8_t)'E');
     return p;
 }
 
 // PID 1: init process
 void init_process_main(void)
 {
+    outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
     
     // Phase 1.5: Launch Ring3 test for validation
@@ -281,6 +426,7 @@ void init_process_main(void)
     // AI service removed in Phase 2.5 - Step C completion
     // All AI functionality moved to Ring3 userspace
     
+    outb(0xE9, (uint8_t)'Y');
     for(;;) {
         sched_yield();
     }
@@ -375,8 +521,12 @@ static const uint8_t ring3_v2_syscall_test_code[] = {
     0x48, 0xC7, 0xC6, 0x20, 0x51, 0x40, 0x00,  // mov rsi, 0x405120
     0xCD, 0x80,                                  // int 0x80 (syscall) - 3rd
     
-    // Test 7: Infinite loop to keep process alive for observation
-    0xEB, 0xFE                                   // jmp $ (infinite loop)
+    // Test 7: Exit syscall to finish test deterministically
+    // sys_v2_exit(0)
+    0x48, 0xC7, 0xC0, 0xF1, 0x03, 0x00, 0x00,  // mov rax, 1009 (SYS_V2_EXIT)
+    0x48, 0xC7, 0xC7, 0x00, 0x00, 0x00, 0x00,  // mov rdi, 0 (exit code)
+    0xCD, 0x80,                                  // int 0x80 (syscall)
+    0xEB, 0xFE                                   // jmp $ (shouldn't return)
 };
 
 // Test data for the v2 syscall test (capability token structure)
@@ -403,11 +553,13 @@ static const uint8_t ring3_v2_test_data[] = {
  */
 proc_t *proc_create_ring3_syscall_test(const char *name)
 {
+    outb(0xE9, (uint8_t)'C');
     fb_print("[syscall_test] Creating Ring3 execution-centric syscall test: ");
     fb_print(name);
     fb_print("\n");
     
     // Create user process with flat image format
+    outb(0xE9, (uint8_t)'c');
     proc_t *test_proc = proc_create_user_process(name, 
                                                 ring3_v2_syscall_test_code,
                                                 sizeof(ring3_v2_syscall_test_code),
@@ -417,6 +569,7 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
         fb_print("[syscall_test] ERROR: Failed to create Ring3 v2 syscall test process\n");
         return NULL;
     }
+    outb(0xE9, (uint8_t)'P');
     
     // Embed test data in user memory at 0x405000
     // This maps to the second page of user memory (after code at 0x400000)
@@ -431,31 +584,13 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
     uint8_t *data_dst = (uint8_t *)paging_phys_to_virt(data_phys);
     memset(data_dst, 0, AYKEN_FRAME_SIZE);
     memcpy(data_dst, ring3_v2_test_data, sizeof(ring3_v2_test_data));
+    // Capability token is expected at 0x405108 (offset 0x108 from 0x405000)
+    memcpy(data_dst + 0x108, ring3_v2_test_data, sizeof(ring3_v2_test_data));
     
     // Map data memory into user address space with read/write permissions
     paging_map_page_in_pml4(test_proc->pml4_phys, data_virt_addr, data_phys,
                             AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
-    
-    // Allocate additional page for syscall results and capability tokens
-    // Memory layout at 0x405100:
-    // - 0x405100: time query result buffer (8 bytes)
-    // - 0x405108: capability token structure (16 bytes)
-    // - 0x405110-0x405128: additional time query results (3 x 8 bytes)
-    uint64_t storage_virt_addr = 0x405100;
-    uint64_t storage_phys = phys_alloc_frame();
-    if (!storage_phys) {
-        fb_print("[syscall_test] ERROR: Failed to allocate storage memory\n");
-        return NULL;
-    }
-    
-    uint8_t *storage_dst = (uint8_t *)paging_phys_to_virt(storage_phys);
-    memset(storage_dst, 0, AYKEN_FRAME_SIZE);
-    
-    // Initialize capability token structure at offset 0x08
-    memcpy(storage_dst + 0x08, ring3_v2_test_data, sizeof(ring3_v2_test_data));
-    
-    paging_map_page_in_pml4(test_proc->pml4_phys, storage_virt_addr, storage_phys,
-                            AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
+    debug_dump_pte(test_proc->pml4_phys, data_virt_addr, "data");
     
     fb_print("[syscall_test] Ring3 v2 syscall test process created successfully\n");
     fb_print("[syscall_test] - PID: ");
@@ -477,9 +612,22 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
     fb_print_hex(data_virt_addr);
     fb_print("\n");
     fb_print("[syscall_test] - Storage page: 0x");
-    fb_print_hex(storage_virt_addr);
+    fb_print_hex((uint64_t)0x405100);
+    fb_print("\n");
+
+    fb_print("[DBG] USER ctx: cs=");
+    fb_print_hex(test_proc->context.cs);
+    fb_print(" ss=");
+    fb_print_hex(test_proc->context.ss);
+    fb_print(" rip=");
+    fb_print_hex(test_proc->context.rip);
+    fb_print(" rsp=");
+    fb_print_hex(test_proc->context.rsp);
+    fb_print(" rsp0=");
+    fb_print_hex(test_proc->context.rsp0);
     fb_print("\n");
     
+    outb(0xE9, (uint8_t)'D');
     return test_proc;
 }
 
@@ -495,11 +643,13 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
  */
 void proc_launch_ring3_test(void)
 {
+    outb(0xE9, (uint8_t)'L');
     fb_print("[syscall_test] =============================================\n");
     fb_print("[syscall_test] Starting Phase 2.5 Execution-Centric Syscall Test\n");
     fb_print("[syscall_test] =============================================\n");
     
     proc_t *test_proc = proc_create_ring3_syscall_test("v2-syscall-test");
+    outb(0xE9, (uint8_t)'T');
     
     if (test_proc) {
         fb_print("[syscall_test] Execution-centric syscall test scheduled successfully\n");

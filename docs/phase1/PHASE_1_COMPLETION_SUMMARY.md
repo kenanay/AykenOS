@@ -1,4 +1,5 @@
 # AykenOS Faz 1 - Özet ve Durum
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
 **Tarih:** 01 Ocak 2026  

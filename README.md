@@ -1,4 +1,5 @@
 # AykenOS
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Copyright (c) 2026 Kenan AY. All rights reserved.**
 
@@ -8,9 +9,10 @@
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 31.01.2026
+**Son Güncelleme:** 06.02.2026
 
-**Proje Durumu:** Core OS Phase 4.4 OPEN → DEFERRED (audit) | Constitutional Rule System Phase 11-12 tamamlandı ✅
+**Proje Durumu:** Core OS Phase 4.4 OPEN → DEFERRED (audit) | Constitutional Rule System Phase 11-12 tamamlandı ✅  
+**Boot/Kernal Bring-up:** UEFI→kernel handoff doğrulandı; erken IDT exception teslimatı doğrulanma aşamasında (bkz. `docs/development/PROJECT_STRUCTURE.md`).
 
 ---
 

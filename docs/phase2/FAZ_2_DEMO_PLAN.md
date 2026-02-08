@@ -1,4 +1,5 @@
 # Faz 2 - CLI Demo Plan (No AI)
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Boot/data setup:
 - RAM içi konteynerler: `data.users` (3-4 kayıt), `syslog` (5-6 kayıt).

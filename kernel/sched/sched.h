@@ -29,6 +29,12 @@ void sched_add(proc_t *proc);
 
 // Ring0 mechanism: Yield CPU to next process (calls Ring3 policy)
 void sched_yield(void);
+// Ring0 mechanism: Yield from IRQ context (no IF re-enable)
+void sched_yield_irq(void);
+
+// Ring0 mechanism: Deferred preemption request/ack (IRQ-safe)
+void sched_request_resched(void);
+uint32_t sched_take_resched(void);
 
 // Ring0 mechanism: Start scheduler with first process (calls Ring3 policy)
 void sched_start(void);

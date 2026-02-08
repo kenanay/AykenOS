@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "gdt_idt.h"
+#include "interrupts.h"
 
 // GDT Entry Structure (for 64-bit)
 struct gdt_entry {
@@ -29,25 +30,14 @@ struct gdt_ptr {
     uint64_t base;
 } __attribute__((packed));
 
-// IDT Entry Structure
-struct idt_entry {
-    uint16_t offset_low;
-    uint16_t selector;
-    uint8_t ist;
-    uint8_t type_attr;
-    uint16_t offset_mid;
-    uint32_t offset_high;
-    uint32_t zero;
-} __attribute__((packed));
-
 // IDT Pointer Structure
 struct idt_ptr {
     uint16_t limit;
     uint64_t base;
 } __attribute__((packed));
 
-// Global GDT (6 entries: null, kernel code, kernel data, user data, user code, tss)
-static struct gdt_entry gdt[6] __attribute__((section(".data"))) = {
+// Global GDT (7 entries: null, kernel code, kernel data, user data, user code, tss low, tss high)
+static struct gdt_entry gdt[7] __attribute__((section(".data"))) = {
     // Entry 0: Null descriptor (required)
     {
         .limit_low = 0,
@@ -93,7 +83,7 @@ static struct gdt_entry gdt[6] __attribute__((section(".data"))) = {
         .granularity = 0xA0,   // G=1, L=1 (64-bit)
         .base_high = 0,
     },
-    // Entry 5: TSS Descriptor (two entries used, filled in gdt_init)
+    // Entry 5: TSS Descriptor (low 8 bytes; high 8 bytes is entry 6, filled in gdt_init)
     {
         .limit_low = 0,
         .base_low = 0,
@@ -182,13 +172,13 @@ void gdt_init(void)
     tss_desc->base_ext = (tss_base >> 32) & 0xFFFFFFFF;
     tss_desc->reserved = 0;
     
-    // Load GDT (limit = 8 * 6 - 1 = 47, but we have 2 entries for TSS, so 8 * 7 - 1 = 55)
+    // Load GDT (7 entries total; TSS uses entries 5 and 6)
     struct gdt_ptr gdt_descriptor = {
-        .limit = sizeof(gdt) + 8 - 1,  // TSS takes extra 8 bytes
+        .limit = sizeof(gdt) - 1,
         .base = (uint64_t)&gdt[0],
     };
     
-    lgdt(&gdt_descriptor, gdt_descriptor.limit);
+    lgdt((void *)&gdt[0], gdt_descriptor.limit);
     
     // Load TSS (selector 5 << 3 = 0x28)
     ltr(GDT_TSS_SEL);

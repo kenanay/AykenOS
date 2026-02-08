@@ -1,4 +1,5 @@
 # AykenOS Syscall Migration Guide
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 ## Phase 2.1 - Transition from POSIX-like to Execution-Centric Syscalls
 
 **Author:** Kenan AY  

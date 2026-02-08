@@ -35,6 +35,14 @@ typedef struct {
     uint64_t kernel_phys_end;     // Kernel ELF bitiş fiziksel adres
 
     // ---------------------------------------------------------
+    // 2.1) KERNEL VIRT/PHYS MAP (higher-half eşleme için)
+    // ---------------------------------------------------------
+    uint64_t kernel_virt_base;    // Kernel sanal taban adresi (PH0_VADDR)
+    uint64_t kernel_phys_base;    // Kernel yüklenen fiziksel taban (actual)
+    uint64_t kernel_map_size;     // Map edilecek boyut (align_up memsz)
+    uint64_t kernel_entry;        // Kernel entry (virt)
+
+    // ---------------------------------------------------------
     // 3) PML4 ROOT (paging_init için)
     // Bootloader paging hazırlıyorsa burayı doldurur.
     // (Şimdilik 0 bırakılabilir)
@@ -58,6 +66,6 @@ typedef struct {
 } ayken_boot_info_t;
 
 /* Derleme zamanı doğrulaması: beklenen struct boyutu/hizalaması */
-_Static_assert(sizeof(ayken_boot_info_t) == 104, "ayken_boot_info_t must be 104 bytes");
+_Static_assert(sizeof(ayken_boot_info_t) == 136, "ayken_boot_info_t must be 136 bytes");
 
 #endif // AYKEN_BOOT_INFO_H

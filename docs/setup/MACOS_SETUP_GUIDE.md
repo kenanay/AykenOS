@@ -1,4 +1,5 @@
 # AykenOS macOS Development Setup Guide
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Author:** Kenan AY  
 **Platform:** macOS (Intel & Apple Silicon)  

@@ -13,6 +13,7 @@
 #include "../include/ayken.h"
 #include "../include/mm.h"
 #include "../drivers/console/fb_console.h"
+#include "../arch/x86_64/port_io.h"
 
 // ---------------------------------------------------------------------------
 // Heap adres aralığı
@@ -23,8 +24,8 @@
 //
 // Burada heap'i kernel sanal adres alanında biraz yukarıdan başlatıyoruz.
 
-#define KHEAP_START        (KERNEL_VIRT_BASE + 0x01000000ULL)   // +16MB offset
-#define KHEAP_INITIAL_SIZE (16ULL * 1024ULL * 1024ULL)          // 16 MiB heap
+#define KHEAP_START        (0x0000000002000000ULL)   // +16MB offset
+#define KHEAP_INITIAL_SIZE (4ULL * 1024ULL * 1024ULL)          // 16 MiB heap
 
 // Alignment (8 veya 16 byte yeterli)
 #define KHEAP_ALIGN        16ULL
@@ -32,6 +33,11 @@
 static inline uint64_t align_up(uint64_t x, uint64_t a)
 {
     return (x + a - 1) & ~(a - 1);
+}
+
+static inline void kheap_dbg(char c)
+{
+    outb(0xE9, (uint8_t)c);
 }
 
 // ---------------------------------------------------------------------------
@@ -63,6 +69,7 @@ static kheap_block_t *kheap_head = NULL;
 
 void kheap_init(void)
 {
+    kheap_dbg('h');
     fb_print("[kheap] Initializing kernel heap...\n");
 
     // 1) Heap aralığını sayfalara böl
@@ -73,8 +80,11 @@ void kheap_init(void)
     uint64_t cur_virt = KHEAP_START;
 
     for (uint64_t i = 0; i < heap_pages; ++i) {
+        if (i == 0)
+            kheap_dbg('1');
         uint64_t phys = phys_alloc_frame();
         if (!phys) {
+            kheap_dbg('!');
             fb_print("[kheap] ERROR: phys_alloc_frame failed while setting up heap.\n");
             return;
         }
@@ -86,12 +96,26 @@ void kheap_init(void)
         cur_virt += AYKEN_FRAME_SIZE;
     }
 
+    kheap_dbg('m');
+    if (paging_get_phys(KHEAP_START) == 0) { kheap_dbg('X');
+        for (;;) __asm__ volatile("hlt"); }
+    paging_load_cr3(paging_get_kernel_pml4_phys());
+    kheap_dbg('M');
+    kheap_dbg('a');
+    volatile uint64_t *p = (volatile uint64_t *)KHEAP_START;
+    volatile uint64_t tmp = *p;
+    (void)tmp;
+    kheap_dbg('A');
+    kheap_dbg('b');
+    *p = 0x1122334455667788ULL;
+    kheap_dbg('B');
     // 2) Tek büyük boş blok oluştur
     kheap_head = (kheap_block_t *)KHEAP_START;
     kheap_head->size = (heap_pages * AYKEN_FRAME_SIZE) - sizeof(kheap_block_t);
     kheap_head->free = 1;
     kheap_head->next = NULL;
 
+    kheap_dbg('H');
     fb_print("[kheap] Heap initialized at ");
     fb_print_hex64((uint64_t)KHEAP_START);
     fb_print(" size=");

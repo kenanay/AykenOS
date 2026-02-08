@@ -1,4 +1,5 @@
 # 🚀 AykenOS - USB'den Hızlı Başlangıç
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Son Güncelleme:** 14 Aralık 2025
 

@@ -1,4 +1,5 @@
 # Faz 2 - UI Scene and Render Prototype
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Scene schema (ABDF):
 - UiScene: name/id, width/height, bg_color, root_widget_ref

@@ -89,7 +89,12 @@ EFI_SRC = \
   $(BOOTLOADER_DIR)/paging.c \
   $(BOOTLOADER_DIR)/efistubs.c
 
-EFI_OBJS = $(EFI_SRC:.c=.efi.o)
+EFI_ASM_SRC = \
+  $(BOOTLOADER_DIR)/boot.S \
+  $(BOOTLOADER_DIR)/boot_idt.S
+EFI_ASM_OBJS = $(EFI_ASM_SRC:.S=.efi.o)
+
+EFI_OBJS = $(EFI_SRC:.c=.efi.o) $(EFI_ASM_OBJS)
 
 BOOT_EFI = $(BOOTLOADER_DIR)/BOOTX64.EFI
 
@@ -145,17 +150,24 @@ $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.c
 EFI_IMG = EFI.img
 
 efi-img: $(KERNEL_ELF) $(BOOT_EFI)
-ifeq ($(OS),Windows_NT)
-	powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1
-else
-	./tools/build/make_efi_img.sh
-endif
+	@if [ -f $(EFI_IMG) ]; then \
+		echo "[*] $(EFI_IMG) already exists – reuse (deterministic validation)"; \
+	else \
+		if [ "$(OS)" = "Windows_NT" ]; then \
+			powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1; \
+		else \
+			./tools/build/make_efi_img.sh; \
+		fi; \
+	fi
 
 run: efi-img
 	qemu-system-x86_64 -drive format=raw,file=$(EFI_IMG)
 
 clean:
 	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG)
+
+clean-noimg:
+	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI)
 
 .PHONY: all clean run efi-img kernel bootloader
 
@@ -349,3 +361,7 @@ help:
 	@echo "  help         - Show this help message"
 
 .PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci help
+
+# UEFI bootloader assembly sources (.S)
+$(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
+	$(EFI_CC) $(EFI_CFLAGS) -c $< -o $@

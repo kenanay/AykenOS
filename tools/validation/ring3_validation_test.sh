@@ -3,7 +3,7 @@
 # Author: Kenan AY
 # Purpose: Specialized testing for Ring3 context switching and user process execution
 
-set -e
+set -euo pipefail
 
 # Configuration
 TIMEOUT=60
@@ -28,6 +28,7 @@ RING3_INIT_PATTERNS=(
 )
 
 RING3_PROCESS_PATTERNS=(
+    "\\[U\\]\\[RING3_OK\\]"
     "user.*process.*created"
     "ai-service.*Ring3"
     "user AI service scheduled"
@@ -36,6 +37,7 @@ RING3_PROCESS_PATTERNS=(
 )
 
 RING3_SYSCALL_PATTERNS=(
+    "\\[U\\]\\[SYSCALL_OK\\]"
     "syscall.*installing.*INT.*0x80"
     "SYS_write"
     "syscall.*handler"
@@ -83,10 +85,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+timestamp() {
+    date '+%H:%M:%S.%3N' 2>/dev/null || date '+%H:%M:%S'
+}
+
 write_log() {
     local message="$1"
     local level="${2:-INFO}"
-    local timestamp=$(date '+%H:%M:%S.%3N')
+    local timestamp
+    timestamp="$(timestamp)"
     
     case "$level" in
         "SUCCESS") echo -e "[$timestamp] [$level] ${GREEN}$message${NC}" ;;
@@ -102,8 +109,8 @@ check_ring3_prerequisites() {
     write_log "Checking Ring3 test prerequisites..." "INFO"
     
     # Check for GDT constants in source
-    if ! grep -r "0x23\|0x1b" kernel/arch/x86_64/ >/dev/null 2>&1; then
-        write_log "Ring3 GDT selectors not found in source code" "ERROR"
+    if ! grep -R --line-number -E 'GDT_USER_CODE.*0x23|GDT_USER_DATA.*0x1b' kernel/ >/dev/null 2>&1; then
+        write_log "Ring3 GDT selector constants not found (GDT_USER_CODE/DATA)" "ERROR"
         return 1
     fi
     
@@ -135,9 +142,50 @@ run_ring3_validation() {
     rm -f "$output_log" "$error_log" "$analysis_log"
     
     # QEMU arguments optimized for Ring3 testing
-    local qemu_args=(
+    local serial_arg="stdio"
+    if [[ -n "${RING3_SERIAL_LOG:-}" ]]; then
+        serial_arg="file:${RING3_SERIAL_LOG}"
+    fi
+    local debugcon_args=()
+    if [[ -n "${RING3_DEBUGCON_LOG:-}" ]]; then
+        debugcon_args=(
+            "-chardev" "file,id=dbgcon,path=${RING3_DEBUGCON_LOG}"
+            "-device" "isa-debugcon,iobase=0xe9,chardev=dbgcon"
+        )
+    fi
+
+
+    # Optional UEFI firmware (OVMF) for deterministic boot
+    local ovmf_args=()
+    local ovmf_code=""
+    local ovmf_vars=""
+    local ovmf_vars_copy=""
+    if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
+        ovmf_code="OVMF_CODE.fd"
+        ovmf_vars="OVMF_VARS.fd"
+    elif [[ -f "firmware/ovmf/OVMF_CODE.fd" && -f "firmware/ovmf/OVMF_VARS.fd" ]]; then
+        ovmf_code="firmware/ovmf/OVMF_CODE.fd"
+        ovmf_vars="firmware/ovmf/OVMF_VARS.fd"
+    elif [[ -f "/opt/homebrew/share/qemu/edk2-x86_64-code.fd" && -f "/opt/homebrew/share/qemu/edk2-x86_64-vars.fd" ]]; then
+        ovmf_code="/opt/homebrew/share/qemu/edk2-x86_64-code.fd"
+        ovmf_vars="/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    fi
+    if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
+        ovmf_vars_copy="ring3_ovmf_vars.fd"
+        cp -f "$ovmf_vars" "$ovmf_vars_copy"
+        ovmf_args=(
+            "-machine" "q35"
+            "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
+            "-drive" "if=pflash,format=raw,file=${ovmf_vars_copy}"
+        )
+    fi
+    local qemu_args=()
+    if (( ${#ovmf_args[@]} > 0 )); then
+        qemu_args+=("${ovmf_args[@]}")
+    fi
+    qemu_args+=(
         "-drive" "format=raw,file=EFI.img"
-        "-serial" "stdio"
+        "-serial" "$serial_arg"
         "-m" "512M"  # More memory for user processes
         "-no-reboot"
         "-no-shutdown"
@@ -145,6 +193,9 @@ run_ring3_validation() {
         "-d" "int,cpu_reset"  # Debug interrupts and CPU resets
         "-D" "qemu_debug.log"  # QEMU debug log
     )
+    if (( ${#debugcon_args[@]} > 0 )); then
+        qemu_args+=("${debugcon_args[@]}")
+    fi
     
     write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "DEBUG"
     
@@ -157,12 +208,15 @@ run_ring3_validation() {
     # Monitor execution with Ring3-specific analysis
     local start_time=$(date +%s)
     local last_output_size=0
-    local ring3_stages=()
+    local last_debugcon_size=0
+    local -a ring3_stages=()
     local init_detected=0
+    local marker_process_detected=0
+    local marker_syscall_detected=0
     local process_detected=0
     local syscall_detected=0
     local memory_detected=0
-    local error_detected=false
+    local error_detected=0
     
     write_log "Monitoring Ring3 execution phases..." "INFO"
     
@@ -173,69 +227,100 @@ run_ring3_validation() {
             break
         fi
         
-        # Analyze output
-        if [[ -f "$output_log" ]]; then
-            local current_size=$(wc -c < "$output_log" 2>/dev/null || echo 0)
+        # Analyze output (serial + debugcon)
+        local stream_log="$output_log"
+        if [[ -n "${RING3_SERIAL_LOG:-}" ]]; then
+            stream_log="${RING3_SERIAL_LOG}"
+        fi
+        local debugcon_log=""
+        if [[ -n "${RING3_DEBUGCON_LOG:-}" ]]; then
+            debugcon_log="${RING3_DEBUGCON_LOG}"
+        fi
+        local new_content=""
+        local have_new=false
+
+        if [[ -f "$stream_log" ]]; then
+            local current_size=$(wc -c < "$stream_log" 2>/dev/null || echo 0)
             if (( current_size > last_output_size )); then
-                local new_content=$(tail -c +$((last_output_size + 1)) "$output_log" 2>/dev/null || echo "")
+                new_content+=$(tail -c +$((last_output_size + 1)) "$stream_log" 2>/dev/null || echo "")
                 last_output_size=$current_size
-                
-                # Check Ring3 initialization patterns
-                for pattern in "${RING3_INIT_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Ring3 Init: $match" "SUCCESS"
-                        ring3_stages+=("INIT: $match")
-                        ((init_detected++))
-                    fi
-                done
-                
-                # Check Ring3 process patterns
-                for pattern in "${RING3_PROCESS_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Ring3 Process: $match" "SUCCESS"
-                        ring3_stages+=("PROCESS: $match")
-                        ((process_detected++))
-                    fi
-                done
-                
-                # Check Ring3 syscall patterns
-                for pattern in "${RING3_SYSCALL_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Ring3 Syscall: $match" "SUCCESS"
-                        ring3_stages+=("SYSCALL: $match")
-                        ((syscall_detected++))
-                    fi
-                done
-                
-                # Check Ring3 memory patterns
-                for pattern in "${RING3_MEMORY_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Ring3 Memory: $match" "SUCCESS"
-                        ring3_stages+=("MEMORY: $match")
-                        ((memory_detected++))
-                    fi
-                done
-                
-                # Check for errors
-                if echo "$new_content" | grep -qE "PANIC|ERROR|FATAL|Triple fault|General Protection Fault"; then
-                    local match=$(echo "$new_content" | grep -oE "PANIC|ERROR|FATAL|Triple fault|General Protection Fault" | head -n1)
-                    write_log "Ring3 Error detected: $match" "ERROR"
-                    error_detected=true
-                    break
+                have_new=true
+            fi
+        fi
+        if [[ -n "$debugcon_log" && -f "$debugcon_log" ]]; then
+            local current_dbg_size=$(wc -c < "$debugcon_log" 2>/dev/null || echo 0)
+            if (( current_dbg_size > last_debugcon_size )); then
+                if [[ "$have_new" == "true" ]]; then
+                    new_content+=$'\n'
                 fi
-                
-                # Verbose output
-                if [[ "$VERBOSE" == "true" ]]; then
-                    echo "$new_content" | while IFS= read -r line; do
-                        if [[ -n "${line// }" ]]; then
-                            echo -e "  ${GRAY}QEMU: $line${NC}"
-                        fi
-                    done
+                new_content+=$(tail -c +$((last_debugcon_size + 1)) "$debugcon_log" 2>/dev/null || echo "")
+                last_debugcon_size=$current_dbg_size
+                have_new=true
+            fi
+        fi
+
+        if [[ "$have_new" == "true" ]]; then
+            # Check Ring3 initialization patterns
+            for pattern in "${RING3_INIT_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    match="$(echo "$new_content" | grep -m1 -E "$pattern" || true)"
+                    write_log "Ring3 Init: $match" "SUCCESS"
+                    ring3_stages+=("INIT: $match")
+                    ((init_detected++))
                 fi
+            done
+
+            # Check Ring3 process patterns
+            for pattern in "${RING3_PROCESS_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    match="$(echo "$new_content" | grep -m1 -E "$pattern" || true)"
+                    write_log "Ring3 Process: $match" "SUCCESS"
+                    ring3_stages+=("PROCESS: $match")
+                    ((process_detected++))
+                    if [[ "$pattern" == "\\[U\\]\\[RING3_OK\\]" ]]; then
+                        ((marker_process_detected++))
+                    fi
+                fi
+            done
+
+            # Check Ring3 syscall patterns
+            for pattern in "${RING3_SYSCALL_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    match="$(echo "$new_content" | grep -m1 -E "$pattern" || true)"
+                    write_log "Ring3 Syscall: $match" "SUCCESS"
+                    ring3_stages+=("SYSCALL: $match")
+                    ((syscall_detected++))
+                    if [[ "$pattern" == "\\[U\\]\\[SYSCALL_OK\\]" ]]; then
+                        ((marker_syscall_detected++))
+                    fi
+                fi
+            done
+
+            # Check Ring3 memory patterns
+            for pattern in "${RING3_MEMORY_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    match="$(echo "$new_content" | grep -m1 -E "$pattern" || true)"
+                    write_log "Ring3 Memory: $match" "SUCCESS"
+                    ring3_stages+=("MEMORY: $match")
+                    ((memory_detected++))
+                fi
+            done
+
+            # Check for errors
+            if echo "$new_content" | grep -qE "PANIC|ERROR|FATAL|Triple fault|General Protection Fault"; then
+                match="$(echo "$new_content" | grep -oE "PANIC|ERROR|FATAL|Triple fault|General Protection Fault" | head -n1)"
+                write_log "Ring3 Error detected: $match" "ERROR"
+                error_detected=1
+                break
+            fi
+
+            # Verbose output
+            if [[ "$VERBOSE" == "true" ]]; then
+                while IFS= read -r line; do
+                    if [[ -n "${line// }" ]]; then
+                        echo -e "  ${GRAY}QEMU: $line${NC}"
+                    fi
+                done <<< "$new_content"
             fi
         fi
         
@@ -255,12 +340,12 @@ run_ring3_validation() {
     local total_detections=$((init_detected + process_detected + syscall_detected + memory_detected))
     local ring3_success=false
     
-    # Ring3 validation criteria:
-    # - At least 2 initialization patterns
-    # - At least 1 process creation pattern
-    # - At least 1 syscall pattern
+    # Ring3 validation criteria (marker-first):
+    # - Canonical RING3_OK marker
+    # - Canonical SYSCALL_OK marker
+    # - At least 1 memory evidence
     # - No critical errors
-    if (( init_detected >= 2 && process_detected >= 1 && syscall_detected >= 1 && !error_detected )); then
+    if (( marker_process_detected >= 1 && marker_syscall_detected >= 1 && memory_detected >= 1 && error_detected == 0 )); then
         ring3_success=true
     fi
     
@@ -273,10 +358,12 @@ run_ring3_validation() {
     "init_patterns": $init_detected,
     "process_patterns": $process_detected,
     "syscall_patterns": $syscall_detected,
+    "ring3_marker": $marker_process_detected,
+    "syscall_marker": $marker_syscall_detected,
     "memory_patterns": $memory_detected,
     "total_detections": $total_detections,
-    "error_detected": $([ "$error_detected" == "true" ] && echo "true" || echo "false"),
-    "stages": [$(printf '"%s",' "${ring3_stages[@]}" | sed 's/,$//')]
+    "error_detected": $([ "$error_detected" -eq 1 ] && echo "true" || echo "false"),
+    "stages": [$(printf '"%s",' "${ring3_stages[@]:-}" | sed 's/,$//')]
 }
 EOF
     
@@ -295,8 +382,10 @@ EOF
     echo -e "  Initialization Patterns: $init_detected (required: ≥2)"
     echo -e "  Process Creation Patterns: $process_detected (required: ≥1)"
     echo -e "  Syscall Interface Patterns: $syscall_detected (required: ≥1)"
+    echo -e "  Canonical RING3_OK: $marker_process_detected (required: ≥1)"
+    echo -e "  Canonical SYSCALL_OK: $marker_syscall_detected (required: ≥1)"
     echo -e "  Memory Management Patterns: $memory_detected"
-    echo -e "  Errors Detected: $([ "$error_detected" == "true" ] && echo -e "${RED}Yes${NC}" || echo -e "${GREEN}No${NC}")"
+    echo -e "  Errors Detected: $([ "$error_detected" -eq 1 ] && echo -e "${RED}Yes${NC}" || echo -e "${GREEN}No${NC}")"
     
     if (( ${#ring3_stages[@]} > 0 )); then
         echo ""
@@ -322,11 +411,15 @@ EOF
     
     echo ""
     echo -e "${CYAN}Ring3 Validation Criteria:${NC}"
-    echo -e "  ✓ GDT/IDT/TSS initialization: $([ $init_detected -ge 2 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
-    echo -e "  ✓ User process creation: $([ $process_detected -ge 1 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
-    echo -e "  ✓ Syscall interface setup: $([ $syscall_detected -ge 1 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
-    echo -e "  ✓ No critical errors: $([ "$error_detected" == "false" ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
+    echo -e "  ✓ Canonical RING3_OK marker: $([ $marker_process_detected -ge 1 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
+    echo -e "  ✓ Canonical SYSCALL_OK marker: $([ $marker_syscall_detected -ge 1 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
+    echo -e "  ✓ User memory mapping evidence: $([ $memory_detected -ge 1 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
+    echo -e "  ✓ No critical errors: $([ "$error_detected" -eq 0 ] && echo -e "${GREEN}PASS${NC}" || echo -e "${RED}FAIL${NC}")"
     
+    if [[ "$ring3_success" != "true" ]]; then
+        SAVE_LOGS=true
+    fi
+
     echo ""
     echo -e "${CYAN}Log Files:${NC}"
     if [[ "$SAVE_LOGS" == "true" ]]; then
@@ -339,6 +432,10 @@ EOF
     fi
     
     echo -e "${CYAN}============================================================${NC}"
+    
+    if [[ -n "$ovmf_vars_copy" ]]; then
+        rm -f "$ovmf_vars_copy"
+    fi
     
     return $([ "$ring3_success" == "true" ] && echo 0 || echo 1)
 }

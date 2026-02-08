@@ -85,11 +85,14 @@ LOG_ANALYSIS="${OUT_DIR}/syscall_analysis.log"
 LOG_QEMU_DEBUG="${OUT_DIR}/syscall_qemu_debug.log"
 AUDIT_LOG="${OUT_DIR}/syscall_audit.log"
 META_LOG="${OUT_DIR}/syscall_audit_meta.log"
+SERIAL_LOG="${OUT_DIR}/syscall_serial.log"
+DEBUGCON_LOG="${OUT_DIR}/syscall_debugcon.log"
 
 info "Phase 4.4 Syscall Roundtrip Audit"
 info "Timeout: ${TIMEOUT}s"
 info "Marker: ${MARKER}"
 info "Logs: ${LOG_OUT}, ${LOG_ERR}, ${LOG_ANALYSIS}"
+info "Serial: ${SERIAL_LOG}, DebugCon: ${DEBUGCON_LOG}"
 
 timeout_cmd="$(detect_timeout_cmd)"
 {
@@ -106,7 +109,7 @@ timeout_cmd="$(detect_timeout_cmd)"
 
 forced_timeout=false
 set +e
-./tools/validation/syscall_roundtrip_test.sh --timeout "$TIMEOUT" --save-logs > "$AUDIT_LOG" 2>&1 &
+SYSCALL_SERIAL_LOG="$SERIAL_LOG" SYSCALL_DEBUGCON_LOG="$DEBUGCON_LOG" ./tools/validation/syscall_roundtrip_test.sh --timeout "$TIMEOUT" --save-logs > "$AUDIT_LOG" 2>&1 &
 test_pid=$!
 start_time=$(date +%s)
 while kill -0 "$test_pid" 2>/dev/null; do
@@ -161,7 +164,9 @@ if grep -q -F "$MARKER" "$LOG_OUT" || \
    grep -q -F "$MARKER" "$LOG_ERR" || \
    grep -q -F "$MARKER" "$LOG_ANALYSIS" || \
    grep -q -F "$MARKER" "$LOG_QEMU_DEBUG" || \
-   grep -q -F "$MARKER" "$AUDIT_LOG"; then
+   grep -q -F "$MARKER" "$AUDIT_LOG" || \
+   grep -q -F "$MARKER" "$SERIAL_LOG" || \
+   grep -q -F "$MARKER" "$DEBUGCON_LOG"; then
     success "Canonical syscall marker detected."
     {
         echo "hash_syscall_output=$(sha256sum "$LOG_OUT" | awk '{print $1}')"
@@ -169,6 +174,8 @@ if grep -q -F "$MARKER" "$LOG_OUT" || \
         echo "hash_syscall_analysis=$(sha256sum "$LOG_ANALYSIS" 2>/dev/null | awk '{print $1}')"
         echo "hash_syscall_qemu_debug=$(sha256sum "$LOG_QEMU_DEBUG" 2>/dev/null | awk '{print $1}')"
         echo "hash_syscall_audit=$(sha256sum "$AUDIT_LOG" | awk '{print $1}')"
+        echo "hash_syscall_serial=$(sha256sum "$SERIAL_LOG" 2>/dev/null | awk '{print $1}')"
+        echo "hash_syscall_debugcon=$(sha256sum "$DEBUGCON_LOG" 2>/dev/null | awk '{print $1}')"
     } >> "$META_LOG"
     exit 0
 fi

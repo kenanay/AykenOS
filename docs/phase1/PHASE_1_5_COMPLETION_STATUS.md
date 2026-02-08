@@ -1,8 +1,12 @@
 # AykenOS Faz 1.5 Tamamlanma Durumu
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
 **Tarih:** 03 Ocak 2026  
-**Durum:** %95 TAMAMLANDI
+**Durum:** %95 TAMAMLANDI (tarihsel kayıt)
+
+**Güncelleme Notu (06 Şubat 2026):**  
+Bu belge Faz 1.5 için tarihsel bir durum özetidir. Güncel doğrulama kanıtı, boot/handoff stabilitesi ve erken exception teslimatı (IDT) doğrulaması için `docs/development/PROJECT_STRUCTURE.md` ve `docs/roadmap/phase-4-4-status.md` referans alınmalıdır. Ring3 ve syscall doğrulama sonuçları bu dokümanda “tamamlandı” olarak geçse de güncel kanıt seti Phase 4.4 audit kapsamında yeniden üretilmektedir.
 
 ---
 

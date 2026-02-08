@@ -1,8 +1,9 @@
 # Core OS Phase 4.5 Specification (Draft)
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Status:** Draft
 **Owner:** Core OS
-**Target Window:** Q2 2026 (tentative)
+**Target Window:** Q2 2026 (conditional; Phase 4.4 PASS evidence required)
 **Prerequisites:** Phase 4.4 closure report with PASS evidence (Ring3, QEMU, syscall roundtrip)
 
 ## Purpose

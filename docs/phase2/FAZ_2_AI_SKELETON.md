@@ -1,4 +1,5 @@
 # Faz 2 - AI Skeleton
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Opcode stub:
 - ai.ask <prompt>: executor handler logs prompt and returns stub response; no model call

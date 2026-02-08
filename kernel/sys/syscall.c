@@ -23,6 +23,19 @@ void syscall_init(void)
 {
     fb_print("[syscall] Installing INT 0x80 gate for execution-centric syscalls only.\n");
     idt_set_gate(0x80, syscall_isr, 0xEE); // Present | DPL=3 | interrupt gate
+    idt_table[0x80].ist = 1;
+
+    struct idt_entry *e = &idt_table[0x80];
+    uint64_t off = ((uint64_t)e->offset_high << 32) |
+                   ((uint64_t)e->offset_mid << 16) |
+                   (uint64_t)e->offset_low;
+    fb_print("[idt80] sel=");
+    fb_print_hex(e->selector);
+    fb_print(" attr=");
+    fb_print_hex(e->type_attr);
+    fb_print(" off=");
+    fb_print_hex64(off);
+    fb_print("\n");
 }
 
 // ============================================================================

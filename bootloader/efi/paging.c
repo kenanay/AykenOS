@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "ayken_boot.h"
 #include "../../kernel/include/ayken.h"
+#include "elf_loader.h"
 
 #define PAGE_SIZE            0x1000ULL
 #define PAGE_ENTRIES         512ULL
@@ -13,6 +14,32 @@
 #define PTE_USER             (1ULL << 2)
 #define PTE_GLOBAL           (1ULL << 8)
 #define PTE_ADDR_MASK        0x000FFFFFFFFFF000ULL
+
+// debugcon (QEMU 0xE9)
+static void debugcon_write(const char *s)
+{
+    while (s && *s) {
+        __asm__ volatile("outb %0, %1" : : "a"(*s), "Nd"(0xE9));
+        s++;
+    }
+}
+
+static void debugcon_hex_u64(uint64_t v)
+{
+    const char *hex = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; --i) {
+        uint8_t c = (uint8_t)hex[(v >> (i * 4)) & 0xF];
+        __asm__ volatile("outb %0, %1" : : "a"(c), "Nd"(0xE9));
+    }
+}
+
+static void debugcon_u64(const char *tag, uint64_t v)
+{
+    debugcon_write(tag);
+    debugcon_write("0x");
+    debugcon_hex_u64(v);
+    debugcon_write("\n");
+}
 
 static inline uint64_t align_down(uint64_t v) { return v & ~(PAGE_SIZE - 1); }
 static inline uint64_t align_up(uint64_t v)   { return (v + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1); }
@@ -30,12 +57,37 @@ static inline uint64_t *phys_to_virt(EFI_PHYSICAL_ADDRESS phys)
     return (uint64_t *)(uintptr_t)phys;
 }
 
+static void debugcon_walk_va(EFI_PHYSICAL_ADDRESS pml4_phys, uint64_t va)
+{
+    uint64_t *pml4 = phys_to_virt(pml4_phys);
+    uint16_t i_pml4 = (va >> 39) & 0x1FF;
+    uint16_t i_pdpt = (va >> 30) & 0x1FF;
+    uint16_t i_pd   = (va >> 21) & 0x1FF;
+    uint16_t i_pt   = (va >> 12) & 0x1FF;
+
+    uint64_t pml4e = pml4[i_pml4];
+    if (!(pml4e & PTE_PRESENT)) return;
+    uint64_t *pdpt = phys_to_virt(pml4e & PTE_ADDR_MASK);
+    uint64_t pdpte = pdpt[i_pdpt];
+    if (!(pdpte & PTE_PRESENT)) return;
+    if (pdpte & (1ULL << 7)) return;
+    uint64_t *pd = phys_to_virt(pdpte & PTE_ADDR_MASK);
+    uint64_t pde = pd[i_pd];
+    if (!(pde & PTE_PRESENT)) return;
+    if (pde & (1ULL << 7)) return;
+    uint64_t *pt = phys_to_virt(pde & PTE_ADDR_MASK);
+    uint64_t pte = pt[i_pt];
+
+    debugcon_u64("[B][PHDR0_PTE]=", pte);
+}
+
 static EFI_STATUS alloc_page_table(EFI_SYSTEM_TABLE *SystemTable,
                                    EFI_PHYSICAL_ADDRESS *out_phys)
 {
-    EFI_PHYSICAL_ADDRESS addr = 0;
+    // Keep page tables below identity-mapped region to avoid CR3 faults.
+    EFI_PHYSICAL_ADDRESS addr = IDENTITY_MAP_SIZE - PAGE_SIZE;
     EFI_STATUS Status = SystemTable->BootServices->AllocatePages(
-        AllocateAnyPages, EfiLoaderData, 1, &addr);
+        AllocateMaxAddress, EfiLoaderData, 1, &addr);
     if (EFI_ERROR(Status))
         return Status;
 
@@ -93,7 +145,13 @@ static EFI_STATUS map_page(EFI_SYSTEM_TABLE *SystemTable,
     uint64_t entry_flags = flags | PTE_PRESENT;
     if (!(flags & PTE_USER))
         entry_flags |= PTE_GLOBAL;
+    if (virt == 0xFFFFFFFF80000000ULL) {
+        debugcon_u64("[B][MAP_ENTRY_PA]=", phys);
+    }
     pt[i_pt] = (phys & PTE_ADDR_MASK) | entry_flags;
+    if (virt == 0xFFFFFFFF80000000ULL) {
+        debugcon_u64("[B][MAP_ENTRY_PTE]=", pt[i_pt]);
+    }
     return EFI_SUCCESS;
 }
 
@@ -118,7 +176,7 @@ static EFI_STATUS map_range(EFI_SYSTEM_TABLE *SystemTable,
     return EFI_SUCCESS;
 }
 
-static inline void load_cr3(uint64_t phys_addr)
+void ayken_load_cr3(uint64_t phys_addr)
 {
     __asm__ __volatile__("mov %0, %%cr3" :: "r"(phys_addr) : "memory");
 }
@@ -141,17 +199,59 @@ EFI_STATUS ayken_setup_paging(EFI_SYSTEM_TABLE *SystemTable,
         return Status;
     }
 
-    // 2) Higher-half kernel mapping
-    if (boot_info->kernel_phys_end > boot_info->kernel_phys_start) {
-        uint64_t k_phys_start = align_down(boot_info->kernel_phys_start);
-        uint64_t k_phys_end   = align_up(boot_info->kernel_phys_end);
-        uint64_t k_size       = k_phys_end - k_phys_start;
+    // 2) Higher-half kernel mapping (ELF PT_LOAD segments)
+    UINT64 ph_count = ayken_get_phdr_count();
+    const ayken_phdr_t *phdrs = ayken_get_phdrs();
+    UINT64 load_base = ayken_get_load_base_phys();
+    UINT64 min_vaddr = ayken_get_min_vaddr();
+
+    if (ph_count > 0 && phdrs && load_base != 0) {
+        debugcon_u64("[B][PHDR_LOAD_BASE]=", load_base);
+        debugcon_u64("[B][PHDR_MIN_VA]=", min_vaddr);
+        debugcon_u64("[B][PHDR_COUNT]=", ph_count);
+        for (UINT64 i = 0; i < ph_count; ++i) {
+            UINT64 seg_vaddr = phdrs[i].vaddr;
+            UINT64 seg_memsz = phdrs[i].memsz;
+            if (seg_memsz == 0)
+                continue;
+
+            UINT64 seg_va0 = align_down(seg_vaddr);
+            UINT64 seg_delta = seg_vaddr - min_vaddr;
+            UINT64 seg_pa0 = align_down(load_base + seg_delta);
+            UINT64 va_bias = seg_vaddr - seg_va0;
+            UINT64 map_size = align_up(seg_memsz + va_bias);
+            if (i == 0) {
+                debugcon_u64("[B][PHDR0_VA]=", seg_vaddr);
+                debugcon_u64("[B][PHDR0_PA]=", seg_pa0);
+            }
+
+            Status = map_range(
+                SystemTable,
+                pml4_phys,
+                seg_va0,
+                seg_pa0,
+                map_size,
+                PTE_PRESENT | PTE_WRITABLE
+            );
+            if (EFI_ERROR(Status)) {
+                boot_info->pml4_phys = 0;
+                return Status;
+            }
+            if (i == 0) {
+                debugcon_walk_va(pml4_phys, seg_vaddr);
+            }
+        }
+    } else if (boot_info->kernel_map_size != 0) {
+        // Fallback to legacy single-range mapping
+        uint64_t k_virt_base = align_down(boot_info->kernel_virt_base);
+        uint64_t k_phys_base = align_down(boot_info->kernel_phys_base);
+        uint64_t k_size      = align_up(boot_info->kernel_map_size);
 
         Status = map_range(
             SystemTable,
             pml4_phys,
-            KERNEL_VIRT_BASE + k_phys_start,
-            k_phys_start,
+            k_virt_base,
+            k_phys_base,
             k_size,
             PTE_PRESENT | PTE_WRITABLE
         );
@@ -182,8 +282,25 @@ EFI_STATUS ayken_setup_paging(EFI_SYSTEM_TABLE *SystemTable,
         }
     }
 
-    // 4) Load new CR3 and expose to kernel
-    load_cr3(pml4_phys);
+    // 4) Expose PML4 to kernel (CR3 is loaded after ExitBootServices)
     boot_info->pml4_phys = pml4_phys;
     return EFI_SUCCESS;
+}
+
+EFI_STATUS ayken_map_identity_range(EFI_SYSTEM_TABLE *SystemTable,
+                                    uint64_t pml4_phys,
+                                    uint64_t phys_start,
+                                    uint64_t size)
+{
+    if (pml4_phys == 0 || size == 0)
+        return EFI_INVALID_PARAMETER;
+
+    uint64_t phys_aligned = align_down(phys_start);
+    uint64_t size_aligned = align_up((phys_start - phys_aligned) + size);
+    return map_range(SystemTable,
+                     (EFI_PHYSICAL_ADDRESS)pml4_phys,
+                     phys_aligned,
+                     phys_aligned,
+                     size_aligned,
+                     PTE_PRESENT | PTE_WRITABLE);
 }

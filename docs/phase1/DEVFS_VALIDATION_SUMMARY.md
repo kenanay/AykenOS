@@ -1,4 +1,5 @@
 # DevFS Essential Device Stubs - Implementation Summary
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Task:** 3. DevFS Essential Device Stubs  
 **Status:** COMPLETED  

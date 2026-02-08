@@ -15,7 +15,7 @@ static void timer_isr(struct interrupt_frame *frame)
 {
     (void)frame;
     tick_count++;
-    sched_yield();
+    sched_request_resched();
     pic_send_eoi(0);
 }
 

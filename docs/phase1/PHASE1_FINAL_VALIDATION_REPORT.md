@@ -5,6 +5,7 @@
 **Overall Status:** FAIL
 
 ## Executive Summary
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 This report documents the final validation and cleanup of AykenOS Phase 1 critical fixes.
 Phase 1 establishes the foundational kernel infrastructure required for Phase 2 AI integration.

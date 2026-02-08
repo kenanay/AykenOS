@@ -1,6 +1,7 @@
 # Core OS Phase 4.4 Status (Audit-Grade)
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Date:** January 31, 2026
+**Date:** February 6, 2026
 **Status:** NOT CLOSED (evidence insufficient)
 **Closure Decision:** OPEN → DEFERRED (Phase 4.5 evidence hardening)
 **Owner:** Core OS
@@ -11,7 +12,13 @@ Phase 4.4 is not closed. Current evidence does not demonstrate a deterministic, 
 
 ## Evidence (Current)
 
-### New audit artifacts (2026-01-31)
+### New audit artifacts (2026-02-06)
+- `reports/phase_4_4_closure_2026-02-06/qemu_debugcon.log`
+- `reports/phase_4_4_closure_2026-02-06/qemu_boot.log`
+- `reports/phase_4_4_closure_2026-02-06/qemu_boot.err`
+- `reports/phase_4_4_closure_2026-02-06/OVMF_VARS.fd`
+
+### Previous audit artifacts (2026-01-31)
 - `reports/phase_4_4_closure_2026-01-31/toolchain_qemu_validation.log`
 - `reports/phase_4_4_closure_2026-01-31/ring3_validation.log`
 - `reports/phase_4_4_closure_2026-01-31/syscall_roundtrip.log`
@@ -47,6 +54,14 @@ Phase 4.4 remains open. This is not a failure of design; it is a failure of evid
 1) `timeout` dependency missing on macOS; QEMU boot validation is non-deterministic.
 2) Ring3 validation produces zero detections under current tooling.
 3) Syscall roundtrip validation produces zero detections and parsing errors.
+4) Early kernel exception delivery (IDT) not yet proven via `[EX][#BP]` / `[EX][#PF]` evidence.
+
+## Boot/Handoff Evidence (2026-02-06)
+Recent QEMU debugcon logs confirm UEFI→kernel handoff is stable and deterministic:
+- MAP_IMG identity mapping verified (ImageBase/SizeOfImage logged).
+- Kernel entry bytes and PTW evidence are consistent.
+- `kmain_real` entry confirmed: `...IBK0[K][EARLY_BOOT_OK]`.
+- CS observed as `0x0038` (UEFI code selector) during early kernel entry; GDT/CS transition not yet validated.
 
 ## Required Evidence to Close Phase 4.4
 Minimum evidence set:

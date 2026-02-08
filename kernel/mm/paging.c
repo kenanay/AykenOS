@@ -21,9 +21,14 @@
 #include "../include/mm.h"
 #include "../include/ayken.h"
 #include "../drivers/console/fb_console.h"
+#include "../arch/x86_64/port_io.h"
 
 // Forward declaration
 static void paging_drop_identity_map(uint64_t limit_phys);
+static inline void paging_dbg(char c)
+{
+    outb(0xE9, (uint8_t)c);
+}
 
 // ---------------------------------------------------------------------------
 // x86_64 page table sabitleri ve flag'ler
@@ -86,6 +91,8 @@ static ayken_pte_t *g_kernel_pml4    = NULL;
 // Bootloader bu mapping'i kurmuş olmalı.
 static inline void *phys_to_virt(uint64_t phys)
 {
+    if (phys < AYKEN_IDENTITY_MAP_SIZE)
+        return (void *)(uintptr_t)phys;
     return (void *)(phys + KERNEL_VIRT_BASE);
 }
 
@@ -318,6 +325,34 @@ uint64_t paging_get_phys(uint64_t virt)
     return (pte & AYKEN_PTE_ADDR_MASK);
 }
 
+uint64_t paging_get_pte(uint64_t virt)
+{
+    if (!g_kernel_pml4)
+        return 0;
+
+    uint16_t pml4_i = PML4_INDEX(virt);
+    uint16_t pdpt_i = PDPT_INDEX(virt);
+    uint16_t pd_i   = PD_INDEX(virt);
+    uint16_t pt_i   = PT_INDEX(virt);
+
+    ayken_pte_t pml4e = g_kernel_pml4[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) return 0;
+    ayken_pte_t *pdpt = (ayken_pte_t *)phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+
+    ayken_pte_t pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT)) return 0;
+    ayken_pte_t *pd = (ayken_pte_t *)phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+
+    ayken_pte_t pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT)) return 0;
+    ayken_pte_t *pt = (ayken_pte_t *)phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+
+    ayken_pte_t pte = pt[pt_i];
+    if (!(pte & AYKEN_PTE_PRESENT)) return 0;
+
+    return pte;
+}
+
 uint64_t paging_get_kernel_pml4_phys(void)
 {
     return g_kernel_pml4_phys;
@@ -353,9 +388,11 @@ uint64_t paging_create_user_pml4(void)
 
 void paging_init(uint64_t pml4_phys)
 {
+    paging_dbg('P');
     fb_print("[AykenOS][paging] Initializing paging...\n");
 
     if (pml4_phys == 0) {
+        paging_dbg('0');
         fb_print("[AykenOS][paging] ERROR: pml4_phys = 0.\n");
         return;
     }
@@ -363,14 +400,18 @@ void paging_init(uint64_t pml4_phys)
     g_kernel_pml4_phys = pml4_phys;
     g_kernel_pml4      = (ayken_pte_t *)phys_to_virt(pml4_phys);
 
+    paging_dbg('1');
     load_cr3(pml4_phys);
+    paging_dbg('2');
 
     fb_print("[AykenOS][paging] PML4 at phys=0x");
     fb_print_hex64(pml4_phys);
     fb_print("\n");
 
     // Burada: identity map'i temizleyelim (örnek: ilk 1GB)
-    paging_drop_identity_map(0x40000000ULL); // 1GB
+    paging_dbg('3');
+    // paging_drop_identity_map(0x01000000ULL); // debug: geçici olarak kapalı
+    paging_dbg('4');
 
     fb_print("[AykenOS][paging] Paging is now active (no identity map).\n");
 }
@@ -380,6 +421,7 @@ void paging_init(uint64_t pml4_phys)
 // [0, limit) aralığındaki identity map'leri kaldır
 void paging_drop_identity_map(uint64_t limit_phys)
 {
+    paging_dbg('d');
     fb_print("[paging] Dropping identity map up to 0x");
     fb_print_hex64(limit_phys);
     fb_print("\n");
@@ -394,4 +436,5 @@ void paging_drop_identity_map(uint64_t limit_phys)
     uint64_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
     __asm__ volatile("mov %0, %%cr3" :: "r"(cr3));
+    paging_dbg('e');
 }

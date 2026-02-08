@@ -83,6 +83,10 @@ mkdir -p "$OUT_DIR"
 
 LOG_OUT="${OUT_DIR}/qemu_boot.log"
 LOG_ERR="${OUT_DIR}/qemu_boot.err"
+LOG_SERIAL="${OUT_DIR}/qemu_serial.log"
+LOG_DEBUGCON="${OUT_DIR}/qemu_debugcon.log"
+
+EARLY_MARKER="[K][EARLY_BOOT_OK]"
 
 info "Phase 4.4 QEMU Boot Audit"
 info "Timeout: ${QEMU_TIMEOUT}s"
@@ -111,25 +115,67 @@ if [[ -z "$timeout_cmd" ]]; then
     warning "No timeout command found; enforcing manual time limit."
 fi
 
+# Optional UEFI firmware (OVMF) for deterministic boot
+ovmf_code=""
+ovmf_vars=""
+ovmf_vars_copy=""
+if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
+    ovmf_code="OVMF_CODE.fd"
+    ovmf_vars="OVMF_VARS.fd"
+elif [[ -f "firmware/ovmf/OVMF_CODE.fd" && -f "firmware/ovmf/OVMF_VARS.fd" ]]; then
+    ovmf_code="firmware/ovmf/OVMF_CODE.fd"
+    ovmf_vars="firmware/ovmf/OVMF_VARS.fd"
+elif [[ -f "/opt/homebrew/share/qemu/edk2-x86_64-code.fd" && -f "/opt/homebrew/share/qemu/edk2-x86_64-vars.fd" ]]; then
+    ovmf_code="/opt/homebrew/share/qemu/edk2-x86_64-code.fd"
+    ovmf_vars="/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+fi
+
+if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
+    ovmf_vars_copy="${OUT_DIR}/OVMF_VARS.fd"
+    cp -f "$ovmf_vars" "$ovmf_vars_copy"
+    info "OVMF detected: ${ovmf_code}"
+    info "OVMF vars copy: ${ovmf_vars_copy}"
+fi
+
+qemu_args=()
+if [[ -n "$ovmf_code" && -n "$ovmf_vars_copy" ]]; then
+    qemu_args+=(
+        -machine pc
+        -drive "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
+        -drive "if=pflash,format=raw,file=${ovmf_vars_copy}"
+    )
+fi
+if [[ -n "$ovmf_code" && -n "$ovmf_vars_copy" ]]; then
+    qemu_args+=(
+        -drive "format=raw,file=fat:rw:esp"
+    )
+else
+    qemu_args+=(
+        -drive "format=raw,file=EFI.img"
+    )
+fi
+qemu_args+=(
+    -display none
+    -no-reboot
+    -no-shutdown
+    -serial "file:${LOG_SERIAL}"
+    -debugcon "file:${LOG_DEBUGCON}"
+    -global isa-debugcon.iobase=0xe9
+)
+
 boot_success=false
+early_seen=false
+late_seen=false
 qemu_pid=""
 start_time=$(date +%s)
 
 if [[ -n "$timeout_cmd" ]]; then
     "$timeout_cmd" "$QEMU_TIMEOUT" qemu-system-x86_64 \
-        -drive format=raw,file=EFI.img \
-        -serial stdio \
-        -display none \
-        -no-reboot \
-        -no-shutdown \
+        "${qemu_args[@]}" \
         > "$LOG_OUT" 2> "$LOG_ERR" &
 else
     qemu-system-x86_64 \
-        -drive format=raw,file=EFI.img \
-        -serial stdio \
-        -display none \
-        -no-reboot \
-        -no-shutdown \
+        "${qemu_args[@]}" \
         > "$LOG_OUT" 2> "$LOG_ERR" &
 fi
 
@@ -141,12 +187,22 @@ while kill -0 "$qemu_pid" 2>/dev/null; do
         break
     fi
 
-    if [[ -f "$LOG_OUT" ]]; then
-        if grep -q -F "$MARKER" "$LOG_OUT"; then
-            boot_success=true
-            success "Canonical boot marker detected."
-            break
+    if [[ -f "$LOG_DEBUGCON" ]]; then
+        if grep -q -F "$EARLY_MARKER" "$LOG_DEBUGCON"; then
+            early_seen=true
         fi
+    fi
+
+    if [[ -f "$LOG_SERIAL" ]]; then
+        if grep -q -F "$MARKER" "$LOG_SERIAL"; then
+            late_seen=true
+        fi
+    fi
+
+    if [[ "$late_seen" == "true" ]]; then
+        boot_success=true
+        success "Canonical boot marker detected."
+        break
     fi
 
     sleep 0.5
@@ -159,9 +215,12 @@ fi
 
 echo ""
 echo "================== Phase 4.4 QEMU Boot Audit =================="
-echo "Marker: ${MARKER}"
+echo "Early Marker: ${EARLY_MARKER}"
+echo "Late Marker: ${MARKER}"
 echo "Timeout: ${QEMU_TIMEOUT}s"
 echo "Logs: ${LOG_OUT}, ${LOG_ERR}"
+echo "Serial: ${LOG_SERIAL}"
+echo "Debugcon: ${LOG_DEBUGCON}"
 echo "Result: $([ "$boot_success" == "true" ] && echo "PASS" || echo "FAIL")"
 echo "==============================================================="
 
@@ -169,5 +228,9 @@ if [[ "$boot_success" == "true" ]]; then
     exit 0
 fi
 
-error "QEMU boot did not reach canonical BOOT_OK marker."
+if [[ "$early_seen" == "true" ]]; then
+    error "EARLY marker seen but BOOT_OK not reached (init crash likely)."
+else
+    error "No EARLY marker found (likely no kernel entry / boot path issue)."
+fi
 exit 2

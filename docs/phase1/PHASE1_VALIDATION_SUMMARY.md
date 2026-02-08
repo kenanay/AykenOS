@@ -1,4 +1,5 @@
 # AykenOS Phase 1 Final Validation Summary
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Date:** January 3, 2026  
 **Author:** Kenan AY  

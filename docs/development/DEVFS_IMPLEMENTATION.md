@@ -1,4 +1,5 @@
 # DevFS Implementation Summary
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026

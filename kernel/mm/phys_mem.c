@@ -171,8 +171,10 @@ uint64_t phys_alloc_frame(void)
     if (g_free_frames == 0)
         return 0;
 
+    uint64_t limit = addr_to_frame_idx(AYKEN_IDENTITY_MAP_SIZE);
+
     // 1) Son aramadan itibaren devam
-    for (uint64_t i = g_last_alloc_search_idx; i < AYKEN_MAX_FRAMES; ++i) {
+    for (uint64_t i = g_last_alloc_search_idx; i < AYKEN_MAX_FRAMES && i < limit; ++i) {
         if (!frame_test(i)) {
             frame_set(i);
             g_free_frames--;
@@ -182,7 +184,7 @@ uint64_t phys_alloc_frame(void)
     }
 
     // 2) Baştan bir daha tarayalım
-    for (uint64_t i = 0; i < g_last_alloc_search_idx; ++i) {
+    for (uint64_t i = 0; i < g_last_alloc_search_idx && i < limit; ++i) {
         if (!frame_test(i)) {
             frame_set(i);
             g_free_frames--;
@@ -234,7 +236,8 @@ uint64_t phys_alloc_frames(uint64_t count)
     uint64_t chain_len   = 0;
 
     // Tüm frame bitmap’ini tara
-    for (uint64_t i = 0; i < AYKEN_MAX_FRAMES; ++i)
+    uint64_t limit = addr_to_frame_idx(AYKEN_IDENTITY_MAP_SIZE);
+    for (uint64_t i = 0; i < AYKEN_MAX_FRAMES && i < limit; ++i)
     {
         if (!frame_test(i)) {
             // frame boş → zincir genişliyor

@@ -1,4 +1,5 @@
 # Faz 2 - Runtime / Dispatcher
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 Objectives (Faz 2):
 - Hiyerarşik DSL’den gelen istekleri veri konteynerlerine (tabular, log/text) yöneten hafif dispatcher.

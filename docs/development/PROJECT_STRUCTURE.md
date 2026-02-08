@@ -1,7 +1,8 @@
 # AykenOS - Proje Dizin Yapısı
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
-**Son Güncelleme:** 31 Ocak 2026
+**Son Güncelleme:** 6 Şubat 2026
 
 Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detaylı olarak açıklar.
 
@@ -9,6 +10,36 @@ Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detayl
 - **Core OS:** Phase 4.4 tamamlandı ✅ (Phase 4.5 hazırlık aşamasında)
 - **Ayken CLI:** Phase 11 (ARRE) tamamlandı ✅, Phase 12 (ARH + Governance Closure) tamamlandı ✅
 - **Not:** Phase 11-12 Ayken CLI geliştirme sürecinde oluşturulan paralel görevlerdir, Phase 4.4'ün devamı değildir
+
+---
+
+## 🔎 Boot & Kernel Bring-up Durumu (2026-02-06)
+
+Bu bölüm, UEFI→kernel handoff zincirinin doğrulama durumunu ve erken exception görünürlüğü (IDT) doğrulamasını özetler.
+
+### Doğrulanan Kanıtlar (Boot/Handoff) ✅
+- **UEFI→ExitBootServices** akışı deterministik tamamlanıyor (EBS tekrar denemesi ile).
+- **CR3 switch + higher-half entry** çalışıyor ve `kmain_real` çağrısı doğrulanmış durumda.
+- **Bootloader image identity map** doğrulaması (MAP_IMG + SizeOfImage) aktif.
+- **Page table walk kanıtı:** entry ve stack VA→PA çözümü P=1 ve doğru.
+- **Kernel entry bytes** (ENTRY_BYTES) yeni stub ile `call kmain_real` içeriyor.
+- **Debug marker zinciri:** `ApqiggggIBK0[K][EARLY_BOOT_OK]` (QEMU debugcon).
+
+### Erken IDT Kanıtı (UEFI CS altında) ✅
+- **interrupts_install_early() çalışıyor:** `EC=0038`
+- **IDT[3] kurulumu doğrulandı:** `S3=0038 T3=0x8F O3=FFFFFFFF800097B0`
+- **IDTR yüklemesi doğrulandı:** `IDTR=0FFF:FFFFFFFF800AF390`
+
+### Açık Riskler / Doğrulama Eksikleri ⚠️
+- **Erken exception teslimatı** henüz kanıtlanmadı: `int3` sonrası `[EX][#BP]` görülmüyor.
+- **CS selector** geçişi tamamlanmadı: UEFI CS (`0x0038`) → kernel CS (`0x0008`) reload sırası test ediliyor.
+- **IDT gate selector stratejisi** (current CS ile kurulum) erken teşhis için geçerli, ancak kalıcı ring0 düzeni için GDT/CS geçişi gerekli.
+
+### Sıradaki Doğrulamalar (Phase 4.4/4.5 sınırı)
+1. **CS reload sırası:** `gdt_init()` sonrası `reload_cs(0x08)` güvenli noktada; ardından `int3` ile `[EX][#BP]`.
+2. **#UD testi:** `ud2` ile `[EX][#UD]` doğrulaması.
+3. **#PF testi:** bilinçli page fault ile `cr2/err/rip` çıktısı doğrulaması.
+4. **Kalıcı ring0 düzeni:** IDT selector’ları `0x0008` ile yeniden kurulum ve UEFI CS’den tamamen çıkış.
 
 ---
 

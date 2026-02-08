@@ -1,4 +1,5 @@
 # Session Summary - AykenOS Faz 1 Completion
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Date:** December 31, 2024 - January 1, 2026  
 **Duration:** 1 day intensive development  

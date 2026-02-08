@@ -438,13 +438,15 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
     static int ring3_ok_emitted = 0;
     static int syscall_ok_emitted = 0;
     extern proc_t *current_proc;
+    uint64_t result;
 
     // Validate syscall number
     if (syscall_num > SYS_V2_MAX_SYSCALL) {
         fb_print("[syscall_v2] ENOSYS: invalid v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        return ESYS_V2_INVALID_SYSCALL;
+        result = ESYS_V2_INVALID_SYSCALL;
+        goto out;
     }
 
     if (!ring3_ok_emitted && current_proc && current_proc->type == PROC_TYPE_USER) {
@@ -455,47 +457,63 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
     // Dispatch to appropriate handler
     switch (syscall_num) {
     case SYS_V2_MAP_MEMORY:
-        return sys_v2_map_memory(arg1, arg2, arg3);
+        result = sys_v2_map_memory(arg1, arg2, arg3);
+        break;
         
     case SYS_V2_UNMAP_MEMORY:
-        return sys_v2_unmap_memory(arg1, arg2);
+        result = sys_v2_unmap_memory(arg1, arg2);
+        break;
         
     case SYS_V2_SWITCH_CONTEXT:
-        return sys_v2_switch_context(arg1, arg2);
+        result = sys_v2_switch_context(arg1, arg2);
+        break;
         
     case SYS_V2_SUBMIT_EXECUTION:
-        return sys_v2_submit_execution((void *)arg1, arg2, arg3);
+        result = sys_v2_submit_execution((void *)arg1, arg2, arg3);
+        break;
         
     case SYS_V2_WAIT_RESULT:
-        return sys_v2_wait_result(arg1, arg2);
+        result = sys_v2_wait_result(arg1, arg2);
+        break;
         
     case SYS_V2_INTERRUPT_RETURN:
-        return sys_v2_interrupt_return(arg1, arg2);
+        result = sys_v2_interrupt_return(arg1, arg2);
+        break;
         
     case SYS_V2_TIME_QUERY: {
-        uint64_t result = sys_v2_time_query(arg1, (uint64_t *)arg2);
+        result = sys_v2_time_query(arg1, (uint64_t *)arg2);
         if (!syscall_ok_emitted &&
             result == ESYS_V2_SUCCESS &&
             current_proc && current_proc->type == PROC_TYPE_USER) {
             fb_print("[U][SYSCALL_OK] Phase 4.4 syscall roundtrip ok\n");
             syscall_ok_emitted = 1;
         }
-        return result;
+        break;
     }
         
     case SYS_V2_CAPABILITY_BIND:
-        return sys_v2_capability_bind(arg1, (capability_token_t *)arg2);
+        result = sys_v2_capability_bind(arg1, (capability_token_t *)arg2);
+        break;
         
     case SYS_V2_CAPABILITY_REVOKE:
-        return sys_v2_capability_revoke(arg1);
+        result = sys_v2_capability_revoke(arg1);
+        break;
         
     case SYS_V2_EXIT:
-        return sys_v2_exit(arg1);
+        result = sys_v2_exit(arg1);
+        break;
         
     default:
         fb_print("[syscall_v2] ENOSYS: unimplemented v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        return ESYS_V2_NOT_IMPLEMENTED;
+        result = ESYS_V2_NOT_IMPLEMENTED;
+        break;
     }
+
+out:
+    if (sched_take_resched()) {
+        sched_yield();
+    }
+    return result;
 }

@@ -51,4 +51,15 @@ EFI_STATUS elf_load_kernel(EFI_HANDLE ImageHandle,
                            ayken_boot_info_t *boot_info,
                            UINT64 *kernel_entry_out);
 
+#define AYKEN_MAX_PHDR 16
+typedef struct {
+    UINT64 vaddr;
+    UINT64 memsz;
+} ayken_phdr_t;
+
+UINT64 ayken_get_phdr_count(void);
+const ayken_phdr_t *ayken_get_phdrs(void);
+UINT64 ayken_get_load_base_phys(void);
+UINT64 ayken_get_min_vaddr(void);
+
 #endif

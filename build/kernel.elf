@@ -1,3 +1,0 @@
-
-# Dummy kernel.elf placeholder
-# This file is a placeholder so the build image script can run in environments without the toolchain.

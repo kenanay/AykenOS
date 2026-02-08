@@ -1,4 +1,5 @@
 # AykenOS Multi-Platform Development Guide
+This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Author:** Kenan AY  
 **Updated:** January 2026  

@@ -18,6 +18,10 @@ void tss_init(void)
     // Allocate kernel stack for interrupts (4KB)
     uint64_t kernel_stack = (uint64_t)kmalloc(4096);
     kernel_tss.rsp0 = kernel_stack + 4096; // Stack grows down
+
+    // Dedicated IST stack for critical faults/syscalls (bypass rsp0 on entry)
+    static uint8_t ist1_stack[AYKEN_FRAME_SIZE] __attribute__((aligned(16)));
+    kernel_tss.ist1 = (uint64_t)ist1_stack + sizeof(ist1_stack);
     
     // Set I/O map base (no I/O permission bitmap)
     kernel_tss.io_map_base = sizeof(tss_entry_t);

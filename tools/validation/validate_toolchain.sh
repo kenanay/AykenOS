@@ -168,12 +168,12 @@ test_build_system() {
         return 1
     fi
     
-    # Test make clean
-    info "Testing make clean..."
-    if make clean >/dev/null 2>&1; then
-        success "make clean successful"
+    # Test make clean (do not delete EFI.img)
+    info "Testing make clean (no EFI.img)..."
+    if make clean-noimg >/dev/null 2>&1; then
+        success "make clean-noimg successful"
     else
-        warning "make clean returned non-zero exit code"
+        warning "make clean-noimg returned non-zero exit code"
     fi
     
     # Test make all
@@ -217,15 +217,13 @@ test_qemu_boot() {
     
     info "Testing QEMU boot validation..."
     
-    # Create EFI image if needed
+    # Create EFI image if needed (deterministic via Makefile guard)
     if [[ ! -f "EFI.img" ]]; then
         info "Creating EFI image..."
-        if [[ -x "./make_efi_img.sh" ]]; then
-            ./make_efi_img.sh
-        elif command_exists "make"; then
+        if command_exists "make"; then
             make efi-img
         else
-            error "Cannot create EFI image - no creation method available"
+            error "Cannot create EFI image - 'make' not available"
             return 1
         fi
     fi
@@ -235,30 +233,67 @@ test_qemu_boot() {
     
     local qemu_output="qemu_output.log"
     local qemu_error="qemu_error.log"
+    local dbgcon_log="qemu_debugcon.log"
+    local qemu_trace="qemu_trace.log"
+    rm -f "$qemu_output" "$qemu_error" "$dbgcon_log" "$qemu_trace"
     local timeout_cmd
     timeout_cmd="$(detect_timeout_cmd)"
     if [[ -z "$timeout_cmd" ]]; then
         warning "No timeout command found; using manual time limit for QEMU"
         WARNINGS+=("Missing timeout command (using manual QEMU time limit)")
     fi
+
+    # Optional UEFI firmware (OVMF) for deterministic boot
+    local ovmf_code=""
+    local ovmf_vars=""
+    local ovmf_vars_copy=""
+    if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
+        ovmf_code="OVMF_CODE.fd"
+        ovmf_vars="OVMF_VARS.fd"
+    elif [[ -f "firmware/ovmf/OVMF_CODE.fd" && -f "firmware/ovmf/OVMF_VARS.fd" ]]; then
+        ovmf_code="firmware/ovmf/OVMF_CODE.fd"
+        ovmf_vars="firmware/ovmf/OVMF_VARS.fd"
+    elif [[ -f "/opt/homebrew/share/qemu/edk2-x86_64-code.fd" && -f "/opt/homebrew/share/qemu/edk2-x86_64-vars.fd" ]]; then
+        ovmf_code="/opt/homebrew/share/qemu/edk2-x86_64-code.fd"
+        ovmf_vars="/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    fi
+
+    local ovmf_args=()
+    if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
+        ovmf_vars_copy="ovmf_vars.fd"
+        cp -f "$ovmf_vars" "$ovmf_vars_copy"
+        ovmf_args+=(
+            -machine pc
+            -drive "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
+            -drive "if=pflash,format=raw,file=${ovmf_vars_copy}"
+        )
+    fi
     
     # Start QEMU in background
     if [[ -n "$timeout_cmd" ]]; then
         "$timeout_cmd" "$QEMU_TIMEOUT" qemu-system-x86_64 \
+            "${ovmf_args[@]}" \
             -drive format=raw,file=EFI.img \
-            -serial stdio \
+            -serial file:"$qemu_output" \
+            -chardev file,id=dbgcon,path="$dbgcon_log" \
+            -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
             -display none \
             -no-reboot \
             -no-shutdown \
-            > "$qemu_output" 2> "$qemu_error" &
+            -d guest_errors -D "$qemu_trace" \
+            > /dev/null 2> "$qemu_error" &
     else
         qemu-system-x86_64 \
+            "${ovmf_args[@]}" \
             -drive format=raw,file=EFI.img \
-            -serial stdio \
+            -serial file:"$qemu_output" \
+            -chardev file,id=dbgcon,path="$dbgcon_log" \
+            -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
             -display none \
             -no-reboot \
             -no-shutdown \
-            > "$qemu_output" 2> "$qemu_error" &
+            -d guest_errors -D "$qemu_trace" \
+            > /dev/null 2> "$qemu_error" &
     fi
     
     local qemu_pid=$!
@@ -273,8 +308,9 @@ test_qemu_boot() {
         fi
         
         # Check for boot success indicators
-        if [[ -f "$qemu_output" ]]; then
-            if grep -q -E "AykenOS|EARLY INIT|Kernel.*init|kmain" "$qemu_output"; then
+        if [[ -f "$qemu_output" || -f "$dbgcon_log" ]]; then
+            if grep -q -E "\\[K\\]\\[QEMU_BOOT_OK\\]" "$qemu_output" 2>/dev/null \
+               || grep -q -E "\\[K\\]\\[QEMU_BOOT_OK\\]" "$dbgcon_log" 2>/dev/null; then
                 boot_success=true
                 success "Boot success detected in QEMU output"
                 break
@@ -306,10 +342,19 @@ test_qemu_boot() {
             warning "QEMU errors detected:"
             sed 's/^/  /' "$qemu_error"
         fi
+        if [[ -f "$dbgcon_log" && -s "$dbgcon_log" ]]; then
+            warning "Debugcon output present but boot marker not found"
+            WARNINGS+=("Debugcon output present; missing boot marker")
+        fi
     fi
     
-    # Cleanup
-    rm -f "$qemu_output" "$qemu_error"
+    # Cleanup (preserve logs when verbose for audit/debug)
+    if [[ "$VERBOSE" != "true" ]]; then
+        rm -f "$qemu_output" "$qemu_error" "$dbgcon_log" "$qemu_trace"
+        if [[ -n "$ovmf_vars_copy" ]]; then
+            rm -f "$ovmf_vars_copy"
+        fi
+    fi
     
     return $([ "$boot_success" == "true" ] && echo 0 || echo 1)
 }

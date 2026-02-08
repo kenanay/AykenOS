@@ -36,6 +36,7 @@ SYSCALL_HANDLER_PATTERNS=(
 )
 
 SYSCALL_EXECUTION_PATTERNS=(
+    "\\[U\\]\\[SYSCALL_OK\\]"
     "syscall.*dispatcher"
     "Ring3.*Ring0.*transition"
     "user.*mode.*syscall"
@@ -192,9 +193,28 @@ run_syscall_validation() {
     rm -f "$output_log" "$error_log" "$analysis_log"
     
     # QEMU arguments optimized for syscall testing
+    local serial_arg="stdio"
+    if [[ -n "${SYSCALL_SERIAL_LOG:-}" ]]; then
+        serial_arg="file:${SYSCALL_SERIAL_LOG}"
+    fi
+    local debugcon_args=()
+    if [[ -n "${SYSCALL_DEBUGCON_LOG:-}" ]]; then
+        debugcon_args=("-debugcon" "file:${SYSCALL_DEBUGCON_LOG}" "-global" "isa-debugcon.iobase=0xe9")
+    fi
+
+
+    # Optional UEFI firmware (OVMF) for deterministic boot
+    local ovmf_args=()
+    if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
+        ovmf_args=(
+            "-machine" "q35"
+            "-drive" "if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd"
+            "-drive" "if=pflash,format=raw,file=OVMF_VARS.fd"
+        )
+    fi
     local qemu_args=(
         "-drive" "format=raw,file=EFI.img"
-        "-serial" "stdio"
+        "-serial" "$serial_arg"
         "-m" "256M"
         "-no-reboot"
         "-no-shutdown"
@@ -202,6 +222,12 @@ run_syscall_validation() {
         "-d" "int"  # Debug interrupts to catch syscalls
         "-D" "qemu_syscall_debug.log"
     )
+    if (( ${#debugcon_args[@]} > 0 )); then
+        qemu_args+=("${debugcon_args[@]}")
+    fi
+    if (( ${#ovmf_args[@]} > 0 )); then
+        qemu_args+=("${ovmf_args[@]}")
+    fi
     
     write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "DEBUG"
     

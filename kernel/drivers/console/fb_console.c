@@ -327,6 +327,9 @@ void fb_clear(void)
 // -----------------------------------------------------
 void fb_console_init(ayken_boot_info_t *boot)
 {
+    // Initialize serial output early for audit-grade logging
+    serial_init();
+
     // Fiziksel framebuffer adresini higher-half'a map ettiğini varsayıyorum.
     // Daha güzel hal: phys_to_virt(boot->fb_phys_addr)
     fb = (uint8_t*)(boot->fb_phys_addr + KERNEL_VIRTUAL_BASE);
@@ -347,8 +350,7 @@ void fb_console_init(ayken_boot_info_t *boot)
 
     cursor_x = cursor_y = 0;
 
-    // Initialize serial output for audit-grade logging
-    serial_init();
+    // Serial already initialized above
 }
 
 // Mini-log bölgesi için text alanını sağ alt köşeye taşı
