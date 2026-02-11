@@ -371,6 +371,42 @@ _Production-ready build configuration_ 🚀
 
 **Durum:** YENİ EKLENEN - Entegre build sistemi ve otomatik kurulum
 
+### macOS Build System Support ✅
+
+**Tarih:** 10 Şubat 2026  
+**Durum:** TAMAMLANDI
+
+**Problem:**
+- macOS'ta Linux `mkfs.vfat` aracı bulunmuyor
+- EFI.img oluşturma başarısız oluyordu
+
+**Çözüm:**
+- `build_efi.sh` scripti oluşturuldu (macOS native `hdiutil` kullanarak)
+- FAT32 disk image için `hdiutil create` kullanımı
+- AppleDouble dosyalarını önlemek için `COPYFILE_DISABLE=1` ve `cp -X`
+- QEMU uyumlu UDRW formatına dönüştürme
+- Otomatik UEFI boot için startup.nsh dahil
+- kernel.elf hem `/EFI/BOOT/` hem de root'a kopyalanıyor
+
+**Kullanım:**
+```bash
+# macOS'ta EFI image oluştur
+./build_efi.sh
+
+# Doğrulama
+shasum -a 256 kernel.elf
+# Image içindeki kernel.elf ile karşılaştır
+```
+
+**Dokümentasyon:**
+- ✅ `docs/development/BUILD_SYSTEM_MACOS_UPDATE.md` - Kapsamlı macOS build dokümanı
+- ✅ `docs/setup/MACOS_SETUP_GUIDE.md` - macOS kurulum rehberi güncellendi
+
+**Sonuç:**
+- ✅ macOS geliştiricileri artık AykenOS'u native olarak derleyebilir
+- ✅ Hash doğrulaması ile kernel.elf bütünlüğü garanti
+- ✅ QEMU ile test tamamen destekleniyor
+
 ### Enhanced Makefile Targets
 
 **Yeni hedefler eklendi:**

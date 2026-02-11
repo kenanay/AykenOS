@@ -4,10 +4,136 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Author:** Kenan AY  
 **Project:** AykenOS - Advanced AI-Integrated Operating System  
 **Phase:** 1 Critical Fixes and Validation  
+**Last Updated:** February 11, 2026
 
 ## Overview
 
 This document describes the comprehensive QEMU-based testing framework developed for AykenOS Phase 1 validation. The test suite implements automated validation of critical kernel functionality through QEMU emulation, log analysis, and systematic verification of core system components.
+
+## Recent Updates (February 11, 2026)
+
+### Phase 4.5 Preempt Runner Stabilization ✅
+
+Deterministic preempt validation now has two execution modes:
+
+```bash
+# Standard validation (marker + behavioral fallback)
+make run-preempt
+
+# Strict marker contract validation
+make run-preempt-strict
+```
+
+What changed:
+- `run-preempt` and `run-preempt-strict` now use a single runner: `run_preempt_test.sh`.
+- Runner now merges `debugcon + serial` into one analysis stream before assertions.
+- Strict mode requires canonical scheduler markers (`MARK:*`) and disables AB fallback.
+- Strict target enforces fresh media (`FORCE_EFI_REBUILD=1`) to eliminate stale `EFI.img` risk.
+- Build profile integration:
+  - `KERNEL_PROFILE=validation`: `-O0 -g3`, debug markers enabled.
+  - `KERNEL_PROFILE=release`: `-O2 -g1`, debug markers disabled.
+
+Canonical strict signatures (merged log):
+- `MARK:PID=2`
+- `MARK:PID=3`
+- `MARK:SW=K>U|U>K|U>U`
+- `MARK:IRET`
+
+Troubleshooting:
+1. If strict mode fails with marker counts at 0 but AB looks healthy, verify `KERNEL_PROFILE=validation` and `AYKEN_DEBUG_SCHED=1` propagation.
+2. If output is empty: keep `-global isa-debugcon.iobase=0xe9` and serial file capture enabled.
+3. If shell noise dominates logs, verify startup path and force image rebuild (`FORCE_EFI_REBUILD=1`).
+4. If early crash/reset occurs near first scheduler jump, validate stack ABI alignment in `kernel_first_entry` (`sub rsp, 8` before C call).
+
+### macOS Build System Integration ✅
+
+**New Script:** `build_efi.sh` - macOS-compatible EFI.img creation
+
+The build system now supports macOS development with native tooling:
+- Uses `hdiutil` instead of Linux `mkfs.vfat`
+- Prevents AppleDouble (._*) files with `COPYFILE_DISABLE=1`
+- Creates QEMU-compatible raw disk images (UDRW format)
+- Includes automatic startup.nsh for UEFI boot
+- Provides hash verification for build confirmation
+
+**Usage:**
+```bash
+# Build kernel
+make clean && make
+
+# Create EFI.img
+./build_efi.sh
+
+# Verify kernel hash
+hdiutil attach EFI.img
+shasum -a 256 /Volumes/EFI/kernel.elf
+hdiutil detach /Volumes/EFI
+```
+
+### Critical QEMU Configuration Fix ✅
+
+**Problem:** Debug output was not being captured, leading to false "boot failure" diagnoses.
+
+**Solution:** Added `-global isa-debugcon.iobase=0xe9` flag to QEMU command.
+
+**Correct QEMU Command (macOS):**
+```bash
+rm -f test_ring3_debugcon.log test_ring3_serial.log test_ring3_qemu.err
+
+timeout 10 qemu-system-x86_64 \
+  -machine q35 \
+  -drive if=pflash,format=raw,readonly=on,file=/opt/homebrew/share/qemu/edk2-x86_64-code.fd \
+  -drive if=pflash,format=raw,file=ovmf_vars.fd \
+  -drive if=ide,format=raw,file=EFI.img \
+  -m 256M \
+  -serial file:test_ring3_serial.log \
+  -debugcon file:test_ring3_debugcon.log \
+  -global isa-debugcon.iobase=0xe9 \
+  -nographic \
+  -no-reboot \
+  -d cpu_reset 2>test_ring3_qemu.err || true
+
+tail -40 test_ring3_debugcon.log | tr -d '\000'
+```
+
+**Key Changes:**
+- ✅ Added `-machine q35` for better hardware emulation
+- ✅ Changed to `-drive if=ide` for better UEFI compatibility
+- ✅ **Added `-global isa-debugcon.iobase=0xe9`** (CRITICAL)
+- ✅ Clean log files before each run
+- ✅ Added timeout to prevent hanging
+- ✅ Capture stderr to separate file
+
+### Ring3 Transition Validation ✅
+
+**Status:** Ring3 user process execution + timer preempt validation operational
+
+**Verified Boot Sequence:**
+```
+Z0                          # New kernel marker
+[K][EARLY_BOOT_OK]         # kmain entry
+[K][LATE_INIT_BEGIN]       # Late init
+[K][ABOUT_TO_SCHED]        # Scheduler starting
+S12[Q]1                    # Scheduler initialized
+FT@tk                      # switch_to_first
+J                          # kernel_first_entry
+I                          # init_process_main
+QPID:2                     # Ring3 test process created
+[SEL]PID=2                 # Scheduler selects Ring3 process
+[SW]K>U                    # Context switch: Kernel → User
+ABOUT_TO_IRETQ             # IRET frame built
+[U][RING3_OK]              # ✅ RING3 TRANSITION SUCCESSFUL!
+```
+
+**Preempt strict sequence (validation profile):**
+```
+MARK:PID=2
+MARK:SW=U>U
+MARK:IRET
+MARK:PID=3
+MARK:SW=U>U
+MARK:IRET
+```
 
 ## Test Suite Architecture
 

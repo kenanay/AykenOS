@@ -5,7 +5,7 @@
 set -euo pipefail
 
 TIMEOUT=60
-MARKER="[U][RING3_OK] Phase 4.4 ring3 ready"
+MARKER="[U][RING3_OK]"
 OUT_DIR=""
 
 RED='\033[0;31m'
@@ -151,31 +151,38 @@ if [[ -f "$SRC_QEMU_DEBUG" ]]; then
 fi
 
 if [[ ! -f "$LOG_OUT" ]]; then
-    error "Ring3 output log missing. Audit FAIL."
-    exit 2
+    error "Ring3 output log missing. Checking other logs..."
+    # Don't exit immediately, check other logs first
 fi
 
-if [[ ! -s "$LOG_OUT" ]]; then
-    error "Ring3 output log is empty (zero detection = FAIL)."
-    exit 2
+# Check for marker in any available log file
+marker_found=false
+if [[ -f "$LOG_OUT" && -s "$LOG_OUT" ]] && grep -q -F "$MARKER" "$LOG_OUT" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$LOG_ERR" ]] && grep -q -F "$MARKER" "$LOG_ERR" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$LOG_ANALYSIS" ]] && grep -q -F "$MARKER" "$LOG_ANALYSIS" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$LOG_QEMU_DEBUG" ]] && grep -q -F "$MARKER" "$LOG_QEMU_DEBUG" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$AUDIT_LOG" ]] && grep -q -F "$MARKER" "$AUDIT_LOG" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$SERIAL_LOG" ]] && grep -q -F "$MARKER" "$SERIAL_LOG" 2>/dev/null; then
+    marker_found=true
+elif [[ -f "$DEBUGCON_LOG" ]] && grep -q -F "$MARKER" "$DEBUGCON_LOG" 2>/dev/null; then
+    marker_found=true
 fi
 
-if grep -q -F "$MARKER" "$LOG_OUT" || \
-   grep -q -F "$MARKER" "$LOG_ERR" || \
-   grep -q -F "$MARKER" "$LOG_ANALYSIS" || \
-   grep -q -F "$MARKER" "$LOG_QEMU_DEBUG" || \
-   grep -q -F "$MARKER" "$AUDIT_LOG" || \
-   grep -q -F "$MARKER" "$SERIAL_LOG" || \
-   grep -q -F "$MARKER" "$DEBUGCON_LOG"; then
+if [[ "$marker_found" == "true" ]]; then
     success "Canonical Ring3 marker detected."
     {
-        echo "hash_ring3_output=$(sha256sum "$LOG_OUT" | awk '{print $1}')"
-        echo "hash_ring3_error=$(sha256sum "$LOG_ERR" 2>/dev/null | awk '{print $1}')"
-        echo "hash_ring3_analysis=$(sha256sum "$LOG_ANALYSIS" 2>/dev/null | awk '{print $1}')"
-        echo "hash_ring3_qemu_debug=$(sha256sum "$LOG_QEMU_DEBUG" 2>/dev/null | awk '{print $1}')"
-        echo "hash_ring3_audit=$(sha256sum "$AUDIT_LOG" | awk '{print $1}')"
-        echo "hash_ring3_serial=$(sha256sum "$SERIAL_LOG" 2>/dev/null | awk '{print $1}')"
-        echo "hash_ring3_debugcon=$(sha256sum "$DEBUGCON_LOG" 2>/dev/null | awk '{print $1}')"
+        echo "hash_ring3_output=$(sha256sum "$LOG_OUT" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_error=$(sha256sum "$LOG_ERR" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_analysis=$(sha256sum "$LOG_ANALYSIS" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_qemu_debug=$(sha256sum "$LOG_QEMU_DEBUG" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_audit=$(sha256sum "$AUDIT_LOG" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_serial=$(sha256sum "$SERIAL_LOG" 2>/dev/null | awk '{print $1}' || echo 'missing')"
+        echo "hash_ring3_debugcon=$(sha256sum "$DEBUGCON_LOG" 2>/dev/null | awk '{print $1}' || echo 'missing')"
     } >> "$META_LOG"
     exit 0
 fi

@@ -23,7 +23,8 @@ void tss_init(void)
     static uint8_t ist1_stack[AYKEN_FRAME_SIZE] __attribute__((aligned(16)));
     kernel_tss.ist1 = (uint64_t)ist1_stack + sizeof(ist1_stack);
     
-    // Set I/O map base (no I/O permission bitmap)
+    // Set I/O map base beyond TSS limit to disable I/O permission checking
+    // This allows all Ring3 processes to access all I/O ports
     kernel_tss.io_map_base = sizeof(tss_entry_t);
     
     // Install TSS in GDT and load TR register

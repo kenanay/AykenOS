@@ -41,6 +41,7 @@
 #include "sys/scheduler_policy_test.h"
 
 #include "drivers/console/fb_console.h"
+#include "serial.h"
 
 #include "arch/x86_64/cpu.h"
 #include "arch/x86_64/gdt_idt.h"
@@ -93,8 +94,16 @@ static inline void reload_cs(uint16_t sel)
 
 void kmain_real(ayken_boot_info_t *boot)
 {
-    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'K'), "Nd"(0xE9));
+    // Initialize serial port first for early debugging
+    serial_init_com1();
+    serial_write("SERIAL_OK\n");
+    
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'Z'), "Nd"(0xE9));  // YENİ BUILD MARKER
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'0'), "Nd"(0xE9));
+    
+    // Serial port test
+    serial_write("KERNEL_BOOT_START\n");
+    
     debugcon_write("[K][EARLY_BOOT_OK] kmain entry\n");
     // Minimal early exception visibility (no STI)
     cpu_init();
@@ -102,7 +111,7 @@ void kmain_real(ayken_boot_info_t *boot)
     // interrupts_install_early();
     // g_early_idt_ready = 1;
     // reload_cs(GDT_KERNEL_CODE);
-    tss_init();
+    // Note: TSS will be initialized later in kernel_early_init_body after heap is ready
 #ifdef AYKEN_EARLY_IDT_TEST
     __asm__ volatile("int3");
 #endif
@@ -161,7 +170,19 @@ void kmain_real(ayken_boot_info_t *boot)
     // Normalde buraya dönmez; yine de güvenlik için
     for (;;) {
         if (sched_take_resched()) {
+            outb(0xE9, (uint8_t)'Y'); // Yield marker
+            outb(0xE9, (uint8_t)'[');
+            outb(0xE9, (uint8_t)'C');
+            outb(0xE9, (uint8_t)'A');
+            outb(0xE9, (uint8_t)'L');
+            outb(0xE9, (uint8_t)'L');
+            outb(0xE9, (uint8_t)']');
             sched_yield();
+            outb(0xE9, (uint8_t)'[');
+            outb(0xE9, (uint8_t)'R');
+            outb(0xE9, (uint8_t)'E');
+            outb(0xE9, (uint8_t)'T');
+            outb(0xE9, (uint8_t)']');
             continue;
         }
         __asm__ volatile("sti; hlt");
@@ -206,8 +227,8 @@ static void kernel_early_init_body(ayken_boot_info_t *boot)
     // ------------------------------------------------------------------------
     if (!g_early_idt_ready) {
         cpu_init();
-        gdt_init();
-        tss_init();  // Initialize TSS for Ring3 transitions
+        tss_init();  // Initialize TSS with proper RSP0 (requires heap)
+        gdt_init();  // This will load TSS with correct RSP0
     }
     if (!g_early_idt_ready) {
         interrupts_install_early();
@@ -259,7 +280,8 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]1 PIC\n");
     pic_init();
     debugcon_write("[K][LATE]2 TIMER\n");
-    timer_init(100);
+    // Phase 4.5 preempt validation mode: high timer frequency.
+    timer_init(1000);
     fb_print("[OK] PIC + Timer.\n");
 
     // ---------------------------------------------------------
@@ -287,6 +309,12 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]6 SYSCALL\n");
     syscall_init();  // Ring0 mechanism only - 10 syscalls exactly
     fb_print("[OK] Syscall mechanism ready (10 execution-centric syscalls only).\n");
+
+    // ---------------------------------------------------------
+    // 4.1) Ring0 INT 0x80 smoke test - COMPLETELY DISABLED FOR RING3 DIAGNOSTICS
+    // ---------------------------------------------------------
+    debugcon_write("[K][LATE]6.1 INT80_SMOKETEST_DISABLED\n");
+    fb_print("[DISABLED] Ring0 INT 0x80 smoke test disabled - proceeding to Ring3 diagnostics.\n");
 
     // ---------------------------------------------------------
     // 4.1) Capability mechanism (security mechanism only)

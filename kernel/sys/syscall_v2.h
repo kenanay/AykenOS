@@ -33,9 +33,10 @@
 #define SYS_V2_CAPABILITY_BIND   7  // Capability token binding
 #define SYS_V2_CAPABILITY_REVOKE 8  // Capability token revocation
 #define SYS_V2_EXIT              9  // Process termination
+#define SYS_V2_DEBUG_PUTCHAR    10  // Debug character output (Ring3 heartbeat)
 
-// Total syscalls: exactly 10 (as per Phase 2 documentation)
-#define SYS_V2_MAX_SYSCALL       9
+// Total syscalls: exactly 11 (debug syscall added for Ring3 heartbeat)
+#define SYS_V2_MAX_SYSCALL      10
 
 // ============================================================================
 // CAPABILITY SYSTEM TYPES
@@ -116,6 +117,9 @@ uint64_t sys_v2_capability_revoke(uint64_t token_id);
 
 // Process Management Syscalls
 uint64_t sys_v2_exit(uint64_t exit_code);
+
+// Debug Syscalls (Ring3 heartbeat)
+uint64_t sys_v2_debug_putchar(uint64_t character);
 
 // ============================================================================
 // SYSCALL DISPATCHER

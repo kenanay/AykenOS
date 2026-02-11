@@ -4,13 +4,52 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Author:** Kenan AY  
 **Task:** Phase 1 Critical Fixes - Task 5  
 **Date:** January 3, 2026  
+**Last Updated:** February 10, 2026  
 **Status:** ✅ COMPLETED
 
 ## Overview
 
-This document summarizes the implementation of Task 5: "Build System Integration and Documentation" from the AykenOS Phase 1 Critical Fixes specification. All sub-tasks have been successfully completed with comprehensive automation and documentation.
+This document summarizes the implementation of Task 5: "Build System Integration and Documentation" from the AykenOS Phase 1 Critical Fixes specification. All sub-tasks have been successfully completed with comprehensive automation and documentation, including macOS native build system support.
 
 ## Implemented Components
+
+### 0. macOS Native Build System ✅ (Added February 10, 2026)
+
+**File:** `build_efi.sh`
+
+**Problem Solved:**
+- macOS lacks Linux `mkfs.vfat` tool required for EFI image creation
+- Cross-platform build system needed for macOS developers
+
+**Implementation:**
+- Native macOS script using `hdiutil` for disk image creation
+- FAT32 filesystem with UEFI boot structure
+- AppleDouble file prevention (`COPYFILE_DISABLE=1`, `cp -X`)
+- QEMU-compatible UDRW format conversion
+- Automatic startup.nsh for UEFI boot
+- Hash verification for kernel.elf integrity
+
+**Features:**
+```bash
+# Create EFI image on macOS
+./build_efi.sh
+
+# Automatic verification
+- Checks for required tools (hdiutil, shasum)
+- Verifies kernel.elf exists
+- Creates proper UEFI directory structure
+- Validates kernel.elf hash in image
+```
+
+**Documentation:**
+- ✅ `docs/development/BUILD_SYSTEM_MACOS_UPDATE.md` - Complete macOS build guide
+- ✅ `docs/setup/MACOS_SETUP_GUIDE.md` - macOS setup and usage guide
+- ✅ `docs/development/QEMU_TEST_SUITE_DOCUMENTATION.md` - Updated with macOS QEMU config
+
+**Integration:**
+- Works seamlessly with existing Makefile
+- Compatible with QEMU test suite
+- Supports same boot sequence as Linux build
 
 ### 1. Enhanced Makefile with Validation Targets ✅
 
@@ -186,6 +225,12 @@ Updated `BUILD_FIXES_COMPLETE.md` to include:
 - Cross-compiler build automation
 - Shell script compatibility
 
+**macOS Support:** (Added February 10, 2026)
+- Native `build_efi.sh` script using `hdiutil`
+- No Linux tools required (mkfs.vfat not needed)
+- Full QEMU integration with proper debugcon configuration
+- Complete documentation in `docs/setup/MACOS_SETUP_GUIDE.md`
+
 **WSL Support:**
 - Seamless Windows-WSL integration
 - Optimized development workflow
@@ -274,6 +319,30 @@ make validate-toolchain
 make dev
 ```
 
+**macOS:** (Added February 10, 2026)
+```bash
+# Install dependencies (Homebrew)
+brew install x86_64-elf-gcc nasm qemu
+
+# Build kernel
+make clean && make all
+
+# Create EFI image (macOS native)
+./build_efi.sh
+
+# Test with QEMU (proper debugcon config)
+qemu-system-x86_64 \
+  -machine q35 \
+  -cpu qemu64 \
+  -m 512M \
+  -drive if=ide,format=raw,file=EFI.img \
+  -bios /usr/local/share/qemu/edk2-x86_64-code.fd \
+  -serial file:qemu_serial.log \
+  -debugcon file:qemu_debugcon.log \
+  -global isa-debugcon.iobase=0xe9 \
+  -no-reboot -no-shutdown
+```
+
 **Linux/WSL:**
 ```bash
 # Setup environment
@@ -288,22 +357,25 @@ make dev
 
 ## Files Created/Modified
 
-### New Files Created (6 files)
+### New Files Created (7 files)
 1. `install_dependencies.ps1` - Windows dependency installation
 2. `install_dependencies.sh` - Linux dependency installation
 3. `WINDOWS_WSL_SETUP_GUIDE.md` - Comprehensive setup documentation
 4. `BUILD_SYSTEM_INTEGRATION_SUMMARY.md` - This summary document
 5. `simple_integration_test.ps1` - Integration validation test
 6. `test_build_integration.ps1` - Comprehensive test suite
+7. `build_efi.sh` - macOS native EFI image builder (Feb 10, 2026)
 
-### Modified Files (2 files)
+### Modified Files (4 files)
 1. `Makefile` - Enhanced with validation targets and dependency checking
 2. `BUILD_FIXES_COMPLETE.md` - Updated with build system integration documentation
+3. `docs/development/BUILD_SYSTEM_MACOS_UPDATE.md` - Created (Feb 10, 2026)
+4. `docs/setup/MACOS_SETUP_GUIDE.md` - Updated (Feb 10, 2026)
 
 ### Total Implementation
-- **+8 files** (6 new, 2 modified)
-- **+~1200 lines of automation code**
-- **+Comprehensive cross-platform support**
+- **+11 files** (7 new, 4 modified)
+- **+~1500 lines of automation code**
+- **+Complete cross-platform support (Windows/Linux/WSL/macOS)**
 - **+Complete documentation coverage**
 
 ## Success Metrics
@@ -328,20 +400,22 @@ make dev
 
 ## Conclusion
 
-Task 5 "Build System Integration and Documentation" has been successfully completed with comprehensive automation, documentation, and cross-platform support. The implementation provides:
+Task 5 "Build System Integration and Documentation" has been successfully completed with comprehensive automation, documentation, and cross-platform support including macOS native tooling. The implementation provides:
 
 1. **Seamless Developer Experience** - One-command setup and validation
-2. **Cross-Platform Compatibility** - Windows, Linux, WSL, and Docker support
+2. **Cross-Platform Compatibility** - Windows, Linux, WSL, macOS, and Docker support
 3. **Comprehensive Automation** - Dependency detection, installation, and validation
 4. **Excellent Documentation** - Detailed guides for all platforms and scenarios
 5. **CI/CD Ready** - Integration targets for continuous validation
+6. **macOS Native Support** - No Linux tools required, native hdiutil-based workflow (Feb 10, 2026)
 
-The AykenOS build system is now production-ready with enterprise-grade automation and documentation, significantly improving the developer onboarding experience and reducing setup friction.
+The AykenOS build system is now production-ready with enterprise-grade automation and documentation, significantly improving the developer onboarding experience and reducing setup friction across all major development platforms.
 
 ---
 
 **Task Status:** ✅ COMPLETED  
 **Implementation Quality:** Production-Ready  
 **Developer Experience:** Significantly Enhanced  
+**Platform Support:** Windows, Linux, WSL, macOS ✅
 
 🚀 **Ready for Phase 2 Development!**

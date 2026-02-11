@@ -28,11 +28,13 @@ void pic_init(void)
     outb(PIC1_DATA, 0x01);
     outb(PIC2_DATA, 0x01);
 
-    outb(PIC1_DATA, a1);
-    outb(PIC2_DATA, a2);
+    // CRITICAL: Start with all IRQs masked, then selectively enable
+    // Don't restore old masks - they might have all IRQs disabled
+    outb(PIC1_DATA, 0xFF);  // Mask all master IRQs initially
+    outb(PIC2_DATA, 0xFF);  // Mask all slave IRQs initially
 
-    master_mask = a1;
-    slave_mask = a2;
+    master_mask = 0xFF;
+    slave_mask = 0xFF;
 }
 
 void pic_send_eoi(uint8_t irq)
@@ -58,8 +60,23 @@ void pic_set_mask(uint8_t irq)
 void pic_clear_mask(uint8_t irq)
 {
     if (irq < 8) {
+        // DEBUG: Show mask before/after
+        uint8_t old_mask = master_mask;
         master_mask &= ~(1 << irq);
         outb(PIC1_DATA, master_mask);
+        
+        // DEBUG: IRQ0 unmask
+        if (irq == 0) {
+            outb(0xE9, (uint8_t)'[');
+            outb(0xE9, (uint8_t)'I');
+            outb(0xE9, (uint8_t)'R');
+            outb(0xE9, (uint8_t)'Q');
+            outb(0xE9, (uint8_t)'0');
+            outb(0xE9, (uint8_t)'_');
+            outb(0xE9, (uint8_t)'O');
+            outb(0xE9, (uint8_t)'N');
+            outb(0xE9, (uint8_t)']');
+        }
     } else {
         irq -= 8;
         slave_mask &= ~(1 << irq);

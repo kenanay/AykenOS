@@ -9,10 +9,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 06.02.2026
+**Son Güncelleme:** 11.02.2026
 
-**Proje Durumu:** Core OS Phase 4.4 OPEN → DEFERRED (audit) | Constitutional Rule System Phase 11-12 tamamlandı ✅  
-**Boot/Kernal Bring-up:** UEFI→kernel handoff doğrulandı; erken IDT exception teslimatı doğrulanma aşamasında (bkz. `docs/development/PROJECT_STRUCTURE.md`).
+**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Phase 4.5 timer-preempt validation PASSED ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅  
+**Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | **IRQ-tail preempt chain strict doğrulandı ✅**
 
 ---
 
@@ -245,6 +245,29 @@ make efi-img    # EFI.img oluşturur
 make run        # QEMU ile EFI.img çalıştır
 ```
 
+### Profil Bazlı Build ve Preempt Doğrulama
+
+```bash
+# Release profil (default, temiz binary)
+make release
+
+# Validation profil (debug + instrumentation)
+make validation
+
+# Validation profil + -Werror
+make validation-strict
+
+# Deterministic preempt doğrulama (marker + fallback)
+make run-preempt
+
+# Strict marker-mode preempt doğrulama (fallback kapalı)
+make run-preempt-strict
+```
+
+Notlar:
+- `run-preempt-strict` otomatik olarak `STRICT_MARKERS=1` ve `FORCE_EFI_REBUILD=1` ile çalışır.
+- `run_preempt_test.sh` log analizinde `debugcon + serial` birleşik kaynağı kullanır.
+
 ### Rust AI Bileşenleri (Opsiyonel)
 
 ```bash
@@ -352,10 +375,14 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **Performance Validation:** 3-10x improvements achieved, 97.9% test coverage
   - ✅ **Integration Success:** Zero breaking changes, seamless codebase integration
 
-- 🔶 **Phase 4.4:** Performance Management (OPEN → DEFERRED)
-  - 🔶 **Audit Status:** Evidence incomplete; closure deferred
-  - 🔶 **Determinism Required:** Ring3 + syscall roundtrip PASS required for closure
-  - 🔶 **Reference:** `docs/roadmap/phase-4-4-status.md`
+- ✅ **Phase 4.4:** Ring3 Execution Model (TAMAMLANDI ✅)
+  - ✅ **Ring3 User Process Execution:** Kullanıcı modu süreç yürütme başarılı
+  - ✅ **Syscall Interface Operational:** INT 0x80 syscall interface çalışıyor
+  - ✅ **Syscall Roundtrip Validated:** Kernel ↔ Ring3 geçişleri doğrulandı
+  - ✅ **10 Execution-Centric Syscalls:** 1000-1009 aralığı operasyonel
+  - ✅ **Capability-Based Security:** Yetenek tabanlı güvenlik aktif
+  - ✅ **Ring3 VFS/DevFS:** Kullanıcı modunda dosya sistemi operasyonları
+  - ✅ **BCIB Execution Engine:** Binary instruction execution çalışıyor
 
 - 🚀 **Constitutional Integration:** Constitutional Stabilization & Lock (başlamaya hazır)
   - **Single Decision Authority:** All decisions flow through Gate C constitutional validation
@@ -401,7 +428,9 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 | Memory Allocation Optimization | ✅ | 80%+ reduction in allocations (285KB → <50KB) |
 | Single-Pass Processing | ✅ | O(n²) → O(n) complexity transformation |
 | Constitutional Compliance | ✅ | All optimizations preserve deterministic behavior |
-| Phase 4.4 Performance Management | 🔶 | OPEN → DEFERRED (audit evidence incomplete) |
+| Ring3 Execution Model | ✅ | Kullanıcı modu süreç yürütme operasyonel |
+| Syscall Roundtrip | ✅ | INT 0x80 kernel ↔ Ring3 geçişleri doğrulandı |
+| Phase 4.4 Ring3 Model | ✅ | Ring3 execution model tamamlandı |
 | Evidence-Based Management | ✅ | 100% evidence-backed decisions with audit trail |
 | Constitutional Integration Spec | 🚀 | Single decision authority framework ready to begin |
 | **Ayken Constitutional Rule System** | | **Development Tool for AykenOS** |
@@ -582,7 +611,7 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 31 Ocak 2026 - Phase 4.4 OPEN → DEFERRED (audit evidence incomplete)  
+**Son Güncelleme:** 11 Şubat 2026 - Phase 4.5 preempt validation strict PASS ✅ (Ring3 scheduler/preempt zinciri doğrulandı)  
 **Güncelleyen:** Kenan AY
 
 AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards ve evidence-based performance optimization özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
@@ -590,4 +619,3 @@ AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native b
 **Ayken Constitutional Rule System**: AykenOS'un geliştirilmesi için oluşturulan constitutional rule system, Task 10.1 MARS Module Detection ile modül seviyesinde risk atıfı sağlar.
 
 **© 2026 Kenan AY - AykenOS Project**
-# AykenOS

@@ -12,15 +12,56 @@
 KERNEL_CC = clang --target=x86_64-elf
 KERNEL_LD = ld.lld
 
-KERNEL_CFLAGS = -ffreestanding -m64 -O2 -Wall -Wextra -Ikernel/include -Iuserspace/libayken
+KERNEL_CFLAGS = -ffreestanding -m64 -Wall -Wextra -Ikernel/include -Iuserspace/libayken
 KERNEL_CFLAGS += -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector
 KERNEL_CFLAGS += -mno-red-zone
+KERNEL_ASMFLAGS =
+
+# ------------------------------------------------------------
+# Kernel profile and debug feature flags
+# ------------------------------------------------------------
+# Kernel profile (release | validation)
+KERNEL_PROFILE ?= release
+PROFILE_RELEASE_FLAGS :=
+PROFILE_VALIDATION_FLAGS :=
+
+ifneq ($(filter $(KERNEL_PROFILE),release validation),$(KERNEL_PROFILE))
+$(error Invalid KERNEL_PROFILE='$(KERNEL_PROFILE)'. Use release or validation)
+endif
+
+AYKEN_DEBUG_IRQ ?= 0
+AYKEN_DEBUG_SCHED ?= 0
+VALIDATION_WERROR ?= 0
+
+ifeq ($(KERNEL_PROFILE),validation)
+PROFILE_VALIDATION_FLAGS := 1
+AYKEN_DEBUG_IRQ := 1
+AYKEN_DEBUG_SCHED := 1
+KERNEL_CFLAGS += -O0 -g3
+ifeq ($(VALIDATION_WERROR),1)
+KERNEL_CFLAGS += -Werror
+endif
+else
+PROFILE_RELEASE_FLAGS := 1
+KERNEL_CFLAGS += -O2 -g1
+endif
+
+ifeq ($(AYKEN_DEBUG_IRQ),1)
+KERNEL_CFLAGS += -DAYKEN_DEBUG_IRQ=1
+endif
+
+ifeq ($(AYKEN_DEBUG_SCHED),1)
+KERNEL_CFLAGS += -DAYKEN_DEBUG_SCHED=1
+KERNEL_ASMFLAGS += -DAYKEN_DEBUG_SCHED=1
+endif
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
 KERNEL_LDFLAGS = -nostdlib -z max-page-size=0x1000
 
 KERNEL_ELF = kernel.elf
+CTX_SWITCH_ASM = kernel/arch/x86_64/context_switch.asm
+PROFILE_STAMP = .build_profile.stamp
 
 KERNEL_DIR = kernel
 ARCH_DIR   = kernel/arch/x86_64
@@ -103,19 +144,32 @@ BOOT_EFI = $(BOOTLOADER_DIR)/BOOTX64.EFI
 # 3) Top-level hedefler
 # ------------------------------------------------------------
 
-all: check-deps $(KERNEL_ELF) $(BOOT_EFI)
+all: check-deps guard-context-offsets $(KERNEL_ELF) $(BOOT_EFI)
 
-kernel: check-deps $(KERNEL_ELF)
+kernel: check-deps guard-context-offsets $(KERNEL_ELF)
 bootloader: check-deps $(BOOT_EFI)
 userspace-runtime:
 	@cd $(USERSPACE_RUST_DIR) && cargo build -p bcib-runtime --bin dispatcher
+release:
+	@$(MAKE) KERNEL_PROFILE=release all
+validation:
+	@$(MAKE) KERNEL_PROFILE=validation all
+validation-strict:
+	@$(MAKE) KERNEL_PROFILE=validation VALIDATION_WERROR=1 all
 
 
 # ------------------------------------------------------------
 # 4) Kernel build
 # ------------------------------------------------------------
 
-$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld
+$(PROFILE_STAMP): FORCE
+	@if [ ! -f $(PROFILE_STAMP) ] || [ "$$(cat $(PROFILE_STAMP) 2>/dev/null)" != "$(KERNEL_PROFILE)" ]; then \
+		echo "$(KERNEL_PROFILE)" > $(PROFILE_STAMP); \
+	fi
+
+$(KERNEL_OBJS): $(PROFILE_STAMP)
+
+$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP)
 	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) -o $@ $(KERNEL_OBJS)
 
 # C -> .o
@@ -125,7 +179,7 @@ kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 
 # asm -> .o (kernel/arch/x86_64/*.asm)
 %.o: %.asm
-	nasm -f elf64 $< -o $@
+	nasm -f elf64 $(KERNEL_ASMFLAGS) $< -o $@
 
 # S -> .o (kernel/arch/x86_64/*.S) - GNU assembler
 %.o: %.S
@@ -172,17 +226,59 @@ run: efi-img
 		-global isa-debugcon.iobase=0xe9 \
 		-nographic
 
-run-preempt: efi-img
+run-preempt:
 	@# Phase 4.5 deterministic preempt validation runner
+	@$(MAKE) KERNEL_PROFILE=validation guard-context-offsets efi-img
 	QEMU_TIMEOUT=12 ./run_preempt_test.sh
 
+run-preempt-strict:
+	@# Strict marker-mode preempt validation (no AB fallback)
+	@$(MAKE) KERNEL_PROFILE=validation guard-context-offsets kernel bootloader
+	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
+
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG)
+	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI)
+	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp
 
-.PHONY: all clean run run-preempt efi-img kernel bootloader
+.PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
+FORCE:
+
+# Enforce context ABI discipline: raw numeric offsets are forbidden in context_switch.asm.
+guard-context-offsets:
+	@echo "Checking context offset discipline..."
+	@if grep -nE '^[[:space:]]*[^;].*\[(rdi|rsi)[^]]*\+[[:space:]]*[0-9]+' $(CTX_SWITCH_ASM) >/dev/null; then \
+		echo "ERROR: Raw numeric context offsets found in $(CTX_SWITCH_ASM). Use CTX_* constants only."; \
+		grep -nE '^[[:space:]]*[^;].*\[(rdi|rsi)[^]]*\+[[:space:]]*[0-9]+' $(CTX_SWITCH_ASM); \
+		exit 1; \
+	fi
+	@if grep -nE '^[[:space:]]*[^;].*\[(rdi|rsi)[^]]*\+[[:space:]]*CTX_[^]]*[[:space:]]*[\+\-\*]' $(CTX_SWITCH_ASM) >/dev/null; then \
+		echo "ERROR: Context offsets must be exact [rdi|rsi + CTX_*] (no arithmetic on CTX_*)."; \
+		grep -nE '^[[:space:]]*[^;].*\[(rdi|rsi)[^]]*\+[[:space:]]*CTX_[^]]*[[:space:]]*[\+\-\*]' $(CTX_SWITCH_ASM); \
+		exit 1; \
+	fi
+	@if awk '\
+		/^[[:space:]]*;/ { next } \
+		{ \
+			line = $$0; \
+			while (match(line, /\[(rdi|rsi)[^]]*\+[[:space:]]*[A-Za-z_][A-Za-z0-9_]*/)) { \
+				expr = substr(line, RSTART, RLENGTH); \
+				token = expr; \
+				sub(/^.*\+[[:space:]]*/, "", token); \
+				if (token !~ /^CTX_[A-Za-z0-9_]*$$/) { \
+					print NR ":" $$0; \
+					bad = 1; \
+					break; \
+				} \
+				line = substr(line, RSTART + RLENGTH); \
+			} \
+		} \
+		END { exit bad }' $(CTX_SWITCH_ASM); then :; else \
+		echo "ERROR: Non-CTX_* context offset alias used in $(CTX_SWITCH_ASM)."; \
+		exit 1; \
+	fi
+	@echo "Context offset guard: PASS"
 
 # ------------------------------------------------------------
 # 7) Validation and dependency checking targets
@@ -347,6 +443,9 @@ help:
 	@echo "  all          - Build kernel and bootloader"
 	@echo "  kernel       - Build kernel only"
 	@echo "  bootloader   - Build UEFI bootloader only"
+	@echo "  release      - Build all with KERNEL_PROFILE=release"
+	@echo "  validation   - Build all with KERNEL_PROFILE=validation"
+	@echo "  validation-strict - Validation build with -Werror"
 	@echo "  userspace-runtime - Build userspace dispatcher (bcib-runtime/bin/dispatcher)"
 	@echo "  efi-img      - Create EFI disk image"
 	@echo "  clean        - Clean build artifacts"
@@ -354,6 +453,8 @@ help:
 	@echo "Development targets:"
 	@echo "  dev          - Quick build and test cycle"
 	@echo "  run          - Build and run in QEMU"
+	@echo "  run-preempt  - Validation profile preempt test runner"
+	@echo "  run-preempt-strict - Validation preempt runner with STRICT_MARKERS=1"
 	@echo "  setup        - Set up development environment"
 	@echo ""
 	@echo "Validation targets:"

@@ -1,6 +1,6 @@
 # Phase 4.5: Timer Preempt Validation Report
 **Date:** February 11, 2026  
-**Status:** ✅ PASSED  
+**Status:** ✅ PASSED (strict marker mode + fallback mode)  
 **Milestone:** Preemptive Multitasking Validated
 
 ---
@@ -27,7 +27,7 @@ Phase 4.5 successfully validates **preemptive multitasking** in AykenOS. Two ind
 ```asm
 mov rbx, 'A'
 loop:
-  mov rax, 10          ; SYS_V2_DEBUG_PUTCHAR
+  mov rax, 1010        ; user-space ABI number for SYS_V2_DEBUG_PUTCHAR
   mov rdi, rbx         ; character = 'A'
   int 0x80
   jmp loop
@@ -37,16 +37,28 @@ loop:
 ```asm
 mov rbx, 'B'
 loop:
-  mov rax, 10          ; SYS_V2_DEBUG_PUTCHAR
+  mov rax, 1010        ; user-space ABI number for SYS_V2_DEBUG_PUTCHAR
   mov rdi, rbx         ; character = 'B'
   int 0x80
   jmp loop
 ```
 
 ### Timer Configuration
-- **Frequency:** 1000 Hz (1ms tick)
+- **Validation frequency:** 1000 Hz (1ms tick)
 - **Preemption:** Aggressive (every tick for Ring3 processes)
 - **Marker:** 'T' every 2 ticks for visibility
+
+### Validation Commands
+
+```bash
+# Standard deterministic validation (marker + AB fallback)
+make run-preempt
+
+# Strict marker-only validation (canonical MARK:* stream required)
+make run-preempt-strict
+```
+
+`run-preempt-strict` runs with `STRICT_MARKERS=1` and `FORCE_EFI_REBUILD=1`, preventing stale `EFI.img` confusion.
 
 ---
 
@@ -74,6 +86,9 @@ Timer IRQ → ASM stub → save context → sched_request_resched_irq()
 2. **context_switch.asm:** IRQ stub tail checks flag and switches
 3. **sched.c:** New `sched_request_resched_irq()` for IRQ context
 4. **sched.c:** New `sched_yield_irq()` for IRQ-safe switching
+5. **context_switch.asm:** `kernel_first_entry` now aligns stack (`sub rsp, 8`) before `call init_process_main` to satisfy SysV ABI.
+6. **context_switch.asm:** `DBG_ASSERT_RSP_ALIGNED` checks added in validation profile (`kernel_first_entry`, `kernel_iret_entry`, timer IRQ callsite, syscall callsite).
+7. **run_preempt_test.sh:** merged log analysis (`debugcon + serial`) with strict `MARK:*` mode and fallback alternation mode.
 
 ---
 
@@ -81,27 +96,22 @@ Timer IRQ → ASM stub → save context → sched_request_resched_irq()
 
 ### Output Pattern Analysis
 
-**Sample from PHASE_4_5_OUTPUT.log:**
-```
-AA...                    ← Process A executing
-rY[IRQ][SCH]            ← Timer IRQ + Scheduler switch
-P12[SEL]PID=3           ← Switched to Process B
-BB...                    ← Process B executing
-TrY[IRQ][SCH]           ← Timer IRQ + Scheduler switch
-P13[SEL]PID=2           ← Switched to Process A
-AA...                    ← Process A executing again
-```
+Validation now uses two evidence layers:
 
-### Markers Observed
+1. **Canonical marker layer (strict):**
+   - `MARK:PID=2`, `MARK:PID=3`
+   - `MARK:SW=K>U|U>K|U>U`
+   - `MARK:IRET`
+2. **Behavioral fallback layer (non-strict):**
+   - Dense contiguous `A/B` run quality metrics in merged log stream.
 
-| Marker | Meaning | Count |
-|--------|---------|-------|
-| `A` | Process A syscall output | ~50% |
-| `B` | Process B syscall output | ~50% |
-| `T` | Timer tick (every 2 ticks) | High frequency |
-| `rY[IRQ][SCH]` | IRQ preempt + switch | Regular |
-| `P12[SEL]PID=3` | Switch to PID 3 | Alternating |
-| `P13[SEL]PID=2` | Switch to PID 2 | Alternating |
+### Marker Signals (Strict Mode)
+
+| Marker | Meaning | Source |
+|--------|---------|--------|
+| `MARK:PID=<n>` | PID2/PID3 scheduling visibility | `kernel/sched/sched.c` |
+| `MARK:SW=<from>><to>` | scheduler transition direction | `kernel/sched/sched.c` |
+| `MARK:IRET` | user return path reached | `kernel/sched/sched.c` |
 
 ### Critical Validations
 
@@ -113,6 +123,7 @@ AA...                    ← Process A executing again
 ✅ **TSS.RSP0 Update:** Kernel stack pointer updated per process  
 ✅ **No Faults:** No #GP, #PF, #DF during entire test  
 ✅ **Stability:** Runs indefinitely without crashes  
+✅ **Strict Marker Contract:** `make run-preempt-strict` passes with canonical `MARK:*` signals  
 
 ---
 
@@ -243,6 +254,7 @@ Production improvements:
 ✅ **Privilege separation** - Ring3 user code, Ring0 kernel  
 ✅ **Stable operation** - No faults, no crashes  
 ✅ **Forward progress** - Both processes execute fairly  
+✅ **Deterministic validation pipeline** - strict marker-mode and fallback-mode both available  
 
 This milestone proves that AykenOS has a **production-grade kernel foundation** for:
 - Multi-process execution
@@ -282,12 +294,13 @@ FLAG=0202 CS=0023 3
 
 ### Preemptive Alternation
 ```
-AArY[IRQ][SCH]
-P12[SEL]PID=3
-BBTrY[IRQ][SCH]
-P13[SEL]PID=2
-AArY[IRQ][SCH]
-P12[SEL]PID=3
+MARK:PID=2
+MARK:SW=U>U
+MARK:IRET
+MARK:PID=3
+MARK:SW=U>U
+MARK:IRET
+MARK:PID=2
 ```
 
 ---

@@ -152,16 +152,16 @@ analyze_syscall_flow() {
     fi
     
     # Track syscall handler invocations
-    local syscall_count=$(echo "$output_content" | grep -cE "syscall.*handler|SYS_.*called" || echo 0)
+    local syscall_count=$(echo "$output_content" | grep -cE "syscall.*handler|SYS_.*called" 2>/dev/null || echo "0")
     if (( syscall_count > 0 )); then
         syscall_flow+=("HANDLER_INVOKED:$syscall_count")
         write_log "Syscall handler invoked $syscall_count times" "SUCCESS"
     fi
     
     # Track specific syscall types
-    local write_syscalls=$(echo "$output_content" | grep -cE "SYS_write" || echo 0)
-    local read_syscalls=$(echo "$output_content" | grep -cE "SYS_read" || echo 0)
-    local exit_syscalls=$(echo "$output_content" | grep -cE "SYS_exit|Process exit requested" || echo 0)
+    local write_syscalls=$(echo "$output_content" | grep -cE "SYS_write" 2>/dev/null || echo "0")
+    local read_syscalls=$(echo "$output_content" | grep -cE "SYS_read" 2>/dev/null || echo "0")
+    local exit_syscalls=$(echo "$output_content" | grep -cE "SYS_exit|Process exit requested" 2>/dev/null || echo "0")
     
     if (( write_syscalls > 0 )); then
         syscall_flow+=("WRITE_SYSCALLS:$write_syscalls")
@@ -199,20 +199,42 @@ run_syscall_validation() {
     fi
     local debugcon_args=()
     if [[ -n "${SYSCALL_DEBUGCON_LOG:-}" ]]; then
-        debugcon_args=("-debugcon" "file:${SYSCALL_DEBUGCON_LOG}" "-global" "isa-debugcon.iobase=0xe9")
+        debugcon_args=(
+            "-chardev" "file,id=dbgcon,path=${SYSCALL_DEBUGCON_LOG}"
+            "-device" "isa-debugcon,iobase=0xe9,chardev=dbgcon"
+        )
     fi
 
 
     # Optional UEFI firmware (OVMF) for deterministic boot
     local ovmf_args=()
+    local ovmf_code=""
+    local ovmf_vars=""
+    local ovmf_vars_copy=""
     if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
+        ovmf_code="OVMF_CODE.fd"
+        ovmf_vars="OVMF_VARS.fd"
+    elif [[ -f "firmware/ovmf/OVMF_CODE.fd" && -f "firmware/ovmf/OVMF_VARS.fd" ]]; then
+        ovmf_code="firmware/ovmf/OVMF_CODE.fd"
+        ovmf_vars="firmware/ovmf/OVMF_VARS.fd"
+    elif [[ -f "/opt/homebrew/share/qemu/edk2-x86_64-code.fd" && -f "/opt/homebrew/share/qemu/edk2-x86_64-vars.fd" ]]; then
+        ovmf_code="/opt/homebrew/share/qemu/edk2-x86_64-code.fd"
+        ovmf_vars="/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    fi
+    if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
+        ovmf_vars_copy="syscall_ovmf_vars.fd"
+        cp -f "$ovmf_vars" "$ovmf_vars_copy"
         ovmf_args=(
             "-machine" "q35"
-            "-drive" "if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd"
-            "-drive" "if=pflash,format=raw,file=OVMF_VARS.fd"
+            "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
+            "-drive" "if=pflash,format=raw,file=${ovmf_vars_copy}"
         )
     fi
-    local qemu_args=(
+    local qemu_args=()
+    if (( ${#ovmf_args[@]} > 0 )); then
+        qemu_args+=("${ovmf_args[@]}")
+    fi
+    qemu_args+=(
         "-drive" "format=raw,file=EFI.img"
         "-serial" "$serial_arg"
         "-m" "256M"
@@ -224,9 +246,6 @@ run_syscall_validation() {
     )
     if (( ${#debugcon_args[@]} > 0 )); then
         qemu_args+=("${debugcon_args[@]}")
-    fi
-    if (( ${#ovmf_args[@]} > 0 )); then
-        qemu_args+=("${ovmf_args[@]}")
     fi
     
     write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "DEBUG"
@@ -240,6 +259,7 @@ run_syscall_validation() {
     # Monitor execution with syscall-specific analysis
     local start_time=$(date +%s)
     local last_output_size=0
+    local last_debugcon_size=0
     local syscall_stages=()
     local init_detected=0
     local handler_detected=0
@@ -257,69 +277,95 @@ run_syscall_validation() {
             break
         fi
         
-        # Analyze output
-        if [[ -f "$output_log" ]]; then
-            local current_size=$(wc -c < "$output_log" 2>/dev/null || echo 0)
+        # Analyze output (serial + debugcon)
+        local stream_log="$output_log"
+        if [[ -n "${SYSCALL_SERIAL_LOG:-}" ]]; then
+            stream_log="${SYSCALL_SERIAL_LOG}"
+        fi
+        local debugcon_log=""
+        if [[ -n "${SYSCALL_DEBUGCON_LOG:-}" ]]; then
+            debugcon_log="${SYSCALL_DEBUGCON_LOG}"
+        fi
+        local new_content=""
+        local have_new=false
+
+        if [[ -f "$stream_log" ]]; then
+            local current_size=$(wc -c < "$stream_log" 2>/dev/null || echo 0)
             if (( current_size > last_output_size )); then
-                local new_content=$(tail -c +$((last_output_size + 1)) "$output_log" 2>/dev/null || echo "")
+                new_content+=$(tail -c +$((last_output_size + 1)) "$stream_log" 2>/dev/null || echo "")
                 last_output_size=$current_size
-                full_output+="$new_content"
-                
-                # Check syscall initialization patterns
-                for pattern in "${SYSCALL_INIT_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Syscall Init: $match" "SUCCESS"
-                        syscall_stages+=("INIT: $match")
-                        ((init_detected++))
-                    fi
-                done
-                
-                # Check syscall handler patterns
-                for pattern in "${SYSCALL_HANDLER_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Syscall Handler: $match" "SUCCESS"
-                        syscall_stages+=("HANDLER: $match")
-                        ((handler_detected++))
-                    fi
-                done
-                
-                # Check syscall execution patterns
-                for pattern in "${SYSCALL_EXECUTION_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "Syscall Execution: $match" "SUCCESS"
-                        syscall_stages+=("EXECUTION: $match")
-                        ((execution_detected++))
-                    fi
-                done
-                
-                # Check user syscall patterns
-                for pattern in "${SYSCALL_USER_PATTERNS[@]}"; do
-                    if echo "$new_content" | grep -qE "$pattern"; then
-                        local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
-                        write_log "User Syscall: $match" "SUCCESS"
-                        syscall_stages+=("USER: $match")
-                        ((user_detected++))
-                    fi
-                done
-                
-                # Check for errors
-                if echo "$new_content" | grep -qE "PANIC|FATAL|syscall.*ERROR|Invalid.*syscall|ENOSYS"; then
-                    local match=$(echo "$new_content" | grep -oE "PANIC|FATAL|syscall.*ERROR|Invalid.*syscall|ENOSYS" | head -n1)
-                    write_log "Syscall Error detected: $match" "ERROR"
-                    error_detected=true
+                have_new=true
+            fi
+        fi
+        if [[ -n "$debugcon_log" && -f "$debugcon_log" ]]; then
+            local current_dbg_size=$(wc -c < "$debugcon_log" 2>/dev/null || echo 0)
+            if (( current_dbg_size > last_debugcon_size )); then
+                if [[ "$have_new" == "true" ]]; then
+                    new_content+=$'\n'
                 fi
-                
-                # Verbose output
-                if [[ "$VERBOSE" == "true" ]]; then
-                    echo "$new_content" | while IFS= read -r line; do
-                        if [[ -n "${line// }" ]]; then
-                            echo -e "  ${GRAY}QEMU: $line${NC}"
-                        fi
-                    done
+                new_content+=$(tail -c +$((last_debugcon_size + 1)) "$debugcon_log" 2>/dev/null || echo "")
+                last_debugcon_size=$current_dbg_size
+                have_new=true
+            fi
+        fi
+
+        if [[ "$have_new" == "true" ]]; then
+            full_output+="$new_content"
+            
+            # Check syscall initialization patterns
+            for pattern in "${SYSCALL_INIT_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
+                    write_log "Syscall Init: $match" "SUCCESS"
+                    syscall_stages+=("INIT: $match")
+                    ((init_detected++))
                 fi
+            done
+            
+            # Check syscall handler patterns
+            for pattern in "${SYSCALL_HANDLER_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
+                    write_log "Syscall Handler: $match" "SUCCESS"
+                    syscall_stages+=("HANDLER: $match")
+                    ((handler_detected++))
+                fi
+            done
+            
+            # Check syscall execution patterns
+            for pattern in "${SYSCALL_EXECUTION_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
+                    write_log "Syscall Execution: $match" "SUCCESS"
+                    syscall_stages+=("EXECUTION: $match")
+                    ((execution_detected++))
+                fi
+            done
+            
+            # Check user syscall patterns
+            for pattern in "${SYSCALL_USER_PATTERNS[@]}"; do
+                if echo "$new_content" | grep -qE "$pattern"; then
+                    local match=$(echo "$new_content" | grep -oE "$pattern" | head -n1)
+                    write_log "User Syscall: $match" "SUCCESS"
+                    syscall_stages+=("USER: $match")
+                    ((user_detected++))
+                fi
+            done
+            
+            # Check for errors
+            if echo "$new_content" | grep -qE "PANIC|FATAL|syscall.*ERROR|Invalid.*syscall|ENOSYS"; then
+                local match=$(echo "$new_content" | grep -oE "PANIC|FATAL|syscall.*ERROR|Invalid.*syscall|ENOSYS" | head -n1)
+                write_log "Syscall Error detected: $match" "ERROR"
+                error_detected=true
+            fi
+            
+            # Verbose output
+            if [[ "$VERBOSE" == "true" ]]; then
+                echo "$new_content" | while IFS= read -r line; do
+                    if [[ -n "${line// }" ]]; then
+                        echo -e "  ${GRAY}QEMU: $line${NC}"
+                    fi
+                done
             fi
         fi
         
@@ -351,7 +397,7 @@ run_syscall_validation() {
     # Check QEMU debug log for interrupt information
     local interrupt_analysis=""
     if [[ -f "qemu_syscall_debug.log" ]]; then
-        local int80_count=$(grep -c "int.*0x80\|interrupt.*128" qemu_syscall_debug.log 2>/dev/null || echo 0)
+        local int80_count=$(grep -c "int.*0x80\|interrupt.*128" qemu_syscall_debug.log 2>/dev/null || echo "0")
         if (( int80_count > 0 )); then
             interrupt_analysis="INT_0x80_TRIGGERED:$int80_count"
             write_log "INT 0x80 interrupts detected: $int80_count" "SUCCESS"
@@ -443,6 +489,10 @@ EOF
     fi
     
     echo -e "${CYAN}============================================================${NC}"
+    
+    if [[ -n "${ovmf_vars_copy:-}" ]]; then
+        rm -f "$ovmf_vars_copy"
+    fi
     
     return $([ "$syscall_success" == "true" ] && echo 0 || echo 1)
 }

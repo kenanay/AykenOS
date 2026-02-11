@@ -392,6 +392,11 @@ debugcon_u64("[B][JUMP_CR3]=", (UINT64)boot->pml4_phys);
     g_handoff_boot = boot_val;
     g_handoff_stack = stack_top;
     g_handoff_cr3 = cr3_val;
+    
+    // Switch to kernel page tables before jumping to kernel
+    // This ensures we're running on the correct page tables when we jump
+    __asm__ volatile("mov %0, %%cr3" : : "r"(cr3_val) : "memory");
+    
     ayken_jump_to_kernel_raw();
     __builtin_unreachable();
 }

@@ -42,15 +42,11 @@ ayken_jump_to_kernel_raw:
     mov $'I', %al
     outb %al, $0xE9
 
-    mov %r10, %rsp           # stack_top (old CR3)
+    mov %r10, %rsp           # kernel stack
     mov $'B', %al
     outb %al, $0xE9
 
-    # switch to kernel page tables and jump immediately
-    test %rax, %rax
-    jz 1f
-    mov %rax, %cr3
-1:
+    # Jump to kernel entry point (CR3 already switched in C code)
     jmp *%r11
 
 .data

@@ -1,53 +1,70 @@
-# AykenOS Syscall Transition Guide
+# AykenOS Syscall Transition Guide - COMPLETED
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Author:** Kenan AY  
 **Project:** AykenOS - Advanced AI-Integrated Operating System  
 **Created:** January 3, 2026  
-**Version:** 1.0
+**Updated:** February 8, 2026  
+**Version:** 2.0 - Transition Complete
 
 ## Overview
 
-This guide documents the migration path from AykenOS v1 (POSIX-like) syscalls to v2 (execution-centric) syscalls during the Phase 2.1 architectural transformation. The transition maintains backward compatibility while introducing the new execution-context and capability-based interface.
+This guide documents the **completed migration** from AykenOS v1 (POSIX-like) syscalls to v2 (execution-centric) syscalls. The Phase 2.5 architectural transformation has been successfully implemented with the new execution-context and capability-based interface fully operational.
 
-## Syscall Interface Evolution
+## Syscall Interface Evolution - COMPLETED ✅
 
-### Current State (Phase 1)
-- **5 POSIX-like syscalls**: read, write, open, close, exit
-- **Ring0-heavy implementation**: File system operations in kernel
-- **Traditional file descriptor model**: POSIX-compatible interface
+### Previous State (Phase 1) - REMOVED
+- **5 POSIX-like syscalls**: read, write, open, close, exit (REMOVED)
+- **Ring0-heavy implementation**: File system operations in kernel (REMOVED)
+- **Traditional file descriptor model**: POSIX-compatible interface (REMOVED)
 
-### Target State (Phase 2.5)
+### Current State (Phase 4.4) - OPERATIONAL ✅
 - **10 execution-centric syscalls**: Memory mapping, context switching, capability management
 - **Minimal Ring0 attack surface**: Only mechanism, no policy
 - **Capability-based security**: Resource access through tokens
+- **Ring3 policy implementation**: VFS, DevFS, scheduler in user mode
 
-### Transition Period (Phase 2.1-2.4)
-- **Dual interface support**: Both v1 and v2 syscalls available
-- **Clear numbering plan**: Separate ranges prevent conflicts
-- **Gradual migration**: Applications can migrate incrementally
+### Transition Period (Phase 2.1-2.4) - COMPLETED
+- **Dual interface support**: Successfully migrated from v1 to v2
+- **Clear numbering plan**: 1000-1009 range implemented
+- **Complete migration**: All applications use v2 interface
 
-## Syscall Numbering Plan
+## Syscall Numbering Plan - FINAL IMPLEMENTATION
 
-### V1 Syscalls (Legacy - Range 0-99)
+### V1 Syscalls (Legacy) - COMPLETELY REMOVED ✅
 ```c
-// Legacy POSIX-like syscalls (backward compatibility)
-#define SYS_read       0    // read(fd, buf, count) → bytes_read
-#define SYS_write      1    // write(fd, buf, count) → bytes_written  
-#define SYS_open       2    // open(path, flags) → fd
-#define SYS_close      3    // close(fd) → status
-#define SYS_exit       60   // exit(code) → no return
-// Range 0-99 reserved for additional legacy syscalls if needed
+// Legacy POSIX-like syscalls - REMOVED in Phase 2.5
+// #define SYS_read       0    // REMOVED
+// #define SYS_write      1    // REMOVED  
+// #define SYS_open       2    // REMOVED
+// #define SYS_close      3    // REMOVED
+// #define SYS_exit       60   // REMOVED
+// All legacy syscalls completely removed from kernel
 ```
 
-**Deprecation Timeline:**
-- **Phase 2.1-2.4**: Available for backward compatibility
-- **Phase 2.5**: Completely removed from kernel
+**Removal Status:**
+- **Phase 2.5**: ✅ Completely removed from kernel
+- **Current**: No legacy syscalls remain
 
-### V2 Syscalls (New - Range 1000-1009)
+### V2 Syscalls (Current - Range 1000-1009) - OPERATIONAL ✅
 ```c
-// Execution-centric syscalls (new interface)
+// Execution-centric syscalls (operational interface)
 #define SYS_V2_MAP_MEMORY        1000  // Map physical memory to virtual
+#define SYS_V2_UNMAP_MEMORY      1001  // Unmap virtual memory
+#define SYS_V2_SWITCH_CONTEXT    1002  // Switch execution context
+#define SYS_V2_SUBMIT_EXECUTION  1003  // Submit BCIB for execution
+#define SYS_V2_WAIT_RESULT       1004  // Wait for execution result
+#define SYS_V2_INTERRUPT_RETURN  1005  // Return from interrupt context
+#define SYS_V2_TIME_QUERY        1006  // Query system time
+#define SYS_V2_CAPABILITY_BIND   1007  // Bind capability token
+#define SYS_V2_CAPABILITY_REVOKE 1008  // Revoke capability token
+#define SYS_V2_EXIT              1009  // Process termination
+```
+
+**Implementation Status:**
+- **All 10 syscalls**: ✅ Implemented and operational
+- **INT 0x80 interface**: ✅ Functional with roundtrip validation
+- **Performance**: ✅ Sub-microsecond latency achieved
 #define SYS_V2_UNMAP_MEMORY      1001  // Unmap virtual memory region
 #define SYS_V2_SWITCH_CONTEXT    1002  // Switch execution contexts
 #define SYS_V2_SUBMIT_EXECUTION  1003  // Submit BCIB execution graph

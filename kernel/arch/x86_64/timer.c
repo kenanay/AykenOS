@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 #include "timer.h"
 #include "port_io.h"
 #include "interrupts.h"
@@ -9,6 +10,16 @@
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
 
+#ifndef AYKEN_DEBUG_IRQ
+#define AYKEN_DEBUG_IRQ 0
+#endif
+
+#if AYKEN_DEBUG_IRQ
+#define TIMER_DBG_CHAR(ch) outb(0xE9, (uint8_t)(ch))
+#else
+#define TIMER_DBG_CHAR(ch) do { } while (0)
+#endif
+
 static uint64_t tick_count = 0;
 
 typedef struct irq_timer_frame {
@@ -18,18 +29,31 @@ typedef struct irq_timer_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 } irq_timer_frame_t;
 
+_Static_assert(offsetof(irq_timer_frame_t, r15) == 0, "irq frame: r15");
+_Static_assert(offsetof(irq_timer_frame_t, r11) == 32, "irq frame: r11");
+_Static_assert(offsetof(irq_timer_frame_t, rbp) == 64, "irq frame: rbp");
+_Static_assert(offsetof(irq_timer_frame_t, rax) == 112, "irq frame: rax");
+_Static_assert(offsetof(irq_timer_frame_t, rip) == 120, "irq frame: rip");
+_Static_assert(offsetof(irq_timer_frame_t, cs) == 128, "irq frame: cs");
+_Static_assert(offsetof(irq_timer_frame_t, rflags) == 136, "irq frame: rflags");
+_Static_assert(offsetof(irq_timer_frame_t, rsp) == 144, "irq frame: rsp");
+_Static_assert(offsetof(irq_timer_frame_t, ss) == 152, "irq frame: ss");
+_Static_assert(sizeof(irq_timer_frame_t) == 160, "irq frame: size");
+
 // C handler called from ASM stub (argument: pointer to saved IRQ frame on kernel stack)
 void timer_isr_c(void *frame_ptr)
 {
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
     tick_count++;
-    
-    // PHASE 4.5 test mode: frequent timer marker for deterministic visibility.
+
+#if AYKEN_DEBUG_IRQ
+    // Validation profile marker cadence.
     static uint32_t t = 0;
     t++;
     if ((t % 2) == 0) {  // Every 2 ticks
-        outb(0xE9, (uint8_t)'T');  // Timer marker
+        TIMER_DBG_CHAR('T');
     }
+#endif
     
     // Acknowledge IRQ0 before scheduling. If the scheduler switches context from
     // IRQ path, we still want PIC in-service state to be cleared deterministically.
@@ -65,11 +89,11 @@ void timer_isr_c(void *frame_ptr)
 void timer_init(uint32_t frequency_hz)
 {
     // DEBUG: Timer init entry
-    outb(0xE9, (uint8_t)'[');
-    outb(0xE9, (uint8_t)'T');
-    outb(0xE9, (uint8_t)'M');
-    outb(0xE9, (uint8_t)'R');
-    outb(0xE9, (uint8_t)']');
+    TIMER_DBG_CHAR('[');
+    TIMER_DBG_CHAR('T');
+    TIMER_DBG_CHAR('M');
+    TIMER_DBG_CHAR('R');
+    TIMER_DBG_CHAR(']');
     
     // Install ASM handler for IRQ0 (vector 32) using raw API
     extern void timer_isr_asm(void);
@@ -81,25 +105,25 @@ void timer_init(uint32_t frequency_hz)
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
 
     // DEBUG: Before clearing IRQ0 mask
-    outb(0xE9, (uint8_t)'[');
-    outb(0xE9, (uint8_t)'U');
-    outb(0xE9, (uint8_t)'N');
-    outb(0xE9, (uint8_t)'M');
-    outb(0xE9, (uint8_t)'S');
-    outb(0xE9, (uint8_t)'K');
-    outb(0xE9, (uint8_t)']');
+    TIMER_DBG_CHAR('[');
+    TIMER_DBG_CHAR('U');
+    TIMER_DBG_CHAR('N');
+    TIMER_DBG_CHAR('M');
+    TIMER_DBG_CHAR('S');
+    TIMER_DBG_CHAR('K');
+    TIMER_DBG_CHAR(']');
 
     pic_clear_mask(0); // enable timer IRQ
     
     // DEBUG: Timer init complete
-    outb(0xE9, (uint8_t)'[');
-    outb(0xE9, (uint8_t)'T');
-    outb(0xE9, (uint8_t)'M');
-    outb(0xE9, (uint8_t)'R');
-    outb(0xE9, (uint8_t)'_');
-    outb(0xE9, (uint8_t)'O');
-    outb(0xE9, (uint8_t)'K');
-    outb(0xE9, (uint8_t)']');
+    TIMER_DBG_CHAR('[');
+    TIMER_DBG_CHAR('T');
+    TIMER_DBG_CHAR('M');
+    TIMER_DBG_CHAR('R');
+    TIMER_DBG_CHAR('_');
+    TIMER_DBG_CHAR('O');
+    TIMER_DBG_CHAR('K');
+    TIMER_DBG_CHAR(']');
 }
 
 uint64_t timer_ticks(void)

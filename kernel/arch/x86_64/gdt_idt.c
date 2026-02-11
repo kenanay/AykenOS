@@ -1,6 +1,11 @@
 #include <stdint.h>
+#include <stddef.h>
 #include "gdt_idt.h"
 #include "interrupts.h"
+
+_Static_assert(offsetof(tss_entry_t, rsp0) == 0x04, "tss.rsp0 offset must match x86_64 spec");
+_Static_assert(offsetof(tss_entry_t, ist1) == 0x24, "tss.ist1 offset must match x86_64 spec");
+_Static_assert(sizeof(tss_entry_t) == 0x68, "tss size must match x86_64 spec");
 
 // GDT Entry Structure (for 64-bit)
 struct gdt_entry {
@@ -26,12 +31,6 @@ struct tss_descriptor {
 
 // GDT Pointer Structure
 struct gdt_ptr {
-    uint16_t limit;
-    uint64_t base;
-} __attribute__((packed));
-
-// IDT Pointer Structure
-struct idt_ptr {
     uint16_t limit;
     uint64_t base;
 } __attribute__((packed));
@@ -140,19 +139,41 @@ static inline void lgdt(void *base, uint16_t size)
 }
 
 // Load IDT using inline asm
-static inline void lidt(void *base, uint16_t size)
+static inline void lidt_ptr(const struct idt_ptr *idtr)
 {
-    struct {
-        uint16_t length;
-        void *base;
-    } __attribute__((packed)) IDTR = { size, base };
-    __asm__ volatile("lidt %0" : : "m"(IDTR));
+    __asm__ volatile("lidt %0" : : "m"(*idtr));
 }
 
 // Load TSS using inline asm
 static inline void ltr(uint16_t tss_selector)
 {
     __asm__ volatile("ltr %0" : : "r"(tss_selector));
+}
+
+static inline void dbg_outc(uint8_t c)
+{
+    __asm__ volatile("outb %0, $0xE9" : : "a"(c));
+}
+
+static inline void dbg_dump_hex16(uint16_t v)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    dbg_outc((uint8_t)hex[(v >> 12) & 0xF]);
+    dbg_outc((uint8_t)hex[(v >> 8) & 0xF]);
+    dbg_outc((uint8_t)hex[(v >> 4) & 0xF]);
+    dbg_outc((uint8_t)hex[v & 0xF]);
+}
+
+static inline void dbg_dump_tr(void)
+{
+    uint16_t tr = 0;
+    __asm__ volatile("str %0" : "=r"(tr));
+    dbg_outc((uint8_t)'L');
+    dbg_outc((uint8_t)'T');
+    dbg_outc((uint8_t)'R');
+    dbg_outc((uint8_t)'=');
+    dbg_dump_hex16(tr);
+    dbg_outc((uint8_t)'\n');
 }
 
 void gdt_init(void)
@@ -182,6 +203,7 @@ void gdt_init(void)
     
     // Load TSS (selector 5 << 3 = 0x28)
     ltr(GDT_TSS_SEL);
+    dbg_dump_tr();
 }
 
 void gdt_install_tss(uint64_t tss_addr)
@@ -201,19 +223,16 @@ void gdt_install_tss(uint64_t tss_addr)
     
     // Load TSS register
     ltr(GDT_TSS_SEL);
+    dbg_dump_tr();
 }
 
 void idt_init(void)
 {
-    // IDT will be filled by interrupt setup; just load descriptor
-    struct idt_ptr idt_descriptor = {
-        .limit = sizeof(struct idt_entry) * 256 - 1,
-        .base = (uint64_t)idt_table,
-    };
-    lidt(&idt_descriptor, idt_descriptor.limit);
+    // IDT descriptor is prepared by interrupts_install[_early] before idt_init().
+    lidt_ptr(&idt_descriptor);
 }
 
-static void idt_set_gate_local(uint8_t num, void (*handler)(void), uint8_t flags)
+void idt_set_gate_raw(uint8_t num, void (*handler)(void), uint8_t flags)
 {
     uint64_t handler_addr = (uint64_t)handler;
     

@@ -3,11 +3,6 @@
 #include "gdt_idt.h"
 #include "port_io.h"
 
-struct idt_ptr {
-    uint16_t limit;
-    uint64_t base;
-} __attribute__((packed));
-
 struct idt_entry idt_table[256];
 struct idt_ptr idt_descriptor;
 
@@ -39,6 +34,7 @@ struct idt_ptr idt_descriptor;
     for (;;) __asm__ volatile("cli; hlt"); \
 } while (0)
 
+__attribute__((unused))
 static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_frame *frame, int has_cr2)
 {
     uint64_t cr2 = 0;
@@ -64,9 +60,13 @@ static void isr_bp_stub(void)
     __asm__ volatile(
         "movb $'B', %al\n"
         "outb %al, $0xE9\n"
-        "cli\n"
-        "1: hlt\n"
-        "jmp 1b\n"
+        "movb $'P', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'!', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'\\n', %al\n"
+        "outb %al, $0xE9\n"
+        "iretq\n"
     );
 }
 
@@ -100,6 +100,12 @@ static void isr_df_stub(void)
     __asm__ volatile(
         "movb $'D', %al\n"
         "outb %al, $0xE9\n"
+        "movb $'F', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'!', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'\\n', %al\n"
+        "outb %al, $0xE9\n"
         "cli\n"
         "1: hlt\n"
         "jmp 1b\n"
@@ -130,46 +136,96 @@ static void isr_ud(struct interrupt_frame *frame)
     HALT_FOREVER();
 }
 
-__attribute__((interrupt))
-static void isr_df(struct interrupt_frame *frame, uint64_t error_code)
+__attribute__((naked))
+static void isr_ts_stub(void)
 {
-    dump_exc_common(8, error_code, frame, 0);
-    HALT_FOREVER();
+    __asm__ volatile(
+        "movb $'T', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'S', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'!', %al\n"
+        "outb %al, $0xE9\n"
+        "cli\n"
+        "1: hlt\n"
+        "jmp 1b\n"
+    );
 }
 
-__attribute__((interrupt))
-static void isr_ts(struct interrupt_frame *frame, uint64_t error_code)
+__attribute__((naked))
+static void isr_np_stub(void)
 {
-    dump_exc_common(10, error_code, frame, 0);
-    HALT_FOREVER();
+    __asm__ volatile(
+        "movb $'N', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'P', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'!', %al\n"
+        "outb %al, $0xE9\n"
+        "cli\n"
+        "1: hlt\n"
+        "jmp 1b\n"
+    );
 }
 
-__attribute__((interrupt))
-static void isr_np(struct interrupt_frame *frame, uint64_t error_code)
+__attribute__((naked))
+static void isr_ss_stub(void)
 {
-    dump_exc_common(11, error_code, frame, 0);
-    HALT_FOREVER();
-}
-
-__attribute__((interrupt))
-static void isr_ss(struct interrupt_frame *frame, uint64_t error_code)
-{
-    dump_exc_common(12, error_code, frame, 0);
-    HALT_FOREVER();
+    __asm__ volatile(
+        "movb $'S', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'S', %al\n"
+        "outb %al, $0xE9\n"
+        "movb $'!', %al\n"
+        "outb %al, $0xE9\n"
+        "cli\n"
+        "1: hlt\n"
+        "jmp 1b\n"
+    );
 }
 
 __attribute__((interrupt))
 static void isr_gp(struct interrupt_frame *frame, uint64_t error_code)
 {
-    dump_exc_common(13, error_code, frame, 0);
-    HALT_FOREVER();
+    (void)error_code;
+    // CRITICAL: GP fault marker - ASM safe, no C calls
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'G'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'P'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'!'), "Nd"(0xE9));
+    
+    // Show RIP where GP occurred (simple hex dump)
+    uint64_t rip = frame->rip;
+    for (int i = 60; i >= 0; i -= 4) {
+        uint8_t nibble = (rip >> i) & 0xF;
+        uint8_t ch = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+        __asm__ volatile("outb %0, %1" : : "a"(ch), "Nd"(0xE9));
+    }
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
+    
+    // Halt forever - no C calls
+    __asm__ volatile("cli; 1: hlt; jmp 1b");
 }
 
 __attribute__((interrupt))
 static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
 {
-    dump_exc_common(14, error_code, frame, 1);
-    HALT_FOREVER();
+    (void)error_code;
+    // CRITICAL: Page fault marker - ASM safe, no C calls
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'P'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'F'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'!'), "Nd"(0xE9));
+    
+    // Show RIP where PF occurred
+    uint64_t rip = frame->rip;
+    for (int i = 60; i >= 0; i -= 4) {
+        uint8_t nibble = (rip >> i) & 0xF;
+        uint8_t ch = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+        __asm__ volatile("outb %0, %1" : : "a"(ch), "Nd"(0xE9));
+    }
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
+    
+    // Halt forever - no C calls
+    __asm__ volatile("cli; 1: hlt; jmp 1b");
 }
 
 void idt_set_gate(uint8_t num, interrupt_handler_t handler, uint8_t flags)
@@ -213,22 +269,21 @@ void interrupts_install(void)
     // Use trap gates for debug visibility; allow Ring3 INT3 with DPL=3.
     idt_set_gate(3,  (interrupt_handler_t)isr_bp_stub, 0xEF);
     idt_set_gate(6,  isr_ud, 0x8F);
-    idt_set_gate(8,  (interrupt_handler_t)isr_df, 0x8F);
-    idt_set_gate(10, (interrupt_handler_t)isr_ts, 0x8F);
-    idt_set_gate(11, (interrupt_handler_t)isr_np, 0x8F);
-    idt_set_gate(12, (interrupt_handler_t)isr_ss, 0x8F);
-    idt_set_gate(13, (interrupt_handler_t)isr_gp, 0x8F);
-    idt_set_gate(14, (interrupt_handler_t)isr_pf, 0x8F);
+    idt_set_gate(8,  (interrupt_handler_t)isr_df_stub, 0x8F);
+    idt_set_gate(10, (interrupt_handler_t)isr_ts_stub, 0x8F);
+    idt_set_gate(11, (interrupt_handler_t)isr_np_stub, 0x8F);
+    idt_set_gate(12, (interrupt_handler_t)isr_ss_stub, 0x8F);
+    idt_set_gate(13, (interrupt_handler_t)isr_gp_stub, 0x8F);
+    idt_set_gate(14, (interrupt_handler_t)isr_pf_stub, 0x8F);
 
-    // Route critical exceptions to IST1 to avoid stack issues
-    // Keep BP on current stack to avoid IST setup dependency during debug
+    // Keep current-stack delivery for diagnostic consistency during bring-up.
     idt_table[3].ist  = 0;
-    idt_table[8].ist  = 1;
-    idt_table[10].ist = 1;
-    idt_table[11].ist = 1;
-    idt_table[12].ist = 1;
-    idt_table[13].ist = 1;
-    idt_table[14].ist = 1;
+    idt_table[8].ist  = 0;
+    idt_table[10].ist = 0;
+    idt_table[11].ist = 0;
+    idt_table[12].ist = 0;
+    idt_table[13].ist = 0;
+    idt_table[14].ist = 0;
 
     idt_descriptor.limit = sizeof(idt_table) - 1;
     idt_descriptor.base = (uint64_t)&idt_table[0];
@@ -252,55 +307,29 @@ void interrupts_install_early(void)
         idt_table[i].zero = 0;
     }
 
-    // Debug: prove install runs and which CS is used
-    OUTC('E'); OUTC('C'); OUTC('='); DUMP_HEX16(cs); OUTC('\n');
-
     // Exceptions we care about early
     // Use trap gates (0x8F) so IF is preserved during debug
-    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp_stub, 0x8F, cs);
+    // CRITICAL: INT3 (#BP) must be DPL=3 for Ring3 access
+    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp_stub, 0xEF, cs);  // DPL=3 for Ring3
     idt_set_gate_selector(6,  isr_ud, 0x8F, cs);
-    idt_set_gate_selector(8,  (interrupt_handler_t)isr_df, 0x8F, cs);
-    idt_set_gate_selector(10, (interrupt_handler_t)isr_ts, 0x8F, cs);
-    idt_set_gate_selector(11, (interrupt_handler_t)isr_np, 0x8F, cs);
-    idt_set_gate_selector(12, (interrupt_handler_t)isr_ss, 0x8F, cs);
-    idt_set_gate_selector(13, (interrupt_handler_t)isr_gp, 0x8F, cs);
-    idt_set_gate_selector(14, (interrupt_handler_t)isr_pf, 0x8F, cs);
-    // Keep BP on current stack to avoid IST setup dependency during debug
+    idt_set_gate_selector(8,  (interrupt_handler_t)isr_df_stub, 0x8F, cs);
+    idt_set_gate_selector(10, (interrupt_handler_t)isr_ts_stub, 0x8F, cs);
+    idt_set_gate_selector(11, (interrupt_handler_t)isr_np_stub, 0x8F, cs);
+    idt_set_gate_selector(12, (interrupt_handler_t)isr_ss_stub, 0x8F, cs);
+    idt_set_gate_selector(13, (interrupt_handler_t)isr_gp_stub, 0x8F, cs);
+    idt_set_gate_selector(14, (interrupt_handler_t)isr_pf_stub, 0x8F, cs);
+    // Keep current-stack delivery for diagnostic consistency during bring-up.
     idt_table[3].ist  = 0;
-    idt_table[8].ist  = 1;
-    idt_table[10].ist = 1;
-    idt_table[11].ist = 1;
-    idt_table[12].ist = 1;
-    idt_table[13].ist = 1;
-    idt_table[14].ist = 1;
-
-    // Debug: dump IDT[3] selector/type_attr/offset
-    OUTC('S'); OUTC('3'); OUTC('='); DUMP_HEX16(idt_table[3].selector); OUTC(' ');
-    OUTC('T'); OUTC('3'); OUTC('='); OUTC('0'); OUTC('x');
-    {
-        static const char *_hx = "0123456789ABCDEF";
-        uint8_t ta = idt_table[3].type_attr;
-        OUTC(_hx[(ta >> 4) & 0xF]);
-        OUTC(_hx[ta & 0xF]);
-    }
-    OUTC(' ');
-    OUTC('O'); OUTC('3'); OUTC('=');
-    {
-        uint64_t off = ((uint64_t)idt_table[3].offset_high << 32) |
-                       ((uint64_t)idt_table[3].offset_mid  << 16) |
-                       (uint64_t)idt_table[3].offset_low;
-        DUMP_HEX64(off);
-    }
-    OUTC('\n');
+    idt_table[8].ist  = 0;
+    idt_table[10].ist = 0;
+    idt_table[11].ist = 0;
+    idt_table[12].ist = 0;
+    idt_table[13].ist = 0;
+    idt_table[14].ist = 0;
 
     idt_descriptor.limit = sizeof(idt_table) - 1;
     idt_descriptor.base = (uint64_t)&idt_table[0];
 
     idt_init();
 
-    // Debug: confirm IDTR contents after lidt
-    struct { uint16_t limit; uint64_t base; } __attribute__((packed)) idtr;
-    __asm__ volatile("sidt %0" : "=m"(idtr));
-    OUTC('I'); OUTC('D'); OUTC('T'); OUTC('R'); OUTC('=');
-    DUMP_HEX16(idtr.limit); OUTC(':'); DUMP_HEX64(idtr.base); OUTC('\n');
 }

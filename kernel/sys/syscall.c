@@ -16,14 +16,20 @@
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4);
 
-// Basit INT 0x80 giriş noktası (interrupt frame pointer bekler)
-extern void syscall_isr(struct interrupt_frame *frame);
+// Basit INT 0x80 giriş noktası (frame pointer yok)
+extern void syscall_isr(void);
 
 void syscall_init(void)
 {
     fb_print("[syscall] Installing INT 0x80 gate for execution-centric syscalls only.\n");
-    idt_set_gate(0x80, syscall_isr, 0xEE); // Present | DPL=3 | interrupt gate
-    idt_table[0x80].ist = 1;
+    
+    // Debug: Before setting gate
+    fb_print("[syscall] Before idt_set_gate: syscall_isr addr = ");
+    fb_print_hex64((uint64_t)syscall_isr);
+    fb_print("\n");
+    
+    idt_set_gate(0x80, (interrupt_handler_t)syscall_isr, 0xEE); // Present | DPL=3 | interrupt gate
+    idt_table[0x80].ist = 0;  // CRITICAL: Use current kernel stack, not IST1
 
     struct idt_entry *e = &idt_table[0x80];
     uint64_t off = ((uint64_t)e->offset_high << 32) |
@@ -36,6 +42,13 @@ void syscall_init(void)
     fb_print(" off=");
     fb_print_hex64(off);
     fb_print("\n");
+    
+    // Debug: Verify gate was set correctly
+    if (off == (uint64_t)syscall_isr) {
+        fb_print("[syscall] INT 0x80 gate set correctly!\n");
+    } else {
+        fb_print("[syscall] ERROR: INT 0x80 gate offset mismatch!\n");
+    }
 }
 
 // ============================================================================
@@ -55,15 +68,18 @@ void syscall_init(void)
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
+    uint64_t result;
+    
     // Route based on Final Syscall Numbering Plan
-    if (syscall_num >= 1000 && syscall_num <= 1009) {
-        // Execution-centric syscalls (v2) - Convert to 0-9 range for v2 handler
-        return syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
+    if (syscall_num >= 1000 && syscall_num <= 1010) {
+        // Execution-centric syscalls (v2) - Convert to 0-10 range for v2 handler
+        result = syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
     } else {
-        // Invalid syscall number - only 1000-1009 range is valid
+        // Invalid syscall number - only 1000-1010 range is valid
         fb_print("[syscall] ENOSYS: invalid syscall number ");
         fb_print_int(syscall_num);
-        fb_print(" (valid range: 1000-1009 only)\n");
-        return (uint64_t)-38; // -ENOSYS
+        fb_print(" (valid range: 1000-1010 only)\n");
+        result = (uint64_t)-38; // -ENOSYS
     }
+    return result;
 }

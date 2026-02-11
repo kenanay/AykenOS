@@ -3,7 +3,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Author:** Kenan AY  
 **Platform:** macOS (Intel & Apple Silicon)  
-**Updated:** January 2026
+**Updated:** February 10, 2026
 
 ## Quick Start
 
@@ -12,11 +12,30 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 git clone <repository> AykenOS
 cd AykenOS
 
-# 2. Run automated setup
-./setup_and_validate.sh --auto-install
+# 2. Install dependencies
+brew install qemu nasm clang make
 
-# 3. Validate environment
-./validate_toolchain.sh --verbose
+# 3. Build kernel
+make clean && make
+
+# 4. Create EFI.img (macOS-specific)
+./build_efi.sh
+
+# 5. Test with QEMU
+timeout 10 qemu-system-x86_64 \
+  -machine q35 \
+  -drive if=pflash,format=raw,readonly=on,file=/opt/homebrew/share/qemu/edk2-x86_64-code.fd \
+  -drive if=pflash,format=raw,file=ovmf_vars.fd \
+  -drive if=ide,format=raw,file=EFI.img \
+  -m 256M \
+  -serial file:test_ring3_serial.log \
+  -debugcon file:test_ring3_debugcon.log \
+  -global isa-debugcon.iobase=0xe9 \
+  -nographic \
+  -no-reboot || true
+
+# 6. Check boot log
+tail -50 test_ring3_debugcon.log | tr -d '\000'
 ```
 
 ## Detailed Setup Instructions
@@ -40,63 +59,133 @@ xcode-select --install
 # Essential build tools
 brew install make cmake git
 
-# Cross-compilation toolchain
-brew install x86_64-elf-gcc x86_64-elf-binutils
+# Compiler (Clang is included with Xcode)
+# AykenOS uses Clang with --target=x86_64-elf
 
 # Assembly and emulation
 brew install nasm qemu
 
-# Optional: Additional tools
-brew install llvm clang
+# Optional: LLVM for additional tools
+brew install llvm
 ```
 
-#### Alternative: Manual Cross-Compiler Build
-If Homebrew doesn't have x86_64-elf-gcc:
+**Note:** AykenOS uses Clang with `--target=x86_64-elf` flag, which is available by default on macOS. No separate cross-compiler installation needed!
+
+### 3. macOS-Specific Build Process
+
+#### EFI.img Creation
+
+macOS doesn't have Linux's `mkfs.vfat` tool. Use the provided `build_efi.sh` script:
 
 ```bash
-# Install dependencies
-brew install gmp mpfr libmpc
+#!/bin/bash
+# build_efi.sh - macOS-compatible EFI.img creation
 
-# Create build directory
-mkdir -p ~/cross-compiler
-cd ~/cross-compiler
+set -e
 
-# Download and build binutils
-wget https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.gz
-tar -xzf binutils-2.40.tar.gz
-mkdir build-binutils && cd build-binutils
-../binutils-2.40/configure --target=x86_64-elf --prefix=/usr/local/cross --disable-nls
-make -j$(nproc)
-sudo make install
+echo "EFI.img oluşturuluyor..."
 
-# Download and build GCC
-cd ~/cross-compiler
-wget https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
-tar -xzf gcc-12.2.0.tar.gz
-mkdir build-gcc && cd build-gcc
-../gcc-12.2.0/configure --target=x86_64-elf --prefix=/usr/local/cross --disable-nls --enable-languages=c --without-headers
-make all-gcc -j$(nproc)
-make all-target-libgcc -j$(nproc)
-sudo make install-gcc
-sudo make install-target-libgcc
+# Clean old files
+rm -f EFI.img EFI.dmg EFI_raw.dmg
 
-# Add to PATH
-echo 'export PATH="/usr/local/cross/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+# Create 64MB FAT32 disk image
+hdiutil create -size 64m -fs MS-DOS -volname "EFI" -o EFI.dmg
+
+# Mount
+hdiutil attach EFI.dmg >/dev/null
+
+# Prevent AppleDouble files
+export COPYFILE_DISABLE=1
+
+# Create EFI directory structure and copy files
+mkdir -p /Volumes/EFI/EFI/BOOT
+rm -f /Volumes/EFI/EFI/BOOT/._* /Volumes/EFI/EFI/BOOT/*
+cp -X bootloader/efi/BOOTX64.EFI /Volumes/EFI/EFI/BOOT/
+cp -X kernel.elf /Volumes/EFI/EFI/BOOT/
+cp -X kernel.elf /Volumes/EFI/  # Root copy for bootloader
+
+# Create startup.nsh for automatic boot
+echo "FS0:" > /Volumes/EFI/startup.nsh
+echo "cd EFI\BOOT" >> /Volumes/EFI/startup.nsh
+echo "BOOTX64.EFI" >> /Volumes/EFI/startup.nsh
+
+# Unmount
+hdiutil detach /Volumes/EFI >/dev/null
+
+# Convert to raw format (QEMU-compatible)
+hdiutil convert EFI.dmg -format UDRW -o EFI_raw
+mv EFI_raw.dmg EFI.img
+rm -f EFI.dmg
+
+echo "EFI.img hazır!"
+echo "Kernel hash:"
+shasum -a 256 kernel.elf
 ```
 
-### 3. Platform-Specific Considerations
+**Usage:**
+```bash
+# After building kernel
+make clean && make
+
+# Create EFI.img
+chmod +x build_efi.sh
+./build_efi.sh
+
+# Verify kernel in image
+hdiutil attach EFI.img
+shasum -a 256 /Volumes/EFI/kernel.elf
+hdiutil detach /Volumes/EFI
+```
+
+### 4. QEMU Configuration (CRITICAL)
+
+**Important:** Always include `-global isa-debugcon.iobase=0xe9` for debug output!
+
+**Correct QEMU Command:**
+```bash
+# Clean old logs
+rm -f test_ring3_debugcon.log test_ring3_serial.log test_ring3_qemu.err
+
+# Run QEMU with proper debugcon configuration
+timeout 10 qemu-system-x86_64 \
+  -machine q35 \
+  -drive if=pflash,format=raw,readonly=on,file=/opt/homebrew/share/qemu/edk2-x86_64-code.fd \
+  -drive if=pflash,format=raw,file=ovmf_vars.fd \
+  -drive if=ide,format=raw,file=EFI.img \
+  -m 256M \
+  -serial file:test_ring3_serial.log \
+  -debugcon file:test_ring3_debugcon.log \
+  -global isa-debugcon.iobase=0xe9 \
+  -nographic \
+  -no-reboot \
+  -d cpu_reset 2>test_ring3_qemu.err || true
+
+# View debug output
+tail -50 test_ring3_debugcon.log | tr -d '\000'
+```
+
+**Key Flags:**
+- `-machine q35`: Better hardware emulation
+- `-drive if=ide`: UEFI compatibility
+- `-global isa-debugcon.iobase=0xe9`: **CRITICAL** - Enables kernel debug output
+- `-debugcon file:...`: Capture debug output to file
+- `-serial file:...`: Capture serial output
+- `-d cpu_reset`: Log CPU resets
+
+**Without `-global isa-debugcon.iobase=0xe9`, debugcon log will be empty!**
+
+### 5. Platform-Specific Considerations
 
 #### Apple Silicon (M1/M2/M3) Macs
 ```bash
 # Ensure Rosetta 2 is installed (for x86_64 emulation)
 softwareupdate --install-rosetta
 
-# Use arch command for x86_64 compatibility if needed
-arch -x86_64 brew install x86_64-elf-gcc
-
 # QEMU with Apple Silicon optimization
-brew install qemu --HEAD
+brew install qemu
+
+# OVMF firmware location
+ls /opt/homebrew/share/qemu/edk2-x86_64-code.fd
 ```
 
 #### Intel Macs
