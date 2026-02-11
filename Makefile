@@ -148,20 +148,33 @@ $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.c
 # ------------------------------------------------------------
 
 EFI_IMG = EFI.img
+OVMF_CODE = firmware/ovmf/OVMF_CODE.fd
+OVMF_VARS_CLEAN = OVMF_VARS.clean.fd
+OVMF_VARS_RUN = ovmf_vars.fd
 
 efi-img: $(KERNEL_ELF) $(BOOT_EFI)
-	@if [ -f $(EFI_IMG) ]; then \
-		echo "[*] $(EFI_IMG) already exists – reuse (deterministic validation)"; \
+	@if [ "$(OS)" = "Windows_NT" ]; then \
+		powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1; \
 	else \
-		if [ "$(OS)" = "Windows_NT" ]; then \
-			powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1; \
-		else \
-			./tools/build/make_efi_img.sh; \
-		fi; \
+		./tools/build/make_efi_img.sh; \
 	fi
 
 run: efi-img
-	qemu-system-x86_64 -drive format=raw,file=$(EFI_IMG)
+	@# CRITICAL: Use clean NVRAM to avoid BootOrder corruption
+	cp -f $(OVMF_VARS_CLEAN) $(OVMF_VARS_RUN)
+	qemu-system-x86_64 \
+		-machine q35 \
+		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
+		-drive if=pflash,format=raw,file=$(OVMF_VARS_RUN) \
+		-drive format=raw,file=$(EFI_IMG) \
+		-boot order=c \
+		-debugcon file:debug_run.log \
+		-global isa-debugcon.iobase=0xe9 \
+		-nographic
+
+run-preempt: efi-img
+	@# Phase 4.5 deterministic preempt validation runner
+	QEMU_TIMEOUT=12 ./run_preempt_test.sh
 
 clean:
 	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG)
@@ -169,7 +182,7 @@ clean:
 clean-noimg:
 	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI)
 
-.PHONY: all clean run efi-img kernel bootloader
+.PHONY: all clean run run-preempt efi-img kernel bootloader
 
 # ------------------------------------------------------------
 # 7) Validation and dependency checking targets

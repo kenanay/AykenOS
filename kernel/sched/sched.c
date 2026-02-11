@@ -48,8 +48,19 @@ static proc_t *ready_head = NULL;
 static proc_t *ready_tail = NULL;
 static proc_t *blocked_head = NULL;
 
+// Flag to track if scheduler has started (to avoid calling userspace functions during boot)
+static int scheduler_started = 0;
+
 proc_t *current_proc = NULL;
 static volatile uint32_t need_resched = 0;
+// Set by IRQ path when current user context is explicitly snapshotted.
+// context_switch.asm consumes this flag to avoid overwriting user RIP/RSP
+// with kernel scheduler frame values.
+volatile uint32_t sched_irq_user_ctx_saved = 0;
+
+#define RING3_CANARY_ADDR 0x0000000000405000ULL
+#define RING3_CANARY_PRE  0x1111111122222222ULL
+#define RING3_CANARY_POST 0x3333333344444444ULL
 
 static inline uint64_t read_msr(uint32_t msr)
 {
@@ -67,6 +78,82 @@ static void dbg_out_hex16(uint16_t v)
     }
 }
 
+static void dbg_out_hex64(uint64_t v)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; --i) {
+        uint8_t nib = (uint8_t)((v >> (i * 4)) & 0xF);
+        outb(0xE9, (uint8_t)hex[nib]);
+    }
+}
+
+static int read_user_u64_via_pml4(uint64_t pml4_phys, uint64_t va, uint64_t *out)
+{
+    if (!pml4_phys || !out) {
+        return 0;
+    }
+
+    uint64_t root_phys = pml4_phys & AYKEN_PTE_ADDR_MASK;
+    uint64_t *pml4 = (uint64_t *)paging_phys_to_virt(root_phys);
+    if (!pml4) {
+        return 0;
+    }
+
+    uint16_t pml4_i = (uint16_t)((va >> 39) & 0x1FF);
+    uint16_t pdpt_i = (uint16_t)((va >> 30) & 0x1FF);
+    uint16_t pd_i = (uint16_t)((va >> 21) & 0x1FF);
+    uint16_t pt_i = (uint16_t)((va >> 12) & 0x1FF);
+
+    uint64_t pml4e = pml4[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) {
+        return 0;
+    }
+
+    uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+    if (!pdpt) {
+        return 0;
+    }
+    uint64_t pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT) || (pdpte & (1ULL << 7))) {
+        return 0;
+    }
+
+    uint64_t *pd = (uint64_t *)paging_phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+    if (!pd) {
+        return 0;
+    }
+    uint64_t pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT) || (pde & (1ULL << 7))) {
+        return 0;
+    }
+
+    uint64_t *pt = (uint64_t *)paging_phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+    if (!pt) {
+        return 0;
+    }
+    uint64_t pte = pt[pt_i];
+    if (!(pte & AYKEN_PTE_PRESENT)) {
+        return 0;
+    }
+
+    uint64_t page_off = va & (AYKEN_FRAME_SIZE - 1);
+    if (page_off > (AYKEN_FRAME_SIZE - sizeof(uint64_t))) {
+        return 0;
+    }
+
+    uint8_t *page = (uint8_t *)paging_phys_to_virt(pte & AYKEN_PTE_ADDR_MASK);
+    if (!page) {
+        return 0;
+    }
+
+    uint64_t value = 0;
+    for (int i = 0; i < 8; ++i) {
+        value |= ((uint64_t)page[page_off + (uint64_t)i]) << (i * 8);
+    }
+    *out = value;
+    return 1;
+}
+
 static void dbg_print_tr(void)
 {
     uint16_t tr = 0;
@@ -80,6 +167,13 @@ static void dbg_print_tr(void)
 
 static void map_kernel_stack_pages_into_pml4(uint64_t pml4_phys, uint64_t rsp0)
 {
+    uint64_t old_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+    __asm__ volatile("mov %%cr3, %0" : "=r"(old_cr3));
+    if (kernel_cr3 && old_cr3 != kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+    }
+
     uint64_t rsp = 0;
     __asm__ volatile("mov %%rsp, %0" : "=r"(rsp));
     uint64_t page = rsp & ~(AYKEN_FRAME_SIZE - 1);
@@ -106,6 +200,10 @@ static void map_kernel_stack_pages_into_pml4(uint64_t pml4_phys, uint64_t rsp0)
             paging_map_page_in_pml4(pml4_phys, below_page, below_phys, AYKEN_PTE_WRITABLE);
         }
     }
+
+    if (kernel_cr3 && old_cr3 != kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(old_cr3) : "memory");
+    }
 }
 
 static void dbg_dump_bytes(const void *addr)
@@ -125,6 +223,13 @@ static void dbg_dump_bytes(const void *addr)
 
 void sched_request_resched(void)
 {
+    outb(0xE9, (uint8_t)'R'); // Preemption request marker
+    need_resched = 1;
+}
+
+void sched_request_resched_irq(void)
+{
+    // IRQ path: keep logging quiet; timer can request frequently.
     need_resched = 1;
 }
 
@@ -132,6 +237,7 @@ uint32_t sched_take_resched(void)
 {
     if (!need_resched)
         return 0;
+    outb(0xE9, (uint8_t)'r'); // Preemption taken marker
     need_resched = 0;
     return 1;
 }
@@ -163,9 +269,97 @@ void remove_from_ready_queue(proc_t *p) {
 // Ring0 mechanism: Call Ring3 scheduler policy for process selection
 proc_t *sched_select_next(void)
 {
-    proc_t *selected = userspace_scheduler_select_next(ready_head);
-    if (!selected)
-        selected = ready_head;
+    // DEBUG: Scheduler selection entry marker
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'S');
+    outb(0xE9, (uint8_t)'E');
+    outb(0xE9, (uint8_t)'L');
+    outb(0xE9, (uint8_t)']');
+    
+    // ✅ CRITICAL FIX: Ring0 cannot call Ring3 functions directly!
+    // Ring0→Ring3 transition ONLY via IRETQ, not C call
+    // For now: pure mechanical round-robin (no policy)
+    proc_t *selected = ready_head;
+    
+    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
+    // This causes illegal privilege transition → #GP → triple fault
+    // if (scheduler_started) {
+    //     selected = userspace_scheduler_select_next(ready_head);
+    // }
+
+    // DEBUG: Show selected PID
+    outb(0xE9, (uint8_t)'P');
+    outb(0xE9, (uint8_t)'I');
+    outb(0xE9, (uint8_t)'D');
+    outb(0xE9, (uint8_t)'=');
+    if (selected) {
+        if (selected->pid < 10) {
+            outb(0xE9, (uint8_t)('0' + selected->pid));
+        } else {
+            outb(0xE9, (uint8_t)('A' + selected->pid - 10));
+        }
+        outb(0xE9, (uint8_t)' ');
+        outb(0xE9, (uint8_t)'S');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'=');
+        if (selected->state < 10) {
+            outb(0xE9, (uint8_t)('0' + selected->state));
+        } else {
+            outb(0xE9, (uint8_t)('A' + selected->state - 10));
+        }
+        outb(0xE9, (uint8_t)' ');
+        outb(0xE9, (uint8_t)'R');
+        outb(0xE9, (uint8_t)'I');
+        outb(0xE9, (uint8_t)'P');
+        outb(0xE9, (uint8_t)'=');
+        
+        // DEBUG: Show selected pointer address
+        outb(0xE9, (uint8_t)'@');
+        uint64_t ptr = (uint64_t)selected;
+        for (int i = 7; i >= 0; i--) {
+            uint8_t nib = (ptr >> (i * 4)) & 0xF;
+            if (nib < 10) {
+                outb(0xE9, (uint8_t)('0' + nib));
+            } else {
+                outb(0xE9, (uint8_t)('A' + nib - 10));
+            }
+        }
+        outb(0xE9, (uint8_t)' ');
+        
+        // Show RIP as 4 hex digits (simplified)
+        uint64_t rip = selected->context.rip;
+        for (int i = 3; i >= 0; i--) {
+            uint8_t nib = (rip >> (i * 4)) & 0xF;
+            if (nib < 10) {
+                outb(0xE9, (uint8_t)('0' + nib));
+            } else {
+                outb(0xE9, (uint8_t)('A' + nib - 10));
+            }
+        }
+        
+        // DEBUG: Show full RIP (8 hex digits)
+        outb(0xE9, (uint8_t)' ');
+        outb(0xE9, (uint8_t)'F');
+        outb(0xE9, (uint8_t)'U');
+        outb(0xE9, (uint8_t)'L');
+        outb(0xE9, (uint8_t)'L');
+        outb(0xE9, (uint8_t)'=');
+        for (int i = 7; i >= 0; i--) {
+            uint8_t nib = (rip >> (i * 4)) & 0xF;
+            if (nib < 10) {
+                outb(0xE9, (uint8_t)('0' + nib));
+            } else {
+                outb(0xE9, (uint8_t)('A' + nib - 10));
+            }
+        }
+        outb(0xE9, (uint8_t)'\n');
+    } else {
+        outb(0xE9, (uint8_t)'N');
+        outb(0xE9, (uint8_t)'U');
+        outb(0xE9, (uint8_t)'L');
+        outb(0xE9, (uint8_t)'L');
+        outb(0xE9, (uint8_t)'\n');
+    }
 
     if (selected) {
         remove_from_ready_queue(selected);
@@ -179,7 +373,12 @@ void enqueue_ready(proc_t *p)
 {
     if (!p) return;
     
-    userspace_scheduler_enqueue_ready(p);
+    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
+    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
+    // This causes illegal privilege transition → #GP → triple fault
+    // if (scheduler_started) {
+    //     userspace_scheduler_enqueue_ready(p);
+    // }
     
     p->next = NULL;
     if (!ready_tail) {
@@ -195,9 +394,12 @@ static void enqueue_blocked(proc_t *p)
 {
     if (!p) return;
     
-    // Ring0 mechanism: Call Ring3 policy for blocking decisions
-    // Ring3 policy determines blocking behavior and queue management
-    userspace_scheduler_handle_block(p, p->wait_obj);
+    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
+    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
+    // This causes illegal privilege transition → #GP → triple fault
+    // if (scheduler_started) {
+    //     userspace_scheduler_handle_block(p, p->wait_obj);
+    // }
     
     // Ring0 mechanism: Ring3 policy manages blocked queue structure
     // No policy decisions made in Ring0 - only mechanism execution
@@ -229,7 +431,33 @@ void sched_init(void)
 void sched_start(void)
 {
     outb(0xE9, (uint8_t)'S');
+    outb(0xE9, (uint8_t)'1');
+    
+    // Mark scheduler as started so userspace functions can be called
+    scheduler_started = 1;
+    outb(0xE9, (uint8_t)'2');
+    
+    // Debug: Check ready queue
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'Q');
+    outb(0xE9, (uint8_t)']');
+    int count = 0;
+    proc_t *p = ready_head;
+    while (p) {
+        count++;
+        p = p->next;
+    }
+    // Output count as hex digit
+    if (count < 10) {
+        outb(0xE9, (uint8_t)('0' + count));
+    } else {
+        outb(0xE9, (uint8_t)('A' + count - 10));
+    }
+    outb(0xE9, (uint8_t)'\n');
+    outb(0xE9, (uint8_t)'3');
+    
     disable_interrupts();
+    outb(0xE9, (uint8_t)'4');
     
     // Ring0 mechanism: Call Ring3 policy for first process selection
     proc_t *first = sched_select_next();
@@ -242,71 +470,95 @@ void sched_start(void)
 
     // Ring0 mechanism: Set up initial process context (mechanism only)
     current_proc = first;
-    
-    // Ring0 mechanism: Call Ring3 policy for state management
-    // Ring3 policy determines process state transitions
     current_proc->state = PROC_RUNNING;
-    dbg_print_tr();
-
+    
+    outb(0xE9, (uint8_t)'T');  // TSS setup
+    
     // Ring0 mechanism: Update TSS.RSP0 for Ring3→Ring0 transitions (mechanism only)
     if (current_proc->context.cs == GDT_USER_CODE) {
         if (!current_proc->context.rsp0) {
-            fb_print("[PANIC] Ring3 process has no rsp0 (TSS stack)\n");
+            outb(0xE9, (uint8_t)'!');  // PANIC: no rsp0
             for (;;) __asm__ volatile("cli; hlt");
         }
         gdt_set_kernel_stack(current_proc->context.rsp0);
         __asm__ volatile("" ::: "memory");
-        outb(0xE9, (uint8_t)'U');
         map_kernel_stack_pages_into_pml4(current_proc->context.cr3, current_proc->context.rsp0);
     } else if (current_proc->context.rsp0) {
         gdt_set_kernel_stack(current_proc->context.rsp0);
     }
 
-    fb_print("[DBG] SCHED first: cs=");
-    fb_print_hex(current_proc->context.cs);
-    fb_print(" ss=");
-    fb_print_hex(current_proc->context.ss);
-    fb_print(" rip=");
-    fb_print_hex(current_proc->context.rip);
-    fb_print(" rsp=");
-    fb_print_hex(current_proc->context.rsp);
-    fb_print(" rsp0=");
-    fb_print_hex(current_proc->context.rsp0);
-    fb_print(" cr3=");
-    fb_print_hex(current_proc->context.cr3);
-    fb_print("\n");
-    fb_print("[DBG] MAP rip=");
-    fb_print_hex64(paging_get_phys(current_proc->context.rip));
-    fb_print(" rsp=");
-    fb_print_hex64(paging_get_phys(current_proc->context.rsp));
-    fb_print("\n");
-    fb_print("[DBG] PTE rip=");
-    fb_print_hex64(paging_get_pte(current_proc->context.rip));
-    fb_print(" rsp=");
-    fb_print_hex64(paging_get_pte(current_proc->context.rsp));
-    fb_print("\n");
-    fb_print("[DBG] EFER=");
-    fb_print_hex64(read_msr(0xC0000080));
-    fb_print("\n");
-
-    // Ring0 mechanism: Switch to first process (mechanism only)
-    if (current_proc->context.cs != GDT_USER_CODE) {
-        dbg_dump_bytes((const void *)current_proc->context.rip);
-    }
     outb(0xE9, (uint8_t)'R');
+    outb(0xE9, (uint8_t)'0');
+    outb(0xE9, (uint8_t)'=');
+    dbg_out_hex64(current_proc->context.rsp0);
+    outb(0xE9, (uint8_t)' ');
+    outb(0xE9, (uint8_t)'T');
+    outb(0xE9, (uint8_t)'0');
+    outb(0xE9, (uint8_t)'=');
+    dbg_out_hex64(kernel_tss.rsp0);
+    outb(0xE9, (uint8_t)'\n');
+    
+    // DIAGNOSTIC: Verify TR is set correctly after TSS setup
+    dbg_print_tr();
+    
+    outb(0xE9, (uint8_t)'@');  // About to switch_to_first
+    
+    // CRITICAL: Call switch_to_first with interrupts disabled
+    // Interrupts will be enabled by the first process's RFLAGS (IF=1)
+    // This prevents timer interrupts from firing before we have a proper context
     switch_to_first(&current_proc->context);
+    
+    // DEBUG: This should never be reached if switch_to_first works
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'R');
+    outb(0xE9, (uint8_t)'E');
+    outb(0xE9, (uint8_t)'T');
+    outb(0xE9, (uint8_t)']');
 }
 
 static void sched_yield_core(int reenable_if)
 {
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'S');
+    outb(0xE9, (uint8_t)'C');
+    outb(0xE9, (uint8_t)'H');
+    outb(0xE9, (uint8_t)']');
+    outb(0xE9, (uint8_t)'\n');
+    
     disable_interrupts();
 
     proc_t *prev = current_proc;
+    outb(0xE9, (uint8_t)'P');
+    if (prev) {
+        outb(0xE9, (uint8_t)'1');
+        // Show current PID
+        if (prev->pid < 10) {
+            outb(0xE9, (uint8_t)('0' + prev->pid));
+        } else {
+            outb(0xE9, (uint8_t)('A' + prev->pid - 10));
+        }
+    } else {
+        outb(0xE9, (uint8_t)'0');
+    }
     
     // Ring0 mechanism: Call Ring3 policy for next process selection
     proc_t *next = sched_select_next();
+    outb(0xE9, (uint8_t)'N');
+    if (next) {
+        outb(0xE9, (uint8_t)'1');
+        // Show next PID
+        if (next->pid < 10) {
+            outb(0xE9, (uint8_t)('0' + next->pid));
+        } else {
+            outb(0xE9, (uint8_t)('A' + next->pid - 10));
+        }
+    } else {
+        outb(0xE9, (uint8_t)'0');
+    }
+    outb(0xE9, (uint8_t)'\n');
 
     if (!next) {
+        outb(0xE9, (uint8_t)'X');
         if (reenable_if)
             enable_interrupts();
         return;
@@ -336,9 +588,104 @@ static void sched_yield_core(int reenable_if)
         gdt_set_kernel_stack(current_proc->context.rsp0);
     }
 
+    outb(0xE9, (uint8_t)'R');
+    outb(0xE9, (uint8_t)'1');
+    outb(0xE9, (uint8_t)'=');
+    dbg_out_hex64(current_proc->context.rsp0);
+    outb(0xE9, (uint8_t)' ');
+    outb(0xE9, (uint8_t)'T');
+    outb(0xE9, (uint8_t)'1');
+    outb(0xE9, (uint8_t)'=');
+    dbg_out_hex64(kernel_tss.rsp0);
+    outb(0xE9, (uint8_t)'\n');
+
     if (prev) {
+        // Debug: Show context switch
+        outb(0xE9, (uint8_t)'[');
+        outb(0xE9, (uint8_t)'S');
+        outb(0xE9, (uint8_t)'W');
+        outb(0xE9, (uint8_t)']');
+        // Show prev CS
+        if (prev->context.cs == GDT_USER_CODE) {
+            outb(0xE9, (uint8_t)'U');
+        } else {
+            outb(0xE9, (uint8_t)'K');
+        }
+        outb(0xE9, (uint8_t)'>');
+        // Show next CS  
+        if (current_proc->context.cs == GDT_USER_CODE) {
+            outb(0xE9, (uint8_t)'U');
+        } else {
+            outb(0xE9, (uint8_t)'K');
+        }
+        outb(0xE9, (uint8_t)'\n');
+        
+        // DEBUG: Context switch entry marker
+        outb(0xE9, (uint8_t)'A');
+        outb(0xE9, (uint8_t)'B');
+        outb(0xE9, (uint8_t)'O');
+        outb(0xE9, (uint8_t)'U');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'_');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'O');
+        outb(0xE9, (uint8_t)'_');
+        outb(0xE9, (uint8_t)'I');
+        outb(0xE9, (uint8_t)'R');
+        outb(0xE9, (uint8_t)'E');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'Q');
+        outb(0xE9, (uint8_t)'\n');
+        
         context_switch(&prev->context, &current_proc->context);
+        
+        // Ring3 INT80 diagnostic: verify whether user code resumed after syscall.
+        if (prev && prev->context.cs == GDT_USER_CODE) {
+            uint64_t canary = 0;
+            outb(0xE9, (uint8_t)'[');
+            outb(0xE9, (uint8_t)'C');
+            outb(0xE9, (uint8_t)'A');
+            outb(0xE9, (uint8_t)'N');
+            outb(0xE9, (uint8_t)'=');
+            if (read_user_u64_via_pml4(prev->context.cr3, RING3_CANARY_ADDR, &canary)) {
+                dbg_out_hex64(canary);
+                outb(0xE9, (uint8_t)' ');
+                if (canary == RING3_CANARY_POST) {
+                    outb(0xE9, (uint8_t)'P');
+                    outb(0xE9, (uint8_t)'O');
+                    outb(0xE9, (uint8_t)'S');
+                    outb(0xE9, (uint8_t)'T');
+                } else if (canary == RING3_CANARY_PRE) {
+                    outb(0xE9, (uint8_t)'P');
+                    outb(0xE9, (uint8_t)'R');
+                    outb(0xE9, (uint8_t)'E');
+                } else {
+                    outb(0xE9, (uint8_t)'?');
+                }
+            } else {
+                outb(0xE9, (uint8_t)'!');
+            }
+            outb(0xE9, (uint8_t)']');
+            outb(0xE9, (uint8_t)'\n');
+        }
     } else {
+        // DEBUG: First process switch marker
+        outb(0xE9, (uint8_t)'A');
+        outb(0xE9, (uint8_t)'B');
+        outb(0xE9, (uint8_t)'O');
+        outb(0xE9, (uint8_t)'U');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'_');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'O');
+        outb(0xE9, (uint8_t)'_');
+        outb(0xE9, (uint8_t)'I');
+        outb(0xE9, (uint8_t)'R');
+        outb(0xE9, (uint8_t)'E');
+        outb(0xE9, (uint8_t)'T');
+        outb(0xE9, (uint8_t)'Q');
+        outb(0xE9, (uint8_t)'\n');
+        
         switch_to_first(&current_proc->context);
     }
 
@@ -348,12 +695,25 @@ static void sched_yield_core(int reenable_if)
 
 void sched_yield(void)
 {
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'Y');
+    outb(0xE9, (uint8_t)'F');
+    outb(0xE9, (uint8_t)']');
     sched_yield_core(1);
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'Y');
+    outb(0xE9, (uint8_t)'E');
+    outb(0xE9, (uint8_t)']');
 }
 
 void sched_yield_irq(void)
 {
-    sched_request_resched();
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'I');
+    outb(0xE9, (uint8_t)'R');
+    outb(0xE9, (uint8_t)'Q');
+    outb(0xE9, (uint8_t)']');
+    sched_yield_core(0); // Don't re-enable interrupts (IRQ context)
 }
 
 void sched_block_current(void)
@@ -366,8 +726,12 @@ void sched_block_current(void)
         return;
     }
 
-    // Ring0 mechanism: Call Ring3 policy for blocking decision
-    userspace_scheduler_handle_block(prev, prev->wait_obj);
+    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
+    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
+    // This causes illegal privilege transition → #GP → triple fault
+    // if (scheduler_started) {
+    //     userspace_scheduler_handle_block(prev, prev->wait_obj);
+    // }
 
     // Ring0 mechanism: Call Ring3 policy for state transitions
     // Ring3 policy determines state transition behavior
@@ -434,12 +798,30 @@ void sched_add(proc_t *proc)
     if (!proc)
         return;
     
+    // Debug: marker before enqueue_ready
+    outb(0xE9, (uint8_t)'Q');
+    
+    // Debug: Show PID being added
+    outb(0xE9, (uint8_t)'P');
+    outb(0xE9, (uint8_t)'I');
+    outb(0xE9, (uint8_t)'D');
+    outb(0xE9, (uint8_t)':');
+    if (proc->pid < 10) {
+        outb(0xE9, (uint8_t)('0' + proc->pid));
+    } else {
+        outb(0xE9, (uint8_t)('A' + proc->pid - 10));
+    }
+    outb(0xE9, (uint8_t)'\n');
+    
     // Ring0 mechanism: Call Ring3 policy for process addition
     // Ring3 policy determines state transition behavior
     proc->state = PROC_READY;
     
     // Ring0 mechanism: Call Ring3 policy for ready queue management
     enqueue_ready(proc);
+    
+    // Debug: marker after enqueue_ready
+    outb(0xE9, (uint8_t)'R');
 }
 
 void sched_add_task(void *task)

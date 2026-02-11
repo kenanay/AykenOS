@@ -12,6 +12,7 @@
 #include "../include/proc.h"
 #include "../sched/sched.h"
 #include "../arch/x86_64/cpu.h"
+#include "../arch/x86_64/port_io.h"
 #include "../include/gdt_idt.h"
 #include "../include/mm.h"
 #include "../include/capability.h"
@@ -426,6 +427,27 @@ uint64_t sys_v2_exit(uint64_t exit_code)
 }
 
 // ============================================================================
+// DEBUG SYSCALLS (Ring3 Heartbeat)
+// ============================================================================
+//
+// Debug character output - allows Ring3 to send heartbeat signals to Ring0
+// for debugging and validation purposes. This bypasses the I/O privilege
+// restriction that prevents Ring3 from using outb directly.
+
+uint64_t sys_v2_debug_putchar(uint64_t character)
+{
+    // Validate character is printable or control character
+    if (character > 255) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Output character to debugcon (0xE9 port)
+    outb(0xE9, (uint8_t)character);
+    
+    return ESYS_V2_SUCCESS;
+}
+
+// ============================================================================
 // SYSCALL DISPATCHER
 // ============================================================================
 //
@@ -435,9 +457,6 @@ uint64_t sys_v2_exit(uint64_t exit_code)
 uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
                             uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
-    static int ring3_ok_emitted = 0;
-    static int syscall_ok_emitted = 0;
-    extern proc_t *current_proc;
     uint64_t result;
 
     // Validate syscall number
@@ -449,11 +468,6 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
         goto out;
     }
 
-    if (!ring3_ok_emitted && current_proc && current_proc->type == PROC_TYPE_USER) {
-        fb_print("[U][RING3_OK] Phase 4.4 ring3 ready\n");
-        ring3_ok_emitted = 1;
-    }
-    
     // Dispatch to appropriate handler
     switch (syscall_num) {
     case SYS_V2_MAP_MEMORY:
@@ -480,16 +494,9 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
         result = sys_v2_interrupt_return(arg1, arg2);
         break;
         
-    case SYS_V2_TIME_QUERY: {
+    case SYS_V2_TIME_QUERY:
         result = sys_v2_time_query(arg1, (uint64_t *)arg2);
-        if (!syscall_ok_emitted &&
-            result == ESYS_V2_SUCCESS &&
-            current_proc && current_proc->type == PROC_TYPE_USER) {
-            fb_print("[U][SYSCALL_OK] Phase 4.4 syscall roundtrip ok\n");
-            syscall_ok_emitted = 1;
-        }
         break;
-    }
         
     case SYS_V2_CAPABILITY_BIND:
         result = sys_v2_capability_bind(arg1, (capability_token_t *)arg2);
@@ -501,6 +508,10 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
         
     case SYS_V2_EXIT:
         result = sys_v2_exit(arg1);
+        break;
+        
+    case SYS_V2_DEBUG_PUTCHAR:
+        result = sys_v2_debug_putchar(arg1);
         break;
         
     default:

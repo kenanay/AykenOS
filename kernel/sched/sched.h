@@ -34,6 +34,7 @@ void sched_yield_irq(void);
 
 // Ring0 mechanism: Deferred preemption request/ack (IRQ-safe)
 void sched_request_resched(void);
+void sched_request_resched_irq(void);
 uint32_t sched_take_resched(void);
 
 // Ring0 mechanism: Start scheduler with first process (calls Ring3 policy)
@@ -62,6 +63,7 @@ void sched_add_task(void *task);
 
 // Ring0 mechanism state: Current running process
 extern proc_t *current_proc;
+extern volatile uint32_t sched_irq_user_ctx_saved;
 
 // ============================================================================
 // RING3 SCHEDULER POLICY INTERFACE
