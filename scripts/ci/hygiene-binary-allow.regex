@@ -1,0 +1,15 @@
+# Regex allowlist for tracked binary/executable checks.
+# Keep entries narrow and documented.
+
+# Vendored toolchains include binary fixtures and archives.
+^binutils-2\.42/
+^gcc-14\.2\.0/
+
+# OVMF variable/code blobs intentionally tracked for test boot flows.
+^OVMF_VARS\.clean\.fd$
+^ovmf_vars(\.fd|_debug\.fd|_test\.fd)$
+^ovmf_vars_test\.fd$
+^ring3_ovmf_vars\.fd$
+^test_vars\.fd$
+^firmware/ovmf/OVMF_(CODE|VARS)\.fd$
+^reports/phase_4_4_closure_2026-02-(01|06|08)/OVMF_VARS\.fd$

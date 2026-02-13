@@ -121,6 +121,29 @@ evidence/
 1. Tüm gate'ler bu şemaya yazar.
 2. `summary.json` auto-discovery ile keşfedilen tüm gate raporlarını listeler.
 
+### 2.5 Hygiene Gate Contract (Operational)
+
+**CI Call Point**
+1. `make ci-gate-hygiene`
+2. Make target, `scripts/ci/gate_hygiene.sh --evidence-dir evidence/run-<RUN_ID>/gates/hygiene` çağırır.
+3. `reports/hygiene.json` kopyalanır ve `make ci-summarize` ile global verdict zorunlu tutulur.
+
+**Hygiene Rules (merge-blocking)**
+1. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`)
+2. Tracked executable/binary files (allowlist hariç)
+3. Oversized tracked files (`> 5,000,000` bytes, allowlist hariç)
+4. Dirty tracked workspace (`git status --porcelain --untracked-files=no`)
+
+**Hygiene Evidence Files**
+1. `evidence/run-<RUN_ID>/gates/hygiene/tracked.files.txt`
+2. `evidence/run-<RUN_ID>/gates/hygiene/forbidden-tracked.txt`
+3. `evidence/run-<RUN_ID>/gates/hygiene/tracked-binary.txt`
+4. `evidence/run-<RUN_ID>/gates/hygiene/oversized-tracked.txt`
+5. `evidence/run-<RUN_ID>/gates/hygiene/dirty-tracked.txt`
+6. `evidence/run-<RUN_ID>/gates/hygiene/violations.txt`
+7. `evidence/run-<RUN_ID>/gates/hygiene/meta.txt`
+8. `evidence/run-<RUN_ID>/gates/hygiene/report.json`
+
 ---
 
 ## 3) Boundary Enforcement Hardening

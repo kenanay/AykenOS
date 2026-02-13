@@ -1,0 +1,9 @@
+# Regex allowlist for tracked file size check (default threshold: 5,000,000 bytes).
+# Keep entries narrow and documented.
+
+# Vendored toolchain sources are intentionally large.
+^binutils-2\.42/
+^gcc-14\.2\.0/
+
+# Project intro asset intentionally tracked for docs site.
+^ayken-docs-web/assets/Videos/AykenOS video intro\.mp4$

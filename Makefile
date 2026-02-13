@@ -503,7 +503,7 @@ ci-gate-workspace:
 ci-gate-hygiene:
 	@echo "== CI GATE HYGIENE =="
 	@echo "run_id: $(RUN_ID)"
-	@./tools/ci/hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
+	@./scripts/ci/gate_hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/hygiene/report.json" "$(EVIDENCE_RUN_DIR)/reports/hygiene.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR)"
