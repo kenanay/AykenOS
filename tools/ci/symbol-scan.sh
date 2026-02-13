@@ -179,7 +179,7 @@ NOW="$(ci_now_utc)"
 GIT_SHA="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo "NO_GIT")"
 GIT_DIRTY="$(git -C "${ROOT}" status --porcelain 2>/dev/null | wc -l | tr -d ' ' || echo "NA")"
 NM_VER="$(${NM_TOOL} --version 2>/dev/null | head -n 1 || echo "${NM_TOOL}")"
-RAW_COUNT="$(grep -E '^[^#].+:.+$' "${RAW_SYMS}" | wc -l | tr -d ' ' || echo 0)"
+RAW_COUNT="$(grep -E '^[^#].+:[A-Za-z_][A-Za-z0-9_.$@]*$' "${RAW_SYMS}" | wc -l | tr -d ' ' || echo 0)"
 FILTERED_COUNT="$(wc -l < "${FILTERED_SYMS}" | tr -d ' ' || echo 0)"
 DENY_HITS_COUNT="$(wc -l < "${DENY_HITS}" | tr -d ' ' || echo 0)"
 
