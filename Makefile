@@ -433,9 +433,14 @@ setup:
 dev: clean all validate-qemu
 	@echo "Development build and test completed!"
 
-# Continuous integration target
+# Continuous integration target (currently enforced gates)
 ci: check-deps ci-gate-boundary validate-full
 	@echo "CI validation completed successfully!"
+
+# Freeze suite target (strict): calls all declared freeze gates.
+# Planned gates are intentionally hard-fail stubs until implemented.
+ci-freeze: ci-gate-abi ci-gate-boundary ci-gate-workspace ci-gate-hygiene ci-gate-performance
+	@echo "Freeze CI suite completed successfully!"
 
 # CI boundary gate with evidence collection
 ci-evidence-dir:
@@ -475,9 +480,34 @@ ci-gate-boundary: ci-evidence-dir
 		--allow tools/ci/allow.symbols \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/symbol-scan/report.json" "$(EVIDENCE_RUN_DIR)/reports/symbol-scan.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: evidence at $(EVIDENCE_RUN_DIR)"
+
+# Standalone summary verdict gate for existing run directory.
+ci-summarize:
 	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
 	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); print(f"ERROR: summary verdict is {v} ({p})") if v != "PASS" else None; sys.exit(0 if v == "PASS" else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
-	@echo "OK: evidence at $(EVIDENCE_RUN_DIR)"
+
+# Planned gates: fail closed until implemented.
+ci-gate-abi:
+	@echo "PLANNED GATE: ci-gate-abi is not implemented yet." >&2
+	@echo "Implement ABI parity/hash checks before enabling freeze suite." >&2
+	@exit 2
+
+ci-gate-workspace:
+	@echo "PLANNED GATE: ci-gate-workspace is not implemented yet." >&2
+	@echo "Implement workspace test/lint/repro checks before enabling freeze suite." >&2
+	@exit 2
+
+ci-gate-hygiene:
+	@echo "PLANNED GATE: ci-gate-hygiene is not implemented yet." >&2
+	@echo "Implement tracked artifact and clean-tree checks before enabling freeze suite." >&2
+	@exit 2
+
+ci-gate-performance:
+	@echo "PLANNED GATE: ci-gate-performance is not implemented yet." >&2
+	@echo "Implement baseline/env hash + regression checks before enabling freeze suite." >&2
+	@exit 2
 
 # Stability and safety targets
 freeze-stable:
@@ -540,11 +570,14 @@ help:
 	@echo "  install-deps - Install missing dependencies"
 	@echo ""
 	@echo "CI/CD targets:"
-	@echo "  ci           - Continuous integration validation"
+	@echo "  ci           - Current CI chain (boundary gate + validate-full)"
+	@echo "  ci-freeze    - Strict freeze suite (includes planned-gate stubs)"
 	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
+	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
+	@echo "  ci-gate-abi/workspace/hygiene/performance - Planned hard-fail stubs"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-evidence-dir ci-gate-boundary help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-performance help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

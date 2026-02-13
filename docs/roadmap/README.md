@@ -11,6 +11,15 @@ Bu dizin, AykenOS projesinin tüm roadmap dokümantasyonunu içerir.
   - Ayken-Core data systems
   - Constitutional Rule System
   - Timeline ve milestone'lar
+- **[../../ARCHITECTURE_FREEZE.md](../../ARCHITECTURE_FREEZE.md)** - Active architecture freeze contract
+  - Immutable architectural invariants
+  - CI gate enforcement policy
+  - Freeze entry/exit criteria
+- **[freeze-enforcement-workflow.md](freeze-enforcement-workflow.md)** - No-timeline freeze execution workflow
+  - Blocker closure pack
+  - Gate/evidence done criteria
+  - Exit evidence closure model
+  - Implemented vs planned gate truth table
 
 ### 🏗️ Bileşen-Specific Roadmaps
 - **[constitutional-system-roadmap.md](constitutional-system-roadmap.md)** - Constitutional Rule System detaylı roadmap
@@ -32,6 +41,8 @@ Bu dizin, AykenOS projesinin tüm roadmap dokümantasyonunu içerir.
 2. **Core OS (Phase 4.5A preempt baseline)** - COMPLETED ✅ (`run-preempt-strict` PASS)
 3. **Ayken-Core Data Systems (Phase 2)** - ABDF/BCIB v0.2 complete
 4. **Constitutional Rule System (Phases 1-11)** - reported complete (audit evidence list pending)
+5. **Architecture Freeze Boundary Gate** - ACTIVE ✅ (`make ci-gate-boundary`, evidence reports enabled)
+6. **Freeze Summary Gate** - ACTIVE ✅ (`make ci-summarize`, auto-discovery)
 
 ### 🚧 Devam Eden Çalışmalar
 1. **Phase 12-A: ARH** - Complete (audit locked)
@@ -49,6 +60,11 @@ Bu dizin, AykenOS projesinin tüm roadmap dokümantasyonunu içerir.
 - `_ayken/DESIGN.md` - Sistem tasarım spesifikasyonu
 - `_ayken/tasks.md` - Detaylı task listesi ve progress
 - `docs/development/PROJECT_STRUCTURE.md` - Proje yapısı
+- `docs/rfc/0001-template.md` - RFC işlem şablonu
+- `docs/waivers/WAIVER_TEMPLATE.md` - Waiver işlem şablonu
+- `docs/architecture-board/decisions/0001-template.md` - Architecture board karar şablonu
+- `docs/development/PR_FREEZE_TEMPLATE.md` - Freeze PR alanları
+- `.github/pull_request_template.md` - PR merge formu (freeze evidence zorunluluğu)
 
 ### Konfigürasyon
 - `_ayken/steering/` - Constitutional system configuration
@@ -83,6 +99,7 @@ Bu dizin, AykenOS projesinin tüm roadmap dokümantasyonunu içerir.
 - ✅ Phase 12-B Governance Closure complete
 - ✅ Core OS Phase 4.4 closure complete
 - ✅ Core OS Phase 4.5A preempt baseline validation complete
+- ✅ Architecture Freeze v1.1 active with CI boundary evidence
 
 ### Q2 2026
 - 🎯 Core OS Phase 4.5B (Ring0 minimization + advanced integration)
@@ -122,7 +139,20 @@ AykenOS roadmap'i şu constitutional principles'a göre yönetilir:
 
 ---
 
-**Son Güncelleme**: 11 Şubat 2026  
+**Son Güncelleme**: 13 Şubat 2026  
 **Güncelleyen**: Kenan AY  
 **Status**: Comprehensive roadmap documentation complete  
 **Next Review**: Phase 4.5B integration milestone
+
+## Freeze Gate Status (Repo Truth)
+
+1. Implemented:
+   - `ci-gate-boundary`
+   - `ci-summarize`
+2. Planned (hard-fail stubs):
+   - `ci-gate-abi`
+   - `ci-gate-workspace`
+   - `ci-gate-hygiene`
+   - `ci-gate-performance`
+3. Strict suite:
+   - `make ci-freeze` (planned gate'ler tamamlanana kadar fail expected)

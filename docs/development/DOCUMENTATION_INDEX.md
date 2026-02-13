@@ -93,6 +93,14 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **[BUILD_FIXES_COMPLETE.md](BUILD_FIXES_COMPLETE.md)** - Build system notes
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Directory layout
 - **[README.md](README.md)** - Main project README
+- **[../roadmap/freeze-enforcement-workflow.md](../roadmap/freeze-enforcement-workflow.md)** - Freeze execution workflow + done criteria + gate status truth table
+- **[PR_FREEZE_TEMPLATE.md](PR_FREEZE_TEMPLATE.md)** - PR freeze evidence template
+- **[../../.github/pull_request_template.md](../../.github/pull_request_template.md)** - Active PR merge form (freeze evidence required)
+- **[../rfc/0001-template.md](../rfc/0001-template.md)** - RFC template
+- **[../waivers/README.md](../waivers/README.md)** - Waiver registry rules
+- **[../waivers/WAIVER_TEMPLATE.md](../waivers/WAIVER_TEMPLATE.md)** - Waiver template
+- **[../architecture-board/decisions/README.md](../architecture-board/decisions/README.md)** - Board decision registry rules
+- **[../architecture-board/decisions/0001-template.md](../architecture-board/decisions/0001-template.md)** - Architecture board decision template
 - **[MARS_CONFIG.md](../../ayken/steering/MARS_CONFIG.md)** - MARS constitutional configuration template
 - **[AHTS_CONFIG.md](../../ayken/steering/AHTS_CONFIG.md)** - AHTS constitutional configuration template
 - **[MARS README.md](../../ayken/mars/README.md)** - MARS module documentation
@@ -318,4 +326,3 @@ Ready for build environment setup and integration testing.
 **For detailed status:** See [PROJECT_STATUS_REPORT.md](PROJECT_STATUS_REPORT.md)  
 **For this session's work:** See [SESSION_SUMMARY.md](SESSION_SUMMARY.md)  
 **For architecture:** See [RING3_IMPLEMENTATION.md](RING3_IMPLEMENTATION.md) and [DEVFS_IMPLEMENTATION.md](DEVFS_IMPLEMENTATION.md)
-

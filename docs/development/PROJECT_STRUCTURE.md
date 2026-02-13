@@ -2,7 +2,7 @@
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
-**Son Güncelleme:** 8 Şubat 2026
+**Son Güncelleme:** 13 Şubat 2026
 
 Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detaylı olarak açıklar.
 
@@ -52,8 +52,13 @@ AykenOS/
 ├── kernel/                        # C tabanlı çekirdek (x86_64)
 ├── userspace/                     # Ring3 kullanıcı modu bileşenleri
 ├── docs/                          # Dokümantasyon
+│   ├── rfc/                       # RFC şablonları ve kayıtları
+│   ├── waivers/                   # Waiver kayıtları
+│   ├── architecture-board/        # Mimari karar kayıtları
+│   └── roadmap/                   # Roadmap + freeze workflow
 ├── tools/                         # Geliştirme araçları
 ├── build/                         # Derleme çıktıları
+├── evidence/                      # CI gate kanıt çıktıları (run bazlı)
 ├── ayken/                         # 🔒 Constitutional Rule System (Development Tool)
 │   ├── ahs/                       # Architectural Health Score system
 │   ├── ahts/                      # Architectural Health Trend System
@@ -1058,6 +1063,7 @@ docs/
 │   ├── SYSCALL_TRANSITION_GUIDE.md
 │   ├── DEVFS_IMPLEMENTATION.md
 │   ├── QEMU_TEST_SUITE_DOCUMENTATION.md
+│   ├── PR_FREEZE_TEMPLATE.md     # Freeze PR şablonu
 │   └── aykenos_faz_1_teknik_notlar.md
 │
 ├── setup/                         # Kurulum kılavuzları
@@ -1068,8 +1074,24 @@ docs/
 │   ├── MACOS_SETUP_GUIDE.md
 │   └── MULTI_PLATFORM_DEVELOPMENT_GUIDE.md
 │
-└── roadmap/                       # Yol haritası
-    └── overview.md               # Genel bakış
+├── roadmap/                       # Yol haritası
+│   ├── README.md                 # Roadmap dizin özeti
+│   ├── freeze-enforcement-workflow.md # Freeze iş akışı + done kriterleri
+│   ├── overview.md               # Genel bakış
+│   ├── phase-4-4-status.md       # Phase 4.4 closure durumu
+│   └── phase-4-5-spec.md         # Phase 4.5 spesifikasyonu
+├── rfc/
+│   └── 0001-template.md          # RFC template
+├── waivers/
+│   ├── README.md                 # Waiver registry kuralları
+│   └── WAIVER_TEMPLATE.md        # Waiver template
+└── architecture-board/
+    └── decisions/
+        ├── README.md             # Karar kayıt kuralları
+        └── 0001-template.md      # Karar template
+
+.github/
+└── pull_request_template.md       # Freeze PR zorunlu alanları (evidence/rfc/waiver)
 ```
 
 ---
@@ -1080,9 +1102,47 @@ Geliştirme ve test araçları.
 
 ```text
 tools/
-├── scripts/                       # Yardımcı scriptler
-├── test/                          # Test araçları
-└── build/                         # Build araçları
+├── ci/                            # Freeze enforcement CI gate scriptleri
+│   ├── symbol-scan.sh             # Boundary symbol deny/allow gate
+│   ├── summarize.sh               # Gate raporlarını tek summary'ye toplar
+│   ├── deny.symbols               # Yasaklı sembol/pattern listesi
+│   ├── allow.symbols              # İzinli sembol/pattern istisnaları
+│   └── lib.sh                     # Ortak CI yardımcı fonksiyonları
+├── build/                         # Build araçları
+├── validation/                    # Validation/audit scriptleri
+├── qemu/                          # QEMU araçları
+└── setup/                         # Ortam kurulum scriptleri
+```
+
+---
+
+## 📦 CI Evidence Yapısı
+
+`make ci-gate-boundary` sonrası kanıtlar run bazlı saklanır:
+
+```text
+evidence/
+└── run-<RUN_ID>/
+    ├── meta/
+    │   ├── run.json
+    │   ├── git.txt
+    │   └── toolchain.txt
+    ├── artifacts/
+    │   ├── kernel.elf
+    │   └── kernel.elf.sha256
+    ├── gates/
+    │   └── symbol-scan/
+    │       ├── symbols.raw.txt
+    │       ├── symbols.filtered.txt
+    │       ├── deny.hits.txt
+    │       ├── violations.txt
+    │       ├── meta.txt
+    │       └── report.json
+    ├── logs/
+    │   └── build.log
+    └── reports/
+        ├── symbol-scan.json
+        └── summary.json
 ```
 
 ---
@@ -1099,7 +1159,23 @@ make efi-img      # EFI.img disk imajı oluştur
 make run          # QEMU ile çalıştır
 make clean        # Build çıktılarını temizle
 make validate     # Validation testleri çalıştır
+make ci-gate-boundary  # Boundary gate + evidence üretimi
+make ci           # CI zinciri (boundary gate + validate-full)
+make ci-freeze    # Strict freeze suite (planned gates dahil)
 ```
+
+### Freeze Gate Durumu (Gerçek Repo Durumu)
+
+1. Implemented:
+   - `ci-gate-boundary`
+   - `ci-summarize`
+2. Planned (hard-fail stubs):
+   - `ci-gate-abi`
+   - `ci-gate-workspace`
+   - `ci-gate-hygiene`
+   - `ci-gate-performance`
+
+Not: Root altında `README.md` dışındaki governance template dosyaları tutulmaz; tek doğru yer `docs/` ve `.github/` hiyerarşisidir.
 
 ### Linker Script
 

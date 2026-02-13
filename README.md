@@ -9,9 +9,9 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 11.02.2026
+**Son Güncelleme:** 13.02.2026
 
-**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Phase 4.5 timer-preempt validation PASSED ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅  
+**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Phase 4.5 timer-preempt validation PASSED ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | **IRQ-tail preempt chain strict doğrulandı ✅**
 
 ---
@@ -200,7 +200,13 @@ AykenOS/
 │   ├── phase2/        # Faz 2 raporları ve spesifikasyonlar
 │   ├── development/   # Geliştirme kılavuzları
 │   ├── setup/         # Kurulum kılavuzları
-│   └── roadmap/       # Yol haritası
+│   ├── roadmap/       # Yol haritası + freeze workflow
+│   ├── rfc/           # RFC şablonları
+│   ├── waivers/       # Waiver registry + template
+│   └── architecture-board/ # Karar kayıtları
+│
+├── .github/            # PR template ve workflow metadata
+│   └── pull_request_template.md
 │
 └── tools/              # Geliştirme araçları
 
@@ -262,6 +268,18 @@ make run-preempt
 
 # Strict marker-mode preempt doğrulama (fallback kapalı)
 make run-preempt-strict
+
+# Boundary CI gate (symbol deny/allow + evidence raporu)
+make ci-gate-boundary
+
+# Summary gate (auto-discovery + PASS zorlaması)
+make ci-summarize
+
+# Tam CI akışı (boundary gate + validate-full)
+make ci
+
+# Strict freeze suite (planned gate stubları dahil; implement edilene kadar fail expected)
+make ci-freeze
 ```
 
 Notlar:
@@ -269,6 +287,10 @@ Notlar:
 - `run_preempt_test.sh` log analizinde `debugcon + serial` birleşik kaynağı kullanır.
 - Context ABI tek-kaynak modeli aktiftir: `kernel/include/ayken_abi.h` ana kaynaktır, NASM için `kernel/include/generated/ayken_abi.inc` otomatik üretilir.
 - `make guard-context-offsets` context_switch offset disiplinini build aşamasında zorunlu kılar.
+- `make ci-gate-boundary` çıktıları `evidence/run-<RUN_ID>/` altında saklanır (`reports/summary.json` dahil).
+- `make ci-summarize` gate raporlarını auto-discovery ile birleştirir; `summary.json` PASS değilse fail eder.
+- Freeze workflow ve done kriterleri: `docs/roadmap/freeze-enforcement-workflow.md`.
+- Freeze PR şablonu: `docs/development/PR_FREEZE_TEMPLATE.md` ve `.github/pull_request_template.md`.
 
 ### Rust AI Bileşenleri (Opsiyonel)
 
@@ -613,7 +635,7 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 11 Şubat 2026 - Phase 4.5 preempt validation strict PASS ✅ (Ring3 scheduler/preempt zinciri doğrulandı)  
+**Son Güncelleme:** 13 Şubat 2026 - Phase 4.5 preempt validation strict PASS ✅ + CI boundary gate/evidence schema active ✅  
 **Güncelleyen:** Kenan AY
 
 AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards ve evidence-based performance optimization özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.

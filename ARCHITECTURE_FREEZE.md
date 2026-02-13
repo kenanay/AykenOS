@@ -1,7 +1,7 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** ACTIVE FREEZE  
 **Effective Date:** 2026-02-13  
 **Owner:** AykenOS Core Architecture Team  
@@ -38,7 +38,7 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 #### Ring0/Ring3 Boundary
 - **Ring0:** Mechanism only (memory, context, interrupt, syscall)
 - **Ring3:** Policy only (scheduler, VFS, DevFS, AI runtime)
-- **Enforcement:** `grep -R "policy" kernel/` must fail build
+- **Enforcement:** `make ci-gate-boundary` (symbol-scan + evidence report)
 
 #### Scheduler Policy Separation
 - **Mechanism:** wake/block, IRQ-tail reschedule (Ring0)
@@ -69,6 +69,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 #### CI Enforcement Pipeline
 - **Gates:** ABI, Boundary, Workspace, Hygiene, Performance
 - **Bypass:** Prohibited (no exceptions)
+- **Repo Truth (2026-02-13):**
+  - Implemented: `ci-gate-boundary`, `ci-summarize`
+  - Planned (hard-fail stubs): `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-hygiene`, `ci-gate-performance`
+  - Strict suite entrypoint: `make ci-freeze`
 
 #### Repository Hygiene Rules
 - **Tracking:** No `target/`, `obj/`, `*.o`, `*.elf` in git
@@ -150,10 +154,16 @@ _Static_assert(offsetof(struct context, rsi) == CTX_RSI, "ABI drift");
 
 #### Enforcement
 ```bash
-# CI Gate: Ring0 Policy Detection
-grep -R "policy" kernel/ && exit 1
-grep -R "scheduler.*decision" kernel/ && exit 1
-grep -R "vfs.*allow\|deny" kernel/ && exit 1
+# CI Gate: Boundary enforcement (symbol-level, deterministic evidence)
+make ci-gate-boundary
+
+# Rule sources
+# - Deny list:  tools/ci/deny.symbols
+# - Allow list: tools/ci/allow.symbols
+
+# Evidence outputs
+# - Gate report: evidence/run-<RUN_ID>/gates/symbol-scan/report.json
+# - Run summary: evidence/run-<RUN_ID>/reports/summary.json
 ```
 
 ### 3.3 Scheduler Isolation Invariants
@@ -190,12 +200,19 @@ grep -R "vfs.*allow\|deny" kernel/ && exit 1
 
 ## 4. Mandatory Technical Gates (CI Enforcement)
 
+**Implementation state is enforced explicitly:**
+- Implemented gates produce evidence and can PASS.
+- Planned gates exist as hard-fail stubs (`exit 2`) until fully implemented.
+- This prevents silent PASS with missing enforcement.
+
 ### 4.1 ABI Gate
 
 **Checks:**
 ```bash
 make ci-gate-abi
 ```
+
+**Current state:** Planned hard-fail stub (not implemented yet).
 
 **Validations:**
 - Syscall header hash verification
@@ -214,7 +231,9 @@ make ci-gate-boundary
 ```
 
 **Validations:**
-- Ring0 policy detection test (`grep -R "policy" kernel/`)
+- Symbol-level deny/allow scan over build artifacts (`tools/ci/symbol-scan.sh`)
+- Filtered symbol evidence output (`symbols.filtered.txt`)
+- Gate report + run summary evidence (`report.json`, `summary.json`)
 - Scheduler isolation test (no decision logic in kernel)
 - Capability bypass test (no kernel direct access)
 - Ring boundary matrix validation
@@ -236,6 +255,8 @@ Mandatory Green Workspaces:
 make ci-gate-workspace
 ```
 
+**Current state:** Planned hard-fail stub (not implemented yet).
+
 **Validations:**
 - `cargo test --workspace` full green
 - Clippy warnings = 0
@@ -251,6 +272,8 @@ make ci-gate-workspace
 ```bash
 make ci-gate-hygiene
 ```
+
+**Current state:** Planned hard-fail stub (not implemented yet).
 
 **Validations:**
 - `target/` not tracked
@@ -290,6 +313,8 @@ Compiler Upgrade:
 ```bash
 make ci-gate-performance
 ```
+
+**Current state:** Planned hard-fail stub (not implemented yet).
 
 **Validations:**
 - Syscall latency baseline comparison
@@ -331,6 +356,12 @@ make ci-gate-performance
 5. Obtain Architecture Board approval
 
 **No approval = No merge.**
+
+**Operational Artifacts (repo):**
+- `docs/roadmap/freeze-enforcement-workflow.md`
+- `docs/rfc/0001-template.md`
+- `docs/development/PR_FREEZE_TEMPLATE.md`
+- `.github/pull_request_template.md`
 
 ### 6.2 RFC Template
 
@@ -390,6 +421,10 @@ make ci-gate-performance
 - Documented rollback plan
 - Timeline commitment
 
+**Waiver Registry (repo):**
+- `docs/waivers/README.md`
+- `docs/waivers/WAIVER_TEMPLATE.md`
+
 ---
 
 ## 8. Freeze Entry Criteria
@@ -405,7 +440,12 @@ make ci-gate-performance
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status:** [To be updated at freeze activation]
+**Current Status (2026-02-13):**
+- ✅ Boundary gate implementation active (`make ci-gate-boundary`)
+- ✅ Summary gate active (`make ci-summarize`, auto-discovery)
+- ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)
+- 🔄 ABI/Workspace/Hygiene/Performance gates tracked as planned hard-fail stubs
+- 🔄 Remaining entry criteria tracked in roadmap and CI backlog
 
 ---
 
@@ -515,6 +555,7 @@ After freeze exit:
 - Unanimous Architecture Board vote
 - Post-freeze roadmap approval
 - Phase 4.5 readiness confirmation
+- Decision record in `docs/architecture-board/decisions/`
 
 ---
 
@@ -535,16 +576,17 @@ After freeze exit:
 
 **Automated Detection:**
 ```bash
-# CI Gate: Kernel Policy Leak Detection
-grep -R "policy" kernel/ && exit 1
-grep -R "scheduler.*decision" kernel/ && exit 1
-grep -R "vfs.*allow\|deny" kernel/ && exit 1
-grep -R "ai.*inference" kernel/ && exit 1
+# CI gate execution
+make ci-gate-boundary
+
+# Deterministic evidence
+cat evidence/run-<RUN_ID>/reports/summary.json
 ```
 
 **Manual Review:**
 - Every PR touching `kernel/` requires architecture review
 - Ring0/Ring3 boundary changes require RFC
+- `tools/ci/deny.symbols` and `tools/ci/allow.symbols` changes require architecture sign-off
 
 ---
 
@@ -608,7 +650,7 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -619,6 +661,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-02-13 | Kenan AY | Boundary enforcement updated to symbol-scan + deterministic evidence schema |
 | 1.0 | 2026-02-13 | Kenan AY | Initial freeze document |
 
 ---

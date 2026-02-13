@@ -74,5 +74,22 @@ make clean && make validate-stability
 3. **Sorun durumunda**: `make restore-stable`
 4. **Phase 2.5 tamamlandığında**: Yeni stable tag oluştur
 
+## 🧊 Freeze Enforcement (Güncel)
+
+Architecture Freeze aktifken minimum kontrol seti:
+
+1. `make guard-context-offsets`
+2. `make run-preempt-strict`
+3. `make ci-gate-boundary`
+4. `make ci-summarize` (aynı run için summary verdict kontrolü)
+5. `cat evidence/run-<RUN_ID>/reports/summary.json` ile `verdict=PASS` doğrula
+
+Boundary gate kural dosyaları:
+- `tools/ci/deny.symbols`
+- `tools/ci/allow.symbols`
+
+Operasyonel workflow:
+- `docs/roadmap/freeze-enforcement-workflow.md`
+
 ---
 **ÖNEMLİ**: Phase 2 zaten %100 tamamlandı ve stabil. Phase 2.5 sadece temizlik.
