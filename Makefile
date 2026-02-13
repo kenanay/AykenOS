@@ -97,6 +97,13 @@ KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S
 USERSPACE_RUST_DIR = userspace
 USERSPACE_RUNTIME_BIN = $(USERSPACE_RUST_DIR)/target/debug/dispatcher.exe
 
+# CI evidence and boundary gate defaults
+EVIDENCE_ROOT ?= evidence
+RUN_ID ?= $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+RUN_ID := $(RUN_ID)
+EVIDENCE_RUN_DIR := $(EVIDENCE_ROOT)/run-$(RUN_ID)
+CI_TARGETS ?= kernel.elf
+
 
 # ------------------------------------------------------------
 # 2) UEFI Bootloader toolchain
@@ -427,8 +434,50 @@ dev: clean all validate-qemu
 	@echo "Development build and test completed!"
 
 # Continuous integration target
-ci: check-deps validate-full
+ci: check-deps ci-gate-boundary validate-full
 	@echo "CI validation completed successfully!"
+
+# CI boundary gate with evidence collection
+ci-evidence-dir:
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/meta"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
+
+ci-gate-boundary: ci-evidence-dir
+	@echo "== CI GATE BOUNDARY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "targets: $(CI_TARGETS)"
+	@$(MAKE) KERNEL_PROFILE=validation guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1
+	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
+		"$(RUN_ID)" "$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$(EVIDENCE_RUN_DIR)/meta/run.json"
+	@git rev-parse HEAD > "$(EVIDENCE_RUN_DIR)/meta/git.txt" 2>/dev/null || true
+	@{ \
+		echo "clang: $$(clang --version 2>/dev/null | head -n1 || echo NA)"; \
+		echo "ld.lld: $$(ld.lld --version 2>/dev/null | head -n1 || echo NA)"; \
+		echo "nasm: $$(nasm -v 2>/dev/null || echo NA)"; \
+	} > "$(EVIDENCE_RUN_DIR)/meta/toolchain.txt"
+	@for target in $(CI_TARGETS); do \
+		if [ -f "$$target" ]; then \
+			base="$$(basename "$$target")"; \
+			cp -f "$$target" "$(EVIDENCE_RUN_DIR)/artifacts/$$base"; \
+			if command -v sha256sum >/dev/null 2>&1; then \
+				sha256sum "$(EVIDENCE_RUN_DIR)/artifacts/$$base" | awk '{print $$1}' > "$(EVIDENCE_RUN_DIR)/artifacts/$$base.sha256"; \
+			elif command -v shasum >/dev/null 2>&1; then \
+				shasum -a 256 "$(EVIDENCE_RUN_DIR)/artifacts/$$base" | awk '{print $$1}' > "$(EVIDENCE_RUN_DIR)/artifacts/$$base.sha256"; \
+			fi; \
+		fi; \
+	done
+	@./tools/ci/symbol-scan.sh \
+		--targets "$(CI_TARGETS)" \
+		--deny tools/ci/deny.symbols \
+		--allow tools/ci/allow.symbols \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/symbol-scan/report.json" "$(EVIDENCE_RUN_DIR)/reports/symbol-scan.json"
+	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
+	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); print(f"ERROR: summary verdict is {v} ({p})") if v != "PASS" else None; sys.exit(0 if v == "PASS" else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
+	@echo "OK: evidence at $(EVIDENCE_RUN_DIR)"
 
 # Stability and safety targets
 freeze-stable:
@@ -492,9 +541,10 @@ help:
 	@echo ""
 	@echo "CI/CD targets:"
 	@echo "  ci           - Continuous integration validation"
+	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-evidence-dir ci-gate-boundary help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

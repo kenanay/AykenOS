@@ -1,0 +1,11 @@
+# Optional allowlist.
+# Supported forms:
+#   1) <regex>                  (global allow for all binaries)
+#   2) <file_regex>:<regex>     (allow only for matching target path)
+
+# Common compiler-generated memcpy/memset usage is currently allowed.
+^memcpy$
+^memset$
+
+# Example per-file allow (keep commented until needed):
+# kernel\.elf:^__stack_chk_fail$

@@ -1,0 +1,14 @@
+# Forbidden symbols/patterns for kernel boundary checks.
+# One regex per line, comments allowed with #.
+
+# libc/userspace APIs should not leak into kernel artifact.
+^(printf|fprintf|sprintf|snprintf|vprintf|puts|putchar)$
+^(malloc|calloc|realloc|free)$
+
+# toolchain/runtime symbols we treat as forbidden unless allowlisted.
+^__stack_chk_fail$
+^__cxa_.*$
+^_Unwind_.*$
+
+# POSIX-ish syscalls should not appear in bare-metal kernel binary.
+^(open|close|read|write|lseek|stat|fstat|mmap|munmap)$
