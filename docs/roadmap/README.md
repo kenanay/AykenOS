@@ -42,7 +42,8 @@ Bu dizin, AykenOS projesinin tüm roadmap dokümantasyonunu içerir.
 3. **Ayken-Core Data Systems (Phase 2)** - ABDF/BCIB v0.2 complete
 4. **Constitutional Rule System (Phases 1-11)** - reported complete (audit evidence list pending)
 5. **Architecture Freeze Boundary Gate** - ACTIVE ✅ (`make ci-gate-boundary`, evidence reports enabled)
-6. **Freeze Summary Gate** - ACTIVE ✅ (`make ci-summarize`, auto-discovery)
+6. **Architecture Freeze Hygiene Gate** - ACTIVE ✅ (`make ci-gate-hygiene`, evidence reports enabled)
+7. **Freeze Summary Gate** - ACTIVE ✅ (`make ci-summarize`, auto-discovery)
 
 ### 🚧 Devam Eden Çalışmalar
 1. **Phase 12-A: ARH** - Complete (audit locked)
@@ -148,11 +149,11 @@ AykenOS roadmap'i şu constitutional principles'a göre yönetilir:
 
 1. Implemented:
    - `ci-gate-boundary`
+   - `ci-gate-hygiene`
    - `ci-summarize`
 2. Planned (hard-fail stubs):
    - `ci-gate-abi`
    - `ci-gate-workspace`
-   - `ci-gate-hygiene`
    - `ci-gate-performance`
 3. Strict suite:
    - `make ci-freeze` (planned gate'ler tamamlanana kadar fail expected)

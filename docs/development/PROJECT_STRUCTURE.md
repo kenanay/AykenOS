@@ -1160,7 +1160,8 @@ make run          # QEMU ile çalıştır
 make clean        # Build çıktılarını temizle
 make validate     # Validation testleri çalıştır
 make ci-gate-boundary  # Boundary gate + evidence üretimi
-make ci           # CI zinciri (boundary gate + validate-full)
+make ci-gate-hygiene  # Hygiene gate + evidence üretimi
+make ci           # CI zinciri (boundary + hygiene + validate-full)
 make ci-freeze    # Strict freeze suite (planned gates dahil)
 ```
 
@@ -1168,11 +1169,11 @@ make ci-freeze    # Strict freeze suite (planned gates dahil)
 
 1. Implemented:
    - `ci-gate-boundary`
+   - `ci-gate-hygiene`
    - `ci-summarize`
 2. Planned (hard-fail stubs):
    - `ci-gate-abi`
    - `ci-gate-workspace`
-   - `ci-gate-hygiene`
    - `ci-gate-performance`
 
 Not: Root altında `README.md` dışındaki governance template dosyaları tutulmaz; tek doğru yer `docs/` ve `.github/` hiyerarşisidir.

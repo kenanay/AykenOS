@@ -272,10 +272,13 @@ make run-preempt-strict
 # Boundary CI gate (symbol deny/allow + evidence raporu)
 make ci-gate-boundary
 
+# Hygiene CI gate (tracked artifact + dirty tracked kontrolü)
+make ci-gate-hygiene
+
 # Summary gate (auto-discovery + PASS zorlaması)
 make ci-summarize
 
-# Tam CI akışı (boundary gate + validate-full)
+# Tam CI akışı (boundary + hygiene + validate-full)
 make ci
 
 # Strict freeze suite (planned gate stubları dahil; implement edilene kadar fail expected)
@@ -288,6 +291,7 @@ Notlar:
 - Context ABI tek-kaynak modeli aktiftir: `kernel/include/ayken_abi.h` ana kaynaktır, NASM için `kernel/include/generated/ayken_abi.inc` otomatik üretilir.
 - `make guard-context-offsets` context_switch offset disiplinini build aşamasında zorunlu kılar.
 - `make ci-gate-boundary` çıktıları `evidence/run-<RUN_ID>/` altında saklanır (`reports/summary.json` dahil).
+- `make ci-gate-hygiene` tracked artifact ve tracked dirty-tree ihlallerini evidence ile fail eder.
 - `make ci-summarize` gate raporlarını auto-discovery ile birleştirir; `summary.json` PASS değilse fail eder.
 - Freeze workflow ve done kriterleri: `docs/roadmap/freeze-enforcement-workflow.md`.
 - Freeze PR şablonu: `docs/development/PR_FREEZE_TEMPLATE.md` ve `.github/pull_request_template.md`.

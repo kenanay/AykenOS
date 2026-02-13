@@ -81,8 +81,9 @@ Architecture Freeze aktifken minimum kontrol seti:
 1. `make guard-context-offsets`
 2. `make run-preempt-strict`
 3. `make ci-gate-boundary`
-4. `make ci-summarize` (aynı run için summary verdict kontrolü)
-5. `cat evidence/run-<RUN_ID>/reports/summary.json` ile `verdict=PASS` doğrula
+4. `make ci-gate-hygiene`
+5. `make ci-summarize` (aynı run için summary verdict kontrolü)
+6. `cat evidence/run-<RUN_ID>/reports/summary.json` ile `verdict=PASS` doğrula
 
 Boundary gate kural dosyaları:
 - `tools/ci/deny.symbols`

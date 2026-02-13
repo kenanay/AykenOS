@@ -434,7 +434,7 @@ dev: clean all validate-qemu
 	@echo "Development build and test completed!"
 
 # Continuous integration target (currently enforced gates)
-ci: check-deps ci-gate-boundary validate-full
+ci: check-deps ci-gate-boundary ci-gate-hygiene validate-full
 	@echo "CI validation completed successfully!"
 
 # Freeze suite target (strict): calls all declared freeze gates.
@@ -447,6 +447,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/meta"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
 
@@ -500,9 +501,12 @@ ci-gate-workspace:
 	@exit 2
 
 ci-gate-hygiene:
-	@echo "PLANNED GATE: ci-gate-hygiene is not implemented yet." >&2
-	@echo "Implement tracked artifact and clean-tree checks before enabling freeze suite." >&2
-	@exit 2
+	@echo "== CI GATE HYGIENE =="
+	@echo "run_id: $(RUN_ID)"
+	@./tools/ci/hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/hygiene/report.json" "$(EVIDENCE_RUN_DIR)/reports/hygiene.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-performance:
 	@echo "PLANNED GATE: ci-gate-performance is not implemented yet." >&2
@@ -570,11 +574,12 @@ help:
 	@echo "  install-deps - Install missing dependencies"
 	@echo ""
 	@echo "CI/CD targets:"
-	@echo "  ci           - Current CI chain (boundary gate + validate-full)"
+	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
 	@echo "  ci-freeze    - Strict freeze suite (includes planned-gate stubs)"
 	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
+	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
-	@echo "  ci-gate-abi/workspace/hygiene/performance - Planned hard-fail stubs"
+	@echo "  ci-gate-abi/workspace/performance - Planned hard-fail stubs"
 	@echo "  help         - Show this help message"
 
 .PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-performance help

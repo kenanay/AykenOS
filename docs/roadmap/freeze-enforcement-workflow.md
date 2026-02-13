@@ -83,13 +83,13 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
-1. **Implemented:** `ci-gate-boundary`, `ci-summarize`
-2. **Planned (hard-fail stubs):** `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-hygiene`, `ci-gate-performance`
+1. **Implemented:** `ci-gate-boundary`, `ci-gate-hygiene`, `ci-summarize`
+2. **Planned (hard-fail stubs):** `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-performance`
 3. Stub hedefler bilinçli olarak `exit 2` döner; bu, "varmış gibi" geçmeyi engeller.
 
 ### 2.3 CI Entry Point Contract
 
-1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `validate-full`)
+1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `ci-gate-hygiene` + `validate-full`)
 2. `make ci-freeze` = strict freeze suite (planlı gate stub'ları dahil)
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
 
@@ -270,8 +270,9 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 
 Her iterasyonda minimum rutin:
 1. `make ci-gate-boundary`
-2. `make ci` (mevcut minimum suite)
-3. Evidence path'i PR'a yaz
+2. `make ci-gate-hygiene`
+3. `make ci` (mevcut minimum suite)
+4. Evidence path'i PR'a yaz
 
 Fail olursa:
 1. Fail kaynağını sınıflandır (`deny/allow` mi, gerçek leak mi)

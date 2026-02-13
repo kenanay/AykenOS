@@ -70,8 +70,8 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Gates:** ABI, Boundary, Workspace, Hygiene, Performance
 - **Bypass:** Prohibited (no exceptions)
 - **Repo Truth (2026-02-13):**
-  - Implemented: `ci-gate-boundary`, `ci-summarize`
-  - Planned (hard-fail stubs): `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-hygiene`, `ci-gate-performance`
+  - Implemented: `ci-gate-boundary`, `ci-gate-hygiene`, `ci-summarize`
+  - Planned (hard-fail stubs): `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-performance`
   - Strict suite entrypoint: `make ci-freeze`
 
 #### Repository Hygiene Rules
@@ -273,7 +273,7 @@ make ci-gate-workspace
 make ci-gate-hygiene
 ```
 
-**Current state:** Planned hard-fail stub (not implemented yet).
+**Current state:** Implemented (evidence-producing gate).
 
 **Validations:**
 - `target/` not tracked
@@ -442,9 +442,10 @@ make ci-gate-performance
 
 **Current Status (2026-02-13):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
+- ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
 - ✅ Summary gate active (`make ci-summarize`, auto-discovery)
 - ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)
-- 🔄 ABI/Workspace/Hygiene/Performance gates tracked as planned hard-fail stubs
+- 🔄 ABI/Workspace/Performance gates tracked as planned hard-fail stubs
 - 🔄 Remaining entry criteria tracked in roadmap and CI backlog
 
 ---
