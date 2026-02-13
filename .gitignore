@@ -129,6 +129,5 @@ tools/gnu-efi/
 *.elf
 *.a
 *.so
-*.d
 *.dSYM/
 *.tmp

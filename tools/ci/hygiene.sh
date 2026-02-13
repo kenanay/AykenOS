@@ -65,7 +65,14 @@ git -C "${ROOT}" status --porcelain --untracked-files=no > "${DIRTY_TRACKED_TXT}
 # Detect forbidden tracked artifact paths.
 while IFS= read -r path; do
   case "${path}" in
-    ayken/target/*|ayken-core/target/*|target/*|build/*|obj/*|*.o|*.elf|*.a|*.so|*.d|*.tmp|*.dSYM|*.dSYM/*)
+    # Vendored toolchain sources may legitimately contain .o/.a/.d test fixtures.
+    binutils-2.42/*|gcc-14.2.0/*)
+      continue
+      ;;
+  esac
+
+  case "${path}" in
+    ayken/target/*|ayken-core/target/*|target/*|build/*|obj/*|*.o|*.elf|*.a|*.so|*.tmp|*.dSYM|*.dSYM/*)
       echo "${path}" >> "${FORBIDDEN_TXT}"
       ;;
   esac
