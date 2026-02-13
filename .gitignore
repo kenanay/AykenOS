@@ -69,6 +69,7 @@ coverage/
 # Documentation builds
 docs/_build/
 docs/.doctrees/
+kernel/include/generated/ayken_abi.inc
 
 # Backup files
 *.bak

@@ -6,6 +6,7 @@
 #include "pic.h"
 #include "gdt_idt.h"
 #include "../../sched/sched.h"
+#include "../../include/ayken_abi.h"
 
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
@@ -29,16 +30,27 @@ typedef struct irq_timer_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 } irq_timer_frame_t;
 
-_Static_assert(offsetof(irq_timer_frame_t, r15) == 0, "irq frame: r15");
-_Static_assert(offsetof(irq_timer_frame_t, r11) == 32, "irq frame: r11");
-_Static_assert(offsetof(irq_timer_frame_t, rbp) == 64, "irq frame: rbp");
-_Static_assert(offsetof(irq_timer_frame_t, rax) == 112, "irq frame: rax");
-_Static_assert(offsetof(irq_timer_frame_t, rip) == 120, "irq frame: rip");
-_Static_assert(offsetof(irq_timer_frame_t, cs) == 128, "irq frame: cs");
-_Static_assert(offsetof(irq_timer_frame_t, rflags) == 136, "irq frame: rflags");
-_Static_assert(offsetof(irq_timer_frame_t, rsp) == 144, "irq frame: rsp");
-_Static_assert(offsetof(irq_timer_frame_t, ss) == 152, "irq frame: ss");
-_Static_assert(sizeof(irq_timer_frame_t) == 160, "irq frame: size");
+_Static_assert(offsetof(irq_timer_frame_t, r15) == IRQF_R15, "irq frame: r15");
+_Static_assert(offsetof(irq_timer_frame_t, r14) == IRQF_R14, "irq frame: r14");
+_Static_assert(offsetof(irq_timer_frame_t, r13) == IRQF_R13, "irq frame: r13");
+_Static_assert(offsetof(irq_timer_frame_t, r12) == IRQF_R12, "irq frame: r12");
+_Static_assert(offsetof(irq_timer_frame_t, r11) == IRQF_R11, "irq frame: r11");
+_Static_assert(offsetof(irq_timer_frame_t, r10) == IRQF_R10, "irq frame: r10");
+_Static_assert(offsetof(irq_timer_frame_t, r9) == IRQF_R9, "irq frame: r9");
+_Static_assert(offsetof(irq_timer_frame_t, r8) == IRQF_R8, "irq frame: r8");
+_Static_assert(offsetof(irq_timer_frame_t, rbp) == IRQF_RBP, "irq frame: rbp");
+_Static_assert(offsetof(irq_timer_frame_t, rdi) == IRQF_RDI, "irq frame: rdi");
+_Static_assert(offsetof(irq_timer_frame_t, rsi) == IRQF_RSI, "irq frame: rsi");
+_Static_assert(offsetof(irq_timer_frame_t, rdx) == IRQF_RDX, "irq frame: rdx");
+_Static_assert(offsetof(irq_timer_frame_t, rcx) == IRQF_RCX, "irq frame: rcx");
+_Static_assert(offsetof(irq_timer_frame_t, rbx) == IRQF_RBX, "irq frame: rbx");
+_Static_assert(offsetof(irq_timer_frame_t, rax) == IRQF_RAX, "irq frame: rax");
+_Static_assert(offsetof(irq_timer_frame_t, rip) == IRQF_RIP, "irq frame: rip");
+_Static_assert(offsetof(irq_timer_frame_t, cs) == IRQF_CS, "irq frame: cs");
+_Static_assert(offsetof(irq_timer_frame_t, rflags) == IRQF_RFLAGS, "irq frame: rflags");
+_Static_assert(offsetof(irq_timer_frame_t, rsp) == IRQF_RSP, "irq frame: rsp");
+_Static_assert(offsetof(irq_timer_frame_t, ss) == IRQF_SS, "irq frame: ss");
+_Static_assert(sizeof(irq_timer_frame_t) == IRQF_SIZE, "irq frame: size");
 
 // C handler called from ASM stub (argument: pointer to saved IRQ frame on kernel stack)
 void timer_isr_c(void *frame_ptr)

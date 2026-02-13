@@ -267,6 +267,8 @@ make run-preempt-strict
 Notlar:
 - `run-preempt-strict` otomatik olarak `STRICT_MARKERS=1` ve `FORCE_EFI_REBUILD=1` ile çalışır.
 - `run_preempt_test.sh` log analizinde `debugcon + serial` birleşik kaynağı kullanır.
+- Context ABI tek-kaynak modeli aktiftir: `kernel/include/ayken_abi.h` ana kaynaktır, NASM için `kernel/include/generated/ayken_abi.inc` otomatik üretilir.
+- `make guard-context-offsets` context_switch offset disiplinini build aşamasında zorunlu kılar.
 
 ### Rust AI Bileşenleri (Opsiyonel)
 

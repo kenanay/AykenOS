@@ -2,7 +2,9 @@
 #ifndef AYKEN_PROC_H
 #define AYKEN_PROC_H
 
+#include <stddef.h>
 #include <stdint.h>
+#include "ayken_abi.h"
 
 #define MAX_PROCS 64
 
@@ -24,6 +26,22 @@ typedef struct cpu_context {
     uint16_t ss;            // Stack segment selector (Ring3: 0x1B, Ring0: 0x10)
     uint64_t rsp0;          // Kernel stack RSP (for Ring0 when interrupted from Ring3)
 } cpu_context_t;
+
+/* cpu_context_t ABI hard-locks (must match ayken_abi.{h,inc}) */
+_Static_assert(offsetof(cpu_context_t, r15) == CTX_R15, "cpu_context_t: CTX_R15 drift");
+_Static_assert(offsetof(cpu_context_t, r14) == CTX_R14, "cpu_context_t: CTX_R14 drift");
+_Static_assert(offsetof(cpu_context_t, r13) == CTX_R13, "cpu_context_t: CTX_R13 drift");
+_Static_assert(offsetof(cpu_context_t, r12) == CTX_R12, "cpu_context_t: CTX_R12 drift");
+_Static_assert(offsetof(cpu_context_t, rbx) == CTX_RBX, "cpu_context_t: CTX_RBX drift");
+_Static_assert(offsetof(cpu_context_t, rbp) == CTX_RBP, "cpu_context_t: CTX_RBP drift");
+_Static_assert(offsetof(cpu_context_t, rip) == CTX_RIP, "cpu_context_t: CTX_RIP drift");
+_Static_assert(offsetof(cpu_context_t, rsp) == CTX_RSP, "cpu_context_t: CTX_RSP drift");
+_Static_assert(offsetof(cpu_context_t, rflags) == CTX_RFLAGS, "cpu_context_t: CTX_RFLAGS drift");
+_Static_assert(offsetof(cpu_context_t, cr3) == CTX_CR3, "cpu_context_t: CTX_CR3 drift");
+_Static_assert(offsetof(cpu_context_t, cs) == CTX_CS, "cpu_context_t: CTX_CS drift");
+_Static_assert(offsetof(cpu_context_t, ss) == CTX_SS, "cpu_context_t: CTX_SS drift");
+_Static_assert(offsetof(cpu_context_t, rsp0) == CTX_RSP0, "cpu_context_t: CTX_RSP0 drift");
+_Static_assert(sizeof(cpu_context_t) == CTX_SIZE, "cpu_context_t: CTX_SIZE drift");
 
 typedef enum {
     PROC_READY = 0,

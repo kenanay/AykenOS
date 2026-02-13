@@ -701,6 +701,7 @@ kernel/
 │
 ├── include/                       # Ortak kernel header'ları
 │   ├── ayken.h                   # Ana sistem tanımları
+│   ├── ayken_abi.h               # ABI single-source (CTX_*/IRQF_* + ABI version)
 │   ├── boot_info.h               # Boot bilgi yapıları
 │   ├── boot_flags.h              # Boot bayrakları
 │   ├── capability.h              # Capability sistem tanımları
@@ -709,7 +710,9 @@ kernel/
 │   ├── mm.h                      # Bellek yönetimi tanımları
 │   ├── proc.h                    # Süreç yapıları
 │   ├── ring3_vfs.h               # Ring3 VFS arayüzü
-│   └── syscall.h                 # Sistem çağrısı tanımları
+│   ├── syscall.h                 # Sistem çağrısı tanımları
+│   └── generated/                # Build sırasında üretilen ABI include'lar
+│       └── ayken_abi.inc         # NASM include (ayken_abi.h'dan otomatik üretilir)
 │
 ├── arch/                          # Mimariye özel kod
 │   └── x86_64/                   # x86_64 mimarisi

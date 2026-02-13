@@ -14,20 +14,17 @@ extern timer_isr_c
 extern sched_take_resched
 extern sched_yield_irq
 
-; cpu_context_t ABI offsets (must match kernel/include/proc.h)
-; Hard rule: never use raw numeric struct offsets in memory operands below.
-%define CTX_R15    0
-%define CTX_R14    8
-%define CTX_R13    16
-%define CTX_R12    24
-%define CTX_RBX    32
-%define CTX_RBP    40
-%define CTX_RIP    48
-%define CTX_RSP    56
-%define CTX_RFLAGS 64
-%define CTX_CR3    72
-%define CTX_CS     80
-%define CTX_SS     82
+; cpu_context_t ABI offsets (single source of truth)
+%include "ayken_abi.inc"
+
+; timer_isr_asm pushes 15 GPRs before CPU IRQ frame fields (RIP at +120).
+%assign IRQ_PUSHED_GPRS 15
+%if (IRQ_PUSHED_GPRS * 8) != IRQF_RIP
+%error "IRQ frame ABI drift: push-count no longer matches IRQF_RIP"
+%endif
+%if IRQF_SIZE != 160
+%error "IRQ frame ABI drift: unexpected IRQF_SIZE"
+%endif
 
 %ifdef AYKEN_DEBUG_SCHED
 %if AYKEN_DEBUG_SCHED

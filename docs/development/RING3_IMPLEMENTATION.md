@@ -76,6 +76,17 @@ Runtime now validates the full preempt chain under timer load:
    - Without alignment, compiler-generated `movaps` in early C path (e.g. `proc_alloc`) can raise `#GP` and reset into UEFI shell.
    - After fix: stable PID2/PID3 creation, `MARK:SW=U>U` + `MARK:IRET` stream, strict preempt validation passes.
 
+11. **Single-source ABI freeze pack (C + NASM)**
+   - Added shared ABI definitions:
+     - `kernel/include/ayken_abi.h` (C-side constants + ABI version)
+     - `kernel/include/generated/ayken_abi.inc` (NASM-side constants, auto-generated from `ayken_abi.h` by Makefile)
+   - `context_switch.asm` now imports `CTX_*` offsets from generated ABI include instead of local `%define` values.
+   - All kernel NASM objects now depend on generated ABI include (`$(KERNEL_ASM_SOURCES:.asm=.o): $(ABI_INC)`), preventing stale include drift.
+   - NASM include paths are now explicit via `KERNEL_ASMFLAGS` (`-Ikernel/include/generated/ -Ikernel/include/`) and ASM uses `%include "ayken_abi.inc"` (build-root independent).
+   - `cpu_context_t` now has hard `_Static_assert` drift checks in `proc.h` against `CTX_*` + `CTX_SIZE`.
+   - Timer IRQ frame contract is now also frozen via ABI constants (`IRQF_*`) and C-side `_Static_assert` checks in `timer.c`.
+   - This removes class of silent breakages where C layout and ASM offsets diverge across refactors.
+
 ### Structure Preservation Recommendations
 
 To prevent regression and keep this path stable:

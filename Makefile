@@ -15,7 +15,7 @@ KERNEL_LD = ld.lld
 KERNEL_CFLAGS = -ffreestanding -m64 -Wall -Wextra -Ikernel/include -Iuserspace/libayken
 KERNEL_CFLAGS += -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector
 KERNEL_CFLAGS += -mno-red-zone
-KERNEL_ASMFLAGS =
+KERNEL_ASMFLAGS = -Ikernel/include/generated/ -Ikernel/include/
 
 # ------------------------------------------------------------
 # Kernel profile and debug feature flags
@@ -62,6 +62,8 @@ KERNEL_LDFLAGS = -nostdlib -z max-page-size=0x1000
 KERNEL_ELF = kernel.elf
 CTX_SWITCH_ASM = kernel/arch/x86_64/context_switch.asm
 PROFILE_STAMP = .build_profile.stamp
+ABI_H = kernel/include/ayken_abi.h
+ABI_INC = kernel/include/generated/ayken_abi.inc
 
 KERNEL_DIR = kernel
 ARCH_DIR   = kernel/arch/x86_64
@@ -172,6 +174,24 @@ $(KERNEL_OBJS): $(PROFILE_STAMP)
 $(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP)
 	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) -o $@ $(KERNEL_OBJS)
 
+# Generate NASM ABI include from single C ABI source.
+$(ABI_INC): $(ABI_H)
+	@mkdir -p $(dir $@)
+	@echo "; AUTO-GENERATED. DO NOT EDIT." > $@
+	@echo "; Source: $(ABI_H)" >> $@
+	@awk '\
+		$$1 == "#define" && $$2 == "AYKEN_ABI_VERSION" { \
+			val = $$3; gsub(/[uU]/, "", val); \
+			printf("%%define AYKEN_ABI_VERSION %s\n", val); \
+			next; \
+		} \
+		$$1 == "#define" && $$2 ~ /^(CTX_|IRQF_)/ { \
+			val = $$3; gsub(/[uU]/, "", val); \
+			printf("%%define %s %s\n", $$2, val); \
+		}' $(ABI_H) >> $@
+
+$(KERNEL_ASM_SOURCES:.asm=.o): $(ABI_INC)
+
 # C -> .o
 kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 %.o: %.c
@@ -237,10 +257,10 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp
+	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC)
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp
+	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC)
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
