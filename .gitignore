@@ -123,6 +123,7 @@ tools/gnu-efi/
 # --- Freeze hygiene override (must stay after !ayken/**/*) ---
 /ayken/target/
 /ayken-core/target/
+/userspace/target/
 /build/
 /obj/
 *.o
