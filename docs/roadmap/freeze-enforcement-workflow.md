@@ -92,11 +92,12 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 6. `make ci-gate-constitutional`
 7. `make ci-gate-performance`
 8. `make ci-summarize`
+9. `make ci-gate-syscall-v2-runtime` (planned contract-first runtime gate; becomes mandatory when implemented)
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
 1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
-2. **Planned (hard-fail stubs):** none
+2. **Planned (contract-first):** `ci-gate-syscall-v2-runtime` (spec: `docs/development/SYSCALL_V2_RUNTIME_GATE_SPEC.md`)
 3. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
 
 ### 2.3 CI Entry Point Contract

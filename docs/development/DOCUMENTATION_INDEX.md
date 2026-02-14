@@ -94,6 +94,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Directory layout
 - **[README.md](README.md)** - Main project README
 - **[../roadmap/freeze-enforcement-workflow.md](../roadmap/freeze-enforcement-workflow.md)** - Freeze execution workflow + done criteria + gate status truth table
+- **[SYSCALL_V2_RUNTIME_GATE_SPEC.md](SYSCALL_V2_RUNTIME_GATE_SPEC.md)** - Contract-first runtime syscall v2 gate specification (planned freeze gate)
 - **[PR_FREEZE_TEMPLATE.md](PR_FREEZE_TEMPLATE.md)** - PR freeze evidence template
 - **[../../.github/pull_request_template.md](../../.github/pull_request_template.md)** - Active PR merge form (freeze evidence required)
 - **[../rfc/0001-template.md](../rfc/0001-template.md)** - RFC template
