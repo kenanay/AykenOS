@@ -1,136 +1,38 @@
-# AykenOS .gitignore
-# Copyright (c) 2026 Kenan AY. All rights reserved.
-
-# IMPORTANT: This .gitignore protects critical project files
-# DO NOT add LICENSE, SECURITY.md, or authentication files to .gitignore
-
 # Build artifacts
 *.o
+*.d
 *.elf
-*.efi
 *.img
-*.iso
-*.bin
+*.fd
+*.log
+*.err
+build/
 kernel.elf
-BOOTX64.EFI
 EFI.img
 
-# Temporary files
-*.tmp
-*.temp
-*~
+# OVMF variables
+OVMF_VARS.fd
+ovmf_vars_*.fd
+test_vars.fd
+
+# Evidence (keep structure, ignore content)
+evidence/run-*/
+
+# Local development baselines (never commit)
+scripts/ci/perf-baseline.local.lock.json
+
+# macOS
 .DS_Store
-Thumbs.db
 
-# Log files
-*.log
-qemu_output.log
-build_output.log
-warnings.log
-
-# Rust build artifacts
-target/
-Cargo.lock
-**/*.rs.bk
-
-# IDE files
-.vscode/settings.json
-.vscode/launch.json
-.idea/
+# Editor
+.vscode/
 *.swp
 *.swo
+*~
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Toolchain downloads
+# Toolchain
+gcc-*/
+binutils-*/
+*.tar
 *.tar.xz
 *.tar.gz
-*.tar
-*.zip
-binutils-*/
-gcc-*/
-
-# Large build files
-build/EFI.img
-ayken/target/debug/incremental/*/s-*/dep-graph.bin
-ayken/target/debug/incremental/*/s-*/query-cache.bin
-
-# Test artifacts
-test_results/
-coverage/
-
-# Documentation builds
-docs/_build/
-docs/.doctrees/
-kernel/include/generated/ayken_abi.inc
-
-# Backup files
-*.bak
-*.backup
-*.orig
-
-# QEMU files
-qemu-*.pid
-
-# Build directories
-build/
-dist/
-out/
-
-# Package files
-*.deb
-*.rpm
-*.pkg
-
-# Archive files (except required ones)
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-
-# CRITICAL: DO NOT IGNORE THESE PROTECTION FILES
-# These files are essential for copyright protection:
-# !LICENSE
-# !SECURITY.md
-# !ayken/
-# !ayken/auth/
-# !ayken/Cargo.toml
-# !ayken/lib.rs
-# !ayken/auth/mod.rs
-# !ayken/bin/main.rs
-
-# Submodules and external dependencies
-tools/gnu-efi/
-
-# Ensure protection files are never ignored
-!LICENSE
-!SECURITY.md
-!README.md
-!ayken/
-!ayken/**/*
-
-# --- Freeze hygiene override (must stay after !ayken/**/*) ---
-/evidence/
-/ayken/target/
-/ayken-core/target/
-/userspace/target/
-/build/
-/obj/
-*.o
-*.elf
-*.a
-*.so
-*.d
-*.dSYM/
-*.tmp
