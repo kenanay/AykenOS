@@ -4,6 +4,7 @@
 *.elf
 *.img
 *.fd
+*.efi
 *.log
 *.err
 build/
@@ -36,3 +37,15 @@ binutils-*/
 *.tar
 *.tar.xz
 *.tar.gz
+
+# Local workspace artifacts
+ayken-core/target/
+ayken/target/
+userspace/target/
+ayken-core/Cargo.lock
+ayken/Cargo.lock
+userspace/Cargo.lock
+bootloader/efi/BOOTX64.EFI
+tools/gnu-efi/
+*.backup
+test_baseline_init.sh

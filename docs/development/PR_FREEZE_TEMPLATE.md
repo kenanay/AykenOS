@@ -11,11 +11,18 @@ Mirror path (merge form): `.github/pull_request_template.md`
 
 - ABI:
 - Boundary:
+- Tooling Isolation:
 - Constitutional:
 - Workspace:
 - Hygiene:
 - Performance:
 - Summary:
+
+## Tooling Isolation Guard
+
+- Perf/preempt tooling touched: `yes/no`
+- If yes, `kernel touch = 0`: `yes/no`
+- Evidence path: `evidence/run-<id>/gates/tooling-isolation/`
 
 ## Contract Change
 

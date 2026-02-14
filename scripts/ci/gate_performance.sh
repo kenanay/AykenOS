@@ -19,6 +19,7 @@ Env controls:
   PERF_BASELINE_AUTHORITY=<id>                 (default: github-hosted-ubuntu-latest-x64)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
+  PERF_PREEMPT_FORCE_EFI_REBUILD=0|1           (default: 1)
 
 Exit codes:
   0: pass
@@ -35,9 +36,10 @@ ENV_MISMATCH_POLICY="${PERF_ENV_MISMATCH_POLICY:-fail}"
 BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-latest-x64}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
+PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"
 BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
-PREEMPT_SW_COUNT_PATTERN='\\[SW\\|MARK:SW\\] count:'
-PREEMPT_IRET_COUNT_PATTERN='\\[IRET markers\\] count:'
+PREEMPT_SW_COUNT_PATTERN='[SW|MARK:SW] count:'
+PREEMPT_IRET_COUNT_PATTERN='[IRET markers] count:'
 INIT_BASELINE=0
 
 while [[ $# -gt 0 ]]; do
@@ -101,6 +103,15 @@ case "${REQUIRE_CI_FOR_BASELINE_INIT}" in
     ;;
 esac
 
+case "${PREEMPT_FORCE_EFI_REBUILD}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_FORCE_EFI_REBUILD must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
 for tool in git make python3 qemu-system-x86_64; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: required tool missing (${tool})" >&2
@@ -115,12 +126,45 @@ print(int(time.time() * 1000))
 PY
 }
 
+extract_kv_metric() {
+  local key="$1"
+  local file="$2"
+  [[ -f "${file}" ]] || { echo 0; return; }
+  awk -F '=' -v k="${key}" '
+    $1==k {v=$2}
+    END {
+      if (v == "") {
+        print 0
+      } else {
+        gsub(/[^0-9.]/, "", v)
+        if (v == "") print 0
+        else print v + 0
+      }
+    }
+  ' "${file}"
+}
+
+extract_label_count() {
+  local label="$1"
+  local file="$2"
+  [[ -f "${file}" ]] || { echo 0; return; }
+  awk -v lbl="${label}" '
+    index($0, lbl) {v=$0}
+    END {
+      gsub(/[^0-9]/, "", v)
+      if (v == "") print 0
+      else print v + 0
+    }
+  ' "${file}"
+}
+
 mkdir -p "${EVIDENCE_DIR}"
 ENV_JSON="${EVIDENCE_DIR}/env.json"
 RESULTS_JSON="${EVIDENCE_DIR}/results.json"
 RAW_LOG="${EVIDENCE_DIR}/raw.log"
 BOOT_AUDIT_LOG="${EVIDENCE_DIR}/boot-audit.log"
 PREEMPT_LOG="${EVIDENCE_DIR}/preempt.log"
+PREEMPT_METRICS_TXT="${EVIDENCE_DIR}/preempt.metrics.txt"
 ACTUAL_LOCK_JSON="${EVIDENCE_DIR}/actual.lock.json"
 BASELINE_DIFF_TXT="${EVIDENCE_DIR}/baseline.diff.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
@@ -132,6 +176,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${RAW_LOG}"
 : > "${BOOT_AUDIT_LOG}"
 : > "${PREEMPT_LOG}"
+: > "${PREEMPT_METRICS_TXT}"
 : > "${ACTUAL_LOCK_JSON}"
 : > "${BASELINE_DIFF_TXT}"
 : > "${VIOLATIONS_TXT}"
@@ -217,14 +262,35 @@ BOOT_TIME_MS="$((BOOT_END_MS - BOOT_START_MS))"
 
 # 4) Measure context-switch proxy from preempt validation.
 PREEMPT_START_MS="$(now_ms)"
-if ! (cd "${ROOT}" && QEMU_TIMEOUT="${QEMU_TIMEOUT}" STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 KERNEL_PROFILE="${KERNEL_PROFILE}" ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
+if ! (cd "${ROOT}" && QEMU_TIMEOUT="${QEMU_TIMEOUT}" STRICT_MARKERS=1 FORCE_EFI_REBUILD="${PREEMPT_FORCE_EFI_REBUILD}" KERNEL_PROFILE="${KERNEL_PROFILE}" PREEMPT_METRICS_OUT="${PREEMPT_METRICS_TXT}" ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
   record_violation "preempt_test_failed:run_preempt_test.sh"
 fi
 PREEMPT_END_MS="$(now_ms)"
-PREEMPT_TIME_MS="$((PREEMPT_END_MS - PREEMPT_START_MS))"
+PREEMPT_TIME_MS_WALL="$((PREEMPT_END_MS - PREEMPT_START_MS))"
 
-PREEMPT_SW_COUNT="$(awk -F': ' -v pat="${PREEMPT_SW_COUNT_PATTERN}" '$0 ~ pat {v=$2} END {gsub(/[^0-9]/,"",v); print (v==""?0:v)+0}' "${PREEMPT_LOG}")"
-PREEMPT_IRET_COUNT="$(awk -F': ' -v pat="${PREEMPT_IRET_COUNT_PATTERN}" '$0 ~ pat {v=$2} END {gsub(/[^0-9]/,"",v); print (v==""?0:v)+0}' "${PREEMPT_LOG}")"
+PREEMPT_SW_COUNT="$(extract_kv_metric "sw_count" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_IRET_COUNT="$(extract_kv_metric "iret_count" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_QEMU_RUN_TIME_MS="$(extract_kv_metric "qemu_run_time_ms" "${PREEMPT_METRICS_TXT}")"
+MARK_SW_COUNT="$(extract_kv_metric "mark_sw_count" "${PREEMPT_METRICS_TXT}")"
+MARK_IRET_COUNT="$(extract_kv_metric "mark_iret_count" "${PREEMPT_METRICS_TXT}")"
+
+PREEMPT_TIME_MS="${PREEMPT_TIME_MS_WALL}"
+if [[ "${PREEMPT_QEMU_RUN_TIME_MS}" -gt 0 ]]; then
+  PREEMPT_TIME_MS="${PREEMPT_QEMU_RUN_TIME_MS}"
+fi
+
+if [[ "${PREEMPT_SW_COUNT}" -le 0 ]]; then
+  PREEMPT_SW_COUNT="$(extract_label_count "${PREEMPT_SW_COUNT_PATTERN}" "${PREEMPT_LOG}")"
+fi
+if [[ "${PREEMPT_IRET_COUNT}" -le 0 ]]; then
+  PREEMPT_IRET_COUNT="$(extract_label_count "${PREEMPT_IRET_COUNT_PATTERN}" "${PREEMPT_LOG}")"
+fi
+if [[ "${PREEMPT_SW_COUNT}" -le 0 && "${MARK_SW_COUNT}" -gt 0 ]]; then
+  PREEMPT_SW_COUNT="${MARK_SW_COUNT}"
+fi
+if [[ "${PREEMPT_IRET_COUNT}" -le 0 && "${MARK_IRET_COUNT}" -gt 0 ]]; then
+  PREEMPT_IRET_COUNT="${MARK_IRET_COUNT}"
+fi
 if [[ "${PREEMPT_SW_COUNT}" -le 0 ]]; then
   record_violation "preempt_marker_missing:sw_count=0"
 fi
@@ -264,6 +330,8 @@ fi
 # 6) Persist measured results.
 BOOT_TIME_MS_ENV="${BOOT_TIME_MS}" \
 PREEMPT_TIME_MS_ENV="${PREEMPT_TIME_MS}" \
+PREEMPT_TIME_MS_WALL_ENV="${PREEMPT_TIME_MS_WALL}" \
+PREEMPT_QEMU_RUN_TIME_MS_ENV="${PREEMPT_QEMU_RUN_TIME_MS}" \
 PREEMPT_SW_COUNT_ENV="${PREEMPT_SW_COUNT}" \
 PREEMPT_IRET_COUNT_ENV="${PREEMPT_IRET_COUNT}" \
 CONTEXT_SWITCH_LATENCY_MS_PROXY_ENV="${CONTEXT_SWITCH_LATENCY_MS_PROXY}" \
@@ -276,6 +344,8 @@ import os
 payload = {
     "boot_time_ms": int(os.environ["BOOT_TIME_MS_ENV"]),
     "preempt_run_time_ms": int(os.environ["PREEMPT_TIME_MS_ENV"]),
+    "preempt_wall_time_ms": int(os.environ["PREEMPT_TIME_MS_WALL_ENV"]),
+    "preempt_qemu_run_time_ms": int(os.environ["PREEMPT_QEMU_RUN_TIME_MS_ENV"]),
     "preempt_sw_count": int(os.environ["PREEMPT_SW_COUNT_ENV"]),
     "preempt_iret_count": int(os.environ["PREEMPT_IRET_COUNT_ENV"]),
     "context_switch_latency_ms_proxy": (
@@ -468,8 +538,11 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "boot_ok_marker=${BOOT_OK_MARKER}"
   echo "preempt_sw_count_pattern=${PREEMPT_SW_COUNT_PATTERN}"
   echo "preempt_iret_count_pattern=${PREEMPT_IRET_COUNT_PATTERN}"
+  echo "preempt_force_efi_rebuild=${PREEMPT_FORCE_EFI_REBUILD}"
   echo "env_hash=${ENV_HASH}"
   echo "boot_time_ms=${BOOT_TIME_MS}"
+  echo "preempt_wall_time_ms=${PREEMPT_TIME_MS_WALL}"
+  echo "preempt_qemu_run_time_ms=${PREEMPT_QEMU_RUN_TIME_MS}"
   echo "context_switch_latency_ms_proxy=${CONTEXT_SWITCH_LATENCY_MS_PROXY}"
   echo "syscall_latency_ms_proxy=${SYSCALL_LATENCY_MS_PROXY}"
   echo "violations_count=${VIOLATIONS_COUNT}"

@@ -18,6 +18,14 @@ PREEMPT_MIN_AB_LEN="${PREEMPT_MIN_AB_LEN:-256}"
 PREEMPT_MIN_AB_ALT="${PREEMPT_MIN_AB_ALT:-96}"
 STRICT_MARKERS="${STRICT_MARKERS:-0}"
 FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
+PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
+
+now_ms() {
+  python3 - <<'PY'
+import time
+print(int(time.time() * 1000))
+PY
+}
 
 if [[ "$STRICT_MARKERS" != "0" && "$STRICT_MARKERS" != "1" ]]; then
   echo "ERROR: STRICT_MARKERS must be 0 or 1 (got '$STRICT_MARKERS')"
@@ -28,6 +36,38 @@ if [[ "$FORCE_EFI_REBUILD" != "0" && "$FORCE_EFI_REBUILD" != "1" ]]; then
   echo "ERROR: FORCE_EFI_REBUILD must be 0 or 1 (got '$FORCE_EFI_REBUILD')"
   exit 1
 fi
+
+write_preempt_metrics() {
+  local fail_value="$1"
+  [[ -n "${PREEMPT_METRICS_OUT}" ]] || return 0
+  {
+    echo "strict_markers=${STRICT_MARKERS}"
+    echo "qemu_run_time_ms=${qemu_run_time_ms:-0}"
+    echo "debug_bytes=${debug_size:-0}"
+    echo "serial_bytes=${serial_size:-0}"
+    echo "mark_pid2_count=${mark_pid2_count:-0}"
+    echo "mark_pid3_count=${mark_pid3_count:-0}"
+    echo "mark_alt_count=${mark_alt_count:-0}"
+    echo "mark_sw_count=${mark_sw_count:-0}"
+    echo "mark_iret_count=${mark_iret_count:-0}"
+    echo "pid2_count=${pid2_count:-0}"
+    echo "pid3_count=${pid3_count:-0}"
+    echo "alt_count=${alt_count:-0}"
+    echo "sw_count=${sw_count:-0}"
+    echo "sw_uu_count=${sw_uu_count:-0}"
+    echo "iret_count=${iret_count:-0}"
+    echo "ab_len=${ab_len:-0}"
+    echo "ab_alt_count=${ab_alt_count:-0}"
+    echo "ab_run_max=${ab_run_max:-0}"
+    echo "ab_run_alt_max=${ab_run_alt_max:-0}"
+    echo "pid_signal=${pid_signal:-0}"
+    echo "mark_pid_signal=${mark_pid_signal:-0}"
+    echo "switch_signal=${switch_signal:-0}"
+    echo "mark_switch_signal=${mark_switch_signal:-0}"
+    echo "ab_signal=${ab_signal:-0}"
+    echo "assert_fail=${fail_value}"
+  } > "${PREEMPT_METRICS_OUT}"
+}
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
   make KERNEL_PROFILE="$KERNEL_PROFILE" efi-img
@@ -53,6 +93,7 @@ else
   TIMEOUT_CMD=()
 fi
 
+qemu_start_ms="$(now_ms)"
 "${TIMEOUT_CMD[@]}" qemu-system-x86_64 \
   -machine q35 \
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
@@ -67,6 +108,8 @@ fi
   -display none \
   -no-reboot \
   -no-shutdown || true
+qemu_end_ms="$(now_ms)"
+qemu_run_time_ms="$((qemu_end_ms - qemu_start_ms))"
 
 if [[ ! -s "$SERIAL_LOG" && ! -s "$DEBUG_LOG" ]]; then
   echo "ERROR: No output captured in serial or debug log"
@@ -247,6 +290,8 @@ else
     fail=1
   fi
 fi
+
+write_preempt_metrics "${fail}"
 
 if (( fail != 0 )); then
   echo "=== Preempt log tail (assertion failure) ==="

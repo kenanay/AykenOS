@@ -31,6 +31,8 @@ jobs:
       PERF_ENV_MISMATCH_POLICY: "fail"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Resolve pinned CI image digest
         run: |
           set -euo pipefail
@@ -73,6 +75,8 @@ jobs:
       PERF_ENV_MISMATCH_POLICY: "fail"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install toolchain dependencies
         run: |
           set -euo pipefail

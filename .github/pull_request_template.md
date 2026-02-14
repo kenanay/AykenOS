@@ -9,11 +9,18 @@
 
 - ABI (`ci-gate-abi`):
 - Boundary (`ci-gate-boundary`):
+- Tooling Isolation (`ci-gate-tooling-isolation`):
 - Constitutional (`ci-gate-constitutional`):
 - Workspace (`ci-gate-workspace`):
 - Hygiene (`ci-gate-hygiene`):
 - Performance (`ci-gate-performance`):
 - Summary (`ci-summarize`):
+
+## Tooling Isolation Guard
+
+- Perf/preempt tooling touched in this PR: `yes/no`
+- If yes, `kernel touch = 0`: `yes/no`
+- Tooling isolation evidence path (`evidence/run-<id>/gates/tooling-isolation/`):
 
 ## Contract Change
 
