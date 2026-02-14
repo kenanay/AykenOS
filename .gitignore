@@ -45,6 +45,7 @@ userspace/target/
 ayken-core/Cargo.lock
 ayken/Cargo.lock
 userspace/Cargo.lock
+kernel/include/generated/
 bootloader/efi/BOOTX64.EFI
 tools/gnu-efi/
 *.backup
