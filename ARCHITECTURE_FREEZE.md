@@ -46,6 +46,8 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Mechanism:** wake/block, IRQ-tail reschedule (Ring0)
 - **Policy:** run-queue decisions, scheduling logic (Ring3)
 - **Fallback:** Isolated with feature flag or removed
+- **Arbitration Contract (Yol A):** Ring3 `stage_next` = hint, Ring0 = final arbiter (accept/veto + fail-closed)
+- **Decision Record:** `docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md`
 
 #### Capability-Based Security Model
 - **Binding:** syscall-only (no kernel bypass)
@@ -69,10 +71,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Constitutional, Workspace, Hygiene, Performance
+- **Gates:** ABI, Boundary, Hygiene, Tooling Isolation, Constitutional, Workspace, Performance
 - **Bypass:** Prohibited (no exceptions)
 - **Repo Truth (2026-02-13):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -151,8 +153,10 @@ _Static_assert(offsetof(struct context, rsi) == CTX_RSI, "ABI drift");
 
 #### Kernel Fallback Policy
 **PROHIBITED.** Temporary fallback must be:
-- Feature flag isolated (`#ifdef FALLBACK_POLICY`)
-- CI boundary violation test enforced
+- Feature flag isolated (`AYKEN_SCHED_FALLBACK`)
+- Default OFF in all standard builds (`AYKEN_SCHED_FALLBACK ?= 0`)
+- Validation-only explicit enable (`AYKEN_SCHED_FALLBACK=1` requires `KERNEL_PROFILE=validation`)
+- `make ci-freeze` hard-fail guard enforces fallback disabled
 - Removal plan documented with timeline
 
 #### Enforcement
@@ -181,6 +185,15 @@ make ci-gate-boundary
 - Priority decisions
 - Time slice allocation
 - Load balancing
+- Next-task staging for Ring0 via scheduler mailbox (Ring0 consumes, Ring3 decides)
+
+#### Scheduler Arbitration Contract (Yol A)
+- Ring3 `scheduler_stage_next(...)` çağrısı öneri/hint üretir; seçim emri üretmez.
+- Ring0 staged adayı doğrular (registered/state/context sanity) ve son kararı verir.
+- Ring0 aday veto edebilir; veto edilen aday context switch'e taşınmaz.
+- Scheduler armed olduktan sonra kabul edilebilir aday yoksa fail-closed semantiği uygulanır: `cli; hlt;`.
+- Bridge syscall penceresi `0x90..0x9F` aralığında tutulur; `SYS_V2` freeze aralığına dokunulmaz.
+- Bridge window (`0x90..0x9F`) scheduler/policy bridge için reserved'dır ve execution-centric `SYS_V2` sözleşmesinin parçası değildir.
 
 **Scheduling decision logic in kernel = VIOLATION**
 
@@ -355,6 +368,7 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 - Ring0 exported symbol whitelist integrity (`scripts/ci/constitutional-ring0-symbol-whitelist.regex`)
 - Kernel source deny/allow scan (`scripts/ci/constitutional-source-deny.regex`, `scripts/ci/constitutional-source-allow.regex`)
 - Syscall freeze contract lock (`SYS_V2_BASE/MAX_INDEX/NR/LAST` invariants)
+- Scheduler fallback contract lock (`AYKEN_SCHED_FALLBACK` strict-mode=0 + Makefile/header default checks)
 - AHS threshold floor checks from `_ayken/steering/AHS_CONFIG.toml` (`P5_minimum >= 95`)
 - NON_OVERRIDABLE registry integrity checks from `_ayken/steering/NON_OVERRIDABLE.md`
 - Waiver metadata/expiry/duration policy checks under `docs/waivers/`
@@ -482,6 +496,7 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 **Current Status (2026-02-13):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
 - ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
+- ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
 - ✅ ABI gate implementation active (`make ci-gate-abi`)
 - ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
 - ✅ Workspace gate implementation active (`make ci-gate-workspace`)

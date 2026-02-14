@@ -51,13 +51,21 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 **Workflow**
 1. Kernel policy fallback tamamen kaldırılır veya feature flag ile izole edilir.
-2. Default durum `fallback disabled` olur.
-3. Kaldırma planı repo içinde izlenir.
+2. Default durum `fallback disabled` olur (`AYKEN_SCHED_FALLBACK ?= 0`).
+3. Fallback yalnızca validation profile'da explicit olarak açılabilir (`AYKEN_SCHED_FALLBACK=1` + `KERNEL_PROFILE=validation`).
+4. Fallback kapalıyken Ring0 seçim policy çalıştırmaz; Ring3 scheduler mailbox üzerinden `next` stage eder ve Ring0 tüketir (bootstrap öncesi tek-seferlik ready list tüketimi hariç).
+5. Scheduler arbitration contract (Yol A) zorunludur: Ring3 `stage_next` yalnız hint üretir, Ring0 final arbiter olarak kabul/veto eder.
+6. Strict scheduler path'te kabul için minimum sanity doğrulaması zorunludur (registered/state/context).
+7. Bridge syscall penceresi `0x90..0x9F` ile sınırlı tutulur; `SYS_V2` freeze aralığı değişmez ve bridge çağrıları execution-centric `SYS_V2` sözleşmesine dahil değildir.
+8. Karar kaydı: `docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md`.
+9. `make ci-freeze` hard guard ile fallback açıkken fail eder.
+10. Kaldırma planı repo içinde izlenir.
 
 **Done Criteria**
 1. Boundary gate `PASS`
-2. Runtime davranış testi `PASS`
-3. Evidence: `evidence/run-<RUN_ID>/gates/boundary/`
+2. Constitutional gate strict-mode `PASS` (scheduler fallback contract check dahil)
+3. Runtime davranış testi `PASS`
+4. Evidence: `evidence/run-<RUN_ID>/gates/boundary/` + `evidence/run-<RUN_ID>/gates/constitutional/sched-fallback-check.txt`
 
 ### 1.4 Tracked Build Artifact Cleanup
 
@@ -80,13 +88,14 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 2. `make ci-gate-boundary`
 3. `make ci-gate-workspace`
 4. `make ci-gate-hygiene`
-5. `make ci-gate-constitutional`
-6. `make ci-gate-performance`
-7. `make ci-summarize`
+5. `make ci-gate-tooling-isolation`
+6. `make ci-gate-constitutional`
+7. `make ci-gate-performance`
+8. `make ci-summarize`
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
-1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
+1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
 2. **Planned (hard-fail stubs):** none
 3. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
 
@@ -97,6 +106,7 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
 4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-latest` + fail-closed baseline policy).
 5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
+6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
@@ -230,7 +240,8 @@ Her merge için constitutional kanıt zorunlu:
 3. Ring0 source deny/allow enforcement:
    - deny: `scripts/ci/constitutional-source-deny.regex`
    - allow (waiver-only): `scripts/ci/constitutional-source-allow.regex`
-4. Whitelist dışı symbol veya source deny hit varsa verdict = `FAIL`.
+4. Scheduler fallback contract enforcement (`AYKEN_SCHED_FALLBACK=0` strict-mode, Makefile/header default lock).
+5. Whitelist dışı symbol veya source deny hit varsa verdict = `FAIL`.
 
 ---
 

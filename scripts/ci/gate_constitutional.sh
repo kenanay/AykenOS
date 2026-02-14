@@ -37,6 +37,10 @@ AHS_CONFIG="${ROOT}/_ayken/steering/AHS_CONFIG.toml"
 NON_OVERRIDABLE="${ROOT}/_ayken/steering/NON_OVERRIDABLE.md"
 WAIVER_DIR="${ROOT}/docs/waivers"
 SYSCALL_H="${ROOT}/kernel/sys/syscall_v2.h"
+MAKEFILE_PATH="${ROOT}/Makefile"
+SCHED_H="${ROOT}/kernel/sched/sched.h"
+ARCH_FREEZE="${ROOT}/ARCHITECTURE_FREEZE.md"
+SCHED_ARB_DECISION="${ROOT}/docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -120,6 +124,7 @@ WAIVER_AUDIT="${EVIDENCE_DIR}/waiver-audit.txt"
 CONTRACT_TXT="${EVIDENCE_DIR}/contract.txt"
 AHS_CHECK_TXT="${EVIDENCE_DIR}/ahs-check.txt"
 NON_OVERRIDABLE_CHECK_TXT="${EVIDENCE_DIR}/non-overridable-check.txt"
+SCHED_FALLBACK_CHECK_TXT="${EVIDENCE_DIR}/sched-fallback-check.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
@@ -139,6 +144,10 @@ AHS_CONFIG_ENV="${AHS_CONFIG}" \
 NON_OVERRIDABLE_ENV="${NON_OVERRIDABLE}" \
 WAIVER_DIR_ENV="${WAIVER_DIR}" \
 SYSCALL_H_ENV="${SYSCALL_H}" \
+MAKEFILE_PATH_ENV="${MAKEFILE_PATH}" \
+SCHED_H_ENV="${SCHED_H}" \
+ARCH_FREEZE_ENV="${ARCH_FREEZE}" \
+SCHED_ARB_DECISION_ENV="${SCHED_ARB_DECISION}" \
 TRACKED_KERNEL_ENV="${TRACKED_KERNEL}" \
 RING0_WHITELIST_VIOLATIONS_ENV="${RING0_WHITELIST_VIOLATIONS}" \
 RING0_SYMBOLS_ENV="${RING0_SYMBOLS}" \
@@ -148,6 +157,7 @@ WAIVER_AUDIT_ENV="${WAIVER_AUDIT}" \
 CONTRACT_TXT_ENV="${CONTRACT_TXT}" \
 AHS_CHECK_TXT_ENV="${AHS_CHECK_TXT}" \
 NON_OVERRIDABLE_CHECK_TXT_ENV="${NON_OVERRIDABLE_CHECK_TXT}" \
+SCHED_FALLBACK_CHECK_TXT_ENV="${SCHED_FALLBACK_CHECK_TXT}" \
 VIOLATIONS_TXT_ENV="${VIOLATIONS_TXT}" \
 META_TXT_ENV="${META_TXT}" \
 REPORT_JSON_ENV="${REPORT_JSON}" \
@@ -174,6 +184,10 @@ AHS_CONFIG = Path(os.environ["AHS_CONFIG_ENV"])
 NON_OVERRIDABLE = Path(os.environ["NON_OVERRIDABLE_ENV"])
 WAIVER_DIR = Path(os.environ["WAIVER_DIR_ENV"])
 SYSCALL_H = Path(os.environ["SYSCALL_H_ENV"])
+MAKEFILE_PATH = Path(os.environ["MAKEFILE_PATH_ENV"])
+SCHED_H = Path(os.environ["SCHED_H_ENV"])
+ARCH_FREEZE = Path(os.environ["ARCH_FREEZE_ENV"])
+SCHED_ARB_DECISION = Path(os.environ["SCHED_ARB_DECISION_ENV"])
 
 TRACKED_KERNEL = Path(os.environ["TRACKED_KERNEL_ENV"])
 RING0_WHITELIST_VIOLATIONS = Path(os.environ["RING0_WHITELIST_VIOLATIONS_ENV"])
@@ -184,6 +198,7 @@ WAIVER_AUDIT = Path(os.environ["WAIVER_AUDIT_ENV"])
 CONTRACT_TXT = Path(os.environ["CONTRACT_TXT_ENV"])
 AHS_CHECK_TXT = Path(os.environ["AHS_CHECK_TXT_ENV"])
 NON_OVERRIDABLE_CHECK_TXT = Path(os.environ["NON_OVERRIDABLE_CHECK_TXT_ENV"])
+SCHED_FALLBACK_CHECK_TXT = Path(os.environ["SCHED_FALLBACK_CHECK_TXT_ENV"])
 VIOLATIONS_TXT = Path(os.environ["VIOLATIONS_TXT_ENV"])
 META_TXT = Path(os.environ["META_TXT_ENV"])
 REPORT_JSON = Path(os.environ["REPORT_JSON_ENV"])
@@ -201,6 +216,7 @@ for path in (
     CONTRACT_TXT,
     AHS_CHECK_TXT,
     NON_OVERRIDABLE_CHECK_TXT,
+    SCHED_FALLBACK_CHECK_TXT,
     VIOLATIONS_TXT,
 ):
     path.write_text("", encoding="utf-8")
@@ -213,6 +229,10 @@ source_hits = []
 waiver_audit_rows = []
 waiver_violations_count = 0
 non_overridable_missing_count = 0
+sched_fallback_violations_count = 0
+sched_fallback_check_lines = []
+sched_arbitration_violations_count = 0
+sched_arbitration_check_lines = []
 
 
 def add_violation(kind: str, detail: str) -> None:
@@ -503,7 +523,82 @@ CONTRACT_TXT.write_text(
     "".join(f"{k}={v}\n" for k, v in sorted(contract.items())), encoding="utf-8"
 )
 
-# 4) AHS threshold guard.
+# 4) Scheduler fallback isolation contract.
+sched_fallback_env = os.environ.get("AYKEN_SCHED_FALLBACK", "0").strip()
+sched_fallback_check_lines.append(f"env_AYKEN_SCHED_FALLBACK={sched_fallback_env}")
+
+if sched_fallback_env not in {"0", "1"}:
+    sched_fallback_violations_count += 1
+    add_violation("sched_fallback_env_invalid", sched_fallback_env or "MISSING")
+
+if STRICT_MODE and sched_fallback_env != "0":
+    sched_fallback_violations_count += 1
+    add_violation("sched_fallback_strict_mode", f"expected=0:actual={sched_fallback_env}")
+
+if not MAKEFILE_PATH.exists():
+    sched_fallback_violations_count += 1
+    add_violation("missing_file", str(MAKEFILE_PATH))
+    sched_fallback_check_lines.append("makefile_default=missing")
+else:
+    mk_text = MAKEFILE_PATH.read_text(encoding="utf-8", errors="replace")
+    mk_default_ok = re.search(r"^\s*AYKEN_SCHED_FALLBACK\s*\?=\s*0\s*$", mk_text, flags=re.MULTILINE) is not None
+    sched_fallback_check_lines.append(f"makefile_default={'ok' if mk_default_ok else 'missing_or_not_zero'}")
+    if not mk_default_ok:
+        sched_fallback_violations_count += 1
+        add_violation("sched_fallback_makefile_default", "AYKEN_SCHED_FALLBACK ?= 0")
+
+if not SCHED_H.exists():
+    sched_fallback_violations_count += 1
+    add_violation("missing_file", str(SCHED_H))
+    sched_fallback_check_lines.append("sched_header_default=missing")
+else:
+    sh_text = SCHED_H.read_text(encoding="utf-8", errors="replace")
+    header_default_ok = re.search(
+        r"^\s*#define\s+AYKEN_SCHED_FALLBACK\s+0\s*$", sh_text, flags=re.MULTILINE
+    ) is not None
+    sched_fallback_check_lines.append(
+        f"sched_header_default={'ok' if header_default_ok else 'missing_or_not_zero'}"
+    )
+    if not header_default_ok:
+        sched_fallback_violations_count += 1
+        add_violation("sched_fallback_header_default", "AYKEN_SCHED_FALLBACK 0")
+
+SCHED_FALLBACK_CHECK_TXT.write_text(
+    "\n".join(sched_fallback_check_lines) + ("\n" if sched_fallback_check_lines else ""),
+    encoding="utf-8",
+)
+
+# 4b) Scheduler arbitration contract freeze guard.
+if not ARCH_FREEZE.exists():
+    sched_arbitration_violations_count += 1
+    add_violation("missing_file", str(ARCH_FREEZE))
+    sched_arbitration_check_lines.append("freeze_doc_contract=missing_file")
+else:
+    freeze_text = ARCH_FREEZE.read_text(encoding="utf-8", errors="replace")
+    if "Scheduler Arbitration Contract" in freeze_text:
+        sched_arbitration_check_lines.append("freeze_doc_contract=present")
+    else:
+        sched_arbitration_violations_count += 1
+        add_violation("scheduler_arbitration_contract_missing", str(ARCH_FREEZE))
+        sched_arbitration_check_lines.append("freeze_doc_contract=missing_marker")
+
+if not SCHED_ARB_DECISION.exists():
+    sched_arbitration_violations_count += 1
+    add_violation("missing_file", str(SCHED_ARB_DECISION))
+    sched_arbitration_check_lines.append("decision_record=missing")
+else:
+    sched_arbitration_check_lines.append("decision_record=present")
+
+if sched_arbitration_check_lines:
+    SCHED_FALLBACK_CHECK_TXT.write_text(
+        (
+            "\n".join(sched_fallback_check_lines + sched_arbitration_check_lines)
+            + "\n"
+        ),
+        encoding="utf-8",
+    )
+
+# 5) AHS threshold guard.
 ahs_check_lines = []
 if not AHS_CONFIG.exists():
     add_violation("missing_file", str(AHS_CONFIG))
@@ -529,7 +624,7 @@ AHS_CHECK_TXT.write_text(
     "\n".join(ahs_check_lines) + ("\n" if ahs_check_lines else ""), encoding="utf-8"
 )
 
-# 5) NON_OVERRIDABLE integrity check.
+# 6) NON_OVERRIDABLE integrity check.
 non_over_required = [
     "KERNEL.RING0.POLICY",
     "KERNEL.CAPABILITY.BYPASS",
@@ -553,7 +648,7 @@ NON_OVERRIDABLE_CHECK_TXT.write_text(
     "\n".join(non_over_lines) + ("\n" if non_over_lines else ""), encoding="utf-8"
 )
 
-# 6) Waiver policy checks.
+# 7) Waiver policy checks.
 waiver_files = []
 if not WAIVER_DIR.exists():
     add_violation("missing_dir", str(WAIVER_DIR))
@@ -659,6 +754,9 @@ meta = {
     "waiver_file_count": len(waiver_files),
     "waiver_violations_count": waiver_violations_count,
     "non_overridable_missing_count": non_overridable_missing_count,
+    "sched_fallback_env": sched_fallback_env,
+    "sched_fallback_violations_count": sched_fallback_violations_count,
+    "sched_arbitration_violations_count": sched_arbitration_violations_count,
     "violations_count": len(violations),
 }
 
@@ -679,6 +777,8 @@ report = {
         ) if STRICT_MODE else "SKIP",
         "source_deny_scan": "PASS" if not source_hits else "FAIL",
         "syscall_contract": "PASS" if contract and not any(v.startswith("syscall_contract_") for v in violations) else "FAIL",
+        "scheduler_fallback_policy": "PASS" if sched_fallback_violations_count == 0 else "FAIL",
+        "scheduler_arbitration_contract": "PASS" if sched_arbitration_violations_count == 0 else "FAIL",
         "ahs_thresholds": "PASS" if not any(v.startswith("ahs_") for v in violations) else "FAIL",
         "non_overridable_integrity": "PASS" if non_overridable_missing_count == 0 else "FAIL",
         "waiver_policy": "PASS" if waiver_violations_count == 0 else "FAIL",
@@ -687,6 +787,8 @@ report = {
     "ring0_whitelist_violations": ring0_whitelist_hits,
     "ring0_symbol_violations": ring0_symbol_hits,
     "source_deny_hits": source_hits,
+    "sched_fallback_checks": sched_fallback_check_lines,
+    "sched_arbitration_checks": sched_arbitration_check_lines,
     "waiver_audit": waiver_audit_rows,
 }
 
