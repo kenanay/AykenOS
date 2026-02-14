@@ -8,7 +8,7 @@ source "${CI_TOOLS}/lib.sh"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/ci/gate_abi.sh --evidence-dir evidence/run-<id>/gates/abi [--baseline-file scripts/ci/abi-baseline.lock.json] [--init-baseline]
+  scripts/ci/gate_abi.sh --evidence-dir evidence/run-<id>/gates/abi [--baseline-file scripts/ci/abi-baseline.lock.json] [--init-baseline] [--diff-range <git-range>]
 
 Exit codes:
   0: pass
@@ -20,6 +20,7 @@ USAGE
 EVIDENCE_DIR=""
 BASELINE_FILE="${ROOT}/scripts/ci/abi-baseline.lock.json"
 INIT_BASELINE=0
+DIFF_RANGE="${ABI_DIFF_RANGE:-}"
 
 ABI_H_REL="kernel/include/ayken_abi.h"
 ABI_INC_REL="kernel/include/generated/ayken_abi.inc"
@@ -42,6 +43,10 @@ while [[ $# -gt 0 ]]; do
     --init-baseline)
       INIT_BASELINE=1
       shift 1
+      ;;
+    --diff-range)
+      DIFF_RANGE="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -77,6 +82,8 @@ ACTUAL_LOCK_JSON="${EVIDENCE_DIR}/actual.lock.json"
 BASELINE_DIFF_TXT="${EVIDENCE_DIR}/baseline.diff.txt"
 GENERATE_LOG="${EVIDENCE_DIR}/generate.log"
 GENERATED_DIFF="${EVIDENCE_DIR}/generated.diff.txt"
+CHANGED_TXT="${EVIDENCE_DIR}/changed-files.txt"
+ABI_AFFECTING_TXT="${EVIDENCE_DIR}/abi-affecting-files.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
@@ -93,10 +100,132 @@ PARSE_ERR_TXT="${EVIDENCE_DIR}/contract.parse.err.txt"
 : > "${VIOLATIONS_TXT}"
 : > "${GENERATED_DIFF}"
 : > "${PARSE_ERR_TXT}"
+: > "${CHANGED_TXT}"
+: > "${ABI_AFFECTING_TXT}"
 
 record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
 }
+
+resolve_diff_range() {
+  if [[ -n "${DIFF_RANGE}" ]]; then
+    echo "${DIFF_RANGE}"
+    return 0
+  fi
+
+  if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
+    local base_ref="origin/${GITHUB_BASE_REF}"
+    if ! git -C "${ROOT}" rev-parse --verify "${base_ref}" >/dev/null 2>&1; then
+      git -C "${ROOT}" fetch --no-tags --depth=200 origin "${GITHUB_BASE_REF}:${base_ref}" >/dev/null 2>&1 || true
+      git -C "${ROOT}" fetch --no-tags --depth=200 origin "${GITHUB_BASE_REF}" >/dev/null 2>&1 || true
+    fi
+    if git -C "${ROOT}" rev-parse --verify "${base_ref}" >/dev/null 2>&1; then
+      local merge_base
+      merge_base="$(git -C "${ROOT}" merge-base "${base_ref}" HEAD 2>/dev/null || true)"
+      if [[ -n "${merge_base}" ]]; then
+        echo "${merge_base}...HEAD"
+        return 0
+      fi
+    fi
+  fi
+
+  if git -C "${ROOT}" rev-parse --verify origin/main >/dev/null 2>&1; then
+    local merge_base
+    merge_base="$(git -C "${ROOT}" merge-base origin/main HEAD 2>/dev/null || true)"
+    if [[ -n "${merge_base}" ]]; then
+      echo "${merge_base}...HEAD"
+      return 0
+    fi
+  fi
+
+  if git -C "${ROOT}" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    echo "HEAD~1...HEAD"
+    return 0
+  fi
+
+  echo "HEAD"
+  return 0
+}
+
+emit_skip_report() {
+  local range="$1"
+  local now git_sha changed_count abi_affecting_count
+  now="$(ci_now_utc)"
+  git_sha="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo "NO_GIT")"
+  changed_count="$(wc -l < "${CHANGED_TXT}" | tr -d ' ' || echo 0)"
+  abi_affecting_count="$(wc -l < "${ABI_AFFECTING_TXT}" | tr -d ' ' || echo 0)"
+  {
+    echo "time_utc=${now}"
+    echo "git_sha=${git_sha}"
+    echo "diff_range=${range}"
+    echo "skipped=1"
+    echo "skip_reason=no_abi_affecting_changes"
+    echo "changed_count=${changed_count}"
+    echo "abi_affecting_count=${abi_affecting_count}"
+    echo "baseline_file=${BASELINE_FILE}"
+    echo "init_baseline=${INIT_BASELINE}"
+    echo "violations_count=0"
+  } > "${META_TXT}"
+
+  EVIDENCE_DIR_ENV="${EVIDENCE_DIR}" python3 - <<'PY' > "${REPORT_JSON}"
+import json
+import os
+
+base = os.environ["EVIDENCE_DIR_ENV"]
+
+def read_lines(name):
+    p = os.path.join(base, name)
+    if not os.path.exists(p):
+        return []
+    with open(p, "r", encoding="utf-8", errors="replace") as fh:
+        return [ln.rstrip("\n") for ln in fh if ln.strip()]
+
+meta = {}
+for line in read_lines("meta.txt"):
+    if "=" not in line:
+        continue
+    k, v = line.split("=", 1)
+    meta[k] = v
+
+out = {
+    "gate": "abi",
+    "verdict": "PASS",
+    "skipped": True,
+    "skip_reason": "no_abi_affecting_changes",
+    "violations_count": 0,
+    "meta": meta,
+    "changed_files": read_lines("changed-files.txt"),
+    "abi_affecting_files": read_lines("abi-affecting-files.txt"),
+    "contract": {},
+    "syscall_table": [],
+    "baseline_diff": [],
+    "violations": [],
+}
+print(json.dumps(out, indent=2, sort_keys=True))
+PY
+}
+
+# 0) Early skip for diffs that do not touch ABI contract inputs.
+if [[ "${INIT_BASELINE}" -eq 0 ]]; then
+  RANGE="$(resolve_diff_range)"
+  if git -C "${ROOT}" diff --name-only --diff-filter=ACMRDT "${RANGE}" > "${CHANGED_TXT}" 2>/dev/null; then
+    if [[ ! -s "${CHANGED_TXT}" && -f "${ROOT}/.git/HEAD" ]]; then
+      git -C "${ROOT}" show --pretty="" --name-only HEAD > "${CHANGED_TXT}" 2>/dev/null || true
+    fi
+    ABI_TRIGGER_PAT='^(kernel/include/ayken_abi\.h|kernel/include/generated/ayken_abi\.inc|kernel/sys/syscall_v2\.h|scripts/ci/abi-baseline\.lock\.json)$'
+    while IFS= read -r path; do
+      [[ -z "${path}" ]] && continue
+      if echo "${path}" | grep -E -q -- "${ABI_TRIGGER_PAT}"; then
+        echo "${path}" >> "${ABI_AFFECTING_TXT}"
+      fi
+    done < "${CHANGED_TXT}"
+    if [[ ! -s "${ABI_AFFECTING_TXT}" ]]; then
+      emit_skip_report "${RANGE}"
+      echo "abi: PASS (SKIP no ABI-affecting changes)"
+      exit 0
+    fi
+  fi
+fi
 
 # 1) Regenerate ABI include from canonical header.
 if ! make -C "${ROOT}" generate-abi > "${GENERATE_LOG}" 2>&1; then
@@ -488,7 +617,11 @@ out = {
     "gate": "abi",
     "verdict": "PASS" if violations_count == 0 else "FAIL",
     "violations_count": violations_count,
+    "skipped": meta.get("skipped", "0") == "1",
+    "skip_reason": meta.get("skip_reason", ""),
     "meta": meta,
+    "changed_files": read_lines("changed-files.txt"),
+    "abi_affecting_files": read_lines("abi-affecting-files.txt"),
     "contract": contract,
     "syscall_table": read_lines("syscall_table.txt"),
     "baseline_diff": read_lines("baseline.diff.txt"),

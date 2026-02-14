@@ -117,6 +117,7 @@ RUN_ID := $(RUN_ID)
 EVIDENCE_RUN_DIR := $(EVIDENCE_ROOT)/run-$(RUN_ID)
 CI_TARGETS ?= kernel.elf
 ABI_INIT_BASELINE ?= 0
+ABI_DIFF_RANGE ?=
 CONSTITUTIONAL_STRICT ?= 1
 CONSTITUTIONAL_STRICT_FLAG = $(if $(filter 1,$(CONSTITUTIONAL_STRICT)),--strict,--no-strict)
 WORKSPACE_STRICT ?= 1
@@ -549,10 +550,11 @@ ci-summarize:
 ci-gate-abi: ci-evidence-dir
 	@echo "== CI GATE ABI =="
 	@echo "run_id: $(RUN_ID)"
+	@echo "abi_diff_range: $(if $(strip $(ABI_DIFF_RANGE)),$(ABI_DIFF_RANGE),auto)"
 	@if [ "$(ABI_INIT_BASELINE)" = "1" ]; then \
-		./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi" --init-baseline; \
+		ABI_DIFF_RANGE="$(ABI_DIFF_RANGE)" ./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi" --init-baseline; \
 	else \
-		./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi"; \
+		ABI_DIFF_RANGE="$(ABI_DIFF_RANGE)" ./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi"; \
 	fi
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/abi/report.json" "$(EVIDENCE_RUN_DIR)/reports/abi.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
