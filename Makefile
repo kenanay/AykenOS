@@ -114,7 +114,7 @@ PERF_ENV_MISMATCH_POLICY ?= fail
 PERF_QEMU_TIMEOUT ?= 30
 PERF_KERNEL_PROFILE ?= validation
 PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
-PERF_BASELINE_AUTHORITY ?= self-hosted-baremetal-x86_64-perf01
+PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-latest-x64
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
 

@@ -16,7 +16,7 @@ Usage:
     [--init-baseline]
 
 Env controls:
-  PERF_BASELINE_AUTHORITY=<id>                 (default: self-hosted-baremetal-x86_64-perf01)
+  PERF_BASELINE_AUTHORITY=<id>                 (default: github-hosted-ubuntu-latest-x64)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
 
@@ -32,7 +32,7 @@ BASELINE_FILE="${ROOT}/scripts/ci/perf-baseline.lock.json"
 KERNEL_PROFILE="${PERF_KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${PERF_QEMU_TIMEOUT:-30}"
 ENV_MISMATCH_POLICY="${PERF_ENV_MISMATCH_POLICY:-fail}"
-BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-self-hosted-baremetal-x86_64-perf01}"
+BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-latest-x64}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
 BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"

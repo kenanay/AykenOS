@@ -298,7 +298,7 @@ Compiler:         rustc 1.76.0 / gcc 14.2.0
 Target:           x86_64-unknown-none
 QEMU:             8.2.0
 Host CPU:         [Specific model]
-Authority:        self-hosted-baremetal-x86_64-perf01
+Authority:        github-hosted-ubuntu-latest-x64
 CI Image Digest:  [Pinned runner image/build digest]
 ```
 
@@ -326,10 +326,10 @@ make ci-gate-performance
 **Validations:**
 - Environment manifest + env hash generation (`env.json`)
 - Baseline lock compare (`scripts/ci/perf-baseline.lock.json`)
-- Baseline authority lock (`PERF_BASELINE_AUTHORITY=self-hosted-baremetal-x86_64-perf01`)
+- Baseline authority lock (`PERF_BASELINE_AUTHORITY=github-hosted-ubuntu-latest-x64`)
 - CI image/build digest lock (`PERF_CI_IMAGE_DIGEST`)
 - Baseline init with `PERF_CI_IMAGE_DIGEST=unknown` is prohibited (must be pinned)
-- CI freeze workflow resolves pinned digest from runner file (`/etc/aykenos/ci_image_digest`)
+- CI freeze workflow resolves pinned digest from GitHub hosted image metadata (`ImageOS`, `ImageVersion`, `RUNNER_ARCH`)
 - Marker contract lock (`boot_ok_marker`, `preempt_sw_count_pattern`, `preempt_iret_count_pattern`)
 - Baseline init authority lock (default CI-only; local init requires explicit override)
 - QEMU boot audit timing proxy (`boot_time_ms`)
@@ -396,6 +396,7 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 
 **Operational Artifacts (repo):**
 - `docs/roadmap/freeze-enforcement-workflow.md`
+- `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`
 - `docs/rfc/0001-template.md`
 - `docs/development/PR_FREEZE_TEMPLATE.md`
 - `.github/pull_request_template.md`

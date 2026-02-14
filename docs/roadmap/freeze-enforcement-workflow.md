@@ -95,7 +95,8 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `ci-gate-hygiene` + `validate-full`)
 2. `make ci-freeze` = strict freeze suite (tüm implemented gate'ler)
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
-4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (self-hosted labels + fail-closed baseline policy).
+4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-latest` + fail-closed baseline policy).
+5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
@@ -205,10 +206,10 @@ Kernel artifact içinde istemediğimiz semboller:
 6. Baseline init authority default: CI-only (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=1`).
 7. Marker format freeze-contract olarak kilitlidir (`boot_ok_marker`, `preempt_sw_count_pattern`, `preempt_iret_count_pattern`) ve baseline compare içinde doğrulanır.
 8. Local baseline init yalnızca explicit override + waiver ile yapılır (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=0` + waiver referansı).
-9. Baseline authority tek-doğru: `PERF_BASELINE_AUTHORITY=self-hosted-baremetal-x86_64-perf01`.
+9. Baseline authority tek-doğru: `PERF_BASELINE_AUTHORITY=github-hosted-ubuntu-latest-x64`.
 10. Runner image/build kimliği baseline sözleşmesine dahil edilir: `PERF_CI_IMAGE_DIGEST=<pinned digest/id>`.
 11. Baseline init `PERF_CI_IMAGE_DIGEST=unknown` ile yapılamaz; pinned digest zorunludur.
-12. Default pinned digest source: runner file `/etc/aykenos/ci_image_digest` (workflow input only override).
+12. Default pinned digest source: GitHub hosted image metadata (`ImageOS`, `ImageVersion`, `RUNNER_ARCH`) (workflow input only override).
 
 ---
 
