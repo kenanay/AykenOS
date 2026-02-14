@@ -1,0 +1,114 @@
+name: ci-freeze
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      init_perf_baseline:
+        description: "Run performance baseline initialization flow"
+        type: boolean
+        required: true
+        default: false
+      ci_image_digest:
+        description: "Pinned runner image/build digest (required for baseline init)"
+        required: false
+        default: ""
+
+jobs:
+  freeze:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
+    runs-on: [self-hosted, linux, x64, aykenos-perf01]
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      PERF_BASELINE_AUTHORITY: "self-hosted-baremetal-x86_64-perf01"
+      PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
+      PERF_QEMU_TIMEOUT: "30"
+      PERF_KERNEL_PROFILE: "validation"
+      PERF_ENV_MISMATCH_POLICY: "fail"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export pinned CI image digest
+        run: |
+          set -euo pipefail
+          DIGEST_FILE="/etc/aykenos/ci_image_digest"
+          if [ ! -f "${DIGEST_FILE}" ]; then
+            echo "Pinned digest file missing: ${DIGEST_FILE}"
+            exit 1
+          fi
+          DIGEST="$(tr -d '\r\n' < "${DIGEST_FILE}")"
+          if [ -z "${DIGEST}" ] || [ "${DIGEST}" = "unknown" ]; then
+            echo "Pinned digest file is invalid: ${DIGEST_FILE}"
+            exit 1
+          fi
+          echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+      - name: Toolchain sanity
+        run: |
+          set -euo pipefail
+          uname -a
+          clang --version | head -n1
+          ld.lld --version | head -n1
+          nasm -v
+          qemu-system-x86_64 --version | head -n1
+      - name: Freeze suite
+        run: |
+          set -euo pipefail
+          make ci-freeze
+
+  init_perf_baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
+    runs-on: [self-hosted, linux, x64, aykenos-perf01]
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
+      PERF_INIT_BASELINE: "1"
+      PERF_BASELINE_AUTHORITY: "self-hosted-baremetal-x86_64-perf01"
+      PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
+      PERF_QEMU_TIMEOUT: "30"
+      PERF_KERNEL_PROFILE: "validation"
+      PERF_ENV_MISMATCH_POLICY: "fail"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve baseline init digest
+        run: |
+          set -euo pipefail
+          INPUT_DIGEST="${{ github.event.inputs.ci_image_digest }}"
+          if [ -n "${INPUT_DIGEST}" ]; then
+            DIGEST="${INPUT_DIGEST}"
+          else
+            DIGEST_FILE="/etc/aykenos/ci_image_digest"
+            if [ ! -f "${DIGEST_FILE}" ]; then
+              echo "Pinned digest file missing and ci_image_digest input empty."
+              exit 1
+            fi
+            DIGEST="$(tr -d '\r\n' < "${DIGEST_FILE}")"
+          fi
+          echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+      - name: Validate baseline init digest
+        run: |
+          set -euo pipefail
+          if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || [ "${PERF_CI_IMAGE_DIGEST}" = "unknown" ]; then
+            echo "ci_image_digest input is required and must be pinned."
+            exit 1
+          fi
+      - name: Init perf baseline (expected fail-closed with baseline write)
+        run: |
+          set -euo pipefail
+          set +e
+          make ci-gate-performance
+          rc=$?
+          set -e
+          if [ "${rc}" -ne 2 ]; then
+            echo "Unexpected exit code from ci-gate-performance: ${rc}"
+            exit "${rc}"
+          fi
+          test -f scripts/ci/perf-baseline.lock.json
+      - name: Show generated baseline
+        run: |
+          set -euo pipefail
+          ls -la scripts/ci/perf-baseline.lock.json
+          sed -n '1,120p' scripts/ci/perf-baseline.lock.json
