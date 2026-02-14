@@ -55,7 +55,7 @@ static void *memset(void *s, int c, size_t n) {
     return s;
 }
 
-static void *malloc(size_t size) {
+static void *vfs_heap_alloc(size_t size) {
     // Simplified malloc - in real implementation would use proper allocator
     static char heap[64 * 1024]; // 64KB heap
     static size_t heap_pos = 0;
@@ -69,7 +69,7 @@ static void *malloc(size_t size) {
     return ptr;
 }
 
-static void free(void *ptr) {
+static void vfs_heap_free(void *ptr) {
     // Simplified free - in real implementation would use proper allocator
     (void)ptr; // No-op for now
 }
@@ -265,7 +265,7 @@ userspace_vfs_t* get_userspace_vfs(void)
  */
 vfs_context_t* vfs_create_context(uint64_t execution_context_id)
 {
-    vfs_context_t *context = malloc(sizeof(vfs_context_t));
+    vfs_context_t *context = vfs_heap_alloc(sizeof(vfs_context_t));
     if (!context) {
         return NULL;
     }
@@ -294,14 +294,14 @@ void vfs_destroy_context(vfs_context_t *context)
     }
     
     if (context->capabilities) {
-        free(context->capabilities);
+        vfs_heap_free(context->capabilities);
     }
     
     if (context->private_data) {
-        free(context->private_data);
+        vfs_heap_free(context->private_data);
     }
     
-    free(context);
+    vfs_heap_free(context);
 }
 
 /**

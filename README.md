@@ -42,7 +42,7 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 
 AykenOS, POSIX-benzeri geleneksel işletim sistemi mimarisinden **execution-centric**, **Ring3-empowered** (kullanıcı modu güçlendirilmiş) ve **AI-native** bir mimariye başarıyla dönüştürülmüştür:
 
-- **Ring0 (Kernel Mode):** Sadece 10 temel mekanizma syscall'ı (1000-1009 aralığı)
+- **Ring0 (Kernel Mode):** Sadece 11 temel mekanizma syscall'ı (1000-1010 aralığı)
 - **Ring3 (User Mode):** Tüm politika kararları (VFS, DevFS, AI, scheduler) kullanıcı modunda
 - **Capability-Based Security:** Yetenek tabanlı güvenlik modeli ile erişim kontrolü
 - **BCIB Execution Engine:** Binary Compressed Instruction Bundle formatı ile veri-odaklı yürütme
@@ -57,7 +57,7 @@ AykenOS, klasik işletim sistemi kavramlarını veri-odaklı ve AI-bütünleşik
 
 ### Mimari Yenilikler
 
-- **Execution-Centric Syscall Interface:** Geleneksel POSIX syscall'lar yerine, sadece 10 temel mekanizma syscall'ı
+- **Execution-Centric Syscall Interface:** Geleneksel POSIX syscall'lar yerine, sadece 11 temel mekanizma syscall'ı
   - `sys_v2_map_memory` (1000): Bellek haritalama
   - `sys_v2_unmap_memory` (1001): Bellek haritalama kaldırma
   - `sys_v2_switch_context` (1002): Bağlam değiştirme
@@ -68,6 +68,7 @@ AykenOS, klasik işletim sistemi kavramlarını veri-odaklı ve AI-bütünleşik
   - `sys_v2_capability_bind` (1007): Yetenek bağlama
   - `sys_v2_capability_revoke` (1008): Yetenek iptal etme
   - `sys_v2_exit` (1009): Süreç sonlandırma
+  - `sys_v2_debug_putchar` (1010): Ring3 debug heartbeat
 
 - **Ring3 Empowerment:** Tüm politika kararları kullanıcı modunda
   - VFS (Virtual File System) operasyonları Ring3'te
@@ -275,6 +276,9 @@ make ci-gate-boundary
 # Hygiene CI gate (tracked artifact + dirty tracked kontrolü)
 make ci-gate-hygiene
 
+# Constitutional CI gate (ring0/source/waiver/contract checks + evidence)
+make ci-gate-constitutional
+
 # Summary gate (auto-discovery + PASS zorlaması)
 make ci-summarize
 
@@ -292,6 +296,7 @@ Notlar:
 - `make guard-context-offsets` context_switch offset disiplinini build aşamasında zorunlu kılar.
 - `make ci-gate-boundary` çıktıları `evidence/run-<RUN_ID>/` altında saklanır (`reports/summary.json` dahil).
 - `make ci-gate-hygiene` tracked artifact ve tracked dirty-tree ihlallerini evidence ile fail eder.
+- `make ci-gate-constitutional` Ring0 whitelist, kernel source deny/allow, syscall contract ve waiver/AHS bütünlüğünü evidence ile doğrular.
 - `make ci-summarize` gate raporlarını auto-discovery ile birleştirir; `summary.json` PASS değilse fail eder.
 - Freeze workflow ve done kriterleri: `docs/roadmap/freeze-enforcement-workflow.md`.
 - Freeze PR şablonu: `docs/development/PR_FREEZE_TEMPLATE.md` ve `.github/pull_request_template.md`.
@@ -377,7 +382,7 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - Kod temizliği ve tutarlılık
 
 - ✅ **Faz 2:** Execution-centric mimari dönüşümü (%100)
-  - 10 syscall hedefine ulaşıldı (1000-1009)
+  - 11 syscall hedefine ulaşıldı (1000-1010)
   - Ring3 VFS/DevFS implementasyonu
   - BCIB execution engine
   - Capability-based security
@@ -407,7 +412,7 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **Ring3 User Process Execution:** Kullanıcı modu süreç yürütme başarılı
   - ✅ **Syscall Interface Operational:** INT 0x80 syscall interface çalışıyor
   - ✅ **Syscall Roundtrip Validated:** Kernel ↔ Ring3 geçişleri doğrulandı
-  - ✅ **10 Execution-Centric Syscalls:** 1000-1009 aralığı operasyonel
+  - ✅ **11 Execution-Centric Syscalls:** 1000-1010 aralığı operasyonel
   - ✅ **Capability-Based Security:** Yetenek tabanlı güvenlik aktif
   - ✅ **Ring3 VFS/DevFS:** Kullanıcı modunda dosya sistemi operasyonları
   - ✅ **BCIB Execution Engine:** Binary instruction execution çalışıyor
@@ -433,7 +438,7 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 
 | Hedef | Durum | Açıklama |
 |-------|-------|----------|
-| 10 Syscall Hedefi | ✅ | 1000-1009 aralığında execution-centric syscall'lar |
+| 11 Syscall Hedefi | ✅ | 1000-1010 aralığında execution-centric syscall'lar |
 | Ring3 VFS/DevFS | ✅ | Kullanıcı modunda tam implementasyon |
 | BCIB Execution Engine | ✅ | Ring3'te operasyonel |
 | Capability Security | ✅ | Yetenek tabanlı güvenlik aktif |

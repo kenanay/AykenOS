@@ -112,8 +112,6 @@ tss_entry_t kernel_tss __attribute__((section(".data"))) = {
     .io_map_base = sizeof(tss_entry_t),  // IO Map not used for now
 };
 
-extern struct idt_entry idt_table[256];
-
 // Load GDT using inline asm
 static inline void lgdt(void *base, uint16_t size)
 {
@@ -229,18 +227,13 @@ void gdt_install_tss(uint64_t tss_addr)
 void idt_init(void)
 {
     // IDT descriptor is prepared by interrupts_install[_early] before idt_init().
-    lidt_ptr(&idt_descriptor);
+    const struct idt_ptr *idtr = idt_get_descriptor();
+    if (idtr) {
+        lidt_ptr(idtr);
+    }
 }
 
 void idt_set_gate_raw(uint8_t num, void (*handler)(void), uint8_t flags)
 {
-    uint64_t handler_addr = (uint64_t)handler;
-    
-    idt_table[num].offset_low = handler_addr & 0xFFFF;
-    idt_table[num].selector = GDT_KERNEL_CODE;
-    idt_table[num].ist = 0;
-    idt_table[num].type_attr = flags;
-    idt_table[num].offset_mid = (handler_addr >> 16) & 0xFFFF;
-    idt_table[num].offset_high = (handler_addr >> 32) & 0xFFFFFFFF;
-    idt_table[num].zero = 0;
+    idt_set_gate(num, (interrupt_handler_t)handler, flags);
 }

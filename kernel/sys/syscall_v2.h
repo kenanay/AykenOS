@@ -18,10 +18,16 @@
 // EXECUTION-CENTRIC SYSCALL DEFINITIONS (Phase 2 Documentation Compliance)
 // ============================================================================
 //
-// Syscall Numbering Plan (Final - Phase 2.5):
-// - User space calls: 1000-1009 (adds 1000 offset)
-// - Kernel internal: 0-9 (direct mapping)
+// Syscall Numbering Plan (Final - Freeze Contract):
+// - User space calls: 1000-1010 (adds 1000 offset)
+// - Kernel internal: 0-10 (direct mapping)
 // - All other ranges: Invalid (return -ENOSYS)
+
+// Public numbering contract (single source for range checks).
+#define SYS_V2_BASE       1000
+#define SYS_V2_MAX_INDEX  10
+#define SYS_V2_NR         (SYS_V2_MAX_INDEX + 1)
+#define SYS_V2_LAST       (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 
 #define SYS_V2_MAP_MEMORY        0  // Memory mapping mechanism
 #define SYS_V2_UNMAP_MEMORY      1  // Memory unmapping mechanism  
@@ -35,8 +41,8 @@
 #define SYS_V2_EXIT              9  // Process termination
 #define SYS_V2_DEBUG_PUTCHAR    10  // Debug character output (Ring3 heartbeat)
 
-// Total syscalls: exactly 11 (debug syscall added for Ring3 heartbeat)
-#define SYS_V2_MAX_SYSCALL      10
+// Back-compat alias: MAX INDEX, not count.
+#define SYS_V2_MAX_SYSCALL   SYS_V2_MAX_INDEX
 
 // ============================================================================
 // CAPABILITY SYSTEM TYPES

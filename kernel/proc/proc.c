@@ -29,7 +29,7 @@ _Static_assert(sizeof(cpu_context_t) == 96, "ctx size");
 static proc_t* proc_table[MAX_PROCS];
 static int next_pid = 1;
 
-void init_process_main(void);
+void proc_init_bootstrap(void);
 void kernel_first_entry(void);
 void kernel_iret_entry(void);  // IRET-safe kernel entry
 
@@ -458,7 +458,7 @@ proc_t *proc_create_user_process(const char *name,
 }
 
 // PID 1: init process
-void init_process_main(void)
+void proc_init_bootstrap(void)
 {
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");

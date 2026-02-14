@@ -258,25 +258,25 @@ static void test_ring3_devfs_runtime(void)
     TEST_ASSERT(init_result == 0, "DevFS initialization stub redirects to Ring3");
     
     // Test device registration stub
-    int reg_result = devfs_register_device("test_console", NULL, NULL);
+    int reg_result = k_devfs_register_device_internal("test_console", NULL, NULL);
     TEST_ASSERT(reg_result == 0, "DevFS device registration stub redirects to Ring3");
     
     // Test device read stub
     uint8_t read_buffer[64];
-    int read_result = devfs_read("test_console", read_buffer, sizeof(read_buffer));
+    int read_result = k_devfs_read_internal("test_console", read_buffer, sizeof(read_buffer));
     TEST_ASSERT(read_result >= 0, "DevFS device read stub redirects to Ring3");
     
     // Test device write stub
     const char *test_data = "DevFS Ring3 test";
-    int write_result = devfs_write("test_console", test_data, 17);
+    int write_result = k_devfs_write_internal("test_console", test_data, 17);
     TEST_ASSERT(write_result >= 0, "DevFS device write stub redirects to Ring3");
     
     // Test device ioctl stub
-    int ioctl_result = devfs_ioctl("test_console", 0x1000, NULL);
+    int ioctl_result = k_devfs_ioctl_internal("test_console", 0x1000, NULL);
     TEST_ASSERT(ioctl_result >= 0, "DevFS device ioctl stub redirects to Ring3");
     
     // Test device close stub (no return value to check)
-    devfs_close("test_console");
+    k_devfs_close_internal("test_console");
     fb_print("[INFO] DevFS device close stub executed\n");
     
     fb_print("[SUCCESS] All DevFS stub functions redirect correctly to Ring3\n");

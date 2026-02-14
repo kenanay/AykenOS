@@ -26,12 +26,10 @@ struct idt_ptr {
     uint64_t base;
 } __attribute__((packed));
 
-extern struct idt_entry idt_table[256];
-extern struct idt_ptr idt_descriptor;
-
 void idt_set_gate(uint8_t num, interrupt_handler_t handler, uint8_t flags);
 void interrupts_install(void);
 void interrupts_install_early(void);
+const struct idt_ptr *idt_get_descriptor(void);
 
 // Syscall ISR (INT 0x80) - implemented in context_switch.asm
 extern void syscall_isr(void);

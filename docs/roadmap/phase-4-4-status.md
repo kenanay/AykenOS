@@ -26,6 +26,8 @@ Phase 4.4 closure remains valid. In addition, Phase 4.5 preempt baseline validat
 - `kernel_first_entry` stack ABI alignment fixed (`sub rsp, 8` before `call init_process_main`) to prevent early `movaps`-triggered `#GP` resets.
 - Preempt runner now supports strict marker mode and stale image prevention (`FORCE_EFI_REBUILD=1`).
 - macOS EFI image build path has automatic `hdiutil -> mtools` fallback for deterministic preempt runs.
+- Architecture Freeze boundary gate is active (`make ci-gate-boundary`) with symbol deny/allow policy.
+- Boundary evidence schema is active (`evidence/run-<RUN_ID>/reports/summary.json`).
 
 ### Validation command
 ```bash
@@ -166,6 +168,7 @@ Phase 4.4 is **COMPLETED** ✅. All evidence requirements satisfied. Ring3 execu
 - 🚀 `docs/roadmap/phase-4-5-spec.md` - Phase 4.5B integration roadmap
 - ✅ `README.md` - Updated with Phase 4.4 completion status
 - ✅ `docs/roadmap/overview.md` - Updated roadmap with current status
+- ✅ `ARCHITECTURE_FREEZE.md` - Active freeze contract and CI enforcement model
 
 **Phase 4.4 Status:** COMPLETED ✅  
 **Completion Date:** February 8, 2026  

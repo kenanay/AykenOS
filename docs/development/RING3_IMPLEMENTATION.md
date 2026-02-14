@@ -99,6 +99,7 @@ To prevent regression and keep this path stable:
 6. Keep CI smoke test on merged runtime logs (`debugcon + serial`) and assert either:
    - marker-level alternation (`PID=2/3`, `[SW]U>U`, `ABOUT_TO_IRETQ`), or
    - high-confidence `A/B` alternation fallback thresholds.
+   - enforce boundary contract via `make ci-gate-boundary` and keep generated evidence under `evidence/run-<RUN_ID>/`.
 7. Avoid stale test media: if `kernel.elf` is newer than `EFI.img`, rebuild image before validation (`make efi-img` or `FORCE_EFI_REBUILD=1` in `run_preempt_test.sh`).
 
 ## Previous Update (February 10, 2026)
@@ -490,7 +491,7 @@ interrupts_install();
 
 ## Next Steps (Hardening Track)
 
-1. Add CI assertion target for preempt validation (`make run-preempt`) with strict threshold policy per profile.
+1. Keep CI assertion targets active for preempt and boundary (`make run-preempt-strict`, `make ci-gate-boundary`).
 2. Add IRQ stack high-water/canary telemetry in validation profile for long-run stability checks.
 3. Keep scheduler state-machine asserts (`AYKEN_DEBUG_SCHED`) enabled in validation profile and extend for fault paths.
 4. Prepare SMP transition plan: per-CPU resched flags, per-CPU saved-ctx markers, and APIC migration path.

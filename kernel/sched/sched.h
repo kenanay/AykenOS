@@ -65,18 +65,4 @@ void sched_add_task(void *task);
 extern proc_t *current_proc;
 extern volatile uint32_t sched_irq_user_ctx_saved;
 
-// ============================================================================
-// RING3 SCHEDULER POLICY INTERFACE
-// ============================================================================
-// These functions are implemented in Ring3 userspace and called by Ring0
-
-// Ring3 policy: Select next process from ready queue
-extern proc_t* userspace_scheduler_select_next(proc_t *ready_queue);
-
-// Ring3 policy: Handle process enqueueing decisions
-extern void userspace_scheduler_enqueue_ready(proc_t *proc);
-
-// Ring3 policy: Handle process blocking decisions
-extern void userspace_scheduler_handle_block(proc_t *proc, void *wait_obj);
-
 #endif // AYKEN_SCHED_H

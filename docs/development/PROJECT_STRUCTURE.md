@@ -759,7 +759,7 @@ kernel/
 │
 ├── sys/                           # Sistem çağrıları
 │   ├── syscall.c/.o              # Syscall dispatcher
-│   ├── syscall_v2.c/.h/.o        # V2 syscall implementasyonu (1000-1009)
+│   ├── syscall_v2.c/.h/.o        # V2 syscall implementasyonu (1000-1010)
 │   ├── capability_manager.c/.o   # Capability yönetimi
 │   │
 │   └── [test files]              # Çeşitli test dosyaları
@@ -778,7 +778,7 @@ kernel/
 
 **Ring0 (Kernel Mode):**
 - Sadece mekanizma implementasyonları
-- 10 execution-centric syscall (1000-1009)
+- 11 execution-centric syscall (1000-1010)
 - Bellek yönetimi (physical, virtual, heap)
 - Context switching
 - Interrupt handling
@@ -1168,11 +1168,11 @@ make ci-freeze    # Strict freeze suite (planned gates dahil)
 ### Freeze Gate Durumu (Gerçek Repo Durumu)
 
 1. Implemented:
+   - `ci-gate-abi`
    - `ci-gate-boundary`
    - `ci-gate-hygiene`
    - `ci-summarize`
 2. Planned (hard-fail stubs):
-   - `ci-gate-abi`
    - `ci-gate-workspace`
    - `ci-gate-performance`
 
@@ -1201,7 +1201,7 @@ Not: Root altında `README.md` dışındaki governance template dosyaları tutul
 - ✅ Bellek yönetimi (physical, virtual, heap)
 - ✅ Ring3 kullanıcı süreçleri
 - ✅ Preemptive multitasking
-- ✅ 10 execution-centric syscall (1000-1009)
+- ✅ 11 execution-centric syscall (1000-1010)
 - ✅ Capability-based security
 - ✅ Framebuffer konsolu (UTF-8/Türkçe)
 - ✅ Boot UI (splash, logo, progress)

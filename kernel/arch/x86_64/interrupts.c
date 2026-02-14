@@ -3,8 +3,13 @@
 #include "gdt_idt.h"
 #include "port_io.h"
 
-struct idt_entry idt_table[256];
-struct idt_ptr idt_descriptor;
+static struct idt_entry idt_table[256];
+static struct idt_ptr idt_descriptor;
+
+const struct idt_ptr *idt_get_descriptor(void)
+{
+    return &idt_descriptor;
+}
 
 // Early debugcon output (QEMU port 0xE9) — use macros to avoid calls in ISRs
 #define OUTC(ch) do { \

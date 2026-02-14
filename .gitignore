@@ -121,6 +121,7 @@ tools/gnu-efi/
 !ayken/**/*
 
 # --- Freeze hygiene override (must stay after !ayken/**/*) ---
+/evidence/
 /ayken/target/
 /ayken-core/target/
 /userspace/target/
@@ -130,5 +131,6 @@ tools/gnu-efi/
 *.elf
 *.a
 *.so
+*.d
 *.dSYM/
 *.tmp

@@ -14,7 +14,7 @@
 - `kernel/arch/x86_64/gdt_idt.c` - GDT/IDT setup
 
 ### Core Syscall Infrastructure (Stabil - Korunmalı)
-- `kernel/sys/syscall_v2.c` - V2 syscall dispatcher (1000-1009)
+- `kernel/sys/syscall_v2.c` - V2 syscall dispatcher (1000-1010)
 - `kernel/arch/x86_64/syscall_entry.asm` - INT 0x80 handler
 - `kernel/include/syscall_v2.h` - Syscall definitions
 
@@ -82,8 +82,9 @@ Architecture Freeze aktifken minimum kontrol seti:
 2. `make run-preempt-strict`
 3. `make ci-gate-boundary`
 4. `make ci-gate-hygiene`
-5. `make ci-summarize` (aynı run için summary verdict kontrolü)
-6. `cat evidence/run-<RUN_ID>/reports/summary.json` ile `verdict=PASS` doğrula
+5. `make ci-gate-constitutional`
+6. `make ci-summarize` (aynı run için summary verdict kontrolü)
+7. `cat evidence/run-<RUN_ID>/reports/summary.json` ile `verdict=PASS` doğrula
 
 Boundary gate kural dosyaları:
 - `tools/ci/deny.symbols`

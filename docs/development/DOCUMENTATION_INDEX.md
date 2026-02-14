@@ -101,9 +101,9 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **[../waivers/WAIVER_TEMPLATE.md](../waivers/WAIVER_TEMPLATE.md)** - Waiver template
 - **[../architecture-board/decisions/README.md](../architecture-board/decisions/README.md)** - Board decision registry rules
 - **[../architecture-board/decisions/0001-template.md](../architecture-board/decisions/0001-template.md)** - Architecture board decision template
-- **[MARS_CONFIG.md](../../ayken/steering/MARS_CONFIG.md)** - MARS constitutional configuration template
-- **[AHTS_CONFIG.md](../../ayken/steering/AHTS_CONFIG.md)** - AHTS constitutional configuration template
-- **[MARS README.md](../../ayken/mars/README.md)** - MARS module documentation
+- **[MARS_CONFIG.md](../../_ayken/steering/MARS_CONFIG.md)** - MARS constitutional configuration template
+- **[AHTS_CONFIG.md](../../_ayken/steering/AHTS_CONFIG.md)** - AHTS constitutional configuration template
+- **[constitutional-system-roadmap.md](../roadmap/constitutional-system-roadmap.md)** - MARS/AHTS/ARRE roadmap ve modül referansları
 
 ### Guides & References
 - **[QUICK_START_USB.md](QUICK_START_USB.md)** - USB boot instructions

@@ -3,7 +3,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Author:** Kenan AY  
 **Created:** February 8, 2026  
-**Status:** IN PROGRESS (Preempt Baseline Validated)  
+**Status:** IN PROGRESS (Preempt Baseline Validated, Freeze Enforcement Active)  
 **Dependencies:** Phase 4.4 COMPLETED ✅
 
 ---
@@ -41,6 +41,13 @@ Phase 4.5 represents the next major milestone in AykenOS development, focusing o
 3. Keep context offset contracts protected by compile-time asserts and matching ASM offsets.
 4. Keep debug noise behind compile-time flags; default runtime path should stay minimal.
 5. Preserve deterministic test entrypoint (`make run-preempt`) and log-based assertions in CI.
+
+### Freeze Guardrails (Active)
+1. Boundary enforcement is merge-blocking: `make ci-gate-boundary` must pass.
+2. Symbol scan rules are versioned: `tools/ci/deny.symbols` + `tools/ci/allow.symbols`.
+3. Each boundary run must emit deterministic evidence under `evidence/run-<RUN_ID>/`.
+4. Mandatory reports: `gates/symbol-scan/report.json` and `reports/summary.json`.
+5. New kernel-level policy logic is prohibited until freeze exit criteria are satisfied.
 
 ---
 
@@ -181,6 +188,7 @@ All Phase 4.5 implementations must comply with:
 - **Evidence-Based Development**: All features require validation evidence
 - **Performance Constitution**: Measurable > Optimized principle
 - **Security First**: Capability-based security model maintained
+- **Freeze Enforcement**: CI boundary gate and evidence schema are mandatory on mainline
 
 ---
 

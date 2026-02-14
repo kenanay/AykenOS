@@ -9,6 +9,7 @@
 
 - ABI (`ci-gate-abi`):
 - Boundary (`ci-gate-boundary`):
+- Constitutional (`ci-gate-constitutional`):
 - Workspace (`ci-gate-workspace`):
 - Hygiene (`ci-gate-hygiene`):
 - Performance (`ci-gate-performance`):

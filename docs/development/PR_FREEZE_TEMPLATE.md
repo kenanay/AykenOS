@@ -11,6 +11,7 @@ Mirror path (merge form): `.github/pull_request_template.md`
 
 - ABI:
 - Boundary:
+- Constitutional:
 - Workspace:
 - Hygiene:
 - Performance:

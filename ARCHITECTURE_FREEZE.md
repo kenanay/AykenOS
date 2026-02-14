@@ -30,7 +30,7 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 ### 2.1 Dondurulan Alanlar (IMMUTABLE)
 
 #### Syscall v2 Interface
-- **ID Range:** 1000-1009 (10 syscalls, fixed)
+- **ID Range:** 1000-1010 (11 syscalls, fixed)
 - **ABI Definition:** `kernel/include/ayken_abi.h` (single source of truth)
 - **Register Mapping:** RDI, RSI, RDX, R10 (no alternatives)
 - **Generation:** `make generate-abi` (deterministic)
@@ -39,6 +39,8 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Ring0:** Mechanism only (memory, context, interrupt, syscall)
 - **Ring3:** Policy only (scheduler, VFS, DevFS, AI runtime)
 - **Enforcement:** `make ci-gate-boundary` (symbol-scan + evidence report)
+- **Link Contract:** `kernel.elf` excludes `userspace/libayken/*.o`
+- **VFS Mechanism Surface:** `kernel/include/vfs_mech.h` + `kernel/fs/vfs_mech.c` (Ring0 only)
 
 #### Scheduler Policy Separation
 - **Mechanism:** wake/block, IRQ-tail reschedule (Ring0)
@@ -67,11 +69,11 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Workspace, Hygiene, Performance
+- **Gates:** ABI, Boundary, Constitutional, Workspace, Hygiene, Performance
 - **Bypass:** Prohibited (no exceptions)
 - **Repo Truth (2026-02-13):**
-  - Implemented: `ci-gate-boundary`, `ci-gate-hygiene`, `ci-summarize`
-  - Planned (hard-fail stubs): `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-performance`
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
+  - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
 #### Repository Hygiene Rules
@@ -97,12 +99,13 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 
 #### ID Range (FIXED)
 ```c
-#define SYS_V2_BASE  1000
-#define SYS_V2_LAST  1009
-#define SYS_V2_COUNT 10
+#define SYS_V2_BASE       1000
+#define SYS_V2_MAX_INDEX  10
+#define SYS_V2_NR         (SYS_V2_MAX_INDEX + 1)
+#define SYS_V2_LAST       (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 ```
 
-**Debug syscalls:** Separate namespace or removed (not in 1000-1009 range)
+**Debug syscall:** Included in-range as index 10 (`SYS_V2_DEBUG_PUTCHAR` → public 1010)
 
 #### Single Source of Truth
 ```
@@ -202,7 +205,7 @@ make ci-gate-boundary
 
 **Implementation state is enforced explicitly:**
 - Implemented gates produce evidence and can PASS.
-- Planned gates exist as hard-fail stubs (`exit 2`) until fully implemented.
+- Baseline-backed gates fail-closed until baseline lock is initialized and committed.
 - This prevents silent PASS with missing enforcement.
 
 ### 4.1 ABI Gate
@@ -212,7 +215,7 @@ make ci-gate-boundary
 make ci-gate-abi
 ```
 
-**Current state:** Planned hard-fail stub (not implemented yet).
+**Current state:** Implemented (deterministic evidence + baseline lock compare).
 
 **Validations:**
 - Syscall header hash verification
@@ -234,6 +237,7 @@ make ci-gate-boundary
 - Symbol-level deny/allow scan over build artifacts (`tools/ci/symbol-scan.sh`)
 - Filtered symbol evidence output (`symbols.filtered.txt`)
 - Gate report + run summary evidence (`report.json`, `summary.json`)
+- Link map evidence (`evidence/run-<RUN_ID>/artifacts/kernel.map`) for kernel-only link set audit
 - Scheduler isolation test (no decision logic in kernel)
 - Capability bypass test (no kernel direct access)
 - Ring boundary matrix validation
@@ -255,13 +259,14 @@ Mandatory Green Workspaces:
 make ci-gate-workspace
 ```
 
-**Current state:** Planned hard-fail stub (not implemented yet).
+**Current state:** Implemented (clean-state + determinism + link-set evidence gate).
 
 **Validations:**
-- `cargo test --workspace` full green
-- Clippy warnings = 0
-- Kernel build warnings = 0
-- Reproducible build check
+- Git clean state checks (`git diff`, `git diff --cached`, strict untracked handling)
+- ABI generated include determinism (`make generate-abi` + drift check)
+- ABI baseline lock tracked/clean checks (`scripts/ci/abi-baseline.lock.json`)
+- Lightweight reproducibility signal (double clean build + `kernel.elf` hash compare)
+- Kernel link-set discipline via map evidence (`userspace/libayken/*.o` and `*_test.o` must not link)
 
 **Partial green = REJECT**  
 **Failure → Merge REJECT**
@@ -293,6 +298,8 @@ Compiler:         rustc 1.76.0 / gcc 14.2.0
 Target:           x86_64-unknown-none
 QEMU:             8.2.0
 Host CPU:         [Specific model]
+Authority:        self-hosted-baremetal-x86_64-perf01
+CI Image Digest:  [Pinned runner image/build digest]
 ```
 
 **Thresholds:**
@@ -314,15 +321,45 @@ Compiler Upgrade:
 make ci-gate-performance
 ```
 
-**Current state:** Planned hard-fail stub (not implemented yet).
+**Current state:** Implemented (baseline lock + env hash + regression compare + evidence).
 
 **Validations:**
-- Syscall latency baseline comparison
-- Context switch latency comparison
-- Preempt determinism test passing
-- Boot time regression check
+- Environment manifest + env hash generation (`env.json`)
+- Baseline lock compare (`scripts/ci/perf-baseline.lock.json`)
+- Baseline authority lock (`PERF_BASELINE_AUTHORITY=self-hosted-baremetal-x86_64-perf01`)
+- CI image/build digest lock (`PERF_CI_IMAGE_DIGEST`)
+- Baseline init with `PERF_CI_IMAGE_DIGEST=unknown` is prohibited (must be pinned)
+- CI freeze workflow resolves pinned digest from runner file (`/etc/aykenos/ci_image_digest`)
+- Marker contract lock (`boot_ok_marker`, `preempt_sw_count_pattern`, `preempt_iret_count_pattern`)
+- Baseline init authority lock (default CI-only; local init requires explicit override)
+- QEMU boot audit timing proxy (`boot_time_ms`)
+- Preempt marker timing proxy (`context_switch_latency_ms_proxy`)
+- Preempt IRET timing proxy (`syscall_latency_ms_proxy`)
+- Threshold policy enforcement (`±5%` syscall/context-switch proxy, `±10%` boot)
+- Proxy model disclosure: metrics are wall-time proxies, not cycle-accurate guest counters
 
 **Failure → Manual architecture review**
+
+### 4.6 Constitutional Gate
+
+**Checks:**
+```bash
+make ci-gate-constitutional
+```
+Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
+
+**Current state:** Implemented (evidence-producing gate).
+
+**Validations:**
+- Ring0 tracked-path whitelist integrity (`scripts/ci/constitutional-ring0-whitelist.regex`)
+- Ring0 exported symbol whitelist integrity (`scripts/ci/constitutional-ring0-symbol-whitelist.regex`)
+- Kernel source deny/allow scan (`scripts/ci/constitutional-source-deny.regex`, `scripts/ci/constitutional-source-allow.regex`)
+- Syscall freeze contract lock (`SYS_V2_BASE/MAX_INDEX/NR/LAST` invariants)
+- AHS threshold floor checks from `_ayken/steering/AHS_CONFIG.toml` (`P5_minimum >= 95`)
+- NON_OVERRIDABLE registry integrity checks from `_ayken/steering/NON_OVERRIDABLE.md`
+- Waiver metadata/expiry/duration policy checks under `docs/waivers/`
+
+**Failure → Merge REJECT**
 
 ---
 
@@ -362,6 +399,7 @@ make ci-gate-performance
 - `docs/rfc/0001-template.md`
 - `docs/development/PR_FREEZE_TEMPLATE.md`
 - `.github/pull_request_template.md`
+- `.github/workflows/ci-freeze.yml`
 
 ### 6.2 RFC Template
 
@@ -431,7 +469,7 @@ make ci-gate-performance
 
 **Freeze CANNOT start until:**
 
-1. ✅ Syscall ID range finalized (1000-1009)
+1. ✅ Syscall ID range finalized (1000-1010)
 2. ✅ Userspace syscall register mapping fixed
 3. ✅ Scheduler fallback isolated or removed
 4. ✅ Tracked build artifacts cleaned
@@ -443,9 +481,13 @@ make ci-gate-performance
 **Current Status (2026-02-13):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
 - ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
+- ✅ ABI gate implementation active (`make ci-gate-abi`)
+- ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
+- ✅ Workspace gate implementation active (`make ci-gate-workspace`)
+- ✅ Performance gate implementation active (`make ci-gate-performance`)
 - ✅ Summary gate active (`make ci-summarize`, auto-discovery)
 - ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)
-- 🔄 ABI/Workspace/Performance gates tracked as planned hard-fail stubs
+- 🔄 Performance baseline initialization/lock commit required (`PERF_INIT_BASELINE=1`)
 - 🔄 Remaining entry criteria tracked in roadmap and CI backlog
 
 ---
@@ -622,7 +664,7 @@ cat evidence/run-<RUN_ID>/reports/summary.json
    - Violation = Immediate merge reject
 
 2. **Syscall ABI CANNOT drift**
-   - ID range: 1000-1009 (fixed)
+   - ID range: 1000-1010 (fixed)
    - Register mapping: RDI/RSI/RDX/R10 (fixed)
    - Single source: `kernel/include/ayken_abi.h`
    - Violation = CI fail + merge reject

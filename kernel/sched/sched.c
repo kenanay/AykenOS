@@ -87,12 +87,6 @@ static inline void sched_dbg_mark_sw(char from, char to) { (void)from; (void)to;
 static inline void sched_dbg_mark_iret(void) { }
 #endif
 
-// Ring3 scheduler policy function declarations
-// These functions are implemented in Ring3 userspace
-extern proc_t* userspace_scheduler_select_next(proc_t *ready_queue);
-extern void userspace_scheduler_enqueue_ready(proc_t *proc);
-extern void userspace_scheduler_handle_block(proc_t *proc, void *wait_obj);
-
 // Ring0 mechanism state - only for context switching
 static proc_t *ready_head = NULL;
 static proc_t *ready_tail = NULL;

@@ -8,7 +8,7 @@ global syscall_isr
 global timer_isr_asm
 
 extern syscall_handler
-extern init_process_main
+extern proc_init_bootstrap
 extern sched_irq_user_ctx_saved
 extern timer_isr_c
 extern sched_take_resched
@@ -70,7 +70,7 @@ kernel_first_entry:
     sub rsp, 8
     DBG_ASSERT_RSP_ALIGNED '1'
     mov rbp, 0
-    call init_process_main
+    call proc_init_bootstrap
     add rsp, 8
 .L_kernel_first_hang:
     hlt
@@ -86,9 +86,9 @@ kernel_iret_entry:
     DBG_ASSERT_RSP_ALIGNED '2'
 
     mov rbp, 0
-    call init_process_main
+    call proc_init_bootstrap
 
-    ; If init_process_main returns, restore stack and halt.
+    ; If proc_init_bootstrap returns, restore stack and halt.
     add rsp, 8
 .L_iret_hang:
     hlt
