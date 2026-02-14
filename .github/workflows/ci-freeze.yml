@@ -18,7 +18,7 @@ on:
 
 jobs:
   freeze:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -59,7 +59,7 @@ jobs:
           make ci-freeze
 
   init_perf_baseline:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
