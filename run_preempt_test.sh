@@ -19,6 +19,7 @@ PREEMPT_MIN_AB_ALT="${PREEMPT_MIN_AB_ALT:-96}"
 STRICT_MARKERS="${STRICT_MARKERS:-0}"
 FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
 PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
+PREEMPT_CLEAN_REBUILD="${PREEMPT_CLEAN_REBUILD:-1}"
 
 now_ms() {
   python3 - <<'PY'
@@ -37,11 +38,17 @@ if [[ "$FORCE_EFI_REBUILD" != "0" && "$FORCE_EFI_REBUILD" != "1" ]]; then
   exit 1
 fi
 
+if [[ "$PREEMPT_CLEAN_REBUILD" != "0" && "$PREEMPT_CLEAN_REBUILD" != "1" ]]; then
+  echo "ERROR: PREEMPT_CLEAN_REBUILD must be 0 or 1 (got '$PREEMPT_CLEAN_REBUILD')"
+  exit 1
+fi
+
 write_preempt_metrics() {
   local fail_value="$1"
   [[ -n "${PREEMPT_METRICS_OUT}" ]] || return 0
   {
     echo "strict_markers=${STRICT_MARKERS}"
+    echo "preempt_clean_rebuild=${PREEMPT_CLEAN_REBUILD}"
     echo "qemu_run_time_ms=${qemu_run_time_ms:-0}"
     echo "debug_bytes=${debug_size:-0}"
     echo "serial_bytes=${serial_size:-0}"
@@ -65,11 +72,16 @@ write_preempt_metrics() {
     echo "switch_signal=${switch_signal:-0}"
     echo "mark_switch_signal=${mark_switch_signal:-0}"
     echo "ab_signal=${ab_signal:-0}"
+    echo "sched_idle_count=${sched_idle_count:-0}"
+    echo "stage_hint_missing=${stage_hint_missing:-0}"
     echo "assert_fail=${fail_value}"
   } > "${PREEMPT_METRICS_OUT}"
 }
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
+  if [[ "$FORCE_EFI_REBUILD" == "1" && "$PREEMPT_CLEAN_REBUILD" == "1" ]]; then
+    make KERNEL_PROFILE="$KERNEL_PROFILE" clean
+  fi
   make KERNEL_PROFILE="$KERNEL_PROFILE" efi-img
 elif [[ -f kernel.elf && kernel.elf -nt "$EFI_IMG" ]]; then
   echo "WARN: kernel.elf is newer than $EFI_IMG (stale image risk)."
@@ -147,6 +159,7 @@ sw_count="$(awk 'BEGIN{c=0}{c+=gsub(/(\[SW\](K>U|U>K|U>U)|MARK:SW=(K>U|U>K|U>U))
 sw_uu_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SW\]U>U/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 mark_iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/MARK:IRET/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/(ABOUT_TO_IRETQ|MARK:IRET)/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+sched_idle_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SEL\]\[IDLE\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 
 read -r mark_alt_count mark_pid2_count mark_pid3_count <<<"$(awk '
 BEGIN { prev=""; alt=0; p2=0; p3=0; pid="" }
@@ -234,6 +247,7 @@ echo "Alternations (2<->3): $alt_count"
 echo "[SW|MARK:SW] count: $sw_count"
 echo "[SW]U>U count     : $sw_uu_count"
 echo "[IRET markers] count: $iret_count"
+echo "[SEL][IDLE] count : $sched_idle_count"
 echo "AB stream length  : $ab_len"
 echo "AB alternations   : $ab_alt_count"
 echo "AB max run        : $ab_run_max"
@@ -265,6 +279,11 @@ if (( ab_run_max >= PREEMPT_MIN_AB_LEN && ab_run_alt_max >= PREEMPT_MIN_AB_ALT )
     ab_signal=1
 fi
 
+stage_hint_missing=0
+if (( STRICT_MARKERS == 1 )) && (( mark_switch_signal == 0 )) && (( sched_idle_count > 0 )); then
+  stage_hint_missing=1
+fi
+
 if (( STRICT_MARKERS == 1 )); then
   if (( mark_pid_signal == 0 )); then
     echo "ASSERT FAIL (strict): canonical MARK:PID alternation signal missing."
@@ -274,6 +293,9 @@ if (( STRICT_MARKERS == 1 )); then
   if (( mark_switch_signal == 0 )); then
     echo "ASSERT FAIL (strict): canonical MARK switch markers missing."
     echo "  Needed MARK switch signal: MARK:SW(K>U|U>K|U>U)>=${PREEMPT_MIN_SW} and MARK:IRET>=${PREEMPT_MIN_IRET}"
+    if (( stage_hint_missing == 1 )); then
+      echo "  Hint: scheduler entered [SEL][IDLE] in strict mode (no staged next candidate consumed)."
+    fi
     fail=1
   fi
 else

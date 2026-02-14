@@ -37,6 +37,7 @@ BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-latest-x64}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"
+SCHED_FALLBACK="${AYKEN_SCHED_FALLBACK:-0}"
 BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
 PREEMPT_SW_COUNT_PATTERN='[SW|MARK:SW] count:'
 PREEMPT_IRET_COUNT_PATTERN='[IRET markers] count:'
@@ -273,6 +274,8 @@ PREEMPT_IRET_COUNT="$(extract_kv_metric "iret_count" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_QEMU_RUN_TIME_MS="$(extract_kv_metric "qemu_run_time_ms" "${PREEMPT_METRICS_TXT}")"
 MARK_SW_COUNT="$(extract_kv_metric "mark_sw_count" "${PREEMPT_METRICS_TXT}")"
 MARK_IRET_COUNT="$(extract_kv_metric "mark_iret_count" "${PREEMPT_METRICS_TXT}")"
+SCHED_IDLE_COUNT="$(extract_kv_metric "sched_idle_count" "${PREEMPT_METRICS_TXT}")"
+STAGE_HINT_MISSING_SIGNAL="$(extract_kv_metric "stage_hint_missing" "${PREEMPT_METRICS_TXT}")"
 
 PREEMPT_TIME_MS="${PREEMPT_TIME_MS_WALL}"
 if [[ "${PREEMPT_QEMU_RUN_TIME_MS}" -gt 0 ]]; then
@@ -290,6 +293,9 @@ if [[ "${PREEMPT_SW_COUNT}" -le 0 && "${MARK_SW_COUNT}" -gt 0 ]]; then
 fi
 if [[ "${PREEMPT_IRET_COUNT}" -le 0 && "${MARK_IRET_COUNT}" -gt 0 ]]; then
   PREEMPT_IRET_COUNT="${MARK_IRET_COUNT}"
+fi
+if [[ "${SCHED_FALLBACK}" == "0" ]] && [[ "${STAGE_HINT_MISSING_SIGNAL}" -gt 0 ]]; then
+  record_violation "preempt_stage_hint_missing:sel_idle=${SCHED_IDLE_COUNT}"
 fi
 if [[ "${PREEMPT_SW_COUNT}" -le 0 ]]; then
   record_violation "preempt_marker_missing:sw_count=0"
@@ -539,6 +545,9 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "preempt_sw_count_pattern=${PREEMPT_SW_COUNT_PATTERN}"
   echo "preempt_iret_count_pattern=${PREEMPT_IRET_COUNT_PATTERN}"
   echo "preempt_force_efi_rebuild=${PREEMPT_FORCE_EFI_REBUILD}"
+  echo "ayken_sched_fallback=${SCHED_FALLBACK}"
+  echo "preempt_sched_idle_count=${SCHED_IDLE_COUNT}"
+  echo "preempt_stage_hint_missing=${STAGE_HINT_MISSING_SIGNAL}"
   echo "env_hash=${ENV_HASH}"
   echo "boot_time_ms=${BOOT_TIME_MS}"
   echo "preempt_wall_time_ms=${PREEMPT_TIME_MS_WALL}"
