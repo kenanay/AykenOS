@@ -210,6 +210,17 @@ const scheduler_policy_t* scheduler_get_current_policy(void);
 int scheduler_request_schedule(void);
 
 /**
+ * @brief Stage next runnable process into Ring0 scheduler mailbox.
+ *
+ * This is the strict-mode bridge used by Ring3 policy to provide a concrete
+ * next process selection to the Ring0 mechanism.
+ *
+ * @param proc Pointer to next process handle
+ * @return 0 on success, negative error code on failure
+ */
+int scheduler_stage_next(proc_t *proc);
+
+/**
  * @brief Notify policy of process state change
  * 
  * Notifies the scheduler policy of a process state change (ready, blocked, etc.).

@@ -87,5 +87,6 @@ void proc_launch_ring3_test(void);
 void proc_block_current(void *wait_obj);
 void proc_wake_waiters(void *wait_obj);
 proc_t* proc_find_by_pid(int pid);
+int proc_is_registered(proc_t *proc);
 
 #endif

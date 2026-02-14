@@ -41,6 +41,10 @@
 #define AYKEN_DEBUG_SCHED 0
 #endif
 
+#ifndef AYKEN_SCHED_FALLBACK
+#define AYKEN_SCHED_FALLBACK 0
+#endif
+
 #if AYKEN_DEBUG_SCHED
 #define SCHED_DBG_OUT(ch) outb(0xE9, (uint8_t)(ch))
 #else
@@ -91,6 +95,7 @@ static inline void sched_dbg_mark_iret(void) { }
 static proc_t *ready_head = NULL;
 static proc_t *ready_tail = NULL;
 static proc_t *blocked_head = NULL;
+static proc_t *staged_next = NULL;
 
 // Flag to track if scheduler has started (to avoid calling userspace functions during boot)
 static int scheduler_started = 0;
@@ -101,6 +106,91 @@ static volatile uint32_t need_resched = 0;
 // context_switch.asm consumes this flag to avoid overwriting user RIP/RSP
 // with kernel scheduler frame values.
 volatile uint32_t sched_irq_user_ctx_saved = 0;
+
+int sched_fallback_enabled(void)
+{
+    return AYKEN_SCHED_FALLBACK ? 1 : 0;
+}
+
+static inline uint64_t sched_irq_save(void)
+{
+    uint64_t flags = 0;
+    __asm__ volatile("pushfq; popq %0" : "=r"(flags));
+    disable_interrupts();
+    return flags;
+}
+
+static inline void sched_irq_restore(uint64_t flags)
+{
+    if (flags & (1ULL << 9)) {
+        enable_interrupts();
+    }
+}
+
+static inline proc_t *sched_mailbox_xchg(proc_t *value)
+{
+    __asm__ volatile("xchgq %0, %1" : "+r"(value), "+m"(staged_next) :: "memory");
+    return value;
+}
+
+static int sched_hint_is_acceptable(proc_t *candidate)
+{
+    if (!candidate) {
+        return 0;
+    }
+    if (!proc_is_registered(candidate)) {
+        return 0;
+    }
+    if (candidate->state != PROC_READY && candidate->state != PROC_RUNNING) {
+        return 0;
+    }
+    if (candidate->context.rip == 0 || candidate->context.rsp == 0) {
+        return 0;
+    }
+
+    if ((candidate->context.cs & 0x3) == 0x3) {
+        if (candidate->context.cs != GDT_USER_CODE || candidate->context.ss != GDT_USER_DATA) {
+            return 0;
+        }
+        if (!candidate->context.rsp0) {
+            return 0;
+        }
+    } else {
+        if (candidate->context.cs != GDT_KERNEL_CODE || candidate->context.ss != GDT_KERNEL_DATA) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+void sched_stage_next(proc_t *next_proc)
+{
+    // Ring0 mechanism mailbox: Ring3 stages next runnable hint atomically.
+    uint64_t flags = sched_irq_save();
+    (void)sched_mailbox_xchg(next_proc);
+    need_resched = 1;
+    sched_irq_restore(flags);
+}
+
+static __attribute__((unused)) proc_t *sched_consume_staged_next(void)
+{
+    proc_t *nil = NULL;
+    return sched_mailbox_xchg(nil);
+}
+
+static __attribute__((noreturn)) void sched_fail_closed_no_runnable(void)
+{
+    SCHED_DBG_OUT((uint8_t)'[');
+    SCHED_DBG_OUT((uint8_t)'I');
+    SCHED_DBG_OUT((uint8_t)'D');
+    SCHED_DBG_OUT((uint8_t)'L');
+    SCHED_DBG_OUT((uint8_t)'E');
+    SCHED_DBG_OUT((uint8_t)']');
+    for (;;) {
+        __asm__ volatile("cli; hlt");
+    }
+}
 
 #define RING3_CANARY_ADDR 0x0000000000405000ULL
 #define RING3_CANARY_PRE  0x1111111122222222ULL
@@ -307,6 +397,13 @@ void remove_from_ready_queue(proc_t *p) {
     if (!p || !ready_head)
         return;
 
+#if !AYKEN_SCHED_FALLBACK
+    // Strict mode: kernel queue is bootstrap-only until scheduler is armed.
+    if (scheduler_started) {
+        return;
+    }
+#endif
+
     if (ready_head == p) {
         ready_head = p->next;
         if (ready_tail == p)
@@ -327,7 +424,7 @@ void remove_from_ready_queue(proc_t *p) {
     }
 }
 
-// Ring0 mechanism: Call Ring3 scheduler policy for process selection
+// Ring0 mechanism: select next process from validation fallback or Ring3-staged mailbox
 proc_t *sched_select_next(void)
 {
     // DEBUG: Scheduler selection entry marker
@@ -337,10 +434,11 @@ proc_t *sched_select_next(void)
     SCHED_DBG_OUT((uint8_t)'L');
     SCHED_DBG_OUT((uint8_t)']');
     
-    // ✅ CRITICAL FIX: Ring0 cannot call Ring3 functions directly!
-    // Ring0→Ring3 transition ONLY via IRETQ, not C call
-    // For now: pure mechanical round-robin (no policy)
-    proc_t *selected = ready_head;
+    proc_t *selected = NULL;
+
+#if AYKEN_SCHED_FALLBACK
+    // Validation-only fallback path: Ring0 temporary round-robin mechanism.
+    selected = ready_head;
     
     // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
     // This causes illegal privilege transition → #GP → triple fault
@@ -421,9 +519,32 @@ proc_t *sched_select_next(void)
         SCHED_DBG_OUT((uint8_t)'L');
         SCHED_DBG_OUT((uint8_t)'\n');
     }
+#else
+    // Strict path: Ring0 does not run selection policy.
+    // Ring3 stages a next runnable hint; Ring0 accepts/rejects as final arbiter.
+    proc_t *hint = sched_consume_staged_next();
+    if (sched_hint_is_acceptable(hint)) {
+        selected = hint;
+    } else if (hint) {
+        SCHED_DBG_OUT((uint8_t)'V'); // hint vetoed
+    }
 
-    if (selected) {
+    if (!selected && !scheduler_started) {
+        // Bootstrap exception: before scheduler arm, consume kernel ready list once.
+        selected = ready_head;
+        if (selected) {
+            remove_from_ready_queue(selected);
+        }
+    }
+#endif
+
+    if (selected && AYKEN_SCHED_FALLBACK) {
         remove_from_ready_queue(selected);
+    }
+
+    if (!selected && scheduler_started) {
+        // Fail-closed: no in-kernel policy path is allowed when fallback is disabled.
+        sched_fail_closed_no_runnable();
     }
 
     return selected;
@@ -433,6 +554,13 @@ proc_t *sched_select_next(void)
 void enqueue_ready(proc_t *p)
 {
     if (!p) return;
+
+#if !AYKEN_SCHED_FALLBACK
+    // Strict mode: kernel queue is bootstrap-only until scheduler is armed.
+    if (scheduler_started) {
+        return;
+    }
+#endif
     
     // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
     // Ring0→Ring3 transition ONLY via IRETQ, not C function call
@@ -451,7 +579,7 @@ void enqueue_ready(proc_t *p)
 }
 
 // Ring0 mechanism: Simple process blocking
-static void enqueue_blocked(proc_t *p)
+static __attribute__((unused)) void enqueue_blocked(proc_t *p)
 {
     if (!p) return;
     
@@ -483,7 +611,9 @@ void sched_init(void)
     // All policy initialization handled by Ring3
     ready_head = ready_tail = NULL;
     blocked_head = NULL;
+    staged_next = NULL;
     current_proc = NULL;
+    scheduler_started = 0;
     
     // Ring0 mechanism: No policy initialization in Ring0
     // Ring3 scheduler policy handles all policy setup
@@ -494,8 +624,8 @@ void sched_start(void)
     SCHED_DBG_OUT((uint8_t)'S');
     SCHED_DBG_OUT((uint8_t)'1');
     
-    // Mark scheduler as started so userspace functions can be called
-    scheduler_started = 1;
+    // Do not arm strict scheduler before first runnable is selected.
+    scheduler_started = 0;
     SCHED_DBG_OUT((uint8_t)'2');
     
     // Debug: Check ready queue
@@ -520,18 +650,19 @@ void sched_start(void)
     disable_interrupts();
     SCHED_DBG_OUT((uint8_t)'4');
     
-    // Ring0 mechanism: Call Ring3 policy for first process selection
+    // Ring0 mechanism: select first process (fallback queue or staged mailbox)
     proc_t *first = sched_select_next();
     if (!first) {
         SCHED_DBG_OUT((uint8_t)'N');
-        enable_interrupts();
-        return;
+        sched_fail_closed_no_runnable();
     }
     SCHED_DBG_OUT((uint8_t)'F');
 
     // Ring0 mechanism: Set up initial process context (mechanism only)
     current_proc = first;
+#if AYKEN_SCHED_FALLBACK
     current_proc->state = PROC_RUNNING;
+#endif
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup
     
@@ -561,6 +692,9 @@ void sched_start(void)
     
     // DIAGNOSTIC: Verify TR is set correctly after TSS setup
     dbg_print_tr();
+
+    // Scheduler is now armed; strict mode no longer allows kernel queue fallback.
+    scheduler_started = 1;
     
     SCHED_DBG_OUT((uint8_t)'@');  // About to switch_to_first
     
@@ -643,16 +777,18 @@ static void sched_yield_core(int reenable_if)
     }
 #endif
 
-    // Ring0 mechanism: Call Ring3 policy for state transitions
+    // Validation fallback path keeps legacy in-kernel transitions.
+#if AYKEN_SCHED_FALLBACK
     if (prev && prev->state == PROC_RUNNING) {
-        // Ring3 policy determines state transition behavior
         prev->state = PROC_READY;
         enqueue_ready(prev);
     }
+#endif
 
     current_proc = next;
-    // Ring3 policy determines state transition behavior
+#if AYKEN_SCHED_FALLBACK
     current_proc->state = PROC_RUNNING;
+#endif
 
     sched_dbg_mark_pid(current_proc->pid);
 
@@ -825,14 +961,14 @@ void sched_block_current(void)
     //     userspace_scheduler_handle_block(prev, prev->wait_obj);
     // }
 
-    // Ring0 mechanism: Call Ring3 policy for state transitions
-    // Ring3 policy determines state transition behavior
+    // Validation fallback path keeps legacy in-kernel transitions.
+#if AYKEN_SCHED_FALLBACK
     prev->state = PROC_BLOCKED;
     
-    // Ring0 mechanism: Call Ring3 policy for blocked queue management
     enqueue_blocked(prev);
+#endif
 
-    // Ring0 mechanism: Call Ring3 policy for next process selection
+    // Ring0 mechanism: select staged/ready next process.
     proc_t *next = sched_select_next();
     if (!next) {
         enable_interrupts();
@@ -841,8 +977,9 @@ void sched_block_current(void)
 
     // Ring0 mechanism: Set up new process and perform context switch (mechanism only)
     current_proc = next;
-    // Ring3 policy determines state transition behavior
+#if AYKEN_SCHED_FALLBACK
     current_proc->state = PROC_RUNNING;
+#endif
     if (current_proc->context.cs == GDT_USER_CODE) {
         if (!current_proc->context.rsp0) {
             fb_print("[PANIC] Ring3 process has no rsp0 (TSS stack)\n");
@@ -861,17 +998,20 @@ void sched_block_current(void)
 
 void sched_wake(proc_t *proc)
 {
-    if (!proc || proc->state != PROC_BLOCKED)
+    if (!proc)
         return;
 
-    // Ring0 mechanism: Call Ring3 policy for wake behavior
+#if AYKEN_SCHED_FALLBACK
+    if (proc->state != PROC_BLOCKED)
+        return;
+
     remove_from_blocked(proc);
-    
-    // Ring3 policy determines state transition behavior
     proc->state = PROC_READY;
     proc->wait_obj = NULL;
-    
-    // Ring0 mechanism: Call Ring3 policy for ready queue management
+#else
+    remove_from_blocked(proc);
+#endif
+
     enqueue_ready(proc);
 }
 
@@ -905,11 +1045,10 @@ void sched_add(proc_t *proc)
     }
     SCHED_DBG_OUT((uint8_t)'\n');
     
-    // Ring0 mechanism: Call Ring3 policy for process addition
-    // Ring3 policy determines state transition behavior
+    // Validation fallback path keeps legacy in-kernel transitions.
+#if AYKEN_SCHED_FALLBACK
     proc->state = PROC_READY;
-    
-    // Ring0 mechanism: Call Ring3 policy for ready queue management
+#endif
     enqueue_ready(proc);
     
     // Debug: marker after enqueue_ready
@@ -922,10 +1061,9 @@ void sched_add_task(void *task)
     if (!p)
         return;
     
-    // Ring0 mechanism: Call Ring3 policy for task addition
-    // Ring3 policy determines state transition behavior
+    // Validation fallback path keeps legacy in-kernel transitions.
+#if AYKEN_SCHED_FALLBACK
     p->state = PROC_READY;
-    
-    // Ring0 mechanism: Call Ring3 policy for ready queue management
+#endif
     enqueue_ready(p);
 }

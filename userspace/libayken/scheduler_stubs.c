@@ -1,38 +1,58 @@
 /**
  * @file scheduler_stubs.c
- * @brief Ring3 Scheduler Policy Implementation for AykenOS Phase 2.2
- * 
- * This file provides the complete Ring3 scheduler policy implementation that
- * is called from the Ring0 scheduler mechanism. This implements Step C: Full
- * Implementation for scheduler policy operating entirely in Ring3.
- * 
- * Requirements:
- * - FR-3.2.1: Scheduling policy must execute entirely in Ring3
- * - FR-3.2.2: Ring0 must provide only context switch mechanism
- * - FR-3.2.3: Process selection algorithms must be implemented in Ring3
- * - FR-3.2.4: Scheduler policy must be replaceable without kernel changes
- * 
- * @author Kenan AY
- * @date January 10, 2026
- * @version 1.0
+ * @brief Ring3 Scheduler Runtime + Mailbox Bridge (Phase 2.6)
+ *
+ * Ring0 no longer calls Ring3 policy functions directly. Ring3 stages the
+ * selected next runnable process through the scheduler mailbox syscall bridge.
+ *
+ * Legacy userspace_scheduler_* stubs are kept behind a compile-time switch
+ * for controlled migration only.
  */
 
 #include "scheduler.h"
 #include "../../kernel/include/proc.h"
+#include "../../kernel/include/sched_mailbox_abi.h"
 #include <stddef.h>
+#include <stdint.h>
+
+#ifndef AYKEN_LEGACY_RING3_SCHED_STUBS
+#define AYKEN_LEGACY_RING3_SCHED_STUBS 0
+#endif
 
 // Ring3 scheduler policy state
 static scheduler_policy_t *current_policy = NULL;
 static scheduler_config_t current_config = {0};
 
+static inline uint64_t ring0_syscall(uint64_t syscall_num,
+                                     uint64_t arg1,
+                                     uint64_t arg2,
+                                     uint64_t arg3,
+                                     uint64_t arg4)
+{
+#if defined(__x86_64__)
+    uint64_t ret;
+    __asm__ volatile(
+        "movq %5, %%r10\n\t"
+        "int $0x80"
+        : "=a"(ret)
+        : "a"(syscall_num), "D"(arg1), "S"(arg2), "d"(arg3), "r"(arg4)
+        : "rcx", "r10", "r11", "memory");
+    return ret;
+#else
+    (void)syscall_num;
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    return 0;
+#endif
+}
+
+#if AYKEN_LEGACY_RING3_SCHED_STUBS
 /**
- * @brief Ring3 scheduler policy stub - select next process
- * 
- * This function implements the Ring3 scheduling policy for process selection.
- * It is called from the Ring0 scheduler mechanism as a stub.
- * 
- * @param ready_queue Pointer to the head of the ready process queue
- * @return Pointer to the selected process, or NULL if no process is ready
+ * @brief Legacy Ring3 scheduler policy stub - select next process
+ *
+ * Deprecated: strict-mode path uses scheduler_stage_next() mailbox bridge.
  */
 proc_t* userspace_scheduler_select_next(proc_t *ready_queue)
 {
@@ -51,12 +71,9 @@ proc_t* userspace_scheduler_select_next(proc_t *ready_queue)
 }
 
 /**
- * @brief Ring3 scheduler policy stub - enqueue ready process
- * 
- * This function implements the Ring3 scheduling policy for process enqueueing.
- * It is called from the Ring0 scheduler mechanism as a stub.
- * 
- * @param proc Pointer to the process to enqueue
+ * @brief Legacy Ring3 scheduler policy stub - enqueue ready process
+ *
+ * Deprecated: strict-mode path uses scheduler_stage_next() mailbox bridge.
  */
 void userspace_scheduler_enqueue_ready(proc_t *proc)
 {
@@ -76,13 +93,9 @@ void userspace_scheduler_enqueue_ready(proc_t *proc)
 }
 
 /**
- * @brief Ring3 scheduler policy stub - handle process blocking
- * 
- * This function implements the Ring3 scheduling policy for process blocking.
- * It is called from the Ring0 scheduler mechanism as a stub.
- * 
- * @param proc Pointer to the process that is blocking
- * @param wait_obj Pointer to the object the process is waiting on
+ * @brief Legacy Ring3 scheduler policy stub - handle process blocking
+ *
+ * Deprecated: strict-mode path uses scheduler_stage_next() mailbox bridge.
  */
 void userspace_scheduler_handle_block(proc_t *proc, void *wait_obj)
 {
@@ -100,6 +113,7 @@ void userspace_scheduler_handle_block(proc_t *proc, void *wait_obj)
     // Note: The actual blocking mechanism is handled by Ring0
     // This is just for policy-specific decisions
 }
+#endif /* AYKEN_LEGACY_RING3_SCHED_STUBS */
 
 /**
  * @brief Register a scheduler policy
@@ -187,6 +201,19 @@ int scheduler_request_schedule(void)
 {
     // This would interface with Ring0 via syscalls in a full implementation
     // For now, this is a stub that would trigger Ring0 scheduling
+    return 0;
+}
+
+int scheduler_stage_next(proc_t *proc)
+{
+    if (!proc) {
+        return SCHED_ERROR_INVALID_PROC;
+    }
+
+    uint64_t rc = ring0_syscall(SYS_V2_SCHED_STAGE_NEXT, (uint64_t)proc, 0, 0, 0);
+    if ((int64_t)rc < 0) {
+        return SCHED_ERROR_SYSCALL_FAILED;
+    }
     return 0;
 }
 

@@ -17,6 +17,10 @@
 #include <stdint.h>
 #include "../include/proc.h"
 
+#ifndef AYKEN_SCHED_FALLBACK
+#define AYKEN_SCHED_FALLBACK 0
+#endif
+
 // ============================================================================
 // RING0 SCHEDULER MECHANISM API (NO POLICY)
 // ============================================================================
@@ -60,9 +64,12 @@ void remove_from_ready_queue(proc_t *p);
 
 // Ring0 mechanism: Add task to scheduler (calls Ring3 policy)
 void sched_add_task(void *task);
+// Ring3 provides a next-process hint; Ring0 is final arbiter.
+void sched_stage_next(proc_t *next_proc);
 
 // Ring0 mechanism state: Current running process
 extern proc_t *current_proc;
 extern volatile uint32_t sched_irq_user_ctx_saved;
+int sched_fallback_enabled(void);
 
 #endif // AYKEN_SCHED_H

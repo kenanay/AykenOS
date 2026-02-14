@@ -145,6 +145,24 @@ proc_t* proc_find_by_pid(int pid)
     return NULL;
 }
 
+int proc_is_registered(proc_t *proc)
+{
+    if (!proc) {
+        return 0;
+    }
+
+    if ((((uintptr_t)proc) & (sizeof(void *) - 1u)) != 0u) {
+        return 0;
+    }
+
+    for (int i = 0; i < MAX_PROCS; ++i) {
+        if (proc_table[i] == proc) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 
 typedef struct {
     unsigned char e_ident[16];

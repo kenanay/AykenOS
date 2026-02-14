@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include "../arch/x86_64/interrupts.h"
 #include "../drivers/console/fb_console.h"
+#include "../include/sched_mailbox_abi.h"
+#include "../sched/sched.h"
 #include "syscall_v2.h"  // Include v2 syscall interface
 
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
@@ -59,6 +61,22 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     uint64_t result;
+
+    // Scheduler mailbox bridge: Ring3 stages the next runnable process for strict mode.
+    if (syscall_num == SYS_V2_SCHED_STAGE_NEXT) {
+        proc_t *next_proc = (proc_t *)(uintptr_t)arg1;
+        if (!next_proc) {
+            return (uint64_t)-22; // -EINVAL
+        }
+        if (!proc_is_registered(next_proc)) {
+            return (uint64_t)-22; // -EINVAL
+        }
+        if (next_proc->state != PROC_READY && next_proc->state != PROC_RUNNING) {
+            return (uint64_t)-22; // -EINVAL
+        }
+        sched_stage_next(next_proc);
+        return 0;
+    }
     
     // Route based on Final Syscall Numbering Plan
     if (syscall_num >= SYS_V2_BASE && syscall_num <= SYS_V2_LAST) {
