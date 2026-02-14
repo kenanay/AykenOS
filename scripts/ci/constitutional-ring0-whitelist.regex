@@ -1,0 +1,13 @@
+# Ring0 kernel tracked file whitelist (regex, one per line).
+# Any tracked file under kernel/ that does not match one of these rules fails constitutional gate.
+
+^kernel/arch(/|$)
+^kernel/drivers(/|$)
+^kernel/fs(/|$)
+^kernel/include(/|$)
+^kernel/kernel\.c$
+^kernel/lib(/|$)
+^kernel/mm(/|$)
+^kernel/proc(/|$)
+^kernel/sched(/|$)
+^kernel/sys(/|$)

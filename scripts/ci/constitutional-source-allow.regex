@@ -1,0 +1,12 @@
+# Optional constitutional source allowlist.
+# Supported forms:
+#   1) <regex>                      -> global allow
+#   2) <file_regex>:<line_regex>    -> scoped allow
+#
+# Keep this file minimal. Every allow entry must include a technical rationale.
+
+# Keep empty unless a time-boxed waiver is approved.
+# No active allow rules.
+
+# Example:
+# ^kernel/fs/vfs\.c$:\bvfs_open\s*\(

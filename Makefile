@@ -12,9 +12,10 @@
 KERNEL_CC = clang --target=x86_64-elf
 KERNEL_LD = ld.lld
 
-KERNEL_CFLAGS = -ffreestanding -m64 -Wall -Wextra -Ikernel/include -Iuserspace/libayken
+KERNEL_CFLAGS = -ffreestanding -m64 -Wall -Wextra -Ikernel/include
 KERNEL_CFLAGS += -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector
 KERNEL_CFLAGS += -mno-red-zone
+KERNEL_CFLAGS += -MMD -MP
 KERNEL_ASMFLAGS = -Ikernel/include/generated/ -Ikernel/include/
 
 # ------------------------------------------------------------
@@ -32,6 +33,17 @@ endif
 AYKEN_DEBUG_IRQ ?= 0
 AYKEN_DEBUG_SCHED ?= 0
 VALIDATION_WERROR ?= 0
+AYKEN_SCHED_FALLBACK ?= 0
+
+ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
+$(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
+endif
+
+ifeq ($(AYKEN_SCHED_FALLBACK),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_SCHED_FALLBACK=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+endif
 
 ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
@@ -54,10 +66,12 @@ ifeq ($(AYKEN_DEBUG_SCHED),1)
 KERNEL_CFLAGS += -DAYKEN_DEBUG_SCHED=1
 KERNEL_ASMFLAGS += -DAYKEN_DEBUG_SCHED=1
 endif
+KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
 KERNEL_LDFLAGS = -nostdlib -z max-page-size=0x1000
+KERNEL_MAP ?=
 
 KERNEL_ELF = kernel.elf
 CTX_SWITCH_ASM = kernel/arch/x86_64/context_switch.asm
@@ -79,19 +93,18 @@ $(shell find $(1) -type f -name "$(2)")
 endef
 endif
 
-KERNEL_C_SOURCES   = $(call find_files,$(KERNEL_DIR),*.c)
+KERNEL_C_SOURCES_ALL = $(call find_files,$(KERNEL_DIR),*.c)
+KERNEL_C_TEST_SOURCES = $(filter %_test.c,$(KERNEL_C_SOURCES_ALL))
+# Ring0 topology enforces mechanism/policy separation; no default source exclusion hacks.
+KERNEL_C_EXCLUDE_SOURCES =
+KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOURCES),$(KERNEL_C_SOURCES_ALL))
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 
-# Userspace library sources (Ring3 VFS implementation)
-USERSPACE_DIR = userspace/libayken
-USERSPACE_C_SOURCES = $(call find_files,$(USERSPACE_DIR),*.c)
-
-KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o) \
-	userspace/libayken/scheduler_stubs.o \
-	userspace/libayken/devfs.o \
-	userspace/libayken/vfs.o \
-	userspace/libayken/vfs_test.o
+# Kernel image contains Ring0 code only.
+# Ring3 userspace components are built via separate userspace targets.
+KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o)
+KERNEL_DEPS = $(KERNEL_OBJS:.o=.d)
 
 # Rust workspace (userspace runtime/dispatcher)
 USERSPACE_RUST_DIR = userspace
@@ -103,6 +116,24 @@ RUN_ID ?= $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 
 RUN_ID := $(RUN_ID)
 EVIDENCE_RUN_DIR := $(EVIDENCE_ROOT)/run-$(RUN_ID)
 CI_TARGETS ?= kernel.elf
+ABI_INIT_BASELINE ?= 0
+CONSTITUTIONAL_STRICT ?= 1
+CONSTITUTIONAL_STRICT_FLAG = $(if $(filter 1,$(CONSTITUTIONAL_STRICT)),--strict,--no-strict)
+WORKSPACE_STRICT ?= 1
+WORKSPACE_STRICT_FLAG = $(if $(filter 1,$(WORKSPACE_STRICT)),--strict,--no-strict)
+PERF_INIT_BASELINE ?= 0
+PERF_ENV_MISMATCH_POLICY ?= fail
+PERF_QEMU_TIMEOUT ?= 30
+PERF_KERNEL_PROFILE ?= validation
+PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
+PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-latest-x64
+PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
+PERF_CI_IMAGE_DIGEST ?= unknown
+PERF_VARIANCE_RUNS ?= 5
+PERF_VARIANCE_WARMUP ?= 1
+PERF_VARIANCE_QEMU_TIMEOUT ?= 12
+PERF_VARIANCE_STRICT_MARKERS ?= 1
+PERF_VARIANCE_FORCE_EFI_REBUILD ?= 0
 
 
 # ------------------------------------------------------------
@@ -179,9 +210,13 @@ $(PROFILE_STAMP): FORCE
 $(KERNEL_OBJS): $(PROFILE_STAMP)
 
 $(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP)
-	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) -o $@ $(KERNEL_OBJS)
+	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
 
 # Generate NASM ABI include from single C ABI source.
+.PHONY: generate-abi
+generate-abi: $(ABI_INC)
+	@echo "ABI include generated: $(ABI_INC)"
+
 $(ABI_INC): $(ABI_H)
 	@mkdir -p $(dir $@)
 	@echo "; AUTO-GENERATED. DO NOT EDIT." > $@
@@ -211,6 +246,8 @@ kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 # S -> .o (kernel/arch/x86_64/*.S) - GNU assembler
 %.o: %.S
 	$(KERNEL_CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+-include $(KERNEL_DEPS)
 
 
 # ------------------------------------------------------------
@@ -264,10 +301,10 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC)
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC)
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
@@ -438,24 +475,43 @@ ci: check-deps ci-gate-boundary ci-gate-hygiene validate-full
 	@echo "CI validation completed successfully!"
 
 # Freeze suite target (strict): calls all declared freeze gates.
-# Planned gates are intentionally hard-fail stubs until implemented.
-ci-freeze: ci-gate-abi ci-gate-boundary ci-gate-workspace ci-gate-hygiene ci-gate-performance
+ci-freeze-guard:
+	@if [ "$(AYKEN_SCHED_FALLBACK)" != "0" ]; then \
+		echo "ERROR: ci-freeze requires AYKEN_SCHED_FALLBACK=0 (current=$(AYKEN_SCHED_FALLBACK))"; \
+		exit 2; \
+	fi
+
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # CI boundary gate with evidence collection
 ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/meta"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
+	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
+		"$(RUN_ID)" "$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$(EVIDENCE_RUN_DIR)/meta/run.json"
+	@git rev-parse HEAD > "$(EVIDENCE_RUN_DIR)/meta/git.txt" 2>/dev/null || true
+	@{ \
+		echo "clang: $$(clang --version 2>/dev/null | head -n1 || echo NA)"; \
+		echo "ld.lld: $$(ld.lld --version 2>/dev/null | head -n1 || echo NA)"; \
+		echo "nasm: $$(nasm -v 2>/dev/null || echo NA)"; \
+	} > "$(EVIDENCE_RUN_DIR)/meta/toolchain.txt"
 
 ci-gate-boundary: ci-evidence-dir
 	@echo "== CI GATE BOUNDARY =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "targets: $(CI_TARGETS)"
-	@$(MAKE) KERNEL_PROFILE=validation guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1
+	@rm -f "$(KERNEL_ELF)" "$(EVIDENCE_RUN_DIR)/artifacts/kernel.map"
+	@$(MAKE) KERNEL_PROFILE=validation KERNEL_MAP="$(EVIDENCE_RUN_DIR)/artifacts/kernel.map" guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1
 	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
 		"$(RUN_ID)" "$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$(EVIDENCE_RUN_DIR)/meta/run.json"
 	@git rev-parse HEAD > "$(EVIDENCE_RUN_DIR)/meta/git.txt" 2>/dev/null || true
@@ -489,18 +545,28 @@ ci-summarize:
 	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
 	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); print(f"ERROR: summary verdict is {v} ({p})") if v != "PASS" else None; sys.exit(0 if v == "PASS" else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
 
-# Planned gates: fail closed until implemented.
-ci-gate-abi:
-	@echo "PLANNED GATE: ci-gate-abi is not implemented yet." >&2
-	@echo "Implement ABI parity/hash checks before enabling freeze suite." >&2
-	@exit 2
+# ABI gate (implemented): deterministic generation + baseline lock compare.
+ci-gate-abi: ci-evidence-dir
+	@echo "== CI GATE ABI =="
+	@echo "run_id: $(RUN_ID)"
+	@if [ "$(ABI_INIT_BASELINE)" = "1" ]; then \
+		./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi" --init-baseline; \
+	else \
+		./scripts/ci/gate_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abi"; \
+	fi
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/abi/report.json" "$(EVIDENCE_RUN_DIR)/reports/abi.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ABI evidence at $(EVIDENCE_RUN_DIR)"
 
-ci-gate-workspace:
-	@echo "PLANNED GATE: ci-gate-workspace is not implemented yet." >&2
-	@echo "Implement workspace test/lint/repro checks before enabling freeze suite." >&2
-	@exit 2
+ci-gate-workspace: ci-evidence-dir
+	@echo "== CI GATE WORKSPACE =="
+	@echo "run_id: $(RUN_ID)"
+	@./scripts/ci/gate_workspace.sh $(WORKSPACE_STRICT_FLAG) --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/workspace"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/workspace/report.json" "$(EVIDENCE_RUN_DIR)/reports/workspace.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: workspace evidence at $(EVIDENCE_RUN_DIR)"
 
-ci-gate-hygiene:
+ci-gate-hygiene: ci-evidence-dir
 	@echo "== CI GATE HYGIENE =="
 	@echo "run_id: $(RUN_ID)"
 	@./scripts/ci/gate_hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
@@ -508,10 +574,67 @@ ci-gate-hygiene:
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-tooling-isolation: ci-evidence-dir
+	@echo "== CI GATE TOOLING ISOLATION =="
+	@echo "run_id: $(RUN_ID)"
+	@./scripts/ci/gate_tooling_isolation.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation/report.json" "$(EVIDENCE_RUN_DIR)/reports/tooling-isolation.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: tooling-isolation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-constitutional: ci-evidence-dir
+	@echo "== CI GATE CONSTITUTIONAL =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "ayken_sched_fallback: $(AYKEN_SCHED_FALLBACK)"
+	@AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" ./scripts/ci/gate_constitutional.sh $(CONSTITUTIONAL_STRICT_FLAG) --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/constitutional"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/constitutional/report.json" "$(EVIDENCE_RUN_DIR)/reports/constitutional.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: constitutional evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-performance:
-	@echo "PLANNED GATE: ci-gate-performance is not implemented yet." >&2
-	@echo "Implement baseline/env hash + regression checks before enabling freeze suite." >&2
-	@exit 2
+	@echo "== CI GATE PERFORMANCE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_baseline_authority: $(PERF_BASELINE_AUTHORITY)"
+	@echo "perf_ci_image_digest: $(PERF_CI_IMAGE_DIGEST)"
+	@echo "perf_require_ci_for_baseline_init: $(PERF_REQUIRE_CI_FOR_BASELINE_INIT)"
+	@echo "ayken_sched_fallback: $(AYKEN_SCHED_FALLBACK)"
+	@if [ "$(PERF_INIT_BASELINE)" = "1" ]; then \
+		AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
+		PERF_BASELINE_AUTHORITY="$(PERF_BASELINE_AUTHORITY)" \
+		PERF_REQUIRE_CI_FOR_BASELINE_INIT="$(PERF_REQUIRE_CI_FOR_BASELINE_INIT)" \
+		PERF_CI_IMAGE_DIGEST="$(PERF_CI_IMAGE_DIGEST)" \
+		./scripts/ci/gate_performance.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
+			--env-mismatch-policy "$(PERF_ENV_MISMATCH_POLICY)" \
+				--baseline-file "$(PERF_BASELINE_FILE)" \
+				--init-baseline; \
+	else \
+		AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
+		PERF_BASELINE_AUTHORITY="$(PERF_BASELINE_AUTHORITY)" \
+		PERF_REQUIRE_CI_FOR_BASELINE_INIT="$(PERF_REQUIRE_CI_FOR_BASELINE_INIT)" \
+		PERF_CI_IMAGE_DIGEST="$(PERF_CI_IMAGE_DIGEST)" \
+		./scripts/ci/gate_performance.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
+			--env-mismatch-policy "$(PERF_ENV_MISMATCH_POLICY)" \
+			--baseline-file "$(PERF_BASELINE_FILE)"; \
+	fi
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: performance evidence at $(EVIDENCE_RUN_DIR)"
+
+perf-preempt-variance-local:
+	@echo "== LOCAL PREEMPT VARIANCE =="
+	@./scripts/ci/local_preempt_variance.sh \
+		--runs "$(PERF_VARIANCE_RUNS)" \
+		--warmup "$(PERF_VARIANCE_WARMUP)" \
+		--qemu-timeout "$(PERF_VARIANCE_QEMU_TIMEOUT)" \
+		--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+		--strict-markers "$(PERF_VARIANCE_STRICT_MARKERS)" \
+		--force-efi-rebuild "$(PERF_VARIANCE_FORCE_EFI_REBUILD)"
 
 # Stability and safety targets
 freeze-stable:
@@ -575,14 +698,25 @@ help:
 	@echo ""
 	@echo "CI/CD targets:"
 	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
-	@echo "  ci-freeze    - Strict freeze suite (includes planned-gate stubs)"
+	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"
+	@echo "    (hard guard: AYKEN_SCHED_FALLBACK must be 0)"
 	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
 	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
+	@echo "  ci-gate-tooling-isolation - Fail-closed guard: perf/preempt tooling PRs cannot touch kernel/"
+	@echo "  ci-gate-constitutional - Constitutional freeze gate (strict-mode symbol/path/source/waiver/contract checks)"
+	@echo "    (override strict locally: CONSTITUTIONAL_STRICT=0)"
+	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
-	@echo "  ci-gate-abi/workspace/performance - Planned hard-fail stubs"
+	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
+	@echo "  ci-gate-performance - Performance baseline/env hash gate"
+	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
+	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
+	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
+	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
+	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-performance help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

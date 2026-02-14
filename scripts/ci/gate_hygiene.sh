@@ -9,6 +9,10 @@ usage() {
   cat <<'USAGE'
 Usage:
   scripts/ci/gate_hygiene.sh --evidence-dir evidence/run-<id>/gates/hygiene [--max-size-bytes 5000000]
+    [--binary-allowlist scripts/ci/hygiene-binary-allow.regex]
+    [--largefile-allowlist scripts/ci/hygiene-largefile-allow.regex]
+    [--source-deny scripts/ci/hygiene-source-deny.regex]
+    [--source-allow scripts/ci/hygiene-source-allow.regex]
 
 Exit codes:
   0: pass
@@ -21,6 +25,8 @@ EVIDENCE_DIR=""
 MAX_SIZE_BYTES=5000000
 BINARY_ALLOWLIST="${ROOT}/scripts/ci/hygiene-binary-allow.regex"
 LARGE_ALLOWLIST="${ROOT}/scripts/ci/hygiene-largefile-allow.regex"
+SOURCE_DENY="${ROOT}/scripts/ci/hygiene-source-deny.regex"
+SOURCE_ALLOW="${ROOT}/scripts/ci/hygiene-source-allow.regex"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,6 +44,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --largefile-allowlist)
       LARGE_ALLOWLIST="$2"
+      shift 2
+      ;;
+    --source-deny)
+      SOURCE_DENY="$2"
+      shift 2
+      ;;
+    --source-allow)
+      SOURCE_ALLOW="$2"
       shift 2
       ;;
     -h|--help)
@@ -75,6 +89,7 @@ FORBIDDEN_TXT="${EVIDENCE_DIR}/forbidden-tracked.txt"
 TRACKED_BIN_TXT="${EVIDENCE_DIR}/tracked-binary.txt"
 OVERSIZED_TXT="${EVIDENCE_DIR}/oversized-tracked.txt"
 DIRTY_TRACKED_TXT="${EVIDENCE_DIR}/dirty-tracked.txt"
+SOURCE_HITS_TXT="${EVIDENCE_DIR}/source-deny-hits.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
@@ -86,6 +101,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${TRACKED_BIN_TXT}"
 : > "${OVERSIZED_TXT}"
 : > "${DIRTY_TRACKED_TXT}"
+: > "${SOURCE_HITS_TXT}"
 : > "${VIOLATIONS_TXT}"
 
 git -C "${ROOT}" ls-files > "${TRACKED_TXT}"
@@ -113,6 +129,34 @@ is_allowlisted_path() {
       return 0
     fi
   done < "${allow_file}"
+  return 1
+}
+
+is_source_allowlisted() {
+  local target_path="$1"
+  local source_line="$2"
+  local line file_regex source_regex
+
+  [[ -f "${SOURCE_ALLOW}" ]] || return 1
+  while IFS= read -r line; do
+    line="${line%%#*}"
+    line="$(echo -n "${line}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -z "${line}" ]] && continue
+
+    if [[ "${line}" == *:* ]]; then
+      file_regex="${line%%:*}"
+      source_regex="${line#*:}"
+      if echo "${target_path}" | grep -E -q -- "${file_regex}" && \
+         echo "${source_line}" | grep -E -q -- "${source_regex}"; then
+        return 0
+      fi
+    else
+      if echo "${source_line}" | grep -E -q -- "${line}"; then
+        return 0
+      fi
+    fi
+  done < "${SOURCE_ALLOW}"
+
   return 1
 }
 
@@ -184,7 +228,60 @@ awk -F '\t' -v max="${MAX_SIZE_BYTES}" '$1+0 > max {print $0}' "${TRACKED_SIZES_
   fi
 done
 
-# 4) Consolidate all violations with reason prefixes.
+# 4) Source deny scan (early blocker for boundary-like naming leaks).
+if [[ -f "${SOURCE_DENY}" ]]; then
+  SOURCE_GREP_TMP="${EVIDENCE_DIR}/source-deny-grep.tmp"
+  : > "${SOURCE_GREP_TMP}"
+
+  while IFS= read -r path; do
+    case "${path}" in
+      # Skip vendored fixture trees.
+      binutils-2.42/*|gcc-14.2.0/*)
+        continue
+        ;;
+      kernel/*|userspace/libayken/*)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+    case "${path}" in
+      *.c|*.h|*.S|*.s|*.asm|*.inc|*.ld)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+
+    local_path="${ROOT}/${path}"
+    [[ -f "${local_path}" ]] || continue
+
+    while IFS= read -r source_pat; do
+      source_pat="${source_pat%%#*}"
+      source_pat="$(echo -n "${source_pat}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      [[ -z "${source_pat}" ]] && continue
+
+      grep -nE -- "${source_pat}" "${local_path}" > "${SOURCE_GREP_TMP}" || true
+      while IFS= read -r hit; do
+        [[ -z "${hit}" ]] && continue
+        line_no="${hit%%:*}"
+        source_line="${hit#*:}"
+        if is_source_allowlisted "${path}" "${source_line}"; then
+          continue
+        fi
+        snippet="$(echo -n "${source_line}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        if [[ ${#snippet} -gt 160 ]]; then
+          snippet="${snippet:0:157}..."
+        fi
+        echo "${path}:${line_no}:pattern=${source_pat}:line=${snippet}" >> "${SOURCE_HITS_TXT}"
+      done < "${SOURCE_GREP_TMP}"
+    done < "${SOURCE_DENY}"
+  done < "${TRACKED_TXT}"
+
+  rm -f "${SOURCE_GREP_TMP}"
+fi
+
+# 5) Consolidate all violations with reason prefixes.
 if [[ -s "${FORBIDDEN_TXT}" ]]; then
   while IFS= read -r line; do
     [[ -z "${line}" ]] && continue
@@ -213,6 +310,13 @@ if [[ -s "${DIRTY_TRACKED_TXT}" ]]; then
   done < "${DIRTY_TRACKED_TXT}"
 fi
 
+if [[ -s "${SOURCE_HITS_TXT}" ]]; then
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    echo "source_deny:${line}" >> "${VIOLATIONS_TXT}"
+  done < "${SOURCE_HITS_TXT}"
+fi
+
 NOW="$(ci_now_utc)"
 GIT_SHA="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo "NO_GIT")"
 TRACKED_COUNT="$(wc -l < "${TRACKED_TXT}" | tr -d ' ')"
@@ -220,6 +324,7 @@ FORBIDDEN_COUNT="$(wc -l < "${FORBIDDEN_TXT}" | tr -d ' ')"
 TRACKED_BIN_COUNT="$(wc -l < "${TRACKED_BIN_TXT}" | tr -d ' ')"
 OVERSIZED_COUNT="$(wc -l < "${OVERSIZED_TXT}" | tr -d ' ')"
 DIRTY_TRACKED_COUNT="$(wc -l < "${DIRTY_TRACKED_TXT}" | tr -d ' ')"
+SOURCE_HITS_COUNT="$(wc -l < "${SOURCE_HITS_TXT}" | tr -d ' ')"
 VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ')"
 
 {
@@ -228,11 +333,14 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ')"
   echo "max_size_bytes=${MAX_SIZE_BYTES}"
   echo "binary_allowlist=${BINARY_ALLOWLIST}"
   echo "largefile_allowlist=${LARGE_ALLOWLIST}"
+  echo "source_deny=${SOURCE_DENY}"
+  echo "source_allow=${SOURCE_ALLOW}"
   echo "tracked_count=${TRACKED_COUNT}"
   echo "forbidden_tracked_count=${FORBIDDEN_COUNT}"
   echo "tracked_binary_count=${TRACKED_BIN_COUNT}"
   echo "oversized_tracked_count=${OVERSIZED_COUNT}"
   echo "dirty_tracked_count=${DIRTY_TRACKED_COUNT}"
+  echo "source_deny_hits_count=${SOURCE_HITS_COUNT}"
   echo "violations_count=${VIOLATIONS_COUNT}"
 } > "${META_TXT}"
 
@@ -268,6 +376,7 @@ out = {
     "tracked_binary": read_lines("tracked-binary.txt"),
     "oversized_tracked": read_lines("oversized-tracked.txt"),
     "dirty_tracked": read_lines("dirty-tracked.txt"),
+    "source_deny_hits": read_lines("source-deny-hits.txt"),
     "violations": read_lines("violations.txt"),
 }
 print(json.dumps(out, indent=2, sort_keys=True))

@@ -1,0 +1,29 @@
+# Constitutional source deny rules for kernel Ring0 code (regex, one per line).
+# Goal: detect policy leakage and POSIX-like API drift in kernel sources.
+
+# POSIX / libc call sites are forbidden in Ring0 mechanism code.
+\b(open|close|read|write|lseek|stat|fstat|mmap|munmap|fork|execve|socket|connect|accept)\s*\(
+\b(fopen|fclose|fread|fwrite|fprintf|fscanf|printf)\s*\(
+
+# Legacy Ring0 policy-style VFS/DevFS entry points must not remain in default path.
+\bvfs_(open|read|write|mkdir|rmdir|stat|unlink|mount|unmount)\s*\(
+\bvfs_(init|seek|close)\s*\(
+\bdevfs_(register_device|read|write|ioctl|close)\s*\(
+
+# Ring0 must not directly include userspace headers.
+^\s*#\s*include\s+["<].*userspace/
+^\s*#\s*include\s+["<]\.\./\.\./userspace/
+
+# Ring0 must not call userspace bridge APIs directly.
+\buserspace_[A-Za-z0-9_]+\s*\(
+
+# Policy semantics should not be implemented in Ring0 sources.
+\bpolicy\b
+\bdecision\b
+\bheuristic\b
+\bagent\b
+\bllm\b
+
+# Belt-and-braces against libc allocator naming leaks.
+^\s*(static\s+)?(inline\s+)?[^;]*\bmalloc\s*\(
+^\s*(static\s+)?(inline\s+)?[^;]*\bfree\s*\(
