@@ -107,6 +107,13 @@ record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
 }
 
+SYSCALL_HEADER_CHANGED=0
+BASELINE_FILE_CHANGED=0
+BASELINE_REL_FOR_DIFF="${BASELINE_FILE}"
+if [[ "${BASELINE_REL_FOR_DIFF}" == "${ROOT}/"* ]]; then
+  BASELINE_REL_FOR_DIFF="${BASELINE_REL_FOR_DIFF#${ROOT}/}"
+fi
+
 resolve_diff_range() {
   if [[ -n "${DIFF_RANGE}" ]]; then
     echo "${DIFF_RANGE}"
@@ -219,12 +226,25 @@ if [[ "${INIT_BASELINE}" -eq 0 ]]; then
         echo "${path}" >> "${ABI_AFFECTING_TXT}"
       fi
     done < "${CHANGED_TXT}"
+
+    if grep -Fxq "${SYSCALL_H_REL}" "${CHANGED_TXT}" 2>/dev/null; then
+      SYSCALL_HEADER_CHANGED=1
+    fi
+    if grep -Fxq "${BASELINE_REL_FOR_DIFF}" "${CHANGED_TXT}" 2>/dev/null; then
+      BASELINE_FILE_CHANGED=1
+    fi
+
     if [[ ! -s "${ABI_AFFECTING_TXT}" ]]; then
       emit_skip_report "${RANGE}"
       echo "abi: PASS (SKIP no ABI-affecting changes)"
       exit 0
     fi
   fi
+fi
+
+# Contract guard: syscall contract edits must carry baseline lock updates.
+if [[ "${INIT_BASELINE}" -eq 0 && "${SYSCALL_HEADER_CHANGED}" -eq 1 && "${BASELINE_FILE_CHANGED}" -eq 0 ]]; then
+  record_violation "baseline_update_required:${BASELINE_REL_FOR_DIFF}:because_${SYSCALL_H_REL}_changed"
 fi
 
 # 1) Regenerate ABI include from canonical header.
