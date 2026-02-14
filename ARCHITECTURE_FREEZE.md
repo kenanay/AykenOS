@@ -297,9 +297,9 @@ Baseline Commit:  [SHA to be set at freeze start]
 Compiler:         rustc 1.76.0 / gcc 14.2.0
 Target:           x86_64-unknown-none
 QEMU:             8.2.0
-Host CPU:         [Specific model]
-Authority:        github-hosted-ubuntu-latest-x64
-CI Image Digest:  [Pinned runner image/build digest]
+Host CPU:         Self-hosted aykenos-perf01 (pinned hardware)
+Authority:        self-hosted-aykenos-perf01-x64
+CI Image Digest:  self-hosted-${hostname}-${kernel_version}
 ```
 
 **Thresholds:**

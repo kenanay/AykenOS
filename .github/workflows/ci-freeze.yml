@@ -19,12 +19,12 @@ on:
 jobs:
   freeze:
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, aykenos-perf01]
     timeout-minutes: 30
     env:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
+      PERF_BASELINE_AUTHORITY: "self-hosted-aykenos-perf01-x64"
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
@@ -34,11 +34,8 @@ jobs:
       - name: Resolve pinned CI image digest
         run: |
           set -euo pipefail
-          DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
-          if [ -z "${DIGEST}" ] || [ "${DIGEST}" = "unknown" ]; then
-            echo "Unable to resolve CI image digest"
-            exit 1
-          fi
+          # Self-hosted runner: use hostname + kernel as digest
+          DIGEST="self-hosted-$(hostname)-$(uname -r)"
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
       - name: Install toolchain dependencies
         run: |
@@ -60,13 +57,13 @@ jobs:
 
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, aykenos-perf01]
     timeout-minutes: 30
     env:
       CI: "true"
       RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_INIT_BASELINE: "1"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
+      PERF_BASELINE_AUTHORITY: "self-hosted-aykenos-perf01-x64"
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
@@ -85,7 +82,8 @@ jobs:
           if [ -n "${INPUT_DIGEST}" ]; then
             DIGEST="${INPUT_DIGEST}"
           else
-            DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+            # Self-hosted runner: use hostname + kernel as digest
+            DIGEST="self-hosted-$(hostname)-$(uname -r)"
           fi
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
       - name: Validate baseline init digest
@@ -112,3 +110,20 @@ jobs:
           set -euo pipefail
           ls -la scripts/ci/perf-baseline.lock.json
           sed -n '1,120p' scripts/ci/perf-baseline.lock.json
+      - name: Debug artifact paths before upload
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          echo "=== Lock file check ==="
+          ls -la scripts/ci/perf-baseline.lock.json || echo "MISSING: perf-baseline.lock.json"
+          echo "=== Evidence directory check ==="
+          find evidence -maxdepth 4 -type f 2>/dev/null | head -20 || echo "MISSING: evidence directory"
+      - name: Upload performance evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline-evidence
+          if-no-files-found: error
+          path: |
+            scripts/ci/perf-baseline.lock.json
+            evidence/run-*/gates/performance/**
