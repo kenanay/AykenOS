@@ -9,8 +9,10 @@
 # 1) Kernel toolchain
 # ------------------------------------------------------------
 
-KERNEL_CC = clang --target=x86_64-elf
-KERNEL_LD = ld.lld
+KERNEL_CC_BIN = clang
+KERNEL_CC = $(KERNEL_CC_BIN) --target=x86_64-elf
+KERNEL_LD_BIN = ld.lld
+KERNEL_LD = $(KERNEL_LD_BIN)
 
 KERNEL_CFLAGS = -ffreestanding -m64 -Wall -Wextra -Ikernel/include
 KERNEL_CFLAGS += -mcmodel=large -fno-pic -fno-omit-frame-pointer -fno-stack-protector
@@ -146,8 +148,10 @@ PERF_VARIANCE_FORCE_EFI_REBUILD ?= 0
 #
 # Windows + WSL senaryosunda genelde clang daha rahat.
 
-EFI_CC = clang
-EFI_LD = lld-link
+EFI_CC_BIN = clang
+EFI_CC = $(EFI_CC_BIN)
+EFI_LD_BIN = lld-link
+EFI_LD = $(EFI_LD_BIN)
 
 # gnu-efi veya EDK2 header dizinlerin varsa buraya ekle:
 # Örn (Linux, gnu-efi için):
@@ -353,14 +357,17 @@ guard-context-offsets:
 check-deps:
 	@echo "Checking build dependencies..."
 	@missing_tools=""; \
-	if ! command -v $(KERNEL_CC) >/dev/null 2>&1; then \
-		missing_tools="$$missing_tools $(KERNEL_CC)"; \
+	if ! command -v $(KERNEL_CC_BIN) >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools $(KERNEL_CC_BIN)"; \
 	fi; \
-	if ! command -v $(KERNEL_LD) >/dev/null 2>&1; then \
-		missing_tools="$$missing_tools $(KERNEL_LD)"; \
+	if ! command -v $(KERNEL_LD_BIN) >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools $(KERNEL_LD_BIN)"; \
 	fi; \
-	if ! command -v $(EFI_CC) >/dev/null 2>&1; then \
-		missing_tools="$$missing_tools $(EFI_CC)"; \
+	if ! command -v $(EFI_CC_BIN) >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools $(EFI_CC_BIN)"; \
+	fi; \
+	if ! command -v $(EFI_LD_BIN) >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools $(EFI_LD_BIN)"; \
 	fi; \
 	if ! command -v nasm >/dev/null 2>&1; then \
 		missing_tools="$$missing_tools nasm"; \
@@ -381,13 +388,13 @@ install-deps:
 		powershell -ExecutionPolicy Bypass -File tools/setup/setup_and_validate.ps1; \
 	elif command -v apt >/dev/null 2>&1; then \
 		echo "Using apt package manager..."; \
-		sudo apt update && sudo apt install -y gcc-multilib nasm clang make qemu-system-x86; \
+		sudo apt update && sudo apt install -y gcc-multilib nasm clang lld make qemu-system-x86; \
 	elif command -v yum >/dev/null 2>&1; then \
 		echo "Using yum package manager..."; \
-		sudo yum install -y gcc nasm clang make qemu-system-x86; \
+		sudo yum install -y gcc nasm clang lld make qemu-system-x86; \
 	elif command -v pacman >/dev/null 2>&1; then \
 		echo "Using pacman package manager..."; \
-		sudo pacman -S --noconfirm gcc nasm clang make qemu; \
+		sudo pacman -S --noconfirm gcc nasm clang lld make qemu; \
 	else \
 		echo "No supported package manager found."; \
 		echo "Please install dependencies manually or use WSL2 with Ubuntu."; \
