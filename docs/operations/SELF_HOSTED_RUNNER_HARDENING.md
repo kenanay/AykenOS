@@ -54,7 +54,7 @@ For deterministic perf baseline:
 
 ## 5) Baseline Init Procedure (CI Only)
 1. Trigger `workflow_dispatch` with `init_perf_baseline=true`
-2. Provide `ci_image_digest` input (or use runner file fallback)
+2. Provide pinned `ci_image_digest` input (required; unknown/fallback values are rejected)
 3. Expect `ci-gate-performance` to return fail-closed with baseline write marker
 4. Commit `scripts/ci/perf-baseline.lock.json` via PR
 5. Re-run normal `ci-freeze` and verify performance gate compares against committed baseline
