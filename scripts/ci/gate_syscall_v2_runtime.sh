@@ -128,6 +128,18 @@ record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
 }
 
+safe_count_re() {
+  local pattern="$1"
+  local file="$2"
+  local raw
+  raw="$(grep -E -c -- "${pattern}" "${file}" 2>/dev/null || true)"
+  raw="$(printf "%s" "${raw}" | tr -dc '0-9')"
+  if [[ -z "${raw}" ]]; then
+    raw=0
+  fi
+  echo "${raw}"
+}
+
 run_roundtrip_audit() {
   local phase="$1"
   local idx="$2"
@@ -269,9 +281,9 @@ run_roundtrip_audit() {
     qemu_v2_cap_revoke=1
     cap_revoke_dispatch=1
   fi
-  qemu_v2_time_query_count="$(grep -E -c 'v=80.*R_EAX]=00000000000003ee' "${runtime_signal_log}" 2>/dev/null || echo 0)"
-  qemu_v2_cap_bind_count="$(grep -E -c 'v=80.*R_EAX]=00000000000003ef' "${runtime_signal_log}" 2>/dev/null || echo 0)"
-  qemu_v2_cap_revoke_count="$(grep -E -c 'v=80.*R_EAX]=00000000000003f0' "${runtime_signal_log}" 2>/dev/null || echo 0)"
+  qemu_v2_time_query_count="$(safe_count_re 'v=80.*R_EAX]=00000000000003ee' "${runtime_signal_log}")"
+  qemu_v2_cap_bind_count="$(safe_count_re 'v=80.*R_EAX]=00000000000003ef' "${runtime_signal_log}")"
+  qemu_v2_cap_revoke_count="$(safe_count_re 'v=80.*R_EAX]=00000000000003f0' "${runtime_signal_log}")"
 
   # Fallback acceptance for environments where fb_print syscall traces are not
   # emitted on captured channels. If both invocations are observed in QEMU INT80
