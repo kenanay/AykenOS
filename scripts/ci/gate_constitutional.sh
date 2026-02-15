@@ -41,6 +41,7 @@ MAKEFILE_PATH="${ROOT}/Makefile"
 SCHED_H="${ROOT}/kernel/sched/sched.h"
 ARCH_FREEZE="${ROOT}/ARCHITECTURE_FREEZE.md"
 SCHED_ARB_DECISION="${ROOT}/docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md"
+RING0_EXPORT_MAP="${ROOT}/kernel/include/generated/ring0.exports.map"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -148,6 +149,7 @@ MAKEFILE_PATH_ENV="${MAKEFILE_PATH}" \
 SCHED_H_ENV="${SCHED_H}" \
 ARCH_FREEZE_ENV="${ARCH_FREEZE}" \
 SCHED_ARB_DECISION_ENV="${SCHED_ARB_DECISION}" \
+RING0_EXPORT_MAP_ENV="${RING0_EXPORT_MAP}" \
 TRACKED_KERNEL_ENV="${TRACKED_KERNEL}" \
 RING0_WHITELIST_VIOLATIONS_ENV="${RING0_WHITELIST_VIOLATIONS}" \
 RING0_SYMBOLS_ENV="${RING0_SYMBOLS}" \
@@ -188,6 +190,7 @@ MAKEFILE_PATH = Path(os.environ["MAKEFILE_PATH_ENV"])
 SCHED_H = Path(os.environ["SCHED_H_ENV"])
 ARCH_FREEZE = Path(os.environ["ARCH_FREEZE_ENV"])
 SCHED_ARB_DECISION = Path(os.environ["SCHED_ARB_DECISION_ENV"])
+RING0_EXPORT_MAP = Path(os.environ["RING0_EXPORT_MAP_ENV"])
 
 TRACKED_KERNEL = Path(os.environ["TRACKED_KERNEL_ENV"])
 RING0_WHITELIST_VIOLATIONS = Path(os.environ["RING0_WHITELIST_VIOLATIONS_ENV"])
@@ -233,6 +236,8 @@ sched_fallback_violations_count = 0
 sched_fallback_check_lines = []
 sched_arbitration_violations_count = 0
 sched_arbitration_check_lines = []
+linker_enforcement_violations_count = 0
+linker_enforcement_check_lines = []
 
 
 def add_violation(kind: str, detail: str) -> None:
@@ -598,6 +603,59 @@ if sched_arbitration_check_lines:
         encoding="utf-8",
     )
 
+# 4c) Linker-level Ring0 export enforcement contract.
+if not MAKEFILE_PATH.exists():
+    linker_enforcement_violations_count += 1
+    add_violation("missing_file", str(MAKEFILE_PATH))
+    linker_enforcement_check_lines.append("makefile=missing")
+else:
+    mk_text = MAKEFILE_PATH.read_text(encoding="utf-8", errors="replace")
+    policy_default_ok = re.search(
+        r"^\s*KERNEL_EXPORT_POLICY\s*\?=\s*1\s*$", mk_text, flags=re.MULTILINE
+    ) is not None
+    if policy_default_ok:
+        linker_enforcement_check_lines.append("makefile_policy_default=ok")
+    else:
+        linker_enforcement_violations_count += 1
+        add_violation("linker_export_policy_default", "KERNEL_EXPORT_POLICY ?= 1")
+        linker_enforcement_check_lines.append("makefile_policy_default=missing_or_not_one")
+
+    linker_flag_ok = "--version-script=$(RING0_EXPORT_MAP)" in mk_text
+    if linker_flag_ok:
+        linker_enforcement_check_lines.append("makefile_version_script_flag=ok")
+    else:
+        linker_enforcement_violations_count += 1
+        add_violation("linker_export_policy_flag", "--version-script=$(RING0_EXPORT_MAP)")
+        linker_enforcement_check_lines.append("makefile_version_script_flag=missing")
+
+if STRICT_MODE:
+    if not RING0_EXPORT_MAP.exists():
+        linker_enforcement_violations_count += 1
+        add_violation("missing_file", str(RING0_EXPORT_MAP))
+        linker_enforcement_check_lines.append("export_map=missing")
+    else:
+        export_text = RING0_EXPORT_MAP.read_text(encoding="utf-8", errors="replace")
+        has_local_all = bool(re.search(r"local:\s*\n\s*\*;", export_text))
+        if has_local_all:
+            linker_enforcement_check_lines.append("export_map_local_all=ok")
+        else:
+            linker_enforcement_violations_count += 1
+            add_violation("linker_export_map_invalid", "local:* missing")
+            linker_enforcement_check_lines.append("export_map_local_all=missing")
+
+if linker_enforcement_check_lines:
+    SCHED_FALLBACK_CHECK_TXT.write_text(
+        (
+            "\n".join(
+                sched_fallback_check_lines
+                + sched_arbitration_check_lines
+                + linker_enforcement_check_lines
+            )
+            + "\n"
+        ),
+        encoding="utf-8",
+    )
+
 # 5) AHS threshold guard.
 ahs_check_lines = []
 if not AHS_CONFIG.exists():
@@ -757,6 +815,7 @@ meta = {
     "sched_fallback_env": sched_fallback_env,
     "sched_fallback_violations_count": sched_fallback_violations_count,
     "sched_arbitration_violations_count": sched_arbitration_violations_count,
+    "linker_enforcement_violations_count": linker_enforcement_violations_count,
     "violations_count": len(violations),
 }
 
@@ -779,6 +838,7 @@ report = {
         "syscall_contract": "PASS" if contract and not any(v.startswith("syscall_contract_") for v in violations) else "FAIL",
         "scheduler_fallback_policy": "PASS" if sched_fallback_violations_count == 0 else "FAIL",
         "scheduler_arbitration_contract": "PASS" if sched_arbitration_violations_count == 0 else "FAIL",
+        "linker_symbol_enforcement": "PASS" if linker_enforcement_violations_count == 0 else "FAIL",
         "ahs_thresholds": "PASS" if not any(v.startswith("ahs_") for v in violations) else "FAIL",
         "non_overridable_integrity": "PASS" if non_overridable_missing_count == 0 else "FAIL",
         "waiver_policy": "PASS" if waiver_violations_count == 0 else "FAIL",
@@ -789,6 +849,7 @@ report = {
     "source_deny_hits": source_hits,
     "sched_fallback_checks": sched_fallback_check_lines,
     "sched_arbitration_checks": sched_arbitration_check_lines,
+    "linker_enforcement_checks": linker_enforcement_check_lines,
     "waiver_audit": waiver_audit_rows,
 }
 

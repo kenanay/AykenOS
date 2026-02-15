@@ -39,6 +39,7 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Ring0:** Mechanism only (memory, context, interrupt, syscall)
 - **Ring3:** Policy only (scheduler, VFS, DevFS, AI runtime)
 - **Enforcement:** `make ci-gate-boundary` (symbol-scan + evidence report)
+- **Linker Export Enforcement:** `KERNEL_EXPORT_POLICY=1` + generated `kernel/include/generated/ring0.exports.map` (`local: *;` fail-closed export surface)
 - **Link Contract:** `kernel.elf` excludes `userspace/libayken/*.o`
 - **VFS Mechanism Surface:** `kernel/include/vfs_mech.h` + `kernel/fs/vfs_mech.c` (Ring0 only)
 
@@ -172,6 +173,11 @@ make ci-gate-boundary
 # - Gate report: evidence/run-<RUN_ID>/gates/symbol-scan/report.json
 # - Run summary: evidence/run-<RUN_ID>/reports/summary.json
 ```
+
+Linker-level export policy is mandatory in freeze mode:
+- `KERNEL_EXPORT_POLICY ?= 1` (default)
+- kernel link includes `--version-script=$(RING0_EXPORT_MAP)`
+- generated map enforces `local: *;` so non-whitelisted globals are not exported
 
 ### 3.3 Scheduler Isolation Invariants
 

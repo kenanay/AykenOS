@@ -31,6 +31,8 @@ scripts/ci/perf-baseline.local.lock.json
 *.swp
 *.swo
 *~
+__pycache__/
+*.pyc
 
 # Toolchain
 gcc-*/

@@ -36,9 +36,14 @@ AYKEN_DEBUG_IRQ ?= 0
 AYKEN_DEBUG_SCHED ?= 0
 VALIDATION_WERROR ?= 0
 AYKEN_SCHED_FALLBACK ?= 0
+KERNEL_EXPORT_POLICY ?= 1
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(KERNEL_EXPORT_POLICY),0 1),$(KERNEL_EXPORT_POLICY))
+$(error Invalid KERNEL_EXPORT_POLICY='$(KERNEL_EXPORT_POLICY)'. Use 0 or 1)
 endif
 
 ifeq ($(AYKEN_SCHED_FALLBACK),1)
@@ -80,6 +85,10 @@ CTX_SWITCH_ASM = kernel/arch/x86_64/context_switch.asm
 PROFILE_STAMP = .build_profile.stamp
 ABI_H = kernel/include/ayken_abi.h
 ABI_INC = kernel/include/generated/ayken_abi.inc
+RING0_SYMBOL_WHITELIST = scripts/ci/constitutional-ring0-symbol-whitelist.regex
+RING0_EXPORT_MAP = kernel/include/generated/ring0.exports.map
+KERNEL_LINK_EXTRA_FLAGS =
+KERNEL_LINK_EXTRA_DEPS =
 
 KERNEL_DIR = kernel
 ARCH_DIR   = kernel/arch/x86_64
@@ -107,6 +116,11 @@ KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 # Ring3 userspace components are built via separate userspace targets.
 KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o)
 KERNEL_DEPS = $(KERNEL_OBJS:.o=.d)
+
+ifeq ($(KERNEL_EXPORT_POLICY),1)
+KERNEL_LINK_EXTRA_FLAGS += --version-script=$(RING0_EXPORT_MAP)
+KERNEL_LINK_EXTRA_DEPS += $(RING0_EXPORT_MAP)
+endif
 
 # Rust workspace (userspace runtime/dispatcher)
 USERSPACE_RUST_DIR = userspace
@@ -219,8 +233,8 @@ $(PROFILE_STAMP): FORCE
 
 $(KERNEL_OBJS): $(PROFILE_STAMP)
 
-$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP)
-	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
+$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP) $(KERNEL_LINK_EXTRA_DEPS)
+	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(KERNEL_LINK_EXTRA_FLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
 
 # Generate NASM ABI include from single C ABI source.
 .PHONY: generate-abi
@@ -241,6 +255,14 @@ $(ABI_INC): $(ABI_H)
 			val = $$3; gsub(/[uU]/, "", val); \
 			printf("%%define %s %s\n", $$2, val); \
 		}' $(ABI_H) >> $@
+
+$(RING0_EXPORT_MAP): $(KERNEL_OBJS) $(RING0_SYMBOL_WHITELIST) scripts/ci/generate_ring0_export_map.py
+	@mkdir -p $(dir $@)
+	@python3 scripts/ci/generate_ring0_export_map.py \
+		--whitelist "$(RING0_SYMBOL_WHITELIST)" \
+		--output "$@" \
+		--nm "nm" \
+		--objects $(KERNEL_OBJS)
 
 $(KERNEL_ASM_SOURCES:.asm=.o): $(ABI_INC)
 
@@ -311,10 +333,10 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP)
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP)
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
@@ -376,6 +398,12 @@ check-deps:
 	fi; \
 	if ! command -v nasm >/dev/null 2>&1; then \
 		missing_tools="$$missing_tools nasm"; \
+	fi; \
+	if ! command -v nm >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools nm"; \
+	fi; \
+	if ! command -v python3 >/dev/null 2>&1; then \
+		missing_tools="$$missing_tools python3"; \
 	fi; \
 	if [ -n "$$missing_tools" ]; then \
 		echo "ERROR: Missing required tools:$$missing_tools"; \
@@ -748,6 +776,7 @@ help:
 	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
 	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
+	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
