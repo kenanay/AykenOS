@@ -18,6 +18,7 @@ test_vars.fd
 
 # Evidence (keep structure, ignore content)
 evidence/run-*/
+evidence/
 
 # Local development baselines (never commit)
 scripts/ci/perf-baseline.local.lock.json
@@ -50,3 +51,7 @@ bootloader/efi/BOOTX64.EFI
 tools/gnu-efi/
 *.backup
 test_baseline_init.sh
+
+# Runtime harness artifacts
+**/syscall_efi_run.*
+qemu_*.log
