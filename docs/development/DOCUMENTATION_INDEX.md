@@ -63,6 +63,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 ## 📋 Quick Navigation
 
+
+### Phase Reports ✨ **NEW!**
+1. **[PHASE_4_5_PROGRESS_REPORT.md](PHASE_4_5_PROGRESS_REPORT.md)** - Current phase detailed progress
+   - Scheduler arbitration contract (Yol A)
+   - Syscall v2 runtime gate
+   - Performance stabilization status
+   - CI/CD pipeline (8 gates)
+   - Known issues and blockers
+
 ### Executive Summaries
 1. **[SESSION_SUMMARY.md](SESSION_SUMMARY.md)** - What was accomplished this session
    - Before/after comparison
