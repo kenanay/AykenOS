@@ -258,12 +258,22 @@ run_syscall_validation() {
             "-drive" "if=pflash,format=raw,file=${ovmf_vars_copy}"
         )
     fi
+    local efi_img_source="EFI.img"
+    local efi_img_run=""
+    efi_img_run="$(mktemp "${TMPDIR:-/tmp}/syscall_efi_run.XXXXXX" 2>/dev/null || mktemp -t syscall_efi_run 2>/dev/null || true)"
+    if [[ -z "$efi_img_run" ]]; then
+        write_log "Failed to allocate temporary EFI image path" "ERROR"
+        return 1
+    fi
+    cp -f "$efi_img_source" "$efi_img_run"
+
     local qemu_args=()
     if (( ${#ovmf_args[@]} > 0 )); then
         qemu_args+=("${ovmf_args[@]}")
     fi
     qemu_args+=(
-        "-drive" "format=raw,file=EFI.img"
+        # Use a per-run writable copy to avoid write-lock contention on EFI.img.
+        "-drive" "format=raw,file=${efi_img_run}"
         "-serial" "$serial_arg"
         "-m" "256M"
         "-no-reboot"
@@ -522,6 +532,7 @@ EOF
     if [[ -n "${ovmf_vars_copy:-}" ]]; then
         rm -f "$ovmf_vars_copy"
     fi
+    rm -f "$efi_img_run"
     
     return $([ "$syscall_success" == "true" ] && echo 0 || echo 1)
 }

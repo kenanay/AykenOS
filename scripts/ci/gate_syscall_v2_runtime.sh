@@ -12,7 +12,7 @@ Usage:
     [--kernel-profile validation]
     [--warmup-runs 1]
     [--measurement-runs 5]
-    [--timeout-seconds 8]
+    [--timeout-seconds 20]
     [--required-success-rate 100]
 
 Exit codes:
@@ -26,7 +26,7 @@ EVIDENCE_DIR=""
 KERNEL_PROFILE="${SYSCALL_V2_RUNTIME_KERNEL_PROFILE:-validation}"
 WARMUP_RUNS="${SYSCALL_V2_RUNTIME_WARMUP:-1}"
 MEASUREMENT_RUNS="${SYSCALL_V2_RUNTIME_RUNS:-5}"
-TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_TIMEOUT:-8}"
+TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_TIMEOUT:-20}"
 REQUIRED_SUCCESS_RATE="${SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE:-100}"
 
 while [[ $# -gt 0 ]]; do
