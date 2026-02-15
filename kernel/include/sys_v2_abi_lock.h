@@ -40,6 +40,12 @@ _Static_assert(SYS_V2_NR == AYKEN_SYS_V2_EXPECTED_NR,
 _Static_assert(SYS_V2_NR == (SYS_V2_MAX_INDEX + 1),
                "SYS_V2_NR inconsistent with SYS_V2_MAX_INDEX");
 
+_Static_assert(SYS_V2_LAST == (SYS_V2_BASE + SYS_V2_MAX_INDEX),
+               "SYS_V2_LAST inconsistent with SYS_V2_BASE/SYS_V2_MAX_INDEX");
+
+_Static_assert(SYS_V2_MAX_SYSCALL == SYS_V2_MAX_INDEX,
+               "SYS_V2_MAX_SYSCALL must match SYS_V2_MAX_INDEX");
+
 _Static_assert(SYS_V2_DEBUG_PUTCHAR == SYS_V2_MAX_INDEX,
                "SYS_V2_DEBUG_PUTCHAR must remain the terminal index");
 

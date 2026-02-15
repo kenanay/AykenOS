@@ -558,8 +558,8 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
     sys_v2_dispatch_fn_t dispatch_fn;
     uint64_t result;
 
-    // Validate syscall number
-    if (syscall_num > SYS_V2_MAX_SYSCALL) {
+    // Validate internal syscall index before dispatch table access.
+    if (syscall_num >= SYS_V2_NR) {
         fb_print("[syscall_v2] ENOSYS: invalid v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
