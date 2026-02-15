@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       ci_image_digest:
-        description: "Pinned runner image/build digest (optional)"
-        required: false
+        description: "Pinned runner image/build digest (required, ex: gha-ubuntu22-20260212.1-x64)"
+        required: true
         default: ""
 
 jobs:
@@ -34,18 +34,28 @@ jobs:
         run: |
           set -euo pipefail
           INPUT_DIGEST="${{ github.event.inputs.ci_image_digest }}"
-          if [ -n "${INPUT_DIGEST}" ]; then
-            DIGEST="${INPUT_DIGEST}"
-          else
-            DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          DETECTED_DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if [ -z "${INPUT_DIGEST}" ]; then
+            echo "ERROR: ci_image_digest input is required."
+            echo "Detected runner digest candidate: ${DETECTED_DIGEST}"
+            exit 1
           fi
+          DIGEST="${INPUT_DIGEST}"
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+          echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_DIGEST}" >> "$GITHUB_ENV"
       
       - name: Validate baseline init digest
         run: |
           set -euo pipefail
           if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || echo "${PERF_CI_IMAGE_DIGEST}" | grep -q "unknown"; then
-            echo "ERROR: ci_image_digest could not be resolved"
+            echo "ERROR: ci_image_digest is not pinned"
+            echo "PERF_CI_IMAGE_DIGEST=${PERF_CI_IMAGE_DIGEST}"
+            echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_CI_IMAGE_DIGEST:-unavailable}"
+            exit 1
+          fi
+          if ! echo "${PERF_CI_IMAGE_DIGEST}" | grep -Eq '^gha-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+$'; then
+            echo "ERROR: ci_image_digest format invalid"
+            echo "Expected format: gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>"
             echo "PERF_CI_IMAGE_DIGEST=${PERF_CI_IMAGE_DIGEST}"
             exit 1
           fi

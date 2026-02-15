@@ -113,6 +113,20 @@ case "${PREEMPT_FORCE_EFI_REBUILD}" in
     ;;
 esac
 
+is_pinned_ci_digest() {
+  local digest="$1"
+  local authority="$2"
+  if [[ -z "${digest}" || "${digest}" == "unknown" || "${digest}" == *unknown* ]]; then
+    return 1
+  fi
+  if [[ "${authority}" == github-hosted-* ]]; then
+    if [[ ! "${digest}" =~ ^gha-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+$ ]]; then
+      return 1
+    fi
+  fi
+  return 0
+}
+
 for tool in git make python3 qemu-system-x86_64; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: required tool missing (${tool})" >&2
@@ -519,8 +533,8 @@ else
     fi
     if [[ "${REQUIRE_CI_FOR_BASELINE_INIT}" -eq 1 && "${IS_CI}" -ne 1 ]]; then
       record_violation "baseline_init_requires_ci:CI env is not true/1"
-    elif [[ "${IS_CI}" -eq 1 && ( -z "${CI_IMAGE_DIGEST}" || "${CI_IMAGE_DIGEST}" == "unknown" ) ]]; then
-      record_violation "baseline_init_requires_ci_image_digest:PERF_CI_IMAGE_DIGEST must be pinned"
+    elif [[ "${IS_CI}" -eq 1 ]] && ! is_pinned_ci_digest "${CI_IMAGE_DIGEST}" "${BASELINE_AUTHORITY}"; then
+      record_violation "baseline_init_requires_ci_image_digest:PERF_CI_IMAGE_DIGEST must be pinned (authority=${BASELINE_AUTHORITY}, digest=${CI_IMAGE_DIGEST})"
     else
       mkdir -p "$(dirname "${BASELINE_FILE}")"
       cp -f "${ACTUAL_LOCK_JSON}" "${BASELINE_FILE}"

@@ -12,7 +12,7 @@ on:
         required: true
         default: false
       ci_image_digest:
-        description: "Pinned runner image/build digest (required for baseline init)"
+        description: "Pinned runner image/build digest (required for baseline init, ex: gha-ubuntu22-20260212.1-x64)"
         required: false
         default: ""
 
@@ -86,17 +86,26 @@ jobs:
         run: |
           set -euo pipefail
           INPUT_DIGEST="${{ github.event.inputs.ci_image_digest }}"
-          if [ -n "${INPUT_DIGEST}" ]; then
-            DIGEST="${INPUT_DIGEST}"
-          else
-            DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          DETECTED_DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if [ -z "${INPUT_DIGEST}" ]; then
+            echo "ERROR: ci_image_digest input is required when init_perf_baseline=true"
+            echo "Detected runner digest candidate: ${DETECTED_DIGEST}"
+            exit 1
           fi
+          DIGEST="${INPUT_DIGEST}"
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+          echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_DIGEST}" >> "$GITHUB_ENV"
       - name: Validate baseline init digest
         run: |
           set -euo pipefail
-          if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || [ "${PERF_CI_IMAGE_DIGEST}" = "unknown" ]; then
-            echo "ci_image_digest input is required and must be pinned."
+          if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || echo "${PERF_CI_IMAGE_DIGEST}" | grep -q "unknown"; then
+            echo "ERROR: ci_image_digest is not pinned."
+            echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_CI_IMAGE_DIGEST:-unavailable}"
+            exit 1
+          fi
+          if ! echo "${PERF_CI_IMAGE_DIGEST}" | grep -Eq '^gha-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+$'; then
+            echo "ERROR: ci_image_digest format invalid."
+            echo "Expected format: gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>"
             exit 1
           fi
       - name: Init perf baseline (expected fail-closed with baseline write)
