@@ -50,3 +50,27 @@
 # Required cross-unit mechanism exports
 ^devfs_init$
 ^idt_get_descriptor$
+^devfs_register_device$
+^devfs_read$
+^devfs_write$
+^devfs_ioctl$
+^devfs_close$
+^devfs_device_read$
+^devfs_device_write$
+^devfs_device_ioctl$
+^devfs_device_close$
+^vfs_init$
+^vfs_open$
+^vfs_read$
+^vfs_write$
+^vfs_seek$
+^vfs_close$
+^vfs_mkdir$
+^vfs_rmdir$
+^vfs_stat$
+^vfs_unlink$
+^vfs_mount$
+^vfs_unmount$
+^idt_descriptor$
+^idt_table$
+^init_process_main$

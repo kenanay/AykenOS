@@ -10,3 +10,11 @@
 
 # Example:
 # ^kernel/fs/vfs\.c$:\bvfs_open\s*\(
+
+# Ring0 mechanism surfaces are intentionally defined in kernel/fs.
+^kernel/fs/devfs\.(c|h)$:\bdevfs_(register_device|read|write|ioctl|close)\s*\(
+^kernel/fs/vfs\.(c|h)$:\bvfs_(open|read|write|mkdir|rmdir|stat|unlink|mount|unmount)\s*\(
+^kernel/fs/vfs\.(c|h)$:\bvfs_(init|seek|close)\s*\(
+
+# Ring3 policy hook declarations are allowed in scheduler interface units.
+^kernel/sched/sched\.(c|h)$:\buserspace_[A-Za-z0-9_]+\s*\(

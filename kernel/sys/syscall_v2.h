@@ -19,9 +19,20 @@
 // ============================================================================
 //
 // Syscall Numbering Plan (Final - Phase 2.5):
-// - User space calls: 1000-1009 (adds 1000 offset)
-// - Kernel internal: 0-9 (direct mapping)
+// - User space calls: 1000-1010 (adds 1000 offset)
+// - Kernel internal: 0-10 (direct mapping)
 // - All other ranges: Invalid (return -ENOSYS)
+//
+// Constitutional lock contract:
+// - SYS_V2_BASE: fixed ABI base for user visible numbering
+// - SYS_V2_MAX_INDEX: max internal index (inclusive)
+// - SYS_V2_NR: number of syscalls (MAX_INDEX + 1)
+// - SYS_V2_LAST: last user visible syscall number
+
+#define SYS_V2_BASE        1000
+#define SYS_V2_MAX_INDEX   10
+#define SYS_V2_NR          (SYS_V2_MAX_INDEX + 1)
+#define SYS_V2_LAST        (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 
 #define SYS_V2_MAP_MEMORY        0  // Memory mapping mechanism
 #define SYS_V2_UNMAP_MEMORY      1  // Memory unmapping mechanism  
