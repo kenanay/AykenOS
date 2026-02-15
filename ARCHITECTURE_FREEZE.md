@@ -71,10 +71,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Hygiene, Tooling Isolation, Constitutional, Workspace, Performance
+- **Gates:** ABI, Boundary, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Performance
 - **Bypass:** Prohibited (no exceptions)
-- **Repo Truth (2026-02-13):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-performance`, `ci-summarize`
+- **Repo Truth (2026-02-14):**
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -493,13 +493,14 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-02-13):**
+**Current Status (2026-02-14):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
 - ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
 - ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
 - ✅ ABI gate implementation active (`make ci-gate-abi`)
 - ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
 - ✅ Workspace gate implementation active (`make ci-gate-workspace`)
+- ✅ Syscall v2 runtime gate implementation active (`make ci-gate-syscall-v2-runtime`)
 - ✅ Performance gate implementation active (`make ci-gate-performance`)
 - ✅ Summary gate active (`make ci-summarize`, auto-discovery)
 - ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)

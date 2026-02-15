@@ -162,6 +162,7 @@ extract_label_count() {
 mkdir -p "${EVIDENCE_DIR}"
 ENV_JSON="${EVIDENCE_DIR}/env.json"
 RESULTS_JSON="${EVIDENCE_DIR}/results.json"
+BUILD_LOG="${EVIDENCE_DIR}/build.log"
 RAW_LOG="${EVIDENCE_DIR}/raw.log"
 BOOT_AUDIT_LOG="${EVIDENCE_DIR}/boot-audit.log"
 PREEMPT_LOG="${EVIDENCE_DIR}/preempt.log"
@@ -174,6 +175,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 
 : > "${ENV_JSON}"
 : > "${RESULTS_JSON}"
+: > "${BUILD_LOG}"
 : > "${RAW_LOG}"
 : > "${BOOT_AUDIT_LOG}"
 : > "${PREEMPT_LOG}"
@@ -246,9 +248,10 @@ PY
 )"
 
 # 2) Build boot image once.
-if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img >> "${RAW_LOG}" 2>&1; then
+if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img >> "${BUILD_LOG}" 2>&1; then
   record_violation "build_failed:make efi-img"
 fi
+cp -f "${BUILD_LOG}" "${RAW_LOG}" 2>/dev/null || true
 
 # 3) Measure boot marker time (proxy: boot audit wall duration).
 BOOT_START_MS="$(now_ms)"

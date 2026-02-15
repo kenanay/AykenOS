@@ -132,6 +132,11 @@ PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
 PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-latest-x64
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
+SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
+SYSCALL_V2_RUNTIME_WARMUP ?= 1
+SYSCALL_V2_RUNTIME_RUNS ?= 5
+SYSCALL_V2_RUNTIME_TIMEOUT ?= 8
+SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE ?= 100
 PERF_VARIANCE_RUNS ?= 5
 PERF_VARIANCE_WARMUP ?= 1
 PERF_VARIANCE_QEMU_TIMEOUT ?= 12
@@ -489,7 +494,7 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # CI boundary gate with evidence collection
@@ -502,6 +507,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
@@ -599,6 +605,25 @@ ci-gate-constitutional: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/constitutional/report.json" "$(EVIDENCE_RUN_DIR)/reports/constitutional.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: constitutional evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-syscall-v2-runtime: ci-evidence-dir
+	@echo "== CI GATE SYSCALL V2 RUNTIME =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: $(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)"
+	@echo "warmup_runs: $(SYSCALL_V2_RUNTIME_WARMUP)"
+	@echo "measurement_runs: $(SYSCALL_V2_RUNTIME_RUNS)"
+	@echo "timeout_seconds: $(SYSCALL_V2_RUNTIME_TIMEOUT)"
+	@echo "required_success_rate: $(SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE)"
+	@./scripts/ci/gate_syscall_v2_runtime.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime" \
+		--kernel-profile "$(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)" \
+		--warmup-runs "$(SYSCALL_V2_RUNTIME_WARMUP)" \
+		--measurement-runs "$(SYSCALL_V2_RUNTIME_RUNS)" \
+		--timeout-seconds "$(SYSCALL_V2_RUNTIME_TIMEOUT)" \
+		--required-success-rate "$(SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime/report.json" "$(EVIDENCE_RUN_DIR)/reports/syscall-v2-runtime.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: syscall-v2-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-performance:
 	@echo "== CI GATE PERFORMANCE =="
@@ -715,6 +740,8 @@ help:
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (strict-mode symbol/path/source/waiver/contract checks)"
 	@echo "    (override strict locally: CONSTITUTIONAL_STRICT=0)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
+	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
+	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
@@ -725,7 +752,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

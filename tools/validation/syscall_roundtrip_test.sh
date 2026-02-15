@@ -10,6 +10,30 @@ TIMEOUT=50
 VERBOSE=false
 SAVE_LOGS=false
 
+safe_count_re() {
+    local pattern="$1"
+    local content="$2"
+    local count
+    count=$(printf "%s" "$content" | grep -cE "$pattern" 2>/dev/null || true)
+    count=$(printf "%s" "$count" | tr -dc '0-9')
+    if [[ -z "$count" ]]; then
+        count=0
+    fi
+    echo "$count"
+}
+
+safe_count_file() {
+    local pattern="$1"
+    local file="$2"
+    local count
+    count=$(grep -cE "$pattern" "$file" 2>/dev/null || true)
+    count=$(printf "%s" "$count" | tr -dc '0-9')
+    if [[ -z "$count" ]]; then
+        count=0
+    fi
+    echo "$count"
+}
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -152,16 +176,20 @@ analyze_syscall_flow() {
     fi
     
     # Track syscall handler invocations
-    local syscall_count=$(echo "$output_content" | grep -cE "syscall.*handler|SYS_.*called" 2>/dev/null || echo "0")
+    local syscall_count
+    syscall_count=$(safe_count_re "syscall.*handler|SYS_.*called" "$output_content")
     if (( syscall_count > 0 )); then
         syscall_flow+=("HANDLER_INVOKED:$syscall_count")
         write_log "Syscall handler invoked $syscall_count times" "SUCCESS"
     fi
     
     # Track specific syscall types
-    local write_syscalls=$(echo "$output_content" | grep -cE "SYS_write" 2>/dev/null || echo "0")
-    local read_syscalls=$(echo "$output_content" | grep -cE "SYS_read" 2>/dev/null || echo "0")
-    local exit_syscalls=$(echo "$output_content" | grep -cE "SYS_exit|Process exit requested" 2>/dev/null || echo "0")
+    local write_syscalls
+    local read_syscalls
+    local exit_syscalls
+    write_syscalls=$(safe_count_re "SYS_write" "$output_content")
+    read_syscalls=$(safe_count_re "SYS_read" "$output_content")
+    exit_syscalls=$(safe_count_re "SYS_exit|Process exit requested" "$output_content")
     
     if (( write_syscalls > 0 )); then
         syscall_flow+=("WRITE_SYSCALLS:$write_syscalls")
@@ -397,7 +425,8 @@ run_syscall_validation() {
     # Check QEMU debug log for interrupt information
     local interrupt_analysis=""
     if [[ -f "qemu_syscall_debug.log" ]]; then
-        local int80_count=$(grep -c "int.*0x80\|interrupt.*128" qemu_syscall_debug.log 2>/dev/null || echo "0")
+        local int80_count
+        int80_count=$(safe_count_file "int.*0x80|interrupt.*128" qemu_syscall_debug.log)
         if (( int80_count > 0 )); then
             interrupt_analysis="INT_0x80_TRIGGERED:$int80_count"
             write_log "INT 0x80 interrupts detected: $int80_count" "SUCCESS"

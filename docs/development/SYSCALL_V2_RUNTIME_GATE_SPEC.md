@@ -1,10 +1,10 @@
 # SYSCALL_V2 Runtime Gate Spec
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Status:** CONTRACT-FIRST (Planned, not wired)  
+**Status:** ACTIVE (Wired, merge-blocking in freeze chain)  
 **Owner:** AykenOS Core Architecture Team  
 **Scope:** Freeze-mode runtime contract verification for Ring3 -> syscall_v2 -> Ring0 path  
-**Gate ID (planned):** `ci-gate-syscall-v2-runtime`
+**Gate ID:** `ci-gate-syscall-v2-runtime`
 
 ---
 
@@ -62,22 +62,20 @@ Rules:
 
 ---
 
-## 5) Invocation Contract (Planned)
+## 5) Invocation Contract
 
 ### 5.1 Make Target
-Planned target:
 1. `make ci-gate-syscall-v2-runtime`
 
 ### 5.2 Gate Script
-Planned script:
 1. `scripts/ci/gate_syscall_v2_runtime.sh`
 
 ### 5.3 Evidence Path
 1. `evidence/run-<RUN_ID>/gates/syscall-v2-runtime/`
 2. `evidence/run-<RUN_ID>/reports/syscall-v2-runtime.json`
 
-### 5.4 CI Placement (Planned)
-Recommended order in `ci-freeze`:
+### 5.4 CI Placement
+Order in `ci-freeze`:
 1. ABI
 2. Boundary
 3. Hygiene
@@ -151,4 +149,3 @@ This gate closes the runtime verification gap between:
 2. runtime execution path integrity (this gate)
 
 After wiring, freeze claims about syscall_v2 MUST require this gate evidence.
-
