@@ -126,6 +126,18 @@ static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
 _Static_assert(sizeof(sys_v2_dispatch_table) / sizeof(sys_v2_dispatch_table[0]) == SYS_V2_NR,
                "Dispatch table size does not match SYS_V2_NR");
 
+/*
+ * Constitutional syscall-exit contract:
+ * all v2 handler exits must flow through deferred preemption completion.
+ */
+static inline uint64_t sys_v2_finalize_result(uint64_t result)
+{
+    if (sched_take_resched()) {
+        sched_yield();
+    }
+    return result;
+}
+
 // ============================================================================
 // MEMORY MANAGEMENT SYSCALLS
 // ============================================================================
@@ -556,15 +568,13 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
                             uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     sys_v2_dispatch_fn_t dispatch_fn;
-    uint64_t result;
 
     // Validate internal syscall index before dispatch table access.
     if (syscall_num >= SYS_V2_NR) {
         fb_print("[syscall_v2] ENOSYS: invalid v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        result = ESYS_V2_INVALID_SYSCALL;
-        goto out;
+        return sys_v2_finalize_result(ESYS_V2_INVALID_SYSCALL);
     }
 
     dispatch_fn = sys_v2_dispatch_table[syscall_num];
@@ -572,14 +582,7 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
         fb_print("[syscall_v2] ENOSYS: unimplemented v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        result = ESYS_V2_NOT_IMPLEMENTED;
-        goto out;
+        return sys_v2_finalize_result(ESYS_V2_NOT_IMPLEMENTED);
     }
-    result = dispatch_fn(arg1, arg2, arg3, arg4);
-
-out:
-    if (sched_take_resched()) {
-        sched_yield();
-    }
-    return result;
+    return sys_v2_finalize_result(dispatch_fn(arg1, arg2, arg3, arg4));
 }
