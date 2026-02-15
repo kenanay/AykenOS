@@ -72,10 +72,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Performance
+- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Performance
 - **Bypass:** Prohibited (no exceptions)
 - **Repo Truth (2026-02-14):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -260,6 +260,21 @@ make ci-gate-boundary
 - Scheduler isolation test (no decision logic in kernel)
 - Capability bypass test (no kernel direct access)
 - Ring boundary matrix validation
+
+**Failure → Merge REJECT**
+
+### 4.2.1 Ring0 Exports Gate
+
+**Checks:**
+```bash
+make ci-gate-ring0-exports
+```
+
+**Validations:**
+- Policy-on deterministic build (`KERNEL_EXPORT_POLICY=1`)
+- `nm -g --defined-only kernel.elf` global export evidence
+- Whitelist conformance (`constitutional-ring0-symbol-whitelist.regex`)
+- Export surface ceiling (`RING0_EXPORT_MAX`, default 165)
 
 **Failure → Merge REJECT**
 

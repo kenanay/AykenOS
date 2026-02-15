@@ -151,6 +151,7 @@ SYSCALL_V2_RUNTIME_WARMUP ?= 1
 SYSCALL_V2_RUNTIME_RUNS ?= 5
 SYSCALL_V2_RUNTIME_TIMEOUT ?= 20
 SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE ?= 100
+RING0_EXPORT_MAX ?= 165
 PERF_VARIANCE_RUNS ?= 5
 PERF_VARIANCE_WARMUP ?= 1
 PERF_VARIANCE_QEMU_TIMEOUT ?= 12
@@ -522,7 +523,7 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # CI boundary gate with evidence collection
@@ -531,6 +532,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring0-exports"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
@@ -581,6 +583,18 @@ ci-gate-boundary: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/symbol-scan/report.json" "$(EVIDENCE_RUN_DIR)/reports/symbol-scan.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-ring0-exports: ci-evidence-dir
+	@echo "== CI GATE RING0 EXPORTS =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "ring0_export_max: $(RING0_EXPORT_MAX)"
+	@./scripts/ci/check_ring0_exports.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring0-exports" \
+		--kernel-profile "validation" \
+		--max-exports "$(RING0_EXPORT_MAX)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ring0-exports/report.json" "$(EVIDENCE_RUN_DIR)/reports/ring0-exports.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ring0-exports evidence at $(EVIDENCE_RUN_DIR)"
 
 # Standalone summary verdict gate for existing run directory.
 ci-summarize:
@@ -763,6 +777,7 @@ help:
 	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"
 	@echo "    (hard guard: AYKEN_SCHED_FALLBACK must be 0)"
 	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
+	@echo "  ci-gate-ring0-exports - Link-time Ring0 export surface gate (nm + whitelist + max count)"
 	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
 	@echo "  ci-gate-tooling-isolation - Fail-closed guard: perf/preempt tooling PRs cannot touch kernel/"
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (strict-mode symbol/path/source/waiver/contract checks)"
@@ -781,7 +796,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
