@@ -114,7 +114,14 @@ git -C "${ROOT}" status --porcelain --untracked-files=no > "${DIRTY_TRACKED_TXT}
 } | sort -u > "${BINARY_CANDIDATES_TXT}"
 
 # One-pass size inventory for tracked files.
-git -C "${ROOT}" ls-files -z | xargs -0 stat -f '%z\t%N' > "${TRACKED_SIZES_TXT}"
+# Portable stat: detect GNU vs BSD
+if stat --version >/dev/null 2>&1; then
+  # GNU stat (Linux)
+  git -C "${ROOT}" ls-files -z | xargs -0 stat -c '%s\t%n' > "${TRACKED_SIZES_TXT}"
+else
+  # BSD stat (macOS)
+  git -C "${ROOT}" ls-files -z | xargs -0 stat -f '%z\t%N' > "${TRACKED_SIZES_TXT}"
+fi
 
 is_allowlisted_path() {
   local target_path="$1"
