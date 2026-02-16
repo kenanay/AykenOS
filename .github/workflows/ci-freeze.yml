@@ -35,7 +35,7 @@ jobs:
   freeze:
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
@@ -53,19 +53,22 @@ jobs:
       - name: Debug git context
         run: |
           set -euo pipefail
-          PR_BASE_SHA="${{ github.event.pull_request.base.sha || 'n/a' }}"
-          PR_HEAD_SHA="${{ github.event.pull_request.head.sha || 'n/a' }}"
           echo "=== Git Context ==="
           git rev-parse HEAD
           git rev-parse --short HEAD
           git log -1 --oneline
           git status --short --branch
-          echo "=== PR Context ==="
+          echo "=== Event Context ==="
           echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
           echo "SHA: ${{ github.sha }}"
-          echo "Base SHA: ${PR_BASE_SHA}"
-          echo "Head SHA: ${PR_HEAD_SHA}"
+      - name: Debug PR context
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          echo "=== PR Context ==="
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
       - name: Resolve pinned CI image digest
         run: |
           set -euo pipefail
