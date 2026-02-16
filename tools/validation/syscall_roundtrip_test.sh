@@ -10,6 +10,38 @@ TIMEOUT=50
 VERBOSE=false
 SAVE_LOGS=false
 
+resolve_ovmf_firmware() {
+    # Honor explicit overrides first.
+    if [[ -n "${SYSCALL_OVMF_CODE:-}" && -n "${SYSCALL_OVMF_VARS:-}" \
+          && -f "${SYSCALL_OVMF_CODE}" && -f "${SYSCALL_OVMF_VARS}" ]]; then
+        printf "%s\n%s\n" "${SYSCALL_OVMF_CODE}" "${SYSCALL_OVMF_VARS}"
+        return 0
+    fi
+
+    # Known firmware locations across macOS/Linux runners.
+    local candidates=(
+        "OVMF_CODE.fd|OVMF_VARS.fd"
+        "firmware/ovmf/OVMF_CODE.fd|firmware/ovmf/OVMF_VARS.fd"
+        "/usr/share/OVMF/OVMF_CODE_4M.fd|/usr/share/OVMF/OVMF_VARS_4M.fd"
+        "/usr/share/OVMF/OVMF_CODE.fd|/usr/share/OVMF/OVMF_VARS.fd"
+        "/usr/share/edk2/ovmf/OVMF_CODE.fd|/usr/share/edk2/ovmf/OVMF_VARS.fd"
+        "/usr/share/qemu/OVMF_CODE.fd|/usr/share/qemu/OVMF_VARS.fd"
+        "/opt/homebrew/share/qemu/edk2-x86_64-code.fd|/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    )
+
+    local entry code vars
+    for entry in "${candidates[@]}"; do
+        code="${entry%%|*}"
+        vars="${entry##*|}"
+        if [[ -f "${code}" && -f "${vars}" ]]; then
+            printf "%s\n%s\n" "${code}" "${vars}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 safe_count_re() {
     local pattern="$1"
     local content="$2"
@@ -234,22 +266,24 @@ run_syscall_validation() {
     fi
 
 
-    # Optional UEFI firmware (OVMF) for deterministic boot
+    # UEFI firmware (OVMF) is required for EFI.img boot in CI/local validation.
     local ovmf_args=()
     local ovmf_code=""
     local ovmf_vars=""
     local ovmf_vars_copy=""
-    if [[ -f "OVMF_CODE.fd" && -f "OVMF_VARS.fd" ]]; then
-        ovmf_code="OVMF_CODE.fd"
-        ovmf_vars="OVMF_VARS.fd"
-    elif [[ -f "firmware/ovmf/OVMF_CODE.fd" && -f "firmware/ovmf/OVMF_VARS.fd" ]]; then
-        ovmf_code="firmware/ovmf/OVMF_CODE.fd"
-        ovmf_vars="firmware/ovmf/OVMF_VARS.fd"
-    elif [[ -f "/opt/homebrew/share/qemu/edk2-x86_64-code.fd" && -f "/opt/homebrew/share/qemu/edk2-x86_64-vars.fd" ]]; then
-        ovmf_code="/opt/homebrew/share/qemu/edk2-x86_64-code.fd"
-        ovmf_vars="/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    local ovmf_pair=""
+    ovmf_pair="$(resolve_ovmf_firmware || true)"
+    if [[ -n "${ovmf_pair}" ]]; then
+        ovmf_code="$(printf "%s\n" "${ovmf_pair}" | sed -n '1p')"
+        ovmf_vars="$(printf "%s\n" "${ovmf_pair}" | sed -n '2p')"
     fi
-    if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
+    if [[ -z "$ovmf_code" || -z "$ovmf_vars" ]]; then
+        if [[ "${CI:-}" == "true" ]]; then
+            write_log "OVMF firmware not found in CI. Set SYSCALL_OVMF_CODE/SYSCALL_OVMF_VARS or install ovmf package." "ERROR"
+            return 1
+        fi
+        write_log "OVMF firmware not found; falling back to non-UEFI boot path (local only)." "WARNING"
+    else
         ovmf_vars_copy="syscall_ovmf_vars.fd"
         cp -f "$ovmf_vars" "$ovmf_vars_copy"
         ovmf_args=(
@@ -257,8 +291,18 @@ run_syscall_validation() {
             "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
             "-drive" "if=pflash,format=raw,file=${ovmf_vars_copy}"
         )
+
+        write_log "Using OVMF CODE: ${ovmf_code}" "INFO"
+        write_log "Using OVMF VARS: ${ovmf_vars}" "INFO"
     fi
     local efi_img_source="EFI.img"
+    if [[ ! -f "$efi_img_source" ]]; then
+        write_log "EFI image missing, building via make efi-img" "WARNING"
+        if ! make efi-img; then
+            write_log "Failed to build EFI image (make efi-img)" "ERROR"
+            return 1
+        fi
+    fi
     local efi_img_run=""
     efi_img_run="$(mktemp "${TMPDIR:-/tmp}/syscall_efi_run.XXXXXX" 2>/dev/null || mktemp -t syscall_efi_run 2>/dev/null || true)"
     if [[ -z "$efi_img_run" ]]; then
@@ -266,6 +310,7 @@ run_syscall_validation() {
         return 1
     fi
     cp -f "$efi_img_source" "$efi_img_run"
+    rm -f qemu_syscall_debug.log
 
     local qemu_args=()
     if (( ${#ovmf_args[@]} > 0 )); then
@@ -286,7 +331,7 @@ run_syscall_validation() {
         qemu_args+=("${debugcon_args[@]}")
     fi
     
-    write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "DEBUG"
+    write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "INFO"
     
     # Start QEMU
     qemu-system-x86_64 "${qemu_args[@]}" > "$output_log" 2> "$error_log" &

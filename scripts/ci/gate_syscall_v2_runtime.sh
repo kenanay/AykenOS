@@ -457,6 +457,16 @@ PY
 # Build once for deterministic runtime runs.
 if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img > "${BUILD_LOG}" 2>&1; then
   record_violation "syscall_runtime_harness_failed:make_efi_img"
+  build_error_summary="$(grep -E -m1 'error:|ERROR:|No such file|not found|failed|undefined reference|command not found' "${BUILD_LOG}" 2>/dev/null || true)"
+  if [[ -n "${build_error_summary}" ]]; then
+    safe_summary="$(printf "%s" "${build_error_summary}" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^ //;s/ $//')"
+    record_violation "syscall_runtime_harness_failed_detail:${safe_summary}"
+  fi
+  {
+    echo "===== build.log (efi-img) ====="
+    sed -n '1,160p' "${BUILD_LOG}" 2>/dev/null || true
+    echo
+  } >> "${TRACE_LOG}"
 fi
 
 MEASUREMENT_SUCCESS_COUNT=0
