@@ -60,7 +60,7 @@ jobs:
 
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
-    runs-on: [self-hosted, linux, x64, aykenos-perf01]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       CI: "true"
