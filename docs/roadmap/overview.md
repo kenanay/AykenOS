@@ -241,11 +241,17 @@ AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabu
 ## 🚀 Next Steps
 
 ### Immediate (Q1 2026)
-1. Complete Phase 4.5B: Performance gate stabilization
+1. **Complete Provisional CI → Constitutional CI Transition**
+   - ✅ Hosted runner operational (GitHub-hosted ubuntu-latest)
+   - ⏳ Baremetal runner setup (deterministic authority)
+   - ⏳ Performance baseline initialization (constitutional mode)
+   - ⏳ Re-enable strict tooling isolation (separate tooling/kernel PRs)
+   - Exit criteria: `PERF_BASELINE_MODE=constitutional`, all gates HARD FAIL
+2. Complete Phase 4.5B: Performance gate stabilization
    - Baseline initialization (CI or local authority)
    - Preempt marker production stability
    - Full CI green (all 8 gates passing)
-2. Prepare Phase 4.5C: AI integration readiness
+3. Prepare Phase 4.5C: AI integration readiness
    - BCIB execution submission validation
    - Ring3 AI runtime skeleton
    - Security policy framework
