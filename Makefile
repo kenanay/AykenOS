@@ -526,9 +526,9 @@ ci-freeze-guard:
 ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
-# Local freeze (skip performance gate for development)
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime
-	@echo "Local freeze suite completed successfully (performance gate skipped)!"
+# Local freeze (skip performance and tooling-isolation gates for development)
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime
+	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
 ci-evidence-dir:
