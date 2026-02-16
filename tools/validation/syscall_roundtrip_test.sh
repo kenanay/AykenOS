@@ -20,12 +20,14 @@ resolve_ovmf_firmware() {
 
     # Known firmware locations across macOS/Linux runners.
     local candidates=(
-        "OVMF_CODE.fd|OVMF_VARS.fd"
-        "firmware/ovmf/OVMF_CODE.fd|firmware/ovmf/OVMF_VARS.fd"
+        # Prefer distro-managed OVMF on Linux/CI runners.
         "/usr/share/OVMF/OVMF_CODE_4M.fd|/usr/share/OVMF/OVMF_VARS_4M.fd"
         "/usr/share/OVMF/OVMF_CODE.fd|/usr/share/OVMF/OVMF_VARS.fd"
         "/usr/share/edk2/ovmf/OVMF_CODE.fd|/usr/share/edk2/ovmf/OVMF_VARS.fd"
         "/usr/share/qemu/OVMF_CODE.fd|/usr/share/qemu/OVMF_VARS.fd"
+        # Fallbacks for repo-bundled/local firmware.
+        "OVMF_CODE.fd|OVMF_VARS.fd"
+        "firmware/ovmf/OVMF_CODE.fd|firmware/ovmf/OVMF_VARS.fd"
         "/opt/homebrew/share/qemu/edk2-x86_64-code.fd|/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
     )
 
