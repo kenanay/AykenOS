@@ -540,6 +540,7 @@ ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-expo
 ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/meta"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring0-exports"
@@ -548,6 +549,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
@@ -684,7 +686,7 @@ ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: syscall-v2-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
-ci-gate-performance:
+ci-gate-performance: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "perf_baseline_authority: $(PERF_BASELINE_AUTHORITY)"

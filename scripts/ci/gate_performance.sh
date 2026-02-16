@@ -33,6 +33,8 @@ BASELINE_FILE="${ROOT}/scripts/ci/perf-baseline.lock.json"
 KERNEL_PROFILE="${PERF_KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${PERF_QEMU_TIMEOUT:-30}"
 ENV_MISMATCH_POLICY="${PERF_ENV_MISMATCH_POLICY:-fail}"
+REGRESSION_POLICY="${PERF_REGRESSION_POLICY:-fail}"
+BASELINE_MODE="${PERF_BASELINE_MODE:-constitutional}"
 BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-latest-x64}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
@@ -541,7 +543,14 @@ else
       record_violation "baseline_initialized_requires_commit:${BASELINE_FILE}"
     fi
   else
-    record_violation "baseline_missing:${BASELINE_FILE}"
+    # Baseline missing
+    if [[ "${BASELINE_MODE}" == "provisional" ]]; then
+      # Provisional mode: baseline missing is acceptable, skip gate
+      echo "WARN: Baseline missing in provisional mode, skipping enforcement" >&2
+    else
+      # Constitutional mode: baseline missing is a violation
+      record_violation "baseline_missing:${BASELINE_FILE}"
+    fi
   fi
 fi
 
@@ -551,6 +560,8 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "time_utc=${NOW}"
   echo "git_sha=${GIT_SHA}"
   echo "baseline_file=${BASELINE_FILE}"
+  echo "baseline_mode=${BASELINE_MODE}"
+  echo "regression_policy=${REGRESSION_POLICY}"
   echo "init_baseline=${INIT_BASELINE}"
   echo "kernel_profile=${KERNEL_PROFILE}"
   echo "qemu_timeout=${QEMU_TIMEOUT}"
@@ -612,13 +623,27 @@ out = {
     "baseline_diff": read_lines("baseline.diff.txt"),
     "violations": read_lines("violations.txt"),
 }
+
+# Provisional mode override
+baseline_mode = meta.get("baseline_mode", "constitutional")
+if baseline_mode == "provisional" and violations_count > 0:
+    out["verdict"] = "WARN"
+    out["provisional_note"] = "Violations present but not enforced in provisional mode"
+
 print(json.dumps(out, indent=2, sort_keys=True))
 PY
 
+# Provisional mode: warn instead of fail
 if [[ "${VIOLATIONS_COUNT}" -gt 0 ]]; then
-  echo "performance: FAIL (${VIOLATIONS_COUNT} violations)"
-  echo "See: ${VIOLATIONS_TXT}"
-  exit 2
+  if [[ "${BASELINE_MODE}" == "provisional" ]]; then
+    echo "performance: WARN (${VIOLATIONS_COUNT} violations, provisional mode)"
+    echo "See: ${VIOLATIONS_TXT}"
+    exit 0  # Warn, not fail
+  else
+    echo "performance: FAIL (${VIOLATIONS_COUNT} violations)"
+    echo "See: ${VIOLATIONS_TXT}"
+    exit 2
+  fi
 fi
 
 echo "performance: PASS"
