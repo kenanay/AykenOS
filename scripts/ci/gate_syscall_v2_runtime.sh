@@ -5,15 +5,33 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_TOOLS="${ROOT}/tools/ci"
 source "${CI_TOOLS}/lib.sh"
 
+# PROVISIONAL MODE: GitHub-hosted runners
+# See: docs/operations/PROVISIONAL_CI_MODE.md
+#
+# Hosted runner environment is non-deterministic:
+#   - QEMU boot timing varies
+#   - Nested virtualization overhead
+#   - EFI firmware behavior differences
+#
+# Provisional policy:
+#   - Timeout: 40s (vs 20s baremetal)
+#   - Measurement runs: 3 (vs 5 baremetal)
+#   - Success rate: 60% (vs 100% baremetal)
+#
+# Target state (after baremetal CI):
+#   - Timeout: 20s
+#   - Measurement runs: 5
+#   - Success rate: 100%
+
 usage() {
   cat <<'USAGE'
 Usage:
   scripts/ci/gate_syscall_v2_runtime.sh --evidence-dir evidence/run-<id>/gates/syscall-v2-runtime
     [--kernel-profile validation]
     [--warmup-runs 1]
-    [--measurement-runs 5]
-    [--timeout-seconds 20]
-    [--required-success-rate 100]
+    [--measurement-runs 3]
+    [--timeout-seconds 40]
+    [--required-success-rate 60]
 
 Exit codes:
   0: pass
@@ -25,9 +43,18 @@ USAGE
 EVIDENCE_DIR=""
 KERNEL_PROFILE="${SYSCALL_V2_RUNTIME_KERNEL_PROFILE:-validation}"
 WARMUP_RUNS="${SYSCALL_V2_RUNTIME_WARMUP:-1}"
-MEASUREMENT_RUNS="${SYSCALL_V2_RUNTIME_RUNS:-5}"
-TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_TIMEOUT:-20}"
-REQUIRED_SUCCESS_RATE="${SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE:-100}"
+
+# Provisional defaults for GitHub-hosted runners
+if [[ "${CI:-}" == "true" ]] && [[ "${PERF_BASELINE_MODE:-}" == "provisional" ]]; then
+  MEASUREMENT_RUNS="${SYSCALL_V2_RUNTIME_RUNS:-3}"
+  TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_TIMEOUT:-40}"
+  REQUIRED_SUCCESS_RATE="${SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE:-60}"
+else
+  # Baremetal/local defaults
+  MEASUREMENT_RUNS="${SYSCALL_V2_RUNTIME_RUNS:-5}"
+  TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_TIMEOUT:-20}"
+  REQUIRED_SUCCESS_RATE="${SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE:-100}"
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

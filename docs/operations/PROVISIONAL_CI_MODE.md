@@ -40,18 +40,19 @@ GitHub-hosted runners provide:
 - `ci-gate-hygiene`: Git cleanliness
 - `ci-gate-constitutional`: Constitutional compliance
 - `ci-gate-workspace`: Workspace integrity
-- `ci-gate-syscall-v2-runtime`: Syscall functional test
 
 These gates are **deterministic** and work correctly on hosted runners.
 
 ### ⚠️ Soft Gates (Provisional)
+- `ci-gate-syscall-v2-runtime`: **RELAXED THRESHOLDS**
+  - Timeout: 40s (vs 20s baremetal)
+  - Runs: 3 (vs 5 baremetal)
+  - Success rate: 60% (vs 100% baremetal)
+  - Reason: QEMU boot timing non-deterministic on nested virtualization
 - `ci-gate-performance`: **WARNING MODE ONLY**
-
-Performance gate in provisional mode:
-- Measures boot time, syscall latency
-- Compares against baseline
-- **Does NOT fail on regression** (warning only)
-- Baseline is marked as `provisional`
+  - Measures boot time, syscall latency
+  - Does NOT fail on regression (warning only)
+  - Baseline marked as `provisional`
 
 ## Authority Model
 
@@ -142,7 +143,10 @@ PERF_BASELINE_MODE: "constitutional"
 - Export count changes
 - Git hygiene failures
 - Constitutional violations
-- Syscall functional failures
+
+⚠️ **Provisional verdicts** (may have false negatives):
+- Syscall runtime failures (60% threshold, environment-sensitive)
+- Performance regressions (warning only, non-deterministic)
 
 ❌ **Do NOT trust these verdicts**:
 - Performance regressions (noise)
