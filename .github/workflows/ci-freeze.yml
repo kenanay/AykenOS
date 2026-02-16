@@ -82,12 +82,16 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
       - name: Toolchain sanity
         run: |
           set -euo pipefail
           uname -a
           clang --version | head -n1
+          ld.lld --version | head -n1
+          nasm -v
+          qemu-system-x86_64 --version | head -n1
+          mformat --version 2>&1 | head -n1 || echo "mtools: $(which mformat)"
           ld.lld --version | head -n1
           nasm -v
           qemu-system-x86_64 --version | head -n1
@@ -133,7 +137,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
       - name: Resolve baseline init digest
         run: |
           set -euo pipefail
