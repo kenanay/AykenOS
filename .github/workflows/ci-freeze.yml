@@ -1,3 +1,18 @@
+# CI Freeze Enforcement Workflow
+#
+# MODE: PROVISIONAL (GitHub-hosted runners)
+# See: docs/operations/PROVISIONAL_CI_MODE.md
+#
+# Current state:
+#   - Functional gates: ENFORCED (deterministic)
+#   - Performance gate: WARNING ONLY (non-deterministic)
+#
+# Target state (after baremetal CI):
+#   - All gates: ENFORCED (deterministic)
+#   - Authority: baremetal-ubuntu22-x86_64-perf01
+#
+# Transition plan: docs/operations/BAREMETAL_CI_SETUP.md
+
 name: ci-freeze
 
 on:
@@ -19,32 +34,36 @@ on:
 jobs:
   freeze:
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
-    runs-on: [self-hosted, linux, x64, aykenos-perf01]
-    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    timeout-minutes: 40  # Increased for hosted runner QEMU overhead
     env:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
-      PERF_BASELINE_AUTHORITY: "self-hosted-baremetal-x86_64-perf01"
+      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
+      PERF_BASELINE_MODE: "provisional"
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
-      PERF_ENV_MISMATCH_POLICY: "fail"
+      PERF_ENV_MISMATCH_POLICY: "warn"
+      PERF_REGRESSION_POLICY: "warn"
     steps:
       - uses: actions/checkout@v4
-      - name: Export pinned CI image digest
+        with:
+          fetch-depth: 0
+      - name: Resolve pinned CI image digest
         run: |
           set -euo pipefail
-          DIGEST_FILE="/etc/aykenos/ci_image_digest"
-          if [ ! -f "${DIGEST_FILE}" ]; then
-            echo "Pinned digest file missing: ${DIGEST_FILE}"
-            exit 1
-          fi
-          DIGEST="$(tr -d '\r\n' < "${DIGEST_FILE}")"
-          if [ -z "${DIGEST}" ] || [ "${DIGEST}" = "unknown" ]; then
-            echo "Pinned digest file is invalid: ${DIGEST_FILE}"
+          DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if echo "${DIGEST}" | grep -q "unknown"; then
+            echo "Unable to resolve CI image digest"
             exit 1
           fi
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+      - name: Install toolchain dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
       - name: Toolchain sanity
         run: |
           set -euo pipefail
@@ -61,38 +80,50 @@ jobs:
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       CI: "true"
       RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_INIT_BASELINE: "1"
-      PERF_BASELINE_AUTHORITY: "self-hosted-baremetal-x86_64-perf01"
+      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
+      PERF_BASELINE_MODE: "provisional"
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
-      PERF_ENV_MISMATCH_POLICY: "fail"
+      PERF_ENV_MISMATCH_POLICY: "warn"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install toolchain dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
       - name: Resolve baseline init digest
         run: |
           set -euo pipefail
           INPUT_DIGEST="${{ github.event.inputs.ci_image_digest }}"
-          if [ -n "${INPUT_DIGEST}" ]; then
-            DIGEST="${INPUT_DIGEST}"
-          else
-            DIGEST_FILE="/etc/aykenos/ci_image_digest"
-            if [ ! -f "${DIGEST_FILE}" ]; then
-              echo "Pinned digest file missing and ci_image_digest input empty."
-              exit 1
-            fi
-            DIGEST="$(tr -d '\r\n' < "${DIGEST_FILE}")"
+          DETECTED_DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if [ -z "${INPUT_DIGEST}" ]; then
+            echo "ERROR: ci_image_digest input is required when init_perf_baseline=true"
+            echo "Detected runner digest candidate: ${DETECTED_DIGEST}"
+            exit 1
           fi
+          DIGEST="${INPUT_DIGEST}"
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+          echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_DIGEST}" >> "$GITHUB_ENV"
       - name: Validate baseline init digest
         run: |
           set -euo pipefail
-          if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || [ "${PERF_CI_IMAGE_DIGEST}" = "unknown" ]; then
-            echo "ci_image_digest input is required and must be pinned."
+          if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || echo "${PERF_CI_IMAGE_DIGEST}" | grep -q "unknown"; then
+            echo "ERROR: ci_image_digest is not pinned."
+            echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_CI_IMAGE_DIGEST:-unavailable}"
+            exit 1
+          fi
+          if ! echo "${PERF_CI_IMAGE_DIGEST}" | grep -Eq '^gha-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+$'; then
+            echo "ERROR: ci_image_digest format invalid."
+            echo "Expected format: gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>"
             exit 1
           fi
       - name: Init perf baseline (expected fail-closed with baseline write)
