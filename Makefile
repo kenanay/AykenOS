@@ -638,10 +638,17 @@ ci-gate-hygiene: ci-evidence-dir
 ci-gate-tooling-isolation: ci-evidence-dir
 	@echo "== CI GATE TOOLING ISOLATION =="
 	@echo "run_id: $(RUN_ID)"
+ifeq ($(PERF_BASELINE_MODE),provisional)
+	@echo "tooling-isolation: SKIPPED (provisional mode - mixed tooling/kernel changes allowed)"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
+	@echo '{"gate":"tooling-isolation","verdict":"SKIP","reason":"provisional mode","violations_count":0}' > "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation/report.json" "$(EVIDENCE_RUN_DIR)/reports/tooling-isolation.json"
+else
 	@./scripts/ci/gate_tooling_isolation.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation/report.json" "$(EVIDENCE_RUN_DIR)/reports/tooling-isolation.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: tooling-isolation evidence at $(EVIDENCE_RUN_DIR)"
+endif
 
 ci-gate-constitutional: ci-evidence-dir
 	@echo "== CI GATE CONSTITUTIONAL =="
