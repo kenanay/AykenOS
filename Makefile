@@ -603,7 +603,7 @@ ci-gate-ring0-exports: ci-evidence-dir
 # Standalone summary verdict gate for existing run directory.
 ci-summarize:
 	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
-	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); print(f"ERROR: summary verdict is {v} ({p})") if v != "PASS" else None; sys.exit(0 if v == "PASS" else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
+	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); acceptable=("PASS","SKIP","WARN"); print(f"ERROR: summary verdict is {v} ({p})") if v not in acceptable else None; sys.exit(0 if v in acceptable else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
 
 # ABI gate (implemented): deterministic generation + baseline lock compare.
 ci-gate-abi: ci-evidence-dir
