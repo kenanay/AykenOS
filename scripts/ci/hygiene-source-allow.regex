@@ -1,0 +1,6 @@
+# Hygiene source allowlist.
+# Supported forms:
+#   1) <line_regex>                   (global allow for matching lines)
+#   2) <file_regex>:<line_regex>      (scope allow to matching file path)
+#
+# Keep this file empty unless a time-boxed waiver is approved.

@@ -1,84 +1,15 @@
-# CI Freeze Enforcement Workflow
-#
-# MODE: PROVISIONAL (GitHub-hosted runners)
-# See: docs/operations/PROVISIONAL_CI_MODE.md
-#
-# Current state:
-#   - Functional gates: ENFORCED (deterministic)
-#   - Performance gate: WARNING ONLY (non-deterministic)
-#
-# Target state (after baremetal CI):
-#   - All gates: ENFORCED (deterministic)
-#   - Authority: baremetal-ubuntu22-x86_64-perf01
-#
-# Transition plan: docs/operations/BAREMETAL_CI_SETUP.md
-
-name: ci-freeze
+name: perf-baseline-init
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
-      init_perf_baseline:
-        description: "Run performance baseline initialization flow"
-        type: boolean
-        required: true
-        default: false
       ci_image_digest:
-        description: "Pinned runner image/build digest (required for baseline init, ex: gha-ubuntu22-20260212.1-x64)"
-        required: false
+        description: "Pinned runner image/build digest (required, ex: gha-ubuntu22-20260212.1-x64)"
+        required: true
         default: ""
 
 jobs:
-  freeze:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      CI: "true"
-      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
-      PERF_BASELINE_MODE: "provisional"  # Non-deterministic, warning only
-      PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
-      PERF_QEMU_TIMEOUT: "30"
-      PERF_KERNEL_PROFILE: "validation"
-      PERF_ENV_MISMATCH_POLICY: "warn"  # Provisional mode: warn, not fail
-      PERF_REGRESSION_POLICY: "warn"    # Provisional mode: warn, not fail
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Resolve pinned CI image digest
-        run: |
-          set -euo pipefail
-          DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
-          if echo "${DIGEST}" | grep -q "unknown"; then
-            echo "Unable to resolve CI image digest"
-            exit 1
-          fi
-          echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
-      - name: Install toolchain dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
-      - name: Toolchain sanity
-        run: |
-          set -euo pipefail
-          uname -a
-          clang --version | head -n1
-          ld.lld --version | head -n1
-          nasm -v
-          qemu-system-x86_64 --version | head -n1
-      - name: Freeze suite
-        run: |
-          set -euo pipefail
-          make ci-freeze
-
-  init_perf_baseline:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
+  init_baseline:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -86,46 +17,50 @@ jobs:
       RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_INIT_BASELINE: "1"
       PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
-      PERF_BASELINE_MODE: "provisional"  # Non-deterministic baseline
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
       PERF_ENV_MISMATCH_POLICY: "fail"
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      
       - name: Install toolchain dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 clang lld nasm jq
+      
       - name: Resolve baseline init digest
         run: |
           set -euo pipefail
           INPUT_DIGEST="${{ github.event.inputs.ci_image_digest }}"
           DETECTED_DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
           if [ -z "${INPUT_DIGEST}" ]; then
-            echo "ERROR: ci_image_digest input is required when init_perf_baseline=true"
+            echo "ERROR: ci_image_digest input is required."
             echo "Detected runner digest candidate: ${DETECTED_DIGEST}"
             exit 1
           fi
           DIGEST="${INPUT_DIGEST}"
           echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
           echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_DIGEST}" >> "$GITHUB_ENV"
+      
       - name: Validate baseline init digest
         run: |
           set -euo pipefail
           if [ -z "${PERF_CI_IMAGE_DIGEST}" ] || echo "${PERF_CI_IMAGE_DIGEST}" | grep -q "unknown"; then
-            echo "ERROR: ci_image_digest is not pinned."
+            echo "ERROR: ci_image_digest is not pinned"
+            echo "PERF_CI_IMAGE_DIGEST=${PERF_CI_IMAGE_DIGEST}"
             echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_CI_IMAGE_DIGEST:-unavailable}"
             exit 1
           fi
           if ! echo "${PERF_CI_IMAGE_DIGEST}" | grep -Eq '^gha-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+-[A-Za-z0-9._-]+$'; then
-            echo "ERROR: ci_image_digest format invalid."
+            echo "ERROR: ci_image_digest format invalid"
             echo "Expected format: gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>"
+            echo "PERF_CI_IMAGE_DIGEST=${PERF_CI_IMAGE_DIGEST}"
             exit 1
           fi
+          echo "Using digest: ${PERF_CI_IMAGE_DIGEST}"
+      
       - name: Init perf baseline (expected fail-closed with baseline write)
         run: |
           set -euo pipefail
@@ -133,16 +68,21 @@ jobs:
           make ci-gate-performance
           rc=$?
           set -e
+          echo "ci-gate-performance exit code: ${rc}"
           if [ "${rc}" -ne 2 ]; then
-            echo "Unexpected exit code from ci-gate-performance: ${rc}"
+            echo "ERROR: Unexpected exit code from ci-gate-performance: ${rc}"
+            echo "Expected: 2 (fail-closed with baseline write)"
             exit "${rc}"
           fi
           test -f scripts/ci/perf-baseline.lock.json
+      
       - name: Show generated baseline
         run: |
           set -euo pipefail
           ls -la scripts/ci/perf-baseline.lock.json
+          echo "=== Baseline content (first 120 lines) ==="
           sed -n '1,120p' scripts/ci/perf-baseline.lock.json
+      
       - name: Debug artifact paths before upload
         if: ${{ always() }}
         run: |
@@ -151,6 +91,7 @@ jobs:
           ls -la scripts/ci/perf-baseline.lock.json || echo "MISSING: perf-baseline.lock.json"
           echo "=== Evidence directory check ==="
           find evidence -maxdepth 4 -type f 2>/dev/null | head -20 || echo "MISSING: evidence directory"
+      
       - name: Upload performance evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

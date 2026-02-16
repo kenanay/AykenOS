@@ -32,7 +32,9 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 **Done Criteria**
 1. ABI gate `PASS`
 2. Header/generation parity raporu üretilmiş
-3. Evidence: `evidence/run-<RUN_ID>/gates/abi/`
+3. Baseline lock mevcut ve güncel: `scripts/ci/abi-baseline.lock.json`
+4. Baseline lock git'te tracked ve temiz (worktree/index drift yok)
+5. Evidence: `evidence/run-<RUN_ID>/gates/abi/`
 
 ### 1.2 Userspace Syscall Register Mapping Fix
 
@@ -49,13 +51,21 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 **Workflow**
 1. Kernel policy fallback tamamen kaldırılır veya feature flag ile izole edilir.
-2. Default durum `fallback disabled` olur.
-3. Kaldırma planı repo içinde izlenir.
+2. Default durum `fallback disabled` olur (`AYKEN_SCHED_FALLBACK ?= 0`).
+3. Fallback yalnızca validation profile'da explicit olarak açılabilir (`AYKEN_SCHED_FALLBACK=1` + `KERNEL_PROFILE=validation`).
+4. Fallback kapalıyken Ring0 seçim policy çalıştırmaz; Ring3 scheduler mailbox üzerinden `next` stage eder ve Ring0 tüketir (bootstrap öncesi tek-seferlik ready list tüketimi hariç).
+5. Scheduler arbitration contract (Yol A) zorunludur: Ring3 `stage_next` yalnız hint üretir, Ring0 final arbiter olarak kabul/veto eder.
+6. Strict scheduler path'te kabul için minimum sanity doğrulaması zorunludur (registered/state/context).
+7. Bridge syscall penceresi `0x90..0x9F` ile sınırlı tutulur; `SYS_V2` freeze aralığı değişmez ve bridge çağrıları execution-centric `SYS_V2` sözleşmesine dahil değildir.
+8. Karar kaydı: `docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md`.
+9. `make ci-freeze` hard guard ile fallback açıkken fail eder.
+10. Kaldırma planı repo içinde izlenir.
 
 **Done Criteria**
 1. Boundary gate `PASS`
-2. Runtime davranış testi `PASS`
-3. Evidence: `evidence/run-<RUN_ID>/gates/boundary/`
+2. Constitutional gate strict-mode `PASS` (scheduler fallback contract check dahil)
+3. Runtime davranış testi `PASS`
+4. Evidence: `evidence/run-<RUN_ID>/gates/boundary/` + `evidence/run-<RUN_ID>/gates/constitutional/sched-fallback-check.txt`
 
 ### 1.4 Tracked Build Artifact Cleanup
 
@@ -76,22 +86,28 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 1. `make ci-gate-abi`
 2. `make ci-gate-boundary`
-3. `make ci-gate-workspace`
-4. `make ci-gate-hygiene`
-5. `make ci-gate-performance`
-6. `make ci-summarize`
+3. `make ci-gate-hygiene`
+4. `make ci-gate-tooling-isolation`
+5. `make ci-gate-constitutional`
+6. `make ci-gate-workspace`
+7. `make ci-gate-syscall-v2-runtime`
+8. `make ci-gate-performance`
+9. `make ci-summarize`
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
-1. **Implemented:** `ci-gate-boundary`, `ci-gate-hygiene`, `ci-summarize`
-2. **Planned (hard-fail stubs):** `ci-gate-abi`, `ci-gate-workspace`, `ci-gate-performance`
-3. Stub hedefler bilinçli olarak `exit 2` döner; bu, "varmış gibi" geçmeyi engeller.
+1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
+2. Runtime gate spec: `docs/development/SYSCALL_V2_RUNTIME_GATE_SPEC.md`
+3. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
 
 ### 2.3 CI Entry Point Contract
 
 1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `ci-gate-hygiene` + `validate-full`)
-2. `make ci-freeze` = strict freeze suite (planlı gate stub'ları dahil)
+2. `make ci-freeze` = strict freeze suite (tüm implemented gate'ler)
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
+4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-latest` + fail-closed baseline policy).
+5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
+6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
@@ -127,12 +143,16 @@ evidence/
 1. `make ci-gate-hygiene`
 2. Make target, `scripts/ci/gate_hygiene.sh --evidence-dir evidence/run-<RUN_ID>/gates/hygiene` çağırır.
 3. `reports/hygiene.json` kopyalanır ve `make ci-summarize` ile global verdict zorunlu tutulur.
+4. Source deny kuralları:
+   - `scripts/ci/hygiene-source-deny.regex`
+   - `scripts/ci/hygiene-source-allow.regex` (boş, waiver yoksa kullanılmaz)
 
 **Hygiene Rules (merge-blocking)**
 1. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`)
 2. Tracked executable/binary files (allowlist hariç)
 3. Oversized tracked files (`> 5,000,000` bytes, allowlist hariç)
 4. Dirty tracked workspace (`git status --porcelain --untracked-files=no`)
+5. Source deny scan: `static malloc/free` fonksiyon tanımı yasak (kernel + `userspace/libayken`)
 
 **Hygiene Evidence Files**
 1. `evidence/run-<RUN_ID>/gates/hygiene/tracked.files.txt`
@@ -140,9 +160,10 @@ evidence/
 3. `evidence/run-<RUN_ID>/gates/hygiene/tracked-binary.txt`
 4. `evidence/run-<RUN_ID>/gates/hygiene/oversized-tracked.txt`
 5. `evidence/run-<RUN_ID>/gates/hygiene/dirty-tracked.txt`
-6. `evidence/run-<RUN_ID>/gates/hygiene/violations.txt`
-7. `evidence/run-<RUN_ID>/gates/hygiene/meta.txt`
-8. `evidence/run-<RUN_ID>/gates/hygiene/report.json`
+6. `evidence/run-<RUN_ID>/gates/hygiene/source-deny-hits.txt`
+7. `evidence/run-<RUN_ID>/gates/hygiene/violations.txt`
+8. `evidence/run-<RUN_ID>/gates/hygiene/meta.txt`
+9. `evidence/run-<RUN_ID>/gates/hygiene/report.json`
 
 ---
 
@@ -166,6 +187,14 @@ Kernel artifact içinde istemediğimiz semboller:
 1. Kaynak seviyesinde hedefli pattern taraması eklenebilir.
 2. Nihai otorite binary symbol scan'dir.
 
+### 3.4 Link Boundary Rule
+
+1. `kernel.elf` yalnız Ring0 objelerinden linklenir.
+2. `userspace/libayken/*.o` kernel link setine dahil edilemez.
+3. VFS mekanizma katmanı dosya topolojisi ile sabitlenir: `kernel/include/vfs_mech.h` + `kernel/fs/vfs_mech.c`.
+4. Kernel policy test kodu kernel image dışı tutulur (`*_test.c` default link dışı).
+5. Boundary run, linker map kanıtı üretir: `evidence/run-<RUN_ID>/artifacts/kernel.map`.
+
 ---
 
 ## 4) Performance Baseline Freeze
@@ -182,6 +211,16 @@ Kernel artifact içinde istemediğimiz semboller:
 1. Env hash mismatch davranışı tek doğru kuralla sabitlenir:
    - `FAIL` veya `WAIVER required`
 2. Aynı repo içinde çelişkili davranış olamaz.
+3. Gate implementation: `make ci-gate-performance` -> `scripts/ci/gate_performance.sh`
+4. Baseline lock: `scripts/ci/perf-baseline.lock.json` (tracked + clean olmalı)
+5. İlk baseline yalnızca explicit init ile yazılır: `PERF_INIT_BASELINE=1` (gate bilinçli FAIL döner, commit bekler)
+6. Baseline init authority default: CI-only (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=1`).
+7. Marker format freeze-contract olarak kilitlidir (`boot_ok_marker`, `preempt_sw_count_pattern`, `preempt_iret_count_pattern`) ve baseline compare içinde doğrulanır.
+8. Local baseline init yalnızca explicit override + waiver ile yapılır (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=0` + waiver referansı).
+9. Baseline authority tek-doğru: `PERF_BASELINE_AUTHORITY=github-hosted-ubuntu-latest-x64`.
+10. Runner image/build kimliği baseline sözleşmesine dahil edilir: `PERF_CI_IMAGE_DIGEST=<pinned digest/id>`.
+11. Baseline init `PERF_CI_IMAGE_DIGEST=unknown` ile yapılamaz; pinned digest zorunludur.
+12. Default pinned digest source: GitHub hosted image metadata (`ImageOS`, `ImageVersion`, `RUNNER_ARCH`) (workflow input only override).
 
 ---
 
@@ -192,6 +231,18 @@ Her merge için constitutional kanıt zorunlu:
 2. `NON_OVERRIDABLE = 0`
 3. Waiver varsa expiry + issue link + teknik gerekçe
 4. Evidence: `evidence/run-<RUN_ID>/gates/constitutional/report.json`
+
+### 5.1 Strict Mode (Fail-Closed)
+
+1. `make ci-gate-constitutional` default strict-mode ile çalışır (`CONSTITUTIONAL_STRICT=1`).
+2. Ring0 exported symbol whitelist enforcement:
+   - seed allowlist: `scripts/ci/constitutional-ring0-symbol-whitelist.regex`
+   - evidence: `ring0-symbols.txt`, `ring0-symbol-violations.txt`
+3. Ring0 source deny/allow enforcement:
+   - deny: `scripts/ci/constitutional-source-deny.regex`
+   - allow (waiver-only): `scripts/ci/constitutional-source-allow.regex`
+4. Scheduler fallback contract enforcement (`AYKEN_SCHED_FALLBACK=0` strict-mode, Makefile/header default lock).
+5. Whitelist dışı symbol veya source deny hit varsa verdict = `FAIL`.
 
 ---
 
@@ -283,8 +334,8 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 - [ ] Repo hygiene: remove tracked artifacts and enforce
 - [ ] Finalize boundary deny/allow lists and document rationale
 - [ ] Add perf baseline manifest + perf gate
-- [ ] Wire constitutional gate + waiver docs
-- [ ] RFC + waiver directories and templates
+- [x] Wire constitutional gate + waiver docs
+- [x] RFC + waiver directories and templates
 - [ ] Freeze exit bundle run + board approval record
 
 ---
@@ -294,8 +345,10 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 Her iterasyonda minimum rutin:
 1. `make ci-gate-boundary`
 2. `make ci-gate-hygiene`
-3. `make ci` (mevcut minimum suite)
-4. Evidence path'i PR'a yaz
+3. `make ci-gate-workspace`
+4. `make ci-gate-constitutional`
+5. `make ci` (mevcut minimum suite)
+6. Evidence path'i PR'a yaz
 
 Fail olursa:
 1. Fail kaynağını sınıflandır (`deny/allow` mi, gerçek leak mi)

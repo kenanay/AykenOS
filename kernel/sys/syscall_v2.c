@@ -8,6 +8,7 @@
 // Requirements: FR-2.1.1, FR-2.1.2 - Execution-centric syscalls with capability system
 
 #include "syscall_v2.h"
+#include "../include/sys_v2_abi_lock.h"
 #include "../drivers/console/fb_console.h"
 #include "../include/proc.h"
 #include "../sched/sched.h"
@@ -27,6 +28,115 @@
 
 static uint64_t next_capability_id = 1;
 static uint64_t next_execution_id = 1;
+
+typedef uint64_t (*sys_v2_dispatch_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t);
+
+static uint64_t sys_v2_dispatch_map_memory(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a4;
+    return sys_v2_map_memory(a1, a2, a3);
+}
+
+static uint64_t sys_v2_dispatch_unmap_memory(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_unmap_memory(a1, a2);
+}
+
+static uint64_t sys_v2_dispatch_switch_context(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_switch_context(a1, a2);
+}
+
+static uint64_t sys_v2_dispatch_submit_execution(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a4;
+    return sys_v2_submit_execution((void *)a1, a2, a3);
+}
+
+static uint64_t sys_v2_dispatch_wait_result(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_wait_result(a1, a2);
+}
+
+static uint64_t sys_v2_dispatch_interrupt_return(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_interrupt_return(a1, a2);
+}
+
+static uint64_t sys_v2_dispatch_time_query(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_time_query(a1, (uint64_t *)a2);
+}
+
+static uint64_t sys_v2_dispatch_capability_bind(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_capability_bind(a1, (capability_token_t *)a2);
+}
+
+static uint64_t sys_v2_dispatch_capability_revoke(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a2;
+    (void)a3;
+    (void)a4;
+    return sys_v2_capability_revoke(a1);
+}
+
+static uint64_t sys_v2_dispatch_exit(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a2;
+    (void)a3;
+    (void)a4;
+    return sys_v2_exit(a1);
+}
+
+static uint64_t sys_v2_dispatch_debug_putchar(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a2;
+    (void)a3;
+    (void)a4;
+    return sys_v2_debug_putchar(a1);
+}
+
+static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
+    [SYS_V2_MAP_MEMORY] = sys_v2_dispatch_map_memory,
+    [SYS_V2_UNMAP_MEMORY] = sys_v2_dispatch_unmap_memory,
+    [SYS_V2_SWITCH_CONTEXT] = sys_v2_dispatch_switch_context,
+    [SYS_V2_SUBMIT_EXECUTION] = sys_v2_dispatch_submit_execution,
+    [SYS_V2_WAIT_RESULT] = sys_v2_dispatch_wait_result,
+    [SYS_V2_INTERRUPT_RETURN] = sys_v2_dispatch_interrupt_return,
+    [SYS_V2_TIME_QUERY] = sys_v2_dispatch_time_query,
+    [SYS_V2_CAPABILITY_BIND] = sys_v2_dispatch_capability_bind,
+    [SYS_V2_CAPABILITY_REVOKE] = sys_v2_dispatch_capability_revoke,
+    [SYS_V2_EXIT] = sys_v2_dispatch_exit,
+    [SYS_V2_DEBUG_PUTCHAR] = sys_v2_dispatch_debug_putchar,
+};
+
+_Static_assert(sizeof(sys_v2_dispatch_table) / sizeof(sys_v2_dispatch_table[0]) == SYS_V2_NR,
+               "Dispatch table size does not match SYS_V2_NR");
+
+/*
+ * Constitutional syscall-exit contract:
+ * all v2 handler exits must flow through deferred preemption completion.
+ */
+static inline uint64_t sys_v2_finalize_result(uint64_t result)
+{
+    if (sched_take_resched()) {
+        sched_yield();
+    }
+    return result;
+}
 
 // ============================================================================
 // MEMORY MANAGEMENT SYSCALLS
@@ -457,74 +567,22 @@ uint64_t sys_v2_debug_putchar(uint64_t character)
 uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
                             uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
-    uint64_t result;
+    sys_v2_dispatch_fn_t dispatch_fn;
 
-    // Validate syscall number
-    if (syscall_num > SYS_V2_MAX_SYSCALL) {
+    // Validate internal syscall index before dispatch table access.
+    if (syscall_num >= SYS_V2_NR) {
         fb_print("[syscall_v2] ENOSYS: invalid v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        result = ESYS_V2_INVALID_SYSCALL;
-        goto out;
+        return sys_v2_finalize_result(ESYS_V2_INVALID_SYSCALL);
     }
 
-    // Dispatch to appropriate handler
-    switch (syscall_num) {
-    case SYS_V2_MAP_MEMORY:
-        result = sys_v2_map_memory(arg1, arg2, arg3);
-        break;
-        
-    case SYS_V2_UNMAP_MEMORY:
-        result = sys_v2_unmap_memory(arg1, arg2);
-        break;
-        
-    case SYS_V2_SWITCH_CONTEXT:
-        result = sys_v2_switch_context(arg1, arg2);
-        break;
-        
-    case SYS_V2_SUBMIT_EXECUTION:
-        result = sys_v2_submit_execution((void *)arg1, arg2, arg3);
-        break;
-        
-    case SYS_V2_WAIT_RESULT:
-        result = sys_v2_wait_result(arg1, arg2);
-        break;
-        
-    case SYS_V2_INTERRUPT_RETURN:
-        result = sys_v2_interrupt_return(arg1, arg2);
-        break;
-        
-    case SYS_V2_TIME_QUERY:
-        result = sys_v2_time_query(arg1, (uint64_t *)arg2);
-        break;
-        
-    case SYS_V2_CAPABILITY_BIND:
-        result = sys_v2_capability_bind(arg1, (capability_token_t *)arg2);
-        break;
-        
-    case SYS_V2_CAPABILITY_REVOKE:
-        result = sys_v2_capability_revoke(arg1);
-        break;
-        
-    case SYS_V2_EXIT:
-        result = sys_v2_exit(arg1);
-        break;
-        
-    case SYS_V2_DEBUG_PUTCHAR:
-        result = sys_v2_debug_putchar(arg1);
-        break;
-        
-    default:
+    dispatch_fn = sys_v2_dispatch_table[syscall_num];
+    if (!dispatch_fn) {
         fb_print("[syscall_v2] ENOSYS: unimplemented v2 syscall ");
         fb_print_int(syscall_num);
         fb_print("\n");
-        result = ESYS_V2_NOT_IMPLEMENTED;
-        break;
+        return sys_v2_finalize_result(ESYS_V2_NOT_IMPLEMENTED);
     }
-
-out:
-    if (sched_take_resched()) {
-        sched_yield();
-    }
-    return result;
+    return sys_v2_finalize_result(dispatch_fn(arg1, arg2, arg3, arg4));
 }

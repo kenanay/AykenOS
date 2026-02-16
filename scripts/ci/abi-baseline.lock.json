@@ -10,7 +10,7 @@
     "abi_generated_sha256": "e5d698fe8b940c9402db3e0fac76496cdbc59d20575219426ae11becdc9d4785",
     "abi_header_sha256": "2621987f61de26751245285cb81e7c0397f84d33d0a0ee94f5cbadc8911f0528",
     "abi_layout_sha256": "2ab2fe7f2ba9ac2506e869ee52d42224a03549c30b22ef51a3228d73a4d3f724",
-    "syscall_header_sha256": "60ef02d6ceacdbcd0198fc5adf1ee10244fe7bd024831c3c3a11dc8a59b5f36d"
+    "syscall_header_sha256": "64dc811b8b81ba6b47607e4eeb33e56250945ad89e25c037f24ce67d632fddf3"
   },
   "schema_version": 1,
   "sources": {

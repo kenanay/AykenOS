@@ -1,0 +1,76 @@
+# Ring0 exported symbol whitelist (strict constitutional mode).
+# Any global symbol in kernel.elf not matching one of these regexes is a violation.
+# Keep this file intentionally minimal and prefer reducing symbol visibility in code.
+
+# Boot/entry/core
+^kernel_(main|first_entry|iret_entry)$
+^kmain(_real)?$
+^context_switch$
+^switch_to_first$
+^current_proc$
+^kernel_tss$
+
+# Arch mechanism
+^cpu_init$
+^gdt_init$
+^gdt_install_tss$
+^idt_(init|set_gate|set_gate_raw)$
+^interrupts_install(_early)?$
+^pic_(init|send_eoi|set_mask|clear_mask)$
+^timer_(init|isr_asm|isr_c|ticks)$
+^tss_(init|set_kernel_stack)$
+
+# Memory mechanism
+^paging_.*
+^phys_.*
+^kheap_init$
+^kmalloc$
+^kfree$
+^mem(cpy|set|cmp)$
+
+# Syscall/capability/proc/scheduler mechanism
+^syscall_(init|handler|isr|v2_handler)$
+^sys_v2_.*
+^capability_.*
+^k_vfs_.*
+^proc_.*
+^sched_.*
+^scheduler_.*
+^enqueue_ready$
+^remove_from_ready_queue$
+
+# Low-level IO/debug mechanism
+^serial_(init_com1|write|write_char)$
+^fb_.*
+^keyboard_(init|handler|read_char)$
+^simple_shell_loop$
+^logo_animator_.*
+^ayken_(font8x16|logo128|logo256)$
+
+# Required cross-unit mechanism exports
+^devfs_init$
+^idt_get_descriptor$
+^devfs_register_device$
+^devfs_read$
+^devfs_write$
+^devfs_ioctl$
+^devfs_close$
+^devfs_device_read$
+^devfs_device_write$
+^devfs_device_ioctl$
+^devfs_device_close$
+^vfs_init$
+^vfs_open$
+^vfs_read$
+^vfs_write$
+^vfs_seek$
+^vfs_close$
+^vfs_mkdir$
+^vfs_rmdir$
+^vfs_stat$
+^vfs_unlink$
+^vfs_mount$
+^vfs_unmount$
+^idt_descriptor$
+^idt_table$
+^init_process_main$

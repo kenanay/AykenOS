@@ -14,6 +14,8 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Phase 4.5 timer-preempt validation PASSED ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | **IRQ-tail preempt chain strict doğrulandı ✅**
 
+⚠️ **CI Mode:** PROVISIONAL (GitHub-hosted runners) - Performance gate in warning mode. See [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) for details.
+
 ---
 
 ## 🔒 IMPORTANT LEGAL NOTICE

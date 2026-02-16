@@ -57,8 +57,8 @@
                 </div>
                 <div class="hero-visual">
                     <div class="constitutional-diagram">
-                        <div class="phase-indicator">Ayken OS Faz 4.4 Tamamlandı</div>
-                        <div class="status-badge">Constitutional Integration Hazır</div>
+                        <div class="phase-indicator">Ayken OS Faz 4.5 Devam Ediyor</div>
+                        <div class="status-badge">Scheduler Arbitration Tamamlandı</div>
                     </div>
                 </div>
             </div>
@@ -123,8 +123,8 @@
                         <h3>Çekirdek (Kernel)</h3>
                         <ul>
                             <li>Ring0 güvenlik modeli</li>
-                            <li>10 temel syscall (1000-1009)</li>
-                            <li>Bellek yönetimi</li>
+                            <li>11 temel syscall (1000-1010, frozen)</li>
+                            <li>Scheduler arbitration (Ring3 hint → Ring0 arbiter)</li>
                             <li>Execution-centric mimari</li>
                         </ul>
                     </div>
@@ -141,9 +141,9 @@
                         <h3>Geliştirme Araçları</h3>
                         <ul>
                             <li>Ayken CLI (principle enforcement)</li>
-                            <li>AHS/AHTS/MARS sistemleri</li>
+                            <li>AHS/AHTS/MARS/ARRE/ARH sistemleri</li>
+                            <li>8 CI gates (make ci-freeze)</li>
                             <li>VS Code entegrasyonu</li>
-                            <li>Automated validation</li>
                         </ul>
                     </div>
                 </div>
@@ -200,12 +200,12 @@
                     <div class="project-section">
                         <h3>Ayken OS (İşletim Sistemi)</h3>
                         <div class="current-phase">
-                            <span class="phase-number">Faz 4.4</span>
-                            <span class="phase-name">Performance Management</span>
+                            <span class="phase-number">Faz 4.5</span>
+                            <span class="phase-name">Scheduler Arbitration & Performance Stabilization</span>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 100%"></div>
+                                <div class="progress-fill" style="width: 60%"></div>
                             </div>
-                            <span class="progress-text">Tamamlandı</span>
+                            <span class="progress-text">Devam Ediyor (60%)</span>
                         </div>
                         
                         <div class="completed-phases">
@@ -218,7 +218,9 @@
                                 <li class="completed">Faz 3.4: Multi-Agent Orchestration</li>
                                 <li class="completed">Faz 4.3: Performance Optimization</li>
                                 <li class="completed">Faz 4.4: Performance Management</li>
-                                <li class="in-progress">Constitutional Integration: Hazırlık aşamasında</li>
+                                <li class="completed">Faz 4.5A: Scheduler Arbitration Contract (Yol A)</li>
+                                <li class="in-progress">Faz 4.5B: Performance Gate Stabilization</li>
+                                <li class="planned">Faz 4.5C: Full CI Green + AI Integration Prep</li>
                             </ul>
                         </div>
                     </div>
@@ -226,8 +228,8 @@
                     <div class="project-section">
                         <h3>Ayken CLI (Geliştirme Aracı)</h3>
                         <div class="current-phase">
-                            <span class="phase-number">Task 10.1</span>
-                            <span class="phase-name">MARS Module Detection</span>
+                            <span class="phase-number">Phase 12</span>
+                            <span class="phase-name">Governance Closure Complete</span>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 100%"></div>
                             </div>
@@ -235,15 +237,18 @@
                         </div>
                         
                         <div class="completed-phases">
-                            <h4>Constitutional Rule System</h4>
+                            <h4>Constitutional Rule System (Phases 1-12)</h4>
                             <ul class="phase-list">
-                                <li class="completed">AHS: Architecture Health Score sistemi</li>
-                                <li class="completed">AHTS: Architecture Health Trend Score sistemi</li>
-                                <li class="completed">MARS: Module-level Architecture Risk Score</li>
-                                <li class="completed">Principle enforcement system</li>
-                                <li class="completed">Waiver lifecycle management</li>
+                                <li class="completed">Phase 1-4: Core infrastructure & rule system</li>
+                                <li class="completed">Phase 5-7: Tooling & waiver lifecycle</li>
+                                <li class="completed">Phase 8: AHS - Architecture Health Score</li>
+                                <li class="completed">Phase 9: AHTS - Architecture Health Time-Series</li>
+                                <li class="completed">Phase 10: MARS - Module Architecture Risk Score</li>
+                                <li class="completed">Phase 11: ARRE - Refactor Recommendation Engine</li>
+                                <li class="completed">Phase 12-A: ARH - Auto-Refactor Hints</li>
+                                <li class="completed">Phase 12-B: Governance Closure (Self-health, ADN, Dead-control)</li>
                                 <li class="completed">VS Code integration</li>
-                                <li class="completed">Task 10.1: Module Detection</li>
+                                <li class="completed">350+ tests reported</li>
                             </ul>
                         </div>
                     </div>
@@ -252,20 +257,20 @@
                         <h3>Proje Metrikleri</h3>
                         <div class="metrics-grid">
                             <div class="metric">
-                                <span class="metric-number">10</span>
-                                <span class="metric-label">Syscall (Hedef)</span>
+                                <span class="metric-number">11</span>
+                                <span class="metric-label">Syscalls (Frozen)</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-number">8</span>
+                                <span class="metric-label">CI Gates</span>
                             </div>
                             <div class="metric">
                                 <span class="metric-number">Ring3</span>
-                                <span class="metric-label">VFS/DevFS</span>
+                                <span class="metric-label">Scheduler Hint</span>
                             </div>
                             <div class="metric">
-                                <span class="metric-number">BCIB</span>
-                                <span class="metric-label">Execution Engine</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-number">25+</span>
-                                <span class="metric-label">System Principles</span>
+                                <span class="metric-number">Phase 12</span>
+                                <span class="metric-label">Governance Complete</span>
                             </div>
                         </div>
                     </div>

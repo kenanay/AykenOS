@@ -1,0 +1,6 @@
+# Hygiene source deny patterns (regex, one per line).
+# Goal: fail early on libc-like allocator naming leaks before boundary symbol scan.
+
+# Function definitions only: disallow static malloc/free in kernel and userspace/libayken sources.
+^[[:space:]]*static[[:space:]]+.*\bmalloc[[:space:]]*\(
+^[[:space:]]*static[[:space:]]+.*\bfree[[:space:]]*\(

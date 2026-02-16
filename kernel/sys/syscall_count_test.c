@@ -7,8 +7,74 @@
 // Requirements: AC-6 - Ring0 contains exactly 10 syscalls
 
 #include "syscall_v2.h"
+#include "../include/syscall.h"
 #include "../drivers/console/fb_console.h"
 #include <stddef.h>
+
+static uint32_t fuzz_next(uint32_t *state)
+{
+    *state = (*state * 1664525u) + 1013904223u;
+    return *state;
+}
+
+static void test_syscall_v2_fuzz_range_property(void)
+{
+    fb_print("[TEST] Deterministic fuzz: syscall v2 range/property checks...\n");
+
+    uint32_t seed = 0xA5C31E5Du;
+    const int iterations = 32;
+    int i;
+
+    for (i = 0; i < iterations; i++) {
+        uint64_t internal_invalid = (uint64_t)SYS_V2_NR + (uint64_t)(fuzz_next(&seed) & 0x3FFu);
+        uint64_t internal_rc = syscall_v2_handler(internal_invalid, 0, 0, 0, 0);
+        if (internal_rc != ESYS_V2_INVALID_SYSCALL) {
+            fb_print("[TEST] ✗ Fuzz internal range reject failed idx=");
+            fb_print_int((int64_t)internal_invalid);
+            fb_print(" rc=");
+            fb_print_int((int64_t)internal_rc);
+            fb_print("\n");
+            return;
+        }
+
+        uint64_t user_invalid = (uint64_t)(fuzz_next(&seed) & 0x0FFFu);
+        if (user_invalid >= SYS_V2_BASE && user_invalid <= SYS_V2_LAST) {
+            user_invalid += 2000u;
+        }
+
+        uint64_t user_rc = syscall_handler(user_invalid, 0, 0, 0, 0);
+        if (user_rc != (uint64_t)-38) {
+            fb_print("[TEST] ✗ Fuzz user range reject failed nr=");
+            fb_print_int((int64_t)user_invalid);
+            fb_print(" rc=");
+            fb_print_int((int64_t)user_rc);
+            fb_print("\n");
+            return;
+        }
+    }
+
+    // Large-number sanity checks for fail-closed behavior.
+    if (syscall_v2_handler(0xFFFFFFFFu, 0, 0, 0, 0) != ESYS_V2_INVALID_SYSCALL) {
+        fb_print("[TEST] ✗ Internal large-number reject failed\n");
+        return;
+    }
+    if (syscall_handler(0xFFFFFFFFu, 0, 0, 0, 0) != (uint64_t)-38) {
+        fb_print("[TEST] ✗ User large-number reject failed\n");
+        return;
+    }
+
+    // One positive routing check via user-visible numbering (1000+index).
+    {
+        uint64_t t = 0;
+        uint64_t ok_rc = syscall_handler(1006, 0, (uint64_t)&t, 0, 0);
+        if (ok_rc == (uint64_t)-38) {
+            fb_print("[TEST] ✗ Valid user-visible syscall mapping rejected\n");
+            return;
+        }
+    }
+
+    fb_print("[TEST] ✓ Deterministic fuzz property checks passed (range + mapping)\n");
+}
 
 // Test function to validate syscall count
 void test_syscall_count(void)
@@ -196,6 +262,7 @@ void validate_syscall_count_requirement(void)
     
     test_syscall_count();
     test_v2_syscall_dispatcher();
+    test_syscall_v2_fuzz_range_property();
     
     fb_print("========================================\n");
     fb_print("SYSCALL COUNT VALIDATION: PASSED\n");

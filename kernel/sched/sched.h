@@ -17,6 +17,10 @@
 #include <stdint.h>
 #include "../include/proc.h"
 
+#ifndef AYKEN_SCHED_FALLBACK
+#define AYKEN_SCHED_FALLBACK 0
+#endif
+
 // ============================================================================
 // RING0 SCHEDULER MECHANISM API (NO POLICY)
 // ============================================================================
