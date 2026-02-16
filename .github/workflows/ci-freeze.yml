@@ -76,6 +76,21 @@ jobs:
         run: |
           set -euo pipefail
           make ci-freeze
+      - name: Dump gate violations on failure
+        if: failure()
+        run: |
+          echo "=== Dumping gate violations ==="
+          find evidence -name "violations.txt" -type f 2>/dev/null | while read f; do
+            echo "=== $f ==="
+            cat "$f"
+            echo ""
+          done || true
+          echo "=== Dumping gate reports ==="
+          find evidence -name "report.json" -type f 2>/dev/null | while read f; do
+            echo "=== $f ==="
+            cat "$f"
+            echo ""
+          done || true
 
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
