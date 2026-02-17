@@ -8,6 +8,10 @@
 *.log
 *.err
 build/
+!tools/build/
+tools/build/*
+!tools/build/make_efi_img.sh
+!tools/build/make_efi_img.ps1
 kernel.elf
 EFI.img
 
@@ -50,7 +54,6 @@ ayken/Cargo.lock
 userspace/Cargo.lock
 kernel/include/generated/
 bootloader/efi/BOOTX64.EFI
-tools/gnu-efi/
 *.backup
 test_baseline_init.sh
 

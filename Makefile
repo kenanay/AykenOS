@@ -313,7 +313,7 @@ efi-img: $(KERNEL_ELF) $(BOOT_EFI)
 	@if [ "$(OS)" = "Windows_NT" ]; then \
 		powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1; \
 	else \
-		./tools/build/make_efi_img.sh; \
+		bash ./tools/build/make_efi_img.sh; \
 	fi
 
 run: efi-img
