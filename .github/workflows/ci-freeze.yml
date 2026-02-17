@@ -114,6 +114,35 @@ jobs:
             cat "$f"
             echo ""
           done || true
+          echo "=== Dumping syscall runtime diagnostics ==="
+          find evidence -path "*/gates/syscall-v2-runtime/build.log" -type f 2>/dev/null | while read f; do
+            echo "=== $f (head) ==="
+            sed -n '1,200p' "$f"
+            echo ""
+          done || true
+          find evidence -path "*/gates/syscall-v2-runtime/runs/*/command.log" -type f 2>/dev/null | while read f; do
+            echo "=== $f (head) ==="
+            sed -n '1,200p' "$f"
+            echo ""
+          done || true
+          find evidence -path "*/gates/syscall-v2-runtime/runs/*/syscall_serial.log" -type f 2>/dev/null | while read f; do
+            echo "=== $f (head) ==="
+            sed -n '1,200p' "$f"
+            echo ""
+          done || true
+          find evidence -path "*/gates/syscall-v2-runtime/runs/*/syscall_debugcon.log" -type f 2>/dev/null | while read f; do
+            echo "=== $f (head) ==="
+            sed -n '1,200p' "$f"
+            echo ""
+          done || true
+      - name: Upload freeze evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          path: |
+            evidence/run-*/gates/**
 
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
