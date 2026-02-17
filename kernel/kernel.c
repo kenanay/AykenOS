@@ -163,9 +163,16 @@ void kmain_real(ayken_boot_info_t *boot)
     debugcon_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
 
     outb(0xE9, (uint8_t)'A');
+    outb(0xE9, (uint8_t)'A');
+    outb(0xE9, (uint8_t)'A');
     debugcon_write("[K][ABOUT_TO_SCHED]\n");
-    sched_start();
     outb(0xE9, (uint8_t)'B');
+    outb(0xE9, (uint8_t)'B');
+    outb(0xE9, (uint8_t)'B');
+    sched_start();
+    outb(0xE9, (uint8_t)'C');
+    outb(0xE9, (uint8_t)'C');
+    outb(0xE9, (uint8_t)'C');
 
     // Normalde buraya dönmez; yine de güvenlik için
     for (;;) {

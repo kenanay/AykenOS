@@ -48,6 +48,7 @@ jobs:
       PERF_REGRESSION_POLICY: "warn"    # Provisional mode: warn, not fail
       SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
+      SYSCALL_V2_RUNTIME_TIMEOUT: "60"  # Hosted runner needs more time for userspace boot
     steps:
       - uses: actions/checkout@v4
         with:
