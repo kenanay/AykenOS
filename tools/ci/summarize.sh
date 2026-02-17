@@ -99,11 +99,25 @@ for gate in gates.values():
 if parse_errors:
     overall_verdict = "FAIL"
 
+runtime_gate = gates.get("syscall-v2-runtime")
+runtime_verdict = str((runtime_gate or {}).get("verdict", "MISSING"))
+if runtime_gate is None:
+    freeze_status = "pending_runtime_verification"
+    kernel_runtime_verified = None
+elif runtime_verdict == "PASS":
+    freeze_status = "kernel_runtime_verified"
+    kernel_runtime_verified = True
+else:
+    freeze_status = "kernel_runtime_unverified"
+    kernel_runtime_verified = False
+
 summary = {
     "run_id": run_meta.get("run_id", run_dir.name),
     "time_utc": run_meta.get("time_utc", ""),
     "git_sha": git_sha,
     "verdict": overall_verdict,
+    "freeze_status": freeze_status,
+    "kernel_runtime_verified": kernel_runtime_verified,
     "gates_discovered": len(gates),
     "parse_errors_count": len(parse_errors),
     "parse_errors": parse_errors,

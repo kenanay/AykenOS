@@ -717,4 +717,5 @@ if [[ "${VIOLATIONS_COUNT}" -gt 0 ]]; then
 fi
 
 echo "syscall-v2-runtime: PASS"
+echo "FREEZE STATUS: KERNEL RUNTIME VERIFIED"
 exit 0
