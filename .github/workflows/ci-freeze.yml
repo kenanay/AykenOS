@@ -5,7 +5,7 @@
 #
 # Current state:
 #   - Functional gates: ENFORCED (deterministic)
-#   - Performance gate: WARNING ONLY (non-deterministic)
+#   - Performance gate: WAIVER POLICY (non-deterministic)
 #
 # Target state (after baremetal CI):
 #   - All gates: ENFORCED (deterministic)
@@ -40,12 +40,12 @@ jobs:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
-      PERF_BASELINE_MODE: "provisional"  # Non-deterministic, warning only
+      PERF_BASELINE_MODE: "provisional"  # Non-deterministic, waiver policy
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
-      PERF_ENV_MISMATCH_POLICY: "warn"  # Provisional mode: warn, not fail
-      PERF_REGRESSION_POLICY: "warn"    # Provisional mode: warn, not fail
+      PERF_ENV_MISMATCH_POLICY: "waiver"  # Provisional mode: explicit waiver
+      PERF_REGRESSION_POLICY: "waiver"    # Provisional mode: explicit waiver
       SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
       SYSCALL_V2_RUNTIME_TIMEOUT: "60"  # Hosted runner needs more time for userspace boot
