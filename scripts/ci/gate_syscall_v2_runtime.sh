@@ -226,6 +226,12 @@ run_roundtrip_audit() {
   if grep -q 'forced_timeout=true' "${combined_log}" 2>/dev/null; then
     run_timeout=1
   fi
+  if [[ "${run_rc}" -eq 124 || "${run_rc}" -eq 137 || "${run_rc}" -eq 143 ]]; then
+    run_timeout=1
+  fi
+  if grep -E -q 'Underlying test exit code:[[:space:]]*(124|137|143)' "${combined_log}" 2>/dev/null; then
+    run_timeout=1
+  fi
 
   local debug_marker=0
   local time_query_dispatch=0
@@ -294,7 +300,6 @@ run_roundtrip_audit() {
   # 1006=0x3ee (time_query), 1007=0x3ef (capability_bind), 1008=0x3f0 (capability_revoke), 1010=0x3f2 (debug_putchar)
   if grep -E -q 'v=80.*R_EAX]=00000000000003f2' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_debug_putchar=1
-    debug_marker=1
   fi
   if grep -E -q 'v=80.*R_EAX]=00000000000003ee' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_time_query=1
@@ -337,7 +342,10 @@ run_roundtrip_audit() {
   fi
 
   local run_success=1
-  if [[ "${run_timeout}" -eq 1 && "${contract_complete}" -ne 1 ]]; then
+  if [[ "${run_timeout}" -eq 1 ]]; then
+    run_success=0
+  fi
+  if [[ "${run_rc}" -eq 143 ]]; then
     run_success=0
   fi
   if [[ "${run_rc}" -ne 0 && "${runtime_logs_nonempty}" -eq 0 ]]; then
