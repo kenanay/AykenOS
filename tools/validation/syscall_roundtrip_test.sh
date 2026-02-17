@@ -157,6 +157,28 @@ write_log() {
     esac
 }
 
+terminate_process() {
+    local pid="$1"
+    local grace_seconds="${2:-5}"
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+
+    kill "$pid" 2>/dev/null || true
+    local deadline=$(( $(date +%s) + grace_seconds ))
+    while kill -0 "$pid" 2>/dev/null; do
+        if (( $(date +%s) >= deadline )); then
+            write_log "Process $pid did not terminate in ${grace_seconds}s; forcing kill" "WARNING"
+            kill -9 "$pid" 2>/dev/null || true
+            break
+        fi
+        sleep 0.1
+    done
+
+    wait "$pid" 2>/dev/null || true
+}
+
 check_syscall_prerequisites() {
     write_log "Checking syscall test prerequisites..." "INFO"
     
@@ -350,6 +372,8 @@ run_syscall_validation() {
     local handler_detected=0
     local execution_detected=0
     local user_detected=0
+    local canonical_marker_detected=false
+    local timed_out=false
     local error_detected=false
     local full_output=""
     
@@ -359,6 +383,7 @@ run_syscall_validation() {
         local current_time=$(date +%s)
         if (( current_time - start_time > TIMEOUT )); then
             write_log "Syscall test timeout reached" "WARNING"
+            timed_out=true
             break
         fi
         
@@ -426,6 +451,15 @@ run_syscall_validation() {
                     ((execution_detected++))
                 fi
             done
+
+            # Deterministic hosted-CI behavior: once canonical marker appears,
+            # terminate QEMU instead of waiting for non-deterministic guest exit.
+            if [[ "$canonical_marker_detected" == "false" ]] && printf "%s" "$new_content" | grep -F -q "[U][SYSCALL_OK]"; then
+                canonical_marker_detected=true
+                write_log "Canonical marker detected; terminating QEMU deterministically" "SUCCESS"
+                terminate_process "$qemu_pid" 5
+                break
+            fi
             
             # Check user syscall patterns
             for pattern in "${SYSCALL_USER_PATTERNS[@]}"; do
@@ -460,8 +494,7 @@ run_syscall_validation() {
     # Cleanup QEMU
     if kill -0 "$qemu_pid" 2>/dev/null; then
         write_log "Terminating QEMU process..." "DEBUG"
-        kill "$qemu_pid" 2>/dev/null || true
-        wait "$qemu_pid" 2>/dev/null || true
+        terminate_process "$qemu_pid" 5
     fi
     
     local duration=$(($(date +%s) - start_time))
@@ -496,6 +529,8 @@ run_syscall_validation() {
     "test_name": "$test_name",
     "duration": $duration,
     "success": $([ "$syscall_success" == "true" ] && echo "true" || echo "false"),
+    "canonical_marker_detected": $([ "$canonical_marker_detected" == "true" ] && echo "true" || echo "false"),
+    "timed_out": $([ "$timed_out" == "true" ] && echo "true" || echo "false"),
     "init_detected": $init_detected,
     "handler_detected": $handler_detected,
     "execution_detected": $execution_detected,
