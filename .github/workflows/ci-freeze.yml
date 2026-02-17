@@ -46,6 +46,8 @@ jobs:
       PERF_KERNEL_PROFILE: "validation"
       PERF_ENV_MISMATCH_POLICY: "warn"  # Provisional mode: warn, not fail
       PERF_REGRESSION_POLICY: "warn"    # Provisional mode: warn, not fail
+      SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
+      SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -92,6 +94,7 @@ jobs:
           nasm -v
           qemu-system-x86_64 --version | head -n1
           mformat --version 2>&1 | head -n1 || echo "mtools: $(which mformat)"
+          ls -l "${SYSCALL_OVMF_CODE}" "${SYSCALL_OVMF_VARS}" || true
           ld.lld --version | head -n1
           nasm -v
           qemu-system-x86_64 --version | head -n1
