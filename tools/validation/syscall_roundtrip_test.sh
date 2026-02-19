@@ -48,7 +48,7 @@ safe_count_re() {
     local pattern="$1"
     local content="$2"
     local count
-    count=$(printf "%s" "$content" | grep -cE "$pattern" 2>/dev/null || true)
+    count=$(printf "%s" "$content" | grep -a -cE "$pattern" 2>/dev/null || true)
     count=$(printf "%s" "$count" | tr -dc '0-9')
     if [[ -z "$count" ]]; then
         count=0
@@ -60,7 +60,7 @@ safe_count_file() {
     local pattern="$1"
     local file="$2"
     local count
-    count=$(grep -cE "$pattern" "$file" 2>/dev/null || true)
+    count=$(grep -a -cE "$pattern" "$file" 2>/dev/null || true)
     count=$(printf "%s" "$count" | tr -dc '0-9')
     if [[ -z "$count" ]]; then
         count=0
@@ -271,9 +271,28 @@ run_syscall_validation() {
     local error_log="${test_name}_error.log"
     local analysis_log="${test_name}_analysis.log"
     local run_tmp_dir=""
-    
+    local qemu_int_trace="${SYSCALL_QEMU_INT_TRACE:-}"
+    local qemu_accel="${SYSCALL_QEMU_ACCEL:-}"
+    local qemu_debug_export="qemu_syscall_debug.log"
+    local qemu_debug_log=""
+
     write_log "Starting comprehensive syscall roundtrip validation..." "INFO"
-    
+
+    # Keep INT trace enabled by default because runtime gate currently uses it
+    # as fallback evidence source for syscall index verification.
+    if [[ -z "$qemu_int_trace" ]]; then
+        qemu_int_trace="1"
+    fi
+    if [[ "$qemu_int_trace" != "0" && "$qemu_int_trace" != "1" ]]; then
+        write_log "SYSCALL_QEMU_INT_TRACE must be 0 or 1 (got: $qemu_int_trace)" "ERROR"
+        return 1
+    fi
+
+    # Force deterministic software emulation in hosted CI unless overridden.
+    if [[ -z "$qemu_accel" && "${CI:-}" == "true" ]]; then
+        qemu_accel="tcg,thread=single"
+    fi
+
     # Clean old logs
     rm -f "$output_log" "$error_log" "$analysis_log"
     
@@ -297,6 +316,7 @@ run_syscall_validation() {
         write_log "Failed to allocate temporary run directory" "ERROR"
         return 1
     fi
+    qemu_debug_log="${run_tmp_dir}/qemu_syscall_debug.log"
 
     # UEFI firmware (OVMF) is required for EFI.img boot in CI/local validation.
     local ovmf_args=()
@@ -341,7 +361,7 @@ run_syscall_validation() {
         write_log "Failed to prepare temporary EFI image copy" "ERROR"
         return 1
     fi
-    rm -f qemu_syscall_debug.log
+    rm -f "$qemu_debug_export"
 
     local qemu_args=()
     if (( ${#ovmf_args[@]} > 0 )); then
@@ -355,13 +375,25 @@ run_syscall_validation() {
         "-no-reboot"
         "-no-shutdown"
         "-display" "none"
-        "-d" "int"  # Debug interrupts to catch syscalls
-        "-D" "qemu_syscall_debug.log"
     )
+    if [[ -n "$qemu_accel" ]]; then
+        qemu_args+=("-accel" "$qemu_accel")
+    fi
+    if [[ "$qemu_int_trace" == "1" ]]; then
+        qemu_args+=(
+            "-d" "int"
+            "-D" "$qemu_debug_log"
+        )
+    fi
     if (( ${#debugcon_args[@]} > 0 )); then
         qemu_args+=("${debugcon_args[@]}")
     fi
-    
+
+    write_log "QEMU INT trace: $([ "$qemu_int_trace" == "1" ] && echo "enabled" || echo "disabled")" "INFO"
+    if [[ -n "$qemu_accel" ]]; then
+        write_log "QEMU accel: ${qemu_accel}" "INFO"
+    fi
+
     write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "INFO"
     
     # Start QEMU
@@ -383,6 +415,7 @@ run_syscall_validation() {
     local timed_out=false
     local error_detected=false
     local full_output=""
+    local marker_tail=""
     
     write_log "Monitoring syscall interface and roundtrip execution..." "INFO"
     
@@ -428,7 +461,13 @@ run_syscall_validation() {
 
         if [[ "$have_new" == "true" ]]; then
             full_output+="$new_content"
-            
+            local marker_probe="${marker_tail}${new_content}"
+            if (( ${#marker_probe} > 64 )); then
+                marker_tail="${marker_probe: -64}"
+            else
+                marker_tail="${marker_probe}"
+            fi
+
             # Check syscall initialization patterns
             for pattern in "${SYSCALL_INIT_PATTERNS[@]}"; do
                 if echo "$new_content" | grep -qE "$pattern"; then
@@ -461,7 +500,7 @@ run_syscall_validation() {
 
             # Deterministic hosted-CI behavior: once canonical marker appears,
             # terminate QEMU instead of waiting for non-deterministic guest exit.
-            if [[ "$canonical_marker_detected" == "false" ]] && printf "%s" "$new_content" | grep -F -q "[U][SYSCALL_OK]"; then
+            if [[ "$canonical_marker_detected" == "false" ]] && printf "%s" "$marker_probe" | grep -F -q "[U][SYSCALL_OK]"; then
                 canonical_marker_detected=true
                 write_log "Canonical marker detected; terminating QEMU deterministically" "SUCCESS"
                 terminate_process "$qemu_pid" 5
@@ -521,13 +560,18 @@ run_syscall_validation() {
     
     # Check QEMU debug log for interrupt information
     local interrupt_analysis=""
-    if [[ -f "qemu_syscall_debug.log" ]]; then
+    if [[ -f "$qemu_debug_log" ]]; then
         local int80_count
-        int80_count=$(safe_count_file "int.*0x80|interrupt.*128" qemu_syscall_debug.log)
+        int80_count=$(safe_count_file "int.*0x80|interrupt.*128" "$qemu_debug_log")
         if (( int80_count > 0 )); then
             interrupt_analysis="INT_0x80_TRIGGERED:$int80_count"
             write_log "INT 0x80 interrupts detected: $int80_count" "SUCCESS"
         fi
+    fi
+
+    # Export with canonical filename expected by audit wrappers.
+    if [[ -f "$qemu_debug_log" ]]; then
+        cp -f "$qemu_debug_log" "$qemu_debug_export"
     fi
     
     # Generate analysis report
@@ -608,12 +652,12 @@ EOF
         echo -e "  Output: $output_log"
         echo -e "  Errors: $error_log"
         echo -e "  Analysis: $analysis_log"
-        if [[ -f "qemu_syscall_debug.log" ]]; then
-            echo -e "  QEMU Debug: qemu_syscall_debug.log"
+        if [[ -f "$qemu_debug_export" ]]; then
+            echo -e "  QEMU Debug: $qemu_debug_export"
         fi
     else
         echo -e "  ${GRAY}Logs cleaned up (use --save-logs to preserve)${NC}"
-        rm -f "$output_log" "$error_log" "$analysis_log" qemu_syscall_debug.log
+        rm -f "$output_log" "$error_log" "$analysis_log" "$qemu_debug_export"
     fi
     
     echo -e "${CYAN}============================================================${NC}"

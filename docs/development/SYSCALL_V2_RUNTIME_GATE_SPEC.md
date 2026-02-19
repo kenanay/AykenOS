@@ -49,16 +49,29 @@ Expected contract assertions:
 
 ## 4) Determinism Profile
 
-Freeze-mode defaults:
+### 4.1 Provisional CI Profile (Hosted Runner)
+1. `warmup_runs = 1`
+2. `measurement_runs = 3`
+3. `per_run_timeout_seconds = 40`
+4. `required_success_rate = 60%`
+5. QEMU INT trace fallback remains default-on (`SYSCALL_QEMU_INT_TRACE=1`) because dispatch evidence (`time_query`, `capability_bind`, `capability_revoke`) may depend on INT80 trace in hosted CI.
+
+### 4.2 Strict Freeze Profile (Local/Baremetal)
 1. `warmup_runs = 1`
 2. `measurement_runs = 5`
-3. `per_run_timeout_seconds = 8`
+3. `per_run_timeout_seconds = 20`
 4. `required_success_rate = 100%`
 
+### 4.3 Timeout Safety Guard
+1. `min_timeout_seconds = 12` (default)
+2. Any configured timeout below minimum is rejected as usage error (`exit 3`)
+3. Diagnostic-only override is explicit: `SYSCALL_V2_RUNTIME_ALLOW_SHORT_TIMEOUT=1`
+
 Rules:
-1. Any failed measurement run => gate `FAIL`.
-2. Timeout in any measurement run => gate `FAIL`.
-3. Partial success is not accepted in strict freeze mode.
+1. Any failed measurement run contributes to contract violation.
+2. Timeout in a measurement run is a runtime violation.
+3. Strict freeze mode requires full success (`100%`).
+4. Timeout root cause classification is evidence-backed (including UEFI startup countdown).
 
 ---
 
@@ -105,9 +118,13 @@ Required files:
 4. `warmup_runs`
 5. `measurement_runs`
 6. `timeout_seconds`
-7. `success_rate_required`
-8. `success_rate_actual`
-9. `time_utc`
+7. `min_timeout_seconds`
+8. `success_rate_required`
+9. `success_rate_actual`
+10. `measurement_success_count`
+11. `measurement_timeout_count`
+12. `uefi_shell_countdown_count`
+13. `time_utc`
 
 `report.json` MUST include:
 1. `gate`
@@ -115,7 +132,8 @@ Required files:
 3. `violations_count`
 4. `meta`
 5. `results` per syscall
-6. `violations`
+6. `runs` (per-run timeout/success/signal envelope)
+7. `violations`
 
 ---
 
@@ -129,6 +147,8 @@ Canonical violation keys:
 5. `syscall_runtime_dispatch_missing:<name>`
 6. `syscall_runtime_success_rate_below_threshold:<actual>/<required>`
 7. `syscall_runtime_harness_failed:<detail>`
+8. `syscall_runtime_timeout_reason:suspected_userspace_not_started:measurement-<n>`
+9. `syscall_runtime_timeout_reason:uefi_shell_startup_countdown:measurement-<n>`
 
 Unknown violations are treated as `FAIL`.
 

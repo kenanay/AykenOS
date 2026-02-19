@@ -175,7 +175,7 @@ safe_count_re() {
   local pattern="$1"
   local file="$2"
   local raw
-  raw="$(grep -E -c -- "${pattern}" "${file}" 2>/dev/null || true)"
+  raw="$(grep -aE -c -- "${pattern}" "${file}" 2>/dev/null || true)"
   raw="$(printf "%s" "${raw}" | tr -dc '0-9')"
   if [[ -z "${raw}" ]]; then
     raw=0
@@ -239,13 +239,13 @@ run_roundtrip_audit() {
   done
 
   local run_timeout=0
-  if grep -q 'forced_timeout=true' "${combined_log}" 2>/dev/null; then
+  if grep -a -q 'forced_timeout=true' "${combined_log}" 2>/dev/null; then
     run_timeout=1
   fi
   if [[ "${run_rc}" -eq 124 || "${run_rc}" -eq 137 || "${run_rc}" -eq 143 ]]; then
     run_timeout=1
   fi
-  if grep -E -q 'Underlying test exit code:[[:space:]]*(124|137|143)' "${combined_log}" 2>/dev/null; then
+  if grep -aE -q 'Underlying test exit code:[[:space:]]*(124|137|143)' "${combined_log}" 2>/dev/null; then
     run_timeout=1
   fi
 
@@ -288,48 +288,48 @@ run_roundtrip_audit() {
     qemu_debug_bytes="$(wc -c < "${syscall_qemu_debug_log}" | tr -d ' ' || echo 0)"
   fi
 
-  if grep -F -q "[U][SYSCALL_OK]" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[U][SYSCALL_OK]" "${runtime_signal_log}" 2>/dev/null; then
     debug_marker=1
   fi
-  if grep -E -q 'Press .*ESC.*startup\.nsh' "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aE -q 'Press .*ESC.*startup\.nsh' "${runtime_signal_log}" 2>/dev/null; then
     uefi_shell_countdown=1
   fi
-  if grep -F -q "[syscall_v2] time_query:" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] time_query:" "${runtime_signal_log}" 2>/dev/null; then
     time_query_dispatch=1
   fi
-  if grep -F -q "[syscall_v2] capability_bind:" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_bind:" "${runtime_signal_log}" 2>/dev/null; then
     cap_bind_dispatch=1
   fi
-  if grep -F -q "[syscall_v2] capability_bind: GRANTED" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_bind: GRANTED" "${runtime_signal_log}" 2>/dev/null; then
     cap_bind_granted=1
   fi
-  if grep -F -q "[syscall_v2] capability_bind: DENIED" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_bind: DENIED" "${runtime_signal_log}" 2>/dev/null; then
     cap_bind_denied=1
   fi
-  if grep -F -q "[syscall_v2] capability_revoke:" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_revoke:" "${runtime_signal_log}" 2>/dev/null; then
     cap_revoke_dispatch=1
   fi
-  if grep -F -q "[syscall_v2] capability_revoke: GRANTED" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_revoke: GRANTED" "${runtime_signal_log}" 2>/dev/null; then
     cap_revoke_granted=1
   fi
-  if grep -F -q "[syscall_v2] capability_revoke: DENIED" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q "[syscall_v2] capability_revoke: DENIED" "${runtime_signal_log}" 2>/dev/null; then
     cap_revoke_denied=1
   fi
 
   # Fallback signal source: QEMU interrupt trace with user-space syscall numbers.
   # 1006=0x3ee (time_query), 1007=0x3ef (capability_bind), 1008=0x3f0 (capability_revoke), 1010=0x3f2 (debug_putchar)
-  if grep -E -q 'v=80.*R_EAX]=00000000000003f2' "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aE -q 'v=80.*R_EAX]=00000000000003f2' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_debug_putchar=1
   fi
-  if grep -E -q 'v=80.*R_EAX]=00000000000003ee' "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aE -q 'v=80.*R_EAX]=00000000000003ee' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_time_query=1
     time_query_dispatch=1
   fi
-  if grep -E -q 'v=80.*R_EAX]=00000000000003ef' "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aE -q 'v=80.*R_EAX]=00000000000003ef' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_cap_bind=1
     cap_bind_dispatch=1
   fi
-  if grep -E -q 'v=80.*R_EAX]=00000000000003f0' "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aE -q 'v=80.*R_EAX]=00000000000003f0' "${runtime_signal_log}" 2>/dev/null; then
     qemu_v2_cap_revoke=1
     cap_revoke_dispatch=1
   fi

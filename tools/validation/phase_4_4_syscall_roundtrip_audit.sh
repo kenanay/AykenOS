@@ -95,6 +95,8 @@ info "Logs: ${LOG_OUT}, ${LOG_ERR}, ${LOG_ANALYSIS}"
 info "Serial: ${SERIAL_LOG}, DebugCon: ${DEBUGCON_LOG}"
 
 timeout_cmd="$(detect_timeout_cmd)"
+qemu_int_trace_mode="${SYSCALL_QEMU_INT_TRACE:-auto}"
+qemu_accel_mode="${SYSCALL_QEMU_ACCEL:-auto}"
 {
     echo "phase_4_4_syscall_roundtrip_audit"
     echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -104,6 +106,8 @@ timeout_cmd="$(detect_timeout_cmd)"
     echo "timeout_cmd=${timeout_cmd:-none}"
     echo "timeout_seconds=${TIMEOUT}"
     echo "marker=${MARKER}"
+    echo "qemu_int_trace_mode=${qemu_int_trace_mode}"
+    echo "qemu_accel_mode=${qemu_accel_mode}"
     echo "command=./tools/validation/syscall_roundtrip_test.sh --timeout ${TIMEOUT} --save-logs"
 } > "$META_LOG"
 
@@ -157,19 +161,19 @@ fi
 
 # Check for marker in any available log file
 marker_found=false
-if [[ -f "$LOG_OUT" && -s "$LOG_OUT" ]] && grep -q -F "$MARKER" "$LOG_OUT" 2>/dev/null; then
+if [[ -f "$LOG_OUT" && -s "$LOG_OUT" ]] && grep -a -q -F "$MARKER" "$LOG_OUT" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$LOG_ERR" ]] && grep -q -F "$MARKER" "$LOG_ERR" 2>/dev/null; then
+elif [[ -f "$LOG_ERR" ]] && grep -a -q -F "$MARKER" "$LOG_ERR" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$LOG_ANALYSIS" ]] && grep -q -F "$MARKER" "$LOG_ANALYSIS" 2>/dev/null; then
+elif [[ -f "$LOG_ANALYSIS" ]] && grep -a -q -F "$MARKER" "$LOG_ANALYSIS" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$LOG_QEMU_DEBUG" ]] && grep -q -F "$MARKER" "$LOG_QEMU_DEBUG" 2>/dev/null; then
+elif [[ -f "$LOG_QEMU_DEBUG" ]] && grep -a -q -F "$MARKER" "$LOG_QEMU_DEBUG" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$AUDIT_LOG" ]] && grep -q -F "$MARKER" "$AUDIT_LOG" 2>/dev/null; then
+elif [[ -f "$AUDIT_LOG" ]] && grep -a -q -F "$MARKER" "$AUDIT_LOG" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$SERIAL_LOG" ]] && grep -q -F "$MARKER" "$SERIAL_LOG" 2>/dev/null; then
+elif [[ -f "$SERIAL_LOG" ]] && grep -a -q -F "$MARKER" "$SERIAL_LOG" 2>/dev/null; then
     marker_found=true
-elif [[ -f "$DEBUGCON_LOG" ]] && grep -q -F "$MARKER" "$DEBUGCON_LOG" 2>/dev/null; then
+elif [[ -f "$DEBUGCON_LOG" ]] && grep -a -q -F "$MARKER" "$DEBUGCON_LOG" 2>/dev/null; then
     marker_found=true
 fi
 
