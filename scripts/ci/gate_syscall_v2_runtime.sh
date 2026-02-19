@@ -116,6 +116,22 @@ if [[ "${TIMEOUT_SECONDS}" -le 0 ]]; then
   exit 3
 fi
 
+MIN_TIMEOUT_SECONDS="${SYSCALL_V2_RUNTIME_MIN_TIMEOUT:-12}"
+ALLOW_SHORT_TIMEOUT="${SYSCALL_V2_RUNTIME_ALLOW_SHORT_TIMEOUT:-0}"
+if ! [[ "${MIN_TIMEOUT_SECONDS}" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: SYSCALL_V2_RUNTIME_MIN_TIMEOUT must be a non-negative integer" >&2
+  exit 3
+fi
+if [[ "${ALLOW_SHORT_TIMEOUT}" != "0" && "${ALLOW_SHORT_TIMEOUT}" != "1" ]]; then
+  echo "ERROR: SYSCALL_V2_RUNTIME_ALLOW_SHORT_TIMEOUT must be 0 or 1" >&2
+  exit 3
+fi
+if [[ "${ALLOW_SHORT_TIMEOUT}" != "1" ]] && [[ "${TIMEOUT_SECONDS}" -lt "${MIN_TIMEOUT_SECONDS}" ]]; then
+  echo "ERROR: --timeout-seconds (${TIMEOUT_SECONDS}) is below minimum safe timeout (${MIN_TIMEOUT_SECONDS}) for UEFI startup path." >&2
+  echo "Set SYSCALL_V2_RUNTIME_ALLOW_SHORT_TIMEOUT=1 only for diagnostic smoke runs." >&2
+  exit 3
+fi
+
 if [[ "${REQUIRED_SUCCESS_RATE}" -lt 0 || "${REQUIRED_SUCCESS_RATE}" -gt 100 ]]; then
   echo "ERROR: --required-success-rate must be in [0,100]" >&2
   exit 3
@@ -248,6 +264,7 @@ run_roundtrip_audit() {
   local qemu_v2_time_query_count=0
   local qemu_v2_cap_bind_count=0
   local qemu_v2_cap_revoke_count=0
+  local uefi_shell_countdown=0
 
   local output_bytes=0
   local error_bytes=0
@@ -273,6 +290,9 @@ run_roundtrip_audit() {
 
   if grep -F -q "[U][SYSCALL_OK]" "${runtime_signal_log}" 2>/dev/null; then
     debug_marker=1
+  fi
+  if grep -E -q 'Press .*ESC.*startup\.nsh' "${runtime_signal_log}" 2>/dev/null; then
+    uefi_shell_countdown=1
   fi
   if grep -F -q "[syscall_v2] time_query:" "${runtime_signal_log}" 2>/dev/null; then
     time_query_dispatch=1
@@ -369,7 +389,7 @@ run_roundtrip_audit() {
     echo "runtime_logs_nonempty=${runtime_logs_nonempty}"
     echo "output_bytes=${output_bytes} error_bytes=${error_bytes} serial_bytes=${serial_bytes} debugcon_bytes=${debugcon_bytes} qemu_debug_bytes=${qemu_debug_bytes}"
     echo "success=${run_success}"
-    echo "signals: debug_marker=${debug_marker} time_query_dispatch=${time_query_dispatch} cap_bind_dispatch=${cap_bind_dispatch} cap_bind_granted=${cap_bind_granted} cap_bind_denied=${cap_bind_denied} cap_revoke_dispatch=${cap_revoke_dispatch} cap_revoke_granted=${cap_revoke_granted} cap_revoke_denied=${cap_revoke_denied} qemu_v2_debug_putchar=${qemu_v2_debug_putchar} qemu_v2_time_query=${qemu_v2_time_query} qemu_v2_cap_bind=${qemu_v2_cap_bind} qemu_v2_cap_revoke=${qemu_v2_cap_revoke} qemu_v2_time_query_count=${qemu_v2_time_query_count} qemu_v2_cap_bind_count=${qemu_v2_cap_bind_count} qemu_v2_cap_revoke_count=${qemu_v2_cap_revoke_count}"
+    echo "signals: debug_marker=${debug_marker} time_query_dispatch=${time_query_dispatch} cap_bind_dispatch=${cap_bind_dispatch} cap_bind_granted=${cap_bind_granted} cap_bind_denied=${cap_bind_denied} cap_revoke_dispatch=${cap_revoke_dispatch} cap_revoke_granted=${cap_revoke_granted} cap_revoke_denied=${cap_revoke_denied} qemu_v2_debug_putchar=${qemu_v2_debug_putchar} qemu_v2_time_query=${qemu_v2_time_query} qemu_v2_cap_bind=${qemu_v2_cap_bind} qemu_v2_cap_revoke=${qemu_v2_cap_revoke} qemu_v2_time_query_count=${qemu_v2_time_query_count} qemu_v2_cap_bind_count=${qemu_v2_cap_bind_count} qemu_v2_cap_revoke_count=${qemu_v2_cap_revoke_count} uefi_shell_countdown=${uefi_shell_countdown}"
     cat "${combined_log}"
     echo
   } >> "${TRACE_LOG}"
@@ -394,6 +414,7 @@ run_roundtrip_audit() {
   QEMU_V2_TIME_QUERY_COUNT_ENV="${qemu_v2_time_query_count}" \
   QEMU_V2_CAP_BIND_COUNT_ENV="${qemu_v2_cap_bind_count}" \
   QEMU_V2_CAP_REVOKE_COUNT_ENV="${qemu_v2_cap_revoke_count}" \
+  UEFI_SHELL_COUNTDOWN_ENV="${uefi_shell_countdown}" \
   OUTPUT_BYTES_ENV="${output_bytes}" \
   ERROR_BYTES_ENV="${error_bytes}" \
   SERIAL_BYTES_ENV="${serial_bytes}" \
@@ -434,6 +455,7 @@ payload = {
         "qemu_v2_time_query_count": int(os.environ["QEMU_V2_TIME_QUERY_COUNT_ENV"]),
         "qemu_v2_cap_bind_count": int(os.environ["QEMU_V2_CAP_BIND_COUNT_ENV"]),
         "qemu_v2_cap_revoke_count": int(os.environ["QEMU_V2_CAP_REVOKE_COUNT_ENV"]),
+        "uefi_shell_countdown": os.environ["UEFI_SHELL_COUNTDOWN_ENV"] == "1",
     },
 }
 print(json.dumps(payload, sort_keys=True))
@@ -454,6 +476,7 @@ PY
   RUN_QEMU_V2_TIME_QUERY="${qemu_v2_time_query}"
   RUN_QEMU_V2_CAP_BIND="${qemu_v2_cap_bind}"
   RUN_QEMU_V2_CAP_REVOKE="${qemu_v2_cap_revoke}"
+  RUN_UEFI_SHELL_COUNTDOWN="${uefi_shell_countdown}"
   RUN_OUTPUT_BYTES="${output_bytes}"
   RUN_ERROR_BYTES="${error_bytes}"
   RUN_SERIAL_BYTES="${serial_bytes}"
@@ -487,6 +510,7 @@ CAP_BIND_DENIED_COUNT=0
 CAP_REVOKE_DISPATCH_COUNT=0
 CAP_REVOKE_GRANTED_COUNT=0
 CAP_REVOKE_DENIED_COUNT=0
+UEFI_SHELL_COUNTDOWN_COUNT=0
 
 for ((i = 1; i <= WARMUP_RUNS; i++)); do
   run_roundtrip_audit "warmup" "${i}"
@@ -503,6 +527,7 @@ for ((i = 1; i <= MEASUREMENT_RUNS; i++)); do
   CAP_REVOKE_DISPATCH_COUNT=$((CAP_REVOKE_DISPATCH_COUNT + RUN_CAP_REVOKE_DISPATCH))
   CAP_REVOKE_GRANTED_COUNT=$((CAP_REVOKE_GRANTED_COUNT + RUN_CAP_REVOKE_GRANTED))
   CAP_REVOKE_DENIED_COUNT=$((CAP_REVOKE_DENIED_COUNT + RUN_CAP_REVOKE_DENIED))
+  UEFI_SHELL_COUNTDOWN_COUNT=$((UEFI_SHELL_COUNTDOWN_COUNT + RUN_UEFI_SHELL_COUNTDOWN))
 
   if [[ "${RUN_RC}" -ne 0 && "${RUN_RUNTIME_LOGS_NONEMPTY}" -eq 0 ]]; then
     record_violation "syscall_runtime_harness_failed:measurement-${i}:rc=${RUN_RC}"
@@ -578,6 +603,9 @@ for ((i = 1; i <= MEASUREMENT_RUNS; i++)); do
 
   if [[ "${RUN_TIMEOUT}" -eq 1 && "${RUN_SUCCESS}" -ne 1 && "${RUN_QEMU_V2_DEBUG_PUTCHAR}" -eq 0 && "${RUN_QEMU_V2_TIME_QUERY}" -eq 0 && "${RUN_QEMU_V2_CAP_BIND}" -eq 0 && "${RUN_QEMU_V2_CAP_REVOKE}" -eq 0 ]]; then
     record_violation "syscall_runtime_timeout_reason:suspected_userspace_not_started:measurement-${i}"
+    if [[ "${RUN_UEFI_SHELL_COUNTDOWN}" -eq 1 ]]; then
+      record_violation "syscall_runtime_timeout_reason:uefi_shell_startup_countdown:measurement-${i}"
+    fi
   fi
 done
 
@@ -614,6 +642,7 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "warmup_runs=${WARMUP_RUNS}"
   echo "measurement_runs=${MEASUREMENT_RUNS}"
   echo "timeout_seconds=${TIMEOUT_SECONDS}"
+  echo "min_timeout_seconds=${MIN_TIMEOUT_SECONDS}"
   echo "success_rate_required=${REQUIRED_SUCCESS_RATE}"
   echo "success_rate_actual=${SUCCESS_RATE_ACTUAL}"
   echo "time_utc=${NOW}"
@@ -627,6 +656,7 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "cap_revoke_dispatch_count=${CAP_REVOKE_DISPATCH_COUNT}"
   echo "cap_revoke_granted_count=${CAP_REVOKE_GRANTED_COUNT}"
   echo "cap_revoke_denied_count=${CAP_REVOKE_DENIED_COUNT}"
+  echo "uefi_shell_countdown_count=${UEFI_SHELL_COUNTDOWN_COUNT}"
   echo "violations_count=${VIOLATIONS_COUNT}"
 } > "${META_TXT}"
 
