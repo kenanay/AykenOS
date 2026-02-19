@@ -270,6 +270,7 @@ run_syscall_validation() {
     local output_log="${test_name}_output.log"
     local error_log="${test_name}_error.log"
     local analysis_log="${test_name}_analysis.log"
+    local run_tmp_dir=""
     
     write_log "Starting comprehensive syscall roundtrip validation..." "INFO"
     
@@ -290,6 +291,13 @@ run_syscall_validation() {
     fi
 
 
+    # Use a dedicated temp dir per run to avoid mktemp/template collisions.
+    run_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/syscall_run.XXXXXX" 2>/dev/null || mktemp -d -t syscall_run 2>/dev/null || true)"
+    if [[ -z "$run_tmp_dir" || ! -d "$run_tmp_dir" ]]; then
+        write_log "Failed to allocate temporary run directory" "ERROR"
+        return 1
+    fi
+
     # UEFI firmware (OVMF) is required for EFI.img boot in CI/local validation.
     local ovmf_args=()
     local ovmf_code=""
@@ -308,7 +316,7 @@ run_syscall_validation() {
         fi
         write_log "OVMF firmware not found; falling back to non-UEFI boot path (local only)." "WARNING"
     else
-        ovmf_vars_copy="syscall_ovmf_vars.fd"
+        ovmf_vars_copy="${run_tmp_dir}/syscall_ovmf_vars.fd"
         cp -f "$ovmf_vars" "$ovmf_vars_copy"
         ovmf_args=(
             "-machine" "q35"
@@ -327,13 +335,12 @@ run_syscall_validation() {
             return 1
         fi
     fi
-    local efi_img_run=""
-    efi_img_run="$(mktemp "${TMPDIR:-/tmp}/syscall_efi_run.XXXXXX" 2>/dev/null || mktemp -t syscall_efi_run 2>/dev/null || true)"
-    if [[ -z "$efi_img_run" ]]; then
-        write_log "Failed to allocate temporary EFI image path" "ERROR"
+    local efi_img_run="${run_tmp_dir}/EFI.img"
+    cp -f "$efi_img_source" "$efi_img_run"
+    if [[ ! -f "$efi_img_run" ]]; then
+        write_log "Failed to prepare temporary EFI image copy" "ERROR"
         return 1
     fi
-    cp -f "$efi_img_source" "$efi_img_run"
     rm -f qemu_syscall_debug.log
 
     local qemu_args=()
@@ -611,10 +618,7 @@ EOF
     
     echo -e "${CYAN}============================================================${NC}"
     
-    if [[ -n "${ovmf_vars_copy:-}" ]]; then
-        rm -f "$ovmf_vars_copy"
-    fi
-    rm -f "$efi_img_run"
+    rm -rf "$run_tmp_dir"
     
     return $([ "$syscall_success" == "true" ] && echo 0 || echo 1)
 }
