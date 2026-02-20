@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       ci_image_digest:
-        description: "Pinned runner image/build digest (required, ex: gha-ubuntu22-20260212.1-x64)"
+        description: "Pinned runner image/build digest (required, ex: gha-ubuntu24-20260201.15.1-X64)"
         required: true
         default: ""
 
 jobs:
   init_baseline:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       CI: "true"
@@ -58,6 +58,17 @@ jobs:
             echo "Expected format: gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>"
             echo "PERF_CI_IMAGE_DIGEST=${PERF_CI_IMAGE_DIGEST}"
             exit 1
+          fi
+          if [ -z "${DETECTED_CI_IMAGE_DIGEST:-}" ] || echo "${DETECTED_CI_IMAGE_DIGEST}" | grep -q "unknown"; then
+            echo "ERROR: Could not resolve detected runner image digest"
+            echo "DETECTED_CI_IMAGE_DIGEST=${DETECTED_CI_IMAGE_DIGEST:-unavailable}"
+            exit 1
+          fi
+          if [ "${PERF_CI_IMAGE_DIGEST}" != "${DETECTED_CI_IMAGE_DIGEST}" ]; then
+            echo "ERROR: Provided digest does not match actual runner image"
+            echo "Provided: ${PERF_CI_IMAGE_DIGEST}"
+            echo "Detected: ${DETECTED_CI_IMAGE_DIGEST}"
+            exit 4
           fi
           echo "Using digest: ${PERF_CI_IMAGE_DIGEST}"
       
