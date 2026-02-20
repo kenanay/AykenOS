@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 clang lld nasm jq
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
       
       - name: Resolve baseline init digest
         run: |
