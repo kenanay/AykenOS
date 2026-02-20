@@ -61,6 +61,21 @@ jobs:
           fi
           echo "Using digest: ${PERF_CI_IMAGE_DIGEST}"
       
+      - name: Validate baseline init environment (Darwin guard)
+        run: |
+          set -euo pipefail
+          host_os="$(uname -s)"
+          host_arch="$(uname -m)"
+          echo "Host: ${host_os}/${host_arch}"
+          if [[ "${PERF_BASELINE_AUTHORITY}" == "github-hosted-ubuntu-latest-x64" ]]; then
+            if [[ "${host_os}" != "Linux" || "${host_arch}" != "x86_64" ]]; then
+              echo "ERROR: Baseline init forbidden on ${host_os}/${host_arch} for authority=${PERF_BASELINE_AUTHORITY}"
+              echo "Expected: Linux/x86_64"
+              exit 3
+            fi
+          fi
+          echo "✓ Environment validated for baseline init"
+      
       - name: Init perf baseline (expected fail-closed with baseline write)
         run: |
           set -euo pipefail
