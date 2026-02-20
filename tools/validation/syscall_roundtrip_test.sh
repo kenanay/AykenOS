@@ -9,6 +9,8 @@ set -e
 TIMEOUT=50
 VERBOSE=false
 SAVE_LOGS=false
+SYSCALL_CANONICAL_MARKER_USER="[U][SYSCALL_OK]"
+SYSCALL_CANONICAL_MARKER_KERNEL="[[AYKEN_SYSCALL_V2_OK]]"
 
 resolve_ovmf_firmware() {
     # Honor explicit overrides first.
@@ -95,6 +97,7 @@ SYSCALL_HANDLER_PATTERNS=(
 
 SYSCALL_EXECUTION_PATTERNS=(
     "\\[U\\]\\[SYSCALL_OK\\]"
+    "\\[\\[AYKEN_SYSCALL_V2_OK\\]\\]"
     "syscall.*dispatcher"
     "Ring3.*Ring0.*transition"
     "user.*mode.*syscall"
@@ -514,7 +517,8 @@ run_syscall_validation() {
 
             # Deterministic hosted-CI behavior: once canonical marker appears,
             # terminate QEMU instead of waiting for non-deterministic guest exit.
-            if [[ "$canonical_marker_detected" == "false" ]] && printf "%s" "$marker_probe" | grep -F -q "[U][SYSCALL_OK]"; then
+            if [[ "$canonical_marker_detected" == "false" ]] && \
+               printf "%s" "$marker_probe" | grep -F -q -e "${SYSCALL_CANONICAL_MARKER_USER}" -e "${SYSCALL_CANONICAL_MARKER_KERNEL}"; then
                 canonical_marker_detected=true
                 write_log "Canonical marker detected; terminating QEMU deterministically" "SUCCESS"
                 terminate_process "$qemu_pid" 5

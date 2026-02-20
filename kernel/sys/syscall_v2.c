@@ -28,6 +28,51 @@
 
 static uint64_t next_capability_id = 1;
 static uint64_t next_execution_id = 1;
+static uint8_t debug_putchar_marker_progress[MAX_PROCS];
+
+#define SYSCALL_V2_USER_MARKER "[U][SYSCALL_OK]"
+#define SYSCALL_V2_KERNEL_MARKER "[[AYKEN_SYSCALL_V2_OK]]\n"
+
+static void sys_v2_debugcon_write_string(const char *text)
+{
+    if (!text) {
+        return;
+    }
+    while (*text) {
+        outb(0xE9, (uint8_t)*text++);
+    }
+}
+
+static void sys_v2_debug_putchar_note_marker(uint8_t character)
+{
+    extern proc_t *current_proc;
+    const char *expected = SYSCALL_V2_USER_MARKER;
+    int pid_slot;
+    uint8_t progress;
+
+    if (!current_proc || current_proc->pid <= 0 || current_proc->pid > MAX_PROCS) {
+        return;
+    }
+
+    pid_slot = current_proc->pid - 1;
+    progress = debug_putchar_marker_progress[pid_slot];
+
+    if ((char)character == expected[progress]) {
+        progress++;
+    } else if ((char)character == expected[0]) {
+        progress = 1;
+    } else {
+        progress = 0;
+    }
+
+    if (expected[progress] == '\0') {
+        /* Emit a deterministic kernel-origin marker for hosted CI parsing. */
+        sys_v2_debugcon_write_string(SYSCALL_V2_KERNEL_MARKER);
+        progress = 0;
+    }
+
+    debug_putchar_marker_progress[pid_slot] = progress;
+}
 
 typedef uint64_t (*sys_v2_dispatch_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t);
 
@@ -546,14 +591,21 @@ uint64_t sys_v2_exit(uint64_t exit_code)
 
 uint64_t sys_v2_debug_putchar(uint64_t character)
 {
+    uint8_t out_char;
+
     // Validate character is printable or control character
     if (character > 255) {
         return ESYS_V2_INVALID_PARAM;
     }
-    
+
+    out_char = (uint8_t)character;
+
     // Output character to debugcon (0xE9 port)
-    outb(0xE9, (uint8_t)character);
-    
+    outb(0xE9, out_char);
+
+    // Reconstruct canonical marker per PID to avoid cross-process interleaving flake.
+    sys_v2_debug_putchar_note_marker(out_char);
+
     return ESYS_V2_SUCCESS;
 }
 

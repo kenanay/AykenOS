@@ -6,6 +6,7 @@ set -euo pipefail
 
 TIMEOUT=50
 MARKER="[U][SYSCALL_OK]"
+FALLBACK_MARKER="[[AYKEN_SYSCALL_V2_OK]]"
 OUT_DIR=""
 
 RED='\033[0;31m'
@@ -31,6 +32,22 @@ detect_timeout_cmd() {
     else
         echo ""
     fi
+}
+
+marker_present_in_file() {
+    local path="$1"
+
+    if [[ ! -f "$path" ]]; then
+        return 1
+    fi
+
+    if grep -a -q -F "$MARKER" "$path" 2>/dev/null; then
+        return 0
+    fi
+    if grep -a -q -F "$FALLBACK_MARKER" "$path" 2>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 usage() {
@@ -90,7 +107,8 @@ DEBUGCON_LOG="${OUT_DIR}/syscall_debugcon.log"
 
 info "Phase 4.4 Syscall Roundtrip Audit"
 info "Timeout: ${TIMEOUT}s"
-info "Marker: ${MARKER}"
+info "Marker (primary): ${MARKER}"
+info "Marker (fallback): ${FALLBACK_MARKER}"
 info "Logs: ${LOG_OUT}, ${LOG_ERR}, ${LOG_ANALYSIS}"
 info "Serial: ${SERIAL_LOG}, DebugCon: ${DEBUGCON_LOG}"
 
@@ -112,6 +130,7 @@ hard_timeout_seconds=$((TIMEOUT + watchdog_grace_seconds))
     echo "timeout_cmd=${timeout_cmd:-none}"
     echo "timeout_seconds=${TIMEOUT}"
     echo "marker=${MARKER}"
+    echo "fallback_marker=${FALLBACK_MARKER}"
     echo "qemu_int_trace_mode=${qemu_int_trace_mode}"
     echo "qemu_accel_mode=${qemu_accel_mode}"
     echo "watchdog_grace_seconds=${watchdog_grace_seconds}"
@@ -178,19 +197,19 @@ fi
 
 # Check for marker in any available log file
 marker_found=false
-if [[ -f "$LOG_OUT" && -s "$LOG_OUT" ]] && grep -a -q -F "$MARKER" "$LOG_OUT" 2>/dev/null; then
+if [[ -f "$LOG_OUT" && -s "$LOG_OUT" ]] && marker_present_in_file "$LOG_OUT"; then
     marker_found=true
-elif [[ -f "$LOG_ERR" ]] && grep -a -q -F "$MARKER" "$LOG_ERR" 2>/dev/null; then
+elif marker_present_in_file "$LOG_ERR"; then
     marker_found=true
-elif [[ -f "$LOG_ANALYSIS" ]] && grep -a -q -F "$MARKER" "$LOG_ANALYSIS" 2>/dev/null; then
+elif marker_present_in_file "$LOG_ANALYSIS"; then
     marker_found=true
-elif [[ -f "$LOG_QEMU_DEBUG" ]] && grep -a -q -F "$MARKER" "$LOG_QEMU_DEBUG" 2>/dev/null; then
+elif marker_present_in_file "$LOG_QEMU_DEBUG"; then
     marker_found=true
-elif [[ -f "$AUDIT_LOG" ]] && grep -a -q -F "$MARKER" "$AUDIT_LOG" 2>/dev/null; then
+elif marker_present_in_file "$AUDIT_LOG"; then
     marker_found=true
-elif [[ -f "$SERIAL_LOG" ]] && grep -a -q -F "$MARKER" "$SERIAL_LOG" 2>/dev/null; then
+elif marker_present_in_file "$SERIAL_LOG"; then
     marker_found=true
-elif [[ -f "$DEBUGCON_LOG" ]] && grep -a -q -F "$MARKER" "$DEBUGCON_LOG" 2>/dev/null; then
+elif marker_present_in_file "$DEBUGCON_LOG"; then
     marker_found=true
 fi
 

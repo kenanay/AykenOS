@@ -45,6 +45,11 @@ Expected contract assertions:
 3. Dispatch path emits trace evidence for call/return.
 4. No panic/triple-fault/hard hang under configured timeout.
 
+Canonical debug marker acceptance (`SYS_V2_DEBUG_PUTCHAR`):
+1. Primary marker: `[U][SYSCALL_OK]`
+2. Kernel fallback marker: `[[AYKEN_SYSCALL_V2_OK]]`
+3. Gate MUST treat either marker as valid debug heartbeat evidence.
+
 ---
 
 ## 4) Determinism Profile

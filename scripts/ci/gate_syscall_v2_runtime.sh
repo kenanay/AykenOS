@@ -61,6 +61,8 @@ BUILD_AYKEN_DEBUG_IRQ="${SYSCALL_V2_RUNTIME_BUILD_DEBUG_IRQ:-}"
 RUNTIME_QEMU_SMP="${SYSCALL_QEMU_SMP:-}"
 RUNTIME_QEMU_ACCEL="${SYSCALL_QEMU_ACCEL:-}"
 RUNTIME_QEMU_INT_TRACE="${SYSCALL_QEMU_INT_TRACE:-}"
+DEBUG_MARKER_USER="[U][SYSCALL_OK]"
+DEBUG_MARKER_KERNEL="[[AYKEN_SYSCALL_V2_OK]]"
 
 if [[ "${CI:-}" == "true" ]] && [[ "${PERF_BASELINE_MODE:-}" == "provisional" ]]; then
   if [[ -z "${BUILD_AYKEN_DEBUG_SCHED}" ]]; then
@@ -332,7 +334,7 @@ run_roundtrip_audit() {
     qemu_debug_bytes="$(wc -c < "${syscall_qemu_debug_log}" | tr -d ' ' || echo 0)"
   fi
 
-  if grep -aF -q "[U][SYSCALL_OK]" "${runtime_signal_log}" 2>/dev/null; then
+  if grep -aF -q -e "${DEBUG_MARKER_USER}" -e "${DEBUG_MARKER_KERNEL}" "${runtime_signal_log}" 2>/dev/null; then
     debug_marker=1
   fi
   if grep -aE -q 'Press .*ESC.*startup\.nsh' "${runtime_signal_log}" 2>/dev/null; then
@@ -768,7 +770,7 @@ results = {
     "debug_putchar": {
         "measurement_runs": m_total,
         "trace_runs": debug_count,
-        "trace_pattern": "[U][SYSCALL_OK]",
+        "trace_pattern": "[U][SYSCALL_OK] || [[AYKEN_SYSCALL_V2_OK]]",
         "status": "PASS" if m_total > 0 and debug_count == m_total else "FAIL",
     },
     "time_query": {
