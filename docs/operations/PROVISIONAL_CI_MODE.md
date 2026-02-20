@@ -48,10 +48,12 @@ These gates are **deterministic** and work correctly on hosted runners.
   - Timeout: 40s (vs 20s baremetal)
   - Runs: 3 (vs 5 baremetal)
   - Success rate: 60% (vs 100% baremetal)
+  - Safety guard: timeout values below 12s are rejected unless explicitly overridden for diagnostics
+  - Timeout diagnostics: UEFI startup countdown is classified in evidence (`uefi_shell_countdown_count`)
   - Reason: QEMU boot timing non-deterministic on nested virtualization
-- `ci-gate-performance`: **WARNING MODE ONLY**
+- `ci-gate-performance`: **WAIVER MODE**
   - Measures boot time, syscall latency
-  - Does NOT fail on regression (warning only)
+  - Does NOT fail on regression while mode is provisional
   - Baseline marked as `provisional`
 
 ## Authority Model
@@ -81,8 +83,8 @@ This authority will be:
 
 ### Provisional Mode (Current)
 ```yaml
-PERF_ENV_MISMATCH_POLICY: "warn"
-PERF_REGRESSION_POLICY: "warn"
+PERF_ENV_MISMATCH_POLICY: "waiver"
+PERF_REGRESSION_POLICY: "waiver"
 PERF_BASELINE_MODE: "provisional"
 ```
 
@@ -91,6 +93,7 @@ PERF_BASELINE_MODE: "provisional"
 - Regressions logged but do NOT fail CI
 - Environment mismatches logged but do NOT fail CI
 - Evidence collected for future analysis
+- Policy values are strict: only `fail` or `waiver` are accepted
 
 ### Constitutional Mode (Target)
 ```yaml
@@ -110,7 +113,7 @@ PERF_BASELINE_MODE: "constitutional"
 ### Phase 1: Provisional CI (Current)
 - [x] GitHub-hosted runners active
 - [x] Functional gates enforced
-- [x] Performance gate in warning mode
+- [x] Performance gate in waiver mode
 - [ ] Provisional baseline established
 
 ### Phase 2: Baremetal Preparation
@@ -220,7 +223,7 @@ When performance gate runs in provisional mode:
 ⚠️ Performance Gate: PROVISIONAL MODE
 
 Boot time: 1234ms (baseline: 1200ms, +2.8%)
-Status: WARNING (not enforced)
+Status: WAIVER (not enforced in provisional mode)
 
 Note: Performance measurements are non-deterministic on GitHub-hosted runners.
 This gate will be enforced after baremetal CI is operational.
@@ -236,7 +239,7 @@ Always mark provisional baselines:
   "baseline_authority": "github-hosted-ubuntu-latest-x64",
   "baseline_mode": "provisional",
   "deterministic": false,
-  "enforcement": "warn"
+  "enforcement": "waiver"
 }
 ```
 
@@ -280,6 +283,6 @@ Provisional mode ends when:
 
 ---
 
-**Last Updated**: 2026-02-16  
+**Last Updated**: 2026-02-19  
 **Status**: Active (Provisional CI operational)  
 **Next Review**: After baremetal runner setup

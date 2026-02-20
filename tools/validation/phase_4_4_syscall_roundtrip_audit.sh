@@ -97,6 +97,12 @@ info "Serial: ${SERIAL_LOG}, DebugCon: ${DEBUGCON_LOG}"
 timeout_cmd="$(detect_timeout_cmd)"
 qemu_int_trace_mode="${SYSCALL_QEMU_INT_TRACE:-auto}"
 qemu_accel_mode="${SYSCALL_QEMU_ACCEL:-auto}"
+watchdog_grace_seconds="${SYSCALL_AUDIT_WRAPPER_GRACE_SECONDS:-10}"
+if ! [[ "${watchdog_grace_seconds}" =~ ^[0-9]+$ ]]; then
+    echo "Invalid SYSCALL_AUDIT_WRAPPER_GRACE_SECONDS='${watchdog_grace_seconds}' (expected non-negative integer)." >&2
+    exit 2
+fi
+hard_timeout_seconds=$((TIMEOUT + watchdog_grace_seconds))
 {
     echo "phase_4_4_syscall_roundtrip_audit"
     echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -108,6 +114,8 @@ qemu_accel_mode="${SYSCALL_QEMU_ACCEL:-auto}"
     echo "marker=${MARKER}"
     echo "qemu_int_trace_mode=${qemu_int_trace_mode}"
     echo "qemu_accel_mode=${qemu_accel_mode}"
+    echo "watchdog_grace_seconds=${watchdog_grace_seconds}"
+    echo "hard_timeout_seconds=${hard_timeout_seconds}"
     echo "command=./tools/validation/syscall_roundtrip_test.sh --timeout ${TIMEOUT} --save-logs"
 } > "$META_LOG"
 
@@ -118,9 +126,18 @@ test_pid=$!
 start_time=$(date +%s)
 while kill -0 "$test_pid" 2>/dev/null; do
     current_time=$(date +%s)
-    if (( current_time - start_time > TIMEOUT )); then
+    if (( current_time - start_time > hard_timeout_seconds )); then
         forced_timeout=true
         kill "$test_pid" 2>/dev/null || true
+        for _ in $(seq 1 20); do
+            if ! kill -0 "$test_pid" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+        if kill -0 "$test_pid" 2>/dev/null; then
+            kill -9 "$test_pid" 2>/dev/null || true
+        fi
         wait "$test_pid" 2>/dev/null || true
         break
     fi

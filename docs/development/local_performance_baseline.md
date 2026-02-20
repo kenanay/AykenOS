@@ -103,13 +103,22 @@ Re-init baseline to capture new environment.
 Local Dev:
   Authority: local-dev-Darwin-arm64
   Baseline:  scripts/ci/perf-baseline.local.lock.json (gitignored)
-  Policy:    PERF_ENV_MISMATCH_POLICY=warn
+  Policy:    PERF_ENV_MISMATCH_POLICY=waiver
 
-CI/Production:
+CI/Provisional:
   Authority: github-hosted-ubuntu-latest-x64
+  Baseline:  scripts/ci/perf-baseline.lock.json (committed)
+  Policy:    PERF_ENV_MISMATCH_POLICY=waiver
+
+CI/Constitutional:
+  Authority: baremetal-<pinned-authority>
   Baseline:  scripts/ci/perf-baseline.lock.json (committed)
   Policy:    PERF_ENV_MISMATCH_POLICY=fail
 ```
+
+Policy contract note:
+- Accepted policy values are `fail` or `waiver`.
+- `warn` is not a valid gate policy value.
 
 This separation allows:
 - Local development without CI dependency

@@ -55,6 +55,8 @@ Expected contract assertions:
 3. `per_run_timeout_seconds = 40`
 4. `required_success_rate = 60%`
 5. QEMU INT trace fallback remains default-on (`SYSCALL_QEMU_INT_TRACE=1`) because dispatch evidence (`time_query`, `capability_bind`, `capability_revoke`) may depend on INT80 trace in hosted CI.
+6. Runtime gate forces deterministic single-vCPU execution unless explicitly overridden (`SYSCALL_QEMU_SMP=1`, `SYSCALL_QEMU_ACCEL=tcg,thread=single`).
+7. Runtime gate build disables scheduler/IRQ debug flood unless explicitly overridden (`SYSCALL_V2_RUNTIME_BUILD_DEBUG_SCHED=0`, `SYSCALL_V2_RUNTIME_BUILD_DEBUG_IRQ=0`).
 
 ### 4.2 Strict Freeze Profile (Local/Baremetal)
 1. `warmup_runs = 1`

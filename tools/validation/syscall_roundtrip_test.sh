@@ -273,6 +273,7 @@ run_syscall_validation() {
     local run_tmp_dir=""
     local qemu_int_trace="${SYSCALL_QEMU_INT_TRACE:-}"
     local qemu_accel="${SYSCALL_QEMU_ACCEL:-}"
+    local qemu_smp="${SYSCALL_QEMU_SMP:-}"
     local qemu_debug_export="qemu_syscall_debug.log"
     local qemu_debug_log=""
 
@@ -291,6 +292,13 @@ run_syscall_validation() {
     # Force deterministic software emulation in hosted CI unless overridden.
     if [[ -z "$qemu_accel" && "${CI:-}" == "true" ]]; then
         qemu_accel="tcg,thread=single"
+    fi
+    if [[ -z "$qemu_smp" && "${CI:-}" == "true" ]]; then
+        qemu_smp="1"
+    fi
+    if [[ -n "$qemu_smp" ]] && ! [[ "$qemu_smp" =~ ^[1-9][0-9]*$ ]]; then
+        write_log "SYSCALL_QEMU_SMP must be a positive integer (got: $qemu_smp)" "ERROR"
+        return 1
     fi
 
     # Clean old logs
@@ -379,6 +387,9 @@ run_syscall_validation() {
     if [[ -n "$qemu_accel" ]]; then
         qemu_args+=("-accel" "$qemu_accel")
     fi
+    if [[ -n "$qemu_smp" ]]; then
+        qemu_args+=("-smp" "$qemu_smp")
+    fi
     if [[ "$qemu_int_trace" == "1" ]]; then
         qemu_args+=(
             "-d" "int"
@@ -392,6 +403,9 @@ run_syscall_validation() {
     write_log "QEMU INT trace: $([ "$qemu_int_trace" == "1" ] && echo "enabled" || echo "disabled")" "INFO"
     if [[ -n "$qemu_accel" ]]; then
         write_log "QEMU accel: ${qemu_accel}" "INFO"
+    fi
+    if [[ -n "$qemu_smp" ]]; then
+        write_log "QEMU SMP: ${qemu_smp}" "INFO"
     fi
 
     write_log "QEMU command: qemu-system-x86_64 ${qemu_args[*]}" "INFO"

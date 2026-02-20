@@ -56,6 +56,30 @@ else
   REQUIRED_SUCCESS_RATE="${SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE:-100}"
 fi
 
+BUILD_AYKEN_DEBUG_SCHED="${SYSCALL_V2_RUNTIME_BUILD_DEBUG_SCHED:-}"
+BUILD_AYKEN_DEBUG_IRQ="${SYSCALL_V2_RUNTIME_BUILD_DEBUG_IRQ:-}"
+RUNTIME_QEMU_SMP="${SYSCALL_QEMU_SMP:-}"
+RUNTIME_QEMU_ACCEL="${SYSCALL_QEMU_ACCEL:-}"
+RUNTIME_QEMU_INT_TRACE="${SYSCALL_QEMU_INT_TRACE:-}"
+
+if [[ "${CI:-}" == "true" ]] && [[ "${PERF_BASELINE_MODE:-}" == "provisional" ]]; then
+  if [[ -z "${BUILD_AYKEN_DEBUG_SCHED}" ]]; then
+    BUILD_AYKEN_DEBUG_SCHED=0
+  fi
+  if [[ -z "${BUILD_AYKEN_DEBUG_IRQ}" ]]; then
+    BUILD_AYKEN_DEBUG_IRQ=0
+  fi
+  if [[ -z "${RUNTIME_QEMU_SMP}" ]]; then
+    RUNTIME_QEMU_SMP=1
+  fi
+  if [[ -z "${RUNTIME_QEMU_ACCEL}" ]]; then
+    RUNTIME_QEMU_ACCEL="tcg,thread=single"
+  fi
+  if [[ -z "${RUNTIME_QEMU_INT_TRACE}" ]]; then
+    RUNTIME_QEMU_INT_TRACE=1
+  fi
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --evidence-dir)
@@ -137,6 +161,23 @@ if [[ "${REQUIRED_SUCCESS_RATE}" -lt 0 || "${REQUIRED_SUCCESS_RATE}" -gt 100 ]];
   exit 3
 fi
 
+if [[ -n "${BUILD_AYKEN_DEBUG_SCHED}" ]] && [[ "${BUILD_AYKEN_DEBUG_SCHED}" != "0" && "${BUILD_AYKEN_DEBUG_SCHED}" != "1" ]]; then
+  echo "ERROR: SYSCALL_V2_RUNTIME_BUILD_DEBUG_SCHED must be 0 or 1" >&2
+  exit 3
+fi
+if [[ -n "${BUILD_AYKEN_DEBUG_IRQ}" ]] && [[ "${BUILD_AYKEN_DEBUG_IRQ}" != "0" && "${BUILD_AYKEN_DEBUG_IRQ}" != "1" ]]; then
+  echo "ERROR: SYSCALL_V2_RUNTIME_BUILD_DEBUG_IRQ must be 0 or 1" >&2
+  exit 3
+fi
+if [[ -n "${RUNTIME_QEMU_SMP}" ]] && ! [[ "${RUNTIME_QEMU_SMP}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: SYSCALL_QEMU_SMP must be a positive integer" >&2
+  exit 3
+fi
+if [[ -n "${RUNTIME_QEMU_INT_TRACE}" ]] && [[ "${RUNTIME_QEMU_INT_TRACE}" != "0" && "${RUNTIME_QEMU_INT_TRACE}" != "1" ]]; then
+  echo "ERROR: SYSCALL_QEMU_INT_TRACE must be 0 or 1" >&2
+  exit 3
+fi
+
 for tool in git make python3; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: required tool missing (${tool})" >&2
@@ -201,6 +242,9 @@ run_roundtrip_audit() {
   set +e
   (
     cd "${ROOT}"
+    SYSCALL_QEMU_SMP="${RUNTIME_QEMU_SMP}" \
+    SYSCALL_QEMU_ACCEL="${RUNTIME_QEMU_ACCEL}" \
+    SYSCALL_QEMU_INT_TRACE="${RUNTIME_QEMU_INT_TRACE}" \
     "${AUDIT_SCRIPT}" \
       --timeout "${TIMEOUT_SECONDS}" \
       --out-dir "${run_dir}"
@@ -486,7 +530,15 @@ PY
 }
 
 # Build once for deterministic runtime runs.
-if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img > "${BUILD_LOG}" 2>&1; then
+MAKE_BUILD_ARGS=(-C "${ROOT}" "KERNEL_PROFILE=${KERNEL_PROFILE}")
+if [[ -n "${BUILD_AYKEN_DEBUG_SCHED}" ]]; then
+  MAKE_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${BUILD_AYKEN_DEBUG_SCHED}")
+fi
+if [[ -n "${BUILD_AYKEN_DEBUG_IRQ}" ]]; then
+  MAKE_BUILD_ARGS+=("AYKEN_DEBUG_IRQ=${BUILD_AYKEN_DEBUG_IRQ}")
+fi
+MAKE_BUILD_ARGS+=("efi-img")
+if ! make "${MAKE_BUILD_ARGS[@]}" > "${BUILD_LOG}" 2>&1; then
   record_violation "syscall_runtime_harness_failed:make_efi_img"
   build_error_summary="$(grep -E -m1 'error:|ERROR:|No such file|not found|failed|undefined reference|command not found' "${BUILD_LOG}" 2>/dev/null || true)"
   if [[ -n "${build_error_summary}" ]]; then
@@ -642,6 +694,11 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "warmup_runs=${WARMUP_RUNS}"
   echo "measurement_runs=${MEASUREMENT_RUNS}"
   echo "timeout_seconds=${TIMEOUT_SECONDS}"
+  echo "build_ayken_debug_sched=${BUILD_AYKEN_DEBUG_SCHED:-default}"
+  echo "build_ayken_debug_irq=${BUILD_AYKEN_DEBUG_IRQ:-default}"
+  echo "runtime_qemu_smp=${RUNTIME_QEMU_SMP:-default}"
+  echo "runtime_qemu_accel=${RUNTIME_QEMU_ACCEL:-default}"
+  echo "runtime_qemu_int_trace=${RUNTIME_QEMU_INT_TRACE:-default}"
   echo "min_timeout_seconds=${MIN_TIMEOUT_SECONDS}"
   echo "success_rate_required=${REQUIRED_SUCCESS_RATE}"
   echo "success_rate_actual=${SUCCESS_RATE_ACTUAL}"
