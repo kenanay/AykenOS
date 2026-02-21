@@ -78,7 +78,7 @@ jobs:
           host_os="$(uname -s)"
           host_arch="$(uname -m)"
           echo "Host: ${host_os}/${host_arch}"
-          if [[ "${PERF_BASELINE_AUTHORITY}" == "github-hosted-ubuntu-latest-x64" ]]; then
+          if [[ "${PERF_BASELINE_AUTHORITY}" == github-hosted-ubuntu-*-x64 ]]; then
             if [[ "${host_os}" != "Linux" || "${host_arch}" != "x86_64" ]]; then
               echo "ERROR: Baseline init forbidden on ${host_os}/${host_arch} for authority=${PERF_BASELINE_AUTHORITY}"
               echo "Expected: Linux/x86_64"
