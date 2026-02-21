@@ -144,7 +144,11 @@ PERF_ENV_MISMATCH_POLICY ?= fail
 PERF_QEMU_TIMEOUT ?= 30
 PERF_KERNEL_PROFILE ?= validation
 PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
-PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-latest-x64
+PERF_AUTHORITY_ENV_FILE ?= scripts/ci/perf_authority.env
+ifneq ($(wildcard $(PERF_AUTHORITY_ENV_FILE)),)
+include $(PERF_AUTHORITY_ENV_FILE)
+endif
+PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-24.04-x64
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
@@ -550,7 +554,6 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
-	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"

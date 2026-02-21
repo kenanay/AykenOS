@@ -10,6 +10,14 @@ This document defines the strict governance rules for performance baseline manag
 
 Any attempt to modify the baseline without meeting these conditions will be rejected.
 
+## Terminology
+
+`ci_image_digest` is a runner image fingerprint in AykenOS governance, not an OCI/container digest.
+
+- Source fields: `ImageOS`, `ImageVersion`, `RUNNER_ARCH`
+- Format: `gha-<ImageOS>-<ImageVersion>-<RUNNER_ARCH>`
+- Used together with `env_hash` for strict environment matching
+
 ## Baseline Renewal Conditions
 
 The performance baseline (`scripts/ci/perf-baseline.lock.json`) may ONLY be renewed when ONE of the following conditions is met:
@@ -46,8 +54,8 @@ The performance baseline (`scripts/ci/perf-baseline.lock.json`) may ONLY be rene
 - Syscall path optimization reduces syscall latency
 
 **Detection:**
-- Performance gate fails with `metric_regression` (but metrics are BETTER)
-- Actual metrics are lower than baseline (improvement)
+- Performance evidence shows actual metrics are lower than baseline across repeated runs
+- Improvement is reproducible under the same baseline authority and `ci_image_digest`
 
 **Action:**
 1. Verify the improvement is real and reproducible
@@ -281,9 +289,17 @@ If calibration is needed:
    - Link to GitHub Actions changelog
 6. Merge after CI passes
 
-**Timeline:** Within 24 hours of detection
+**Timeline:** Baseline renewal PR must be opened within 1 business day of first detection (`env_hash_mismatch` or `ci_image_digest` mismatch), target <= 24 hours.
 
 **Authority:** CI maintainer (no code review required)
+
+## Intentional Regression Validation Rule
+
+Intentional regression tests are allowed only to verify that constitutional gates fail correctly.
+
+- Delay injection must be deterministic (timer/tick based), not CPU busy-loop based
+- Regression injection must be compile-time gated (`AYKEN_INTENTIONAL_PERF_REGRESSION`) and default OFF
+- Intentional regression commits must not be merged to `main`; use dedicated validation PRs and revert after evidence capture
 
 ## Tooling Isolation Future Work
 
