@@ -6,6 +6,7 @@
 # Current state:
 #   - Functional gates: ENFORCED (deterministic)
 #   - Performance gate: ENFORCED (baseline-locked, fail on regression)
+#   - Strict enforcement: ACTIVE (env_hash + regression checks)
 #
 # Baseline authority: github-hosted-ubuntu-24.04-x64
 # Baseline lock: scripts/ci/perf-baseline.lock.json
