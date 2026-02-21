@@ -46,7 +46,7 @@ void sched_mailbox_init(void) {
     g_last_epoch = 0;
 }
 
-ayken_sched_mailbox_t* sched_mailbox_get(void) {
+static ayken_sched_mailbox_t* sched_mailbox_get(void) {
     return &g_mb;
 }
 
@@ -56,7 +56,7 @@ static int reject(ayken_sched_mailbox_t* mb, ayken_sched_reject_reason_t why) {
     return -((int)why);
 }
 
-int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** out_proc) {
+static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** out_proc) {
     if (!mb || !out_proc) return -1;
     *out_proc = NULL;
 
