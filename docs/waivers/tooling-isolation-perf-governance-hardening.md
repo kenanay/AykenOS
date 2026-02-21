@@ -3,6 +3,8 @@
 **Waiver ID:** `tooling-isolation-perf-governance-hardening`  
 **Date:** 2026-02-21  
 **PR:** #11  
+**Issue:** https://github.com/kenanay/AykenOS/issues/11  
+**Expiry:** 2026-03-21  
 **Branch:** `docs/perf-baseline-governance`  
 **Commits:** `965cabe8..f17d7269`
 
