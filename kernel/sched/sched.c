@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "sched.h"
+#include "sched_mailbox.h"
 #include "../arch/x86_64/cpu.h"
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
@@ -493,6 +494,9 @@ void sched_init(void)
     blocked_head = NULL;
     current_proc = NULL;
     
+    // Ring0 mechanism: Initialize scheduler bridge mailbox
+    sched_mailbox_init();
+    
     // Ring0 mechanism: No policy initialization in Ring0
     // Ring3 scheduler policy handles all policy setup
 }
@@ -540,6 +544,10 @@ void sched_start(void)
     // Ring0 mechanism: Set up initial process context (mechanism only)
     current_proc = first;
     current_proc->state = PROC_RUNNING;
+    
+    // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
+    // Called here after current_proc is set but before switch_to_first
+    sched_mailbox_selftest();
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup
     
