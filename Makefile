@@ -32,8 +32,6 @@ ifneq ($(filter $(KERNEL_PROFILE),release validation),$(KERNEL_PROFILE))
 $(error Invalid KERNEL_PROFILE='$(KERNEL_PROFILE)'. Use release or validation)
 endif
 
-AYKEN_DEBUG_IRQ ?= 0
-AYKEN_DEBUG_SCHED ?= 0
 VALIDATION_WERROR ?= 0
 AYKEN_SCHED_FALLBACK ?= 0
 KERNEL_EXPORT_POLICY ?= 1
@@ -52,6 +50,7 @@ $(error AYKEN_SCHED_FALLBACK=1 is only allowed with KERNEL_PROFILE=validation)
 endif
 endif
 
+# Debug flags: set defaults based on profile, allow override via env
 ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
 AYKEN_DEBUG_IRQ ?= 1
@@ -62,6 +61,8 @@ KERNEL_CFLAGS += -Werror
 endif
 else
 PROFILE_RELEASE_FLAGS := 1
+AYKEN_DEBUG_IRQ ?= 0
+AYKEN_DEBUG_SCHED ?= 0
 KERNEL_CFLAGS += -O2 -g1
 endif
 
