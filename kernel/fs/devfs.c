@@ -59,6 +59,9 @@ int devfs_init(void)
  */
 int devfs_register_device(const char *name, void *ops, void *device_data)
 {
+    (void)ops;
+    (void)device_data;
+
     fb_print("[kernel/devfs] devfs_register_device: Ring3 userspace only - name=");
     if (name) fb_print(name);
     fb_print("\n");
@@ -73,6 +76,9 @@ int devfs_register_device(const char *name, void *ops, void *device_data)
  */
 int devfs_read(const char *dev_name, void *buffer, uint32_t size)
 {
+    (void)buffer;
+    (void)size;
+
     fb_print("[kernel/devfs] devfs_read: Ring3 userspace only - device=");
     if (dev_name) fb_print(dev_name);
     fb_print("\n");
@@ -87,6 +93,8 @@ int devfs_read(const char *dev_name, void *buffer, uint32_t size)
  */
 int devfs_write(const char *dev_name, const void *buffer, uint32_t size)
 {
+    (void)buffer;
+
     fb_print("[kernel/devfs] devfs_write: Ring3 userspace only - device=");
     if (dev_name) fb_print(dev_name);
     fb_print("\n");
@@ -101,6 +109,9 @@ int devfs_write(const char *dev_name, const void *buffer, uint32_t size)
  */
 int devfs_ioctl(const char *dev_name, uint32_t cmd, void *arg)
 {
+    (void)cmd;
+    (void)arg;
+
     fb_print("[kernel/devfs] devfs_ioctl: Ring3 userspace only - device=");
     if (dev_name) fb_print(dev_name);
     fb_print("\n");

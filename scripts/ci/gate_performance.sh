@@ -16,7 +16,7 @@ Usage:
     [--init-baseline]
 
 Env controls:
-  PERF_BASELINE_AUTHORITY=<id>                 (default: github-hosted-ubuntu-24.04-x64)
+  PERF_BASELINE_AUTHORITY=<id>                 (default: scripts/ci/perf_authority.env)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
   PERF_PREEMPT_FORCE_EFI_REBUILD=0|1           (default: 1)
@@ -30,12 +30,15 @@ USAGE
 
 EVIDENCE_DIR=""
 BASELINE_FILE="${ROOT}/scripts/ci/perf-baseline.lock.json"
+PERF_AUTHORITY_ENV_FILE="${ROOT}/scripts/ci/perf_authority.env"
+PERF_AUTHORITY_DEFAULT="$(sed -n 's/^PERF_BASELINE_AUTHORITY=//p' "${PERF_AUTHORITY_ENV_FILE}" 2>/dev/null | head -n1 || true)"
+PERF_AUTHORITY_DEFAULT="${PERF_AUTHORITY_DEFAULT:-github-hosted-ubuntu-24.04-x64}"
 KERNEL_PROFILE="${PERF_KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${PERF_QEMU_TIMEOUT:-30}"
 ENV_MISMATCH_POLICY="${PERF_ENV_MISMATCH_POLICY:-fail}"
 REGRESSION_POLICY="${PERF_REGRESSION_POLICY:-fail}"
 BASELINE_MODE="${PERF_BASELINE_MODE:-constitutional}"
-BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-24.04-x64}"
+BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-${PERF_AUTHORITY_DEFAULT}}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"

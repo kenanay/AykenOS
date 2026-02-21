@@ -17,9 +17,8 @@
 #include <stdint.h>
 #include "../include/proc.h"
 
-#ifndef AYKEN_SCHED_FALLBACK
+// Constitutional requirement: AYKEN_SCHED_FALLBACK must be explicitly 0
 #define AYKEN_SCHED_FALLBACK 0
-#endif
 
 // ============================================================================
 // RING0 SCHEDULER MECHANISM API (NO POLICY)

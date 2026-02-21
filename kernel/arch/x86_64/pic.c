@@ -16,9 +16,6 @@ static uint8_t slave_mask = 0xFF;
 void pic_init(void)
 {
     // Remap PIC to 0x20-0x2F
-    uint8_t a1 = inb(PIC1_DATA);
-    uint8_t a2 = inb(PIC2_DATA);
-
     outb(PIC1_COMMAND, 0x11);
     outb(PIC2_COMMAND, 0x11);
     outb(PIC1_DATA, 0x20);
@@ -60,8 +57,6 @@ void pic_set_mask(uint8_t irq)
 void pic_clear_mask(uint8_t irq)
 {
     if (irq < 8) {
-        // DEBUG: Show mask before/after
-        uint8_t old_mask = master_mask;
         master_mask &= ~(1 << irq);
         outb(PIC1_DATA, master_mask);
         

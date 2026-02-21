@@ -96,6 +96,7 @@ static inline void *phys_to_virt(uint64_t phys)
     return (void *)(phys + KERNEL_VIRT_BASE);
 }
 
+static inline uint64_t virt_to_phys(const void *virt) __attribute__((unused));
 static inline uint64_t virt_to_phys(const void *virt)
 {
     return ((uint64_t)virt - KERNEL_VIRT_BASE);
@@ -419,6 +420,7 @@ void paging_init(uint64_t pml4_phys)
 // paging.c'nin sonlarına doğru eklenebilir
 
 // [0, limit) aralığındaki identity map'leri kaldır
+void paging_drop_identity_map(uint64_t limit_phys) __attribute__((unused));
 void paging_drop_identity_map(uint64_t limit_phys)
 {
     paging_dbg('d');

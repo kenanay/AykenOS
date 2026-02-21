@@ -129,6 +129,7 @@ static __attribute__((noreturn)) void sched_debug_assert_fail(char code)
 }
 #endif
 
+static inline uint64_t read_msr(uint32_t msr) __attribute__((unused));
 static inline uint64_t read_msr(uint32_t msr)
 {
     uint32_t lo, hi;
@@ -273,6 +274,7 @@ static void map_kernel_stack_pages_into_pml4(uint64_t pml4_phys, uint64_t rsp0)
     }
 }
 
+static void dbg_dump_bytes(const void *addr) __attribute__((unused));
 static void dbg_dump_bytes(const void *addr)
 {
     static const char hex[] = "0123456789ABCDEF";
@@ -883,6 +885,8 @@ void sched_wake(proc_t *proc)
 
 void sched_wake_all(void *wait_obj)
 {
+    (void)wait_obj;
+
     // Ring0 mechanism: Call Ring3 policy for wake-all behavior
     // Ring3 policy determines which processes to wake and how
     // No policy decisions made in Ring0 - only mechanism execution

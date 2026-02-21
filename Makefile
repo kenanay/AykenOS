@@ -34,6 +34,7 @@ endif
 
 VALIDATION_WERROR ?= 0
 AYKEN_SCHED_FALLBACK ?= 0
+AYKEN_INTENTIONAL_PERF_REGRESSION_MS ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
@@ -75,6 +76,7 @@ KERNEL_CFLAGS += -DAYKEN_DEBUG_SCHED=1
 KERNEL_ASMFLAGS += -DAYKEN_DEBUG_SCHED=1
 endif
 KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
+KERNEL_CFLAGS += -DAYKEN_INTENTIONAL_PERF_REGRESSION_MS=$(AYKEN_INTENTIONAL_PERF_REGRESSION_MS)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
@@ -144,7 +146,9 @@ PERF_ENV_MISMATCH_POLICY ?= fail
 PERF_QEMU_TIMEOUT ?= 30
 PERF_KERNEL_PROFILE ?= validation
 PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
-PERF_BASELINE_AUTHORITY ?= github-hosted-ubuntu-latest-x64
+PERF_AUTHORITY_ENV_FILE ?= scripts/ci/perf_authority.env
+PERF_BASELINE_AUTHORITY_DEFAULT := $(shell sed -n 's/^PERF_BASELINE_AUTHORITY=//p' $(PERF_AUTHORITY_ENV_FILE) 2>/dev/null | head -n1)
+PERF_BASELINE_AUTHORITY ?= $(if $(PERF_BASELINE_AUTHORITY_DEFAULT),$(PERF_BASELINE_AUTHORITY_DEFAULT),github-hosted-ubuntu-24.04-x64)
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
@@ -551,7 +555,6 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
-	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
 	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
@@ -810,6 +813,7 @@ help:
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
 	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
 	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
+	@echo "    (intentional regression test only: AYKEN_INTENTIONAL_PERF_REGRESSION_MS=<ms>)"
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
 	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"

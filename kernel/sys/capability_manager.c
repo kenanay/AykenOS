@@ -392,8 +392,6 @@ capability_token_t *capability_get_by_context(uint64_t execution_ctx, uint32_t r
 // ============================================================================
 
 /**
-
-/**
  * capability_bind_to_context - Bind capability to execution context
  * @execution_ctx: ID of execution context
  * @token: Pointer to capability token to bind

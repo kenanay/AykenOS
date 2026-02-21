@@ -26,7 +26,6 @@
 // Ring0 maintains only the minimal state necessary for mechanism implementation.
 // All policy decisions and complex state management are delegated to Ring3.
 
-static uint64_t next_capability_id = 1;
 static uint64_t next_execution_id = 1;
 static uint8_t debug_putchar_marker_progress[MAX_PROCS];
 

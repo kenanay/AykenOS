@@ -8,7 +8,7 @@
 #   - Performance gate: ENFORCED (baseline-locked, fail on regression)
 #   - Strict enforcement: ACTIVE (env_hash + regression checks)
 #
-# Baseline authority: github-hosted-ubuntu-24.04-x64
+# Baseline authority: scripts/ci/perf_authority.env
 # Baseline lock: scripts/ci/perf-baseline.lock.json
 # CI image digest: gha-ubuntu24-20260201.15.1-X64
 # Runner: ubuntu-24.04 (pinned)
@@ -39,7 +39,6 @@ jobs:
     env:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-24.04-x64"
       PERF_BASELINE_MODE: "constitutional"  # Baseline-locked, fail on regression
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
@@ -53,6 +52,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Load performance baseline authority
+        run: |
+          set -euo pipefail
+          source scripts/ci/perf_authority.env
+          : "${PERF_BASELINE_AUTHORITY:?PERF_BASELINE_AUTHORITY missing in scripts/ci/perf_authority.env}"
+          echo "PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}" >> "$GITHUB_ENV"
+          echo "Loaded PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}"
       - name: Debug git context
         run: |
           set -euo pipefail
@@ -156,7 +162,6 @@ jobs:
       CI: "true"
       RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_INIT_BASELINE: "1"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-24.04-x64"
       PERF_BASELINE_MODE: "provisional"  # Non-deterministic baseline
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
@@ -166,6 +171,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Load performance baseline authority
+        run: |
+          set -euo pipefail
+          source scripts/ci/perf_authority.env
+          : "${PERF_BASELINE_AUTHORITY:?PERF_BASELINE_AUTHORITY missing in scripts/ci/perf_authority.env}"
+          echo "PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}" >> "$GITHUB_ENV"
+          echo "Loaded PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}"
       - name: Install toolchain dependencies
         run: |
           set -euo pipefail
