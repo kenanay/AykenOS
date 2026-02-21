@@ -209,6 +209,46 @@ If no condition is met, DO NOT proceed.
 3. Merge PR
 4. Monitor next few PRs for false positives
 
+## Baseline Lock Immutability
+
+**CRITICAL RULE:** Baseline lock files CANNOT be modified in pull requests.
+
+### Protected Files
+
+The following files are baseline locks and are immutable in PRs:
+- `scripts/ci/perf-baseline.lock.json` (performance baseline) - **enforced**
+- `scripts/ci/abi-baseline.lock.json` (ABI baseline) - **future enforcement**
+
+### Enforcement
+
+The performance gate enforces baseline lock immutability for `perf-baseline.lock.json`:
+- On PR events (`pull_request`, `pull_request_target`), the gate checks if the performance baseline lock was modified
+- If mutation detected → gate fails with `baseline lock immutability violation`
+- Only authorized workflows can bypass this check via `PERF_ALLOW_BASELINE_LOCK_MUTATION=1`
+
+**Note:** ABI baseline lock enforcement will be added in a future phase.
+
+### Authorized Mutation Paths
+
+Only the following workflows are authorized to write baseline lock files:
+- `perf-baseline-init.yml` (performance baseline renewal)
+- Future: `abi-baseline-init.yml` (ABI baseline renewal)
+
+These workflows set `PERF_ALLOW_BASELINE_LOCK_MUTATION=1` to bypass the immutability check.
+
+### Rationale
+
+Baseline lock immutability prevents:
+- Accidental baseline drift in feature PRs
+- Baseline inflation to hide regressions
+- Manual baseline editing without proper workflow
+- Split baseline renewal (code change in one PR, baseline in another)
+
+The only valid way to update a baseline is:
+1. Trigger the authorized workflow (`perf-baseline-init`)
+2. Download the generated baseline artifact
+3. Commit the baseline in the same PR as the triggering condition (env change, perf improvement, toolchain upgrade)
+
 ## Enforcement Mechanisms
 
 ### 1. CI Gate Enforcement
@@ -217,6 +257,7 @@ The performance gate enforces baseline policy automatically:
 - `PERF_ENV_MISMATCH_POLICY=fail`: Strict env_hash matching
 - `PERF_REGRESSION_POLICY=fail`: Strict metric regression detection
 - `PERF_BASELINE_MODE=constitutional`: Baseline-locked mode
+- Baseline lock immutability check on PR events
 
 Any violation results in CI failure.
 

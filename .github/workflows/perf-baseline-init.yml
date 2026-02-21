@@ -20,6 +20,7 @@ jobs:
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
       PERF_ENV_MISMATCH_POLICY: "fail"
+      PERF_ALLOW_BASELINE_LOCK_MUTATION: "1"
     steps:
       - uses: actions/checkout@v4
 

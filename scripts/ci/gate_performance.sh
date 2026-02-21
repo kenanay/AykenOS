@@ -118,6 +118,29 @@ case "${PREEMPT_FORCE_EFI_REBUILD}" in
     ;;
 esac
 
+# ----------------------------------------------------------------------------
+# Baseline Lock Immutability (PR guard)
+# - PR'larda baseline lock dosyası değiştirilemez.
+# - Sadece perf-baseline-init gibi yetkili akışlar bypass edebilir.
+# ----------------------------------------------------------------------------
+is_pr=false
+if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" || "${GITHUB_EVENT_NAME:-}" == "pull_request_target" ]]; then
+  is_pr=true
+fi
+
+if [[ "${is_pr}" == "true" && "${PERF_ALLOW_BASELINE_LOCK_MUTATION:-0}" != "1" ]]; then
+  # origin/main yoksa fetch etmeyi dene (actions/checkout fetch-depth=1 ise gerekebilir)
+  git -C "${ROOT}" fetch --no-tags --depth=1 origin main >/dev/null 2>&1 || true
+  
+  # Baseline dosyası değişmiş mi?
+  if git -C "${ROOT}" diff --name-only "origin/main...HEAD" -- "${BASELINE_FILE}" 2>/dev/null | grep -q .; then
+    echo "performance: FAIL (baseline lock immutability violation)"
+    echo "Baseline lock file mutated in PR: ${BASELINE_FILE}"
+    echo "If this change is intentional, regenerate via perf-baseline-init workflow (authorized path)."
+    exit 2
+  fi
+fi
+
 is_pinned_ci_digest() {
   local digest="$1"
   local authority="$2"
