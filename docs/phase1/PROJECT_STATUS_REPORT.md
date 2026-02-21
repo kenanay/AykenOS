@@ -13,7 +13,7 @@ Bu rapor Faz 1.5’in tarihsel durum özetidir. Güncel kanıt ve doğrulama set
 ## 1) Özet (Faz 1.5 - Stabilizasyon ve Tamamlanma)
 - Bootloader PML4 + higher-half + CR3: **Tamam** (`bootloader/efi/paging.c`)
 - Kernel paging: **Tamam** (PML4 devralma, user PML4 klonu, identity drop)
-- Syscalls: **POSIX-benzeri** (INT 0x80, read/write/open/close/exit) — Faz 2'de minimal 10 syscall yüzeyine (map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit) indirilecek.
+- Syscalls: **POSIX-benzeri** (INT 0x80, read/write/open/close/exit) — Faz 2 sonunda minimal 11 syscall yüzeyine (map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit/debug_putchar) geçilecek.
 - Scheduler: **Tamam** (`sched_add_task` dolu, preemption PIT→`sched_yield`)
 - Ring3 geçişi: **DOĞRULANDI** (CS=0x23 ise IRET çerçevesi; TSS.rsp0 güncelleniyor; QEMU testleri başarılı)
 - DevFS: **Temel** (/dev/null, /dev/zero, /dev/console; giriş sürücüleri yok)

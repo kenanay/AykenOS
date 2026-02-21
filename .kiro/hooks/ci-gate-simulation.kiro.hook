@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "CI Gate Simulation",
+  "description": "Simulates CI gates after agent execution completes. Pre-CI discipline layer.",
+  "version": "1.0",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Agent execution completed. Run CI gate simulation.\n\nExecute in order:\n1. make ci-gate-abi\n2. make ci-gate-boundary\n3. make ci-gate-hygiene\n4. make ci-gate-constitutional\n\nFor each gate:\n- Report PASS/FAIL status\n- If FAIL: show violation details from evidence/run-*/reports/\n- Stop on first failure\n\nIf any gate fails:\n- STOP immediately\n- Do NOT proceed to next gate\n- Do NOT auto-fix violations\n- Require manual intervention\n\nThis is pre-CI discipline. Real CI gates are mandatory for merge.\n\nFail-closed enforcement."
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "ci-gate-simulation"
+}

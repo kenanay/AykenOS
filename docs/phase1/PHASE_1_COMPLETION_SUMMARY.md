@@ -31,7 +31,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - Kod incelemesi: Ring3 IRET yolu ve TSS güncellemesi eklendi.  
 - Eksik/Test Bekleyen: QEMU’da kullanıcı modu + `int 0x80` çağrısı ve kesme dönüşlerinin doğrulanması; `switch_to_user_mode` fonksiyonunda SS/CS sabitleri ters (kullanılmıyorsa kaldırılabilir).  
 - Build: Araç zinciri ve QEMU entegrasyon testi yapılmadı; README/PROJECT_STATUS_REPORT bunu yansıtıyor.
-- Mimari uyumsuzluk (Faz 2 borcu): POSIX-benzeri syscall yüzeyi + VFS/DevFS ve scheduler politikaları Ring0’da; minimal 10 syscall yüzeyi ve politika-in-Ring3 ayrıştırması Faz 2’de yapılacak.
+- Mimari uyumsuzluk (Faz 2 borcu): POSIX-benzeri syscall yüzeyi + VFS/DevFS ve scheduler politikaları Ring0’da; Faz 2 sonunda minimal 11 syscall yüzeyine (debug syscall dahil) ve politika-in-Ring3 ayrıştırmasına geçilecek.
 
 ---
 

@@ -1,277 +1,90 @@
-# AykenOS Roadmap - Güncel Durum (2026)
+# AykenOS Roadmap - Kod Snapshot Temelli Durum (2026)
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-## 🎯 Vision
-AI-native, veri-odaklı OS: tiplenmiş veri konteynerleri + hiyerarşik DSL kabuk; TinyLLM ajanları kullanıcı modunda; Ring0 yalnızca donanım kapısı ve execution mekanizması.
+## Scope
+Bu belge, roadmap durumunu doğrudan repo kodu ve CI tanımları üzerinden özetler.
 
-**Ek Vizyon**: Constitutional Rule System ile mimari yönetişim - "İyi mimari → istisnasız mimaridir"
+- Snapshot commit: `464cd009f4d0`
+- Kaynaklar: `Makefile`, `kernel/sys/*`, `kernel/sched/*`, `scripts/ci/*`, `.github/workflows/ci-freeze.yml`
 
-## 📊 Güncel Durum (Şubat 2026)
+## Guncel Durum (Kod Gercekligi)
 
-### ✅ Tamamlanan Bileşenler
+### Core OS
+- **Phase 4.4:** Tamamlanmis kabul edilen temel: UEFI->kernel, Ring3 gecisi, INT 0x80 hatti.
+- **Phase 4.5:** Devam ediyor (stabilizasyon ve entegrasyon).
+- **Syscall v2 araligi:** `1000..1010` (toplam 11 syscall) (`kernel/sys/syscall_v2.h`).
+- **Dispatcher:** Sadece `1000..1010` kabul ediyor (`kernel/sys/syscall.c`).
 
-#### Core OS Development (Phase 4.5 BASELINE VALIDATED ✅)
-- **Kernel**: UEFI boot, paging, entry bring-up, scheduler/DevFS/syscall mekanizmaları operasyonel.
-- **Bootloader**: x86_64 UEFI hattı doğrulanmış; diğer mimariler plan/ön çalışma seviyesinde.
-- **Userspace**: Ring3 policy hattı operasyonel; Ring3 execution model tamamlandı.
-- **Syscall Interface**: INT 0x80 syscall roundtrip doğrulandı, 11 execution-centric syscall operasyonel (syscall v2 interface frozen).
-- **Scheduler Arbitration**: Ring3 hint → Ring0 arbiter (Yol A) implemented, constitutional bridge window isolated.
-- **Status**: Phase 4.5 baseline validated ✅ - Scheduler arbitration contract operational, performance stabilization in progress
+### Syscall Uygulama Olgunlugu
+`kernel/sys/syscall_v2.c` icinde kritik noktalar:
+- `capability_bind` / `capability_revoke` ve `debug_putchar` pratikte en net calisan kisimlar.
+- `map_memory`, `unmap_memory`, `submit_execution`, `wait_result`, `interrupt_return`, `time_query`, `exit` icin TODO/placeholder seviyesinde mantik mevcut.
+- Bu nedenle ABI ve dispatch hatti aktif olsa da tum syscall semantigi "production-complete" degil.
 
-#### Ayken-Core Data Systems (Phase 2 ✅ COMPLETE)
-- **ABDF v0.2**: MetaContainer, SegmentKind, SegmentDescriptor - Production ready
-- **BCIB v0.2**: DSL-compatible opcode set, validation system - Production ready
-- **Performance**: Benchmark suite, 12/12 tests passing, zero warnings
-- **Status**: Ready for Phase 3 AI integration
+### Scheduler Durumu
+- `AYKEN_SCHED_FALLBACK` default `0` (`Makefile`, `kernel/sched/sched.h`).
+- Scheduler policy'nin Ring3'e tamamen tasindigi iddiasi kodda tam karsilanmiyor:
+  - Ring3 policy C-call yolu `sched.c` icinde yorum satirina alinmis.
+  - Etkin secim yolu su an kernel ready-queue mekanik akisi (round-robin benzeri).
+- Sonuc: scheduler arbitration/mailbox dokuman hedefi ile runtime kodu arasinda kapanmamis fark var.
 
-#### Constitutional Rule System (Phases 1-12 ✅ COMPLETE)
-- **Phase 1-2**: Core infrastructure, rule registry, phase matrix
-- **Phase 3-4**: Allow/Waiver systems, constitutional decision tree
-- **Phase 5**: CLI tools, VS Code integration, audit trail
-- **Phase 6-7**: Waiver lifecycle, renewal processes, CI gates
-- **Phase 8**: Architecture Health Score (AHS) system
-- **Phase 9**: Architecture Health Time-Series (AHTS) analysis
-- **Phase 10**: Module-level Architecture Risk Score (MARS)
-- **Phase 11**: Allow → Refactor Recommendation Engine (ARRE)
-- **Phase 12-A**: Auto-Refactor Hints (ARH) - Advisory-only enforcement
-- **Phase 12-B**: Governance Closure - Self-health, outcome feedback, ADN, dead-control gate, system status
-- **Test Coverage**: 350+ tests reported (audit evidence list required)
-- **Status**: Architectural governance system complete; audit-grade evidence pending where applicable
+### Ring0/Ring3 Dosya Sistemi Siniri
+- `kernel/fs/vfs.c` ve `kernel/fs/devfs.c` dosyalari policy degil, placeholder/compat katmani gibi calisiyor.
+- Ring3 tarafinda `userspace/libayken/*` policy niyeti korunuyor.
 
-#### CI/CD Pipeline (8 Gates ✅ ENFORCED)
-- **ABI Gate**: Syscall v2 interface contract validation
-- **Boundary Gate**: Ring0/Ring3 symbol-scan enforcement
-- **Hygiene Gate**: Code quality and repository cleanliness
-- **Tooling Isolation Gate**: CI/tooling changes isolated from kernel ✨ **NEW!**
-- **Constitutional Gate**: AHS, NON_OVERRIDABLE, waiver compliance
-- **Workspace Gate**: Workspace-strict artifact tracking
-- **Syscall v2 Runtime Gate**: Runtime syscall contract validation
-- **Performance Gate**: Regression detection with baseline comparison
-- **Status**: Full pipeline operational, `make ci-freeze` enforced
+## CI / Freeze Durumu
 
-### 🚧 Devam Eden Çalışmalar
+### `ci-freeze` Zinciri (Kodda)
+`Makefile` uzerinden strict zincir:
+1. `ci-gate-abi`
+2. `ci-gate-boundary` (symbol-scan)
+3. `ci-gate-ring0-exports`
+4. `ci-gate-hygiene`
+5. `ci-gate-tooling-isolation`
+6. `ci-gate-constitutional`
+7. `ci-gate-workspace`
+8. `ci-gate-syscall-v2-runtime`
+9. `ci-gate-performance`
 
-#### Core OS Phase 4.5 (STABILIZATION IN PROGRESS)
-- **4.5A Status**: Scheduler arbitration contract (Yol A) implemented ✅
-- **4.5B Status**: Performance gate stabilization, preempt marker production
-- **Target (4.5C)**: Full CI green, advanced AI integration preparation
-- **Dependencies**: Phase 4.4 COMPLETED ✅ + preempt baseline validated ✅
-- **Timeline**: Q1 2026 completion target
+### Mode Gercekligi
+- `.github/workflows/ci-freeze.yml` freeze job'u default **constitutional** (`PERF_BASELINE_MODE=constitutional`).
+- Ayni workflow'de baseline init job'u **provisional** yol kullanir.
+- `ci-gate-tooling-isolation`, `PERF_BASELINE_MODE=provisional` iken `SKIP` uretebilir (`Makefile`).
+- `ci-summarize` su an `PASS/SKIP/WARN` verdict'lerini kabul eder.
 
-## 🗺️ Roadmap Fazları (Güncellenmiş)
+## Faz Yorumu
 
-### Phase 1: Core Foundation ✅ COMPLETE
-**Durum**: Tamamlandı (2025)
-- UEFI boot system
-- Memory management
-- Ring3 transitions
-- DevFS skeleton
-- Basic POSIX-like syscalls
-- Preemptive scheduler
-- QEMU/toolchain validation
+### Nerede Oldugumuz
+- **Net durum:** Phase 4.4 tamam, **Phase 4.5 stabilizasyon ve uyumlandirma asamasinda**.
+- "Scheduler arbitration fully implemented" ifadesi mevcut kodla birebir uyumlu degil.
+- "11 syscall frozen" dogru, ancak birkac syscall hala TODO/sembolik davranista.
 
-### Phase 2: Data Systems & Runtime ✅ COMPLETE
-**Durum**: Tamamlandı (2025-2026)
-- ABDF v0.2 format implementation
-- BCIB v0.2 opcode system
-- DSL parser and runtime (AI-free)
-- Performance benchmarking
-- Production-ready data containers
+### Phase 4.5 Kapanis Icin Kod-Temelli Kriterler
+1. Scheduler Ring3 policy bridge'i (mailbox/stage-next benzeri) runtime'da gercekten aktif olmali.
+2. `syscall_v2.c` TODO kalan mekanizmalar gercek semantikle tamamlanmali.
+3. `ci-freeze` zincirinin 9 gate'i de ayni run icinde tutarli PASS vermeli.
+4. Performance baseline authority / env-hash sureci local-CI farklarinda net governance ile kapanmali.
 
-### Phase 3: AI Integration (PLANNED - Q2 2026)
-**Hedef**: TinyLLM integration in userspace
-- Shell LLM / HW agent / Data LLM skeleton
-- ai.ask command implementation
-- BCIB/DSL bridge
-- Security: human-approved policies
-- **Dependencies**: Phase 12 closure complete (satisfied), Phase 4.4 evidence closure
+## Sonraki Surec (Pragmatik)
+1. Scheduler path: dokuman hedefini runtime koduyla hizala (yorumdaki Ring3 policy cagrisi modeli yerine gercek bridge).
+2. Syscall tamamlanma: placeholder syscall'lari asil mekanizma davranisina cek.
+3. CI konsolidasyonu: constitutional/provisional modlarin PR politikasini tek bir operasyon dokumaniyla netlestir.
+4. Phase 3 AI entegrasyonu: ancak yukaridaki teknik borc kapanislari sonrasinda ana mile-stone yap.
 
-### Phase 4: Hardware Expansion ✅ PHASE 4.4 COMPLETE, PHASE 4.5 IN PROGRESS
-**Phase 4.4**: COMPLETED ✅ - Ring3 execution model operational
-**Phase 4.5**: 🚧 IN PROGRESS - Scheduler arbitration + performance stabilization
-- **4.5A**: Scheduler arbitration contract (Yol A) ✅ COMPLETE
-- **4.5B**: Performance gate stabilization 🚧 IN PROGRESS
-- **4.5C**: Full CI green + AI integration prep ⏳ PLANNED
-- ARM/RISC-V validation (planned)
-- Advanced drivers
-- UI scene graph rendering (OpenGL)
-- Live telemetry dashboard
-
-### Phase 5: Multi-Platform & Optimization (PLANNED - Q3 2026)
-- Cross-platform optimization
-- Documentation completion
-- Packaging system
-- Community/beta release preparation
-
-### Phase 6: Network & Advanced Features (PLANNED - Q4 2026)
-- Network stack implementation
-- High-level language environments (WASM/Python)
-- Comprehensive security policies
-- Vision completion
-
-## 🏗️ Constitutional Rule System Phases (COMPLETE)
-
-### Phases 1-4: Foundation & Core Systems ✅
-- **Phase 1**: Core Infrastructure (Foundation)
-- **Phase 2**: Rule System Implementation (Constitutional Framework)
-- **Phase 3**: Exception Mechanisms (Allow & Waiver Systems)
-- **Phase 4**: Decision Tree & Integration (Unified Processing)
-
-### Phases 5-7: Developer Experience & Lifecycle ✅
-- **Phase 5**: Tooling & User Experience (Developer Interface)
-- **Phase 6**: Waiver Expiry & Self-Hardening System
-- **Phase 7**: Waiver Renewal Process (PR Template + CI Gate)
-
-### Phases 8-11: Advanced Analytics & Recommendations ✅
-- **Phase 8**: Architecture Health Score (AHS) System
-- **Phase 9**: Architecture Health Time-Series (AHTS) System
-- **Phase 10**: Module-level Architecture Risk Score (MARS) System
-- **Phase 11**: Allow → Refactor Recommendation Engine (ARRE)
-
-### Phase 12-A: ARH ✅
-- **Status**: DONE – CONSTITUTIONALLY VERIFIED
-- **Scope**: Task 12.1–12.15
-- **Features**: Assisted fix previews, design hints, deterministic pattern/context analysis, advisory-only enforcement gates
-
-### Phase 12-B: Governance Closure ✅
-- **Status**: DONE – CONSTITUTIONALLY VERIFIED (LOCKED)
-- **Scope**: Task 12.16–12.20
-- **Features**: Self-observability (CDE health), outcome feedback, ADN, dead-control gate, system status
-
-## 📋 ABDF/BCIB Technical Details (COMPLETE)
-
-### ABDF v0.2 ✅ Production Ready
-- **MetaContainer**: name_idx, type_idx, schema_idx, permissions, embedding_idx
-- **SegmentKind**: Meta table system
-- **SegmentDescriptor**: meta_idx + offset + length
-- **Header**: version u16=2, builder/decoder compatibility
-- **Layout**: meta_count = seg_count, 8-byte aligned data section
-
-### BCIB v0.2 ✅ Production Ready
-- **DSL Compatible**: data.create/add/query, ui.render stub, ai.ask stub, end
-- **Header**: `BCIB` + version=2 + instr_count
-- **Validation**: Invalid opcode/header detection
-- **Status**: Ready for Phase 3 AI integration
-
-## 🔧 DSL/Runtime System (Phase 2 COMPLETE)
-
-### Hiyerarşik Prompt System ✅
-- **Syntax**: `>` context, `>>` action, `>[ ]` optional parallel/pipe
-- **Components**: Parser → dispatcher, RAM containers
-- **Features**: list/help/error messages, demo REPL scenarios
-
-### Ring0 Minimal Interface ✅
-- **Syscalls**: 10 minimal syscalls (map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit)
-- **Policy**: All policy (scheduler/VFS/DevFS/AI runtime) in userspace
-- **Status**: Dependent on Phase 4.4 evidence closure
-
-## 🛡️ Security & Testing Status
-
-### Constitutional Security ✅ COMPLETE
-- **350+ Tests**: Reported coverage across phases (audit evidence list pending)
-- **Immutable Audit Trail**: SHA-256 integrity, constitutional compliance
-- **Progressive Hardening**: CI gates, waiver limits, renewal processes
-- **Phase Matrix**: Foundational authority system
-
-### AI Security (Phase 3 READY)
-- **Human Approval**: AI suggestions require human approval
-- **Policy Engine**: Constitutional policy framework ready
-- **Context Validation**: Schema validation, error handling
-- **Stub Implementation**: AI-free operation confirmed
-
-## 📅 Timeline & Dependencies
-
-### Q1 2026 (Current)
-- ✅ Constitutional Rule System (Phases 1-12) - COMPLETE
-- ✅ Core OS Phase 4.4 - COMPLETED (Ring3 execution model operational)
-- 🚧 Core OS Phase 4.5 - IN PROGRESS (Scheduler arbitration + performance stabilization)
-  - ✅ 4.5A: Scheduler arbitration contract (Yol A)
-  - 🚧 4.5B: Performance gate stabilization
-  - ⏳ 4.5C: Full CI green + AI integration prep
-
-### Q2 2026
-- 🎯 Core OS Phase 4.5 completion
-- 🚀 Phase 3 AI integration start (dependencies satisfied)
-- 🎯 Multi-platform expansion (ARM/RISC-V)
-
-### Q3 2026
-- 🎯 Phase 3 AI integration completion
-- 🎯 Phase 5 multi-platform optimization
-- 🎯 Community/beta preparation
-
-### Q4 2026
-- 🎯 Phase 6 network & advanced features
-- 🎯 Vision completion
-- 🎯 Production release preparation
-
-## 🎯 Key Achievements
-
-### Technical Milestones ✅
-- **Boot & Handoff**: UEFI→kernel entry deterministically validated
-- **Ring3 Execution Model**: User-mode process execution operational
-- **Syscall Interface**: INT 0x80 roundtrip validated, 11 execution-centric syscalls operational (syscall v2 interface frozen)
-- **Scheduler Arbitration**: Ring3 hint → Ring0 arbiter (Yol A) implemented ✨ **NEW!**
-- **Data Container System**: ABDF/BCIB v0.2 production ready
-- **Constitutional Governance**: Complete architectural rule system (Phases 1-12)
-- **CI/CD Pipeline**: 8 gates enforced (`make ci-freeze`) ✨ **NEW!**
-- **Tooling Isolation**: CI/tooling changes isolated from kernel ✨ **NEW!**
-- **Local Performance Baseline**: Development without GitHub Actions ✨ **NEW!**
-- **Multi-Architecture**: x86_64 validated; other architectures planned/partial
-
-### Philosophical Achievements ✅
-- **"İstisna = bilinçli karar"**: Exception = conscious decision
-- **"İyi mimari → istisnasız mimaridir"**: Good architecture → exception-free architecture
-- **"Tek snapshot yalan söyler. Trend asla yalan söylemez."**: Trend analysis over snapshots
-- **"Mimari sorunlar lokaldir, bedeli küresel olur"**: Local problems, global cost
-
-## 📊 Metrics & Quality
-
-### Code Quality ✅
-- **350+ Tests**: Reported for constitutional system (audit evidence list pending)
-- **Zero Warnings**: Clean compilation across all components
-- **Constitutional Compliance**: All code follows architectural rules
-- **Performance Benchmarks**: Optimized data container operations
-
-### Architectural Health ✅
-- **AHS System**: Real-time architectural health monitoring
-- **MARS System**: Module-level risk assessment
-- **AHTS System**: Trend analysis and regression detection
-- **ARRE System**: Automated refactoring recommendations
-
-## 🚀 Next Steps
-
-### Immediate (Q1 2026)
-1. **Complete Provisional CI → Constitutional CI Transition**
-   - ✅ Hosted runner operational (GitHub-hosted ubuntu-latest)
-   - ⏳ Baremetal runner setup (deterministic authority)
-   - ⏳ Performance baseline initialization (constitutional mode)
-   - ⏳ Re-enable strict tooling isolation (separate tooling/kernel PRs)
-   - Exit criteria: `PERF_BASELINE_MODE=constitutional`, all gates HARD FAIL
-2. Complete Phase 4.5B: Performance gate stabilization
-   - Baseline initialization (CI or local authority)
-   - Preempt marker production stability
-   - Full CI green (all 8 gates passing)
-3. Prepare Phase 4.5C: AI integration readiness
-   - BCIB execution submission validation
-   - Ring3 AI runtime skeleton
-   - Security policy framework
-
-### Short Term (Q2 2026)
-1. Complete Phase 4.5 and begin Phase 3 AI integration
-2. Implement advanced Ring0 minimization
-3. Start multi-platform validation (ARM/RISC-V)
-4. Community engagement preparation
-
-### Long Term (Q3-Q4 2026)
-1. Complete AI integration with human oversight
-2. Multi-platform optimization and packaging
-3. Network stack and advanced features
-4. Production release preparation
+## Referans Dosyalar
+- `Makefile`
+- `.github/workflows/ci-freeze.yml`
+- `kernel/sys/syscall_v2.h`
+- `kernel/sys/syscall_v2.c`
+- `kernel/sys/syscall.c`
+- `kernel/sched/sched.c`
+- `kernel/sched/sched.h`
+- `kernel/fs/vfs.c`
+- `kernel/fs/devfs.c`
+- `scripts/ci/gate_performance.sh`
+- `scripts/ci/gate_syscall_v2_runtime.sh`
 
 ---
 
-**Son Güncelleme**: 14 Şubat 2026  
-**Güncelleyen**: Kenan AY  
-**Durum**: Constitutional Rule System production-ready (Phases 1-12 complete), Phase 4.4 COMPLETED ✅, Phase 4.5 in progress (scheduler arbitration ✅, performance stabilization 🚧)  
-**Sonraki Milestone**: Phase 4.5B completion (performance gate stabilization) → Phase 4.5C (full CI green + AI prep) → Phase 3 AI integration (Q2 2026)
-
+**Son Guncelleme:** 2026-02-21  
+**Guncelleme Yontemi:** Kod snapshot incelemesi (dokuman iddiasi degil, kaynak gercekligi)

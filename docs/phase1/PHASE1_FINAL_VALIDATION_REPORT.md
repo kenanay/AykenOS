@@ -43,7 +43,7 @@ All constants are properly defined and consistently used across:
 - **Unused code:** Minimal unused code detected
 - **Consistency:** GDT constants are consistent across all files
 
-- **Syscall surface:** POSIX-benzeri `read/write/open/close` hâlen Ring0’da; execution-centric 10 syscall yüzeyi Faz 2’de tanımlanmalı.
+- **Syscall surface:** POSIX-benzeri `read/write/open/close` hâlen Ring0’da; execution-centric 11 syscall yüzeyi (debug syscall dahil) Faz 2 sonunda tanımlanmalı.
 - **Ring3 round-trip:** User-mode → syscall → kernel → user-mode QEMU doğrulaması eksik; Faz 1 kapanışı için bloklayıcı.
 
 ### 5. QEMU Test Results

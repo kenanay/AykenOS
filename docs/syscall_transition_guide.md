@@ -22,7 +22,7 @@ This guide documents the migration path from legacy POSIX-like syscalls (v1) to 
 #define SYS_close      3
 #define SYS_exit       60
 
-// New execution-centric syscalls (v2) - Range: 1000-1009
+// New execution-centric syscalls (v2) - Range: 1000-1010
 #define SYS_V2_MAP_MEMORY        1000  // (internal: 0)
 #define SYS_V2_UNMAP_MEMORY      1001  // (internal: 1)
 #define SYS_V2_SWITCH_CONTEXT    1002  // (internal: 2)
@@ -33,13 +33,14 @@ This guide documents the migration path from legacy POSIX-like syscalls (v1) to 
 #define SYS_V2_CAPABILITY_BIND   1007  // (internal: 7)
 #define SYS_V2_CAPABILITY_REVOKE 1008  // (internal: 8)
 #define SYS_V2_EXIT              1009  // (internal: 9)
+#define SYS_V2_DEBUG_PUTCHAR     1010  // (internal: 10)
 ```
 
 ### Future State (Phase 2.5+)
 
 - **Legacy syscalls (0-99):** Completely removed
-- **Execution-centric syscalls (1000-1009):** Only interface available
-- **Total syscalls:** Exactly 10 (as per AykenOS philosophy)
+- **Execution-centric syscalls (1000-1010):** Only interface available
+- **Total syscalls:** 11 (10 core + debug heartbeat syscall)
 
 ## Migration Examples
 
@@ -135,7 +136,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     // Route based on Syscall Numbering Plan
-    if (syscall_num >= 1000 && syscall_num <= 1009) {
+    if (syscall_num >= 1000 && syscall_num <= 1010) {
         // New execution-centric syscalls (v2)
         return syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
     } else if (syscall_num >= 0 && syscall_num <= 99) {
@@ -275,7 +276,7 @@ void demonstrate_capabilities(void) {
 ### Phase 2.5 (Legacy Cleanup)
 - ❌ V1 syscalls completely removed
 - ✅ Only v2 interface available
-- ✅ Ring0 contains exactly 10 syscalls
+- ✅ Ring0 contains 11 execution-centric syscalls
 
 ## Troubleshooting
 
@@ -284,7 +285,7 @@ void demonstrate_capabilities(void) {
 #### Issue: "Invalid syscall number" errors
 ```bash
 # Check syscall number ranges
-echo "V1 range: 0-99, V2 range: 1000-1009"
+echo "V1 range: 0-99, V2 range: 1000-1010"
 ```
 
 #### Issue: Capability binding failures

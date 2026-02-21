@@ -79,38 +79,24 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
-#### CI Mode: Provisional (Temporary)
-**Status:** ACTIVE (2026-02-16)  
-**Authority:** `github-hosted-ubuntu-latest-x64` (non-deterministic)  
-**Timeline:** < 3 months to constitutional mode
+#### CI Mode: Constitutional Default + Provisional Compatibility
+**Status:** ACTIVE (2026-02-21)  
+**Default freeze mode:** `PERF_BASELINE_MODE=constitutional` (`.github/workflows/ci-freeze.yml`)  
+**Compatibility path:** Provisional mode baseline-init ve diagnostik run'lar icin korunur
 
-**Provisional Mode Relaxations:**
-- ⚠️ **Tooling Isolation:** SKIPPED (mixed tooling/kernel changes allowed)
-  - Rationale: Rapid CI infrastructure iteration
-  - Constitutional mode: HARD FAIL (strict separation required)
-  - Exit criteria: Hosted CI stable, baremetal runner operational
-- ⚠️ **Performance Gate:** WARNING ONLY (non-deterministic measurements)
-  - Rationale: GitHub-hosted runners lack fixed frequency
-  - Constitutional mode: HARD FAIL (deterministic baseline required)
-  - Exit criteria: Baremetal authority established
+**Constitutional Default Behavior (freeze path):**
+- ✅ Functional gates merge-blocking olarak calisir
+- ✅ Performance gate baseline/env mismatch/regression icin fail-closed calisir
+- ✅ Tooling isolation gate strict path'te aktif kalir
 
-**Enforced in Provisional Mode:**
-- ✅ ABI immutability (deterministic)
-- ✅ Boundary enforcement (symbol-scan)
-- ✅ Ring0 export surface (linker-level)
-- ✅ Hygiene (git cleanliness)
-- ✅ Constitutional compliance (governance)
-- ✅ Workspace integrity
-- ✅ Syscall v2 runtime (functional)
+**Provisional Compatibility Behavior (limited scope):**
+- ⚠️ Runtime/performance icin gevsek esik veya warning/skip yolu kullanilabilir
+- ⚠️ Bu yol freeze/merge icin tek basina yeterli kabul edilmez
+- ⚠️ Kullanimi baseline-init ve diagnostik senaryolarla sinirlidir
 
-**Provisional → Constitutional Transition:**
-1. Baremetal runner setup complete
-2. Performance baseline initialized (deterministic)
-3. Tooling/kernel PRs separated
-4. `PERF_BASELINE_MODE=constitutional` enabled
-5. All gates HARD FAIL (no skips)
-
-See: `docs/operations/PROVISIONAL_CI_MODE.md`
+See:
+- `docs/operations/CONSTITUTIONAL_CI_MODE.md`
+- `docs/operations/PROVISIONAL_CI_MODE.md`
 
 #### Repository Hygiene Rules
 - **Tracking:** No `target/`, `obj/`, `*.o`, `*.elf` in git

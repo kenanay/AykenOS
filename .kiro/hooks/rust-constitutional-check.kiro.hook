@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Rust Constitutional Check",
+  "description": "Validates Rust code against constitutional rules. Enforces ayken check.",
+  "version": "1.0",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "ayken/**/*.rs",
+      "ayken-core/**/*.rs",
+      "userspace/**/*.rs"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Rust source file modified. Run constitutional validation.\n\nFor ayken/ (constitutional tool):\n- Run: cd ayken && cargo test\n- Run: cargo clippy -- -D warnings\n- Verify no new unwrap() calls (use constitutional error handling)\n- Check for determinism violations\n\nFor ayken-core/ (AI/data systems):\n- Run: cd ayken-core && cargo test\n- Verify ABDF/BCIB format stability\n- Check for breaking API changes\n\nFor userspace/ (Ring3 policy):\n- Run: cd userspace && cargo test\n- Verify Ring3 policy separation maintained\n- Check for syscall interface changes (must use 1000-1010 only)\n\nIf tests fail or clippy errors:\n- STOP immediately\n- Report exact failure location\n- Do NOT auto-fix test failures\n- Do NOT suppress clippy warnings\n\nIf locked modules modified (bmode/register_invariants/integration):\n- REJECT immediately\n- These modules are under constitutional lock\n- Cite ARCHITECTURE_FREEZE.md section 2.1\n\nFail-closed. Constitutional compliance is mandatory."
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "rust-constitutional-check"
+}
