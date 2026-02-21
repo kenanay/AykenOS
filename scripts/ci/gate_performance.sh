@@ -16,7 +16,7 @@ Usage:
     [--init-baseline]
 
 Env controls:
-  PERF_BASELINE_AUTHORITY=<id>                 (default: github-hosted-ubuntu-latest-x64)
+  PERF_BASELINE_AUTHORITY=<id>                 (default: github-hosted-ubuntu-24.04-x64)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
   PERF_PREEMPT_FORCE_EFI_REBUILD=0|1           (default: 1)
@@ -35,7 +35,7 @@ QEMU_TIMEOUT="${PERF_QEMU_TIMEOUT:-30}"
 ENV_MISMATCH_POLICY="${PERF_ENV_MISMATCH_POLICY:-fail}"
 REGRESSION_POLICY="${PERF_REGRESSION_POLICY:-fail}"
 BASELINE_MODE="${PERF_BASELINE_MODE:-constitutional}"
-BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-latest-x64}"
+BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-github-hosted-ubuntu-24.04-x64}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"

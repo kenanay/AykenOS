@@ -149,13 +149,13 @@ jobs:
 
   init_perf_baseline:
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.init_perf_baseline == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       CI: "true"
       RUN_ID: "init-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_INIT_BASELINE: "1"
-      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
+      PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-24.04-x64"
       PERF_BASELINE_MODE: "provisional"  # Non-deterministic baseline
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
