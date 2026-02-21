@@ -33,9 +33,6 @@ static int serial_ready = 0;
 // Renkler (ARGB)
 static const uint32_t COL_BG = 0x00000000; // siyah
 static const uint32_t COL_FG = 0x00FFFFFF; // beyaz
-static const uint32_t COL_SPLASH_BG = 0x00101020; // koyu lacivertimsı
-static const uint32_t COL_BAR_FRAME = 0x00FFFFFF;
-static const uint32_t COL_BAR_FILL  = 0x0040A0FF;
 
 static const uint32_t color_palette[16] = {
     0x00000000, // Black

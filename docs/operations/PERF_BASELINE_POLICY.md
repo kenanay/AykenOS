@@ -298,7 +298,7 @@ If calibration is needed:
 Intentional regression tests are allowed only to verify that constitutional gates fail correctly.
 
 - Delay injection must be deterministic (timer/tick based), not CPU busy-loop based
-- Regression injection must be compile-time gated (`AYKEN_INTENTIONAL_PERF_REGRESSION`) and default OFF
+- Regression injection must be compile-time gated (`AYKEN_INTENTIONAL_PERF_REGRESSION_MS`) and default OFF
 - Intentional regression commits must not be merged to `main`; use dedicated validation PRs and revert after evidence capture
 
 ## Tooling Isolation Future Work

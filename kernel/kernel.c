@@ -111,6 +111,7 @@ static void intentional_perf_regression_delay_if_enabled(void)
 #endif
 }
 
+static inline void reload_cs(uint16_t sel) __attribute__((unused));
 static inline void reload_cs(uint16_t sel)
 {
     __asm__ volatile(

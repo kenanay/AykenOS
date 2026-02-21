@@ -637,12 +637,12 @@ static const uint8_t ring3_int3_test_code[] = {
     0xEB, 0xFE  // jmp $ (infinite loop)
 };
 
-static const uint8_t ring3_ud2_test_code[] = {
+static const uint8_t ring3_ud2_test_code[] __attribute__((unused)) = {
     0x0F, 0x0B, // ud2 (undefined instruction exception)
     0xEB, 0xFE  // jmp $ (should not reach here if UD2 works)
 };
 
-static const uint8_t ring3_int80_test_code[] = {
+static const uint8_t ring3_int80_test_code[] __attribute__((unused)) = {
     // rbx = 0x405000 (canary address)
     0x48, 0xBB, 0x00, 0x50, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
     // [canary] = PRE
@@ -671,11 +671,11 @@ static const uint8_t *current_ring3_test_code = ring3_int3_test_code;
 static size_t current_ring3_test_size = sizeof(ring3_int3_test_code);
 
 // Legacy name for compatibility
-static const uint8_t *ring3_v2_syscall_test_code = ring3_int3_test_code;
+static const uint8_t *ring3_v2_syscall_test_code __attribute__((unused)) = ring3_int3_test_code;
 #define ring3_v2_syscall_test_code_size sizeof(ring3_int3_test_code)
 
 // Test data for the v2 syscall test (capability token structure)
-static const uint8_t ring3_v2_test_data[] = {
+static const uint8_t ring3_v2_test_data[] __attribute__((unused)) = {
     // Capability token at offset 0x08 (capability_token_t structure)
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // id (will be assigned by kernel)
     0x01, 0x00, 0x00, 0x00,                          // permissions (CAP_PERM_READ)

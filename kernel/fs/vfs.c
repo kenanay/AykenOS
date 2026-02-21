@@ -58,6 +58,8 @@ int vfs_init(void)
  */
 vfs_file_t *vfs_open(const char *path, int flags)
 {
+    (void)flags;
+
     fb_print("[kernel/vfs] vfs_open: Ring3 userspace only - path=");
     if (path) fb_print(path);
     fb_print("\n");
@@ -72,6 +74,9 @@ vfs_file_t *vfs_open(const char *path, int flags)
  */
 int vfs_read(vfs_file_t *file, void *buffer, uint64_t size)
 {
+    (void)file;
+    (void)buffer;
+
     fb_print("[kernel/vfs] vfs_read: Ring3 userspace only - size=");
     fb_print_int(size);
     fb_print("\n");
@@ -86,6 +91,9 @@ int vfs_read(vfs_file_t *file, void *buffer, uint64_t size)
  */
 int vfs_write(vfs_file_t *file, const void *buffer, uint64_t size)
 {
+    (void)file;
+    (void)buffer;
+
     fb_print("[kernel/vfs] vfs_write: Ring3 userspace only - size=");
     fb_print_int(size);
     fb_print("\n");
@@ -100,6 +108,9 @@ int vfs_write(vfs_file_t *file, const void *buffer, uint64_t size)
  */
 int vfs_seek(vfs_file_t *file, int64_t offset, int whence)
 {
+    (void)file;
+    (void)whence;
+
     fb_print("[kernel/vfs] vfs_seek: Ring3 userspace only - offset=");
     fb_print_int(offset);
     fb_print("\n");
@@ -114,6 +125,8 @@ int vfs_seek(vfs_file_t *file, int64_t offset, int whence)
  */
 int vfs_close(vfs_file_t *file)
 {
+    (void)file;
+
     fb_print("[kernel/vfs] vfs_close: Ring3 userspace only\n");
     return 0; // Success placeholder
 }
@@ -123,6 +136,8 @@ int vfs_close(vfs_file_t *file)
  */
 int vfs_mkdir(const char *path, int mode)
 {
+    (void)mode;
+
     fb_print("[kernel/vfs] vfs_mkdir: Ring3 userspace only - path=");
     if (path) fb_print(path);
     fb_print("\n");
@@ -145,6 +160,8 @@ int vfs_rmdir(const char *path)
  */
 int vfs_stat(const char *path, vfs_stat_t *stat)
 {
+    (void)stat;
+
     fb_print("[kernel/vfs] vfs_stat: Ring3 userspace only - path=");
     if (path) fb_print(path);
     fb_print("\n");
@@ -167,6 +184,10 @@ int vfs_unlink(const char *path)
  */
 int vfs_mount(const char *device, const char *mount_point, const char *fs_type, int flags)
 {
+    (void)mount_point;
+    (void)fs_type;
+    (void)flags;
+
     fb_print("[kernel/vfs] vfs_mount: Ring3 userspace only - device=");
     if (device) fb_print(device);
     fb_print("\n");
@@ -178,6 +199,8 @@ int vfs_mount(const char *device, const char *mount_point, const char *fs_type, 
  */
 int vfs_unmount(const char *mount_point, int flags)
 {
+    (void)flags;
+
     fb_print("[kernel/vfs] vfs_unmount: Ring3 userspace only - mount_point=");
     if (mount_point) fb_print(mount_point);
     fb_print("\n");

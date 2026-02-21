@@ -18,7 +18,7 @@
 // Sinus LUT (0..255 index → -127..127 arası yaklaşık sinüs değeri)
 // Dışarıdan libm (sinf, atan2f vs.) kullanmamak için statik tablo.
 // ---------------------------------------------------------------------------
-static const int16_t sin_lut[256] = {
+static const int16_t sin_lut[] = {
       0,   3,   6,   9,  12,  16,  19,  22,
      25,  28,  31,  34,  37,  40,  43,  46,
      49,  52,  55,  58,  61,  64,  67,  70,
@@ -62,7 +62,7 @@ static const int16_t sin_lut[256] = {
 // Seçilen logo'ya işaretçi (128 veya 256)
 // ---------------------------------------------------------------------------
 
-static const unsigned int (*g_logo)[256] = NULL; // en büyük boyuta göre
+static const uint32_t *g_logo = NULL;
 static uint32_t g_logo_w = 0;
 static uint32_t g_logo_h = 0;
 
@@ -105,12 +105,12 @@ void logo_animator_init(uint32_t fb_width, uint32_t fb_height)
     // 1) Çözünürlüğe göre logo boyutunu seç
     if (fb_width >= 1280 && fb_height >= 720) {
         // Yüksek çözünürlük → 256x256
-        g_logo    = ayken_logo256;
+        g_logo    = &ayken_logo256[0][0];
         g_logo_w  = 256;
         g_logo_h  = 256;
     } else {
         // Daha düşük çözünürlük → 128x128
-        g_logo    = ayken_logo128;
+        g_logo    = &ayken_logo128[0][0];
         g_logo_w  = 128;
         g_logo_h  = 128;
     }
@@ -158,7 +158,7 @@ void logo_animator_draw(void)
 
     for (uint32_t y = 0; y < g_logo_h; ++y) {
         for (uint32_t x = 0; x < g_logo_w; ++x) {
-            uint32_t base = g_logo[y][x];
+            uint32_t base = g_logo[(y * g_logo_w) + x];
 
             // Arka plan ise uğraşma (tam siyah piksel)
             if ((base & 0x00FFFFFF) == 0)
