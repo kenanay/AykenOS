@@ -50,6 +50,7 @@ $(error AYKEN_SCHED_FALLBACK=1 is only allowed with KERNEL_PROFILE=validation)
 endif
 endif
 
+# Debug flags: set defaults based on profile, allow override via env
 ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
 AYKEN_DEBUG_IRQ ?= 1
