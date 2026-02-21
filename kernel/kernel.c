@@ -53,6 +53,10 @@
 // AI modules removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
 
+#ifndef AYKEN_INTENTIONAL_PERF_REGRESSION_MS
+#define AYKEN_INTENTIONAL_PERF_REGRESSION_MS 0
+#endif
+
 // Ring3 VFS removed in Phase 2.5 - Step C completion
 // VFS operations now handled entirely in Ring3
 
@@ -77,6 +81,34 @@ static void debugcon_write(const char *s)
         outb(0xE9, (uint8_t)*s);
         s++;
     }
+}
+
+// Deterministic (timer-tick based) delay hook for intentional perf regression validation.
+// Default is disabled in all normal builds.
+static void intentional_perf_regression_delay_if_enabled(void)
+{
+#if AYKEN_INTENTIONAL_PERF_REGRESSION_MS > 0
+    const uint64_t delay_ms = (uint64_t)AYKEN_INTENTIONAL_PERF_REGRESSION_MS;
+    const uint64_t start_tick = timer_ticks();
+    const uint64_t target_tick = start_tick + delay_ms;
+    uint64_t rflags = 0;
+    const uint64_t if_mask = (1ull << 9);
+
+    __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
+    debugcon_write("[K][PERF_REGRESSION_TEST] deterministic delay start\n");
+
+    if ((rflags & if_mask) == 0) {
+        __asm__ volatile("sti");
+    }
+    while (timer_ticks() < target_tick) {
+        __asm__ volatile("hlt");
+    }
+    if ((rflags & if_mask) == 0) {
+        __asm__ volatile("cli");
+    }
+
+    debugcon_write("[K][PERF_REGRESSION_TEST] deterministic delay end\n");
+#endif
 }
 
 static inline void reload_cs(uint16_t sel)
@@ -289,6 +321,7 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]2 TIMER\n");
     // Phase 4.5 preempt validation mode: high timer frequency.
     timer_init(1000);
+    intentional_perf_regression_delay_if_enabled();
     fb_print("[OK] PIC + Timer.\n");
 
     // ---------------------------------------------------------

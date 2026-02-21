@@ -34,6 +34,7 @@ endif
 
 VALIDATION_WERROR ?= 0
 AYKEN_SCHED_FALLBACK ?= 0
+AYKEN_INTENTIONAL_PERF_REGRESSION_MS ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
@@ -75,6 +76,7 @@ KERNEL_CFLAGS += -DAYKEN_DEBUG_SCHED=1
 KERNEL_ASMFLAGS += -DAYKEN_DEBUG_SCHED=1
 endif
 KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
+KERNEL_CFLAGS += -DAYKEN_INTENTIONAL_PERF_REGRESSION_MS=$(AYKEN_INTENTIONAL_PERF_REGRESSION_MS)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
@@ -813,6 +815,7 @@ help:
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
 	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
 	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
+	@echo "    (intentional regression test only: AYKEN_INTENTIONAL_PERF_REGRESSION_MS=<ms>)"
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
 	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
