@@ -1,17 +1,15 @@
 # CI Freeze Enforcement Workflow
 #
-# MODE: PROVISIONAL (GitHub-hosted runners)
-# See: docs/operations/PROVISIONAL_CI_MODE.md
+# MODE: CONSTITUTIONAL (GitHub-hosted runners with baseline)
+# See: docs/operations/CONSTITUTIONAL_CI_MODE.md
 #
 # Current state:
 #   - Functional gates: ENFORCED (deterministic)
-#   - Performance gate: WAIVER POLICY (non-deterministic)
+#   - Performance gate: ENFORCED (baseline-locked, fail on regression)
 #
-# Target state (after baremetal CI):
-#   - All gates: ENFORCED (deterministic)
-#   - Authority: baremetal-ubuntu22-x86_64-perf01
-#
-# Transition plan: docs/operations/BAREMETAL_CI_SETUP.md
+# Baseline authority: github-hosted-ubuntu-latest-x64
+# Baseline lock: scripts/ci/perf-baseline.lock.json
+# CI image digest: gha-ubuntu24-20260201.15.1-X64
 
 name: ci-freeze
 
@@ -40,12 +38,12 @@ jobs:
       CI: "true"
       RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
       PERF_BASELINE_AUTHORITY: "github-hosted-ubuntu-latest-x64"
-      PERF_BASELINE_MODE: "provisional"  # Non-deterministic, waiver policy
+      PERF_BASELINE_MODE: "constitutional"  # Baseline-locked, fail on regression
       PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
-      PERF_ENV_MISMATCH_POLICY: "waiver"  # Provisional mode: explicit waiver
-      PERF_REGRESSION_POLICY: "waiver"    # Provisional mode: explicit waiver
+      PERF_ENV_MISMATCH_POLICY: "fail"  # Constitutional mode: strict enforcement
+      PERF_REGRESSION_POLICY: "fail"    # Constitutional mode: strict enforcement
       SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
       SYSCALL_V2_RUNTIME_TIMEOUT: "60"  # Hosted runner needs more time for userspace boot
