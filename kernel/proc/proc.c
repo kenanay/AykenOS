@@ -477,16 +477,79 @@ proc_t *proc_create_user_process(const char *name,
     return p;
 }
 
+// MVP-3: Minimal Ring3 scheduler hint test code
+// This is the SIMPLEST possible test: write mailbox, loop forever
+static const uint8_t ring3_mvp3_sched_hint_test_code[] = {
+    // Load mailbox address into rbx
+    0x48, 0xBB, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00,  // mov rbx, 0x700000
+    
+    // Read current epoch: rax = [rbx + 0]
+    0x48, 0x8B, 0x03,                                            // mov rax, [rbx]
+    
+    // Increment epoch: rax = rax + 1
+    0x48, 0xFF, 0xC0,                                            // inc rax
+    
+    // Write candidate_pid = 1: [rbx + 8] = 1
+    0xC7, 0x43, 0x08, 0x01, 0x00, 0x00, 0x00,                    // mov dword [rbx + 8], 1
+    
+    // Write new epoch: [rbx + 0] = rax
+    0x48, 0x89, 0x03,                                            // mov [rbx], rax
+    
+    // Infinite loop: jmp $
+    0xEB, 0xFE                                                   // jmp $
+};
+
+void proc_launch_mvp3_sched_hint_test(void)
+{
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Minimal Ring3 Scheduler Hint Test\n");
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Creating Ring3 process...\n");
+    
+    // Create Ring3 process with flat image
+    proc_t *test_proc = proc_create_user_process(
+        "mvp3-sched-hint-test",
+        ring3_mvp3_sched_hint_test_code,
+        sizeof(ring3_mvp3_sched_hint_test_code),
+        PROC_IMAGE_FLAT
+    );
+    
+    if (!test_proc) {
+        fb_print("[MVP-3] ERROR: Failed to create Ring3 test process\n");
+        fb_print("[MVP-3] =============================================\n");
+        return;
+    }
+    
+    fb_print("[MVP-3] Ring3 process created (PID=");
+    fb_print_int(test_proc->pid);
+    fb_print(")\n");
+    fb_print("[MVP-3] Entry point: 0x");
+    fb_print_hex(test_proc->context.rip);
+    fb_print("\n");
+    fb_print("[MVP-3] Mailbox VA: 0x");
+    fb_print_hex(SCHED_MAILBOX_VA);
+    fb_print("\n");
+    fb_print("[MVP-3] Mailbox PA: 0x");
+    fb_print_hex(test_proc->mailbox_pa);
+    fb_print("\n");
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Waiting for timer tick validation...\n");
+    fb_print("[MVP-3] Expected: [[AYKEN_SCHED_MB_ACCEPT]] pid=");
+    fb_print_int(test_proc->pid);
+    fb_print(" epoch=1\n");
+    fb_print("[MVP-3] =============================================\n");
+}
+
 // PID 1: init process
 void init_process_main(void)
 {
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
     
-    // Phase 1.5: Launch Ring3 test for validation
-    proc_launch_ring3_test();
+    // MVP-3: Launch minimal Ring3 scheduler hint test
+    proc_launch_mvp3_sched_hint_test();
 
-    // Keep PID1 out of the Phase 4.5 runqueue to test pure user<->user preempt.
+    // Keep PID1 out of runqueue (blocked)
     sched_block_current();
     for (;;)
         __asm__ volatile("hlt");
