@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include "../include/proc.h"
 #include "../include/sched_mailbox_abi.h"
+#include "../include/mm.h"
 #include "../arch/x86_64/port_io.h"
 #include "sched_mailbox.h"
 
@@ -158,4 +159,49 @@ void sched_mailbox_selftest(void) {
 
     // Clean end state
     mb->kind = AYKEN_SCHED_HINT_NONE;
+}
+
+// MVP-1: Ring3 mailbox validation (called from timer tick)
+// Validates Ring3-written mailbox data with double-read atomicity check
+// Emits standardized markers for CI gate validation
+int sched_mailbox_validate_ring3(proc_t *proc) {
+    if (!proc || !proc->mailbox_pa) {
+        marker_reject(4, 0, proc ? (uint32_t)proc->pid : 0); // reason=4 (no_mb)
+        return -1;
+    }
+
+    // Access mailbox via kernel virtual address (phys_to_virt)
+    ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
+    if (!mb) {
+        marker_reject(4, 0, (uint32_t)proc->pid);
+        return -1;
+    }
+
+    // Double-read for atomicity (detect torn writes from Ring3)
+    uint64_t e1 = mb->epoch;
+    uint32_t pid = mb->candidate_pid;
+    uint64_t e2 = mb->epoch;
+
+    // Check 1: Torn read detection
+    if (e1 != e2) {
+        marker_reject(1, e1, pid); // reason=1 (torn)
+        return -1;
+    }
+
+    // Check 2: Epoch monotonicity (must advance)
+    if (e1 <= proc->mailbox_last_epoch) {
+        marker_reject(2, e1, pid); // reason=2 (epoch)
+        return -1;
+    }
+
+    // Check 3: PID validity (basic sanity check)
+    if (pid == 0 || pid > 1000) {
+        marker_reject(3, e1, pid); // reason=3 (pid)
+        return -1;
+    }
+
+    // ACCEPT: Update last epoch and emit marker
+    proc->mailbox_last_epoch = e1;
+    marker_accept((int)pid, e1);
+    return 0;
 }

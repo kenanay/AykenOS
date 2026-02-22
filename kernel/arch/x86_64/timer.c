@@ -90,6 +90,13 @@ void timer_isr_c(void *frame_ptr)
         current_proc->context.ss = (uint16_t)frame->ss;
         __asm__ volatile("mov %%cr3, %0" : "=r"(current_proc->context.cr3));
 
+        // MVP-1: Validate Ring3 mailbox after user context snapshot
+        // This hook enables Ring3 → Ring0 scheduler bridge validation
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        extern int sched_mailbox_validate_ring3(proc_t *proc);
+        sched_mailbox_validate_ring3(current_proc);
+#endif
+
         // Tell context_switch.asm old user state is already snapshotted.
         sched_irq_user_ctx_saved = 1;
 

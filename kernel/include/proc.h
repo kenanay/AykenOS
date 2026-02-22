@@ -70,6 +70,10 @@ typedef struct proc {
     const char *name;
     void *wait_obj;
     struct proc *next;    // ready queue için
+    
+    // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)
+    uint64_t mailbox_pa;        // Physical address of per-process mailbox
+    uint64_t mailbox_last_epoch; // Last validated epoch (monotonicity check)
 } proc_t;
 
 // API

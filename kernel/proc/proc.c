@@ -9,6 +9,7 @@
 #include "../include/capability.h"
 #include "../drivers/console/fb_console.h"
 #include "../arch/x86_64/port_io.h"
+#include "../sched/sched_mailbox.h"
 
 _Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
 _Static_assert(offsetof(cpu_context_t, rsp) == 56, "ctx.rsp offset");
@@ -419,6 +420,24 @@ proc_t *proc_create_user_process(const char *name,
     memset(canary_dst, 0, AYKEN_FRAME_SIZE);
     paging_map_page_in_pml4(user_pml4, RING3_CANARY_ADDR, canary_phys,
                             AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
+
+    // MVP-1: Allocate and map per-process mailbox at fixed VA (0x700000)
+    // This enables Ring3 → Ring0 scheduler bridge communication
+    uint64_t mb_pa = phys_alloc_frame();
+    if (!mb_pa) {
+        outb(0xE9, (uint8_t)'6');
+        phys_free_frame(canary_phys);  // cleanup on failure
+        return NULL;
+    }
+    // Zero-init mailbox frame (mandatory for security)
+    uint8_t *mb_dst = (uint8_t *)paging_phys_to_virt(mb_pa);
+    memset(mb_dst, 0, AYKEN_FRAME_SIZE);
+    // Map mailbox to fixed VA with USER | WRITABLE | PRESENT
+    paging_map_page_in_pml4(user_pml4, SCHED_MAILBOX_VA, mb_pa,
+                            AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
+    // Store mailbox physical address and initialize epoch tracking
+    p->mailbox_pa = mb_pa;
+    p->mailbox_last_epoch = 0;
 
     p->stack_top = USER_STACK_TOP;
     p->context.rip = entry;
