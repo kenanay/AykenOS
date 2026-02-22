@@ -23,12 +23,12 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Configuration
-QEMU_TIMEOUT=${QEMU_TIMEOUT:-10}
+QEMU_TIMEOUT=${QEMU_TIMEOUT:-15}
 KERNEL_PROFILE=${KERNEL_PROFILE:-validation}
 EVIDENCE_DIR=${EVIDENCE_DIR:-evidence/gate-3-ring3-runtime}
 OVMF_CODE=${OVMF_CODE:-firmware/ovmf/OVMF_CODE.fd}
 OVMF_VARS_TEMPLATE=${OVMF_VARS_TEMPLATE:-OVMF_VARS.clean.fd}
-OVMF_VARS_RUN=${OVMF_VARS_RUN:-ovmf_vars.fd}
+OVMF_VARS_RUN=${OVMF_VARS_RUN:-$EVIDENCE_DIR/ovmf_vars.fd}
 BOOT_MARKER="[[AYKEN_BOOT_OK]]"
 TICK_MARKER="[[AYKEN_TICK]]"
 CTX_MARKER="[[AYKEN_CTX_SWITCH]]"
@@ -37,13 +37,21 @@ DEBUGCON_LOG="$PROJECT_ROOT/$EVIDENCE_DIR/debugcon.log"
 QEMU_LOG="$PROJECT_ROOT/$EVIDENCE_DIR/qemu.log"
 REPORT_JSON="$PROJECT_ROOT/$EVIDENCE_DIR/report.json"
 
-# Use absolute paths for QEMU (relative paths don't work reliably)
-ABS_DEBUGCON_LOG="$(cd "$PROJECT_ROOT" && pwd)/$EVIDENCE_DIR/debugcon.log"
-ABS_QEMU_LOG="$(cd "$PROJECT_ROOT" && pwd)/$EVIDENCE_DIR/qemu.log"
-
 mkdir -p "$EVIDENCE_DIR"
 : > "$DEBUGCON_LOG"
 : > "$QEMU_LOG"
+
+ABS_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
+ABS_DEBUGCON_LOG="$ABS_PROJECT_ROOT/$EVIDENCE_DIR/debugcon.log"
+ABS_QEMU_LOG="$ABS_PROJECT_ROOT/$EVIDENCE_DIR/qemu.log"
+ABS_OVMF_CODE="$ABS_PROJECT_ROOT/$OVMF_CODE"
+ABS_EFI_IMG="$ABS_PROJECT_ROOT/EFI.img"
+
+if [[ "$OVMF_VARS_RUN" = /* ]]; then
+    ABS_OVMF_VARS="$OVMF_VARS_RUN"
+else
+    ABS_OVMF_VARS="$ABS_PROJECT_ROOT/$OVMF_VARS_RUN"
+fi
 
 echo "=== Gate-3: Ring3 Runtime Validation ==="
 echo "Kernel profile: $KERNEL_PROFILE"
@@ -62,41 +70,110 @@ if [[ ! -f "$OVMF_VARS_TEMPLATE" ]]; then
 fi
 
 echo "[*] Building kernel and bootloader..."
-make KERNEL_PROFILE="$KERNEL_PROFILE" clean >/dev/null 2>&1
-make KERNEL_PROFILE="$KERNEL_PROFILE" kernel bootloader >/dev/null 2>&1
-
-echo "[*] Creating EFI image (direct BOOTX64.EFI path)..."
-make KERNEL_PROFILE="$KERNEL_PROFILE" efi-img >/dev/null 2>&1
-
-echo "[*] Preparing clean NVRAM (blank varstore)..."
-VARS_BYTES=$(wc -c < "$OVMF_VARS_TEMPLATE" 2>/dev/null || echo 0)
-VARS_BYTES=${VARS_BYTES//[[:space:]]/}
-if [[ -z "$VARS_BYTES" || "$VARS_BYTES" -le 0 ]]; then
-    echo "ERROR: failed to detect vars template size: $OVMF_VARS_TEMPLATE"
+if ! make KERNEL_PROFILE="$KERNEL_PROFILE" clean >/dev/null 2>&1; then
+    echo "ERROR: make clean failed"
     exit 1
 fi
-dd if=/dev/zero of="$OVMF_VARS_RUN" bs=1 count="$VARS_BYTES" >/dev/null 2>&1
+
+if ! make KERNEL_PROFILE="$KERNEL_PROFILE" kernel bootloader >/dev/null 2>&1; then
+    echo "ERROR: make kernel bootloader failed"
+    exit 1
+fi
+
+echo "[*] Validating kernel build (marker sanity check)..."
+KERNEL_STRINGS="$PROJECT_ROOT/$EVIDENCE_DIR/kernel_strings.txt"
+if ! strings -a kernel.elf > "$KERNEL_STRINGS"; then
+    echo "ERROR: failed to extract kernel strings"
+    exit 1
+fi
+if ! grep -Fq "AYKEN_BOOT_OK" "$KERNEL_STRINGS"; then
+    echo "ERROR: Boot marker not found in kernel.elf"
+    echo "This indicates KERNEL_PROFILE=validation was not used or markers not compiled in."
+    echo "Expected: [[AYKEN_BOOT_OK]] in kernel.elf strings output"
+    exit 1
+fi
+echo "    ✓ Boot marker found in kernel.elf"
+
+echo "[*] Creating EFI image (direct BOOTX64.EFI path)..."
+if ! make KERNEL_PROFILE="$KERNEL_PROFILE" efi-img >/dev/null 2>&1; then
+    echo "ERROR: make efi-img failed"
+    exit 1
+fi
+
+prepare_blank_varstore() {
+    local vars_bytes
+    vars_bytes=$(wc -c < "$OVMF_VARS_TEMPLATE" 2>/dev/null || echo 0)
+    vars_bytes=${vars_bytes//[[:space:]]/}
+    if [[ -z "$vars_bytes" || "$vars_bytes" -le 0 ]]; then
+        echo "ERROR: failed to detect vars template size: $OVMF_VARS_TEMPLATE"
+        return 1
+    fi
+    dd if=/dev/zero of="$ABS_OVMF_VARS" bs=1 count="$vars_bytes" >/dev/null 2>&1
+}
+
+echo "[*] Preparing clean NVRAM (blank varstore)..."
+if ! prepare_blank_varstore; then
+    exit 1
+fi
 
 echo "[*] Booting kernel (timeout: ${QEMU_TIMEOUT}s)..."
-set +e
-timeout "$QEMU_TIMEOUT" qemu-system-x86_64 \
-    -machine q35 \
-    -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
-    -drive if=pflash,format=raw,file="$OVMF_VARS_RUN" \
-    -drive format=raw,file=EFI.img \
-    -debugcon "file:$ABS_DEBUGCON_LOG" \
-    -global isa-debugcon.iobase=0xe9 \
-    -nographic \
-    >"$ABS_QEMU_LOG" 2>&1
-QEMU_EXIT=$?
-set -e
+
+run_qemu_debugcon_backend() {
+    set +e
+    timeout "$QEMU_TIMEOUT" qemu-system-x86_64 \
+        -machine q35 \
+        -drive if=pflash,format=raw,readonly=on,file="$ABS_OVMF_CODE" \
+        -drive if=pflash,format=raw,file="$ABS_OVMF_VARS" \
+        -drive format=raw,file="$ABS_EFI_IMG" \
+        -debugcon "file:$ABS_DEBUGCON_LOG" \
+        -global isa-debugcon.iobase=0xe9 \
+        -nographic \
+        -no-reboot \
+        >"$ABS_QEMU_LOG" 2>&1
+    QEMU_EXIT=$?
+    set -e
+}
+
+run_qemu_chardev_backend() {
+    set +e
+    timeout "$QEMU_TIMEOUT" qemu-system-x86_64 \
+        -machine q35 \
+        -drive if=pflash,format=raw,readonly=on,file="$ABS_OVMF_CODE" \
+        -drive if=pflash,format=raw,file="$ABS_OVMF_VARS" \
+        -drive format=raw,file="$ABS_EFI_IMG" \
+        -chardev file,id=debugcon0,path="$ABS_DEBUGCON_LOG" \
+        -device isa-debugcon,iobase=0xe9,chardev=debugcon0 \
+        -nographic \
+        -no-reboot \
+        >"$ABS_QEMU_LOG" 2>&1
+    QEMU_EXIT=$?
+    set -e
+}
+
+QEMU_BACKEND="debugcon"
+run_qemu_debugcon_backend
 
 DEBUGCON_BYTES=$(wc -c < "$DEBUGCON_LOG" 2>/dev/null || echo 0)
 DEBUGCON_BYTES=${DEBUGCON_BYTES//[[:space:]]/}
 QEMU_LOG_BYTES=$(wc -c < "$QEMU_LOG" 2>/dev/null || echo 0)
 QEMU_LOG_BYTES=${QEMU_LOG_BYTES//[[:space:]]/}
 
-echo "[DEBUG] qemu_exit=$QEMU_EXIT debugcon_bytes=$DEBUGCON_BYTES qemu_log_bytes=$QEMU_LOG_BYTES"
+if [[ "$DEBUGCON_BYTES" -eq 0 ]]; then
+    # Retry with chardev backend for macOS/QEMU regressions.
+    QEMU_BACKEND="chardev"
+    : > "$DEBUGCON_LOG"
+    : > "$QEMU_LOG"
+    if ! prepare_blank_varstore; then
+        exit 1
+    fi
+    run_qemu_chardev_backend
+    DEBUGCON_BYTES=$(wc -c < "$DEBUGCON_LOG" 2>/dev/null || echo 0)
+    DEBUGCON_BYTES=${DEBUGCON_BYTES//[[:space:]]/}
+    QEMU_LOG_BYTES=$(wc -c < "$QEMU_LOG" 2>/dev/null || echo 0)
+    QEMU_LOG_BYTES=${QEMU_LOG_BYTES//[[:space:]]/}
+fi
+
+echo "[DEBUG] qemu_backend=$QEMU_BACKEND qemu_exit=$QEMU_EXIT debugcon_bytes=$DEBUGCON_BYTES qemu_log_bytes=$QEMU_LOG_BYTES"
 
 echo "[*] Validating markers..."
 BOOT_MARKER_FOUND=0
@@ -128,6 +205,12 @@ fi
 if [[ "$QEMU_EXIT" -ne 0 && "$QEMU_EXIT" -ne 124 ]]; then
     VERDICT="FAIL"
     REASON="QEMU exited unexpectedly (exit_code=$QEMU_EXIT)"
+elif [[ "$DEBUGCON_BYTES" -eq 0 ]]; then
+    VERDICT="FAIL"
+    REASON="Debugcon output empty (0 bytes) - both debugcon backends failed"
+elif [[ "$QEMU_LOG_BYTES" -eq 0 ]]; then
+    VERDICT="FAIL"
+    REASON="QEMU log empty (0 bytes) - QEMU stdout/stderr not captured"
 elif [[ "$SHELL_FALLBACK_FOUND" -eq 1 ]]; then
     VERDICT="FAIL"
     REASON="UEFI Shell fallback detected in QEMU output"
@@ -171,6 +254,7 @@ cat > "$REPORT_JSON" <<EOF
   "reason": "$REASON",
   "kernel_profile": "$KERNEL_PROFILE",
   "qemu_timeout": $QEMU_TIMEOUT,
+  "qemu_backend": "$QEMU_BACKEND",
   "qemu_exit_code": $QEMU_EXIT,
   "shell_fallback_detected": $SHELL_FALLBACK_FOUND,
   "boot_marker_found": $BOOT_MARKER_FOUND,
