@@ -273,8 +273,14 @@ void interrupts_install(void)
     idt_set_gate(10, (interrupt_handler_t)isr_ts_stub, 0x8F);
     idt_set_gate(11, (interrupt_handler_t)isr_np_stub, 0x8F);
     idt_set_gate(12, (interrupt_handler_t)isr_ss_stub, 0x8F);
+/* Validation builds use verbose #GP/#PF handlers to surface fault RIP quickly. */
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    idt_set_gate(13, (interrupt_handler_t)isr_gp, 0x8F);
+    idt_set_gate(14, (interrupt_handler_t)isr_pf, 0x8F);
+#else
     idt_set_gate(13, (interrupt_handler_t)isr_gp_stub, 0x8F);
     idt_set_gate(14, (interrupt_handler_t)isr_pf_stub, 0x8F);
+#endif
 
     // Keep current-stack delivery for diagnostic consistency during bring-up.
     idt_table[3].ist  = 0;
@@ -316,8 +322,14 @@ void interrupts_install_early(void)
     idt_set_gate_selector(10, (interrupt_handler_t)isr_ts_stub, 0x8F, cs);
     idt_set_gate_selector(11, (interrupt_handler_t)isr_np_stub, 0x8F, cs);
     idt_set_gate_selector(12, (interrupt_handler_t)isr_ss_stub, 0x8F, cs);
+/* Validation builds use verbose #GP/#PF handlers to surface fault RIP quickly. */
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    idt_set_gate_selector(13, (interrupt_handler_t)isr_gp, 0x8F, cs);
+    idt_set_gate_selector(14, (interrupt_handler_t)isr_pf, 0x8F, cs);
+#else
     idt_set_gate_selector(13, (interrupt_handler_t)isr_gp_stub, 0x8F, cs);
     idt_set_gate_selector(14, (interrupt_handler_t)isr_pf_stub, 0x8F, cs);
+#endif
     // Keep current-stack delivery for diagnostic consistency during bring-up.
     idt_table[3].ist  = 0;
     idt_table[8].ist  = 0;
