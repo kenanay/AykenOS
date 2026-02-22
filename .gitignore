@@ -60,3 +60,4 @@ test_baseline_init.sh
 # Runtime harness artifacts
 **/syscall_efi_run.*
 qemu_*.log
+evidence/
