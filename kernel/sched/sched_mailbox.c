@@ -161,6 +161,51 @@ void sched_mailbox_selftest(void) {
     mb->kind = AYKEN_SCHED_HINT_NONE;
 }
 
+// MVP-2: Ring3 simulation test (validates Ring3 library behavior)
+// Simulates Ring3 ayken_sched_hint() writes to mailbox
+// Tests Ring0 validation with real Ring3-style writes
+void sched_mailbox_test_ring3_simulation(proc_t *proc) {
+    if (!proc || !proc->mailbox_pa) {
+        dbg_print("[MVP-2] No mailbox for simulation test\n");
+        return;
+    }
+
+    ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
+    if (!mb) return;
+
+    dbg_print("[MVP-2] Ring3 Simulation Test Start\n");
+
+    // Simulate Ring3 ayken_sched_hint(42)
+    // This mimics userspace/libayken/sched_hint.c behavior
+    uint64_t current_epoch = mb->epoch;
+    uint64_t next_epoch = current_epoch + 1;
+    
+    // Write sequence (same as Ring3 library)
+    mb->candidate_pid = 42;
+    mb->epoch = next_epoch;
+    
+    dbg_print("[MVP-2] Simulated Ring3 write: pid=42 epoch=");
+    dbg_print_u64(next_epoch);
+    outb(0xE9, '\n');
+
+    // Trigger validation (same as timer tick would)
+    sched_mailbox_validate_ring3(proc);
+
+    // Simulate invalid PID write
+    current_epoch = mb->epoch;
+    next_epoch = current_epoch + 1;
+    mb->candidate_pid = 2147483647; // Invalid PID
+    mb->epoch = next_epoch;
+    
+    dbg_print("[MVP-2] Simulated Ring3 write: pid=2147483647 epoch=");
+    dbg_print_u64(next_epoch);
+    outb(0xE9, '\n');
+
+    sched_mailbox_validate_ring3(proc);
+
+    dbg_print("[MVP-2] Ring3 Simulation Test Complete\n");
+}
+
 // MVP-1: Ring3 mailbox validation (called from timer tick)
 // Validates Ring3-written mailbox data with double-read atomicity check
 // Emits standardized markers for CI gate validation

@@ -158,6 +158,16 @@ cargo test                  # Run constitutional tests
 ./target/debug/ayken check  # Run constitutional check
 ```
 
+### Ring3 Policy Library (C)
+```bash
+# libayken (Ring3 VFS/DevFS/Scheduler)
+cd userspace/libayken
+make all                    # Build all Ring3 policy components
+make test                   # Build test binaries
+make clean                  # Clean build artifacts
+make check                  # Constitutional compliance check
+```
+
 ## Build Profiles (Constitutional)
 
 ### Release (default)

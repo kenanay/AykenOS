@@ -559,6 +559,17 @@ void sched_start(void)
     outb(0xE9, 'B');
     outb(0xE9, 'E');
     outb(0xE9, '\n');
+    
+    // MVP-2: Ring3 simulation test (validates Ring3 library behavior)
+    outb(0xE9, 'R');
+    outb(0xE9, '3');
+    outb(0xE9, 'S');
+    outb(0xE9, '\n');
+    sched_mailbox_test_ring3_simulation(current_proc);
+    outb(0xE9, 'R');
+    outb(0xE9, '3');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
 #endif
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup

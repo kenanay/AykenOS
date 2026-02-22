@@ -75,13 +75,34 @@ Ring3 policy components (all policy decisions happen here).
 
 ```
 userspace/
-├── libayken/            # Ring3 VFS/DevFS/Scheduler implementations
+├── libayken/            # Ring3 VFS/DevFS/Scheduler implementations (C)
+│   ├── Makefile        # Build system for Ring3 policy library
+│   ├── vfs.c/.h        # Virtual File System implementation
+│   ├── devfs.c/.h      # Device File System implementation
+│   ├── sched_hint.c/.h # Scheduler hint/policy implementation
+│   └── *_test.c        # Test binaries for CI gate validation
 ├── ai-runtime/          # AI runtime services
 ├── bcib-runtime/        # BCIB execution engine
 ├── orchestration/       # Multi-agent orchestration
 ├── semantic-cli/        # Semantic command-line interface
 └── dsl-parser/          # Domain-specific language parser
 ```
+
+### libayken Build System
+
+The `userspace/libayken/` directory contains a standalone Makefile for building Ring3 policy components:
+
+**Build Targets:**
+- `make all`: Build all Ring3 policy objects (vfs.o, devfs.o, sched_hint.o)
+- `make test`: Build test binaries for CI gate validation
+- `make clean`: Remove build artifacts
+- `make check`: Constitutional compliance check
+
+**Constitutional Design:**
+- Ring3 policy implementations only (VFS, DevFS, Scheduler)
+- No Ring0 dependencies (userspace-only)
+- Syscall interface 1000-1010 only
+- Fail-closed design (no Ring0 exports)
 
 ## Ayken-Core Structure (`ayken-core/`)
 

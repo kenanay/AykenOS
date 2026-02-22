@@ -22,3 +22,4 @@
 void sched_mailbox_init(void);
 void sched_mailbox_selftest(void);
 int sched_mailbox_validate_ring3(proc_t *proc); // MVP-1: Ring3 validation
+void sched_mailbox_test_ring3_simulation(proc_t *proc); // MVP-2: Ring3 simulation test
