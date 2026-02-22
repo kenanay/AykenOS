@@ -94,7 +94,7 @@ make validate-qemu          # QEMU integration test
 make ci-gate-abi            # ABI stability check (MUST pass)
 make ci-gate-boundary       # Ring0/Ring3 boundary enforcement (MUST pass)
 make ci-gate-ring0-exports  # Ring0 export surface check (MUST pass)
-make ci-gate-hygiene        # Repository cleanliness (TEMPORARILY SKIPPED - see note)
+make ci-gate-hygiene        # Repository cleanliness (MUST pass)
 make ci-gate-constitutional # Constitutional compliance (MUST pass)
 make ci-gate-workspace      # Workspace integrity (MUST pass)
 make ci-gate-syscall-v2-runtime  # Syscall runtime validation (MUST pass)
@@ -112,13 +112,6 @@ make ci-freeze-local        # Local freeze (skip perf/tooling)
 - Evidence MUST be reviewed
 - Manual intervention required
 - No auto-fix allowed
-
-**Hygiene Gate Status (Temporary):**
-- Status: SKIP (temporarily disabled)
-- Reason: 55GB evidence/ directory (388 runs) causes git ls-files timeout
-- Action: evidence/ will be moved to .gitignore in future commit
-- Impact: MVP-1 validation not affected (code changes minimal, other gates pass)
-- Tracking: Manual hygiene verification required until evidence/ cleanup complete
 
 **Evidence Location:**
 - `evidence/run-<RUN_ID>/gates/` (per-gate reports)

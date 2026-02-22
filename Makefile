@@ -642,15 +642,10 @@ ci-gate-workspace: ci-evidence-dir
 ci-gate-hygiene: ci-evidence-dir
 	@echo "== CI GATE HYGIENE =="
 	@echo "run_id: $(RUN_ID)"
-	@echo "hygiene: SKIP (temporarily disabled - evidence/ directory causes timeout)"
-	@echo "  reason: 55GB evidence/ directory (388 runs) causes git ls-files timeout"
-	@echo "  action: evidence/ will be moved to .gitignore in future commit"
-	@echo "  impact: MVP-1 validation not affected (code changes minimal, other gates pass)"
-	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
-	@echo '{"gate":"hygiene","verdict":"SKIP","reason":"evidence directory timeout","violations_count":0}' > "$(EVIDENCE_RUN_DIR)/gates/hygiene/report.json"
+	@./scripts/ci/gate_hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/hygiene/report.json" "$(EVIDENCE_RUN_DIR)/reports/hygiene.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
-	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR) (SKIPPED)"
+	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-tooling-isolation: ci-evidence-dir
 	@echo "== CI GATE TOOLING ISOLATION =="

@@ -161,7 +161,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 **Rationale:** Dirty state indicates incomplete work.
 
 **Enforcement:**
-- CI Gate: `make ci-gate-hygiene` (TEMPORARILY SKIPPED - see note below)
+- CI Gate: `make ci-gate-hygiene`
 - Check: `git diff --exit-code HEAD`
 
 **Requirements:**
@@ -170,11 +170,6 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 - No tracked binaries (unless whitelisted)
 
 **Exceptions:** NONE (non-overridable)
-
-**Temporary Status (2026-02-22):**
-- Hygiene gate temporarily disabled due to 55GB evidence/ directory timeout
-- Manual verification required until evidence/ cleanup complete
-- Tracking: evidence/ will be moved to .gitignore in future commit
 
 ---
 
