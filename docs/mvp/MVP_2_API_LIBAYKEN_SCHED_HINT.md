@@ -417,7 +417,7 @@ $ git diff HEAD~1 HEAD kernel/include/ayken_abi.h
 
 ---
 
-**Author:** Kiro AI Assistant  
+**Düzenleyen:** Kenan AY  
 **Date:** 2026-02-22  
 **Version:** 1.0  
 **Status:** Production-Ready (Library Level)

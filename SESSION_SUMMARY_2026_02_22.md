@@ -336,7 +336,7 @@ This session demonstrated **exemplary governance discipline** by:
 
 ---
 
-**Author:** Kiro AI Assistant  
+**Düzenleyen:** Kenan AY  
 **Date:** 2026-02-22  
 **Commits:** 55d4bfb9, 4628a40c, 3149b93c
 

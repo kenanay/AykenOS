@@ -387,7 +387,7 @@ MVP-2 is **library-complete** but **runtime-incomplete**. The Ring3 scheduler hi
 
 ---
 
-**Author:** Kiro AI Assistant  
+**Düzenleyen:** Kenan AY  
 **Date:** 2026-02-22  
 **Status:** MVP-2 Complete, MVP-3 Entry Criteria Defined
 

@@ -58,7 +58,8 @@ This validates that MVP-2 documentation and MVP-3 test code:
 
 ---
 
-**Validation Date:** 2026-02-22  
+**Düzenleyen:** Kenan AY  
+**Date:** 2026-02-22  
 **Commit:** 23e07db1  
 **Status:** ✅ READY FOR CI
 

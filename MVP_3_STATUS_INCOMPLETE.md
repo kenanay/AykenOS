@@ -405,7 +405,7 @@ MVP-3 is **blocked by QEMU boot issue**. The test code is written, integrated, a
 
 ---
 
-**Author:** Kiro AI Assistant  
+**Düzenleyen:** Kenan AY  
 **Date:** 2026-02-22  
 **Commits:** 55d4bfb9, 4628a40c  
 **Status:** MVP-3 IN PROGRESS (Blocked by QEMU Boot)
