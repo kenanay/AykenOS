@@ -603,6 +603,22 @@ void sched_start(void)
     
     SCHED_DBG_OUT((uint8_t)'@');  // About to switch_to_first
     
+    // Gate-2: Context switch validation marker (validation-only)
+    // Emitted before first context switch (switch_to_first)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    {
+        static int g_ctx_switch_marker_emitted_first = 0;
+        if (!g_ctx_switch_marker_emitted_first) {
+            g_ctx_switch_marker_emitted_first = 1;
+            const char *marker = "[[AYKEN_CTX_SWITCH]]\n";
+            while (*marker) {
+                __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*marker), "Nd"((uint16_t)0xE9));
+                marker++;
+            }
+        }
+    }
+#endif
+    
     // CRITICAL: Call switch_to_first with interrupts disabled
     // Interrupts will be enabled by the first process's RFLAGS (IF=1)
     // This prevents timer interrupts from firing before we have a proper context
@@ -762,6 +778,22 @@ static void sched_yield_core(int reenable_if)
         SCHED_DBG_OUT((uint8_t)'\n');
 
         sched_dbg_mark_iret();
+        
+        // Gate-2: Context switch validation marker (validation-only)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        {
+            static int g_ctx_switch_marker_emitted = 0;
+            if (!g_ctx_switch_marker_emitted) {
+                g_ctx_switch_marker_emitted = 1;
+                // Local debugcon writer (no export needed)
+                const char *marker = "[[AYKEN_CTX_SWITCH]]\n";
+                while (*marker) {
+                    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*marker), "Nd"((uint16_t)0xE9));
+                    marker++;
+                }
+            }
+        }
+#endif
         
         context_switch(&prev->context, &current_proc->context);
         
