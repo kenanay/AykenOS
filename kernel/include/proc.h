@@ -86,9 +86,6 @@ proc_t *proc_create_user_process(const char *name,
                                  proc_image_format_t fmt);
 // AI service function removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
-proc_t *proc_create_ring3_syscall_test(const char *name);
-void proc_launch_ring3_test(void);
-void proc_launch_mvp3_sched_hint_test(void);  // MVP-3: Minimal Ring3 scheduler hint test
 void proc_block_current(void *wait_obj);
 void proc_wake_waiters(void *wait_obj);
 proc_t* proc_find_by_pid(int pid);

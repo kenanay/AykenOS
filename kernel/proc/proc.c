@@ -526,7 +526,7 @@ static const uint8_t ring3_gate3_test_code[] = {
     0xEB, 0xFE                     // jmp $
 };
 
-void proc_launch_gate3_ring3_test(void)
+static void proc_launch_gate3_ring3_test(void)
 {
     fb_print("[Gate-3] =============================================\n");
     fb_print("[Gate-3] Ring3 Runtime Validation Test\n");
@@ -559,7 +559,7 @@ void proc_launch_gate3_ring3_test(void)
     fb_print("[Gate-3] =============================================\n");
 }
 
-void proc_launch_mvp3_sched_hint_test(void)
+static void proc_launch_mvp3_sched_hint_test(void)
 {
     fb_print("[MVP-3] =============================================\n");
     fb_print("[MVP-3] Minimal Ring3 Scheduler Hint Test\n");
@@ -839,7 +839,7 @@ static const uint8_t ring3_v2_test_data[] __attribute__((unused)) = {
  * @param name Process name for identification
  * @return proc_t* pointer to created process, NULL on failure
  */
-proc_t *proc_create_ring3_syscall_test(const char *name)
+static proc_t *proc_create_ring3_syscall_test(const char *name)
 {
     outb(0xE9, (uint8_t)'C');
     fb_print("[ring3_test] Creating unified Ring3+Syscall test: ");
@@ -912,7 +912,8 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
  * ✔ TSS.RSP0 updates correctly
  * ✔ Both processes make forward progress
  */
-void proc_launch_ring3_test(void)
+static void proc_launch_ring3_test(void) __attribute__((unused));
+static void proc_launch_ring3_test(void)
 {
     capability_token_t runtime_token;
 
