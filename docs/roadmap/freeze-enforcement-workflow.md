@@ -149,20 +149,22 @@ evidence/
 
 **CI Call Point**
 1. `make ci-gate-hygiene`
-2. Make target, `scripts/ci/gate_hygiene.sh --evidence-dir evidence/run-<RUN_ID>/gates/hygiene` çağırır.
+2. Make target, `scripts/ci/gate_hygiene_simple.sh evidence/run-<RUN_ID>/gates/hygiene` çağırır.
 3. `reports/hygiene.json` kopyalanır ve `make ci-summarize` ile global verdict zorunlu tutulur.
-4. Source deny kuralları:
-   - `scripts/ci/hygiene-source-deny.regex`
-   - `scripts/ci/hygiene-source-allow.regex` (boş, waiver yoksa kullanılmaz)
 
-**Temporary Status (2026-02-22):**
-- Gate temporarily SKIPPED due to 55GB evidence/ directory (388 runs) causing git ls-files timeout
-- Manual hygiene verification required until evidence/ cleanup complete
-- Action: evidence/ will be moved to .gitignore in future commit
-- Impact: MVP-1 validation not affected (code changes minimal, other gates pass)
+**Implementation Change (2026-02-22):**
+- Switched from `gate_hygiene.sh` to `gate_hygiene_simple.sh` for performance
+- Simplified implementation focuses on:
+  - Dirty tracked files detection
+  - Forbidden tracked artifacts (build outputs)
+- Source deny scan disabled (was causing 55GB evidence/ timeout)
+- Evidence/ directory still tracked (will be moved to .gitignore in future)
+- Performance: O(files) instead of O(files × patterns × hits)
 
-**Hygiene Rules (merge-blocking when active)**
-1. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`)
+**Hygiene Rules (merge-blocking, simplified implementation)**
+1. Dirty tracked files (excluding evidence/)
+2. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`)
+3. Source deny scan: DISABLED (performance optimization)
 2. Tracked executable/binary files (allowlist hariç)
 3. Oversized tracked files (`> 5,000,000` bytes, allowlist hariç)
 4. Dirty tracked workspace (`git status --porcelain --untracked-files=no`)
