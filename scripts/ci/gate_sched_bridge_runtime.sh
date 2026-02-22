@@ -3,6 +3,15 @@ set -euo pipefail
 
 echo "== CI GATE SCHED BRIDGE RUNTIME =="
 
+# --- FAIL-CLOSED: Validation profile enforcement ---
+# Self-test is compile-out in release, so this gate MUST run with validation profile
+if [[ "${KERNEL_PROFILE:-}" != "validation" ]]; then
+    echo "ERROR: sched-bridge-runtime gate requires KERNEL_PROFILE=validation"
+    echo "Current: KERNEL_PROFILE=${KERNEL_PROFILE:-unset}"
+    echo "Reason: Self-test markers are validation-only (compile-out in release)"
+    exit 2
+fi
+
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)}"
 EVIDENCE_DIR="evidence/run-${RUN_ID}/gates/sched-bridge-runtime"
 mkdir -p "${EVIDENCE_DIR}"

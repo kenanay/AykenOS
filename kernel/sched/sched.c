@@ -547,6 +547,8 @@ void sched_start(void)
     
     // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
     // Called here after current_proc is set but before switch_to_first
+    // Compile-out in release: self-test is validation-only
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     // Test marker to verify debugcon is working
     outb(0xE9, 'M');
     outb(0xE9, 'B');
@@ -557,6 +559,7 @@ void sched_start(void)
     outb(0xE9, 'B');
     outb(0xE9, 'E');
     outb(0xE9, '\n');
+#endif
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup
     

@@ -169,7 +169,7 @@ cargo test                  # Run constitutional tests
 ### Validation
 - Optimization: `-O0`
 - Debug info: `-g3`
-- Flags: `AYKEN_DEBUG_IRQ=1`, `AYKEN_DEBUG_SCHED=1`
+- Flags: `AYKEN_DEBUG_IRQ=1`, `AYKEN_DEBUG_SCHED=1`, `AYKEN_VALIDATION=1`
 - Optional: `VALIDATION_WERROR=1` for strict warnings
 - **Use for:** CI gates, development, debugging
 
