@@ -10,24 +10,14 @@
 // Phase: 4.5 - Scheduler Bridge MVP
 
 #include <stddef.h>
-#include "../drivers/console/fb_console.h"
 #include "../include/proc.h"
 #include "../include/sched_mailbox_abi.h"
+#include "../arch/x86_64/port_io.h"
 #include "sched_mailbox.h"
 
 // MVP-0: single shared instance in .bss (later: map to userspace page)
 static ayken_sched_mailbox_t g_mb __attribute__((aligned(64)));
 static uint64_t g_last_epoch = 0;
-
-// Helper: print uint64_t via fb_print_int
-static void fb_print_u64(uint64_t v) {
-    fb_print_int((int64_t)v);
-}
-
-// Helper: print uint32_t via fb_print_int
-static void fb_print_u32(uint32_t v) {
-    fb_print_int((int64_t)v);
-}
 
 static void mb_reset(void) {
     g_mb.magic = AYKEN_SCHED_MB_MAGIC;
@@ -84,22 +74,50 @@ static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** 
 }
 
 // Marker format MUST stay stable for grep-based gate
+// Output to debugcon (port 0xE9) for CI validation
+static void dbg_print(const char* s) {
+    if (!s) return;
+    while (*s) {
+        outb(0xE9, (uint8_t)*s++);
+    }
+}
+
+static void dbg_print_u64(uint64_t v) {
+    char buf[32];
+    int i = 0;
+    if (v == 0) {
+        outb(0xE9, '0');
+        return;
+    }
+    while (v > 0 && i < 31) {
+        buf[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+    while (i > 0) {
+        outb(0xE9, (uint8_t)buf[--i]);
+    }
+}
+
+static void dbg_print_u32(uint32_t v) {
+    dbg_print_u64((uint64_t)v);
+}
+
 static void marker_accept(int pid, uint64_t epoch) {
-    fb_print("[[AYKEN_SCHED_MB_ACCEPT]] pid=");
-    fb_print_int(pid);
-    fb_print(" epoch=");
-    fb_print_u64(epoch);
-    fb_print("\n");
+    dbg_print("[[AYKEN_SCHED_MB_ACCEPT]] pid=");
+    dbg_print_u64((uint64_t)pid);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    outb(0xE9, '\n');
 }
 
 static void marker_reject(uint32_t reason, uint64_t epoch, uint32_t pid) {
-    fb_print("[[AYKEN_SCHED_MB_REJECT]] reason=");
-    fb_print_u32(reason);
-    fb_print(" epoch=");
-    fb_print_u64(epoch);
-    fb_print(" pid=");
-    fb_print_u32(pid);
-    fb_print("\n");
+    dbg_print("[[AYKEN_SCHED_MB_REJECT]] reason=");
+    dbg_print_u32(reason);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    dbg_print(" pid=");
+    dbg_print_u32(pid);
+    outb(0xE9, '\n');
 }
 
 void sched_mailbox_selftest(void) {

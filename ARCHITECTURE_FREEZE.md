@@ -1,7 +1,7 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.1  
+**Version:** 1.2  
 **Status:** ACTIVE FREEZE  
 **Effective Date:** 2026-02-13  
 **Owner:** AykenOS Core Architecture Team  
@@ -72,10 +72,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Performance
+- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
 - **Bypass:** Prohibited (no exceptions)
-- **Repo Truth (2026-02-14):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
+- **Repo Truth (2026-02-22):**
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -415,6 +415,32 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 
 **Failure → Merge REJECT**
 
+### 4.7 Scheduler Bridge Runtime Gate
+
+**Checks:**
+```bash
+make ci-gate-sched-bridge-runtime
+```
+
+**Current state:** Implemented (evidence-producing gate).
+
+**Validations:**
+- Scheduler mailbox accept marker count (must be exactly 1)
+- Scheduler mailbox reject marker count (must be >= 2)
+- Epoch progression monotonicity (epochs must not decrease)
+- Marker presence validation (fail if no markers detected)
+- Boot audit log analysis via `tools/validation/phase_4_4_qemu_boot_audit.sh`
+
+**Evidence:**
+- `evidence/run-<RUN_ID>/gates/sched-bridge-runtime/boot.log`
+- `evidence/run-<RUN_ID>/gates/sched-bridge-runtime/report.json`
+- `evidence/run-<RUN_ID>/gates/sched-bridge-runtime/violations.txt`
+
+**Purpose:**
+Validates the scheduler arbitration contract (Yol A) where Ring3 stages next task as hint and Ring0 acts as final arbiter with accept/veto authority. Ensures proper mailbox communication and epoch progression.
+
+**Failure → Merge REJECT**
+
 ---
 
 ## 5. Claim Freeze Rule
@@ -533,7 +559,7 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-02-14):**
+**Current Status (2026-02-22):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
 - ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
 - ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
@@ -541,6 +567,7 @@ Default mode: strict (`CONSTITUTIONAL_STRICT=1`, fail-closed).
 - ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
 - ✅ Workspace gate implementation active (`make ci-gate-workspace`)
 - ✅ Syscall v2 runtime gate implementation active (`make ci-gate-syscall-v2-runtime`)
+- ✅ Sched bridge runtime gate implementation active (`make ci-gate-sched-bridge-runtime`)
 - ✅ Performance gate implementation active (`make ci-gate-performance`)
 - ✅ Summary gate active (`make ci-summarize`, auto-discovery)
 - ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)
@@ -750,7 +777,7 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -761,6 +788,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-02-22 | Kenan AY | Added ci-gate-sched-bridge-runtime gate documentation |
 | 1.1 | 2026-02-13 | Kenan AY | Boundary enforcement updated to symbol-scan + deterministic evidence schema |
 | 1.0 | 2026-02-13 | Kenan AY | Initial freeze document |
 

@@ -534,7 +534,7 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
@@ -689,6 +689,13 @@ ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime/report.json" "$(EVIDENCE_RUN_DIR)/reports/syscall-v2-runtime.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: syscall-v2-runtime evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-sched-bridge-runtime: ci-evidence-dir
+	@echo "== CI GATE SCHED BRIDGE RUNTIME =="
+	@echo "run_id: $(RUN_ID)"
+	@RUN_ID=$(RUN_ID) bash scripts/ci/gate_sched_bridge_runtime.sh
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: sched-bridge-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-performance: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE =="

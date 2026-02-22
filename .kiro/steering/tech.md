@@ -98,6 +98,7 @@ make ci-gate-hygiene        # Repository cleanliness (MUST pass)
 make ci-gate-constitutional # Constitutional compliance (MUST pass)
 make ci-gate-workspace      # Workspace integrity (MUST pass)
 make ci-gate-syscall-v2-runtime  # Syscall runtime validation (MUST pass)
+make ci-gate-sched-bridge-runtime  # Scheduler bridge runtime validation (MUST pass)
 make ci-gate-performance    # Performance regression check (MUST pass)
 
 # Full CI suite

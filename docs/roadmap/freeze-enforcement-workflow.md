@@ -91,14 +91,16 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 5. `make ci-gate-constitutional`
 6. `make ci-gate-workspace`
 7. `make ci-gate-syscall-v2-runtime`
-8. `make ci-gate-performance`
-9. `make ci-summarize`
+8. `make ci-gate-sched-bridge-runtime`
+9. `make ci-gate-performance`
+10. `make ci-summarize`
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
-1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-performance`, `ci-summarize`
+1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
 2. Runtime gate spec: `docs/development/SYSCALL_V2_RUNTIME_GATE_SPEC.md`
-3. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
+3. Sched bridge runtime gate: Validates scheduler mailbox accept/reject markers and epoch progression
+4. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
 
 ### 2.3 CI Entry Point Contract
 

@@ -547,7 +547,16 @@ void sched_start(void)
     
     // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
     // Called here after current_proc is set but before switch_to_first
+    // Test marker to verify debugcon is working
+    outb(0xE9, 'M');
+    outb(0xE9, 'B');
+    outb(0xE9, 'T');
+    outb(0xE9, '\n');
     sched_mailbox_selftest();
+    outb(0xE9, 'M');
+    outb(0xE9, 'B');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup
     
