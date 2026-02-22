@@ -111,6 +111,36 @@ static void intentional_perf_regression_delay_if_enabled(void)
 #endif
 }
 
+static void gate1_emit_tick_marker_if_observed(void)
+{
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    const uint64_t start_tick = timer_ticks();
+    uint64_t rflags = 0;
+    const uint64_t if_mask = (1ull << 9);
+
+    __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
+    if ((rflags & if_mask) == 0) {
+        __asm__ volatile("sti");
+    }
+
+    for (uint64_t spin = 0; spin < 50000000ull; ++spin) {
+        if (timer_ticks() > start_tick) {
+            debugcon_write("[[AYKEN_TICK]]\n");
+            if ((rflags & if_mask) == 0) {
+                __asm__ volatile("cli");
+            }
+            return;
+        }
+        __asm__ volatile("pause");
+    }
+
+    debugcon_write("[[AYKEN_TICK_MISS]]\n");
+    if ((rflags & if_mask) == 0) {
+        __asm__ volatile("cli");
+    }
+#endif
+}
+
 static inline void reload_cs(uint16_t sel) __attribute__((unused));
 static inline void reload_cs(uint16_t sel)
 {
@@ -127,12 +157,30 @@ static inline void reload_cs(uint16_t sel)
 
 void kmain_real(ayken_boot_info_t *boot)
 {
-    // Initialize serial port first for early debugging
+    // GATE-0: Boot Determinism Proof
+    // First debugcon output - proves kernel booted successfully
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'['), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'['), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'A'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'Y'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'K'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'E'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'N'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'_'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'B'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'O'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'O'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'T'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'_'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'O'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'K'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)']'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)']'), "Nd"(0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
+    
+    // Initialize serial port for debugging
     serial_init_com1();
     serial_write("SERIAL_OK\n");
-    
-    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'Z'), "Nd"(0xE9));  // YENİ BUILD MARKER
-    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'0'), "Nd"(0xE9));
     
     // Serial port test
     serial_write("KERNEL_BOOT_START\n");
@@ -322,6 +370,7 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]2 TIMER\n");
     // Phase 4.5 preempt validation mode: high timer frequency.
     timer_init(1000);
+    gate1_emit_tick_marker_if_observed();
     intentional_perf_regression_delay_if_enabled();
     fb_print("[OK] PIC + Timer.\n");
 

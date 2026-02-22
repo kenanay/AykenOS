@@ -21,7 +21,14 @@
 #define TIMER_DBG_CHAR(ch) do { } while (0)
 #endif
 
-static uint64_t tick_count = 0;
+static volatile uint64_t tick_count = 0;
+
+static void timer_debugcon_write(const char *s)
+{
+    while (*s) {
+        outb(0xE9, (uint8_t)(*s++));
+    }
+}
 
 typedef struct irq_timer_frame {
     uint64_t r15, r14, r13, r12;
@@ -57,6 +64,14 @@ void timer_isr_c(void *frame_ptr)
 {
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
     tick_count++;
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    static uint8_t tick_marker_emitted = 0;
+    if (!tick_marker_emitted && tick_count >= 10) {
+        tick_marker_emitted = 1;
+        timer_debugcon_write("[[AYKEN_TICK]]\n");
+    }
+#endif
 
 #if AYKEN_DEBUG_IRQ
     // Validation profile marker cadence.
