@@ -29,8 +29,15 @@
 static uint64_t next_execution_id = 1;
 static uint8_t debug_putchar_marker_progress[MAX_PROCS];
 
+// Gate-3: Ring3 runtime validation marker tracking
+static uint8_t gate3_ring3_marker_progress[MAX_PROCS];
+
 #define SYSCALL_V2_USER_MARKER "[U][SYSCALL_OK]"
 #define SYSCALL_V2_KERNEL_MARKER "[[AYKEN_SYSCALL_V2_OK]]\n"
+
+// Gate-3: Ring3 runtime proof marker
+#define GATE3_RING3_USER_MARKER "R3OK"
+#define GATE3_RING3_KERNEL_MARKER "[[AYKEN_RING3_OK]]\n"
 
 static void sys_v2_debugcon_write_string(const char *text)
 {
@@ -46,8 +53,9 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
 {
     extern proc_t *current_proc;
     const char *expected = SYSCALL_V2_USER_MARKER;
+    const char *gate3_expected = GATE3_RING3_USER_MARKER;
     int pid_slot;
-    uint8_t progress;
+    uint8_t progress, gate3_progress;
 
     if (!current_proc || current_proc->pid <= 0 || current_proc->pid > MAX_PROCS) {
         return;
@@ -55,7 +63,9 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
 
     pid_slot = current_proc->pid - 1;
     progress = debug_putchar_marker_progress[pid_slot];
+    gate3_progress = gate3_ring3_marker_progress[pid_slot];
 
+    // Track original syscall marker
     if ((char)character == expected[progress]) {
         progress++;
     } else if ((char)character == expected[0]) {
@@ -70,7 +80,23 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
         progress = 0;
     }
 
+    // Gate-3: Track Ring3 runtime proof marker
+    if ((char)character == gate3_expected[gate3_progress]) {
+        gate3_progress++;
+    } else if ((char)character == gate3_expected[0]) {
+        gate3_progress = 1;
+    } else {
+        gate3_progress = 0;
+    }
+
+    if (gate3_expected[gate3_progress] == '\0') {
+        /* Gate-3: Emit Ring3 runtime proof marker */
+        sys_v2_debugcon_write_string(GATE3_RING3_KERNEL_MARKER);
+        gate3_progress = 0;
+    }
+
     debug_putchar_marker_progress[pid_slot] = progress;
+    gate3_ring3_marker_progress[pid_slot] = gate3_progress;
 }
 
 typedef uint64_t (*sys_v2_dispatch_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t);
