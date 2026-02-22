@@ -464,4 +464,9 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]9 DONE\n");
     fb_print("[K][LATE_INIT_END]\n");
     debugcon_write("[K][LATE_INIT_END]\n");
+    
+#ifdef AYKEN_VALIDATION
+    // Gate-0: Boot validation marker
+    debugcon_write("[[AYKEN_BOOT_OK]]\n");
+#endif
 }

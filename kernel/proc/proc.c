@@ -499,6 +499,66 @@ static const uint8_t ring3_mvp3_sched_hint_test_code[] = {
     0xEB, 0xFE                                                   // jmp $
 };
 
+// Gate-3: Ring3 runtime validation test code
+// Emits "R3OK" via syscall 1010 (debug_putchar) to prove Ring3 execution
+static const uint8_t ring3_gate3_test_code[] = {
+    // Emit 'R' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x52, 0x00, 0x00, 0x00,  // mov edi, 'R'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit '3' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x33, 0x00, 0x00, 0x00,  // mov edi, '3'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit 'O' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x4F, 0x00, 0x00, 0x00,  // mov edi, 'O'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit 'K' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x4B, 0x00, 0x00, 0x00,  // mov edi, 'K'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Infinite loop (kernel will preempt)
+    0xEB, 0xFE                     // jmp $
+};
+
+void proc_launch_gate3_ring3_test(void)
+{
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Ring3 Runtime Validation Test\n");
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Creating Ring3 process...\n");
+    
+    // Create Ring3 process with flat image
+    proc_t *test_proc = proc_create_user_process(
+        "gate3-ring3-test",
+        ring3_gate3_test_code,
+        sizeof(ring3_gate3_test_code),
+        PROC_IMAGE_FLAT
+    );
+    
+    if (!test_proc) {
+        fb_print("[Gate-3] ERROR: Failed to create Ring3 test process\n");
+        fb_print("[Gate-3] =============================================\n");
+        return;
+    }
+    
+    fb_print("[Gate-3] Ring3 process created (PID=");
+    fb_print_int(test_proc->pid);
+    fb_print(")\n");
+    fb_print("[Gate-3] Entry point: 0x");
+    fb_print_hex(test_proc->context.rip);
+    fb_print("\n");
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Waiting for Ring3 marker validation...\n");
+    fb_print("[Gate-3] Expected: [[AYKEN_RING3_OK]] after R3OK sequence\n");
+    fb_print("[Gate-3] =============================================\n");
+}
+
 void proc_launch_mvp3_sched_hint_test(void)
 {
     fb_print("[MVP-3] =============================================\n");
@@ -545,6 +605,9 @@ void init_process_main(void)
 {
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
+    
+    // Gate-3: Launch Ring3 runtime validation test
+    proc_launch_gate3_ring3_test();
     
     // MVP-3: Launch minimal Ring3 scheduler hint test
     proc_launch_mvp3_sched_hint_test();
