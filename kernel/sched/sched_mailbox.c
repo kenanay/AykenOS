@@ -215,8 +215,20 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         return -1;
     }
 
-    // Access mailbox via kernel virtual address (phys_to_virt)
-    ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
+    /*
+     * In timer IRQ context we run on the interrupted process CR3. For user
+     * processes the mailbox is mapped at fixed user VA (SCHED_MAILBOX_VA).
+     * Using paging_phys_to_virt() can return identity VA for low physical
+     * addresses, which is not guaranteed to be mapped in user CR3 and can PF.
+     */
+    uint64_t active_cr3 = 0;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    ayken_sched_mailbox_t *mb = NULL;
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (proc->context.cr3 & AYKEN_PTE_ADDR_MASK)) {
+        mb = (ayken_sched_mailbox_t *)(uintptr_t)SCHED_MAILBOX_VA;
+    } else {
+        mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
+    }
     if (!mb) {
         marker_reject(4, 0, (uint32_t)proc->pid);
         return -1;
