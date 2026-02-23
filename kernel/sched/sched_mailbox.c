@@ -16,29 +16,29 @@
 #include "../arch/x86_64/port_io.h"
 #include "sched_mailbox.h"
 
-// MVP-0: single shared instance in .bss (later: map to userspace page)
-static ayken_sched_mailbox_t g_mb __attribute__((aligned(64)));
-static uint64_t g_last_epoch = 0;
+// MVP-0 self-test state (kept separate from per-process runtime mailbox path).
+static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
+static uint64_t g_selftest_last_epoch = 0;
 
 static void mb_reset(void) {
-    g_mb.magic = AYKEN_SCHED_MB_MAGIC;
-    g_mb.version = AYKEN_SCHED_MB_VERSION;
-    g_mb.kind = AYKEN_SCHED_HINT_NONE;
-    g_mb.epoch = 0;
-    g_mb.proposer_pid = 0;
-    g_mb.candidate_pid = 0;
-    g_mb.flags = 0;
-    g_mb.status = AYKEN_SCHED_STATUS_EMPTY;
-    g_mb.reject_reason = AYKEN_SCHED_REJECT_NONE;
+    g_selftest_mb.magic = AYKEN_SCHED_MB_MAGIC;
+    g_selftest_mb.version = AYKEN_SCHED_MB_VERSION;
+    g_selftest_mb.kind = AYKEN_SCHED_HINT_NONE;
+    g_selftest_mb.epoch = 0;
+    g_selftest_mb.proposer_pid = 0;
+    g_selftest_mb.candidate_pid = 0;
+    g_selftest_mb.flags = 0;
+    g_selftest_mb.status = AYKEN_SCHED_STATUS_EMPTY;
+    g_selftest_mb.reject_reason = AYKEN_SCHED_REJECT_NONE;
 }
 
 void sched_mailbox_init(void) {
     mb_reset();
-    g_last_epoch = 0;
+    g_selftest_last_epoch = 0;
 }
 
-static ayken_sched_mailbox_t* sched_mailbox_get(void) {
-    return &g_mb;
+static ayken_sched_mailbox_t* sched_mailbox_get_selftest(void) {
+    return &g_selftest_mb;
 }
 
 static int reject(ayken_sched_mailbox_t* mb, ayken_sched_reject_reason_t why) {
@@ -56,7 +56,7 @@ static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** 
     if (mb->kind != AYKEN_SCHED_HINT_CANDIDATE) return reject(mb, AYKEN_SCHED_REJECT_BAD_KIND);
 
     // Epoch must advance deterministically
-    if (mb->epoch <= g_last_epoch) return reject(mb, AYKEN_SCHED_REJECT_STALE_EPOCH);
+    if (mb->epoch <= g_selftest_last_epoch) return reject(mb, AYKEN_SCHED_REJECT_STALE_EPOCH);
 
     proc_t* p = proc_find_by_pid((int)mb->candidate_pid);
     if (!p) return reject(mb, AYKEN_SCHED_REJECT_BAD_PID);
@@ -67,7 +67,7 @@ static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** 
     }
 
     // Accept
-    g_last_epoch = mb->epoch;
+    g_selftest_last_epoch = mb->epoch;
     mb->status = AYKEN_SCHED_STATUS_ACCEPT;
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     *out_proc = p;
@@ -122,7 +122,7 @@ static void marker_reject(uint32_t reason, uint64_t epoch, uint32_t pid) {
 }
 
 void sched_mailbox_selftest(void) {
-    ayken_sched_mailbox_t* mb = sched_mailbox_get();
+    ayken_sched_mailbox_t* mb = sched_mailbox_get_selftest();
     proc_t* out = NULL;
 
     // Use current_proc if available for deterministic ACCEPT
@@ -232,6 +232,16 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         return -1;
     }
 
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4 isolated proof uses strict ABI checks to ensure ACCEPT cannot be
+    // produced by partial/legacy mailbox layouts.
+    if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
+        mb->version != AYKEN_SCHED_MB_VERSION ||
+        mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+        return -1;
+    }
+#endif
+
     // Double-read for atomicity (detect torn writes from Ring3)
     uint64_t e1 = mb->epoch;
     uint32_t pid = mb->candidate_pid;
@@ -257,6 +267,27 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
     if (pid == 0 || pid > 1000) {
         return -1;
     }
+
+    proc_t *cand = proc_find_by_pid((int)pid);
+    if (!cand) {
+        return -1;
+    }
+    if (!(cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
+        return -1;
+    }
+
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4 proof requires policy proposal to target current process only.
+    if (mb->proposer_pid != (uint32_t)proc->pid || pid != (uint32_t)proc->pid) {
+        return -1;
+    }
+    if (cand != proc) {
+        return -1;
+    }
+    if (!(proc->state == PROC_READY || proc->state == PROC_RUNNING)) {
+        return -1;
+    }
+#endif
 
     // ACCEPT: Update last epoch and emit marker
     proc->mailbox_last_epoch = e1;

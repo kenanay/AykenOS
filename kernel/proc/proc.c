@@ -62,6 +62,30 @@ static void debugcon_hex64(uint64_t v)
     }
 }
 
+static void debugcon_u32(uint32_t v)
+{
+    char buf[10];
+    int i = 0;
+    if (v == 0) {
+        outb(0xE9, (uint8_t)'0');
+        return;
+    }
+    while (v > 0 && i < (int)sizeof(buf)) {
+        buf[i++] = (char)('0' + (v % 10));
+        v /= 10;
+    }
+    while (i > 0) {
+        outb(0xE9, (uint8_t)buf[--i]);
+    }
+}
+
+static void gate4_emit_pid_marker(uint32_t pid)
+{
+    debugcon_write("[[AYKEN_GATE4_PID]] pid=");
+    debugcon_u32(pid);
+    debugcon_write("\n");
+}
+
 static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
 {
     const uint64_t NX_MASK = (1ULL << 63);
@@ -602,8 +626,117 @@ static void proc_launch_mvp3_sched_hint_test(void)
     fb_print("[MVP-3] =============================================\n");
 }
 
+// Gate-4: Policy Accept Proof
+// Ring3 writes mailbox ABI header + epoch=1, kernel seeds pid fields
+// deterministically, then timer IRQ validates and emits ACCEPT.
+// No syscalls, pure timer-driven validation.
+#define MB_MAGIC_B0 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 0) & 0xFF))
+#define MB_MAGIC_B1 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 8) & 0xFF))
+#define MB_MAGIC_B2 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 16) & 0xFF))
+#define MB_MAGIC_B3 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 24) & 0xFF))
+#define MB_VERSION_B0 ((uint8_t)((AYKEN_SCHED_MB_VERSION >> 0) & 0xFF))
+#define MB_VERSION_B1 ((uint8_t)((AYKEN_SCHED_MB_VERSION >> 8) & 0xFF))
+#define MB_KIND_B0 ((uint8_t)((AYKEN_SCHED_HINT_CANDIDATE >> 0) & 0xFF))
+#define MB_KIND_B1 ((uint8_t)((AYKEN_SCHED_HINT_CANDIDATE >> 8) & 0xFF))
+
+static const uint8_t ring3_gate4_policy_code[] = {
+    // Mailbox VA = 0x700000 (SCHED_MAILBOX_VA)
+    // Structure offsets (from sched_mailbox_abi.h):
+    //   +0:  magic (4 bytes)
+    //   +4:  version (2 bytes)
+    //   +6:  kind (2 bytes)
+    //   +8:  epoch (8 bytes)
+    //   +16: proposer_pid (4 bytes)
+    //   +20: candidate_pid (4 bytes)
+    
+    // Load mailbox address into rbx
+    0x48, 0xBB, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rbx, 0x700000
+    
+    // Write magic = AYKEN_SCHED_MB_MAGIC (little-endian immediate bytes)
+    0xB8, MB_MAGIC_B0, MB_MAGIC_B1, MB_MAGIC_B2, MB_MAGIC_B3,   // mov eax, AYKEN_SCHED_MB_MAGIC
+    0x89, 0x03,                                                 // mov [rbx], eax
+    
+    // Write version = 1, kind = 1 (CANDIDATE)
+    0x66, 0xC7, 0x43, 0x04, MB_VERSION_B0, MB_VERSION_B1,       // mov word [rbx+4], AYKEN_SCHED_MB_VERSION
+    0x66, 0xC7, 0x43, 0x06, MB_KIND_B0, MB_KIND_B1,             // mov word [rbx+6], AYKEN_SCHED_HINT_CANDIDATE
+    
+    // Write epoch = 1
+    0x48, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, 1
+    0x48, 0x89, 0x43, 0x08,                                     // mov [rbx+8], rax
+
+    // Infinite loop (timer IRQ will validate)
+    0xF3, 0x90,                                                 // pause
+    0xEB, 0xFC                                                  // jmp .-2
+};
+
+static int gate4_seed_mailbox_pid(proc_t *p)
+{
+    if (!p || !p->mailbox_pa) {
+        return 0;
+    }
+    ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(p->mailbox_pa);
+    if (!mb) {
+        return 0;
+    }
+    mb->proposer_pid = (uint32_t)p->pid;
+    mb->candidate_pid = (uint32_t)p->pid;
+    return 1;
+}
+
+static void proc_launch_gate4_policy_test(void) __attribute__((unused));
+static void proc_launch_gate4_policy_test(void)
+{
+    fb_print("[Gate-4] =============================================\n");
+    fb_print("[Gate-4] Policy Accept Proof\n");
+    fb_print("[Gate-4] =============================================\n");
+    fb_print("[Gate-4] Creating Ring3 policy test process...\n");
+    
+    // Create Ring3 process with flat image
+    proc_t *test_proc = proc_create_user_process(
+        "gate4-policy-test",
+        ring3_gate4_policy_code,
+        sizeof(ring3_gate4_policy_code),
+        PROC_IMAGE_FLAT
+    );
+    
+    if (!test_proc) {
+        fb_print("[Gate-4] ERROR: Failed to create Ring3 test process\n");
+        fb_print("[Gate-4] =============================================\n");
+        return;
+    }
+
+    if (!gate4_seed_mailbox_pid(test_proc)) {
+        fb_print("[Gate-4] ERROR: Failed to seed mailbox PID fields\n");
+        fb_print("[Gate-4] =============================================\n");
+        return;
+    }
+
+    gate4_emit_pid_marker((uint32_t)test_proc->pid);
+    
+    fb_print("[Gate-4] Ring3 process created (PID=");
+    fb_print_int(test_proc->pid);
+    fb_print(")\n");
+    fb_print("[Gate-4] Mailbox VA: 0x");
+    fb_print_hex(SCHED_MAILBOX_VA);
+    fb_print("\n");
+    fb_print("[Gate-4] Mailbox PA: 0x");
+    fb_print_hex(test_proc->mailbox_pa);
+    fb_print("\n");
+    fb_print("[Gate-4] =============================================\n");
+    fb_print("[Gate-4] Ring3 will write mailbox header+epoch (epoch=1)\n");
+    fb_print("[Gate-4] Kernel seeded proposer/candidate pid=");
+    fb_print_int(test_proc->pid);
+    fb_print("\n");
+    fb_print("[Gate-4] Timer IRQ will validate → ACCEPT marker\n");
+    fb_print("[Gate-4] Expected: [[AYKEN_SCHED_MB_ACCEPT]] epoch=1 pid=");
+    fb_print_int(test_proc->pid);
+    fb_print("\n");
+    fb_print("[Gate-4] =============================================\n");
+}
+
 // Forward declaration for runtime syscall contract launcher (defined below).
 static void proc_launch_ring3_test(void);
+static void proc_launch_gate4_policy_test(void);
 
 // PID 1: init process
 void init_process_main(void)
@@ -611,12 +744,18 @@ void init_process_main(void)
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
 
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4 isolated mode: run only policy mailbox workload.
+    proc_launch_gate4_policy_test();
+#else
     // Launch deterministic Ring3 runtime contract workload.
     // This process emits both Gate-3 and syscall-v2 runtime markers.
     proc_launch_ring3_test();
 
     // Keep scheduler bridge runtime signal active for mailbox validation gates.
     proc_launch_mvp3_sched_hint_test();
+#endif
 
     // Keep PID1 out of runqueue (blocked)
     sched_block_current();
