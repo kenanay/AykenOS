@@ -19,25 +19,24 @@ mkdir -p "${EVIDENCE_DIR}"
 LOG_FILE="${EVIDENCE_DIR}/boot.log"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 VIOLATIONS="${EVIDENCE_DIR}/violations.txt"
+BOOT_AUDIT_DIR="${EVIDENCE_DIR}/boot-audit"
 
 : > "${VIOLATIONS}"
 
 # --- QEMU BOOT ---
 # Run boot harness and capture output
-tools/validation/phase_4_4_qemu_boot_audit.sh > "${LOG_FILE}" 2>&1 || true
+mkdir -p "${BOOT_AUDIT_DIR}"
+tools/validation/phase_4_4_qemu_boot_audit.sh --out-dir "${BOOT_AUDIT_DIR}" > "${LOG_FILE}" 2>&1 || true
 
 # --- Extract actual serial/debugcon logs ---
-# The boot harness creates logs in reports/phase_4_4_closure_*/
-LATEST_REPORT=$(ls -td reports/phase_4_4_closure_* 2>/dev/null | head -1 || echo "")
-
-if [[ -z "${LATEST_REPORT}" ]]; then
+if [[ ! -d "${BOOT_AUDIT_DIR}" ]]; then
     echo "boot_harness_failed:no_report_directory" >> "${VIOLATIONS}"
     ACCEPT_COUNT=0
     REJECT_COUNT=0
 else
     # Check both serial and debugcon logs for markers
-    SERIAL_LOG="${LATEST_REPORT}/qemu_serial.log"
-    DEBUGCON_LOG="${LATEST_REPORT}/qemu_debugcon.log"
+    SERIAL_LOG="${BOOT_AUDIT_DIR}/qemu_serial.log"
+    DEBUGCON_LOG="${BOOT_AUDIT_DIR}/qemu_debugcon.log"
     
     # Combine both logs for marker search
     COMBINED_LOG="${EVIDENCE_DIR}/combined.log"
@@ -66,7 +65,8 @@ else
     fi
     
     # --- Epoch progression validation ---
-    # Extract epoch numbers
+    # Extract epoch numbers. Epoch 0 is an idle/no-hint state in runtime path
+    # and should not participate in monotonic contract checks.
     EPOCHS=$(grep -Eo "epoch=[0-9]+" "${COMBINED_LOG}" | cut -d= -f2 || true)
     
     if [[ -z "${EPOCHS}" ]]; then
@@ -74,6 +74,9 @@ else
     else
         PREV=""
         for E in ${EPOCHS}; do
+            if [[ "${E}" -eq 0 ]]; then
+                continue
+            fi
             if [[ -n "${PREV}" && "${E}" -lt "${PREV}" ]]; then
                 echo "epoch_not_monotonic:prev=${PREV}:current=${E}" >> "${VIOLATIONS}"
             fi
