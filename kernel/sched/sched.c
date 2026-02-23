@@ -549,6 +549,7 @@ void sched_start(void)
     // Called here after current_proc is set but before switch_to_first
     // Compile-out in release: self-test is validation-only
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if !defined(AYKEN_MB_SELFTEST) || (AYKEN_MB_SELFTEST == 1)
     // Test marker to verify debugcon is working
     outb(0xE9, 'M');
     outb(0xE9, 'B');
@@ -570,6 +571,7 @@ void sched_start(void)
     outb(0xE9, '3');
     outb(0xE9, 'E');
     outb(0xE9, '\n');
+#endif
 #endif
     
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup

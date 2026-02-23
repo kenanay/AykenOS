@@ -88,6 +88,17 @@ make validate-qemu          # QEMU integration test
 
 ### CI Gates (Freeze Enforcement - Constitutional)
 
+**Pre-CI Discipline (Local Advisory):**
+```bash
+# Local discipline check (~30-60s)
+make pre-ci                 # 4 gates: ABI, Boundary, Hygiene, Constitutional
+                            # Use: Before opening PR
+                            # Status: Advisory (CI remains mandatory)
+
+# Runtime gates (Ring0 Exports, Workspace, Syscall v2, Sched Bridge,
+# Policy Accept) run in CI only, not local.
+```
+
 **Mandatory Gates (Fail-Closed):**
 ```bash
 # Individual gates (order matters)
@@ -99,6 +110,7 @@ make ci-gate-constitutional # Constitutional compliance (MUST pass)
 make ci-gate-workspace      # Workspace integrity (MUST pass)
 make ci-gate-syscall-v2-runtime  # Syscall runtime validation (MUST pass)
 make ci-gate-sched-bridge-runtime  # Scheduler bridge runtime validation (MUST pass)
+make ci-gate-policy-accept  # Policy accept proof (MUST pass)
 make ci-gate-performance    # Performance regression check (MUST pass)
 
 # Full CI suite

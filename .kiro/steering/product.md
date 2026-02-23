@@ -78,10 +78,11 @@ These rules are enforced by CI gates and MUST NOT be violated:
 
 ## Current Status
 
-- **Core OS**: Phase 4.4 COMPLETE (Ring3 execution model operational)
+- **Core OS**: Phase 4.5 COMPLETE (Gate-4 policy-accept proof operational)
 - **Constitutional System**: Phases 1-12 COMPLETE (governance framework active)
 - **Architecture Freeze**: ACTIVE (stabilization before AI integration)
-- **CI Enforcement**: 10 gates active (ABI, Boundary, Ring0 Exports, Hygiene, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance, Tooling Isolation)
+- **CI Enforcement**: 11 gates active (ABI, Boundary, Ring0 Exports, Hygiene, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Policy Accept, Performance, Tooling Isolation)
+- **Pre-CI Discipline**: Local advisory (4 core gates, ~30-60s, fail-closed)
 
 ## License
 
