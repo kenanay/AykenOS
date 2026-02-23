@@ -82,7 +82,7 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - **Constitutional System**: Phases 1-12 COMPLETE (governance framework active)
 - **Architecture Freeze**: ACTIVE (stabilization before AI integration)
 - **CI Enforcement**: 11 gates active (ABI, Boundary, Ring0 Exports, Hygiene, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Policy Accept, Performance, Tooling Isolation)
-- **Pre-CI Discipline**: Local advisory layer (9 gates, fail-closed)
+- **Pre-CI Discipline**: Layered local advisory (fast: 4 gates, full: 9 gates, fail-closed)
 
 ## License
 

@@ -88,13 +88,21 @@ make validate-qemu          # QEMU integration test
 
 ### CI Gates (Freeze Enforcement - Constitutional)
 
-**Pre-CI Discipline (Local Advisory Layer):**
+**Pre-CI Discipline (Layered Local Advisory):**
 ```bash
-# Local fail-closed discipline check before CI
-make pre-ci                 # Run 9 gates (ABI, Boundary, Ring0 Exports, Hygiene,
-                            # Constitutional, Workspace, Syscall v2, Sched Bridge, Policy Accept)
-                            # Does NOT replace CI. CI remains mandatory.
-                            # Skips performance/tooling (require CI authority).
+# Fast discipline (reflex layer, ~30-60s)
+make pre-ci-fast            # 4 gates: ABI, Boundary, Hygiene, Constitutional
+                            # Use: Daily development, quick backbone check
+
+# Full discipline (pre-PR mandatory, ~3-6min)
+make pre-ci                 # 9 gates: fast + Ring0 Exports, Workspace,
+                            # Syscall v2, Sched Bridge, Policy Accept
+                            # Use: Before opening PR
+
+# Both layers:
+# - Do NOT replace CI (CI remains mandatory)
+# - Skip performance/tooling (require CI authority)
+# - Fail-closed, stop-on-first-failure
 ```
 
 **Mandatory Gates (Fail-Closed):**

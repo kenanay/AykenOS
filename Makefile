@@ -542,13 +542,25 @@ ci: check-deps ci-gate-boundary ci-gate-hygiene validate-full
 # ================================================
 # Pre-CI Discipline (Local Advisory Layer)
 # ================================================
-# Local fail-closed discipline check before CI.
+# Layered local fail-closed discipline check before CI.
 # Does NOT replace CI. CI remains mandatory.
-# Runs full gate sequence except performance/tooling (require CI authority).
+#
+# Layers:
+#   pre-ci-fast - Core discipline gates (4 gates, ~30-60s)
+#                 Quick "is constitutional backbone broken?" check
+#                 Use: Daily development, reflex layer
+#
+#   pre-ci      - Full discipline gates (9 gates, ~3-6min)
+#                 Pre-PR mandatory full discipline
+#                 Use: Before opening PR
+
+.PHONY: pre-ci-fast
+pre-ci-fast:
+	@bash scripts/ci/pre_ci_discipline.sh fast
 
 .PHONY: pre-ci
 pre-ci:
-	@bash scripts/ci/pre_ci_discipline.sh
+	@bash scripts/ci/pre_ci_discipline.sh full
 
 # ================================================
 # Freeze Suite (Constitutional Enforcement)
@@ -843,7 +855,8 @@ help:
 	@echo "  install-deps - Install missing dependencies"
 	@echo ""
 	@echo "CI/CD targets:"
-	@echo "  pre-ci       - Local advisory discipline check (9 gates, fail-closed)"
+	@echo "  pre-ci-fast  - Fast discipline check (4 gates, ~30-60s, reflex layer)"
+	@echo "  pre-ci       - Full discipline check (9 gates, ~3-6min, pre-PR mandatory)"
 	@echo "                 Does NOT replace CI. CI remains mandatory."
 	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
 	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"

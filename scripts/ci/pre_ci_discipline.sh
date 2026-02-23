@@ -3,8 +3,20 @@
 # Pre-CI Discipline Gate Simulation
 # ==========================================
 # Purpose:
-#   Local fail-closed discipline layer before real CI.
+#   Layered local fail-closed discipline before real CI.
 #   Does NOT replace CI. CI remains mandatory for merge.
+#
+# Layers:
+#   fast - Core discipline gates (4 gates, ~30-60s)
+#          ABI, Boundary, Hygiene, Constitutional
+#          Purpose: Quick "is constitutional backbone broken?" check
+#          Use: Daily development, reflex layer
+#
+#   full - Full discipline gates (9 gates, ~3-6min)
+#          fast + Ring0 Exports, Workspace, Syscall v2 Runtime,
+#          Sched Bridge Runtime, Policy Accept
+#          Purpose: Pre-PR mandatory full discipline
+#          Use: Before opening PR
 #
 # Policy:
 #   - Strict execution order
@@ -17,7 +29,7 @@
 # Development Awareness:
 #   - During active development, hygiene failures may occur
 #     if changes are intentionally uncommitted.
-#   - This hook does NOT modify code or attempt fixes.
+#   - This script does NOT modify code or attempt fixes.
 #   - Developer is responsible for resolving violations.
 #
 # Enforcement Mode:
@@ -29,6 +41,18 @@
 # ==========================================
 
 set -euo pipefail
+
+# Parse mode argument
+MODE="${1:-full}"
+
+if [ "$MODE" != "fast" ] && [ "$MODE" != "full" ]; then
+    echo "ERROR: Invalid mode '$MODE'"
+    echo "Usage: $0 [fast|full]"
+    echo ""
+    echo "  fast - Core discipline gates (4 gates, ~30-60s)"
+    echo "  full - Full discipline gates (9 gates, ~3-6min, default)"
+    exit 1
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -42,8 +66,9 @@ echo -e "${BLUE}=========================================="
 echo "PRE-CI DISCIPLINE: START"
 echo -e "==========================================${NC}"
 echo ""
+echo "Mode: $MODE"
 echo "Environment: LOCAL (non-authoritative)"
-echo "Mode: FAIL-CLOSED (advisory)"
+echo "Enforcement: FAIL-CLOSED (advisory)"
 echo "Authority: GitHub Actions CI (mandatory)"
 echo ""
 
@@ -87,31 +112,53 @@ run_gate() {
 }
 
 # Strict execution order (constitutional gate sequence)
-echo "Gate Sequence:"
-echo "  1. ABI Stability"
-echo "  2. Boundary Enforcement"
-echo "  3. Ring0 Export Surface"
-echo "  4. Hygiene"
-echo "  5. Constitutional Compliance"
-echo "  6. Workspace Integrity"
-echo "  7. Syscall v2 Runtime"
-echo "  8. Sched Bridge Runtime"
-echo "  9. Policy Accept"
-echo ""
-
-run_gate "make ci-gate-abi" "ABI Gate"
-run_gate "make ci-gate-boundary" "Boundary Gate"
-run_gate "make ci-gate-ring0-exports" "Ring0 Export Surface Gate"
-run_gate "make ci-gate-hygiene" "Hygiene Gate"
-run_gate "make ci-gate-constitutional" "Constitutional Gate"
-run_gate "make ci-gate-workspace" "Workspace Gate"
-run_gate "make ci-gate-syscall-v2-runtime" "Syscall v2 Runtime Gate"
-run_gate "make ci-gate-sched-bridge-runtime" "Sched Bridge Runtime Gate"
-run_gate "make ci-gate-policy-accept" "Policy Accept Gate"
+if [ "$MODE" = "fast" ]; then
+    echo "Gate Sequence (FAST - Core Discipline):"
+    echo "  1. ABI Stability"
+    echo "  2. Boundary Enforcement"
+    echo "  3. Hygiene"
+    echo "  4. Constitutional Compliance"
+    echo ""
+    echo "Estimated time: ~30-60 seconds"
+    echo ""
+    
+    run_gate "make ci-gate-abi" "ABI Gate"
+    run_gate "make ci-gate-boundary" "Boundary Gate"
+    run_gate "make ci-gate-hygiene" "Hygiene Gate"
+    run_gate "make ci-gate-constitutional" "Constitutional Gate"
+else
+    echo "Gate Sequence (FULL - Complete Discipline):"
+    echo "  1. ABI Stability"
+    echo "  2. Boundary Enforcement"
+    echo "  3. Ring0 Export Surface"
+    echo "  4. Hygiene"
+    echo "  5. Constitutional Compliance"
+    echo "  6. Workspace Integrity"
+    echo "  7. Syscall v2 Runtime"
+    echo "  8. Sched Bridge Runtime"
+    echo "  9. Policy Accept"
+    echo ""
+    echo "Estimated time: ~3-6 minutes"
+    echo ""
+    
+    run_gate "make ci-gate-abi" "ABI Gate"
+    run_gate "make ci-gate-boundary" "Boundary Gate"
+    run_gate "make ci-gate-ring0-exports" "Ring0 Export Surface Gate"
+    run_gate "make ci-gate-hygiene" "Hygiene Gate"
+    run_gate "make ci-gate-constitutional" "Constitutional Gate"
+    run_gate "make ci-gate-workspace" "Workspace Gate"
+    run_gate "make ci-gate-syscall-v2-runtime" "Syscall v2 Runtime Gate"
+    run_gate "make ci-gate-sched-bridge-runtime" "Sched Bridge Runtime Gate"
+    run_gate "make ci-gate-policy-accept" "Policy Accept Gate"
+fi
 
 echo ""
 echo -e "${GREEN}=========================================="
-echo "PRE-CI DISCIPLINE: ALL GATES PASS"
+if [ "$MODE" = "fast" ]; then
+    echo "PRE-CI DISCIPLINE (FAST): ALL GATES PASS"
+else
+    echo "PRE-CI DISCIPLINE (FULL): ALL GATES PASS"
+fi
 echo -e "==========================================${NC}"
 echo ""
 echo "Local discipline satisfied."
@@ -119,12 +166,20 @@ echo ""
 echo -e "${YELLOW}⚠️  IMPORTANT:${NC}"
 echo "  - This is an advisory check only"
 echo "  - Real CI (GitHub Actions) remains mandatory"
+if [ "$MODE" = "fast" ]; then
+    echo "  - Runtime gates skipped (use 'make pre-ci' for full check)"
+fi
 echo "  - Performance gate skipped (requires CI authority)"
 echo "  - Tooling isolation skipped (requires CI authority)"
 echo ""
 echo "Next steps:"
-echo "  1. Commit changes if needed"
-echo "  2. Push branch"
-echo "  3. Open PR"
-echo "  4. Wait for CI freeze (authoritative)"
+if [ "$MODE" = "fast" ]; then
+    echo "  1. Continue development"
+    echo "  2. Run 'make pre-ci' before opening PR"
+else
+    echo "  1. Commit changes if needed"
+    echo "  2. Push branch"
+    echo "  3. Open PR"
+    echo "  4. Wait for CI freeze (authoritative)"
+fi
 echo ""
