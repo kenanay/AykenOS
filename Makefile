@@ -35,10 +35,20 @@ endif
 VALIDATION_WERROR ?= 0
 AYKEN_SCHED_FALLBACK ?= 0
 AYKEN_INTENTIONAL_PERF_REGRESSION_MS ?= 0
+AYKEN_MB_SELFTEST ?= 1
+AYKEN_GATE4_POLICY_TEST ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_MB_SELFTEST),0 1),$(AYKEN_MB_SELFTEST))
+$(error Invalid AYKEN_MB_SELFTEST='$(AYKEN_MB_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_GATE4_POLICY_TEST),0 1),$(AYKEN_GATE4_POLICY_TEST))
+$(error Invalid AYKEN_GATE4_POLICY_TEST='$(AYKEN_GATE4_POLICY_TEST)'. Use 0 or 1)
 endif
 
 ifneq ($(filter $(KERNEL_EXPORT_POLICY),0 1),$(KERNEL_EXPORT_POLICY))
@@ -77,6 +87,8 @@ KERNEL_ASMFLAGS += -DAYKEN_DEBUG_SCHED=1
 endif
 KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
 KERNEL_CFLAGS += -DAYKEN_INTENTIONAL_PERF_REGRESSION_MS=$(AYKEN_INTENTIONAL_PERF_REGRESSION_MS)
+KERNEL_CFLAGS += -DAYKEN_MB_SELFTEST=$(AYKEN_MB_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_GATE4_POLICY_TEST=$(AYKEN_GATE4_POLICY_TEST)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
@@ -534,11 +546,11 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -554,6 +566,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
@@ -698,6 +711,18 @@ ci-gate-sched-bridge-runtime: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: sched-bridge-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-policy-accept: ci-evidence-dir
+	@echo "== CI GATE POLICY ACCEPT =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: validation (enforced)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation bash scripts/ci/gate_4_policy_accept.sh
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
+	@cp -f "evidence/gate-4-policy-accept/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/gates/policy-accept/report.json"
+	@cp -f "evidence/gate-4-policy-accept/$(RUN_ID)/violations.txt" "$(EVIDENCE_RUN_DIR)/gates/policy-accept/violations.txt"
+	@cp -f "evidence/gate-4-policy-accept/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/reports/policy-accept.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: policy-accept evidence at evidence/gate-4-policy-accept/$(RUN_ID)"
+
 ci-gate-performance: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE =="
 	@echo "run_id: $(RUN_ID)"
@@ -816,6 +841,7 @@ help:
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
+	@echo "  ci-gate-policy-accept - Gate-4 isolated policy accept proof gate"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
@@ -828,7 +854,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
