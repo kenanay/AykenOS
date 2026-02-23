@@ -515,8 +515,8 @@ uint64_t safe_map_memory(uint64_t virt, uint64_t phys, uint64_t flags) {
 ```c
 // Profile syscall usage
 #ifdef PROFILE_SYSCALLS
-static uint64_t syscall_counts[10] = {0};
-static uint64_t syscall_times[10] = {0};
+static uint64_t syscall_counts[11] = {0};
+static uint64_t syscall_times[11] = {0};
 
 uint64_t profiled_syscall(uint64_t num, uint64_t arg1, uint64_t arg2, 
                          uint64_t arg3, uint64_t arg4) {
@@ -524,7 +524,7 @@ uint64_t profiled_syscall(uint64_t num, uint64_t arg1, uint64_t arg2,
     uint64_t result = syscall(num, arg1, arg2, arg3, arg4);
     uint64_t end = get_timestamp();
     
-    if (num >= 1000 && num <= 1009) {
+    if (num >= 1000 && num <= 1010) {
         int idx = num - 1000;
         syscall_counts[idx]++;
         syscall_times[idx] += (end - start);
@@ -534,7 +534,7 @@ uint64_t profiled_syscall(uint64_t num, uint64_t arg1, uint64_t arg2,
 }
 
 void print_syscall_profile(void) {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 11; i++) {
         if (syscall_counts[i] > 0) {
             printf("Syscall %d: %lu calls, avg time: %lu ns\n", 
                    i, syscall_counts[i], syscall_times[i] / syscall_counts[i]);

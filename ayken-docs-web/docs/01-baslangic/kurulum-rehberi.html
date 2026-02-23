@@ -38,7 +38,7 @@
                         <li><a href="ilk-adimlar.html">İlk Adımlar</a></li>
                         <li><a href="vs-code-kurulumu.html">VS Code Kurulumu</a></li>
                     </ul>
-                    
+
                     <h3>Mimari</h3>
                     <ul>
                         <li><a href="../02-mimari/genel-bakis.html">Genel Bakış</a></li>
@@ -50,75 +50,70 @@
             <article class="docs-content">
                 <header class="docs-header">
                     <h1>AykenOS Kurulum Rehberi</h1>
-                    <p class="docs-subtitle">AykenOS'u sisteminize kurmak için detaylı adım adım rehber.</p>
+                    <p class="docs-subtitle">Lokal repo gerçeklerine göre doğrulanmış kurulum, build ve gate doğrulama akışı.</p>
                 </header>
 
                 <section class="docs-section">
                     <h2>Kurulum Öncesi Hazırlık</h2>
-                    
+
                     <div class="alert alert-info">
-                        <strong>Önemli:</strong> AykenOS şu anda geliştirme aşamasındadır. Bu kurulum rehberi geliştirme ortamı kurulumu içindir.
+                        <strong>Önemli:</strong> Bu rehber, geliştirme ortamı kurulumu içindir. Faz durumu 2026-02-21 itibarıyla <strong>Phase 4.5 stabilization</strong> olarak izlenmektedir.
                     </div>
 
                     <h3>Sistem Gereksinimleri</h3>
                     <div class="requirements-grid">
                         <div class="requirement-card">
-                            <h4>Minimum Gereksinimler</h4>
+                            <h4>Minimum</h4>
                             <ul>
-                                <li>x86_64 veya ARM64 işlemci</li>
+                                <li>x86_64 geliştirme ortamı</li>
                                 <li>4GB RAM</li>
-                                <li>20GB boş disk alanı</li>
-                                <li>UEFI desteği</li>
-                                <li>İnternet bağlantısı</li>
+                                <li>20GB boş disk</li>
+                                <li>Git + shell araçları</li>
+                                <li>QEMU (runtime test için)</li>
                             </ul>
                         </div>
                         <div class="requirement-card">
-                            <h4>Önerilen Gereksinimler</h4>
+                            <h4>Önerilen</h4>
                             <ul>
                                 <li>8GB+ RAM</li>
-                                <li>50GB+ SSD disk alanı</li>
-                                <li>Multi-core işlemci</li>
-                                <li>Virtualization desteği</li>
-                                <li>Hızlı internet bağlantısı</li>
+                                <li>SSD depolama</li>
+                                <li><code>clang</code> + <code>ld.lld</code> + <code>nasm</code></li>
+                                <li><code>make</code> ve script araçları</li>
+                                <li>Rust toolchain (userspace geliştirme için)</li>
                             </ul>
                         </div>
                     </div>
 
-                    <h3>Desteklenen Platformlar</h3>
+                    <h3>Platform Durumu</h3>
                     <div class="docs-table">
                         <table class="docs-table">
                             <thead>
                                 <tr>
                                     <th>Platform</th>
                                     <th>Durum</th>
-                                    <th>Notlar</th>
+                                    <th>Not</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>macOS (Intel/Apple Silicon)</td>
-                                    <td>✅ Tam Destek</td>
-                                    <td>Homebrew ile kolay kurulum</td>
+                                    <td>macOS</td>
+                                    <td>Destekli</td>
+                                    <td>Homebrew ile araç kurulumu yaygın akış</td>
                                 </tr>
                                 <tr>
-                                    <td>Linux (Ubuntu/Debian)</td>
-                                    <td>✅ Tam Destek</td>
-                                    <td>APT paket yöneticisi</td>
-                                </tr>
-                                <tr>
-                                    <td>Linux (Fedora/RHEL)</td>
-                                    <td>✅ Tam Destek</td>
-                                    <td>DNF/YUM paket yöneticisi</td>
+                                    <td>Linux (Ubuntu/Debian/Fedora)</td>
+                                    <td>Destekli</td>
+                                    <td>Paket yöneticisi ile bağımlılık kurulumu</td>
                                 </tr>
                                 <tr>
                                     <td>Windows (WSL2)</td>
-                                    <td>✅ Tam Destek</td>
-                                    <td>WSL2 Ubuntu önerilen</td>
+                                    <td>Destekli</td>
+                                    <td>PowerShell + WSL2 kombinasyonu önerilir</td>
                                 </tr>
                                 <tr>
-                                    <td>Windows (Native)</td>
-                                    <td>🚧 Kısmi Destek</td>
-                                    <td>MSYS2/MinGW gerekli</td>
+                                    <td>Windows Native</td>
+                                    <td>Kısmi</td>
+                                    <td>Script ve toolchain uyumu proje sürümüne göre değişebilir</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -132,30 +127,15 @@
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Rust Toolchain Kurulumu</h3>
-                                <p>AykenOS Rust ile geliştirildiği için Rust toolchain'i kurmanız gerekir.</p>
-                                
-                                <h4>macOS ve Linux:</h4>
+                                <h3>Repo İçi Setup Akışı</h3>
+                                <p>Projede önerilen ilk adım, setup hedefini çalıştırmaktır.</p>
                                 <div class="code-block">
-                                    <pre><code># Rust kurulumu
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+                                    <pre><code>make setup
 
-# Shell'i yeniden başlatın veya:
-source ~/.cargo/env
-
-# Rust versiyonunu kontrol edin
-rustc --version</code></pre>
-                                </div>
-
-                                <h4>Windows (WSL2):</h4>
-                                <div class="code-block">
-                                    <pre><code># WSL2 Ubuntu içinde
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env</code></pre>
-                                </div>
-
-                                <div class="alert alert-info">
-                                    <strong>Not:</strong> AykenOS minimum Rust 1.70+ gerektirir. <code>rustup update</code> ile güncelleyebilirsiniz.
+# Alternatif doğrudan script
+./setup.sh
+# veya Windows tarafı
+./setup.ps1</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -163,37 +143,23 @@ source ~/.cargo/env</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Build Araçları Kurulumu</h3>
-                                
-                                <h4>macOS:</h4>
-                                <div class="code-block">
-                                    <pre><code># Xcode Command Line Tools
-xcode-select --install
+                                <h3>Bağımlılıkları Kurma</h3>
+                                <p><code>make install-deps</code> paket yöneticisine göre araçları yüklemeyi dener.</p>
 
-# Homebrew ile ek araçlar
-brew install qemu nasm binutils</code></pre>
+                                <h4>macOS (örnek)</h4>
+                                <div class="code-block">
+                                    <pre><code>brew install qemu nasm llvm</code></pre>
                                 </div>
 
-                                <h4>Ubuntu/Debian:</h4>
+                                <h4>Ubuntu/Debian (örnek)</h4>
                                 <div class="code-block">
-                                    <pre><code># Build essentials
-sudo apt update
-sudo apt install -y build-essential git curl
-
-# AykenOS specific tools
-sudo apt install -y qemu-system-x86 nasm binutils-dev
-sudo apt install -y pkg-config libssl-dev</code></pre>
+                                    <pre><code>sudo apt update
+sudo apt install -y gcc-multilib nasm clang lld make qemu-system-x86</code></pre>
                                 </div>
 
-                                <h4>Fedora/RHEL:</h4>
+                                <h4>Fedora/RHEL (örnek)</h4>
                                 <div class="code-block">
-                                    <pre><code># Development tools
-sudo dnf groupinstall "Development Tools"
-sudo dnf install git curl
-
-# AykenOS specific tools
-sudo dnf install qemu nasm binutils-devel
-sudo dnf install pkg-config openssl-devel</code></pre>
+                                    <pre><code>sudo dnf install -y gcc nasm clang lld make qemu-system-x86</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -201,20 +167,12 @@ sudo dnf install pkg-config openssl-devel</code></pre>
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h3>QEMU Kurulumu ve Yapılandırması</h3>
-                                <p>AykenOS'u test etmek için QEMU sanal makine ortamı gereklidir.</p>
-                                
+                                <h3>Toolchain Doğrulama</h3>
                                 <div class="code-block">
-                                    <pre><code># QEMU versiyonunu kontrol edin
-qemu-system-x86_64 --version
+                                    <pre><code>make validate-toolchain
 
-# KVM desteğini kontrol edin (Linux)
-lscpu | grep Virtualization
-ls -la /dev/kvm</code></pre>
-                                </div>
-
-                                <div class="alert alert-warning">
-                                    <strong>macOS Kullanıcıları:</strong> Apple Silicon Mac'lerde x86_64 emülasyonu yavaş olabilir. ARM64 desteği geliştirilmektedir.
+# veya doğrudan
+./tools/validation/validate_toolchain.sh --skip-qemu</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -228,16 +186,10 @@ ls -la /dev/kvm</code></pre>
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Git Repository Klonlama</h3>
+                                <h3>Repository Klonlama</h3>
                                 <div class="code-block">
-                                    <pre><code># Repository'yi klonlayın
-git clone https://github.com/kenanay/AykenOS.git
-
-# Dizine geçin
+                                    <pre><code>git clone https://github.com/kenanay/AykenOS.git
 cd AykenOS
-
-# Branch durumunu kontrol edin
-git branch -a
 git status</code></pre>
                                 </div>
                             </div>
@@ -246,15 +198,11 @@ git status</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Submodule'ları Güncelleme</h3>
+                                <h3>Opsiyonel Submodule Güncelleme</h3>
                                 <div class="code-block">
-                                    <pre><code># Submodule'ları başlat ve güncelle
-git submodule init
-git submodule update --recursive
-
-# Alternatif: tek komutla
-git submodule update --init --recursive</code></pre>
+                                    <pre><code>git submodule update --init --recursive</code></pre>
                                 </div>
+                                <p>Bu adım, projeye bağlı alt modüller kullanılıyorsa önerilir.</p>
                             </div>
                         </div>
                     </div>
@@ -264,33 +212,18 @@ git submodule update --init --recursive</code></pre>
                     <h2>Otomatik Kurulum</h2>
 
                     <div class="highlight-box">
-                        <h3>Hızlı Kurulum</h3>
-                        <p>AykenOS otomatik kurulum scriptleri ile hızlı kurulum yapabilirsiniz.</p>
+                        <h3>Önerilen Yol</h3>
+                        <p>Önce <code>make setup</code>, ardından build/validate adımlarına geçmek en güvenli başlangıçtır.</p>
                     </div>
 
                     <div class="step-by-step">
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Kurulum Scriptini Çalıştırma</h3>
-                                
-                                <h4>macOS ve Linux:</h4>
+                                <h3>Setup</h3>
                                 <div class="code-block">
-                                    <pre><code># Kurulum scriptini çalıştır
-./setup.sh
-
-# Veya executable yapıp çalıştır
-chmod +x setup.sh
-./setup.sh</code></pre>
-                                </div>
-
-                                <h4>Windows (PowerShell):</h4>
-                                <div class="code-block">
-                                    <pre><code># PowerShell'i yönetici olarak açın
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# Kurulum scriptini çalıştır
-.\setup.ps1</code></pre>
+                                    <pre><code>make setup
+make install-deps</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -298,22 +231,11 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Kurulum Doğrulama</h3>
+                                <h3>Temel Doğrulama</h3>
                                 <div class="code-block">
-                                    <pre><code># Kurulum doğrulama scriptini çalıştır
-./validate.sh
-
-# Veya Windows'ta
-.\validate.ps1</code></pre>
+                                    <pre><code>make validate-toolchain
+make check-deps</code></pre>
                                 </div>
-
-                                <p>Bu script şunları kontrol eder:</p>
-                                <ul>
-                                    <li>Rust toolchain versiyonu</li>
-                                    <li>Gerekli build araçları</li>
-                                    <li>QEMU kurulumu</li>
-                                    <li>Environment variables</li>
-                                </ul>
                             </div>
                         </div>
                     </div>
@@ -323,23 +245,19 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
                     <h2>Manuel Kurulum</h2>
 
                     <div class="alert alert-info">
-                        <strong>İleri Seviye:</strong> Otomatik kurulum çalışmıyorsa veya özel yapılandırma istiyorsanız manuel kurulum yapabilirsiniz.
+                        <strong>İleri Seviye:</strong> Setup akışı dışına çıkmanız gerekirse aşağıdaki adımlarla manuel ilerleyebilirsiniz.
                     </div>
 
                     <div class="step-by-step">
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Rust Target'ları Ekleme</h3>
+                                <h3>Temel Derleme Araçları</h3>
                                 <div class="code-block">
-                                    <pre><code># Bare metal target'ı ekle
-rustup target add x86_64-unknown-none
-
-# ARM64 target (gelecek için)
-rustup target add aarch64-unknown-none
-
-# WASM target (userspace için)
-rustup target add wasm32-unknown-unknown</code></pre>
+                                    <pre><code>clang --version
+ld.lld --version
+nasm -v
+qemu-system-x86_64 --version</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -347,16 +265,11 @@ rustup target add wasm32-unknown-unknown</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Cargo Tools Kurulumu</h3>
+                                <h3>Opsiyonel Rust Kurulumu (Userspace)</h3>
                                 <div class="code-block">
-                                    <pre><code># Bootimage tool
-cargo install bootimage
-
-# Cargo-make (build automation)
-cargo install cargo-make
-
-# Cargo-watch (development)
-cargo install cargo-watch</code></pre>
+                                    <pre><code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+rustc --version</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -364,15 +277,12 @@ cargo install cargo-watch</code></pre>
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h3>Environment Variables</h3>
+                                <h3>Path ve Ortam Kontrolü</h3>
                                 <div class="code-block">
-                                    <pre><code># ~/.bashrc veya ~/.zshrc'ye ekleyin
-export AYKEN_ROOT="$(pwd)"
-export AYKEN_TARGET="x86_64-unknown-none"
-export QEMU_SYSTEM="qemu-system-x86_64"
-
-# Shell'i yeniden başlatın
-source ~/.bashrc  # veya ~/.zshrc</code></pre>
+                                    <pre><code>which clang
+which ld.lld
+which nasm
+which qemu-system-x86_64</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -386,17 +296,11 @@ source ~/.bashrc  # veya ~/.zshrc</code></pre>
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Projeyi Build Etme</h3>
+                                <h3>Build</h3>
                                 <div class="code-block">
-                                    <pre><code># Tüm projeyi build et
-make build
-
-# Veya cargo ile
-cargo build --release</code></pre>
-                                </div>
-
-                                <div class="alert alert-info">
-                                    <strong>İlk Build:</strong> İlk build işlemi dependencies indirme nedeniyle uzun sürebilir (10-30 dakika).
+                                    <pre><code>make clean
+make all
+make efi-img</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -404,15 +308,12 @@ cargo build --release</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>QEMU'da Test Etme</h3>
+                                <h3>QEMU Çalıştırma</h3>
                                 <div class="code-block">
-                                    <pre><code># QEMU'da çalıştır
-make qemu
+                                    <pre><code>make run
 
-# Debug modunda çalıştır
-make qemu-debug
-
-# Çıkmak için: Ctrl+A, X</code></pre>
+# Alternatif doğrulama akışı
+make validate-qemu</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -420,16 +321,12 @@ make qemu-debug
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h3>Testleri Çalıştırma</h3>
+                                <h3>Tam Doğrulama</h3>
                                 <div class="code-block">
-                                    <pre><code># Unit testleri çalıştır
-make test
+                                    <pre><code>make validate
 
-# Integration testleri
-make test-integration
-
-# Tüm testler
-make test-all</code></pre>
+# Build + qemu + toolchain birleşik akış
+make validate-full</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -437,28 +334,21 @@ make test-all</code></pre>
                 </section>
 
                 <section class="docs-section">
-                    <h2>Anayasal Sistem Kurulumu</h2>
+                    <h2>Anayasal Gate Kontrolü</h2>
 
                     <div class="highlight-box">
-                        <h3>Anayasal Yönetişim</h3>
-                        <p>AykenOS'un en önemli özelliği olan anayasal sistem kurulumu.</p>
+                        <h3>Pratik Gate Seti</h3>
+                        <p>Phase 4.5 için günlük geliştirme akışında aşağıdaki kapılar özellikle önemlidir.</p>
                     </div>
 
                     <div class="step-by-step">
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Ayken CLI Kurulumu</h3>
+                                <h3>Hijyen ve ABI</h3>
                                 <div class="code-block">
-                                    <pre><code># Ayken CLI'yi build et
-cd ayken
-cargo build --release
-
-# PATH'e ekle (Linux/macOS)
-export PATH="$PATH:$(pwd)/target/release"
-
-# Kurulumu test et
-ayken --version</code></pre>
+                                    <pre><code>make ci-gate-hygiene
+make ci-gate-abi</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -466,17 +356,25 @@ ayken --version</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>İlk Anayasal Kontrol</h3>
+                                <h3>Runtime ve Constitutional</h3>
                                 <div class="code-block">
-                                    <pre><code># Projenin anayasal durumunu kontrol et
-ayken check
-
-# Detaylı rapor
-ayken check --format ci
-
-# Mimari sağlık skoru
-ayken ahs check</code></pre>
+                                    <pre><code>make ci-gate-syscall-v2-runtime
+make ci-gate-constitutional</code></pre>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Yerel Freeze Zinciri</h3>
+                                <div class="code-block">
+                                    <pre><code>make ci-freeze-local
+
+# Tam zincir (strict)
+make ci-freeze</code></pre>
+                                </div>
+                                <p>Not: <code>ci-freeze</code> için <code>AYKEN_SCHED_FALLBACK=0</code> zorunludur.</p>
                             </div>
                         </div>
                     </div>
@@ -485,42 +383,45 @@ ayken ahs check</code></pre>
                 <section class="docs-section">
                     <h2>Sorun Giderme</h2>
 
-                    <h3>Sık Karşılaşılan Sorunlar</h3>
+                    <h3>Sık Karşılaşılan Durumlar</h3>
 
                     <div class="concept-grid">
                         <div class="concept-card">
-                            <h4>Rust Version Hatası</h4>
+                            <h4>hygiene: FAIL (dirty_tracked)</h4>
                             <div class="code-block">
-                                <pre><code># Rust'ı güncelle
-rustup update stable
-rustup default stable</code></pre>
+                                <pre><code># Kirli tracked dosyaları gör
+git status --short
+
+# Değişiklikleri commit et veya restore et
+# sonra:
+make ci-gate-hygiene</code></pre>
                             </div>
                         </div>
 
                         <div class="concept-card">
-                            <h4>QEMU Bulunamadı</h4>
+                            <h4>QEMU bulunamadı</h4>
                             <div class="code-block">
-                                <pre><code># QEMU yolunu kontrol et
-which qemu-system-x86_64
-export QEMU_SYSTEM="$(which qemu-system-x86_64)"</code></pre>
+                                <pre><code>which qemu-system-x86_64
+make install-deps
+make validate-qemu</code></pre>
                             </div>
                         </div>
 
                         <div class="concept-card">
-                            <h4>Build Hatası</h4>
+                            <h4>Runtime gate sonucu inceleme</h4>
                             <div class="code-block">
-                                <pre><code># Cache'i temizle
-cargo clean
-make clean
+                                <pre><code># Son run klasörünü aç
+ls -1 evidence | tail
 
-# Yeniden build et
-make build</code></pre>
+# Özet ve detay raporlar
+cat evidence/run-*/reports/summary.json
+cat evidence/run-*/gates/syscall-v2-runtime/report.json</code></pre>
                             </div>
                         </div>
                     </div>
 
                     <div class="alert alert-warning">
-                        <strong>Yardım Gerekiyor?</strong> Sorun yaşıyorsanız <a href="https://github.com/kenanay/AykenOS/issues" target="_blank">GitHub Issues</a> sayfasından yardım isteyebilirsiniz.
+                        <strong>Yardım Gerekiyor?</strong> Sorun yaşıyorsanız <a href="https://github.com/kenanay/AykenOS/issues" target="_blank">GitHub Issues</a> üzerinden evidence run kimliği ile birlikte paylaşın.
                     </div>
                 </section>
 
@@ -528,21 +429,21 @@ make build</code></pre>
                     <h2>Sonraki Adımlar</h2>
                     <div class="next-steps">
                         <div class="next-step-card">
-                            <h3>🚀 İlk Adımlar</h3>
-                            <p>Kurulum tamamlandıktan sonra AykenOS ile ilk adımlarınızı atın</p>
+                            <h3>İlk Adımlar</h3>
+                            <p>Kurulumdan sonra günlük geliştirme döngüsüne geçin.</p>
                             <a href="ilk-adimlar.html" class="btn btn-primary">İlk Adımlar</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>🛠️ VS Code Kurulumu</h3>
-                            <p>Geliştirme ortamınızı VS Code ile optimize edin</p>
-                            <a href="vs-code-kurulumu.html" class="btn btn-primary">VS Code Kurulumu</a>
+                            <h3>Mimari Genel Bakış</h3>
+                            <p>Ring0/Ring3 sınırı ve syscall hattını öğrenin.</p>
+                            <a href="../02-mimari/genel-bakis.html" class="btn btn-primary">Genel Bakış</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>📚 Geliştirici Rehberi</h3>
-                            <p>AykenOS üzerinde geliştirme yapmaya başlayın</p>
-                            <a href="../04-gelistirme/gelistirici-rehberi.html" class="btn btn-primary">Geliştirici Rehberi</a>
+                            <h3>Anayasal Yönetişim</h3>
+                            <p>Kuralların CI kapılarına nasıl bağlandığını inceleyin.</p>
+                            <a href="../03-anayasal-sistem/anayasal-yonetisim.html" class="btn btn-primary">Anayasal Yönetişim</a>
                         </div>
                     </div>
                 </section>

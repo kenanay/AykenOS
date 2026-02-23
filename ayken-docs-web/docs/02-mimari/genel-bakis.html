@@ -35,7 +35,7 @@
                         <li><a href="../getting-started.html">Hızlı Başlangıç</a></li>
                         <li><a href="../01-baslangic/kurulum-rehberi.html">Kurulum Rehberi</a></li>
                     </ul>
-                    
+
                     <h3>Mimari</h3>
                     <ul>
                         <li><a href="genel-bakis.html" class="active">Genel Bakış</a></li>
@@ -43,7 +43,7 @@
                         <li><a href="kullanici-alani.html">Kullanıcı Alanı</a></li>
                         <li><a href="guvenlik-modeli.html">Güvenlik Modeli</a></li>
                     </ul>
-                    
+
                     <h3>Anayasal Sistem</h3>
                     <ul>
                         <li><a href="../03-anayasal-sistem/anayasal-yonetisim.html">Anayasal Yönetişim</a></li>
@@ -55,23 +55,23 @@
             <article class="docs-content">
                 <header class="docs-header">
                     <h1>AykenOS Sistem Mimarisi - Genel Bakış</h1>
-                    <p class="docs-subtitle">AykenOS'un katmanlı mimarisini ve temel bileşenlerini keşfedin.</p>
+                    <p class="docs-subtitle">Bu sayfa, lokal kod snapshot ve evidence çıktılarından türetilmiş mimari durum özetidir.</p>
                 </header>
 
                 <section class="docs-section">
                     <h2>Mimari Felsefesi</h2>
-                    
+
                     <div class="highlight-box">
-                        <h3>Anayasal Mimari İlkeleri</h3>
+                        <h3>Temel Mimarik Kontratlar</h3>
                         <ul>
-                            <li><strong>Katmanlı Sorumluluk</strong> - Her katman kendi anayasal kurallarına sahip</li>
-                            <li><strong>Şeffaf Yönetişim</strong> - Tüm kararlar izlenebilir ve denetlenebilir</li>
-                            <li><strong>Deterministic Davranış</strong> - Öngörülebilir sistem tepkileri</li>
-                            <li><strong>Sürekli İyileştirme</strong> - Kendini geliştiren mimari</li>
+                            <li><strong>Ring0 mekanizma, Ring3 politika:</strong> kernel tarafında politika kararları yasak</li>
+                            <li><strong>Syscall ABI stabilitesi:</strong> kullanıcı alanı aralığı sabit <code>1000..1010</code></li>
+                            <li><strong>Evidence-first doğrulama:</strong> kararlar <code>evidence/run-*/</code> artefaktlarıyla takip edilir</li>
+                            <li><strong>Determinism governance:</strong> freeze zinciriyle düzenli doğrulama</li>
                         </ul>
                     </div>
 
-                    <p>AykenOS, geleneksel işletim sistemi mimarisini <strong>anayasal yönetişim</strong> ilkeleri ile yeniden tasarlar. Her sistem bileşeni, önceden tanımlanmış anayasal kurallara uygun olarak çalışır ve sürekli denetlenir.</p>
+                    <p>Güncel dokümantasyon setinde Core OS temeli Phase 4.4 seviyesinde korunurken, proje teknik olarak Phase 4.5 stabilizasyon/integrasyon aşamasında ilerliyor.</p>
                 </section>
 
                 <section class="docs-section">
@@ -79,65 +79,49 @@
 
                     <div class="arch-overview">
                         <div class="arch-layer">
-                            <h3>🏛️ Anayasal Yönetişim Katmanı</h3>
-                            <p><strong>En üst seviye</strong> - Tüm sistem davranışlarını yöneten meta-katman</p>
+                            <h3>Anayasal Yönetişim Katmanı</h3>
+                            <p><strong>Çapraz katman denetim</strong> - CI gate zinciri ve branch politikalarıyla sistem davranışı sınırlandırılır.</p>
                             <ul>
-                                <li>Constitutional Decision Engine (CDE)</li>
-                                <li>Rule Registry ve Enforcement</li>
-                                <li>Allow/Waiver Management</li>
-                                <li>Architecture Health Monitoring</li>
-                                <li>Auto-Refactor Hints (ARH)</li>
+                                <li><code>ci-gate-abi</code></li>
+                                <li><code>ci-gate-boundary</code></li>
+                                <li><code>ci-gate-ring0-exports</code></li>
+                                <li><code>ci-gate-hygiene</code></li>
+                                <li><code>ci-gate-tooling-isolation</code></li>
+                                <li><code>ci-gate-constitutional</code></li>
+                                <li><code>ci-gate-workspace</code></li>
+                                <li><code>ci-gate-syscall-v2-runtime</code></li>
+                                <li><code>ci-gate-performance</code></li>
                             </ul>
-                            <div class="alert alert-info">
-                                <strong>Felsefe:</strong> "İstisna = bilinçli karar" - Her kural ihlali bilinçli olarak değerlendirilir.
-                            </div>
                         </div>
 
                         <div class="arch-layer">
-                            <h3>👥 Kullanıcı Alanı (Ring3)</h3>
-                            <p><strong>Uygulama katmanı</strong> - Kullanıcı uygulamaları ve servisleri</p>
+                            <h3>Kullanıcı Alanı (Ring3)</h3>
+                            <p><strong>Politika ve servis katmanı</strong> - scheduler policy, VFS/DevFS policy ve üst seviye servisler burada konumlanır.</p>
                             <ul>
-                                <li>ABDF/BCIB Runtime Systems</li>
-                                <li>AI Integration Layer (TinyLLM)</li>
-                                <li>Semantic CLI Interface</li>
-                                <li>Orchestration Services</li>
-                                <li>Development Tools</li>
+                                <li>Syscall v2 çağrılarını kullanan uygulama/servisler</li>
+                                <li>Policy kararları (tasarım hedefi)</li>
+                                <li>Capability temelli kaynak erişim akışları</li>
                             </ul>
-                            <div class="code-block">
-                                <pre><code>// Userspace anayasal entegrasyon örneği
-#[ayken::allow(
-    rule = "TIME.INSTANT",
-    class = "BenchmarkMeasurementOnly",
-    reason = "Performance ölçümü için gerekli",
-    expires = "P5"
-)]
-let start = std::time::Instant::now();</code></pre>
-                            </div>
                         </div>
 
                         <div class="arch-layer">
-                            <h3>⚙️ Çekirdek (Ring0)</h3>
-                            <p><strong>Sistem çekirdeği</strong> - Donanım soyutlama ve kaynak yönetimi</p>
+                            <h3>Çekirdek (Ring0)</h3>
+                            <p><strong>Mekanizma katmanı</strong> - interrupt, context switch, memory mapping altyapısı ve syscall dispatch.</p>
                             <ul>
-                                <li>Memory Management (Constitutional)</li>
-                                <li>Process Scheduler</li>
-                                <li>System Call Interface</li>
-                                <li>Device Drivers</li>
-                                <li>File System (DevFS)</li>
+                                <li><code>kernel/sys/syscall.c</code> üzerinden <code>INT 0x80</code> hattı</li>
+                                <li><code>kernel/sys/syscall_v2.h</code> ile ABI kontratı</li>
+                                <li><code>kernel/sched/sched.c</code> ile mekanik ready queue akışı</li>
+                                <li><code>kernel/fs/vfs.c</code>, <code>kernel/fs/devfs.c</code> placeholder/compat katmanı</li>
                             </ul>
-                            <div class="alert alert-warning">
-                                <strong>Güvenlik:</strong> Kernel kodunda anayasal kurallar daha katı şekilde uygulanır.
-                            </div>
                         </div>
 
                         <div class="arch-layer">
-                            <h3>🔧 Donanım Soyutlama Katmanı</h3>
-                            <p><strong>En alt seviye</strong> - Donanım ile etkileşim</p>
+                            <h3>Boot ve Platform Katmanı</h3>
+                            <p><strong>UEFI başlatma ve platform bağlayıcıları</strong> - EFI bootloader, kernel yükleme ve QEMU doğrulama akışı.</p>
                             <ul>
-                                <li>Boot Loader (UEFI/BIOS)</li>
-                                <li>Hardware Abstraction</li>
-                                <li>Platform-Specific Code</li>
-                                <li>Driver Interface</li>
+                                <li><code>bootloader/efi/BOOTX64.EFI</code></li>
+                                <li><code>kernel.elf</code></li>
+                                <li><code>make efi-img</code> ve <code>make run</code> hedefleri</li>
                             </ul>
                         </div>
                     </div>
@@ -146,48 +130,42 @@ let start = std::time::Instant::now();</code></pre>
                 <section class="docs-section">
                     <h2>Temel Bileşenler</h2>
 
-                    <h3>ABDF (AykenOS Binary Data Format)</h3>
+                    <h3>Syscall v2 Kontratı</h3>
                     <div class="concept-card">
-                        <p><strong>Sürüm:</strong> v0.2 (Production Ready)</p>
-                        <p>Yapılandırılmış veri depolama ve iletim formatı. Meta-container sistemi ile zengin metadata desteği.</p>
-                        
-                        <h4>Özellikler:</h4>
+                        <p><strong>Kaynak:</strong> <code>kernel/sys/syscall_v2.h</code>, <code>kernel/sys/syscall.c</code></p>
+
+                        <h4>Sabitler</h4>
                         <ul>
-                            <li>8-byte aligned data sections</li>
-                            <li>MetaContainer system</li>
-                            <li>String pool management</li>
-                            <li>Schema validation</li>
-                            <li>Zero-copy operations</li>
+                            <li><code>SYS_V2_BASE = 1000</code></li>
+                            <li><code>SYS_V2_MAX_INDEX = 10</code></li>
+                            <li><code>SYS_V2_NR = 11</code></li>
+                            <li><code>SYS_V2_LAST = 1010</code></li>
                         </ul>
 
                         <div class="code-block">
-                            <pre><code>// ABDF kullanım örneği
-use ayken_core::abdf::{AbdfDecoder, MetaContainer};
-
-let decoder = AbdfDecoder::new();
-let view = decoder.decode(&buffer)?;
-let meta = view.meta_container(0)?;</code></pre>
+                            <pre><code># ABI ve dispatcher doğrulama
+rg -n "SYS_V2_BASE|SYS_V2_LAST|SYS_V2_NR" kernel/sys/syscall_v2.h
+rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                         </div>
                     </div>
 
-                    <h3>BCIB (Bytecode Instruction Binary)</h3>
+                    <h3>Scheduler Runtime Gerçeği</h3>
                     <div class="concept-card">
-                        <p><strong>Sürüm:</strong> v0.2 (Production Ready)</p>
-                        <p>DSL-compatible instruction format. AI entegrasyonu için hazır opcode sistemi.</p>
-                        
-                        <h4>Opcode'lar:</h4>
-                        <ul>
-                            <li><code>data.create</code> - Veri container oluşturma</li>
-                            <li><code>data.add</code> - Veri ekleme</li>
-                            <li><code>data.query</code> - Veri sorgulama</li>
-                            <li><code>ui.render</code> - UI rendering (Phase 3)</li>
-                            <li><code>ai.ask</code> - AI query (Phase 3)</li>
-                        </ul>
+                        <p><strong>Kaynak:</strong> <code>kernel/sched/sched.c</code></p>
+                        <p>Ring3 policy çağrıları C-call olarak doğrudan çalıştırılamadığı için ilgili hatlar yorum satırına alınmış; aktif seçim akışı kernel ready queue mekanik yolu üzerinden ilerliyor.</p>
 
                         <div class="code-block">
-                            <pre><code>// BCIB execution örneği
-let mut executor = BcibExecutor::new();
-let result = executor.execute(&program_buffer)?;</code></pre>
+                            <pre><code>rg -n "DISABLED|userspace_scheduler|ready_head" kernel/sched/sched.c</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>VFS/DevFS Sınırı</h3>
+                    <div class="concept-card">
+                        <p><strong>Kaynak:</strong> <code>kernel/fs/vfs.c</code>, <code>kernel/fs/devfs.c</code></p>
+                        <p>Ring0 tarafında VFS/DevFS fonksiyonları legacy uyumluluk için minimal placeholder davranışta tutulur; politika tarafı Ring3 hedefinde kalır.</p>
+
+                        <div class="code-block">
+                            <pre><code>rg -n "placeholder|Ring3 userspace only" kernel/fs/vfs.c kernel/fs/devfs.c</code></pre>
                         </div>
                     </div>
                 </section>
@@ -199,51 +177,24 @@ let result = executor.execute(&program_buffer)?;</code></pre>
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h3>Constitutional Decision Engine (CDE)</h3>
-                                <p>Tüm sistem kararlarının anayasal kurallara göre değerlendirildiği merkezi motor.</p>
-                                
-                                <h4>Karar Hiyerarşisi:</h4>
-                                <ol>
-                                    <li><strong>NON_OVERRIDABLE</strong> - Mutlak kurallar</li>
-                                    <li><strong>Phase Matrix</strong> - Faz bazlı davranış</li>
-                                    <li><strong>Allow System</strong> - Geçici istisnalar</li>
-                                    <li><strong>Waiver System</strong> - Toplu istisnalar</li>
-                                    <li><strong>FAIL</strong> - Kural ihlali</li>
-                                </ol>
+                                <h3>Freeze Zinciri</h3>
+                                <p><code>make ci-freeze</code> 9 gate'i tek zincirde çalıştırır. Bu zincir proje içi teknik otorite olarak kullanılır.</p>
                             </div>
                         </div>
 
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Architecture Health Score (AHS)</h3>
-                                <p>Sistem mimarisinin sağlığını 0-100 arasında skorlayan sistem.</p>
-                                
-                                <div class="code-block">
-                                    <pre><code># AHS skorunu kontrol et
-ayken ahs check
-
-# Detaylı breakdown
-ayken ahs breakdown
-
-# Trend analizi
-ayken ahts trend</code></pre>
-                                </div>
+                                <h3>Mod Ayrımı</h3>
+                                <p>Workflow tarafında constitutional/provisional mod ayrımı özellikle performance ve tooling-isolation kapılarında operasyonel etki üretir.</p>
                             </div>
                         </div>
 
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h3>Auto-Refactor Hints (ARH)</h3>
-                                <p>Anayasal ihlalleri otomatik olarak düzeltmek için öneriler sunan sistem.</p>
-                                
-                                <h4>Hint Türleri:</h4>
-                                <ul>
-                                    <li><strong>SafeAutofix</strong> - %95+ güvenli otomatik düzeltmeler</li>
-                                    <li><strong>AssistedFix</strong> - İnsan onayı gerektiren düzeltmeler</li>
-                                    <li><strong>DesignHint</strong> - Mimari rehberlik</li>
-                                </ul>
+                                <h3>Evidence Raporlama</h3>
+                                <p>Her kapı sonucu <code>evidence/run-&lt;RUN_ID&gt;/gates/&lt;gate&gt;/</code> altında JSON/TXT olarak saklanır.</p>
                             </div>
                         </div>
                     </div>
@@ -252,52 +203,54 @@ ayken ahts trend</code></pre>
                 <section class="docs-section">
                     <h2>Veri Akışı ve İletişim</h2>
 
-                    <h3>Katmanlar Arası İletişim</h3>
+                    <h3>Ring3 -> Ring0 Syscall Akışı</h3>
                     <div class="docs-table">
                         <table class="docs-table">
                             <thead>
                                 <tr>
+                                    <th>Adım</th>
+                                    <th>Bileşen</th>
+                                    <th>Açıklama</th>
                                     <th>Kaynak</th>
-                                    <th>Hedef</th>
-                                    <th>Protokol</th>
-                                    <th>Anayasal Kontrol</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Userspace</td>
-                                    <td>Kernel</td>
-                                    <td>System Calls</td>
-                                    <td>✅ Tam Denetim</td>
+                                    <td>1</td>
+                                    <td>Userspace çağrısı</td>
+                                    <td>Syscall numarası 1000..1010 aralığında üretilir</td>
+                                    <td><code>kernel/sys/syscall_v2.h</code></td>
                                 </tr>
                                 <tr>
-                                    <td>Applications</td>
-                                    <td>ABDF Runtime</td>
-                                    <td>API Calls</td>
-                                    <td>✅ Schema Validation</td>
+                                    <td>2</td>
+                                    <td>INT 0x80 giriş</td>
+                                    <td>Kernel gate üzerinden syscall ISR tetiklenir</td>
+                                    <td><code>kernel/sys/syscall.c</code></td>
                                 </tr>
                                 <tr>
-                                    <td>BCIB Executor</td>
-                                    <td>AI Runtime</td>
-                                    <td>Opcode Interface</td>
-                                    <td>✅ Human Approval</td>
+                                    <td>3</td>
+                                    <td>Dispatcher</td>
+                                    <td>Aralık kontrolü sonrası v2 handler'a yönlendirme yapılır</td>
+                                    <td><code>kernel/sys/syscall.c</code></td>
                                 </tr>
                                 <tr>
-                                    <td>Constitutional Engine</td>
-                                    <td>All Layers</td>
-                                    <td>Rule Enforcement</td>
-                                    <td>✅ Sürekli Monitoring</td>
+                                    <td>4</td>
+                                    <td>v2 handler</td>
+                                    <td>Mekanizma işlemi çalışır, gerekirse scheduler finalize akışı yapılır</td>
+                                    <td><code>kernel/sys/syscall_v2.c</code></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <h3>Anayasal Veri Akışı</h3>
+                    <h3>Kısa Akış Şeması</h3>
                     <div class="code-block">
-                        <pre><code>Kod Yazma → Anayasal Kontrol → Allow/Waiver → Build → Runtime Monitoring
-     ↓              ↓                ↓           ↓            ↓
-  Developer    Rule Engine      Exception    Compiler    Health Score
-  Experience   Validation       Handling     Integration  Tracking</code></pre>
+                        <pre><code>Ring3 App
+  -> INT 0x80
+  -> syscall_handler (1000..1010 check)
+  -> syscall_v2_handler(index 0..10)
+  -> mechanism result (RAX)
+  -> evidence/log markers (runtime gate)</code></pre>
                     </div>
                 </section>
 
@@ -306,74 +259,40 @@ ayken ahts trend</code></pre>
 
                     <div class="concept-grid">
                         <div class="concept-card">
-                            <h4>Memory Management</h4>
+                            <h4>Runtime Gate Özeti</h4>
                             <ul>
-                                <li>Zero-copy operations</li>
-                                <li>8-byte alignment guarantee</li>
-                                <li>Constitutional memory contracts</li>
-                                <li>Predictable allocation patterns</li>
+                                <li><strong>Run:</strong> <code>run-20260221T221223Z-3adee991</code></li>
+                                <li><strong>Veri zamanı:</strong> 2026-02-21T22:14:01Z</li>
+                                <li><strong>Kernel profile:</strong> <code>validation</code></li>
+                                <li><strong>Ölçüm:</strong> 5/5 başarılı, timeout 0</li>
                             </ul>
                         </div>
 
                         <div class="concept-card">
-                            <h4>Concurrency Model</h4>
+                            <h4>Doğrulanan Sinyaller</h4>
                             <ul>
-                                <li>Deterministic scheduling</li>
-                                <li>Constitutional thread safety</li>
-                                <li>Lock-free data structures</li>
-                                <li>Predictable latency</li>
+                                <li><code>debug_putchar</code> marker eşleşmesi</li>
+                                <li><code>time_query</code> dispatch sinyali</li>
+                                <li><code>capability_bind</code> grant/deny döngüsü</li>
+                                <li><code>capability_revoke</code> grant/deny döngüsü</li>
                             </ul>
                         </div>
 
                         <div class="concept-card">
-                            <h4>I/O Performance</h4>
+                            <h4>Başarı Oranı</h4>
                             <ul>
-                                <li>Async I/O with backpressure</li>
-                                <li>SIMD-optimized operations</li>
-                                <li>Cache-friendly data layout</li>
-                                <li>Constitutional I/O contracts</li>
+                                <li><strong>Gereken:</strong> %100</li>
+                                <li><strong>Gerçekleşen:</strong> %100.00</li>
+                                <li><strong>Violations:</strong> 0</li>
+                                <li><strong>Freeze status:</strong> <code>kernel_runtime_verified</code></li>
                             </ul>
                         </div>
                     </div>
 
-                    <h3>Benchmark Sonuçları</h3>
-                    <div class="docs-table">
-                        <table class="docs-table">
-                            <thead>
-                                <tr>
-                                    <th>Operasyon</th>
-                                    <th>Süre</th>
-                                    <th>Memory</th>
-                                    <th>Anayasal Overhead</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>ABDF Decode</td>
-                                    <td>&lt;1μs</td>
-                                    <td>&lt;1MB</td>
-                                    <td>~5%</td>
-                                </tr>
-                                <tr>
-                                    <td>BCIB Execute</td>
-                                    <td>&lt;10μs</td>
-                                    <td>&lt;512KB</td>
-                                    <td>~3%</td>
-                                </tr>
-                                <tr>
-                                    <td>Constitutional Check</td>
-                                    <td>&lt;5ms</td>
-                                    <td>&lt;10MB</td>
-                                    <td>N/A</td>
-                                </tr>
-                                <tr>
-                                    <td>AHS Calculation</td>
-                                    <td>&lt;50ms</td>
-                                    <td>&lt;50MB</td>
-                                    <td>N/A</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <h3>Rapor Kaynakları</h3>
+                    <div class="code-block">
+                        <pre><code>cat evidence/run-20260221T221223Z-3adee991/reports/summary.json
+cat evidence/run-20260221T221223Z-3adee991/gates/syscall-v2-runtime/report.json</code></pre>
                     </div>
                 </section>
 
@@ -382,28 +301,23 @@ ayken ahts trend</code></pre>
 
                     <div class="step-by-step">
                         <div class="step">
-                            <div class="step-number">Phase 3</div>
+                            <div class="step-number">Phase 4.5</div>
                             <div class="step-content">
-                                <h3>AI Integration (Q2 2026)</h3>
+                                <h3>Stabilizasyon ve Uyumlandırma</h3>
                                 <ul>
-                                    <li>TinyLLM userspace integration</li>
-                                    <li>ai.ask opcode implementation</li>
-                                    <li>Human-approved AI policies</li>
-                                    <li>Constitutional AI governance</li>
+                                    <li>Scheduler bridge modelini runtime kodla hizalama</li>
+                                    <li><code>syscall_v2.c</code> TODO alanlarını production semantiğe tamamlama</li>
+                                    <li>9 gate freeze zincirinde tek run-id altında tutarlı PASS</li>
+                                    <li>Constitutional/provisional operasyon netliğini sadeleştirme</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div class="step">
-                            <div class="step-number">Phase 4</div>
+                            <div class="step-number">Sonraki</div>
                             <div class="step-content">
-                                <h3>Advanced Features (Q3-Q4 2026)</h3>
-                                <ul>
-                                    <li>Multi-modal AI support</li>
-                                    <li>Distributed processing</li>
-                                    <li>Enterprise governance</li>
-                                    <li>Community ecosystem</li>
-                                </ul>
+                                <h3>AI ve Genişleme Başlıkları</h3>
+                                <p>Phase 3 AI entegrasyonu, çekirdek teknik borç kapanışlarından sonra ana milestone olarak öne alınır.</p>
                             </div>
                         </div>
                     </div>
@@ -413,20 +327,20 @@ ayken ahts trend</code></pre>
                     <h2>Sonraki Adımlar</h2>
                     <div class="next-steps">
                         <div class="next-step-card">
-                            <h3>🏗️ Çekirdek Mimarisi</h3>
-                            <p>Kernel katmanının detaylı incelemesi</p>
+                            <h3>Çekirdek Mimarisi</h3>
+                            <p>Ring0 mekanizma kodlarının detaylarını inceleyin.</p>
                             <a href="cekirdek-mimari.html" class="btn btn-primary">Çekirdek Mimarisi</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>👥 Kullanıcı Alanı</h3>
-                            <p>Userspace bileşenleri ve servisleri</p>
+                            <h3>Kullanıcı Alanı</h3>
+                            <p>Ring3 policy hedefi ve kullanıcı alanı bileşenlerini inceleyin.</p>
                             <a href="kullanici-alani.html" class="btn btn-primary">Kullanıcı Alanı</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>🏛️ Anayasal Sistem</h3>
-                            <p>Constitutional governance detayları</p>
+                            <h3>Anayasal Sistem</h3>
+                            <p>Kuralların CI ve branch süreçlerine nasıl bağlandığını görün.</p>
                             <a href="../03-anayasal-sistem/anayasal-yonetisim.html" class="btn btn-primary">Anayasal Sistem</a>
                         </div>
                     </div>

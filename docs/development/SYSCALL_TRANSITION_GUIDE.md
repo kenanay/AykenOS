@@ -4,8 +4,8 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Author:** Kenan AY  
 **Project:** AykenOS - Advanced AI-Integrated Operating System  
 **Created:** January 3, 2026  
-**Updated:** February 8, 2026  
-**Version:** 2.0 - Transition Complete
+**Updated:** February 21, 2026  
+**Version:** 2.1 - ABI Lock + Runtime Reality
 
 ## Overview
 
@@ -18,16 +18,16 @@ This guide documents the **completed migration** from AykenOS v1 (POSIX-like) sy
 - **Ring0-heavy implementation**: File system operations in kernel (REMOVED)
 - **Traditional file descriptor model**: POSIX-compatible interface (REMOVED)
 
-### Current State (Phase 4.4) - OPERATIONAL ✅
-- **10 execution-centric syscalls**: Memory mapping, context switching, capability management
-- **Minimal Ring0 attack surface**: Only mechanism, no policy
+### Current State (Phase 4.5 Stabilization) - OPERATIONAL ✅
+- **11 execution-centric syscalls**: 1000-1010 aralığı aktif
+- **Minimal Ring0 attack surface**: Ring0 mekanizma odaklı
 - **Capability-based security**: Resource access through tokens
-- **Ring3 policy implementation**: VFS, DevFS, scheduler in user mode
+- **Ring3 policy hedefi sürüyor**: VFS/DevFS Ring0 tarafında minimal placeholder olarak korunuyor
 
 ### Transition Period (Phase 2.1-2.4) - COMPLETED
 - **Dual interface support**: Successfully migrated from v1 to v2
-- **Clear numbering plan**: 1000-1009 range implemented
-- **Complete migration**: All applications use v2 interface
+- **Clear numbering plan**: 1000-1010 range implemented
+- **Complete migration**: Kernel syscall interface v2-only
 
 ## Syscall Numbering Plan - FINAL IMPLEMENTATION
 
@@ -46,7 +46,7 @@ This guide documents the **completed migration** from AykenOS v1 (POSIX-like) sy
 - **Phase 2.5**: ✅ Completely removed from kernel
 - **Current**: No legacy syscalls remain
 
-### V2 Syscalls (Current - Range 1000-1009) - OPERATIONAL ✅
+### V2 Syscalls (Current - Range 1000-1010) - OPERATIONAL ✅
 ```c
 // Execution-centric syscalls (operational interface)
 #define SYS_V2_MAP_MEMORY        1000  // Map physical memory to virtual
@@ -59,26 +59,19 @@ This guide documents the **completed migration** from AykenOS v1 (POSIX-like) sy
 #define SYS_V2_CAPABILITY_BIND   1007  // Bind capability token
 #define SYS_V2_CAPABILITY_REVOKE 1008  // Revoke capability token
 #define SYS_V2_EXIT              1009  // Process termination
+#define SYS_V2_DEBUG_PUTCHAR     1010  // Ring3 debug heartbeat
 ```
 
 **Implementation Status:**
-- **All 10 syscalls**: ✅ Implemented and operational
+- **ABI/range lock**: ✅ `SYS_V2_BASE=1000`, `SYS_V2_LAST=1010`, `SYS_V2_NR=11`
 - **INT 0x80 interface**: ✅ Functional with roundtrip validation
-- **Performance**: ✅ Sub-microsecond latency achieved
-#define SYS_V2_UNMAP_MEMORY      1001  // Unmap virtual memory region
-#define SYS_V2_SWITCH_CONTEXT    1002  // Switch execution contexts
-#define SYS_V2_SUBMIT_EXECUTION  1003  // Submit BCIB execution graph
-#define SYS_V2_WAIT_RESULT       1004  // Wait for execution completion
-#define SYS_V2_INTERRUPT_RETURN  1005  // Return from interrupt context
-#define SYS_V2_TIME_QUERY        1006  // Query system time and timers
-#define SYS_V2_CAPABILITY_BIND   1007  // Bind capability to context
-#define SYS_V2_CAPABILITY_REVOKE 1008  // Revoke capability token
-#define SYS_V2_EXIT              1009  // Exit execution context
-```
+- **Mature handlers**: `switch_context`, `capability_bind`, `capability_revoke`, `debug_putchar`
+- **Placeholder/TODO handlers**: `map_memory`, `unmap_memory`, `submit_execution`, `wait_result`, `interrupt_return`, `time_query`, `exit`
+- **Performance**: ✅ Current CI eşiği altında
 
 ### Invalid Ranges
 - **100-999**: Reserved for future use, returns -ENOSYS
-- **1010+**: Invalid, returns -ENOSYS
+- **1011+**: Invalid, returns -ENOSYS
 
 ## Migration Examples
 
@@ -471,7 +464,7 @@ void wait_for_condition_v2() {
 ```
 Error: syscall returns -38 (ENOSYS)
 ```
-**Cause**: Using syscall number outside valid ranges (0-99, 1000-1009)  
+**Cause**: Using syscall number outside valid ranges (0-99, 1000-1010)  
 **Solution**: Check syscall numbering plan and use correct constants
 
 #### Issue 2: Capability Permission Denied

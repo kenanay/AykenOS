@@ -25,7 +25,7 @@ This guide documents the migration path from legacy POSIX-like (v1) syscalls to 
 | 3 | sys_close | Close file | ✅ Working |
 | 60 | sys_exit | Process termination | ✅ Working |
 
-### Execution-Centric Syscalls (v2) - Range 1000-1009
+### Execution-Centric Syscalls (v2) - Range 1000-1010
 - **Status:** Active development and implementation
 - **Philosophy:** Mechanism-only, capability-based, execution-focused
 - **Usage:** All new applications and Ring3 runtime components
@@ -42,6 +42,7 @@ This guide documents the migration path from legacy POSIX-like (v1) syscalls to 
 | 1007 | sys_v2_capability_bind | Capability token binding | ✅ Implemented |
 | 1008 | sys_v2_capability_revoke | Capability token revocation | ✅ Implemented |
 | 1009 | sys_v2_exit | Process termination | ✅ Implemented |
+| 1010 | sys_v2_debug_putchar | Ring3 debug heartbeat | ✅ Implemented |
 
 ## Migration Examples
 
@@ -104,12 +105,12 @@ uint64_t result = syscall(1004, execution_id, timeout_ms);  // sys_v2_wait_resul
 
 ### Phase 2.1-2.4: Dual Interface Period
 - **Existing applications:** Continue using v1 syscalls (0-99 range)
-- **New applications:** Use v2 syscalls (1000-1009 range)
+- **New applications:** Use v2 syscalls (1000-1010 range)
 - **Ring3 runtime components:** Must use v2 syscalls exclusively
 
 ### Phase 2.5: Legacy Cleanup
 - **All v1 syscalls removed:** Applications must migrate to v2
-- **Ring0 contains exactly 10 syscalls:** No more, no less
+- **Ring0 contains 11 execution-centric syscalls:** No POSIX-like legacy syscall remains
 - **Capability-based access:** All resource access via capability tokens
 
 ## Key Architectural Differences
@@ -160,7 +161,7 @@ int revoke_result = syscall(1008, token.id);  // sys_v2_capability_revoke
 ## Implementation Status
 
 ### ✅ Completed (Phase 2.1)
-- [x] Execution-centric syscall interface (10 syscalls exactly)
+- [x] Execution-centric syscall interface (11 syscalls, 1000-1010)
 - [x] Capability token system with full lifecycle management
 - [x] Hybrid syscall dispatcher with clear numbering plan
 - [x] Backward compatibility for existing v1 applications
@@ -180,7 +181,7 @@ int revoke_result = syscall(1008, token.id);  // sys_v2_capability_revoke
 
 ## Critical Success Factors
 
-1. **Strict numbering plan adherence:** Never deviate from 0-99 (v1) and 1000-1009 (v2) ranges
+1. **Strict numbering plan adherence:** Never deviate from 0-99 (v1) and 1000-1010 (v2) ranges
 2. **Capability system integration:** All v2 syscalls must use capability tokens
 3. **Ring0 minimalism:** No policy decisions in Ring0, mechanism only
 4. **Backward compatibility:** v1 syscalls must work until Phase 2.5

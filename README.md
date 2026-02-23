@@ -9,12 +9,13 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 13.02.2026
+**Son Güncelleme:** 21.02.2026
 
-**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Phase 4.5 timer-preempt validation PASSED ✅ | Constitutional Rule System Phase 11-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
-**Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | **IRQ-tail preempt chain strict doğrulandı ✅**
+**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Core OS Phase 4.5 STABILIZATION IN PROGRESS 🚧 | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
+**Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
+**Scheduler Notu (Kod Gerçekliği):** Ring0->Ring3 doğrudan C çağrısı kapalı; scheduler seçim yolu şu an kernel içi ready-queue mekanik akışla çalışıyor (mailbox/stage-next sözleşmesi dokümanda hedef durumdur).
 
-⚠️ **CI Mode:** PROVISIONAL (GitHub-hosted runners) - Performance gate in warning mode. See [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) for details.
+⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); baseline-init akışında ve yerel denemelerde **PROVISIONAL** yol kullanılabilir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md).
 
 ---
 
@@ -44,7 +45,7 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 
 AykenOS, POSIX-benzeri geleneksel işletim sistemi mimarisinden **execution-centric**, **Ring3-empowered** (kullanıcı modu güçlendirilmiş) ve **AI-native** bir mimariye başarıyla dönüştürülmüştür:
 
-- **Ring0 (Kernel Mode):** Sadece 10 temel mekanizma syscall'ı (1000-1009 aralığı)
+- **Ring0 (Kernel Mode):** 11 execution-centric mekanizma syscall'ı (1000-1010 aralığı)
 - **Ring3 (User Mode):** Tüm politika kararları (VFS, DevFS, AI, scheduler) kullanıcı modunda
 - **Capability-Based Security:** Yetenek tabanlı güvenlik modeli ile erişim kontrolü
 - **BCIB Execution Engine:** Binary Compressed Instruction Bundle formatı ile veri-odaklı yürütme
@@ -59,7 +60,7 @@ AykenOS, klasik işletim sistemi kavramlarını veri-odaklı ve AI-bütünleşik
 
 ### Mimari Yenilikler
 
-- **Execution-Centric Syscall Interface:** Geleneksel POSIX syscall'lar yerine, sadece 10 temel mekanizma syscall'ı
+- **Execution-Centric Syscall Interface:** Geleneksel POSIX syscall'lar yerine, 11 temel mekanizma syscall'ı
   - `sys_v2_map_memory` (1000): Bellek haritalama
   - `sys_v2_unmap_memory` (1001): Bellek haritalama kaldırma
   - `sys_v2_switch_context` (1002): Bağlam değiştirme
@@ -70,6 +71,7 @@ AykenOS, klasik işletim sistemi kavramlarını veri-odaklı ve AI-bütünleşik
   - `sys_v2_capability_bind` (1007): Yetenek bağlama
   - `sys_v2_capability_revoke` (1008): Yetenek iptal etme
   - `sys_v2_exit` (1009): Süreç sonlandırma
+  - `sys_v2_debug_putchar` (1010): Ring3 debug heartbeat
 
 - **Ring3 Empowerment:** Tüm politika kararları kullanıcı modunda
   - VFS (Virtual File System) operasyonları Ring3'te
@@ -379,7 +381,7 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - Kod temizliği ve tutarlılık
 
 - ✅ **Faz 2:** Execution-centric mimari dönüşümü (%100)
-  - 10 syscall hedefine ulaşıldı (1000-1009)
+  - 11 syscall aralığı aktif (1000-1010)
   - Ring3 VFS/DevFS implementasyonu
   - BCIB execution engine
   - Capability-based security
@@ -409,7 +411,7 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **Ring3 User Process Execution:** Kullanıcı modu süreç yürütme başarılı
   - ✅ **Syscall Interface Operational:** INT 0x80 syscall interface çalışıyor
   - ✅ **Syscall Roundtrip Validated:** Kernel ↔ Ring3 geçişleri doğrulandı
-  - ✅ **10 Execution-Centric Syscalls:** 1000-1009 aralığı operasyonel
+  - ✅ **11 Execution-Centric Syscalls:** 1000-1010 aralığı operasyonel
   - ✅ **Capability-Based Security:** Yetenek tabanlı güvenlik aktif
   - ✅ **Ring3 VFS/DevFS:** Kullanıcı modunda dosya sistemi operasyonları
   - ✅ **BCIB Execution Engine:** Binary instruction execution çalışıyor
@@ -435,7 +437,7 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 
 | Hedef | Durum | Açıklama |
 |-------|-------|----------|
-| 10 Syscall Hedefi | ✅ | 1000-1009 aralığında execution-centric syscall'lar |
+| 11 Syscall Aralığı | ✅ | 1000-1010 aralığında execution-centric syscall'lar |
 | Ring3 VFS/DevFS | ✅ | Kullanıcı modunda tam implementasyon |
 | BCIB Execution Engine | ✅ | Ring3'te operasyonel |
 | Capability Security | ✅ | Yetenek tabanlı güvenlik aktif |
@@ -529,9 +531,22 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 ### Teknik Dokümantasyon
 
 - **Proje Yapısı:** [docs/development/PROJECT_STRUCTURE.md](docs/development/PROJECT_STRUCTURE.md)
+- **Dokümantasyon İndeksi:** [docs/development/DOCUMENTATION_INDEX.md](docs/development/DOCUMENTATION_INDEX.md)
 - **Ring3 Implementasyon:** [docs/development/RING3_IMPLEMENTATION.md](docs/development/RING3_IMPLEMENTATION.md)
 - **Syscall Geçiş Kılavuzu:** [docs/development/SYSCALL_TRANSITION_GUIDE.md](docs/development/SYSCALL_TRANSITION_GUIDE.md)
 - **DevFS Implementasyon:** [docs/development/DEVFS_IMPLEMENTATION.md](docs/development/DEVFS_IMPLEMENTATION.md)
+
+### Sistem Spesifikasyonları
+
+- **Scheduler Arbitration Contract:** [docs/development/SCHEDULER_ARBITRATION_CONTRACT.md](docs/development/SCHEDULER_ARBITRATION_CONTRACT.md)
+- **Capability System Reference:** [docs/development/CAPABILITY_SYSTEM_REFERENCE.md](docs/development/CAPABILITY_SYSTEM_REFERENCE.md)
+- **BCIB Submission Protocol:** [docs/development/BCIB_SUBMISSION_PROTOCOL.md](docs/development/BCIB_SUBMISSION_PROTOCOL.md)
+
+### CI ve Operasyonlar
+
+- **Constitutional CI Mode:** [docs/operations/CONSTITUTIONAL_CI_MODE.md](docs/operations/CONSTITUTIONAL_CI_MODE.md)
+- **Provisional CI Mode:** [docs/operations/PROVISIONAL_CI_MODE.md](docs/operations/PROVISIONAL_CI_MODE.md)
+- **Performance Baseline Policy:** [docs/operations/PERF_BASELINE_POLICY.md](docs/operations/PERF_BASELINE_POLICY.md)
 
 ### Yol Haritası
 
@@ -641,7 +656,11 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 13 Şubat 2026 - Phase 4.5 preempt validation strict PASS ✅ + CI boundary gate/evidence schema active ✅  
+**Son Güncelleme:** 21 Şubat 2026 - README, kod gerçekliğiyle hizalandı (`HEAD: 464cd009f4d0`). Yeni teknik dokümantasyon eklendi:
+- Scheduler Arbitration Contract (Yol A)
+- Capability System Reference
+- BCIB Submission Protocol
+
 **Güncelleyen:** Kenan AY
 
 AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards ve evidence-based performance optimization özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.

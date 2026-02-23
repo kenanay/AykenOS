@@ -33,22 +33,21 @@
                     <h3>Başlangıç</h3>
                     <ul>
                         <li><a href="getting-started.html" class="active">Hızlı Başlangıç</a></li>
-                        <li><a href="installation.html">Kurulum Rehberi</a></li>
-                        <li><a href="first-steps.html">İlk Adımlar</a></li>
+                        <li><a href="01-baslangic/kurulum-rehberi.html">Kurulum Rehberi</a></li>
+                        <li><a href="01-baslangic/ilk-adimlar.html">İlk Adımlar</a></li>
                     </ul>
-                    
+
                     <h3>Mimari</h3>
                     <ul>
-                        <li><a href="constitutional-system.html">Anayasal Sistem</a></li>
-                        <li><a href="abdf-format.html">ABDF Formatı</a></li>
-                        <li><a href="bcib-format.html">BCIB Formatı</a></li>
+                        <li><a href="02-mimari/genel-bakis.html">Genel Bakış</a></li>
+                        <li><a href="03-anayasal-sistem/anayasal-yonetisim.html">Anayasal Sistem</a></li>
                     </ul>
-                    
+
                     <h3>Geliştirme</h3>
                     <ul>
-                        <li><a href="development-guide.html">Geliştirici Rehberi</a></li>
-                        <li><a href="api-reference.html">API Referansı</a></li>
-                        <li><a href="contributing.html">Katkıda Bulunma</a></li>
+                        <li><a href="04-gelistirme/gelistirici-rehberi.html">Geliştirici Rehberi</a></li>
+                        <li><a href="05-api-referans/syscall-referansi.html">API Referansı</a></li>
+                        <li><a href="07-topluluk/katki-rehberi.html">Katkıda Bulunma</a></li>
                     </ul>
                 </nav>
             </aside>
@@ -56,19 +55,21 @@
             <article class="docs-content">
                 <header class="docs-header">
                     <h1>AykenOS Hızlı Başlangıç</h1>
-                    <p class="docs-subtitle">AykenOS ile ilk adımlarınızı atın ve anayasal işletim sistemi felsefesini keşfedin.</p>
+                    <p class="docs-subtitle">Bu sayfa, lokal repo durumuna göre güncel teknik başlangıç akışını verir.</p>
                 </header>
 
                 <section class="docs-section">
                     <h2>AykenOS Nedir?</h2>
-                    <p>AykenOS, <strong>anayasal yönetişim</strong>, <strong>determinizm</strong> ve <strong>Türk felsefesi</strong> ilkeleri üzerine inşa edilmiş yeni nesil bir işletim sistemidir. Geleneksel işletim sistemlerinden farklı olarak, her kod satırı anayasal kurallara tabi olup, mimari bütünlük sürekli korunur.</p>
-                    
+                    <p>AykenOS, <strong>Ring0 mekanizma / Ring3 politika</strong> ayrımını anayasal kurallarla zorlayan bir işletim sistemi çalışmasıdır. Çekirdek tarafında hedef; minimum mekanizma, kullanıcı alanında ise politika ve servis kararlarıdır.</p>
+
                     <div class="highlight-box">
-                        <h3>Temel Felsefe</h3>
+                        <h3>Güncel Teknik Durum (2026-02-21)</h3>
                         <ul>
-                            <li><strong>"İstisna = bilinçli karar"</strong> - Her istisna gerekçelendirilmeli</li>
-                            <li><strong>"İyi mimari → istisnasız mimaridir"</strong> - Hedef temiz kod</li>
-                            <li><strong>"Tek snapshot yalan söyler. Trend asla yalan söylemez."</strong> - Sürekli izleme</li>
+                            <li><strong>Faz:</strong> Phase 4.5 stabilizasyon/integrasyon</li>
+                            <li><strong>ABI:</strong> Syscall v2 aralığı sabit <code>1000..1010</code> (11 syscall)</li>
+                            <li><strong>Dispatcher:</strong> <code>kernel/sys/syscall.c</code> yalnızca <code>1000..1010</code> kabul eder</li>
+                            <li><strong>Runtime Kanıtı:</strong> <code>run-20260221T221223Z-3adee991</code> içinde <code>syscall-v2-runtime PASS</code>, <code>kernel_runtime_verified=true</code></li>
+                            <li><strong>Açık Kalanlar:</strong> scheduler bridge ve bazı <code>syscall_v2</code> TODO alanları</li>
                         </ul>
                     </div>
                 </section>
@@ -77,21 +78,20 @@
                     <h2>Sistem Gereksinimleri</h2>
                     <div class="requirements-grid">
                         <div class="requirement-card">
-                            <h3>Donanım</h3>
+                            <h3>Temel Araçlar</h3>
                             <ul>
-                                <li>x86_64 veya ARM64 işlemci</li>
-                                <li>Minimum 4GB RAM</li>
-                                <li>20GB disk alanı</li>
-                                <li>UEFI desteği</li>
+                                <li><code>clang</code>, <code>ld.lld</code>, <code>nasm</code>, <code>make</code></li>
+                                <li><code>qemu-system-x86_64</code> (runtime test için)</li>
+                                <li>Git ve temel shell araçları</li>
+                                <li>UEFI boot için img üretim araçları (Makefile üzerinden)</li>
                             </ul>
                         </div>
                         <div class="requirement-card">
-                            <h3>Geliştirme Ortamı</h3>
+                            <h3>Opsiyonel Araçlar</h3>
                             <ul>
-                                <li>Rust 1.70+ (stable)</li>
-                                <li>QEMU (test için)</li>
-                                <li>GNU Binutils</li>
-                                <li>VS Code (önerilen)</li>
+                                <li>Rust toolchain (userspace runtime geliştirme için)</li>
+                                <li>PowerShell (Windows/WSL kurulum scriptleri için)</li>
+                                <li>VS Code (editör entegrasyonu için)</li>
                             </ul>
                         </div>
                     </div>
@@ -114,13 +114,13 @@ cd AykenOS</code></pre>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h3>Geliştirme Ortamını Hazırlayın</h3>
+                                <h3>Ortamı Hazırlayın</h3>
                                 <div class="code-block">
-                                    <pre><code># macOS için
-./setup.sh
+                                    <pre><code># Otomatik setup (repo içi script)
+make setup
 
-# Windows WSL için
-./setup.ps1</code></pre>
+# Gerekirse bağımlılıkları yükle
+make install-deps</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -128,9 +128,13 @@ cd AykenOS</code></pre>
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h3>Projeyi Derleyin</h3>
+                                <h3>Derleyin</h3>
                                 <div class="code-block">
-                                    <pre><code>make build</code></pre>
+                                    <pre><code># Kernel + UEFI bootloader
+make all
+
+# EFI image
+make efi-img</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -138,9 +142,13 @@ cd AykenOS</code></pre>
                         <div class="step">
                             <div class="step-number">4</div>
                             <div class="step-content">
-                                <h3>QEMU'da Test Edin</h3>
+                                <h3>Doğrulayın</h3>
                                 <div class="code-block">
-                                    <pre><code>make qemu</code></pre>
+                                    <pre><code># Toolchain + build + qemu doğrulaması
+make validate
+
+# Sadece runtime kapı doğrulaması
+make ci-gate-syscall-v2-runtime</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -148,72 +156,61 @@ cd AykenOS</code></pre>
                 </section>
 
                 <section class="docs-section">
-                    <h2>Anayasal Sistem ile Tanışma</h2>
-                    <p>AykenOS'un en önemli özelliği anayasal kural sistemidir. Bu sistem, kodunuzun mimari kurallara uygunluğunu sürekli denetler.</p>
-                    
-                    <h3>İlk Anayasal Kontrol</h3>
+                    <h2>Freeze ve Anayasal Kapılar</h2>
+                    <p>AykenOS geliştirme akışında kalite denetimi <code>scripts/ci/*</code> ve Makefile kapıları ile yürür. Özellikle Phase 4.5 stabilizasyonunda aşağıdaki komutlar temel pratik akıştır.</p>
+
+                    <h3>Önerilen Yerel Akış</h3>
                     <div class="code-block">
-                        <pre><code># Mevcut kodun anayasal durumunu kontrol edin
-ayken check
+                        <pre><code># Çalışma ağacını hijyen açısından denetle
+make ci-gate-hygiene
 
-# VS Code formatında çıktı alın
-ayken check --format vscode
+# ABI kontratını denetle
+make ci-gate-abi
 
-# CI formatında çıktı alın
-ayken check --format ci</code></pre>
+# Runtime kontratını denetle
+make ci-gate-syscall-v2-runtime
+
+# Yerel freeze zinciri (perf/tooling-isolation hariç)
+make ci-freeze-local</code></pre>
                     </div>
 
-                    <h3>Mimari Sağlık Skoru</h3>
-                    <div class="code-block">
-                        <pre><code># Projenin mimari sağlık skorunu görüntüleyin
-ayken ahs check
-
-# Detaylı rapor alın
-ayken ahs report
-
-# Trend analizi yapın
-ayken ahts trend</code></pre>
+                    <div class="alert alert-info">
+                        <strong>Not:</strong> Evidence çıktıları <code>evidence/run-&lt;RUN_ID&gt;/</code> altında üretilir ve kapı raporları bu dizinden takip edilir.
                     </div>
                 </section>
 
                 <section class="docs-section">
                     <h2>Temel Kavramlar</h2>
-                    
+
                     <div class="concept-grid">
                         <div class="concept-card">
-                            <h3>Allow Attribute</h3>
-                            <p>Geçici istisna mekanizması. Anayasal kuralları bilinçli olarak ihlal etmek için kullanılır.</p>
+                            <h3>Syscall v2 Kontratı</h3>
+                            <p>Kullanıcı alanı syscall numaraları <code>1000..1010</code> aralığında sabittir. Dispatcher bu aralık dışını <code>-ENOSYS</code> döndürerek reddeder.</p>
                             <div class="code-block">
-                                <pre><code>#[ayken::allow(
-    rule = "TIME.INSTANT",
-                    class = "BenchmarkMeasurementOnly",
-                    reason = "Performance ölçümü için gerekli",
-                    expires = "P5"
-                )]</code></pre>
+                                <pre><code># ABI başlıklarını hızlı kontrol
+rg -n "SYS_V2_BASE|SYS_V2_LAST|SYS_V2_NR" kernel/sys/syscall_v2.h
+rg -n "1000..1010|valid range" kernel/sys/syscall.c</code></pre>
                             </div>
                         </div>
 
                         <div class="concept-card">
-                            <h3>Waiver Sistemi</h3>
-                            <p>Toplu istisna yönetimi için TOML tabanlı sistem. Büyük refaktörler sırasında kullanılır.</p>
+                            <h3>Ring0 / Ring3 Ayrımı</h3>
+                            <p>Politika kararları Ring3'e taşınır; Ring0 mekanizma yürütür. Scheduler ve VFS/DevFS tarafında bu ayrım aktif olarak korunur.</p>
                             <div class="code-block">
-                                <pre><code>[waivers.time_instant_benchmark]
-rule = "TIME.INSTANT"
-files = ["benches/**/*.rs"]
-reason = "Benchmark kodları için gerekli"
-expires = "2026-06-01"</code></pre>
+                                <pre><code>rg -n "Ring3|placeholder|TODO|DISABLED" \
+  kernel/sched/sched.c kernel/fs/vfs.c kernel/fs/devfs.c</code></pre>
                             </div>
                         </div>
 
                         <div class="concept-card">
-                            <h3>Refaktör Önerileri</h3>
-                            <p>Sistem, anayasal ihlalleri düzeltmek için otomatik refaktör önerileri sunar.</p>
+                            <h3>Evidence-First Yaklaşımı</h3>
+                            <p>Durum iddiaları tek dosya yerine evidence run çıktılarıyla doğrulanır. Raporlar kapı bazlı JSON/TXT olarak üretilir.</p>
                             <div class="code-block">
-                                <pre><code># Refaktör önerilerini görüntüleyin
-ayken arre analyze
+                                <pre><code># Son run özetini görüntüle
+cat evidence/run-20260221T221223Z-3adee991/reports/summary.json
 
-# Otomatik düzeltmeleri uygulayın
-ayken fix --safe</code></pre>
+# Runtime gate raporu
+cat evidence/run-20260221T221223Z-3adee991/gates/syscall-v2-runtime/report.json</code></pre>
                             </div>
                         </div>
                     </div>
@@ -221,43 +218,35 @@ ayken fix --safe</code></pre>
 
                 <section class="docs-section">
                     <h2>VS Code Entegrasyonu</h2>
-                    <p>AykenOS, VS Code ile tam entegre çalışır ve gerçek zamanlı anayasal denetim sağlar.</p>
-                    
-                    <h3>Kurulum</h3>
-                    <div class="code-block">
-                        <pre><code># VS Code ayarlarını kopyalayın
-cp .vscode/settings.json.template .vscode/settings.json
-cp .vscode/tasks.json.template .vscode/tasks.json</code></pre>
-                    </div>
+                    <p>Depodaki dokümantasyon ve CI scriptleri ile birlikte VS Code kullanırken en kritik nokta, değişikliklerden sonra hızlı gate döngüsünü çalıştırmaktır.</p>
 
-                    <h3>Özellikler</h3>
-                    <ul>
-                        <li>Gerçek zamanlı anayasal ihlal tespiti</li>
-                        <li>Otomatik refaktör önerileri</li>
-                        <li>Mimari sağlık skoru gösterimi</li>
-                        <li>Quick fix desteği</li>
-                    </ul>
+                    <h3>Pratik Komut Seti</h3>
+                    <div class="code-block">
+                        <pre><code>make all
+make ci-gate-hygiene
+make ci-gate-syscall-v2-runtime</code></pre>
+                    </div>
                 </section>
 
                 <section class="docs-section">
                     <h2>Sonraki Adımlar</h2>
                     <div class="next-steps">
                         <div class="next-step-card">
-                            <h3>📚 Detaylı Kurulum</h3>
-                            <p>Tam kurulum rehberi ve yapılandırma seçenekleri</p>
-                            <a href="installation.html" class="btn btn-primary">Kurulum Rehberi</a>
+                            <h3>Detaylı Kurulum</h3>
+                            <p>Platform bazlı kurulum ve doğrulama adımlarını tamamlayın.</p>
+                            <a href="01-baslangic/kurulum-rehberi.html" class="btn btn-primary">Kurulum Rehberi</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>🏗️ Mimari Anlayışı</h3>
-                            <p>AykenOS mimarisini ve anayasal sistemi derinlemesine öğrenin</p>
-                            <a href="constitutional-system.html" class="btn btn-primary">Anayasal Sistem</a>
+                            <h3>Mimari Harita</h3>
+                            <p>Ring0/Ring3 sınırı ve syscall hattını teknik detaylarıyla inceleyin.</p>
+                            <a href="02-mimari/genel-bakis.html" class="btn btn-primary">Genel Bakış</a>
                         </div>
-                        
+
                         <div class="next-step-card">
-                            <h3>💻 Geliştirme</h3>
-                            <p>AykenOS üzerinde geliştirme yapmaya başlayın</p>
-                            <a href="development-guide.html" class="btn btn-primary">Geliştirici Rehberi</a>
+                            <h3>Anayasal Kurallar</h3>
+                            <p>CI kapıları ve kuralların nasıl zorlandığını öğrenin.</p>
+                            <a href="03-anayasal-sistem/anayasal-yonetisim.html" class="btn btn-primary">Anayasal Sistem</a>
                         </div>
                     </div>
                 </section>
@@ -266,20 +255,20 @@ cp .vscode/tasks.json.template .vscode/tasks.json</code></pre>
                     <h2>Yardım ve Destek</h2>
                     <div class="help-section">
                         <div class="help-item">
-                            <h3>🐛 Sorun Bildirimi</h3>
-                            <p>Hata bulduysanız veya öneriniz varsa GitHub Issues kullanın</p>
+                            <h3>Sorun Bildirimi</h3>
+                            <p>Hata veya iyileştirme önerileri için GitHub Issues kullanın.</p>
                             <a href="https://github.com/kenanay/AykenOS/issues" target="_blank">Issues</a>
                         </div>
-                        
+
                         <div class="help-item">
-                            <h3>💬 Topluluk</h3>
-                            <p>Diğer geliştiricilerle iletişim kurun ve sorularınızı sorun</p>
+                            <h3>Topluluk</h3>
+                            <p>Teknik tartışmalar ve sorular için GitHub Discussions.</p>
                             <a href="https://github.com/kenanay/AykenOS/discussions" target="_blank">Discussions</a>
                         </div>
-                        
+
                         <div class="help-item">
-                            <h3>📖 Dokümantasyon</h3>
-                            <p>Kapsamlı dokümantasyon ve API referansı</p>
+                            <h3>Kanıt Dizinleri</h3>
+                            <p>Gate raporlarını <code>evidence/</code> altında doğrudan inceleyin.</p>
                             <a href="../index.html#documentation">Tüm Dokümantasyon</a>
                         </div>
                     </div>
@@ -299,8 +288,8 @@ cp .vscode/tasks.json.template .vscode/tasks.json</code></pre>
                     <h4>Dokümantasyon</h4>
                     <ul>
                         <li><a href="getting-started.html">Hızlı Başlangıç</a></li>
-                        <li><a href="installation.html">Kurulum</a></li>
-                        <li><a href="development-guide.html">Geliştirme</a></li>
+                        <li><a href="01-baslangic/kurulum-rehberi.html">Kurulum</a></li>
+                        <li><a href="04-gelistirme/gelistirici-rehberi.html">Geliştirme</a></li>
                     </ul>
                 </div>
             </div>

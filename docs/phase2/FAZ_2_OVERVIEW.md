@@ -7,7 +7,7 @@ Scope (Faz 2):
 - P0: Veri konteyneri meta-katmanı (tip, şema, izin, embedding alanları); POSIX’le uyumlu hibrit görünüm.
 - P0: Hiyerarşik DSL kabuk (> / >> / >[ ]) ve parser; data.<container> add/query akışı.
 - P0: Hafif runtime/dispatcher (kullanıcı modu) → RAM içi konteyner/ABDF erişimi; BCIB yalnızca opsiyonel ara temsil.
-- P0: Ring0 minimal syscall yüzeyi (10 syscall: map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit); scheduler/VFS/DevFS/AI runtime politika katmanlarının Ring3’e taşınması, mevcut POSIX-benzeri syscall setinin kademeli kaldırılması.
+- P0: Ring0 minimal syscall yüzeyi (11 syscall: map/unmap/switch/submit_execution/wait_result/interrupt_return/time_query/cap_bind/cap_revoke/exit/debug_putchar); scheduler/VFS/DevFS/AI runtime politika katmanlarının Ring3’e taşınması, mevcut POSIX-benzeri syscall setinin kademeli kaldırılması.
 - P1: Tabular + log/text veri modülleri (create/add/query + basit filtre), RAM içi depo.
 - P1: Demo REPL (AI’sız), meta senkronizasyon kontrolleri.
 - P2: UI render stub (ui.render log veya basit çizim), multi-arch notları, ai.ask stub.

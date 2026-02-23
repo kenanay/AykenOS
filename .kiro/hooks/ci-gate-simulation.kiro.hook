@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "CI Gate Simulation",
+  "description": "Simulates CI gates after agent execution completes. Pre-CI discipline layer.",
+  "version": "1.0",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "# ==========================================\n# Pre-CI Discipline Gate Simulation\n# ==========================================\n# Purpose:\n#   Local fail-closed discipline layer before real CI.\n#   Does NOT replace CI. CI remains mandatory for merge.\n#\n# Policy:\n#   - Strict execution order\n#   - Stop on first failure\n#   - No auto-fix\n#   - No bypass\n#   - No interpretation of intent\n#   - Manual intervention required on failure\n#\n# Development Awareness:\n#   - During active development, hygiene failures may occur\n#     if changes are intentionally uncommitted.\n#   - This hook does NOT modify code or attempt fixes.\n#   - Developer is responsible for resolving violations.\n#\n# Enforcement Mode:\n#   FAIL-CLOSED\n# ==========================================\n\nset -euo pipefail\n\necho \"== PRE-CI DISCIPLINE: START ==\"\n\nrun_gate() {\n    local gate_cmd=\"$1\"\n    local gate_name=\"$2\"\n\n    echo \"\"\n    echo \">> Running: $gate_name\"\n    echo \"--------------------------------\"\n\n    if ! $gate_cmd; then\n        echo \"\"\n        echo \"❌ GATE FAILURE: $gate_name\"\n        echo \"Stopping execution (fail-closed).\"\n        echo \"\"\n        echo \"Inspect evidence under:\"\n        echo \"  evidence/run-<RUN_ID>/reports/\"\n        echo \"\"\n        exit 2\n    fi\n\n    echo \"✅ PASS: $gate_name\"\n}\n\n# Strict execution order\nrun_gate \"make ci-gate-abi\" \"ABI Gate\"\nrun_gate \"make ci-gate-boundary\" \"Boundary Gate\"\nrun_gate \"make ci-gate-hygiene\" \"Hygiene Gate\"\nrun_gate \"make ci-gate-constitutional\" \"Constitutional Gate\"\n\necho \"\"\necho \"== PRE-CI DISCIPLINE: ALL GATES PASS ==\"\necho \"Local discipline satisfied.\"\necho \"Real CI remains mandatory for merge.\""
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "ci-gate-simulation"
+}

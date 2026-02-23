@@ -70,6 +70,10 @@ typedef struct proc {
     const char *name;
     void *wait_obj;
     struct proc *next;    // ready queue için
+    
+    // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)
+    uint64_t mailbox_pa;        // Physical address of per-process mailbox
+    uint64_t mailbox_last_epoch; // Last validated epoch (monotonicity check)
 } proc_t;
 
 // API
@@ -82,8 +86,6 @@ proc_t *proc_create_user_process(const char *name,
                                  proc_image_format_t fmt);
 // AI service function removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
-proc_t *proc_create_ring3_syscall_test(const char *name);
-void proc_launch_ring3_test(void);
 void proc_block_current(void *wait_obj);
 void proc_wake_waiters(void *wait_obj);
 proc_t* proc_find_by_pid(int pid);

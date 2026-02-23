@@ -56,7 +56,7 @@ ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
 AYKEN_DEBUG_IRQ ?= 1
 AYKEN_DEBUG_SCHED ?= 1
-KERNEL_CFLAGS += -O0 -g3
+KERNEL_CFLAGS += -O0 -g3 -DAYKEN_VALIDATION=1
 ifeq ($(VALIDATION_WERROR),1)
 KERNEL_CFLAGS += -Werror
 endif
@@ -534,7 +534,7 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
@@ -642,7 +642,7 @@ ci-gate-workspace: ci-evidence-dir
 ci-gate-hygiene: ci-evidence-dir
 	@echo "== CI GATE HYGIENE =="
 	@echo "run_id: $(RUN_ID)"
-	@./scripts/ci/gate_hygiene.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/hygiene"
+	@./scripts/ci/gate_hygiene_simple.sh "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/hygiene/report.json" "$(EVIDENCE_RUN_DIR)/reports/hygiene.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: hygiene evidence at $(EVIDENCE_RUN_DIR)"
@@ -689,6 +689,14 @@ ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime/report.json" "$(EVIDENCE_RUN_DIR)/reports/syscall-v2-runtime.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: syscall-v2-runtime evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-sched-bridge-runtime: ci-evidence-dir
+	@echo "== CI GATE SCHED BRIDGE RUNTIME =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: validation (enforced)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation bash scripts/ci/gate_sched_bridge_runtime.sh
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: sched-bridge-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-performance: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE =="

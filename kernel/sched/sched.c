@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "sched.h"
+#include "sched_mailbox.h"
 #include "../arch/x86_64/cpu.h"
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
@@ -493,6 +494,9 @@ void sched_init(void)
     blocked_head = NULL;
     current_proc = NULL;
     
+    // Ring0 mechanism: Initialize scheduler bridge mailbox
+    sched_mailbox_init();
+    
     // Ring0 mechanism: No policy initialization in Ring0
     // Ring3 scheduler policy handles all policy setup
 }
@@ -541,6 +545,33 @@ void sched_start(void)
     current_proc = first;
     current_proc->state = PROC_RUNNING;
     
+    // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
+    // Called here after current_proc is set but before switch_to_first
+    // Compile-out in release: self-test is validation-only
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    // Test marker to verify debugcon is working
+    outb(0xE9, 'M');
+    outb(0xE9, 'B');
+    outb(0xE9, 'T');
+    outb(0xE9, '\n');
+    sched_mailbox_selftest();
+    outb(0xE9, 'M');
+    outb(0xE9, 'B');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
+    
+    // MVP-2: Ring3 simulation test (validates Ring3 library behavior)
+    outb(0xE9, 'R');
+    outb(0xE9, '3');
+    outb(0xE9, 'S');
+    outb(0xE9, '\n');
+    sched_mailbox_test_ring3_simulation(current_proc);
+    outb(0xE9, 'R');
+    outb(0xE9, '3');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
+#endif
+    
     SCHED_DBG_OUT((uint8_t)'T');  // TSS setup
     
     // Ring0 mechanism: Update TSS.RSP0 for Ring3→Ring0 transitions (mechanism only)
@@ -571,6 +602,22 @@ void sched_start(void)
     dbg_print_tr();
     
     SCHED_DBG_OUT((uint8_t)'@');  // About to switch_to_first
+    
+    // Gate-2: Context switch validation marker (validation-only)
+    // Emitted before first context switch (switch_to_first)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    {
+        static int g_ctx_switch_marker_emitted_first = 0;
+        if (!g_ctx_switch_marker_emitted_first) {
+            g_ctx_switch_marker_emitted_first = 1;
+            const char *marker = "[[AYKEN_CTX_SWITCH]]\n";
+            while (*marker) {
+                __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*marker), "Nd"((uint16_t)0xE9));
+                marker++;
+            }
+        }
+    }
+#endif
     
     // CRITICAL: Call switch_to_first with interrupts disabled
     // Interrupts will be enabled by the first process's RFLAGS (IF=1)
@@ -731,6 +778,22 @@ static void sched_yield_core(int reenable_if)
         SCHED_DBG_OUT((uint8_t)'\n');
 
         sched_dbg_mark_iret();
+        
+        // Gate-2: Context switch validation marker (validation-only)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        {
+            static int g_ctx_switch_marker_emitted = 0;
+            if (!g_ctx_switch_marker_emitted) {
+                g_ctx_switch_marker_emitted = 1;
+                // Local debugcon writer (no export needed)
+                const char *marker = "[[AYKEN_CTX_SWITCH]]\n";
+                while (*marker) {
+                    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*marker), "Nd"((uint16_t)0xE9));
+                    marker++;
+                }
+            }
+        }
+#endif
         
         context_switch(&prev->context, &current_proc->context);
         

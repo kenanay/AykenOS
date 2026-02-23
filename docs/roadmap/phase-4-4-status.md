@@ -98,7 +98,7 @@ make run-preempt-strict
 - Result: PASS ✅
 - Evidence: `< [C] >` markers confirmed in debugcon output
 - INT 0x80 syscall interface: Operational
-- All 10 execution-centric syscalls (1000-1009): Functional
+- 11 execution-centric syscall ABI endpointi (1000-1010): Dispatcher seviyesinde aktif, handler olgunlugu degisken
 
 ### Performance Validation
 - Boot time: ~200ms (target: <500ms) ✅
@@ -123,18 +123,17 @@ Phase 4.4 is **COMPLETED** ✅. All evidence requirements satisfied. Ring3 execu
   - Memory management primitives
   - Context switching mechanism  
   - Interrupt handling
-  - Syscall dispatch (10 execution-centric syscalls)
+  - Syscall dispatch (11 execution-centric syscalls)
   - Hardware abstraction
 
-- **Ring3 (User Mode)**: Policy implementation ✅
-  - VFS operations and file system policy
-  - DevFS operations and device management
-  - Scheduler policy decisions
+- **Ring3 (User Mode)**: Policy implementation hedefi ✅
+  - VFS/DevFS policy hedefi aktif, Ring0 tarafinda minimal placeholder uyumluluk kodu mevcut
+  - Scheduler policy Ring3 hedefinde; su an Ring0 icinde mekanik ready-queue secimi aktif
   - AI runtime services (ready for Phase 5)
   - Application-level policy
 
 ### Syscall Interface Validation
-- **1000-1009 Range**: All 10 execution-centric syscalls operational ✅
+- **1000-1010 Range**: 11 syscall ABI araligi kilitli ve erisilebilir ✅
 - **No POSIX Legacy**: All legacy syscalls removed ✅
 - **Capability-Based Security**: Token-based access control operational ✅
 - **Performance**: Sub-microsecond latency achieved ✅

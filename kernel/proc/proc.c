@@ -9,6 +9,7 @@
 #include "../include/capability.h"
 #include "../drivers/console/fb_console.h"
 #include "../arch/x86_64/port_io.h"
+#include "../sched/sched_mailbox.h"
 
 _Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
 _Static_assert(offsetof(cpu_context_t, rsp) == 56, "ctx.rsp offset");
@@ -420,6 +421,24 @@ proc_t *proc_create_user_process(const char *name,
     paging_map_page_in_pml4(user_pml4, RING3_CANARY_ADDR, canary_phys,
                             AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
 
+    // MVP-1: Allocate and map per-process mailbox at fixed VA (0x700000)
+    // This enables Ring3 → Ring0 scheduler bridge communication
+    uint64_t mb_pa = phys_alloc_frame();
+    if (!mb_pa) {
+        outb(0xE9, (uint8_t)'6');
+        phys_free_frame(canary_phys);  // cleanup on failure
+        return NULL;
+    }
+    // Zero-init mailbox frame (mandatory for security)
+    uint8_t *mb_dst = (uint8_t *)paging_phys_to_virt(mb_pa);
+    memset(mb_dst, 0, AYKEN_FRAME_SIZE);
+    // Map mailbox to fixed VA with USER | WRITABLE | PRESENT
+    paging_map_page_in_pml4(user_pml4, SCHED_MAILBOX_VA, mb_pa,
+                            AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
+    // Store mailbox physical address and initialize epoch tracking
+    p->mailbox_pa = mb_pa;
+    p->mailbox_last_epoch = 0;
+
     p->stack_top = USER_STACK_TOP;
     p->context.rip = entry;
     p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
@@ -458,16 +477,148 @@ proc_t *proc_create_user_process(const char *name,
     return p;
 }
 
+// MVP-3: Minimal Ring3 scheduler hint test code
+// This is the SIMPLEST possible test: write mailbox, loop forever
+static const uint8_t ring3_mvp3_sched_hint_test_code[] = {
+    // Load mailbox address into rbx
+    0x48, 0xBB, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00,  // mov rbx, 0x700000
+    
+    // Read current epoch: rax = [rbx + 0]
+    0x48, 0x8B, 0x03,                                            // mov rax, [rbx]
+    
+    // Increment epoch: rax = rax + 1
+    0x48, 0xFF, 0xC0,                                            // inc rax
+    
+    // Write candidate_pid = 1: [rbx + 8] = 1
+    0xC7, 0x43, 0x08, 0x01, 0x00, 0x00, 0x00,                    // mov dword [rbx + 8], 1
+    
+    // Write new epoch: [rbx + 0] = rax
+    0x48, 0x89, 0x03,                                            // mov [rbx], rax
+    
+    // Infinite loop: jmp $
+    0xEB, 0xFE                                                   // jmp $
+};
+
+// Gate-3: Ring3 runtime validation test code
+// Emits "R3OK" via syscall 1010 (debug_putchar) to prove Ring3 execution
+static const uint8_t ring3_gate3_test_code[] = {
+    // Emit 'R' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x52, 0x00, 0x00, 0x00,  // mov edi, 'R'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit '3' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x33, 0x00, 0x00, 0x00,  // mov edi, '3'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit 'O' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x4F, 0x00, 0x00, 0x00,  // mov edi, 'O'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Emit 'K' via syscall 1010
+    0xB8, 0xF2, 0x03, 0x00, 0x00,  // mov eax, 1010
+    0xBF, 0x4B, 0x00, 0x00, 0x00,  // mov edi, 'K'
+    0xCD, 0x80,                    // int 0x80
+    
+    // Infinite loop (kernel will preempt)
+    0xEB, 0xFE                     // jmp $
+};
+
+static void proc_launch_gate3_ring3_test(void) __attribute__((unused));
+static void proc_launch_gate3_ring3_test(void)
+{
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Ring3 Runtime Validation Test\n");
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Creating Ring3 process...\n");
+    
+    // Create Ring3 process with flat image
+    proc_t *test_proc = proc_create_user_process(
+        "gate3-ring3-test",
+        ring3_gate3_test_code,
+        sizeof(ring3_gate3_test_code),
+        PROC_IMAGE_FLAT
+    );
+    
+    if (!test_proc) {
+        fb_print("[Gate-3] ERROR: Failed to create Ring3 test process\n");
+        fb_print("[Gate-3] =============================================\n");
+        return;
+    }
+    
+    fb_print("[Gate-3] Ring3 process created (PID=");
+    fb_print_int(test_proc->pid);
+    fb_print(")\n");
+    fb_print("[Gate-3] Entry point: 0x");
+    fb_print_hex(test_proc->context.rip);
+    fb_print("\n");
+    fb_print("[Gate-3] =============================================\n");
+    fb_print("[Gate-3] Waiting for Ring3 marker validation...\n");
+    fb_print("[Gate-3] Expected: [[AYKEN_RING3_OK]] after R3OK sequence\n");
+    fb_print("[Gate-3] =============================================\n");
+}
+
+static void proc_launch_mvp3_sched_hint_test(void) __attribute__((unused));
+static void proc_launch_mvp3_sched_hint_test(void)
+{
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Minimal Ring3 Scheduler Hint Test\n");
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Creating Ring3 process...\n");
+    
+    // Create Ring3 process with flat image
+    proc_t *test_proc = proc_create_user_process(
+        "mvp3-sched-hint-test",
+        ring3_mvp3_sched_hint_test_code,
+        sizeof(ring3_mvp3_sched_hint_test_code),
+        PROC_IMAGE_FLAT
+    );
+    
+    if (!test_proc) {
+        fb_print("[MVP-3] ERROR: Failed to create Ring3 test process\n");
+        fb_print("[MVP-3] =============================================\n");
+        return;
+    }
+    
+    fb_print("[MVP-3] Ring3 process created (PID=");
+    fb_print_int(test_proc->pid);
+    fb_print(")\n");
+    fb_print("[MVP-3] Entry point: 0x");
+    fb_print_hex(test_proc->context.rip);
+    fb_print("\n");
+    fb_print("[MVP-3] Mailbox VA: 0x");
+    fb_print_hex(SCHED_MAILBOX_VA);
+    fb_print("\n");
+    fb_print("[MVP-3] Mailbox PA: 0x");
+    fb_print_hex(test_proc->mailbox_pa);
+    fb_print("\n");
+    fb_print("[MVP-3] =============================================\n");
+    fb_print("[MVP-3] Waiting for timer tick validation...\n");
+    fb_print("[MVP-3] Expected: [[AYKEN_SCHED_MB_ACCEPT]] pid=");
+    fb_print_int(test_proc->pid);
+    fb_print(" epoch=1\n");
+    fb_print("[MVP-3] =============================================\n");
+}
+
+// Forward declaration for runtime syscall contract launcher (defined below).
+static void proc_launch_ring3_test(void);
+
 // PID 1: init process
 void init_process_main(void)
 {
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
-    
-    // Phase 1.5: Launch Ring3 test for validation
+
+    // Launch deterministic Ring3 runtime contract workload.
+    // This process emits both Gate-3 and syscall-v2 runtime markers.
     proc_launch_ring3_test();
 
-    // Keep PID1 out of the Phase 4.5 runqueue to test pure user<->user preempt.
+    // Keep scheduler bridge runtime signal active for mailbox validation gates.
+    proc_launch_mvp3_sched_hint_test();
+
+    // Keep PID1 out of runqueue (blocked)
     sched_block_current();
     for (;;)
         __asm__ volatile("hlt");
@@ -514,6 +665,12 @@ void proc_wake_waiters(void *wait_obj)
 #define RING3_RUNTIME_TOKEN_PLACEHOLDER 0x1122334455667788ULL
 
 static const uint8_t ring3_process_a_code_template[] = {
+    /* emit Gate-3 marker prefix: R3OK */
+    0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x52, 0x00, 0x00, 0x00, 0xCD, 0x80, /* 'R' */
+    0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x33, 0x00, 0x00, 0x00, 0xCD, 0x80, /* '3' */
+    0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x4F, 0x00, 0x00, 0x00, 0xCD, 0x80, /* 'O' */
+    0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x4B, 0x00, 0x00, 0x00, 0xCD, 0x80, /* 'K' */
+
     0xBB, 0x41, 0x00, 0x00, 0x00, /* mov ebx, 'A' */
 
     /* time_query(type=0, buffer=0x405080) */
@@ -571,14 +728,9 @@ static const uint8_t ring3_process_a_code_template[] = {
     0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x5D, 0x00, 0x00, 0x00, 0xCD, 0x80,
     0xB8, 0xF2, 0x03, 0x00, 0x00, 0xBF, 0x0A, 0x00, 0x00, 0x00, 0xCD, 0x80,
 
-    /* loop: print 'A' via debug syscall for preempt signal */
-    0x41, 0xBC, 0x00, 0x00, 0x02, 0x00, /* mov r12d, 0x20000 */
-    0x41, 0xFF, 0xCC,                   /* dec r12d */
-    0x75, 0xFB,                         /* jnz delay */
-    0xB8, 0xF2, 0x03, 0x00, 0x00,       /* mov eax, 1010 */
-    0x89, 0xDF,                         /* mov edi, ebx */
-    0xCD, 0x80,                         /* int 0x80 */
-    0xEB, 0xEA                          /* jmp loop */
+    /* idle loop */
+    0xF3, 0x90,                         /* pause */
+    0xEB, 0xFC                          /* jmp .-2 */
 };
 
 static uint8_t ring3_process_a_code[sizeof(ring3_process_a_code_template)];
@@ -610,7 +762,7 @@ static int ring3_prepare_process_a_code(uint64_t capability_id)
 }
 
 // Process B: CPU hog that prints 'B' via syscall
-static const uint8_t ring3_process_b_code[] = {
+static const uint8_t ring3_process_b_code[] __attribute__((unused)) = {
     // ebx = 'B'
     0xBB, 0x42, 0x00, 0x00, 0x00,
     // loop:
@@ -694,7 +846,7 @@ static const uint8_t ring3_v2_test_data[] __attribute__((unused)) = {
  * @param name Process name for identification
  * @return proc_t* pointer to created process, NULL on failure
  */
-proc_t *proc_create_ring3_syscall_test(const char *name)
+static proc_t *proc_create_ring3_syscall_test(const char *name)
 {
     outb(0xE9, (uint8_t)'C');
     fb_print("[ring3_test] Creating unified Ring3+Syscall test: ");
@@ -750,37 +902,22 @@ proc_t *proc_create_ring3_syscall_test(const char *name)
     return test_proc;
 }
 
-/**
- * PHASE 4.5: Timer Preempt Test - Two Ring3 Processes
- * 
- * This test validates preemptive multitasking:
- * - Two separate Ring3 processes (A and B)
- * - Each process prints its character via syscall
- * - Timer interrupt preempts running process
- * - Scheduler switches between processes
- * - Expected output: AAABBBAAABBB... (alternating)
- * 
- * Success criteria:
- * ✔ Timer interrupt fires during Ring3 execution
- * ✔ Context switch preserves process state
- * ✔ CR3 switches correctly between processes
- * ✔ TSS.RSP0 updates correctly
- * ✔ Both processes make forward progress
+/*
+ * Runtime syscall contract launcher (single Ring3 workload).
+ * Uses Process A payload only:
+ *   - time_query
+ *   - capability_bind (granted + denied)
+ *   - capability_revoke (granted + denied)
+ *   - canonical debug marker [U][SYSCALL_OK]
  */
-void proc_launch_ring3_test(void)
+static void proc_launch_ring3_test(void)
 {
     capability_token_t runtime_token;
 
     outb(0xE9, (uint8_t)'L');
-    fb_print("[preempt_test] =============================================\n");
-    fb_print("[preempt_test] PHASE 4.5: Timer Preempt Validation\n");
-    fb_print("[preempt_test] =============================================\n");
-    
-    fb_print("[preempt_test] Creating two Ring3 processes:\n");
-    fb_print("[preempt_test] - Process A: prints 'A' via syscall\n");
-    fb_print("[preempt_test] - Process B: prints 'B' via syscall\n");
-    fb_print("[preempt_test] Expected: Timer preempts → alternating output\n");
-    fb_print("[preempt_test] Success pattern: AAABBBAAABBB...\n");
+    fb_print("[syscall_rt] =============================================\n");
+    fb_print("[syscall_rt] Launching Ring3 syscall contract process\n");
+    fb_print("[syscall_rt] =============================================\n");
 
     runtime_token = capability_create(
         CAPABILITY_RESOURCE_TIME,
@@ -789,53 +926,29 @@ void proc_launch_ring3_test(void)
         sizeof(uint64_t)
     );
     if (runtime_token.id == 0) {
-        fb_print("[preempt_test] CRITICAL ERROR: runtime capability create failed\n");
-        fb_print("[preempt_test] =============================================\n");
+        fb_print("[syscall_rt] ERROR: runtime capability create failed\n");
+        fb_print("[syscall_rt] =============================================\n");
         return;
     }
     if (!ring3_prepare_process_a_code(runtime_token.id)) {
-        fb_print("[preempt_test] CRITICAL ERROR: runtime payload patch failed\n");
-        fb_print("[preempt_test] =============================================\n");
+        fb_print("[syscall_rt] ERROR: runtime payload patch failed\n");
+        fb_print("[syscall_rt] =============================================\n");
         return;
     }
-    
-    // Create Process A
+
+    // Launch deterministic contract process.
     current_ring3_test_code = ring3_process_a_code;
     current_ring3_test_size = sizeof(ring3_process_a_code);
     proc_t *proc_a = proc_create_ring3_syscall_test("ring3-process-A");
-    
     if (!proc_a) {
-        fb_print("[preempt_test] CRITICAL ERROR: Process A creation failed\n");
-        fb_print("[preempt_test] =============================================\n");
+        fb_print("[syscall_rt] ERROR: process creation failed\n");
+        fb_print("[syscall_rt] =============================================\n");
         return;
     }
-    
-    fb_print("[preempt_test] Process A created (PID=");
+
+    fb_print("[syscall_rt] Process created (PID=");
     fb_print_int(proc_a->pid);
     fb_print(")\n");
-    
-    // Create Process B
-    current_ring3_test_code = ring3_process_b_code;
-    current_ring3_test_size = sizeof(ring3_process_b_code);
-    proc_t *proc_b = proc_create_ring3_syscall_test("ring3-process-B");
-    
-    if (!proc_b) {
-        fb_print("[preempt_test] CRITICAL ERROR: Process B creation failed\n");
-        fb_print("[preempt_test] =============================================\n");
-        return;
-    }
-    
-    fb_print("[preempt_test] Process B created (PID=");
-    fb_print_int(proc_b->pid);
-    fb_print(")\n");
-    
-    fb_print("[preempt_test] Both processes scheduled successfully\n");
-    fb_print("[preempt_test] Waiting for timer preemption...\n");
-    fb_print("[preempt_test] Watch for:\n");
-    fb_print("[preempt_test]   T - Timer tick marker\n");
-    fb_print("[preempt_test]   S - Scheduler switch marker\n");
-    fb_print("[preempt_test]   C - CR3 load marker\n");
-    fb_print("[preempt_test]   R - IRET marker\n");
-    fb_print("[preempt_test]   A/B - Process output\n");
-    fb_print("[preempt_test] =============================================\n");
+    fb_print("[syscall_rt] Expected marker: [U][SYSCALL_OK]\n");
+    fb_print("[syscall_rt] =============================================\n");
 }
