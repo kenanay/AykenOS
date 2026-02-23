@@ -542,25 +542,21 @@ ci: check-deps ci-gate-boundary ci-gate-hygiene validate-full
 # ================================================
 # Pre-CI Discipline (Local Advisory Layer)
 # ================================================
-# Layered local fail-closed discipline check before CI.
+# Local fail-closed discipline check before CI.
 # Does NOT replace CI. CI remains mandatory.
 #
-# Layers:
-#   pre-ci-fast - Core discipline gates (4 gates, ~30-60s)
-#                 Quick "is constitutional backbone broken?" check
-#                 Use: Daily development, reflex layer
+# Gates: 4 core discipline gates (~30-60s)
+#   - ABI Stability
+#   - Boundary Enforcement
+#   - Hygiene
+#   - Constitutional Compliance
 #
-#   pre-ci      - Full discipline gates (9 gates, ~3-6min)
-#                 Pre-PR mandatory full discipline
-#                 Use: Before opening PR
-
-.PHONY: pre-ci-fast
-pre-ci-fast:
-	@bash scripts/ci/pre_ci_discipline.sh fast
+# Runtime gates (Ring0 Exports, Workspace, Syscall v2, Sched Bridge,
+# Policy Accept) run in CI only.
 
 .PHONY: pre-ci
 pre-ci:
-	@bash scripts/ci/pre_ci_discipline.sh full
+	@bash scripts/ci/pre_ci_discipline.sh
 
 # ================================================
 # Freeze Suite (Constitutional Enforcement)
@@ -855,11 +851,9 @@ help:
 	@echo "  install-deps - Install missing dependencies"
 	@echo ""
 	@echo "CI/CD targets:"
-	@echo "  pre-ci-fast  - Fast discipline check (4 gates, ~30-60s)"
-	@echo "                 Recommended before PR (constitutional backbone check)"
-	@echo "  pre-ci       - Full discipline check (9 gates, ~3-6min)"
-	@echo "                 Optional deep check for critical architectural changes"
-	@echo "                 Both are advisory. CI remains mandatory."
+	@echo "  pre-ci       - Local discipline check (4 gates, ~30-60s)"
+	@echo "                 Core: ABI, Boundary, Hygiene, Constitutional"
+	@echo "                 Advisory only. CI remains mandatory."
 	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
 	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"
 	@echo "    (hard guard: AYKEN_SCHED_FALLBACK must be 0)"
