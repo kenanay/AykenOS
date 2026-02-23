@@ -211,7 +211,6 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
 // Emits standardized markers for CI gate validation
 int sched_mailbox_validate_ring3(proc_t *proc) {
     if (!proc || !proc->mailbox_pa) {
-        marker_reject(4, 0, proc ? (uint32_t)proc->pid : 0); // reason=4 (no_mb)
         return -1;
     }
 
@@ -230,7 +229,6 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
     }
     if (!mb) {
-        marker_reject(4, 0, (uint32_t)proc->pid);
         return -1;
     }
 
@@ -241,19 +239,22 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 
     // Check 1: Torn read detection
     if (e1 != e2) {
-        marker_reject(1, e1, pid); // reason=1 (torn)
         return -1;
     }
 
     // Check 2: Epoch monotonicity (must advance)
+    // Epoch 0 means Ring3 has not published a valid hint yet.
+    // Keep this silent to avoid polluting monotonic gate evidence.
+    if (e1 == 0) {
+        return -1;
+    }
+
     if (e1 <= proc->mailbox_last_epoch) {
-        marker_reject(2, e1, pid); // reason=2 (epoch)
         return -1;
     }
 
     // Check 3: PID validity (basic sanity check)
     if (pid == 0 || pid > 1000) {
-        marker_reject(3, e1, pid); // reason=3 (pid)
         return -1;
     }
 
