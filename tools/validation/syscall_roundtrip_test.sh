@@ -348,7 +348,16 @@ run_syscall_validation() {
         write_log "OVMF firmware not found; falling back to non-UEFI boot path (local only)." "WARNING"
     else
         ovmf_vars_copy="${run_tmp_dir}/syscall_ovmf_vars.fd"
-        cp -f "$ovmf_vars" "$ovmf_vars_copy"
+        # Deterministic boot: start from blank varstore so OVMF cannot prefer
+        # stale NVRAM entries (e.g. Internal Shell) over media fallback boot.
+        local ovmf_vars_size
+        ovmf_vars_size="$(wc -c < "$ovmf_vars" 2>/dev/null || echo 0)"
+        ovmf_vars_size="$(printf "%s" "$ovmf_vars_size" | tr -d '[:space:]')"
+        if [[ -z "$ovmf_vars_size" || "$ovmf_vars_size" -le 0 ]]; then
+            write_log "Failed to determine OVMF VARS size: ${ovmf_vars}" "ERROR"
+            return 1
+        fi
+        dd if=/dev/zero of="$ovmf_vars_copy" bs=1 count="$ovmf_vars_size" >/dev/null 2>&1
         ovmf_args=(
             "-machine" "q35"
             "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf_code}"
