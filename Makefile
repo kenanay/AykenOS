@@ -539,6 +539,20 @@ dev: clean all validate-qemu
 ci: check-deps ci-gate-boundary ci-gate-hygiene validate-full
 	@echo "CI validation completed successfully!"
 
+# ================================================
+# Pre-CI Discipline (Local Advisory Layer)
+# ================================================
+# Local fail-closed discipline check before CI.
+# Does NOT replace CI. CI remains mandatory.
+# Runs full gate sequence except performance/tooling (require CI authority).
+
+.PHONY: pre-ci
+pre-ci:
+	@bash scripts/ci/pre_ci_discipline.sh
+
+# ================================================
+# Freeze Suite (Constitutional Enforcement)
+# ================================================
 # Freeze suite target (strict): calls all declared freeze gates.
 ci-freeze-guard:
 	@if [ "$(AYKEN_SCHED_FALLBACK)" != "0" ]; then \
@@ -829,6 +843,8 @@ help:
 	@echo "  install-deps - Install missing dependencies"
 	@echo ""
 	@echo "CI/CD targets:"
+	@echo "  pre-ci       - Local advisory discipline check (9 gates, fail-closed)"
+	@echo "                 Does NOT replace CI. CI remains mandatory."
 	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
 	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"
 	@echo "    (hard guard: AYKEN_SCHED_FALLBACK must be 0)"
