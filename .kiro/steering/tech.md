@@ -90,14 +90,16 @@ make validate-qemu          # QEMU integration test
 
 **Pre-CI Discipline (Layered Local Advisory):**
 ```bash
-# Fast discipline (reflex layer, ~30-60s)
+# Fast discipline (recommended before PR, ~30-60s)
 make pre-ci-fast            # 4 gates: ABI, Boundary, Hygiene, Constitutional
-                            # Use: Daily development, quick backbone check
+                            # Use: Daily development, pre-PR minimum
+                            # Status: Strongly recommended
 
-# Full discipline (pre-PR mandatory, ~3-6min)
+# Full discipline (optional deep check, ~3-6min)
 make pre-ci                 # 9 gates: fast + Ring0 Exports, Workspace,
                             # Syscall v2, Sched Bridge, Policy Accept
-                            # Use: Before opening PR
+                            # Use: Critical architectural changes, local runtime proof
+                            # Status: Optional but recommended for major PRs
 
 # Both layers:
 # - Do NOT replace CI (CI remains mandatory)
