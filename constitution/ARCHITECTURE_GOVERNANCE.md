@@ -3,6 +3,9 @@
 This document defines the permanent governance split for constitutional and
 behavioral controls.
 
+Operational boundary language for CI/doc enforcement is mirrored at:
+`docs/governance/CONSTITUTION_BOUNDARY.md`.
+
 ## Layer Contract
 
 | Layer | Scope | Gate(s) | Blocking Policy |
@@ -27,6 +30,8 @@ behavioral controls.
 
 - Drift is not constitutional and cannot be promoted into Tier-1/Tier-2 rules.
 - Drift and envelope remain separate mechanisms.
+- AHS/AHTS thresholds and waiver/source scan policy are Tier-3 governance, not
+  constitutional invariants.
 - Automatic baseline/history rewrite is forbidden.
 - Any blocking drift policy requires explicit config and evidence-backed review.
 - Drift blocking activation must follow

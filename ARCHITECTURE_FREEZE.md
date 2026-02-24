@@ -72,10 +72,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
+- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Governance Policy, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
 - **Bypass:** Prohibited (no exceptions)
 - **Repo Truth (2026-02-22):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-governance-policy`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -565,6 +565,7 @@ Validates the scheduler arbitration contract (Yol A) where Ring3 stages next tas
 - ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
 - ✅ ABI gate implementation active (`make ci-gate-abi`)
 - ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
+- ✅ Governance policy gate implementation active (`make ci-gate-governance-policy`)
 - ✅ Workspace gate implementation active (`make ci-gate-workspace`)
 - ✅ Syscall v2 runtime gate implementation active (`make ci-gate-syscall-v2-runtime`)
 - ✅ Sched bridge runtime gate implementation active (`make ci-gate-sched-bridge-runtime`)

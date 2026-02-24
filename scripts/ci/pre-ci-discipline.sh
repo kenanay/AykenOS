@@ -50,11 +50,21 @@ run_gate() {
     echo "✅ PASS: $gate_name"
 }
 
-# Strict execution order
+# Core constitutional gates (always run)
 run_gate "make ci-gate-abi" "ABI Gate"
 run_gate "make ci-gate-boundary" "Boundary Gate"
 run_gate "make ci-gate-hygiene" "Hygiene Gate"
 run_gate "make ci-gate-constitutional" "Constitutional Gate"
+
+# Governance policy gate (validation profile only)
+KERNEL_PROFILE="${KERNEL_PROFILE:-release}"
+if [[ "${KERNEL_PROFILE}" == "validation" ]]; then
+    run_gate "make ci-gate-governance-policy" "Governance Policy Gate"
+else
+    echo ""
+    echo "⏭️  SKIP: Governance Policy Gate"
+    echo "   (requires KERNEL_PROFILE=validation)"
+fi
 
 echo ""
 echo "== PRE-CI DISCIPLINE: ALL GATES PASS =="

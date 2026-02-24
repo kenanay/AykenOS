@@ -184,6 +184,7 @@ jobs:
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
       PERF_ENV_MISMATCH_POLICY: "fail"
+      GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
     steps:
       - uses: actions/checkout@v4
         with:
