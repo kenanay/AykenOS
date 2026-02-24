@@ -1,0 +1,47 @@
+{
+  "profile": "perf",
+  "schema_version": "1.0.0",
+  "description": "Perf profile envelope (latency-ready scaffold with current marker metrics).",
+  "phases": {
+    "7": {
+      "enabled": true,
+      "mode": "warn",
+      "warn_escalates_in_strict": false,
+      "min_samples": 3,
+      "rules": [
+        {
+          "name": "sched_events_min",
+          "metric": "total_sched_events",
+          "min": 3,
+          "severity": "warn"
+        },
+        {
+          "name": "accept_presence",
+          "metric": "accept_count",
+          "min": 1,
+          "severity": "warn"
+        }
+      ]
+    },
+    "8": {
+      "enabled": true,
+      "mode": "fail",
+      "warn_escalates_in_strict": false,
+      "min_samples": 3,
+      "rules": [
+        {
+          "name": "sched_events_min",
+          "metric": "total_sched_events",
+          "min": 3,
+          "severity": "fail"
+        },
+        {
+          "name": "accept_presence",
+          "metric": "accept_count",
+          "min": 1,
+          "severity": "fail"
+        }
+      ]
+    }
+  }
+}

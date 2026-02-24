@@ -1,0 +1,53 @@
+{
+  "profile": "experimental",
+  "schema_version": "1.0.0",
+  "description": "Experimental profile envelope with wider tolerances.",
+  "phases": {
+    "7": {
+      "enabled": true,
+      "mode": "warn",
+      "warn_escalates_in_strict": false,
+      "min_samples": 2,
+      "rules": [
+        {
+          "name": "sched_events_presence",
+          "metric": "total_sched_events",
+          "min": 1,
+          "severity": "warn"
+        },
+        {
+          "name": "reject_rate_guard",
+          "metric": "reject_rate",
+          "max": 0.99,
+          "severity": "warn"
+        }
+      ]
+    },
+    "8": {
+      "enabled": true,
+      "mode": "warn",
+      "warn_escalates_in_strict": false,
+      "min_samples": 2,
+      "rules": [
+        {
+          "name": "sched_events_presence",
+          "metric": "total_sched_events",
+          "min": 1,
+          "severity": "warn"
+        },
+        {
+          "name": "accept_rate_floor",
+          "metric": "accept_rate",
+          "min": 0.01,
+          "severity": "warn"
+        },
+        {
+          "name": "reject_rate_guard",
+          "metric": "reject_rate",
+          "max": 0.99,
+          "severity": "warn"
+        }
+      ]
+    }
+  }
+}

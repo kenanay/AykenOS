@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AykenOS Gate-6 Drift Report Schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "enabled",
+    "profile",
+    "phase",
+    "status",
+    "context",
+    "context_key",
+    "window",
+    "metrics",
+    "detectors",
+    "persistence",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_active",
+        "profile_not_configured",
+        "profile_mismatch",
+        "invalid_profile",
+        "phase_not_configured",
+        "disabled",
+        "metadata_incomplete",
+        "telemetry_only",
+        "observe",
+        "enforce"
+      ]
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "kernel_profile",
+        "ai_policy_hash",
+        "workload_id",
+        "marker_schema_version",
+        "run_class"
+      ],
+      "properties": {
+        "kernel_profile": {
+          "type": "string"
+        },
+        "ai_policy_hash": {
+          "type": "string"
+        },
+        "workload_id": {
+          "type": "string"
+        },
+        "marker_schema_version": {
+          "type": "string"
+        },
+        "run_class": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "window": {
+      "type": "object",
+      "properties": {
+        "last_n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "time_range": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "context_key": {
+      "type": "string"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "integer",
+          "string",
+          "boolean",
+          "null"
+        ]
+      }
+    },
+    "detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "metric",
+          "verdict"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "INFO",
+              "WARN",
+              "FAIL"
+            ]
+          },
+          "score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "baseline_mean": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "baseline_std": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "current": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": [
+        "consecutive_warn",
+        "consecutive_fail",
+        "threshold"
+      ],
+      "properties": {
+        "consecutive_warn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consecutive_fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "INFO",
+        "WARN",
+        "FAIL"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,69 @@
+{
+  "policy_version": "1.0.0",
+  "rules": [
+    {
+      "change": "tier1_abi_layout_change",
+      "bump": "major"
+    },
+    {
+      "change": "tier1_export_surface_change",
+      "bump": "major"
+    },
+    {
+      "change": "tier2_marker_pattern_change",
+      "bump": "major"
+    },
+    {
+      "change": "tier2_add_marker",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_add_new_proof",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_adjust_threshold",
+      "bump": "patch"
+    },
+    {
+      "change": "gate6_change_proof_logic",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_add_profile_envelope",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_adjust_envelope_threshold",
+      "bump": "patch"
+    },
+    {
+      "change": "gate6_change_envelope_mode_warn_fail",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_add_drift_profile",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_adjust_drift_threshold",
+      "bump": "patch"
+    },
+    {
+      "change": "gate6_enable_drift_blocking_policy",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_change_drift_blocking_policy_defaults",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_change_drift_context_hash_inputs",
+      "bump": "minor"
+    },
+    {
+      "change": "gate6_change_report_contract_fields",
+      "bump": "minor"
+    }
+  ]
+}
