@@ -3,6 +3,7 @@
 *.d
 *.elf
 *.img
+*.img.dmg
 *.fd
 *.efi
 *.log
