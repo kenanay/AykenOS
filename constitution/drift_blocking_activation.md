@@ -1,73 +1,106 @@
-# Drift Blocking Activation Protocol (Phase 9+)
+---
+# Drift Blocking Activation Configuration
+# Authority: ARCHITECTURE_FREEZE.md
+# Phase Requirement: >= 9
 
-This document defines who can activate drift blocking, under which evidence,
-and with which rollback controls.
+# Activation state (explicit only)
+enabled: false
 
-## Scope
+# Minimum phase for enforcement
+phase_minimum: 9
 
-- Applies only to Gate-6 Tier-3 drift policy.
-- Does not change Tier-1/Tier-2 constitutional rules.
-- Drift blocking is disabled by default (`enabled=false`).
+# Auto-activation policy (phase_guard = CI enforces, but no auto-enable)
+auto_activation_policy: phase_guard
 
-## Separation Rule
+# N-run persistence threshold
+n_run_threshold: 3
+---
 
-- Envelope:
-  - explicit threshold guard
-  - deterministic boundary checks
-- Drift:
-  - statistical anomaly detector over rolling history
-  - context-scoped via `context_key`
+# Drift Blocking Activation Protocol
 
-These mechanisms must remain separate.
+This document controls drift blocking activation for AykenOS CI.
 
-## Activation Preconditions
+## Current State
 
-All conditions are required before enabling drift blocking:
+- **Enabled:** `false` (drift blocking inactive)
+- **Phase Minimum:** `9` (enforcement starts at Phase 9)
+- **Policy:** `phase_guard` (CI enforces requirement, no auto-enable)
+- **N-Run Threshold:** `3` (regression must persist for 3 consecutive runs)
 
-1. Phase is `>= 9`.
-2. Profile is explicitly allowlisted (default: `validation`).
-3. Drift profile status is `enforce`.
-4. Minimum history exists for each enforced metric:
-   - at least `N >= 30` samples in current context window.
-5. Evidence quality checks pass:
-   - context metadata complete
-   - no mixed run classes within context stream
-   - marker schema version stable for window.
+## Activation Protocol
 
-## Statistical Confidence Guard
+1. System reaches Phase 9 maturity
+2. CI gate `ci-gate-drift-activation` starts enforcing
+3. Developer explicitly sets `enabled: true`
+4. Commit change with justification
+5. CI gate passes, drift blocking active
 
-- Blocking thresholds must be defined per policy:
-  - `warn_threshold` (consecutive WARN)
-  - `fail_threshold` (consecutive FAIL)
-- One-run drift spikes must not block CI.
-- Recommended initial policy:
-  - WARN blocking: disabled or high threshold (`>= 5`)
-  - FAIL blocking: conservative threshold (`>= 3`)
+## N-Run Persistence
 
-## Governance and Review
+Drift blocking uses N-run persistence to avoid false positives:
 
-Enabling drift blocking requires:
+- Regression must appear in **3 consecutive runs** to block
+- Single-run regression → warning only
+- Counter state stored in **CI artifact** (not repository)
+- Counter resets on authority hash change
 
-1. PR with explicit policy diff.
-2. Attached evidence diff from recent runs.
-3. Reviewer sign-off from runtime governance owners.
-4. Rollback command/path documented in PR.
+## Runtime State (CI Artifact Only)
 
-## Emergency Disable
+Drift counters and authority hash are **NOT stored in this file**.
 
-If false-positive blocking is detected:
+Runtime state is managed by CI artifact store:
+- **Artifact key:** `drift-state-${authority_hash}`
+- **Storage:** GitHub Actions cache/artifact
+- **Scope:** Authority-scoped (git SHA + toolchain + QEMU version)
+- **Lifetime:** Persists across CI runs with same authority
+- **Reset:** Automatic on authority hash change
 
-1. Set `suite.defaults.drift_blocking_policy.enabled=false`.
-2. Keep drift telemetry active (do not disable detector entirely).
-3. Open postmortem with:
-   - context key
-   - detector outputs
-   - threshold/persistence values
-   - corrective action.
+**Why not in repository?**
+- Constitution documents are **policy**, not **state**
+- Runtime state in repo → merge conflicts, governance noise
+- CI artifact → clean separation, branch isolation
 
-## Non-Negotiable Rules
+## Authority Hash
 
-- No auto-activation based on telemetry alone.
-- No auto-threshold rewrite from recent history.
-- No direct edits to history artifacts to silence drift.
+Authority hash computed from:
+- Git commit SHA
+- Toolchain version (clang, ld.lld)
+- QEMU version
 
+When authority hash changes:
+- All drift counters reset to 0
+- New baseline authority established
+- Reset event logged in evidence
+
+**Authority hash is stored in CI artifact, not this file.**
+
+## Fork Behavior
+
+When repository is forked:
+- Fork has **different git SHA** → different authority hash
+- Drift state **does not transfer** to fork
+- Fork starts with **fresh drift state** (N-run counter = 0)
+- Fork is **independent governance instance**
+
+This ensures:
+- Fork independence
+- No upstream coupling
+- Fork establishes own baseline
+
+## Allowlist Mechanism
+
+Metrics can be allowlisted via `constitution/drift_blocking_allowlist.json`:
+
+```json
+{
+  "metrics": [
+    "boot_time_variance",
+    "memory_allocation_jitter"
+  ]
+}
+```
+
+Allowlisted metrics:
+- Still collected and logged
+- Do not trigger CI failure
+- Bypass logged in evidence

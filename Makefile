@@ -590,6 +590,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/governance-policy"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite"
@@ -726,6 +727,14 @@ ci-gate-governance-policy: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/governance-policy/report.json" "$(EVIDENCE_RUN_DIR)/reports/governance-policy.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: governance-policy evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-drift-activation: ci-evidence-dir
+	@echo "== CI GATE DRIFT ACTIVATION =="
+	@echo "run_id: $(RUN_ID)"
+	@./scripts/ci/gate_drift_activation.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/drift-activation/report.json" "$(EVIDENCE_RUN_DIR)/reports/drift-activation.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: drift-activation evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-structural-abi: ci-evidence-dir
 	@echo "== CI GATE STRUCTURAL ABI =="
@@ -919,6 +928,7 @@ help:
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (ABI/boundary/export/contracts hard-lock)"
 	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + waiver audit)"
 	@echo "    (profile selector: GOVERNANCE_POLICY_KERNEL_PROFILE=validation)"
+	@echo "  ci-gate-drift-activation - Phase-9 drift blocking activation requirement enforcement"
 	@echo "  ci-gate-structural-abi - Gate-5A permanent ABI constitution lock (layout + semver policy)"
 	@echo "  ci-gate-runtime-marker-contract - Gate-5B phase-scoped marker contract lock (format + anchors + semver)"
 	@echo "    (toggle: RUNTIME_MARKER_CONTRACT_ENFORCE=0 to disable phase-scoped marker lock)"
@@ -942,7 +952,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
