@@ -1,0 +1,8 @@
+{
+  "constitution_version": "1.1.0",
+  "description": "AykenOS Constitutional Runtime Contract Version",
+  "changelog": {
+    "1.0.0": "Initial constitutional lock: Mailbox ABI + Runtime markers",
+    "1.1.0": "Gate-5 structural constitution: REJECT marker registry + runtime marker format freeze"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.1.0",
+  "runtime_markers": [
+    {
+      "name": "AYKEN_SCHED_MB_ACCEPT",
+      "marker": "[[AYKEN_SCHED_MB_ACCEPT]]",
+      "pattern": "^\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=[0-9]+ epoch=[0-9]+$",
+      "fields": {
+        "pid": "uint64",
+        "epoch": "uint64"
+      }
+    },
+    {
+      "name": "AYKEN_SCHED_MB_REJECT",
+      "marker": "[[AYKEN_SCHED_MB_REJECT]]",
+      "pattern": "^\\[\\[AYKEN_SCHED_MB_REJECT\\]\\] reason=[0-9]+ epoch=[0-9]+ pid=[0-9]+$",
+      "fields": {
+        "reason": "uint32",
+        "epoch": "uint64",
+        "pid": "uint32"
+      }
+    },
+    {
+      "name": "AYKEN_RING3_OK",
+      "marker": "[[AYKEN_RING3_OK]]",
+      "pattern": "^\\[\\[AYKEN_RING3_OK\\]\\]$",
+      "fields": {}
+    },
+    {
+      "name": "R3OK_USER_TOKEN",
+      "marker": "R3OK",
+      "pattern": "^R3OK$",
+      "fields": {}
+    }
+  ],
+  "description": "Constitutional runtime marker registry and format contract. Changes require version bump.",
+  "rules": {
+    "add_marker": "Requires MINOR version bump",
+    "remove_marker": "Requires MAJOR version bump",
+    "modify_marker": "Requires MAJOR version bump",
+    "modify_marker_format": "Requires MAJOR version bump"
+  }
+}
