@@ -8,17 +8,18 @@
 DRIFT_STATE_FILE="${ROOT}/.ci-state/drift_state.json"
 
 # Compute authority hash (deterministic, no network)
-# Authority = git SHA + toolchain version + QEMU version
+# Authority = toolchain version + QEMU version + optional salt
+# NOTE: git SHA deliberately excluded - counter should persist across commits
 compute_authority_hash() {
-    local git_sha
     local clang_ver
     local qemu_ver
+    local salt
     
-    git_sha="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo "NO_GIT")"
     clang_ver="$(clang --version 2>/dev/null | head -1 || echo "NO_CLANG")"
     qemu_ver="$(qemu-system-x86_64 --version 2>/dev/null | head -1 || echo "NO_QEMU")"
+    salt="${PERF_AUTHORITY_SALT:-}"
     
-    echo -n "${git_sha}:${clang_ver}:${qemu_ver}" | sha256sum | cut -d' ' -f1
+    echo -n "${clang_ver}:${qemu_ver}:${salt}" | sha256sum | cut -d' ' -f1
 }
 
 # Load drift state from file
