@@ -1,7 +1,7 @@
 ---
 # Drift Blocking Activation Configuration
 # Authority: ARCHITECTURE_FREEZE.md
-# Phase Requirement: >= 9
+# Phase Requirement: >= 9 (Phase is >= 9)
 
 # Activation state (explicit only)
 enabled: false
@@ -22,12 +22,14 @@ This document controls drift blocking activation for AykenOS CI.
 
 ## Current State
 
-- **Enabled:** `false` (drift blocking inactive)
+- **Enabled:** `false` (drift blocking inactive, enabled=false)
 - **Phase Minimum:** `9` (enforcement starts at Phase 9)
 - **Policy:** `phase_guard` (CI enforces requirement, no auto-enable)
 - **N-Run Threshold:** `3` (regression must persist for 3 consecutive runs)
 
 ## Activation Protocol
+
+**No auto-activation:** Drift blocking never enables automatically.
 
 1. System reaches Phase 9 maturity
 2. CI gate `ci-gate-drift-activation` starts enforcing
