@@ -48,16 +48,16 @@
   - [ ] 6.4 Add timestamp and git SHA to evidence
   - [ ] 6.5 Write unit tests for evidence generation
 
-- [ ] 7. N-Run Persistence (Performance Gate Integration)
-  - [ ] 7.1 Create drift persistence library (`scripts/ci/lib-drift-persistence.sh`)
-  - [ ] 7.2 Implement `compute_authority_hash()` function
-  - [ ] 7.3 Implement `load_drift_state()` function (from `.ci-state/`)
-  - [ ] 7.4 Implement `save_drift_state()` function (to `.ci-state/`)
-  - [ ] 7.5 Implement `increment_drift_counter()` function
-  - [ ] 7.6 Implement `check_drift_threshold()` function
-  - [ ] 7.7 Add authority hash reset logic
-  - [ ] 7.8 Integrate persistence logic into `ci-gate-performance` (NOT drift-activation)
-  - [ ] 7.9 Add CI artifact cache/restore workflow steps
+- [-] 7. N-Run Persistence (Performance Gate Integration)
+  - [x] 7.1 Create drift persistence library (`scripts/ci/lib-drift-persistence.sh`)
+  - [x] 7.2 Implement `compute_authority_hash()` function
+  - [x] 7.3 Implement `load_drift_state()` function (from `.ci-state/`)
+  - [x] 7.4 Implement `save_drift_state()` function (to `.ci-state/`)
+  - [x] 7.5 Implement `increment_drift_counter()` function
+  - [x] 7.6 Implement `check_drift_threshold()` function
+  - [x] 7.7 Add authority hash reset logic
+  - [x] 7.8 Integrate persistence logic into `ci-gate-performance` (NOT drift-activation)
+  - [x] 7.9 Add CI artifact cache/restore workflow steps
   - [ ] 7.10 Write unit tests for persistence logic
 
 - [ ] 8. Allowlist Mechanism (Performance Gate Integration)

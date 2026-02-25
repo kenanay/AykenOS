@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_TOOLS="${ROOT}/tools/ci"
 source "${CI_TOOLS}/lib.sh"
+source "${ROOT}/scripts/ci/lib-drift-persistence.sh"
 
 usage() {
   cat <<'USAGE'
@@ -548,9 +549,21 @@ PY
     :
   else
     record_violation "baseline_mismatch:${BASELINE_FILE}"
+    
+    # Advisory side-channel: increment drift counters for regressions
+    # This does NOT affect verdict (violations still recorded)
     while IFS= read -r line; do
       [[ -z "${line}" ]] && continue
       record_violation "baseline_diff:${line}"
+      
+      # Extract metric name from regression line
+      if [[ "${line}" =~ ^metric_regression:([^:]+): ]]; then
+        metric="${BASH_REMATCH[1]}"
+        counter_after="$(increment_counter "${metric}")"
+        
+        # Log to evidence (advisory only, does not affect verdict)
+        echo "drift_counter_increment:${metric}:counter=${counter_after}" >> "${EVIDENCE_DIR}/drift_counters.txt"
+      fi
     done < "${BASELINE_DIFF_TXT}"
   fi
 else
@@ -582,6 +595,9 @@ fi
 
 VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
 
+# Compute drift authority hash for evidence
+DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
+
 {
   echo "time_utc=${NOW}"
   echo "git_sha=${GIT_SHA}"
@@ -603,6 +619,7 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "preempt_sched_idle_count=${SCHED_IDLE_COUNT}"
   echo "preempt_stage_hint_missing=${STAGE_HINT_MISSING_SIGNAL}"
   echo "env_hash=${ENV_HASH}"
+  echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
   echo "boot_time_ms=${BOOT_TIME_MS}"
   echo "preempt_wall_time_ms=${PREEMPT_TIME_MS_WALL}"
   echo "preempt_qemu_run_time_ms=${PREEMPT_QEMU_RUN_TIME_MS}"
@@ -648,6 +665,7 @@ out = {
     "results": read_json("results.json"),
     "baseline_diff": read_lines("baseline.diff.txt"),
     "violations": read_lines("violations.txt"),
+    "drift_counters": read_lines("drift_counters.txt"),
 }
 
 # Provisional mode override
