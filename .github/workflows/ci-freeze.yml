@@ -122,10 +122,28 @@ jobs:
           ld.lld --version | head -n1
           nasm -v
           qemu-system-x86_64 --version | head -n1
+      - name: Compute drift authority hash
+        id: drift_auth
+        run: |
+          set -euo pipefail
+          AUTHORITY_HASH="$(bash -c 'source scripts/ci/lib-drift-persistence.sh; compute_authority_hash')"
+          echo "authority_hash=${AUTHORITY_HASH}" >> "$GITHUB_OUTPUT"
+          echo "Drift authority hash: ${AUTHORITY_HASH}"
+      - name: Restore drift state cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-state
+          key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
       - name: Freeze suite
         run: |
           set -euo pipefail
           make ci-freeze
+      - name: Save drift state cache
+        if: ${{ always() && hashFiles('.ci-state/**') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-state
+          key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
       - name: Dump gate violations on failure
         if: failure()
         run: |
@@ -184,6 +202,7 @@ jobs:
       PERF_QEMU_TIMEOUT: "30"
       PERF_KERNEL_PROFILE: "validation"
       PERF_ENV_MISMATCH_POLICY: "fail"
+      GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
     steps:
       - uses: actions/checkout@v4
         with:

@@ -72,10 +72,10 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
+- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Governance Policy, Drift Activation, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
 - **Bypass:** Prohibited (no exceptions)
-- **Repo Truth (2026-02-22):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
+- **Repo Truth (2026-02-25):**
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-governance-policy`, `ci-gate-drift-activation`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
   - Planned (hard-fail stubs): none
   - Strict suite entrypoint: `make ci-freeze`
 
@@ -389,6 +389,10 @@ make ci-gate-performance
 - Preempt marker timing proxy (`context_switch_latency_ms_proxy`)
 - Preempt IRET timing proxy (`syscall_latency_ms_proxy`)
 - Threshold policy enforcement (`±5%` syscall/context-switch proxy, `±10%` boot)
+- Drift allowlist schema validation (`constitution/drift_blocking_allowlist.json`)
+- Allowlisted metric regressions bypass blocking but are logged (`allowlist_bypass.txt`)
+- N-run persistence state (`.ci-state/drift_state.json`) cached across CI runs
+- Drift authority hash: `clang + qemu + PERF_AUTHORITY_SALT` (git SHA excluded)
 - Proxy model disclosure: metrics are wall-time proxies, not cycle-accurate guest counters
 
 **Failure → Manual architecture review**
@@ -438,6 +442,36 @@ make ci-gate-sched-bridge-runtime
 
 **Purpose:**
 Validates the scheduler arbitration contract (Yol A) where Ring3 stages next task as hint and Ring0 acts as final arbiter with accept/veto authority. Ensures proper mailbox communication and epoch progression.
+
+**Failure → Merge REJECT**
+
+### 4.8 Drift Activation Gate
+
+**Checks:**
+```bash
+make ci-gate-drift-activation
+```
+
+**Current state:** Implemented (phase-driven activation requirement enforcement).
+
+**Validations:**
+- Phase detection from `docs/roadmap/CURRENT_PHASE`
+- Activation state from `constitution/drift_blocking_activation.md`
+- Phase < 9: SKIP (drift blocking optional)
+- Phase >= 9 AND enabled=false: FAIL (drift blocking required)
+- Phase >= 9 AND enabled=true: PASS (drift blocking active)
+- Evidence generation (phase, state, verdict, timestamp, git SHA)
+
+**Evidence:**
+- `evidence/run-<RUN_ID>/gates/drift-activation/report.json`
+- `evidence/run-<RUN_ID>/gates/drift-activation/meta.txt`
+- `evidence/run-<RUN_ID>/gates/drift-activation/violations.txt`
+
+**Purpose:**
+Enforces drift blocking activation requirement when system reaches Phase 9 maturity. This gate validates that drift blocking is explicitly enabled in Phase 9+, ensuring governance maturity enforces deterministic execution discipline.
+
+**Note:**
+This gate enforces activation requirement only. Drift detection and N-run persistence logic is handled by `ci-gate-performance`.
 
 **Failure → Merge REJECT**
 
@@ -559,12 +593,14 @@ Validates the scheduler arbitration contract (Yol A) where Ring3 stages next tas
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-02-22):**
+**Current Status (2026-02-25):**
 - ✅ Boundary gate implementation active (`make ci-gate-boundary`)
 - ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
 - ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
 - ✅ ABI gate implementation active (`make ci-gate-abi`)
 - ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
+- ✅ Governance policy gate implementation active (`make ci-gate-governance-policy`)
+- ✅ Drift activation gate implementation active (`make ci-gate-drift-activation`)
 - ✅ Workspace gate implementation active (`make ci-gate-workspace`)
 - ✅ Syscall v2 runtime gate implementation active (`make ci-gate-syscall-v2-runtime`)
 - ✅ Sched bridge runtime gate implementation active (`make ci-gate-sched-bridge-runtime`)
@@ -777,7 +813,7 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -788,6 +824,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.3 | 2026-02-25 | Kenan AY | Added ci-gate-drift-activation gate documentation |
 | 1.2 | 2026-02-22 | Kenan AY | Added ci-gate-sched-bridge-runtime gate documentation |
 | 1.1 | 2026-02-13 | Kenan AY | Boundary enforcement updated to symbol-scan + deterministic evidence schema |
 | 1.0 | 2026-02-13 | Kenan AY | Initial freeze document |

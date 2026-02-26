@@ -1,0 +1,90 @@
+{
+  "profile": "experimental",
+  "schema_version": "1.0.0",
+  "phases": {
+    "7": {
+      "enabled": true,
+      "status": "telemetry_only",
+      "window": {
+        "last_n": 20
+      },
+      "persistence": {
+        "threshold": 6
+      },
+      "detectors": [
+        {
+          "name": "zscore_accept_rate",
+          "metric": "accept_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_reject_rate",
+          "metric": "reject_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    },
+    "8": {
+      "enabled": true,
+      "status": "telemetry_only",
+      "window": {
+        "last_n": 30
+      },
+      "persistence": {
+        "threshold": 6
+      },
+      "detectors": [
+        {
+          "name": "zscore_accept_rate",
+          "metric": "accept_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_reject_rate",
+          "metric": "reject_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    },
+    "9": {
+      "enabled": true,
+      "status": "observe",
+      "window": {
+        "last_n": 40
+      },
+      "persistence": {
+        "threshold": 6
+      },
+      "detectors": [
+        {
+          "name": "zscore_accept_rate",
+          "metric": "accept_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_reject_rate",
+          "metric": "reject_rate",
+          "warn_abs_z": 2.0,
+          "severe_abs_z": 3.5,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    }
+  }
+}

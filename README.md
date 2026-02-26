@@ -279,6 +279,12 @@ make ci-gate-boundary
 # Hygiene CI gate (tracked artifact + dirty tracked kontrolü)
 make ci-gate-hygiene
 
+# Drift activation gate (Phase-9 requirement: PASS/FAIL/SKIP)
+make ci-gate-drift-activation
+
+# Performance regression gate (baseline + drift persistence + allowlist)
+make ci-gate-performance
+
 # Summary gate (auto-discovery + PASS zorlaması)
 make ci-summarize
 

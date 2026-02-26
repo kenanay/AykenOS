@@ -151,6 +151,9 @@ ABI_INIT_BASELINE ?= 0
 ABI_DIFF_RANGE ?=
 CONSTITUTIONAL_STRICT ?= 1
 CONSTITUTIONAL_STRICT_FLAG = $(if $(filter 1,$(CONSTITUTIONAL_STRICT)),--strict,--no-strict)
+GOVERNANCE_POLICY_KERNEL_PROFILE ?= validation
+RUNTIME_MARKER_CONTRACT_ENFORCE ?= 1
+BEHAVIORAL_SUITE_PHASE ?= 5
 WORKSPACE_STRICT ?= 1
 WORKSPACE_STRICT_FLAG = $(if $(filter 1,$(WORKSPACE_STRICT)),--strict,--no-strict)
 PERF_INIT_BASELINE ?= 0
@@ -568,11 +571,11 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-policy-accept ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -586,6 +589,11 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/governance-policy"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -606,7 +614,12 @@ ci-gate-boundary: ci-evidence-dir
 	@echo "run_id: $(RUN_ID)"
 	@echo "targets: $(CI_TARGETS)"
 	@rm -f "$(KERNEL_ELF)" "$(EVIDENCE_RUN_DIR)/artifacts/kernel.map"
-	@$(MAKE) KERNEL_PROFILE=validation KERNEL_MAP="$(EVIDENCE_RUN_DIR)/artifacts/kernel.map" guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1
+	@if echo "$(MAKEFLAGS)" | grep -Eq '(^|[[:space:]])n($$|[[:space:]])|--just-print|--dry-run|--recon'; then \
+		echo "DRY-RUN: skipping boundary kernel build invocation"; \
+	else \
+		mkdir -p "$(EVIDENCE_RUN_DIR)/logs"; \
+		$(MAKE) KERNEL_PROFILE=validation KERNEL_MAP="$(EVIDENCE_RUN_DIR)/artifacts/kernel.map" guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1; \
+	fi
 	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
 		"$(RUN_ID)" "$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$(EVIDENCE_RUN_DIR)/meta/run.json"
 	@git rev-parse HEAD > "$(EVIDENCE_RUN_DIR)/meta/git.txt" 2>/dev/null || true
@@ -706,6 +719,46 @@ ci-gate-constitutional: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: constitutional evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-governance-policy: ci-evidence-dir
+	@echo "== CI GATE GOVERNANCE POLICY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: $(GOVERNANCE_POLICY_KERNEL_PROFILE)"
+	@KERNEL_PROFILE="$(GOVERNANCE_POLICY_KERNEL_PROFILE)" ./scripts/ci/gate_governance_policy.sh --kernel-profile "$(GOVERNANCE_POLICY_KERNEL_PROFILE)" --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/governance-policy"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/governance-policy/report.json" "$(EVIDENCE_RUN_DIR)/reports/governance-policy.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: governance-policy evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-drift-activation: ci-evidence-dir
+	@echo "== CI GATE DRIFT ACTIVATION =="
+	@echo "run_id: $(RUN_ID)"
+	@./scripts/ci/gate_drift_activation.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/drift-activation/report.json" "$(EVIDENCE_RUN_DIR)/reports/drift-activation.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: drift-activation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-structural-abi: ci-evidence-dir
+	@echo "== CI GATE STRUCTURAL ABI =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "abi_diff_range: $(if $(strip $(ABI_DIFF_RANGE)),$(ABI_DIFF_RANGE),auto)"
+	@ABI_DIFF_RANGE="$(ABI_DIFF_RANGE)" ./scripts/ci/gate_structural_abi.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/structural-abi/report.json" "$(EVIDENCE_RUN_DIR)/reports/structural-abi.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: structural ABI evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-runtime-marker-contract: ci-evidence-dir
+	@echo "== CI GATE RUNTIME MARKER CONTRACT =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "enforced: $(RUNTIME_MARKER_CONTRACT_ENFORCE)"
+	@echo "abi_diff_range: $(if $(strip $(ABI_DIFF_RANGE)),$(ABI_DIFF_RANGE),auto)"
+	@RUNTIME_MARKER_CONTRACT_ENFORCE="$(RUNTIME_MARKER_CONTRACT_ENFORCE)" ABI_DIFF_RANGE="$(ABI_DIFF_RANGE)" ./scripts/ci/gate_runtime_marker_contract.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/runtime-marker-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: runtime marker contract evidence at $(EVIDENCE_RUN_DIR)"
+
+# Backward-compatible composite alias.
+ci-gate-structural-constitution: ci-gate-structural-abi ci-gate-runtime-marker-contract
+	@echo "OK: structural constitution composite gate passed"
+
 ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@echo "== CI GATE SYSCALL V2 RUNTIME =="
 	@echo "run_id: $(RUN_ID)"
@@ -729,9 +782,20 @@ ci-gate-sched-bridge-runtime: ci-evidence-dir
 	@echo "== CI GATE SCHED BRIDGE RUNTIME =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: validation (enforced)"
-	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation bash scripts/ci/gate_sched_bridge_runtime.sh
+	@echo "runtime_marker_contract_enforce: $(RUNTIME_MARKER_CONTRACT_ENFORCE)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation RUNTIME_MARKER_CONTRACT_ENFORCE="$(RUNTIME_MARKER_CONTRACT_ENFORCE)" bash scripts/ci/gate_sched_bridge_runtime.sh
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: sched-bridge-runtime evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-behavioral-suite: ci-evidence-dir
+	@echo "== CI GATE BEHAVIORAL SUITE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: validation (enforced)"
+	@echo "behavioral_suite_phase: $(BEHAVIORAL_SUITE_PHASE)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation BEHAVIORAL_SUITE_PHASE="$(BEHAVIORAL_SUITE_PHASE)" bash scripts/ci/gate_behavioral_suite.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite" --phase "$(BEHAVIORAL_SUITE_PHASE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite/report.json" "$(EVIDENCE_RUN_DIR)/reports/behavioral-suite.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: behavioral-suite evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
@@ -861,8 +925,17 @@ help:
 	@echo "  ci-gate-ring0-exports - Link-time Ring0 export surface gate (nm + whitelist + max count)"
 	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
 	@echo "  ci-gate-tooling-isolation - Fail-closed guard: perf/preempt tooling PRs cannot touch kernel/"
-	@echo "  ci-gate-constitutional - Constitutional freeze gate (strict-mode symbol/path/source/waiver/contract checks)"
+	@echo "  ci-gate-constitutional - Constitutional freeze gate (ABI/boundary/export/contracts hard-lock)"
+	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + waiver audit)"
+	@echo "    (profile selector: GOVERNANCE_POLICY_KERNEL_PROFILE=validation)"
+	@echo "  ci-gate-drift-activation - Phase-9 drift blocking activation requirement enforcement"
+	@echo "  ci-gate-structural-abi - Gate-5A permanent ABI constitution lock (layout + semver policy)"
+	@echo "  ci-gate-runtime-marker-contract - Gate-5B phase-scoped marker contract lock (format + anchors + semver)"
+	@echo "    (toggle: RUNTIME_MARKER_CONTRACT_ENFORCE=0 to disable phase-scoped marker lock)"
+	@echo "  ci-gate-structural-constitution - Composite alias: structural-abi + runtime-marker-contract"
 	@echo "    (override strict locally: CONSTITUTIONAL_STRICT=0)"
+	@echo "  ci-gate-behavioral-suite - Gate-6 behavioral proof suite (phase-driven)"
+	@echo "    (phase selector: BEHAVIORAL_SUITE_PHASE=5 by default)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -879,7 +952,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-syscall-v2-runtime ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

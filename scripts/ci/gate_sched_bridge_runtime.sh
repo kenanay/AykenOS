@@ -20,8 +20,23 @@ LOG_FILE="${EVIDENCE_DIR}/boot.log"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 VIOLATIONS="${EVIDENCE_DIR}/violations.txt"
 BOOT_AUDIT_DIR="${EVIDENCE_DIR}/boot-audit"
+ACCEPT_FORMAT_INVALID_TXT="${EVIDENCE_DIR}/accept-format-invalid.txt"
+REJECT_FORMAT_INVALID_TXT="${EVIDENCE_DIR}/reject-format-invalid.txt"
+RUNTIME_MARKER_CONTRACT_ENFORCE="${RUNTIME_MARKER_CONTRACT_ENFORCE:-1}"
 
 : > "${VIOLATIONS}"
+: > "${ACCEPT_FORMAT_INVALID_TXT}"
+: > "${REJECT_FORMAT_INVALID_TXT}"
+
+ACCEPT_COUNT=0
+REJECT_COUNT=0
+ACCEPT_FORMAT_INVALID=0
+REJECT_FORMAT_INVALID=0
+
+if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" != "0" && "${RUNTIME_MARKER_CONTRACT_ENFORCE}" != "1" ]]; then
+    echo "runtime_marker_contract_enforce_invalid:${RUNTIME_MARKER_CONTRACT_ENFORCE}" >> "${VIOLATIONS}"
+    RUNTIME_MARKER_CONTRACT_ENFORCE=1
+fi
 
 # --- QEMU BOOT ---
 # Run boot harness and capture output
@@ -31,8 +46,6 @@ tools/validation/phase_4_4_qemu_boot_audit.sh --out-dir "${BOOT_AUDIT_DIR}" > "$
 # --- Extract actual serial/debugcon logs ---
 if [[ ! -d "${BOOT_AUDIT_DIR}" ]]; then
     echo "boot_harness_failed:no_report_directory" >> "${VIOLATIONS}"
-    ACCEPT_COUNT=0
-    REJECT_COUNT=0
 else
     # Check both serial and debugcon logs for markers
     SERIAL_LOG="${BOOT_AUDIT_DIR}/qemu_serial.log"
@@ -48,6 +61,75 @@ else
     
     ACCEPT_COUNT=$(echo "${ACCEPT_LINES}" | grep -c . || true)
     REJECT_COUNT=$(echo "${REJECT_LINES}" | grep -c . || true)
+
+    if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" == "1" ]]; then
+        MARKER_REGISTRY="${PWD}/constitution/runtime_markers.json"
+        if [[ ! -f "${MARKER_REGISTRY}" ]]; then
+            echo "marker_registry_missing:${MARKER_REGISTRY}" >> "${VIOLATIONS}"
+        else
+            if ! python3 - "${MARKER_REGISTRY}" "${COMBINED_LOG}" "${ACCEPT_FORMAT_INVALID_TXT}" "${REJECT_FORMAT_INVALID_TXT}" <<'PY'
+import json
+import re
+import sys
+
+registry_path, log_path, accept_out, reject_out = sys.argv[1:5]
+with open(registry_path, "r", encoding="utf-8", errors="replace") as fh:
+    registry = json.load(fh)
+
+markers = registry.get("runtime_markers")
+if not isinstance(markers, list):
+    raise SystemExit(2)
+
+pattern_map = {}
+for row in markers:
+    if isinstance(row, dict):
+        name = row.get("name")
+        pattern = row.get("pattern")
+        if isinstance(name, str) and isinstance(pattern, str):
+            pattern_map[name] = re.compile(pattern)
+
+accept_re = pattern_map.get("AYKEN_SCHED_MB_ACCEPT")
+reject_re = pattern_map.get("AYKEN_SCHED_MB_REJECT")
+if accept_re is None or reject_re is None:
+    raise SystemExit(2)
+
+accept_bad = []
+reject_bad = []
+
+with open(log_path, "r", encoding="utf-8", errors="replace") as fh:
+    for raw in fh:
+        line = raw.rstrip("\n")
+        if "[[AYKEN_SCHED_MB_ACCEPT]]" in line:
+            if not accept_re.fullmatch(line):
+                accept_bad.append(line)
+        if "[[AYKEN_SCHED_MB_REJECT]]" in line:
+            if not reject_re.fullmatch(line):
+                reject_bad.append(line)
+
+with open(accept_out, "w", encoding="utf-8") as fh:
+    for row in accept_bad:
+        fh.write(row + "\n")
+
+with open(reject_out, "w", encoding="utf-8") as fh:
+    for row in reject_bad:
+        fh.write(row + "\n")
+
+raise SystemExit(0)
+PY
+            then
+                echo "marker_registry_parse_or_contract_error" >> "${VIOLATIONS}"
+            fi
+        fi
+    fi
+
+    ACCEPT_FORMAT_INVALID=$(grep -c . "${ACCEPT_FORMAT_INVALID_TXT}" 2>/dev/null || true)
+    REJECT_FORMAT_INVALID=$(grep -c . "${REJECT_FORMAT_INVALID_TXT}" 2>/dev/null || true)
+    if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" == "1" && "${ACCEPT_FORMAT_INVALID}" -gt 0 ]]; then
+        echo "accept_marker_format_invalid:count=${ACCEPT_FORMAT_INVALID}" >> "${VIOLATIONS}"
+    fi
+    if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" == "1" && "${REJECT_FORMAT_INVALID}" -gt 0 ]]; then
+        echo "reject_marker_format_invalid:count=${REJECT_FORMAT_INVALID}" >> "${VIOLATIONS}"
+    fi
     
     # --- Fail if no markers at all ---
     if [[ "${ACCEPT_COUNT}" -eq 0 && "${REJECT_COUNT}" -eq 0 ]]; then
@@ -97,8 +179,11 @@ fi
 cat > "${REPORT_JSON}" <<EOF
 {
   "run_id": "${RUN_ID}",
+  "runtime_marker_contract_enforce": ${RUNTIME_MARKER_CONTRACT_ENFORCE},
   "accept_count": ${ACCEPT_COUNT},
   "reject_count": ${REJECT_COUNT},
+  "accept_format_invalid_count": ${ACCEPT_FORMAT_INVALID},
+  "reject_format_invalid_count": ${REJECT_FORMAT_INVALID},
   "verdict": "${VERDICT}",
   "violations_count": ${VIOLATION_COUNT}
 }

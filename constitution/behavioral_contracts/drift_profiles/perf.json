@@ -1,0 +1,90 @@
+{
+  "profile": "perf",
+  "schema_version": "1.0.0",
+  "phases": {
+    "7": {
+      "enabled": true,
+      "status": "telemetry_only",
+      "window": {
+        "last_n": 20
+      },
+      "persistence": {
+        "threshold": 5
+      },
+      "detectors": [
+        {
+          "name": "zscore_total_sched_events",
+          "metric": "total_sched_events",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_accept_count",
+          "metric": "accept_count",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    },
+    "8": {
+      "enabled": true,
+      "status": "telemetry_only",
+      "window": {
+        "last_n": 30
+      },
+      "persistence": {
+        "threshold": 5
+      },
+      "detectors": [
+        {
+          "name": "zscore_total_sched_events",
+          "metric": "total_sched_events",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_accept_count",
+          "metric": "accept_count",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    },
+    "9": {
+      "enabled": true,
+      "status": "observe",
+      "window": {
+        "last_n": 40
+      },
+      "persistence": {
+        "threshold": 5
+      },
+      "detectors": [
+        {
+          "name": "zscore_total_sched_events",
+          "metric": "total_sched_events",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        },
+        {
+          "name": "zscore_accept_count",
+          "metric": "accept_count",
+          "warn_abs_z": 1.5,
+          "severe_abs_z": 3.0,
+          "severe_verdict": "WARN",
+          "min_samples": 3
+        }
+      ]
+    }
+  }
+}

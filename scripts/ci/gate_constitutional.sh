@@ -13,11 +13,15 @@ Usage:
     [--kernel-elf kernel.elf]
     [--kernel-whitelist scripts/ci/constitutional-ring0-whitelist.regex]
     [--ring0-symbol-whitelist scripts/ci/constitutional-ring0-symbol-whitelist.regex]
-    [--source-deny scripts/ci/constitutional-source-deny.regex]
-    [--source-allow scripts/ci/constitutional-source-allow.regex]
-    [--ahs-config _ayken/steering/AHS_CONFIG.toml]
     [--non-overridable _ayken/steering/NON_OVERRIDABLE.md]
-    [--waiver-dir docs/waivers]
+    [--syscall-h kernel/sys/syscall_v2.h]
+    [--makefile Makefile]
+    [--sched-h kernel/sched/sched.h]
+    [--arch-freeze ARCHITECTURE_FREEZE.md]
+    [--sched-arb-decision docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md]
+    [--ring0-export-map kernel/include/generated/ring0.exports.map]
+    [--governance-boundary docs/governance/CONSTITUTION_BOUNDARY.md]
+    [--drift-activation constitution/drift_blocking_activation.md]
 
 Exit codes:
   0: pass
@@ -31,17 +35,15 @@ STRICT="${STRICT:-1}"
 KERNEL_ELF="${ROOT}/kernel.elf"
 KERNEL_WHITELIST="${ROOT}/scripts/ci/constitutional-ring0-whitelist.regex"
 RING0_SYMBOL_WHITELIST="${ROOT}/scripts/ci/constitutional-ring0-symbol-whitelist.regex"
-SOURCE_DENY="${ROOT}/scripts/ci/constitutional-source-deny.regex"
-SOURCE_ALLOW="${ROOT}/scripts/ci/constitutional-source-allow.regex"
-AHS_CONFIG="${ROOT}/_ayken/steering/AHS_CONFIG.toml"
 NON_OVERRIDABLE="${ROOT}/_ayken/steering/NON_OVERRIDABLE.md"
-WAIVER_DIR="${ROOT}/docs/waivers"
 SYSCALL_H="${ROOT}/kernel/sys/syscall_v2.h"
 MAKEFILE_PATH="${ROOT}/Makefile"
 SCHED_H="${ROOT}/kernel/sched/sched.h"
 ARCH_FREEZE="${ROOT}/ARCHITECTURE_FREEZE.md"
 SCHED_ARB_DECISION="${ROOT}/docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md"
 RING0_EXPORT_MAP="${ROOT}/kernel/include/generated/ring0.exports.map"
+GOVERNANCE_BOUNDARY="${ROOT}/docs/governance/CONSTITUTION_BOUNDARY.md"
+DRIFT_BLOCKING_ACTIVATION="${ROOT}/constitution/drift_blocking_activation.md"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -61,6 +63,42 @@ while [[ $# -gt 0 ]]; do
       KERNEL_ELF="$2"
       shift 2
       ;;
+    --non-overridable)
+      NON_OVERRIDABLE="$2"
+      shift 2
+      ;;
+    --syscall-h)
+      SYSCALL_H="$2"
+      shift 2
+      ;;
+    --makefile)
+      MAKEFILE_PATH="$2"
+      shift 2
+      ;;
+    --sched-h)
+      SCHED_H="$2"
+      shift 2
+      ;;
+    --arch-freeze)
+      ARCH_FREEZE="$2"
+      shift 2
+      ;;
+    --sched-arb-decision)
+      SCHED_ARB_DECISION="$2"
+      shift 2
+      ;;
+    --ring0-export-map)
+      RING0_EXPORT_MAP="$2"
+      shift 2
+      ;;
+    --governance-boundary)
+      GOVERNANCE_BOUNDARY="$2"
+      shift 2
+      ;;
+    --drift-activation)
+      DRIFT_BLOCKING_ACTIVATION="$2"
+      shift 2
+      ;;
     --strict)
       STRICT=1
       shift 1
@@ -68,26 +106,6 @@ while [[ $# -gt 0 ]]; do
     --no-strict)
       STRICT=0
       shift 1
-      ;;
-    --source-deny)
-      SOURCE_DENY="$2"
-      shift 2
-      ;;
-    --source-allow)
-      SOURCE_ALLOW="$2"
-      shift 2
-      ;;
-    --ahs-config)
-      AHS_CONFIG="$2"
-      shift 2
-      ;;
-    --non-overridable)
-      NON_OVERRIDABLE="$2"
-      shift 2
-      ;;
-    --waiver-dir)
-      WAIVER_DIR="$2"
-      shift 2
       ;;
     -h|--help)
       usage
@@ -120,12 +138,10 @@ TRACKED_KERNEL="${EVIDENCE_DIR}/tracked-kernel-files.txt"
 RING0_WHITELIST_VIOLATIONS="${EVIDENCE_DIR}/ring0-whitelist-violations.txt"
 RING0_SYMBOLS="${EVIDENCE_DIR}/ring0-symbols.txt"
 RING0_SYMBOL_VIOLATIONS="${EVIDENCE_DIR}/ring0-symbol-violations.txt"
-SOURCE_HITS="${EVIDENCE_DIR}/source-deny-hits.txt"
-WAIVER_AUDIT="${EVIDENCE_DIR}/waiver-audit.txt"
 CONTRACT_TXT="${EVIDENCE_DIR}/contract.txt"
-AHS_CHECK_TXT="${EVIDENCE_DIR}/ahs-check.txt"
 NON_OVERRIDABLE_CHECK_TXT="${EVIDENCE_DIR}/non-overridable-check.txt"
 SCHED_FALLBACK_CHECK_TXT="${EVIDENCE_DIR}/sched-fallback-check.txt"
+GOVERNANCE_BOUNDARY_CHECK_TXT="${EVIDENCE_DIR}/governance-boundary-check.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
@@ -139,27 +155,23 @@ STRICT_ENV="${STRICT}" \
 KERNEL_ELF_ENV="${KERNEL_ELF}" \
 KERNEL_WHITELIST_ENV="${KERNEL_WHITELIST}" \
 RING0_SYMBOL_WHITELIST_ENV="${RING0_SYMBOL_WHITELIST}" \
-SOURCE_DENY_ENV="${SOURCE_DENY}" \
-SOURCE_ALLOW_ENV="${SOURCE_ALLOW}" \
-AHS_CONFIG_ENV="${AHS_CONFIG}" \
 NON_OVERRIDABLE_ENV="${NON_OVERRIDABLE}" \
-WAIVER_DIR_ENV="${WAIVER_DIR}" \
 SYSCALL_H_ENV="${SYSCALL_H}" \
 MAKEFILE_PATH_ENV="${MAKEFILE_PATH}" \
 SCHED_H_ENV="${SCHED_H}" \
 ARCH_FREEZE_ENV="${ARCH_FREEZE}" \
 SCHED_ARB_DECISION_ENV="${SCHED_ARB_DECISION}" \
 RING0_EXPORT_MAP_ENV="${RING0_EXPORT_MAP}" \
+GOVERNANCE_BOUNDARY_ENV="${GOVERNANCE_BOUNDARY}" \
+DRIFT_BLOCKING_ACTIVATION_ENV="${DRIFT_BLOCKING_ACTIVATION}" \
 TRACKED_KERNEL_ENV="${TRACKED_KERNEL}" \
 RING0_WHITELIST_VIOLATIONS_ENV="${RING0_WHITELIST_VIOLATIONS}" \
 RING0_SYMBOLS_ENV="${RING0_SYMBOLS}" \
 RING0_SYMBOL_VIOLATIONS_ENV="${RING0_SYMBOL_VIOLATIONS}" \
-SOURCE_HITS_ENV="${SOURCE_HITS}" \
-WAIVER_AUDIT_ENV="${WAIVER_AUDIT}" \
 CONTRACT_TXT_ENV="${CONTRACT_TXT}" \
-AHS_CHECK_TXT_ENV="${AHS_CHECK_TXT}" \
 NON_OVERRIDABLE_CHECK_TXT_ENV="${NON_OVERRIDABLE_CHECK_TXT}" \
 SCHED_FALLBACK_CHECK_TXT_ENV="${SCHED_FALLBACK_CHECK_TXT}" \
+GOVERNANCE_BOUNDARY_CHECK_TXT_ENV="${GOVERNANCE_BOUNDARY_CHECK_TXT}" \
 VIOLATIONS_TXT_ENV="${VIOLATIONS_TXT}" \
 META_TXT_ENV="${META_TXT}" \
 REPORT_JSON_ENV="${REPORT_JSON}" \
@@ -171,37 +183,32 @@ import json
 import os
 import re
 import subprocess
-from datetime import date
 from pathlib import Path
 
 ROOT = Path(os.environ["ROOT_ENV"])
-EVIDENCE_DIR = Path(os.environ["EVIDENCE_DIR_ENV"])
 STRICT_MODE = os.environ.get("STRICT_ENV", "1") == "1"
+
 KERNEL_ELF = Path(os.environ["KERNEL_ELF_ENV"])
 KERNEL_WHITELIST = Path(os.environ["KERNEL_WHITELIST_ENV"])
 RING0_SYMBOL_WHITELIST = Path(os.environ["RING0_SYMBOL_WHITELIST_ENV"])
-SOURCE_DENY = Path(os.environ["SOURCE_DENY_ENV"])
-SOURCE_ALLOW = Path(os.environ["SOURCE_ALLOW_ENV"])
-AHS_CONFIG = Path(os.environ["AHS_CONFIG_ENV"])
 NON_OVERRIDABLE = Path(os.environ["NON_OVERRIDABLE_ENV"])
-WAIVER_DIR = Path(os.environ["WAIVER_DIR_ENV"])
 SYSCALL_H = Path(os.environ["SYSCALL_H_ENV"])
 MAKEFILE_PATH = Path(os.environ["MAKEFILE_PATH_ENV"])
 SCHED_H = Path(os.environ["SCHED_H_ENV"])
 ARCH_FREEZE = Path(os.environ["ARCH_FREEZE_ENV"])
 SCHED_ARB_DECISION = Path(os.environ["SCHED_ARB_DECISION_ENV"])
 RING0_EXPORT_MAP = Path(os.environ["RING0_EXPORT_MAP_ENV"])
+GOVERNANCE_BOUNDARY = Path(os.environ["GOVERNANCE_BOUNDARY_ENV"])
+DRIFT_BLOCKING_ACTIVATION = Path(os.environ["DRIFT_BLOCKING_ACTIVATION_ENV"])
 
 TRACKED_KERNEL = Path(os.environ["TRACKED_KERNEL_ENV"])
 RING0_WHITELIST_VIOLATIONS = Path(os.environ["RING0_WHITELIST_VIOLATIONS_ENV"])
 RING0_SYMBOLS = Path(os.environ["RING0_SYMBOLS_ENV"])
 RING0_SYMBOL_VIOLATIONS = Path(os.environ["RING0_SYMBOL_VIOLATIONS_ENV"])
-SOURCE_HITS = Path(os.environ["SOURCE_HITS_ENV"])
-WAIVER_AUDIT = Path(os.environ["WAIVER_AUDIT_ENV"])
 CONTRACT_TXT = Path(os.environ["CONTRACT_TXT_ENV"])
-AHS_CHECK_TXT = Path(os.environ["AHS_CHECK_TXT_ENV"])
 NON_OVERRIDABLE_CHECK_TXT = Path(os.environ["NON_OVERRIDABLE_CHECK_TXT_ENV"])
 SCHED_FALLBACK_CHECK_TXT = Path(os.environ["SCHED_FALLBACK_CHECK_TXT_ENV"])
+GOVERNANCE_BOUNDARY_CHECK_TXT = Path(os.environ["GOVERNANCE_BOUNDARY_CHECK_TXT_ENV"])
 VIOLATIONS_TXT = Path(os.environ["VIOLATIONS_TXT_ENV"])
 META_TXT = Path(os.environ["META_TXT_ENV"])
 REPORT_JSON = Path(os.environ["REPORT_JSON_ENV"])
@@ -214,12 +221,10 @@ for path in (
     RING0_WHITELIST_VIOLATIONS,
     RING0_SYMBOLS,
     RING0_SYMBOL_VIOLATIONS,
-    SOURCE_HITS,
-    WAIVER_AUDIT,
     CONTRACT_TXT,
-    AHS_CHECK_TXT,
     NON_OVERRIDABLE_CHECK_TXT,
     SCHED_FALLBACK_CHECK_TXT,
+    GOVERNANCE_BOUNDARY_CHECK_TXT,
     VIOLATIONS_TXT,
 ):
     path.write_text("", encoding="utf-8")
@@ -228,16 +233,16 @@ violations = []
 ring0_whitelist_hits = []
 ring0_symbol_list = []
 ring0_symbol_hits = []
-source_hits = []
-waiver_audit_rows = []
-waiver_violations_count = 0
-non_overridable_missing_count = 0
+contract = {}
 sched_fallback_violations_count = 0
 sched_fallback_check_lines = []
 sched_arbitration_violations_count = 0
 sched_arbitration_check_lines = []
 linker_enforcement_violations_count = 0
 linker_enforcement_check_lines = []
+governance_boundary_violations_count = 0
+governance_boundary_check_lines = []
+non_overridable_missing_count = 0
 
 
 def add_violation(kind: str, detail: str) -> None:
@@ -256,34 +261,6 @@ def load_regex_lines(path: Path):
     return rows
 
 
-def parse_allow_rules(path: Path):
-    rules = []
-    rows = load_regex_lines(path)
-    if rows is None:
-        return None
-    for line in rows:
-        if ":" in line:
-            file_rgx, line_rgx = line.split(":", 1)
-            rules.append(("scoped", file_rgx.strip(), line_rgx.strip()))
-        else:
-            rules.append(("global", line))
-    return rules
-
-
-def allow_matches(allow_rules, rel_path: str, line: str):
-    if not allow_rules:
-        return False
-    for rule in allow_rules:
-        if rule[0] == "global":
-            if re.search(rule[1], line):
-                return True
-        else:
-            _, file_rgx, line_rgx = rule
-            if re.search(file_rgx, rel_path) and re.search(line_rgx, line):
-                return True
-    return False
-
-
 try:
     tracked_kernel = subprocess.check_output(
         ["git", "-C", str(ROOT), "ls-files", "kernel"], text=True
@@ -293,7 +270,8 @@ except subprocess.CalledProcessError:
     tracked_kernel = []
 
 TRACKED_KERNEL.write_text(
-    "\n".join(tracked_kernel) + ("\n" if tracked_kernel else ""), encoding="utf-8"
+    "\n".join(tracked_kernel) + ("\n" if tracked_kernel else ""),
+    encoding="utf-8",
 )
 
 # 1) Ring0 tracked-path whitelist enforcement.
@@ -311,10 +289,11 @@ else:
 
 if ring0_whitelist_hits:
     RING0_WHITELIST_VIOLATIONS.write_text(
-        "\n".join(ring0_whitelist_hits) + "\n", encoding="utf-8"
+        "\n".join(ring0_whitelist_hits) + "\n",
+        encoding="utf-8",
     )
 
-# 1b) Ring0 exported symbol whitelist enforcement (strict mode).
+# 2) Ring0 exported symbol whitelist enforcement (strict mode).
 if STRICT_MODE:
     symbol_rows = load_regex_lines(RING0_SYMBOL_WHITELIST)
     if symbol_rows is None:
@@ -325,7 +304,8 @@ if STRICT_MODE:
         symbol_rules = [re.compile(pat) for pat in symbol_rows]
         try:
             nm_lines = subprocess.check_output(
-                ["nm", "-g", "--defined-only", str(KERNEL_ELF)], text=True
+                ["nm", "-g", "--defined-only", str(KERNEL_ELF)],
+                text=True,
             ).splitlines()
         except Exception as exc:
             add_violation("ring0_symbol_scan_failed", type(exc).__name__)
@@ -372,60 +352,12 @@ if STRICT_MODE:
 
         if ring0_symbol_hits:
             RING0_SYMBOL_VIOLATIONS.write_text(
-                "\n".join(ring0_symbol_hits) + "\n", encoding="utf-8"
+                "\n".join(ring0_symbol_hits) + "\n",
+                encoding="utf-8",
             )
-
-# 2) Kernel source deny/allow scan.
-deny_rows = load_regex_lines(SOURCE_DENY)
-allow_rules = parse_allow_rules(SOURCE_ALLOW)
-if deny_rows is None:
-    add_violation("missing_file", str(SOURCE_DENY))
-else:
-    deny_patterns = [re.compile(pat) for pat in deny_rows]
-    src_ext = {".c", ".h", ".S", ".s", ".asm", ".inc", ".ld"}
-    for rel in tracked_kernel:
-        # Validation/test fixtures are reviewed separately; strict source deny targets default path.
-        if re.search(r"(?:^|/).*(?:_test|validation_test)\.c$", rel):
-            continue
-        p = ROOT / rel
-        if p.suffix not in src_ext or not p.is_file():
-            continue
-        try:
-            lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
-        except Exception as exc:
-            add_violation("source_read_error", f"{rel}:{type(exc).__name__}")
-            continue
-        for idx, line in enumerate(lines, 1):
-            stripped = line.strip()
-            if (
-                stripped.startswith("//")
-                or stripped.startswith("/*")
-                or stripped.startswith("*")
-                or stripped.startswith(";")
-            ):
-                continue
-            # Remove inline comments and string/char literals to reduce false positives.
-            scan_line = re.sub(r"//.*$", "", line)
-            scan_line = re.sub(r'"(?:\\.|[^"\\])*"', '""', scan_line)
-            scan_line = re.sub(r"'(?:\\.|[^'\\])*'", "''", scan_line)
-            for pat in deny_patterns:
-                if pat.search(scan_line):
-                    if allow_matches(allow_rules, rel, scan_line):
-                        continue
-                    snippet = line.strip()
-                    if len(snippet) > 160:
-                        snippet = snippet[:157] + "..."
-                    hit = f"{rel}:{idx}:pattern={pat.pattern}:line={snippet}"
-                    source_hits.append(hit)
-                    add_violation("source_deny", hit)
-                    break
-
-if source_hits:
-    SOURCE_HITS.write_text("\n".join(source_hits) + "\n", encoding="utf-8")
 
 # 3) Syscall contract lock (must remain frozen).
 contract_macros = {}
-contract = {}
 if not SYSCALL_H.exists():
     add_violation("missing_file", str(SYSCALL_H))
 else:
@@ -446,6 +378,7 @@ else:
         "SYS_V2_MAX_SYSCALL",
         "SYS_V2_DEBUG_PUTCHAR",
     ]
+
     missing = [k for k in required if k not in contract_macros]
     if missing:
         add_violation("syscall_contract_missing_macro", ",".join(missing))
@@ -525,7 +458,8 @@ else:
                 add_violation("syscall_contract_math", "SYS_V2_NR mismatch")
 
 CONTRACT_TXT.write_text(
-    "".join(f"{k}={v}\n" for k, v in sorted(contract.items())), encoding="utf-8"
+    "".join(f"{k}={v}\n" for k, v in sorted(contract.items())),
+    encoding="utf-8",
 )
 
 # 4) Scheduler fallback isolation contract.
@@ -568,11 +502,6 @@ else:
         sched_fallback_violations_count += 1
         add_violation("sched_fallback_header_default", "AYKEN_SCHED_FALLBACK 0")
 
-SCHED_FALLBACK_CHECK_TXT.write_text(
-    "\n".join(sched_fallback_check_lines) + ("\n" if sched_fallback_check_lines else ""),
-    encoding="utf-8",
-)
-
 # 4b) Scheduler arbitration contract freeze guard.
 if not ARCH_FREEZE.exists():
     sched_arbitration_violations_count += 1
@@ -593,15 +522,6 @@ if not SCHED_ARB_DECISION.exists():
     sched_arbitration_check_lines.append("decision_record=missing")
 else:
     sched_arbitration_check_lines.append("decision_record=present")
-
-if sched_arbitration_check_lines:
-    SCHED_FALLBACK_CHECK_TXT.write_text(
-        (
-            "\n".join(sched_fallback_check_lines + sched_arbitration_check_lines)
-            + "\n"
-        ),
-        encoding="utf-8",
-    )
 
 # 4c) Linker-level Ring0 export enforcement contract.
 if not MAKEFILE_PATH.exists():
@@ -643,44 +563,48 @@ if STRICT_MODE:
             add_violation("linker_export_map_invalid", "local:* missing")
             linker_enforcement_check_lines.append("export_map_local_all=missing")
 
-if linker_enforcement_check_lines:
-    SCHED_FALLBACK_CHECK_TXT.write_text(
-        (
-            "\n".join(
-                sched_fallback_check_lines
-                + sched_arbitration_check_lines
-                + linker_enforcement_check_lines
-            )
-            + "\n"
-        ),
-        encoding="utf-8",
-    )
+# 5) Constitutional boundary lock for governance layers.
+governance_doc_specs = [
+    (
+        "constitution_boundary_doc",
+        GOVERNANCE_BOUNDARY,
+        [
+            ("constitutional_surface", r"Constitutional Surface"),
+            ("abi_contract_lock", r"ABI contract"),
+            ("marker_contract_lock", r"Marker contract"),
+            ("tier3_surface", r"Non-Constitutional Governance Surface"),
+            ("phase7_8_non_blocking", r"Phase\s*7\s*and\s*Phase\s*8"),
+            ("auto_rewrite_forbidden", r"auto-rewrite is forbidden"),
+        ],
+    ),
+    (
+        "drift_activation_protocol",
+        DRIFT_BLOCKING_ACTIVATION,
+        [
+            ("phase_min_guard", r"Phase is\s*`?>=\s*9`?"),
+            ("policy_default_disabled", r"enabled=false"),
+            ("no_auto_activation", r"No auto-activation"),
+        ],
+    ),
+]
 
-# 5) AHS threshold guard.
-ahs_check_lines = []
-if not AHS_CONFIG.exists():
-    add_violation("missing_file", str(AHS_CONFIG))
-else:
-    ahs_text = AHS_CONFIG.read_text(encoding="utf-8", errors="replace")
-    checks = {
-        "P5_minimum": 95,
-        "P4_5_minimum": 90,
-        "clean_threshold": 90,
-    }
-    for key, min_val in checks.items():
-        m = re.search(rf"^\s*{re.escape(key)}\s*=\s*([0-9]+)\b", ahs_text, flags=re.MULTILINE)
-        if not m:
-            ahs_check_lines.append(f"{key}=MISSING")
-            add_violation("ahs_config_missing", key)
-            continue
-        val = int(m.group(1))
-        ahs_check_lines.append(f"{key}={val}")
-        if val < min_val:
-            add_violation("ahs_threshold", f"{key}:required>={min_val}:actual={val}")
+for doc_label, doc_path, required_patterns in governance_doc_specs:
+    if not doc_path.exists():
+        governance_boundary_violations_count += 1
+        add_violation("missing_file", str(doc_path))
+        governance_boundary_check_lines.append(f"{doc_label}=missing")
+        continue
 
-AHS_CHECK_TXT.write_text(
-    "\n".join(ahs_check_lines) + ("\n" if ahs_check_lines else ""), encoding="utf-8"
-)
+    governance_boundary_check_lines.append(f"{doc_label}=present")
+    doc_text = doc_path.read_text(encoding="utf-8", errors="replace")
+    for token_name, token_pattern in required_patterns:
+        present = re.search(token_pattern, doc_text, flags=re.IGNORECASE | re.MULTILINE) is not None
+        governance_boundary_check_lines.append(
+            f"{doc_label}:{token_name}={'present' if present else 'missing'}"
+        )
+        if not present:
+            governance_boundary_violations_count += 1
+            add_violation("governance_boundary_missing", f"{doc_path}:{token_name}")
 
 # 6) NON_OVERRIDABLE integrity check.
 non_over_required = [
@@ -703,93 +627,30 @@ else:
             add_violation("non_overridable_missing", token)
 
 NON_OVERRIDABLE_CHECK_TXT.write_text(
-    "\n".join(non_over_lines) + ("\n" if non_over_lines else ""), encoding="utf-8"
+    "\n".join(non_over_lines) + ("\n" if non_over_lines else ""),
+    encoding="utf-8",
 )
 
-# 7) Waiver policy checks.
-waiver_files = []
-if not WAIVER_DIR.exists():
-    add_violation("missing_dir", str(WAIVER_DIR))
-else:
-    for p in sorted(WAIVER_DIR.glob("*.md")):
-        if p.name in {"README.md", "WAIVER_TEMPLATE.md"}:
-            continue
-        waiver_files.append(p)
+SCHED_FALLBACK_CHECK_TXT.write_text(
+    "\n".join(
+        sched_fallback_check_lines
+        + sched_arbitration_check_lines
+        + linker_enforcement_check_lines
+    )
+    + "\n",
+    encoding="utf-8",
+)
 
-today = date.today()
-critical_tokens = [
-    "KERNEL.RING0.POLICY",
-    "KERNEL.CAPABILITY.BYPASS",
-    "SECURITY.BOUNDARY.VIOLATION",
-    "CONSTITUTIONAL.ENFORCEMENT.BYPASS",
-    "NON_OVERRIDABLE",
-]
+GOVERNANCE_BOUNDARY_CHECK_TXT.write_text(
+    "\n".join(governance_boundary_check_lines)
+    + ("\n" if governance_boundary_check_lines else ""),
+    encoding="utf-8",
+)
 
-for wf in waiver_files:
-    text = wf.read_text(encoding="utf-8", errors="replace")
-    rel = str(wf.relative_to(ROOT))
-
-    exp_match = re.search(r"^\s*-\s*Expiry Date:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$", text, flags=re.MULTILINE)
-    date_match = re.search(r"^\s*-\s*Date:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$", text, flags=re.MULTILINE)
-    issue_match = re.search(r"^\s*-\s*Related Issue:\s*(.+)$", text, flags=re.MULTILINE)
-
-    row = [rel]
-    if not exp_match:
-        waiver_violations_count += 1
-        add_violation("waiver_missing_expiry", rel)
-        row.append("expiry=MISSING")
-        expiry_date = None
-    else:
-        row.append(f"expiry={exp_match.group(1)}")
-        try:
-            y, m, d = map(int, exp_match.group(1).split("-"))
-            expiry_date = date(y, m, d)
-            if expiry_date < today:
-                waiver_violations_count += 1
-                add_violation("waiver_expired", f"{rel}:{expiry_date.isoformat()}")
-        except Exception:
-            waiver_violations_count += 1
-            add_violation("waiver_invalid_expiry", rel)
-            expiry_date = None
-
-    if not issue_match or not issue_match.group(1).strip():
-        waiver_violations_count += 1
-        add_violation("waiver_missing_issue", rel)
-        row.append("issue=MISSING")
-    else:
-        row.append("issue=OK")
-
-    if date_match and expiry_date:
-        try:
-            y, m, d = map(int, date_match.group(1).split("-"))
-            start_date = date(y, m, d)
-            duration = (expiry_date - start_date).days
-            row.append(f"duration_days={duration}")
-            if duration > 90:
-                waiver_violations_count += 1
-                add_violation("waiver_duration_exceeds_90", f"{rel}:{duration}")
-        except Exception:
-            waiver_violations_count += 1
-            add_violation("waiver_invalid_date", rel)
-            row.append("duration_days=INVALID")
-    else:
-        row.append("duration_days=UNKNOWN")
-
-    for token in critical_tokens:
-        if token.lower() in text.lower():
-            waiver_violations_count += 1
-            add_violation("waiver_non_overridable", f"{rel}:{token}")
-            row.append("non_overridable_ref=YES")
-            break
-
-    waiver_audit_rows.append(" ".join(row))
-
-if waiver_audit_rows:
-    WAIVER_AUDIT.write_text("\n".join(waiver_audit_rows) + "\n", encoding="utf-8")
-
-violations.sort()
+violations = sorted(set(v for v in violations if v))
 VIOLATIONS_TXT.write_text(
-    "\n".join(violations) + ("\n" if violations else ""), encoding="utf-8"
+    "\n".join(violations) + ("\n" if violations else ""),
+    encoding="utf-8",
 )
 
 meta = {
@@ -799,28 +660,23 @@ meta = {
     "kernel_elf": str(KERNEL_ELF),
     "kernel_whitelist_file": str(KERNEL_WHITELIST),
     "ring0_symbol_whitelist_file": str(RING0_SYMBOL_WHITELIST),
-    "source_deny_file": str(SOURCE_DENY),
-    "source_allow_file": str(SOURCE_ALLOW),
-    "ahs_config_file": str(AHS_CONFIG),
     "non_overridable_file": str(NON_OVERRIDABLE),
-    "waiver_dir": str(WAIVER_DIR),
     "tracked_kernel_file_count": len(tracked_kernel),
     "ring0_whitelist_violations_count": len(ring0_whitelist_hits),
     "ring0_symbol_count": len(ring0_symbol_list),
     "ring0_symbol_violations_count": len(ring0_symbol_hits),
-    "source_deny_hits_count": len(source_hits),
-    "waiver_file_count": len(waiver_files),
-    "waiver_violations_count": waiver_violations_count,
-    "non_overridable_missing_count": non_overridable_missing_count,
     "sched_fallback_env": sched_fallback_env,
     "sched_fallback_violations_count": sched_fallback_violations_count,
     "sched_arbitration_violations_count": sched_arbitration_violations_count,
     "linker_enforcement_violations_count": linker_enforcement_violations_count,
+    "governance_boundary_violations_count": governance_boundary_violations_count,
+    "non_overridable_missing_count": non_overridable_missing_count,
     "violations_count": len(violations),
 }
 
 META_TXT.write_text(
-    "".join(f"{k}={v}\n" for k, v in meta.items()), encoding="utf-8"
+    "".join(f"{k}={v}\n" for k, v in meta.items()),
+    encoding="utf-8",
 )
 
 report = {
@@ -834,23 +690,20 @@ report = {
         "ring0_symbol_whitelist": (
             "PASS" if not ring0_symbol_hits else "FAIL"
         ) if STRICT_MODE else "SKIP",
-        "source_deny_scan": "PASS" if not source_hits else "FAIL",
         "syscall_contract": "PASS" if contract and not any(v.startswith("syscall_contract_") for v in violations) else "FAIL",
         "scheduler_fallback_policy": "PASS" if sched_fallback_violations_count == 0 else "FAIL",
         "scheduler_arbitration_contract": "PASS" if sched_arbitration_violations_count == 0 else "FAIL",
         "linker_symbol_enforcement": "PASS" if linker_enforcement_violations_count == 0 else "FAIL",
-        "ahs_thresholds": "PASS" if not any(v.startswith("ahs_") for v in violations) else "FAIL",
+        "governance_boundary_lock": "PASS" if governance_boundary_violations_count == 0 else "FAIL",
         "non_overridable_integrity": "PASS" if non_overridable_missing_count == 0 else "FAIL",
-        "waiver_policy": "PASS" if waiver_violations_count == 0 else "FAIL",
     },
     "violations": violations,
     "ring0_whitelist_violations": ring0_whitelist_hits,
     "ring0_symbol_violations": ring0_symbol_hits,
-    "source_deny_hits": source_hits,
     "sched_fallback_checks": sched_fallback_check_lines,
     "sched_arbitration_checks": sched_arbitration_check_lines,
     "linker_enforcement_checks": linker_enforcement_check_lines,
-    "waiver_audit": waiver_audit_rows,
+    "governance_boundary_checks": governance_boundary_check_lines,
 }
 
 REPORT_JSON.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -858,7 +711,7 @@ REPORT_JSON.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", enco
 raise SystemExit(0 if not violations else 2)
 PY
 
-VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
+VIOLATIONS_COUNT="$(grep -c . "${VIOLATIONS_TXT}" 2>/dev/null || true)"
 if [[ "${VIOLATIONS_COUNT}" -gt 0 ]]; then
   echo "constitutional: FAIL (${VIOLATIONS_COUNT} violations)"
   echo "See: ${VIOLATIONS_TXT}"

@@ -3,6 +3,7 @@
 *.d
 *.elf
 *.img
+*.img.dmg
 *.fd
 *.efi
 *.log
@@ -61,3 +62,7 @@ test_baseline_init.sh
 **/syscall_efi_run.*
 qemu_*.log
 evidence/
+
+# Drift persistence state (CI artifact only, not committed)
+.ci-state/
+.ci-state-test/

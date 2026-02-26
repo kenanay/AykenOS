@@ -4,12 +4,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_TOOLS="${ROOT}/tools/ci"
 source "${CI_TOOLS}/lib.sh"
+source "${ROOT}/scripts/ci/lib-drift-persistence.sh"
+source "${ROOT}/scripts/ci/lib-drift-allowlist.sh"
 
 usage() {
   cat <<'USAGE'
 Usage:
   scripts/ci/gate_performance.sh --evidence-dir evidence/run-<id>/gates/performance
     [--baseline-file scripts/ci/perf-baseline.lock.json]
+    [--drift-allowlist-file constitution/drift_blocking_allowlist.json]
     [--kernel-profile validation]
     [--qemu-timeout 30]
     [--env-mismatch-policy fail|waiver]
@@ -20,6 +23,7 @@ Env controls:
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
   PERF_PREEMPT_FORCE_EFI_REBUILD=0|1           (default: 1)
+  DRIFT_ALLOWLIST_FILE=<path>                  (default: constitution/drift_blocking_allowlist.json)
 
 Exit codes:
   0: pass
@@ -30,6 +34,7 @@ USAGE
 
 EVIDENCE_DIR=""
 BASELINE_FILE="${ROOT}/scripts/ci/perf-baseline.lock.json"
+DRIFT_ALLOWLIST_FILE="${DRIFT_ALLOWLIST_FILE:-${ROOT}/constitution/drift_blocking_allowlist.json}"
 PERF_AUTHORITY_ENV_FILE="${ROOT}/scripts/ci/perf_authority.env"
 PERF_AUTHORITY_DEFAULT="$(sed -n 's/^PERF_BASELINE_AUTHORITY=//p' "${PERF_AUTHORITY_ENV_FILE}" 2>/dev/null | head -n1 || true)"
 PERF_AUTHORITY_DEFAULT="${PERF_AUTHORITY_DEFAULT:-github-hosted-ubuntu-24.04-x64}"
@@ -56,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --baseline-file)
       BASELINE_FILE="$2"
+      shift 2
+      ;;
+    --drift-allowlist-file)
+      DRIFT_ALLOWLIST_FILE="$2"
       shift 2
       ;;
     --kernel-profile)
@@ -155,12 +164,17 @@ is_pinned_ci_digest() {
   return 0
 }
 
-for tool in git make python3 qemu-system-x86_64; do
+for tool in git make python3 qemu-system-x86_64 jq; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: required tool missing (${tool})" >&2
     exit 3
   fi
 done
+
+if ! validate_drift_allowlist "${DRIFT_ALLOWLIST_FILE}"; then
+  exit 3
+fi
+DRIFT_ALLOWLIST_VERSION="$(jq -r '.version' "${DRIFT_ALLOWLIST_FILE}")"
 
 now_ms() {
   python3 - <<'PY'
@@ -212,6 +226,7 @@ PREEMPT_METRICS_TXT="${EVIDENCE_DIR}/preempt.metrics.txt"
 ACTUAL_LOCK_JSON="${EVIDENCE_DIR}/actual.lock.json"
 BASELINE_DIFF_TXT="${EVIDENCE_DIR}/baseline.diff.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
+ALLOWLIST_BYPASS_TXT="${EVIDENCE_DIR}/allowlist_bypass.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 
@@ -225,6 +240,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${ACTUAL_LOCK_JSON}"
 : > "${BASELINE_DIFF_TXT}"
 : > "${VIOLATIONS_TXT}"
+: > "${ALLOWLIST_BYPASS_TXT}"
 
 record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
@@ -460,6 +476,8 @@ with open(os.environ["ACTUAL_LOCK_JSON_ENV"], "w", encoding="utf-8") as fh:
 PY
 
 # 8) Baseline policy and compare.
+DRIFT_ALLOWLIST_BYPASS_COUNT=0
+
 if [[ -f "${BASELINE_FILE}" ]]; then
   BASELINE_REL=""
   if [[ "${BASELINE_FILE}" == "${ROOT}/"* ]]; then
@@ -547,11 +565,32 @@ PY
   then
     :
   else
-    record_violation "baseline_mismatch:${BASELINE_FILE}"
+    BLOCKING_DIFF_COUNT=0
+
+    # Process baseline diffs and bypass allowlisted metric regressions.
     while IFS= read -r line; do
       [[ -z "${line}" ]] && continue
+
+      # Metric regressions may be bypassed via drift allowlist.
+      if [[ "${line}" =~ ^metric_regression:([^:]+): ]]; then
+        metric="${BASH_REMATCH[1]}"
+        if is_metric_allowlisted "${metric}" "${DRIFT_ALLOWLIST_FILE}"; then
+          echo "allowlist_bypass:${metric}:${line}" >> "${ALLOWLIST_BYPASS_TXT}"
+          DRIFT_ALLOWLIST_BYPASS_COUNT=$((DRIFT_ALLOWLIST_BYPASS_COUNT + 1))
+          continue
+        fi
+
+        counter_after="$(increment_counter "${metric}")"
+        echo "drift_counter_increment:${metric}:counter=${counter_after}" >> "${EVIDENCE_DIR}/drift_counters.txt"
+      fi
+
       record_violation "baseline_diff:${line}"
+      BLOCKING_DIFF_COUNT=$((BLOCKING_DIFF_COUNT + 1))
     done < "${BASELINE_DIFF_TXT}"
+
+    if [[ "${BLOCKING_DIFF_COUNT}" -gt 0 ]]; then
+      record_violation "baseline_mismatch:${BASELINE_FILE}"
+    fi
   fi
 else
   if [[ "${INIT_BASELINE}" -eq 1 ]]; then
@@ -582,6 +621,9 @@ fi
 
 VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
 
+# Compute drift authority hash for evidence
+DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
+
 {
   echo "time_utc=${NOW}"
   echo "git_sha=${GIT_SHA}"
@@ -603,6 +645,10 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "preempt_sched_idle_count=${SCHED_IDLE_COUNT}"
   echo "preempt_stage_hint_missing=${STAGE_HINT_MISSING_SIGNAL}"
   echo "env_hash=${ENV_HASH}"
+  echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
+  echo "drift_allowlist_file=${DRIFT_ALLOWLIST_FILE}"
+  echo "drift_allowlist_version=${DRIFT_ALLOWLIST_VERSION}"
+  echo "drift_allowlist_bypass_count=${DRIFT_ALLOWLIST_BYPASS_COUNT}"
   echo "boot_time_ms=${BOOT_TIME_MS}"
   echo "preempt_wall_time_ms=${PREEMPT_TIME_MS_WALL}"
   echo "preempt_qemu_run_time_ms=${PREEMPT_QEMU_RUN_TIME_MS}"
@@ -648,6 +694,8 @@ out = {
     "results": read_json("results.json"),
     "baseline_diff": read_lines("baseline.diff.txt"),
     "violations": read_lines("violations.txt"),
+    "drift_counters": read_lines("drift_counters.txt"),
+    "allowlist_bypass": read_lines("allowlist_bypass.txt"),
 }
 
 # Provisional mode override

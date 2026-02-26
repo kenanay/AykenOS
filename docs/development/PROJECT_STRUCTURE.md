@@ -2,7 +2,7 @@
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
-**Son Güncelleme:** 13 Şubat 2026
+**Son Güncelleme:** 24 Şubat 2026
 
 Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detaylı olarak açıklar.
 
@@ -1168,13 +1168,23 @@ make ci-freeze    # Strict freeze suite (planned gates dahil)
 ### Freeze Gate Durumu (Gerçek Repo Durumu)
 
 1. Implemented:
-   - `ci-gate-boundary`
-   - `ci-gate-hygiene`
-   - `ci-summarize`
-2. Planned (hard-fail stubs):
    - `ci-gate-abi`
+   - `ci-gate-boundary`
+   - `ci-gate-ring0-exports`
+   - `ci-gate-hygiene`
+   - `ci-gate-tooling-isolation`
+   - `ci-gate-constitutional`
+   - `ci-gate-governance-policy`
+   - `ci-gate-structural-abi`
+   - `ci-gate-runtime-marker-contract`
    - `ci-gate-workspace`
+   - `ci-gate-syscall-v2-runtime`
+   - `ci-gate-sched-bridge-runtime`
+   - `ci-gate-behavioral-suite`
+   - `ci-gate-policy-accept`
    - `ci-gate-performance`
+   - `ci-summarize`
+2. Planned (hard-fail stubs): none
 
 Not: Root altında `README.md` dışındaki governance template dosyaları tutulmaz; tek doğru yer `docs/` ve `.github/` hiyerarşisidir.
 

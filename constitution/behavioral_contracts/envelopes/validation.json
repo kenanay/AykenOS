@@ -1,0 +1,60 @@
+{
+  "profile": "validation",
+  "schema_version": "1.0.0",
+  "description": "Validation profile envelope (phase-scoped).",
+  "phases": {
+    "7": {
+      "enabled": true,
+      "mode": "warn",
+      "warn_escalates_in_strict": false,
+      "min_samples": 3,
+      "rules": [
+        {
+          "name": "sched_events_min",
+          "metric": "total_sched_events",
+          "min": 3,
+          "severity": "warn"
+        },
+        {
+          "name": "ring3_presence_min",
+          "metric": "ring3_marker_count",
+          "min": 1,
+          "severity": "warn"
+        },
+        {
+          "name": "reject_rate_guard",
+          "metric": "reject_rate",
+          "baseline": 0.67,
+          "max_delta_abs": 0.31,
+          "severity": "warn"
+        },
+        {
+          "name": "accept_rate_floor",
+          "metric": "accept_rate",
+          "min": 0.05,
+          "severity": "warn"
+        }
+      ]
+    },
+    "8": {
+      "enabled": true,
+      "mode": "fail",
+      "warn_escalates_in_strict": false,
+      "min_samples": 3,
+      "rules": [
+        {
+          "name": "sched_events_min",
+          "metric": "total_sched_events",
+          "min": 3,
+          "severity": "fail"
+        },
+        {
+          "name": "ring3_presence_min",
+          "metric": "ring3_marker_count",
+          "min": 1,
+          "severity": "fail"
+        }
+      ]
+    }
+  }
+}

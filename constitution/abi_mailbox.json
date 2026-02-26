@@ -1,0 +1,68 @@
+{
+  "mailbox": {
+    "struct_name": "ayken_sched_mailbox_t",
+    "size": 64,
+    "alignment": 64,
+    "attributes": ["packed", "aligned(64)"],
+    "fields": {
+      "magic": {
+        "type": "uint32_t",
+        "offset": 0,
+        "size": 4
+      },
+      "version": {
+        "type": "uint16_t",
+        "offset": 4,
+        "size": 2
+      },
+      "kind": {
+        "type": "uint16_t",
+        "offset": 6,
+        "size": 2
+      },
+      "epoch": {
+        "type": "uint64_t",
+        "offset": 8,
+        "size": 8
+      },
+      "proposer_pid": {
+        "type": "uint32_t",
+        "offset": 16,
+        "size": 4
+      },
+      "candidate_pid": {
+        "type": "uint32_t",
+        "offset": 20,
+        "size": 4
+      },
+      "flags": {
+        "type": "uint32_t",
+        "offset": 24,
+        "size": 4
+      },
+      "status": {
+        "type": "uint32_t",
+        "offset": 28,
+        "size": 4
+      },
+      "reject_reason": {
+        "type": "uint32_t",
+        "offset": 32,
+        "size": 4
+      },
+      "reserved": {
+        "type": "uint32_t",
+        "offset": 36,
+        "size": 4
+      }
+    }
+  },
+  "description": "Constitutional mailbox ABI baseline. Changes require version bump.",
+  "source": "kernel/include/sched_mailbox_abi.h",
+  "rules": {
+    "size_change": "Requires MAJOR version bump",
+    "field_offset_change": "Requires MAJOR version bump",
+    "field_add": "Requires MINOR version bump (append only)",
+    "field_remove": "Requires MAJOR version bump"
+  }
+}

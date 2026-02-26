@@ -1,0 +1,70 @@
+{
+  "suite_version": "1.0.0",
+  "phase": "5",
+  "defaults": {
+    "kernel_profile_required": "validation",
+    "strict_mode": true,
+    "envelope_profile_scoped": true,
+    "drift_profile_scoped": true,
+    "drift_blocking_policy": {
+      "enabled": false,
+      "phase_min": 9,
+      "profiles": [
+        "validation"
+      ],
+      "require_status": "enforce",
+      "warn_threshold": 5,
+      "fail_threshold": 3
+    }
+  },
+  "phases": {
+    "5": {
+      "enabled_proofs": [
+        "sched_bridge_smoke",
+        "ring3_presence_smoke"
+      ],
+      "strict_mode": false,
+      "proof_modes": {
+        "ring3_presence_smoke": "warn"
+      }
+    },
+    "6": {
+      "strict_mode": true,
+      "proof_modes": {
+        "ring3_presence_smoke": "fail"
+      },
+      "enabled_proofs": [
+        "sched_bridge_smoke",
+        "ring3_presence_smoke",
+        "epoch_progression_non_decreasing"
+      ]
+    },
+    "7": {
+      "strict_mode": true,
+      "enabled_proofs": [
+        "sched_bridge_smoke",
+        "ring3_presence_smoke",
+        "epoch_progression_non_decreasing",
+        "policy_mechanism_separation_signal"
+      ]
+    },
+    "8": {
+      "strict_mode": true,
+      "enabled_proofs": [
+        "sched_bridge_smoke",
+        "ring3_presence_smoke",
+        "epoch_progression_non_decreasing",
+        "policy_mechanism_separation_signal"
+      ]
+    },
+    "9": {
+      "strict_mode": true,
+      "enabled_proofs": [
+        "sched_bridge_smoke",
+        "ring3_presence_smoke",
+        "epoch_progression_non_decreasing",
+        "policy_mechanism_separation_signal"
+      ]
+    }
+  }
+}
