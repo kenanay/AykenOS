@@ -46,7 +46,6 @@ jobs:
       PERF_AUTHORITY_SALT: "${{ github.repository }}"  # Fork-safe drift authority namespace
       PERF_ENV_MISMATCH_POLICY: "fail"  # Constitutional mode: strict enforcement
       PERF_REGRESSION_POLICY: "fail"    # Constitutional mode: strict enforcement
-      PERF_ALLOW_BASELINE_LOCK_MUTATION: "${{ contains(github.event.pull_request.labels.*.name, 'baseline-update') && '1' || '0' }}"
       GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
       SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
@@ -81,6 +80,21 @@ jobs:
           echo "=== PR Context ==="
           echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
           echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+      - name: Check baseline-update label
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if gh pr view "${PR_NUMBER}" --json labels --jq '.labels[].name' | grep -q '^baseline-update$'; then
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=1" >> "$GITHUB_ENV"
+            echo "Baseline update label detected - allowing baseline lock mutation"
+          else
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=0" >> "$GITHUB_ENV"
+            echo "No baseline update label - baseline lock immutability enforced"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Resolve pinned CI image digest
         run: |
           set -euo pipefail
