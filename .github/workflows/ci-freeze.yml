@@ -139,7 +139,7 @@ jobs:
           set -euo pipefail
           make ci-freeze
       - name: Save drift state cache
-        if: always()
+        if: ${{ always() && hashFiles('.ci-state/**') != '' }}
         uses: actions/cache/save@v4
         with:
           path: .ci-state

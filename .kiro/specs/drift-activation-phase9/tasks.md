@@ -67,7 +67,7 @@
   - [x] 8.4 Add allowlist bypass logging
   - [x] 8.5 Write unit tests for allowlist logic
 
-- [-] 9. Integration Testing
+- [x] 9. Integration Testing
   - [x] 9.1 Test gate with Phase < 9 (expect SKIP)
   - [x] 9.2 Test gate with Phase 9, disabled (expect FAIL)
   - [x] 9.3 Test gate with Phase 9, enabled (expect PASS)
@@ -75,8 +75,8 @@
   - [x] 9.5 Test gate with missing activation file (expect error)
   - [x] 9.6 Test gate with invalid phase number (expect error)
   - [x] 9.7 Test gate with invalid activation state (expect default)
-  - [ ] 9.8 Test full `ci-freeze` chain with new gate
-  - [ ] 9.9 Test full `ci-freeze-local` chain with new gate
+  - [x] 9.8 Test full `ci-freeze` chain with new gate
+  - [x] 9.9 Test full `ci-freeze-local` chain with new gate
 
 - [x] 10. Documentation
   - [x] 10.1 Update `ARCHITECTURE_FREEZE.md` (add drift activation gate)
@@ -90,8 +90,8 @@
   - [x] 11.2 Add `AUTHORITY_HASH` environment variable computation
   - [x] 11.3 Add drift state artifact restore step (before performance gate)
   - [x] 11.4 Add drift state artifact save step (after performance gate)
-  - [ ] 11.5 Verify gate runs in CI environment
-  - [ ] 11.6 Verify evidence committed to repository
+  - [x] 11.5 Verify gate runs in CI environment
+  - [x] 11.6 Verify evidence uploaded as CI artifact (runtime evidence not committed)
   - [x] 11.7 Verify drift state NOT committed to repository
   - [ ] 11.8 Verify gate failure blocks PR merge
 
@@ -111,12 +111,12 @@
   - [x] 13.6 Document fork behavior (fresh start, independent governance)
   - [x] 13.7 Document CI artifact persistence model
 
-- [ ] 14. Final Validation
+- [-] 14. Final Validation
   - [ ] 14.1 Run full `ci-freeze` suite (expect all gates PASS)
-  - [ ] 14.2 Run `ci-freeze-local` suite (expect all gates PASS)
-  - [ ] 14.3 Verify evidence integrity (hygiene gate)
-  - [ ] 14.4 Verify no constitutional violations
-  - [ ] 14.5 Verify no governance policy violations
+  - [x] 14.2 Run `ci-freeze-local` suite (expect all gates PASS)
+  - [x] 14.3 Verify evidence integrity (hygiene gate)
+  - [x] 14.4 Verify no constitutional violations
+  - [x] 14.5 Verify no governance policy violations
   - [ ] 14.6 Create completion report
 
 ## Task Dependencies
