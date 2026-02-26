@@ -33,12 +33,23 @@ load_state() {
     cat "${DRIFT_STATE_FILE}"
 }
 
+# Backward-compatible alias used by phase task checklist wording
+load_drift_state() {
+    load_state
+}
+
 # Save drift state to file
 save_state() {
     local state="$1"
     
     mkdir -p "$(dirname "${DRIFT_STATE_FILE}")"
     echo "${state}" > "${DRIFT_STATE_FILE}"
+}
+
+# Backward-compatible alias used by phase task checklist wording
+save_drift_state() {
+    local state="$1"
+    save_state "${state}"
 }
 
 # Increment drift counter for a metric
@@ -67,6 +78,12 @@ increment_counter() {
     
     # Return counter value
     echo "${state}" | jq -r --arg m "${metric}" '.counters[$m]'
+}
+
+# Backward-compatible alias used by phase task checklist wording
+increment_drift_counter() {
+    local metric="$1"
+    increment_counter "${metric}"
 }
 
 # Get current counter value for a metric
@@ -101,4 +118,27 @@ authority_changed() {
     else
         return 1  # Not changed
     fi
+}
+
+# Check whether a metric counter reached N-run threshold
+# Returns:
+#   0 when counter >= threshold (threshold reached)
+#   1 when counter < threshold
+#   3 on invalid input
+check_drift_threshold() {
+    local metric="$1"
+    local threshold="${2:-}"
+    local counter
+
+    if [[ -z "${threshold}" ]] || [[ ! "${threshold}" =~ ^[0-9]+$ ]] || [[ "${threshold}" -le 0 ]]; then
+        echo "ERROR: threshold must be a positive integer" >&2
+        return 3
+    fi
+
+    counter="$(get_counter "${metric}")"
+    if [[ "${counter}" =~ ^[0-9]+$ ]] && [[ "${counter}" -ge "${threshold}" ]]; then
+        return 0
+    fi
+
+    return 1
 }

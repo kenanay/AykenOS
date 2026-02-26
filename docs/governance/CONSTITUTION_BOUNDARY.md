@@ -40,10 +40,17 @@ Tier-3 policy is allowed to evolve without redefining Tier-1/Tier-2 contracts.
 
 - Phase-9 drift blocking activation must follow:
   - `constitution/drift_blocking_activation.md`
+- Drift allowlist policy must follow:
+  - `constitution/drift_blocking_allowlist.json`
 - Canonical context hash input set must follow:
   - `constitution/abdf_context.md`
 - History retention and mutation policy must follow:
   - `constitution/drift_history_policy.md`
+
+Authority namespace rule:
+- Drift authority hash is derived from toolchain/runtime fingerprint and optional
+  salt.
+- CI salt must be repository-scoped (`PERF_AUTHORITY_SALT=${{ github.repository }}`) so forks start with independent state.
 
 ## CI Freeze Split
 

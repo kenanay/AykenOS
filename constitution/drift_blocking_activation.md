@@ -53,7 +53,7 @@ Drift counters and authority hash are **NOT stored in this file**.
 Runtime state is managed by CI artifact store:
 - **Artifact key:** `drift-state-${authority_hash}`
 - **Storage:** GitHub Actions cache/artifact
-- **Scope:** Authority-scoped (git SHA + toolchain + QEMU version)
+- **Scope:** Authority-scoped (toolchain + QEMU + optional salt)
 - **Lifetime:** Persists across CI runs with same authority
 - **Reset:** Automatic on authority hash change
 
@@ -65,9 +65,14 @@ Runtime state is managed by CI artifact store:
 ## Authority Hash
 
 Authority hash computed from:
-- Git commit SHA
-- Toolchain version (clang, ld.lld)
-- QEMU version
+- Toolchain version (`clang --version`, first line)
+- Runtime version (`qemu-system-x86_64 --version`, first line)
+- Optional salt (`PERF_AUTHORITY_SALT`)
+
+CI sets:
+- `PERF_AUTHORITY_SALT=${{ github.repository }}`
+
+This keeps counters stable across commits while isolating fork instances.
 
 When authority hash changes:
 - All drift counters reset to 0
@@ -79,7 +84,7 @@ When authority hash changes:
 ## Fork Behavior
 
 When repository is forked:
-- Fork has **different git SHA** → different authority hash
+- Fork has **different repository salt** (`owner/repo`) → different authority hash
 - Drift state **does not transfer** to fork
 - Fork starts with **fresh drift state** (N-run counter = 0)
 - Fork is **independent governance instance**
@@ -95,6 +100,7 @@ Metrics can be allowlisted via `constitution/drift_blocking_allowlist.json`:
 
 ```json
 {
+  "version": "1.0",
   "metrics": [
     "boot_time_variance",
     "memory_allocation_jitter"

@@ -389,6 +389,10 @@ make ci-gate-performance
 - Preempt marker timing proxy (`context_switch_latency_ms_proxy`)
 - Preempt IRET timing proxy (`syscall_latency_ms_proxy`)
 - Threshold policy enforcement (`±5%` syscall/context-switch proxy, `±10%` boot)
+- Drift allowlist schema validation (`constitution/drift_blocking_allowlist.json`)
+- Allowlisted metric regressions bypass blocking but are logged (`allowlist_bypass.txt`)
+- N-run persistence state (`.ci-state/drift_state.json`) cached across CI runs
+- Drift authority hash: `clang + qemu + PERF_AUTHORITY_SALT` (git SHA excluded)
 - Proxy model disclosure: metrics are wall-time proxies, not cycle-accurate guest counters
 
 **Failure → Manual architecture review**

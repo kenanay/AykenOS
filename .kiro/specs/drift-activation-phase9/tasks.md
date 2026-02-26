@@ -5,50 +5,50 @@
 
 ## Task List
 
-- [ ] 1. Foundation Setup
-  - [ ] 1.1 Create phase detection library (`scripts/ci/lib-phase.sh`)
-  - [ ] 1.2 Create phase number document (`docs/roadmap/CURRENT_PHASE`, format: `CURRENT_PHASE=8`)
-  - [ ] 1.3 Create activation state document (`constitution/drift_blocking_activation.md`)
-  - [ ] 1.4 Create allowlist document (`constitution/drift_blocking_allowlist.json`)
-  - [ ] 1.5 Add `.ci-state/` to `.gitignore` (runtime state not committed)
+- [x] 1. Foundation Setup
+  - [x] 1.1 Create phase detection library (`scripts/ci/lib-phase.sh`)
+  - [x] 1.2 Create phase number document (`docs/roadmap/CURRENT_PHASE`, format: `CURRENT_PHASE=8`)
+  - [x] 1.3 Create activation state document (`constitution/drift_blocking_activation.md`)
+  - [x] 1.4 Create allowlist document (`constitution/drift_blocking_allowlist.json`)
+  - [x] 1.5 Add `.ci-state/` to `.gitignore` (runtime state not committed)
 
-- [ ] 2. CI Gate Implementation (Activation Requirement Only)
-  - [ ] 2.1 Implement `scripts/ci/gate_drift_activation.sh` (minimal: requirement enforcement)
-  - [ ] 2.2 Add gate to Makefile (`ci-gate-drift-activation` target)
-  - [ ] 2.3 Integrate gate into `ci-freeze` chain
-  - [ ] 2.4 Integrate gate into `ci-freeze-local` chain
-  - [ ] 2.5 Add gate to `.PHONY` targets in Makefile
-  - [ ] 2.6 Document gate responsibility (activation only, not drift detection)
+- [x] 2. CI Gate Implementation (Activation Requirement Only)
+  - [x] 2.1 Implement `scripts/ci/gate_drift_activation.sh` (minimal: requirement enforcement)
+  - [x] 2.2 Add gate to Makefile (`ci-gate-drift-activation` target)
+  - [x] 2.3 Integrate gate into `ci-freeze` chain
+  - [x] 2.4 Integrate gate into `ci-freeze-local` chain
+  - [x] 2.5 Add gate to `.PHONY` targets in Makefile
+  - [x] 2.6 Document gate responsibility (activation only, not drift detection)
 
-- [ ] 3. Phase Detection Logic
-  - [ ] 3.1 Implement `get_current_phase()` function
-  - [ ] 3.2 Add phase file validation (existence, format)
-  - [ ] 3.3 Add phase number parsing (regex extraction)
-  - [ ] 3.4 Add error handling for missing/invalid phase file
-  - [ ] 3.5 Write unit tests for phase detection
+- [x] 3. Phase Detection Logic
+  - [x] 3.1 Implement `get_current_phase()` function
+  - [x] 3.2 Add phase file validation (existence, format)
+  - [x] 3.3 Add phase number parsing (regex extraction)
+  - [x] 3.4 Add error handling for missing/invalid phase file
+  - [x] 3.5 Write unit tests for phase detection
 
-- [ ] 4. Activation State Logic
-  - [ ] 4.1 Implement activation state parsing (YAML front-matter)
-  - [ ] 4.2 Add validation for `enabled` field (boolean)
-  - [ ] 4.3 Add validation for `phase_minimum` field (integer)
-  - [ ] 4.4 Add default values for missing fields
-  - [ ] 4.5 Write unit tests for activation state parsing
+- [x] 4. Activation State Logic
+  - [x] 4.1 Implement activation state parsing (YAML front-matter)
+  - [x] 4.2 Add validation for `enabled` field (boolean)
+  - [x] 4.3 Add validation for `phase_minimum` field (integer)
+  - [x] 4.4 Add default values for missing fields
+  - [x] 4.5 Write unit tests for activation state parsing
 
-- [ ] 5. Enforcement Logic
-  - [ ] 5.1 Implement phase comparison logic
-  - [ ] 5.2 Implement verdict determination (PASS/FAIL/SKIP)
-  - [ ] 5.3 Implement violation detection
-  - [ ] 5.4 Add reason codes for each verdict
-  - [ ] 5.5 Write unit tests for enforcement logic
+- [x] 5. Enforcement Logic
+  - [x] 5.1 Implement phase comparison logic
+  - [x] 5.2 Implement verdict determination (PASS/FAIL/SKIP)
+  - [x] 5.3 Implement violation detection
+  - [x] 5.4 Add reason codes for each verdict
+  - [x] 5.5 Write unit tests for enforcement logic
 
-- [ ] 6. Evidence Generation
-  - [ ] 6.1 Implement `report.json` generation
-  - [ ] 6.2 Implement `meta.txt` generation
-  - [ ] 6.3 Implement `violations.txt` generation
-  - [ ] 6.4 Add timestamp and git SHA to evidence
-  - [ ] 6.5 Write unit tests for evidence generation
+- [x] 6. Evidence Generation
+  - [x] 6.1 Implement `report.json` generation
+  - [x] 6.2 Implement `meta.txt` generation
+  - [x] 6.3 Implement `violations.txt` generation
+  - [x] 6.4 Add timestamp and git SHA to evidence
+  - [x] 6.5 Write unit tests for evidence generation
 
-- [-] 7. N-Run Persistence (Performance Gate Integration)
+- [x] 7. N-Run Persistence (Performance Gate Integration)
   - [x] 7.1 Create drift persistence library (`scripts/ci/lib-drift-persistence.sh`)
   - [x] 7.2 Implement `compute_authority_hash()` function
   - [x] 7.3 Implement `load_drift_state()` function (from `.ci-state/`)
@@ -58,58 +58,58 @@
   - [x] 7.7 Add authority hash reset logic
   - [x] 7.8 Integrate persistence logic into `ci-gate-performance` (NOT drift-activation)
   - [x] 7.9 Add CI artifact cache/restore workflow steps
-  - [ ] 7.10 Write unit tests for persistence logic
+  - [x] 7.10 Write unit tests for persistence logic
 
-- [ ] 8. Allowlist Mechanism (Performance Gate Integration)
-  - [ ] 8.1 Implement `is_metric_allowlisted()` function
-  - [ ] 8.2 Add allowlist validation (JSON schema)
-  - [ ] 8.3 Integrate allowlist check into `ci-gate-performance` (NOT drift-activation)
-  - [ ] 8.4 Add allowlist bypass logging
-  - [ ] 8.5 Write unit tests for allowlist logic
+- [x] 8. Allowlist Mechanism (Performance Gate Integration)
+  - [x] 8.1 Implement `is_metric_allowlisted()` function
+  - [x] 8.2 Add allowlist validation (JSON schema)
+  - [x] 8.3 Integrate allowlist check into `ci-gate-performance` (NOT drift-activation)
+  - [x] 8.4 Add allowlist bypass logging
+  - [x] 8.5 Write unit tests for allowlist logic
 
-- [ ] 9. Integration Testing
-  - [ ] 9.1 Test gate with Phase < 9 (expect SKIP)
-  - [ ] 9.2 Test gate with Phase 9, disabled (expect FAIL)
-  - [ ] 9.3 Test gate with Phase 9, enabled (expect PASS)
-  - [ ] 9.4 Test gate with missing phase file (expect error)
-  - [ ] 9.5 Test gate with missing activation file (expect error)
-  - [ ] 9.6 Test gate with invalid phase number (expect error)
-  - [ ] 9.7 Test gate with invalid activation state (expect default)
+- [-] 9. Integration Testing
+  - [x] 9.1 Test gate with Phase < 9 (expect SKIP)
+  - [x] 9.2 Test gate with Phase 9, disabled (expect FAIL)
+  - [x] 9.3 Test gate with Phase 9, enabled (expect PASS)
+  - [x] 9.4 Test gate with missing phase file (expect error)
+  - [x] 9.5 Test gate with missing activation file (expect error)
+  - [x] 9.6 Test gate with invalid phase number (expect error)
+  - [x] 9.7 Test gate with invalid activation state (expect default)
   - [ ] 9.8 Test full `ci-freeze` chain with new gate
   - [ ] 9.9 Test full `ci-freeze-local` chain with new gate
 
-- [ ] 10. Documentation
-  - [ ] 10.1 Update `ARCHITECTURE_FREEZE.md` (add drift activation gate)
-  - [ ] 10.2 Update `docs/governance/CONSTITUTION_BOUNDARY.md` (governance layer)
-  - [ ] 10.3 Update `Makefile` help text (add drift activation gate)
-  - [ ] 10.4 Create activation protocol guide (`docs/operations/DRIFT_ACTIVATION.md`)
-  - [ ] 10.5 Update `README.md` (add drift activation to gate list)
+- [x] 10. Documentation
+  - [x] 10.1 Update `ARCHITECTURE_FREEZE.md` (add drift activation gate)
+  - [x] 10.2 Update `docs/governance/CONSTITUTION_BOUNDARY.md` (governance layer)
+  - [x] 10.3 Update `Makefile` help text (add drift activation gate)
+  - [x] 10.4 Create activation protocol guide (`docs/operations/DRIFT_ACTIVATION.md`)
+  - [x] 10.5 Update `README.md` (add drift activation to gate list)
 
-- [ ] 11. CI Workflow Integration
-  - [ ] 11.1 Update `.github/workflows/ci-freeze.yml` (add artifact cache/restore)
-  - [ ] 11.2 Add `AUTHORITY_HASH` environment variable computation
-  - [ ] 11.3 Add drift state artifact restore step (before performance gate)
-  - [ ] 11.4 Add drift state artifact save step (after performance gate)
+- [-] 11. CI Workflow Integration
+  - [x] 11.1 Update `.github/workflows/ci-freeze.yml` (add artifact cache/restore)
+  - [x] 11.2 Add `AUTHORITY_HASH` environment variable computation
+  - [x] 11.3 Add drift state artifact restore step (before performance gate)
+  - [x] 11.4 Add drift state artifact save step (after performance gate)
   - [ ] 11.5 Verify gate runs in CI environment
   - [ ] 11.6 Verify evidence committed to repository
-  - [ ] 11.7 Verify drift state NOT committed to repository
+  - [x] 11.7 Verify drift state NOT committed to repository
   - [ ] 11.8 Verify gate failure blocks PR merge
 
-- [ ] 12. Property-Based Testing
-  - [ ] 12.1 Write property test: phase-driven enforcement
-  - [ ] 12.2 Write property test: explicit activation
-  - [ ] 12.3 Write property test: evidence immutability
-  - [ ] 12.4 Write property test: N-run persistence
-  - [ ] 12.5 Write property test: authority hash reset
+- [x] 12. Property-Based Testing
+  - [x] 12.1 Write property test: phase-driven enforcement
+  - [x] 12.2 Write property test: explicit activation
+  - [x] 12.3 Write property test: evidence immutability
+  - [x] 12.4 Write property test: N-run persistence
+  - [x] 12.5 Write property test: authority hash reset
 
-- [ ] 13. Rollout Preparation
-  - [ ] 13.1 Create Phase 9 transition checklist
-  - [ ] 13.2 Create drift activation runbook
-  - [ ] 13.3 Create rollback procedure
-  - [ ] 13.4 Create monitoring dashboard (evidence tracking)
-  - [ ] 13.5 Create alert rules (gate failure notifications)
-  - [ ] 13.6 Document fork behavior (fresh start, independent governance)
-  - [ ] 13.7 Document CI artifact persistence model
+- [x] 13. Rollout Preparation
+  - [x] 13.1 Create Phase 9 transition checklist
+  - [x] 13.2 Create drift activation runbook
+  - [x] 13.3 Create rollback procedure
+  - [x] 13.4 Create monitoring dashboard (evidence tracking)
+  - [x] 13.5 Create alert rules (gate failure notifications)
+  - [x] 13.6 Document fork behavior (fresh start, independent governance)
+  - [x] 13.7 Document CI artifact persistence model
 
 - [ ] 14. Final Validation
   - [ ] 14.1 Run full `ci-freeze` suite (expect all gates PASS)

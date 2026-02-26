@@ -186,6 +186,74 @@ test_authority_changed() {
     fi
 }
 
+# Test 8: compatibility aliases behave like primary functions
+test_compat_aliases() {
+    echo "Test 8: Compatibility aliases"
+
+    cleanup
+    mkdir -p "${TEST_STATE_DIR}"
+
+    local state='{"authority_hash":"alias","counters":{"metric_alias":4}}'
+    save_drift_state "${state}"
+
+    local loaded
+    loaded="$(load_drift_state)"
+    local before
+    before="$(echo "${loaded}" | jq -r '.counters.metric_alias')"
+
+    if [[ "${before}" != "4" ]]; then
+        echo "  ❌ FAIL: Alias load/save mismatch (${before})"
+        exit 1
+    fi
+
+    local after
+    after="$(increment_drift_counter "metric_alias")"
+    if [[ "${after}" =~ ^[0-9]+$ ]] && [[ "${after}" -ge 1 ]]; then
+        echo "  ✅ PASS: Alias increment works (counter=${after})"
+    else
+        echo "  ❌ FAIL: Alias increment failed (${after})"
+        exit 1
+    fi
+}
+
+# Test 9: threshold check logic
+test_check_drift_threshold() {
+    echo "Test 9: Threshold check"
+
+    cleanup
+    mkdir -p "${TEST_STATE_DIR}"
+
+    increment_counter "metric_t" > /dev/null
+    increment_counter "metric_t" > /dev/null
+
+    if check_drift_threshold "metric_t" 3; then
+        echo "  ❌ FAIL: Threshold should not be reached at 2/3"
+        exit 1
+    fi
+
+    increment_counter "metric_t" > /dev/null
+
+    if check_drift_threshold "metric_t" 3; then
+        echo "  ✅ PASS: Threshold reached at 3/3"
+    else
+        echo "  ❌ FAIL: Threshold should be reached at 3/3"
+        exit 1
+    fi
+
+    if check_drift_threshold "metric_t" 0; then
+        echo "  ❌ FAIL: Invalid threshold should not return success"
+        exit 1
+    else
+        local rc=$?
+        if [[ "${rc}" == "3" ]]; then
+            echo "  ✅ PASS: Invalid threshold rejected with rc=3"
+        else
+            echo "  ❌ FAIL: Invalid threshold rc mismatch (${rc})"
+            exit 1
+        fi
+    fi
+}
+
 # Run all tests
 echo "=== Drift Persistence Library Unit Tests ==="
 echo ""
@@ -197,6 +265,8 @@ test_increment_counter
 test_get_counter
 test_reset_counters
 test_authority_changed
+test_compat_aliases
+test_check_drift_threshold
 
 echo ""
 echo "=== All Tests Passed ==="
