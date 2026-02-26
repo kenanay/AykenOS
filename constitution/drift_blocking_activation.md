@@ -4,7 +4,7 @@
 # Phase Requirement: >= 9 (Phase is >= 9)
 
 # Activation state (explicit only)
-enabled: false
+enabled: true
 
 # Minimum phase for enforcement
 phase_minimum: 9
@@ -22,7 +22,7 @@ This document controls drift blocking activation for AykenOS CI.
 
 ## Current State
 
-- **Enabled:** `false` (drift blocking inactive, enabled=false)
+- **Enabled:** `true` (drift blocking active)
 - **Phase Minimum:** `9` (enforcement starts at Phase 9)
 - **Policy:** `phase_guard` (CI enforces requirement, no auto-enable)
 - **N-Run Threshold:** `3` (regression must persist for 3 consecutive runs)
