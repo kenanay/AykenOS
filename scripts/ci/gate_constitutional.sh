@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_TOOLS="${ROOT}/tools/ci"
 source "${CI_TOOLS}/lib.sh"
+source "${ROOT}/scripts/ci/lib-phase.sh"
 
 usage() {
   cat <<'USAGE'
@@ -148,6 +149,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 
 NOW="$(ci_now_utc)"
 GIT_SHA="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo NO_GIT)"
+CURRENT_PHASE="$(get_current_phase)"
 
 ROOT_ENV="${ROOT}" \
 EVIDENCE_DIR_ENV="${EVIDENCE_DIR}" \
@@ -177,6 +179,7 @@ META_TXT_ENV="${META_TXT}" \
 REPORT_JSON_ENV="${REPORT_JSON}" \
 NOW_ENV="${NOW}" \
 GIT_SHA_ENV="${GIT_SHA}" \
+CURRENT_PHASE_ENV="${CURRENT_PHASE}" \
 python3 - <<'PY'
 import ast
 import json
@@ -187,6 +190,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ["ROOT_ENV"])
 STRICT_MODE = os.environ.get("STRICT_ENV", "1") == "1"
+CURRENT_PHASE = int(os.environ.get("CURRENT_PHASE_ENV", "0"))
 
 KERNEL_ELF = Path(os.environ["KERNEL_ELF_ENV"])
 KERNEL_WHITELIST = Path(os.environ["KERNEL_WHITELIST_ENV"])
@@ -597,14 +601,43 @@ for doc_label, doc_path, required_patterns in governance_doc_specs:
 
     governance_boundary_check_lines.append(f"{doc_label}=present")
     doc_text = doc_path.read_text(encoding="utf-8", errors="replace")
-    for token_name, token_pattern in required_patterns:
-        present = re.search(token_pattern, doc_text, flags=re.IGNORECASE | re.MULTILINE) is not None
-        governance_boundary_check_lines.append(
-            f"{doc_label}:{token_name}={'present' if present else 'missing'}"
-        )
-        if not present:
-            governance_boundary_violations_count += 1
-            add_violation("governance_boundary_missing", f"{doc_path}:{token_name}")
+    
+    # Phase-aware drift activation check
+    if doc_label == "drift_activation_protocol":
+        for token_name, token_pattern in required_patterns:
+            if token_name == "policy_default_disabled":
+                # Phase < 9: enabled=false required (drift not yet active)
+                # Phase >= 9: enabled=true required (drift must be active)
+                if CURRENT_PHASE < 9:
+                    pattern = r"enabled:\s*false"
+                    expected = "enabled: false (phase < 9)"
+                else:
+                    pattern = r"enabled:\s*true"
+                    expected = "enabled: true (phase >= 9)"
+                present = re.search(pattern, doc_text, flags=re.IGNORECASE | re.MULTILINE) is not None
+                governance_boundary_check_lines.append(
+                    f"{doc_label}:{token_name}={'present' if present else 'missing'} (phase={CURRENT_PHASE}, expected={expected})"
+                )
+                if not present:
+                    governance_boundary_violations_count += 1
+                    add_violation("governance_boundary_missing", f"{doc_path}:{token_name}:phase{CURRENT_PHASE}")
+            else:
+                present = re.search(token_pattern, doc_text, flags=re.IGNORECASE | re.MULTILINE) is not None
+                governance_boundary_check_lines.append(
+                    f"{doc_label}:{token_name}={'present' if present else 'missing'}"
+                )
+                if not present:
+                    governance_boundary_violations_count += 1
+                    add_violation("governance_boundary_missing", f"{doc_path}:{token_name}")
+    else:
+        for token_name, token_pattern in required_patterns:
+            present = re.search(token_pattern, doc_text, flags=re.IGNORECASE | re.MULTILINE) is not None
+            governance_boundary_check_lines.append(
+                f"{doc_label}:{token_name}={'present' if present else 'missing'}"
+            )
+            if not present:
+                governance_boundary_violations_count += 1
+                add_violation("governance_boundary_missing", f"{doc_path}:{token_name}")
 
 # 6) NON_OVERRIDABLE integrity check.
 non_over_required = [
