@@ -131,13 +131,12 @@ KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 USER_MINIMAL_DIR = userspace/minimal
 USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
-USER_MINIMAL_OBJ = $(USER_MINIMAL_DIR)/user_embed.o
 EMBED_ELF_TOOL = tools/embed_elf.py
 EMBEDDED_ELF_HEADER = kernel/include/embedded_elf.h
 
 # Kernel image contains Ring0 code only.
 # Ring3 userspace components are built via separate userspace targets.
-KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o) $(USER_MINIMAL_OBJ)
+KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o)
 KERNEL_DEPS = $(KERNEL_OBJS:.o=.d)
 
 ifeq ($(KERNEL_EXPORT_POLICY),1)
@@ -327,10 +326,6 @@ $(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF)
 $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL)
 	@echo "[PHASE10] Generating embedded ELF header..."
 	@python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER)
-
-$(USER_MINIMAL_OBJ): $(USER_MINIMAL_BIN) $(USER_MINIMAL_DIR)/user_embed.S
-	@echo "[PHASE10] Embedding user binary into kernel..."
-	@$(KERNEL_CC) $(KERNEL_CFLAGS) -c $(USER_MINIMAL_DIR)/user_embed.S -o $(USER_MINIMAL_OBJ)
 
 -include $(KERNEL_DEPS)
 

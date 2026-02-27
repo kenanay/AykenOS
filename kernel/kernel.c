@@ -499,8 +499,8 @@ static void kernel_late_init(void)
 #endif
 
     // ---------------------------------------------------------
-    // Phase 10 Sprint A: Jump to Ring3
+    // Phase 10-A: Prepare embedded Ring3 process
     // ---------------------------------------------------------
-    fb_print("[PHASE10] Jumping to Ring3...\n");
-    jump_to_ring3();  // Never returns
+    fb_print("[PHASE10] Preparing Ring3 process...\n");
+    jump_to_ring3();
 }

@@ -14,28 +14,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/**
- * @brief Validate minimal ELF64 binary (Phase 10-A)
- * 
- * Performs essential validation checks on an ELF64 binary including
- * magic number, class, machine type, and critical bounds checking.
- * 
- * @param blob Pointer to ELF binary data
- * @param size Size of ELF binary in bytes
- * @return 0 on success, -EINVAL on invalid format, -ENOEXEC on unsupported format
+/*
+ * Minimal validation and entry extraction helpers are intentionally private
+ * to parser.c to keep Ring0 export surface stable.
  */
-int elf64_validate_minimal(const uint8_t *blob, size_t size);
-
-/**
- * @brief Extract entry point address from ELF64 binary
- * 
- * Returns the virtual address where execution should begin (e_entry field).
- * This function assumes the ELF binary has already been validated.
- * 
- * @param blob Pointer to validated ELF binary data
- * @return Entry point virtual address (e_entry)
- */
-uint64_t elf64_get_entry(const uint8_t *blob);
 
 /**
  * @brief Run ELF parser validation tests (Phase 10-A)

@@ -38,7 +38,8 @@
  * @param size Size of ELF binary in bytes
  * @return 0 on success, -EINVAL on invalid format, -ENOEXEC on unsupported format
  */
-int elf64_validate_minimal(const uint8_t *blob, size_t size) {
+static int elf64_validate_minimal(const uint8_t *blob, size_t size) __attribute__((unused));
+static int elf64_validate_minimal(const uint8_t *blob, size_t size) {
     /* Null pointer check */
     if (blob == 0) {
         return -EINVAL;
@@ -184,7 +185,8 @@ int elf64_validate_minimal(const uint8_t *blob, size_t size) {
  * @param blob Pointer to validated ELF binary data
  * @return Entry point virtual address (e_entry)
  */
-uint64_t elf64_get_entry(const uint8_t *blob) {
+static uint64_t elf64_get_entry(const uint8_t *blob) __attribute__((unused));
+static uint64_t elf64_get_entry(const uint8_t *blob) {
     const elf64_ehdr_t *ehdr = (const elf64_ehdr_t *)blob;
     return ehdr->e_entry;
 }
