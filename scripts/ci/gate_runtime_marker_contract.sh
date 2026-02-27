@@ -354,6 +354,12 @@ if isinstance(marker_doc, dict):
         "AYKEN_SCHED_MB_REJECT": r"^\[\[AYKEN_SCHED_MB_REJECT\]\] reason=[0-9]+ epoch=[0-9]+ pid=[0-9]+$",
         "AYKEN_RING3_OK": r"^\[\[AYKEN_RING3_OK\]\]$",
         "R3OK_USER_TOKEN": r"^R3OK$",
+        "AYKEN_SYSCALL_ENTER": r"^\[\[AYKEN_SYSCALL_ENTER\]\]$",
+        "P10_SYSCALL_ENTER": r"^P10_SYSCALL_ENTER$",
+        "AYKEN_SYSCALL_RETURN": r"^\[\[AYKEN_SYSCALL_RETURN\]\]$",
+        "P10_SYSCALL_RETURN": r"^P10_SYSCALL_RETURN$",
+        "P10_CAP_ENFORCED": r"^P10_CAP_ENFORCED$",
+        "P10_RING3_USER_CODE": r"^P10_RING3_USER_CODE$",
     }
     for name, patt in required.items():
         row = marker_by_name.get(name)
@@ -370,6 +376,12 @@ if isinstance(marker_doc, dict):
         "AYKEN_SCHED_MB_REJECT": "[[AYKEN_SCHED_MB_REJECT]] reason=5 epoch=7 pid=42",
         "AYKEN_RING3_OK": "[[AYKEN_RING3_OK]]",
         "R3OK_USER_TOKEN": "R3OK",
+        "AYKEN_SYSCALL_ENTER": "[[AYKEN_SYSCALL_ENTER]]",
+        "P10_SYSCALL_ENTER": "P10_SYSCALL_ENTER",
+        "AYKEN_SYSCALL_RETURN": "[[AYKEN_SYSCALL_RETURN]]",
+        "P10_SYSCALL_RETURN": "P10_SYSCALL_RETURN",
+        "P10_CAP_ENFORCED": "P10_CAP_ENFORCED",
+        "P10_RING3_USER_CODE": "P10_RING3_USER_CODE",
     }
     for name, line in sample.items():
         rgx = compiled.get(name)
@@ -382,6 +394,12 @@ if isinstance(marker_doc, dict):
         ("AYKEN_SCHED_MB_REJECT", ROOT / "kernel/sched/sched_mailbox.c", "[[AYKEN_SCHED_MB_REJECT]]"),
         ("AYKEN_RING3_OK", ROOT / "kernel/sys/syscall_v2.c", "[[AYKEN_RING3_OK]]"),
         ("R3OK_USER_TOKEN", ROOT / "userspace/tests/gate3_ring3_sched_hint/main.c", "R3OK"),
+        ("AYKEN_SYSCALL_ENTER", ROOT / "kernel/sys/syscall.c", "[[AYKEN_SYSCALL_ENTER]]"),
+        ("P10_SYSCALL_ENTER", ROOT / "kernel/sys/syscall.c", "P10_SYSCALL_ENTER"),
+        ("AYKEN_SYSCALL_RETURN", ROOT / "kernel/sys/syscall.c", "[[AYKEN_SYSCALL_RETURN]]"),
+        ("P10_SYSCALL_RETURN", ROOT / "kernel/sys/syscall.c", "P10_SYSCALL_RETURN"),
+        ("P10_CAP_ENFORCED", ROOT / "kernel/sys/syscall.c", "P10_CAP_ENFORCED"),
+        ("P10_RING3_USER_CODE", ROOT / "kernel/arch/x86_64/interrupts.c", "P10_RING3_USER_CODE"),
     ]
     for name, path, token in anchors:
         if name not in marker_by_name:
