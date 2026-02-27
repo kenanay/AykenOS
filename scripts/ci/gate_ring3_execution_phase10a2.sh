@@ -52,6 +52,10 @@ if [[ "${KERNEL_PROFILE}" != "validation" ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires KERNEL_PROFILE=validation (current=${KERNEL_PROFILE})" >&2
   exit 2
 fi
+if ! [[ "${AYKEN_CR3_PCID}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID in {0,1} (current=${AYKEN_CR3_PCID})" >&2
+  exit 2
+fi
 if [[ "${AYKEN_CR3_PCID}" != "${ENFORCED_AYKEN_CR3_PCID}" ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID=${ENFORCED_AYKEN_CR3_PCID} (current=${AYKEN_CR3_PCID})" >&2
   exit 2
@@ -226,6 +230,8 @@ PY
 {
   echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "kernel_profile=${KERNEL_PROFILE}"
+  echo "enforced_ayken_cr3_pcid=${ENFORCED_AYKEN_CR3_PCID}"
+  echo "observed_ayken_cr3_pcid=${AYKEN_CR3_PCID}"
   echo "ayken_cr3_pcid=${AYKEN_CR3_PCID}"
   echo "build_rc=${BUILD_RC}"
   echo "boot_audit_rc=${BOOT_AUDIT_RC}"
