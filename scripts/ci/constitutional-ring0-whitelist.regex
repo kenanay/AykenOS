@@ -3,11 +3,13 @@
 
 ^kernel/arch(/|$)
 ^kernel/drivers(/|$)
+^kernel/elf(/|$)
 ^kernel/fs(/|$)
 ^kernel/include(/|$)
 ^kernel/kernel\.c$
 ^kernel/lib(/|$)
 ^kernel/mm(/|$)
 ^kernel/proc(/|$)
+^kernel/ring3_jump\.c$
 ^kernel/sched(/|$)
 ^kernel/sys(/|$)
