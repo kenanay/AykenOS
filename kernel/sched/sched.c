@@ -688,6 +688,7 @@ static void sched_yield_core(int reenable_if)
 
     if (!next) {
         SCHED_DBG_OUT((uint8_t)'X');
+        SCHED_DBG_OUT((uint8_t)'\n');
         if (reenable_if)
             enable_interrupts();
         return;
