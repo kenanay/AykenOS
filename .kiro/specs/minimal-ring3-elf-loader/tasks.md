@@ -165,26 +165,26 @@ Invariants:
 - Scheduler dispatch path active
 - TSS/GDT/IDT properly configured
 
-- [ ] 1. Validate GDT, IDT, and TSS configuration (CRITICAL prerequisite)
-  - [ ] 1.1 Implement `validate_gdt_user_segments()`
+- [x] 1. Validate GDT, IDT, and TSS configuration (CRITICAL prerequisite)
+  - [x] 1.1 Implement `validate_gdt_user_segments()`
     - Verify GDT entry 3 (CS=0x23): DPL=3, present, code segment
     - Verify GDT entry 4 (SS=0x1B): DPL=3, present, data segment
     - _Requirements: 5.1, 5.6_
 
-  - [ ] 1.2 Implement `validate_idt_bp_gate()`
+  - [x] 1.2 Implement `validate_idt_bp_gate()`
     - Verify IDT entry 3 (#BP): present bit set
     - **Note: DPL=3 is debugger-friendly/future-proof, not strictly required for INT3**
     - **Critical: Handler must use correct stack (TSS/RSP0)**
     - _Requirements: 5.1, 5.6_
 
-  - [ ] 1.3 Implement `validate_tss_for_ring3()`
+  - [x] 1.3 Implement `validate_tss_for_ring3()`
     - Verify TSS structure is defined and initialized
     - Verify LTR (Load Task Register) has been called
     - Verify TSS.RSP0 points to valid kernel stack
     - **CRITICAL: Without proper TSS/RSP0, Ring3→Ring0 exception causes #DF → triple fault**
     - _Requirements: 5.1, 5.6_
 
-  - [ ] 1.4 Call all three validation functions before scheduler dispatch
+  - [x] 1.4 Call all three validation functions before scheduler dispatch
     - Emit P10_TSS_OK marker after successful validation
     - _Note: This is a hidden dependency - Phase 10-A2 will fail silently without it_
 
@@ -291,4 +291,3 @@ Invariants:
 - **Marker Sequence (10-A2):** + P10_TSS_OK → P10_CR3_SWITCH → P10_RING3_ENTER → P10_RING3_USER_CODE
 - **Critical Path:** TSS/GDT/IDT validation MUST run before scheduler dispatch
 - **Debug Strategy:** Use 13-point checklist for Phase 10-A2 (prevents triple fault)
-
