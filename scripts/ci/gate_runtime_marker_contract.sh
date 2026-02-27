@@ -293,6 +293,7 @@ version_doc = load_json(VERSION_FILE, "missing_file", "version_parse_error")
 marker_ok = True
 source_ok = True
 versioning_ok = True
+report_schema_ok = True
 marker_by_name = {}
 compiled = {}
 
@@ -394,6 +395,70 @@ if isinstance(marker_doc, dict):
             add(f"source_marker_token_missing:{name}:{path}")
             source_ok = False
 
+    # Ring3 gate report contract fields must remain anchored in gate source.
+    # Hardening: validate real REPORT_JSON writer blocks and Python assignments,
+    # not raw global token search (comment spoof resistant).
+    ring3_gate_script = ROOT / "scripts/ci/gate_ring3_execution_phase10a2.sh"
+    required_report_fields = {
+        "template_keys": [
+            "gate",
+            "verdict",
+            "violations",
+            "violations_count",
+            "enforced_ayken_cr3_pcid",
+            "observed_ayken_cr3_pcid",
+        ],
+        "python_assignments": [
+            "boot_audit_exit_code",
+            "qemu_timeout_seconds",
+            "enforced_ayken_cr3_pcid",
+            "observed_ayken_cr3_pcid",
+        ],
+    }
+    if not ring3_gate_script.exists():
+        add(f"report_schema_contract_file_missing:{ring3_gate_script}")
+        report_schema_ok = False
+    else:
+        gate_text = ring3_gate_script.read_text(encoding="utf-8", errors="replace")
+
+        # 1) REPORT_JSON heredoc templates.
+        heredoc_rows = re.findall(
+            r'cat\s+>\s*"\$\{REPORT_JSON\}"\s*<<EOF\s*\n(.*?)\nEOF',
+            gate_text,
+            flags=re.DOTALL,
+        )
+        if not heredoc_rows:
+            add("report_schema_contract_missing_templates")
+            report_schema_ok = False
+        else:
+            for idx, body in enumerate(heredoc_rows):
+                # Make unexpanded shell vars JSON-friendly for parsing.
+                normalized = re.sub(r"\$\{[^}]+\}", "0", body)
+                try:
+                    row = json.loads(normalized)
+                except Exception:
+                    add(f"report_schema_contract_template_invalid_json:index={idx}")
+                    report_schema_ok = False
+                    continue
+                if not isinstance(row, dict):
+                    add(f"report_schema_contract_template_invalid_type:index={idx}")
+                    report_schema_ok = False
+                    continue
+                for field in required_report_fields["template_keys"]:
+                    if field not in row:
+                        add(f"report_schema_contract_missing_template_field:{field}:index={idx}")
+                        report_schema_ok = False
+
+        # 2) Final report augmentation assignments must exist in Python block.
+        for field in required_report_fields["python_assignments"]:
+            if not re.search(
+                rf'^\s*row\["{re.escape(field)}"\]\s*=',
+                gate_text,
+                flags=re.MULTILINE,
+            ):
+                add(f"report_schema_contract_missing_assignment:{field}")
+                report_schema_ok = False
+
     if isinstance(version_doc, dict):
         cv = version_doc.get("constitution_version")
         if isinstance(cv, str) and isinstance(schema, str) and schema != cv:
@@ -402,6 +467,7 @@ if isinstance(marker_doc, dict):
 else:
     marker_ok = False
     source_ok = False
+    report_schema_ok = False
 
 changed = [ln.strip() for ln in CHANGED_TXT.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()] if CHANGED_TXT.exists() else []
 changed_set = set(changed)
@@ -468,6 +534,7 @@ report = {
     "checks": {
         "marker_registry_contract": "PASS" if marker_ok else "FAIL",
         "source_marker_anchor": "PASS" if source_ok else "FAIL",
+        "ring3_report_schema_contract": "PASS" if report_schema_ok else "FAIL",
         "versioning_policy": "PASS" if versioning_ok else "FAIL",
     },
     "changed_files": changed,
