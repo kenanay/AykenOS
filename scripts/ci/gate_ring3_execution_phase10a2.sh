@@ -20,6 +20,7 @@ EVIDENCE_DIR=""
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-25}"
 KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
 AYKEN_CR3_PCID="${AYKEN_CR3_PCID:-0}"
+ENFORCED_AYKEN_CR3_PCID="0"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -51,8 +52,8 @@ if [[ "${KERNEL_PROFILE}" != "validation" ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires KERNEL_PROFILE=validation (current=${KERNEL_PROFILE})" >&2
   exit 2
 fi
-if [[ "${AYKEN_CR3_PCID}" != "0" ]]; then
-  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID=0 (current=${AYKEN_CR3_PCID})" >&2
+if [[ "${AYKEN_CR3_PCID}" != "${ENFORCED_AYKEN_CR3_PCID}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID=${ENFORCED_AYKEN_CR3_PCID} (current=${AYKEN_CR3_PCID})" >&2
   exit 2
 fi
 
@@ -108,6 +109,8 @@ if [[ "${BUILD_RC}" -ne 0 ]]; then
   cat > "${REPORT_JSON}" <<EOF
 {
   "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
   "verdict": "FAIL",
   "violations_count": 1,
   "violations": ["build_failed"]
@@ -137,6 +140,8 @@ if [[ "${BOOT_AUDIT_RC}" -ne 0 ]]; then
   cat > "${REPORT_JSON}" <<EOF
 {
   "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
   "verdict": "FAIL",
   "violations_count": 1,
   "violations": ["boot_audit_failed:rc=${BOOT_AUDIT_RC}"],
@@ -153,6 +158,8 @@ if [[ ! -s "${MARKER_LOG}" ]]; then
   cat > "${REPORT_JSON}" <<EOF
 {
   "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
   "verdict": "FAIL",
   "violations_count": 1,
   "violations": ["marker_log_empty"]
@@ -167,6 +174,8 @@ if ! python3 "${EXTRACTOR}" --log "${MARKER_LOG}" --out "${EVENTS_JSONL}"; then
   cat > "${REPORT_JSON}" <<EOF
 {
   "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
   "verdict": "FAIL",
   "violations_count": 1,
   "violations": ["extract_markers_failed"]
@@ -182,16 +191,20 @@ python3 "${VALIDATOR}" --events "${EVENTS_JSONL}" --log "${MARKER_LOG}" --out "$
 VALIDATOR_RC=$?
 set -e
 
-python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" <<'PY'
+python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" "${ENFORCED_AYKEN_CR3_PCID}" "${AYKEN_CR3_PCID}" <<'PY'
 import json
 import sys
 path = sys.argv[1]
 boot_audit_rc = int(sys.argv[2])
 qemu_timeout = int(sys.argv[3])
+enforced_ayken_cr3_pcid = int(sys.argv[4])
+observed_ayken_cr3_pcid = int(sys.argv[5])
 with open(path, "r", encoding="utf-8") as fh:
     row = json.load(fh)
 row["boot_audit_exit_code"] = boot_audit_rc
 row["qemu_timeout_seconds"] = qemu_timeout
+row["enforced_ayken_cr3_pcid"] = enforced_ayken_cr3_pcid
+row["observed_ayken_cr3_pcid"] = observed_ayken_cr3_pcid
 with open(path, "w", encoding="utf-8") as fh:
     json.dump(row, fh, indent=2, sort_keys=True)
     fh.write("\n")

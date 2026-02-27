@@ -991,6 +991,7 @@ help:
 	@echo "  ci-gate-behavioral-suite - Gate-6 behavioral proof suite (phase-driven)"
 	@echo "    (phase selector: BEHAVIORAL_SUITE_PHASE=5 by default)"
 	@echo "  ci-gate-ring3-execution-phase10a2 - Strict Phase10 scheduler+syscall+Ring3 marker-order gate"
+	@echo "    (controls: RING3_QEMU_TIMEOUT, enforced: AYKEN_CR3_PCID=0)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
