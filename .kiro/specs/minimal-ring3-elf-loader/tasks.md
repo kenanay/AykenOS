@@ -130,7 +130,7 @@ Each phase builds on the previous phase and includes runtime marker validation t
 
 - [ ] 5. Implement minimal segment loading (Phase 10-A: single PT_LOAD only)
   - [ ] 5.1 Write page flag derivation function (kernel/src/mm/user_as.c)
-    - Implement `derive_page_flags(elf_flags)` as inline function
+    - Implement `derive_page_flags(elf_flags, out_flags)` returning int
     - Set PRESENT | USER always
     - Set WRITABLE if PF_W
     - **CRITICAL: NX bit has INVERSE logic on x86-64:**
@@ -138,7 +138,10 @@ Each phase builds on the previous phase and includes runtime marker validation t
       - NX bit = 0 → executable (page is executable)
       - If PF_X set: NX = 0 (clear NX bit, page is executable)
       - If PF_X not set: NX = 1 (set NX bit, page is non-executable)
-    - Return 0 if both PF_W and PF_X (W^X violation)
+    - **CRITICAL: W^X violation handling:**
+      - If both PF_W and PF_X set: return -EINVAL (W^X violation)
+      - Do NOT return 0 flags (undefined behavior, security risk)
+    - On success: write flags to *out_flags, return 0
     - _Requirements: 3.6, 3.7, 3.8, 3.9, 3.10, 3.11_
     - _Note: NX bit confusion is a common source of #GP faults_
 
@@ -157,6 +160,12 @@ Each phase builds on the previous phase and includes runtime marker validation t
     - Validate segment range
     - Calculate page-aligned base and bias (seg_page_base, seg_page_bias)
     - Calculate page count from p_memsz + bias
+    - **CRITICAL: Segment load bias and copy logic:**
+      - file_src = elf_blob + p_offset
+      - virt_dst_page = mapped_page + bias_on_first_page
+      - First page: copy min(4096 - bias, p_filesz) bytes
+      - Subsequent pages: copy 4096-byte blocks
+      - Phase 10-A: p_memsz == p_filesz (no BSS), no zero-fill needed
     - For each page: allocate frame, copy data (accounting for bias), map to user address
     - Track allocations in cleanup_tracker
     - Return -ENOMEM on allocation failure, -EINVAL on invalid segment
@@ -190,7 +199,8 @@ Each phase builds on the previous phase and includes runtime marker validation t
     - Implement `create_initial_context(ctx, entry_point)`
     - Zero all general-purpose registers
     - Set RIP = entry_point (from e_entry)
-    - Set RSP = 0x00007FFFFFFFFFF0 (16-byte aligned, top of stack)
+    - Set RSP = 0x00007FFFFFFFEFF0 (16-byte aligned, top of stack page at 0xE000)
+    - **CRITICAL: RSP must be within mapped stack page (0x00007FFFFFFFE000-0x00007FFFFFFFEFFF)**
     - Set CS = 0x23 (Ring3 code segment, hardcoded in Phase 10-A)
     - Set SS = DS = ES = 0x1B (Ring3 data segment, hardcoded in Phase 10-A)
     - Set RFLAGS = 0x202 (IF=1, reserved bit 1, deterministic)
@@ -209,13 +219,21 @@ Each phase builds on the previous phase and includes runtime marker validation t
     - _Note: Optional for Phase 10-A, recommended for Phase 10-B_
 
 - [ ] 7. Implement Ring3 entry assembly (IRETQ)
-  - [ ] 7.1 Validate TSS and RSP0 configuration (CRITICAL prerequisite)
-    - Verify TSS structure is defined and initialized
-    - Verify LTR (Load Task Register) has been called
-    - Verify TSS.RSP0 points to valid kernel stack
-    - **CRITICAL: Without proper TSS/RSP0, Ring3→Ring0 exception causes #DF → triple fault**
-    - Add validation function: `validate_tss_for_ring3()`
-    - Call before first Ring3 entry attempt
+  - [ ] 7.1 Validate GDT, IDT, and TSS configuration (CRITICAL prerequisite)
+    - **CRITICAL: These validations MUST run before first Ring3 entry attempt**
+    - Implement `validate_gdt_user_segments()`:
+      - Verify GDT entry 3 (CS=0x23): DPL=3, present, code segment
+      - Verify GDT entry 4 (SS=0x1B): DPL=3, present, data segment
+    - Implement `validate_idt_bp_gate()`:
+      - Verify IDT entry 3 (#BP): present bit set
+      - **Note: DPL=3 is debugger-friendly/future-proof, but not strictly required for INT3**
+      - **Critical: Handler must use correct stack (TSS/RSP0)**
+    - Implement `validate_tss_for_ring3()`:
+      - Verify TSS structure is defined and initialized
+      - Verify LTR (Load Task Register) has been called
+      - Verify TSS.RSP0 points to valid kernel stack
+      - **CRITICAL: Without proper TSS/RSP0, Ring3→Ring0 exception causes #DF → triple fault**
+    - Call all three validation functions in kmain before elf_load_process_phase_a
     - _Requirements: 5.1, 5.6_
     - _Note: This is a hidden dependency - Phase 10-A will fail silently without it_
 
@@ -224,11 +242,12 @@ Each phase builds on the previous phase and includes runtime marker validation t
     - Save context pointer in RBX (callee-saved, non-volatile)
     - Load user CR3 into CR3 register (TLB flush implicit)
     - Emit P10_CR3_SWITCH marker (inline, direct serial write to 0xE9)
+    - **CRITICAL: Marker emission MUST preserve all registers (pushfq/popfq)**
     - Load all GPRs from context (except RSP, RIP)
     - **CRITICAL: Ensure RSP is 16-byte aligned BEFORE pushing IRETQ frame**
     - Push IRETQ frame in CORRECT order (bottom to top): SS (0x1B), RSP, RFLAGS, CS (0x23), RIP
     - **Note: Stack grows down, push order is REVERSE of frame layout**
-    - Emit P10_RING3_ENTER marker (inline, direct serial write)
+    - Emit P10_RING3_ENTER marker (inline, direct serial write, BEFORE IRETQ)
     - Restore RBX from context
     - Execute IRETQ
     - Add UD2 after IRETQ (never reached)
@@ -237,16 +256,20 @@ Each phase builds on the previous phase and includes runtime marker validation t
   - [ ] 7.3 Add marker emission macros for assembly (kernel/include/markers.h)
     - Define `EMIT_MARKER_ASM(marker_string)` macro
     - Direct serial port write to 0xE9 (no C function calls)
-    - Preserve all registers (use stack if needed)
+    - **CRITICAL: Preserve all registers using pushfq/popfq**
+    - **CRITICAL: Preserve flags to avoid side effects**
     - _Requirements: 12.1, 12.2, 12.4_
 
   - [ ] 7.4 Implement #BP exception handler for Ring3 marker (kernel/src/arch/x86_64/interrupts.c)
     - Extend existing #BP (INT3) handler to detect Ring3 origin
-    - **CRITICAL: Comprehensive Ring3 detection (not just CS check):**
+    - **CRITICAL: Comprehensive Ring3 detection (triple check, not just CS):**
       - Check CPL: `(frame->cs & 0x3) == 0x3`
       - Check SS: `(frame->ss & 0x3) == 0x3` (user data segment)
+      - Check CS value: `frame->cs == 0x23` (Phase 10-A hardcoded selector)
+      - Check SS value: `frame->ss == 0x1B` (Phase 10-A hardcoded selector)
       - Check RIP range: `frame->rip >= 0x400000 && frame->rip < 0x00007FFFFFFFFFFF` (user space)
-      - All three MUST pass to confirm Ring3 origin
+      - Check RIP canonical: upper bits must be sign extension of bit 47
+      - All checks MUST pass to confirm Ring3 origin
     - If Ring3: emit P10_RING3_USER_CODE marker
     - After marker: halt or panic (Phase 10-A proof complete)
     - If Ring0: handle as normal breakpoint (debug use)
@@ -264,6 +287,13 @@ Each phase builds on the previous phase and includes runtime marker validation t
   - [ ] 8.1 Write elf_load_process_phase_a function (kernel/src/elf/loader_phase_a.c)
     - Validate ELF header (minimal validation for Phase 10-A)
     - Extract entry point
+    - **CRITICAL: Phase 10-A entry point and segment policy checks:**
+      - Entry point canonical check: validate_segment_range(e_entry, 1)
+      - Entry point user range: e_entry >= 0x400000 && e_entry < 0x00007FFFFFFFFFFF
+      - Single PT_LOAD segment policy: exactly one PT_LOAD, reject if more
+      - Segment flags: PF_X=1 and PF_W=0 (RX only, no writable data)
+      - Segment size: p_memsz == p_filesz (no BSS in Phase 10-A)
+      - Segment base: p_vaddr == 0x400000 (hardcoded for Phase 10-A)
     - Parse first PT_LOAD segment only (ignore others)
     - Create user address space
     - Load single segment
@@ -274,9 +304,14 @@ Each phase builds on the previous phase and includes runtime marker validation t
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 11.2, 11.3_
 
   - [ ] 8.2 Integrate Phase 10-A loader into kernel boot (kernel/src/kmain.c)
+    - **CRITICAL: Run validations BEFORE elf_load_process_phase_a:**
+      - Call validate_gdt_user_segments()
+      - Call validate_idt_bp_gate()
+      - Call validate_tss_for_ring3()
+      - Emit P10_TSS_OK marker after successful validation
     - Include embedded_elf.h
+    - Emit KERNEL_BEFORE_RING3 marker before loader call
     - Call elf_load_process_phase_a(embedded_elf, embedded_elf_size)
-    - Emit KERNEL_BEFORE_RING3 marker before call
     - Handle error return (should not happen with valid embedded ELF)
     - _Requirements: 11.3, 12.4_
 
@@ -296,7 +331,7 @@ Each phase builds on the previous phase and includes runtime marker validation t
 
   - [ ] 9.2 Write marker order validation script (tools/ci/validate_marker_order.py)
     - Read markers from stdin or file
-    - Validate expected order: KERNEL_BEFORE_RING3, P10_CR3_SWITCH, P10_RING3_ENTER, P10_RING3_USER_CODE
+    - Validate expected order: KERNEL_BEFORE_RING3, P10_TSS_OK, P10_CR3_SWITCH, P10_RING3_ENTER, P10_RING3_USER_CODE
     - Exit 0 on success, exit 1 on failure
     - _Requirements: 12.4, 12.5_
 
@@ -316,23 +351,24 @@ Each phase builds on the previous phase and includes runtime marker validation t
 
 - [ ] 10. Checkpoint - Phase 10-A validation
   - Ensure all Phase 10-A mandatory tests pass (bounds checks, marker order)
-  - Ensure CI gate passes (markers in correct order: KERNEL_BEFORE_RING3, P10_CR3_SWITCH, P10_RING3_ENTER, P10_RING3_USER_CODE)
+  - Ensure CI gate passes (markers in correct order: KERNEL_BEFORE_RING3, P10_TSS_OK, P10_CR3_SWITCH, P10_RING3_ENTER, P10_RING3_USER_CODE)
   - Verify Ring3 code executes (P10_RING3_USER_CODE marker emitted via #BP handler)
   - Verify no #GP faults (IOPL, HLT, segment violations)
   - Optional property tests can be deferred to Phase 10-B
-  - **CRITICAL: Phase 10-A Ultra-Minimal Execution Checklist (12 points):**
+  - **CRITICAL: Phase 10-A Ultra-Minimal Execution Checklist (13 points):**
     1. ✓ TSS loaded? (LTR called, TSS descriptor valid)
     2. ✓ RSP0 valid? (TSS.RSP0 points to kernel stack)
-    3. ✓ IDT #BP present? (Entry 3, DPL=3, present bit set)
+    3. ✓ IDT #BP present? (Entry 3, present bit set, handler valid)
     4. ✓ User segment DPL=3? (GDT entries 3 and 4, CS=0x23, SS=0x1B)
     5. ✓ PML4 USER bit correct? (Entries 0-255 can have USER, 256-511 must NOT)
     6. ✓ CR3 switch correct? (User PML4 physical address loaded)
     7. ✓ NX flag correct? (NX=0 for executable, NX=1 for non-executable)
     8. ✓ RIP canonical? (0x400000 in canonical lower half)
     9. ✓ Stack mapped? (0x00007FFFFFFFE000 with USER|WRITABLE|NX)
-    10. ✓ Guard page unmapped? (0x00007FFFFFFFD000 not present)
-    11. ✓ Marker order correct? (KERNEL→CR3→RING3_ENTER→RING3_USER_CODE)
-    12. ✓ No triple fault? (Check QEMU output, no reset loop)
+    10. ✓ Stack RSP valid? (0x00007FFFFFFFEFF0 within mapped page E000-EFFF)
+    11. ✓ Guard page unmapped? (0x00007FFFFFFFD000 not present)
+    12. ✓ Marker order correct? (KERNEL→TSS_OK→CR3→RING3_ENTER→RING3_USER_CODE)
+    13. ✓ No triple fault? (Check QEMU output, no reset loop)
   - **If any checklist item fails, Phase 10-A will fail silently or triple fault**
   - Ask user if questions arise before proceeding to Phase 10-B
 
