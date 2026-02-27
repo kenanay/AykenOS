@@ -34,6 +34,26 @@ struct idt_ptr idt_descriptor;
     for (;;) __asm__ volatile("cli; hlt"); \
 } while (0)
 
+static void debugcon_write_atomic(const char *s)
+{
+    uint64_t rflags = 0;
+    const uint64_t if_mask = (1ULL << 9);
+
+    if (!s) {
+        return;
+    }
+
+    __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
+    __asm__ volatile("cli");
+    while (*s) {
+        OUTC(*s);
+        s++;
+    }
+    if ((rflags & if_mask) != 0) {
+        __asm__ volatile("sti");
+    }
+}
+
 __attribute__((unused))
 static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_frame *frame, int has_cr2)
 {
@@ -52,22 +72,6 @@ static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_fr
         OUTC(' '); OUTC('c'); OUTC('r'); OUTC('2'); OUTC('='); OUTC('0'); OUTC('x'); DUMP_HEX64(cr2);
     }
     OUTC('\n');
-}
-
-__attribute__((naked))
-static void isr_bp_stub(void)
-{
-    __asm__ volatile(
-        "movb $'B', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'P', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'!', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'\\n', %al\n"
-        "outb %al, $0xE9\n"
-        "iretq\n"
-    );
 }
 
 __attribute__((naked))
@@ -115,9 +119,28 @@ static void isr_df_stub(void)
 __attribute__((interrupt))
 static void isr_bp(struct interrupt_frame *frame)
 {
-    (void)frame;
-    OUTC('B');
-    HALT_FOREVER();
+    const uint16_t cs = (uint16_t)frame->cs;
+    const uint16_t ss = (uint16_t)frame->ss;
+    const uint64_t rip = frame->rip;
+    const uint64_t upper = rip >> 48;
+    const uint64_t sign = (rip >> 47) & 1ULL;
+    const int rip_canonical = sign ? (upper == 0xFFFFULL) : (upper == 0x0000ULL);
+    const int is_ring3_bp =
+        ((cs & 0x3u) == 0x3u) &&
+        ((ss & 0x3u) == 0x3u) &&
+        (cs == GDT_USER_CODE) &&
+        (ss == GDT_USER_DATA) &&
+        (rip >= 0x0000000000400000ULL) &&
+        (rip < 0x00007FFFFFFFFFFFULL) &&
+        rip_canonical;
+
+    if (is_ring3_bp) {
+        debugcon_write_atomic("P10_RING3_USER_CODE\n");
+        HALT_FOREVER();
+    }
+
+    // Ring0 breakpoint: keep debug behavior and return.
+    OUTC('B'); OUTC('P'); OUTC('!'); OUTC('\n');
 }
 
 __attribute__((interrupt))
@@ -265,9 +288,9 @@ void interrupts_install(void)
         idt_table[i].zero = 0;
     }
 
-    // Install core exception handlers for the late IDT (early IDT gets wiped above)
-    // Use trap gates for debug visibility; allow Ring3 INT3 with DPL=3.
-    idt_set_gate(3,  (interrupt_handler_t)isr_bp_stub, 0xEF);
+    // Install core exception handlers for the late IDT (early IDT gets wiped above).
+    // INT3 uses interrupt gate (DPL=3) to keep marker emission deterministic.
+    idt_set_gate(3,  (interrupt_handler_t)isr_bp, 0xEE);
     idt_set_gate(6,  isr_ud, 0x8F);
     idt_set_gate(8,  (interrupt_handler_t)isr_df_stub, 0x8F);
     idt_set_gate(10, (interrupt_handler_t)isr_ts_stub, 0x8F);
@@ -313,10 +336,9 @@ void interrupts_install_early(void)
         idt_table[i].zero = 0;
     }
 
-    // Exceptions we care about early
-    // Use trap gates (0x8F) so IF is preserved during debug
-    // CRITICAL: INT3 (#BP) must be DPL=3 for Ring3 access
-    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp_stub, 0xEF, cs);  // DPL=3 for Ring3
+    // Exceptions we care about early.
+    // CRITICAL: INT3 (#BP) is DPL=3 interrupt gate for deterministic marker path.
+    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp, 0xEE, cs);
     idt_set_gate_selector(6,  isr_ud, 0x8F, cs);
     idt_set_gate_selector(8,  (interrupt_handler_t)isr_df_stub, 0x8F, cs);
     idt_set_gate_selector(10, (interrupt_handler_t)isr_ts_stub, 0x8F, cs);

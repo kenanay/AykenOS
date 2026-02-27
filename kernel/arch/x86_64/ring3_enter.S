@@ -1,106 +1,124 @@
 // SPDX-License-Identifier: ASAL-1.0
 // Copyright (C) 2026 Kenan AY
 //
-// Ring3 Transition Mechanism (x86_64)
+// Canonical Ring3 IRETQ Entry Helpers
 // Authority: Phase 10-A2 Task 2
 // Constitutional: Ring0 mechanism only (no policy)
 
 .section .text
 .global ring3_enter
+.global ring3_enter_iretq
 
-// Segment selectors (GDT offsets)
-.set SEG_KERNEL_CODE, 0x08
-.set SEG_KERNEL_DATA, 0x10
-.set SEG_USER_CODE,   0x18  // DPL=3
-.set SEG_USER_DATA,   0x20  // DPL=3
+// Segment selectors (with RPL=3 baked in)
+.set SEG_USER_DATA,   0x1B
+.set SEG_USER_CODE,   0x23
 
-// RFLAGS bits
-.set RFLAGS_IF,       0x200  // Interrupt enable
-.set RFLAGS_RESERVED, 0x2    // Reserved bit (always 1)
+// RFLAGS policy
+.set RFLAGS_BASE,     0x202
+.set RFLAGS_CLEARMASK, ((3 << 12) | (1 << 14) | (1 << 16) | (1 << 17) | (1 << 8))
+
+#ifndef AYKEN_CR3_PCID
+#define AYKEN_CR3_PCID 0
+#endif
+
+// Marker emission helper (debugcon, port 0xE9)
+.macro EMIT_CSTR label
+    leaq \label(%rip), %rsi
+1:
+    movzbq (%rsi), %rax
+    testb %al, %al
+    je 2f
+    outb %al, $0xE9
+    inc %rsi
+    jmp 1b
+2:
+.endm
 
 //
-// ring3_enter(uint64_t rip, uint64_t rsp, uint64_t user_cr3)
+// ring3_enter_iretq(rip, rsp, rflags, user_cr3) noreturn
 //
-// Transition from Ring0 to Ring3 via IRETQ.
+// RDI = user RIP
+// RSI = user RSP
+// RDX = user RFLAGS (will be sanitized)
+// RCX = user CR3 (physical, page-aligned)
 //
-// Parameters:
-//   RDI = user RIP (entry point)
-//   RSI = user RSP (stack pointer)
-//   RDX = user CR3 (page table physical address)
+// This is the canonical Ring3 entry path used by scheduler ASM.
 //
-// Preconditions (MUST be validated by caller):
-//   - user_cr3 is valid physical address
-//   - user RIP is canonical
-//   - user RSP is canonical and aligned
-//   - TSS.RSP0 is set to valid kernel stack
-//   - User page tables are mapped
-//
-// Postconditions:
-//   - CPU in Ring3
-//   - CS = SEG_USER_CODE | 3
-//   - SS = SEG_USER_DATA | 3
-//   - RFLAGS.IF = 1 (interrupts enabled)
-//   - CR3 = user_cr3
-//
-// Failure modes:
-//   - Triple fault if preconditions violated
-//   - General Protection Fault if segment DPL mismatch
-//   - Page Fault if user page tables invalid
-//
-ring3_enter:
-    // Marker: entering Ring3 transition
-    // (Visible in QEMU trace: mov $0x5233, %eax)
-    mov $0x5233, %eax  // "R3" marker (0x52='R', 0x33='3')
+ring3_enter_iretq:
+    // Preserve transition inputs in caller-saved registers only.
+    mov %rsi, %r10            // r10 = user_rsp
+    mov %rdi, %r11            // r11 = user_rip
 
-    // Save parameters (IRETQ will clobber registers)
-    mov %rdi, %r8      // r8 = user_rip
-    mov %rsi, %r9      // r9 = user_rsp
-    mov %rdx, %r10     // r10 = user_cr3
+    // Sanitize target user RFLAGS.
+    mov %rdx, %rax
+    andq $~RFLAGS_CLEARMASK, %rax
+    orq $RFLAGS_BASE, %rax
+    mov %rax, %rdx            // rdx = sanitized user rflags
 
-    // Switch to user page tables
-    // CRITICAL: This must happen before IRETQ
-    mov %r10, %cr3
+    // Enforce CR3 policy (PCID-aware, fail-closed).
+#if AYKEN_CR3_PCID == 1
+    // Allow only: NOFLUSH[63], PML4 base[51:12], PCID[11:0].
+    // Reserved bits [62:52] are always cleared.
+    mov %rcx, %rax
+    movabsq $0x800FFFFFFFFFF000, %r8
+    andq %r8, %rcx
+    andq $0x0000000000000FFF, %rax
+    orq  %rax, %rcx
+#else
+    // PCID disabled: enforce 4K-aligned CR3 base, low bits zero.
+    andq $0xFFFFFFFFFFFFF000, %rcx
+#endif
 
-    // Marker: CR3 switched
-    mov $0x4352, %eax  // "CR" marker (0x43='C', 0x52='R')
+    // Keep marker stream deterministic.
+    cli
 
-    // Build IRETQ stack frame (5 qwords):
-    //   [RSP+32] SS      (user data segment | RPL=3)
-    //   [RSP+24] RSP     (user stack pointer)
-    //   [RSP+16] RFLAGS  (IF=1, reserved=1)
-    //   [RSP+8]  CS      (user code segment | RPL=3)
-    //   [RSP+0]  RIP     (user entry point)
+    // Validation marker: IF bit policy after sanitization.
+    testq $0x200, %rdx
+    jz .L_rflags_if_off
+    EMIT_CSTR p10_rflags_if_on
+    jmp .L_rflags_if_ok
+.L_rflags_if_off:
+    EMIT_CSTR p10_rflags_if_off
+    ud2
+.L_rflags_if_ok:
 
-    // Push SS (user data segment with RPL=3)
-    mov $SEG_USER_DATA, %rax
-    or $3, %rax        // Set RPL=3 (Ring3)
-    push %rax
+    // Switch to user CR3 and emit marker.
+    mov %rcx, %cr3
+    EMIT_CSTR p10_cr3_switch
 
-    // Push user RSP
-    push %r9
+    // Build IRETQ frame: SS, RSP, RFLAGS, CS, RIP (reverse push order).
+    movq $SEG_USER_DATA, %rax
+    pushq %rax
+    pushq %r10
+    pushq %rdx
+    movq $SEG_USER_CODE, %rax
+    pushq %rax
+    pushq %r11
 
-    // Push RFLAGS (IF=1, reserved=1)
-    mov $(RFLAGS_IF | RFLAGS_RESERVED), %rax
-    push %rax
-
-    // Push CS (user code segment with RPL=3)
-    mov $SEG_USER_CODE, %rax
-    or $3, %rax        // Set RPL=3 (Ring3)
-    push %rax
-
-    // Push user RIP
-    push %r8
-
-    // Marker: IRETQ frame ready
-    mov $0x4952, %eax  // "IR" marker (0x49='I', 0x52='R')
-
-    // Transition to Ring3
-    // IRETQ will:
-    //   1. Pop RIP, CS, RFLAGS, RSP, SS
-    //   2. Switch to Ring3 (CPL=3)
-    //   3. Enable interrupts (RFLAGS.IF=1)
-    //   4. Jump to user RIP
+    // Enter marker immediately before transition.
+    EMIT_CSTR p10_ring3_enter
     iretq
 
-    // UNREACHABLE: If we get here, something is very wrong
+    // Never returns.
     ud2
+
+//
+// ring3_enter(rip, rsp, user_cr3) noreturn
+//
+// Compatibility wrapper for legacy C callsites.
+// Uses default policy RFLAGS value and tails into canonical helper.
+//
+ring3_enter:
+    mov %rdx, %rcx            // rcx = user_cr3
+    movq $RFLAGS_BASE, %rdx   // rdx = baseline user rflags
+    jmp ring3_enter_iretq
+
+.section .rodata
+p10_cr3_switch:
+    .asciz "P10_CR3_SWITCH\n"
+p10_ring3_enter:
+    .asciz "P10_RING3_ENTER\n"
+p10_rflags_if_on:
+    .asciz "P10_RFLAGS_IF_ON\n"
+p10_rflags_if_off:
+    .asciz "P10_RFLAGS_IF_OFF\n"

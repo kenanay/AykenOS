@@ -13,6 +13,7 @@ extern sched_irq_user_ctx_saved
 extern timer_isr_c
 extern sched_take_resched
 extern sched_yield_irq
+extern ring3_enter_iretq
 
 ; cpu_context_t ABI offsets (single source of truth)
 %include "ayken_abi.inc"
@@ -140,7 +141,6 @@ context_switch:
     mov rcx, [rsi + CTX_RSP]
     mov rdx, [rsi + CTX_RFLAGS]
     mov r8,  [rsi + CTX_CR3]
-    and r8,  0xFFFFFFFFFFFFF000
     movzx r9,  word [rsi + CTX_CS]
     movzx r10, word [rsi + CTX_SS]
 
@@ -159,20 +159,11 @@ context_switch:
     ret
 
 .L_ring3_ret:
-    ; Ring3 path: sanitize privileged RFLAGS bits and keep IF enabled.
-    mov rax, rdx
-    and rax, ~((3<<12) | (1<<14) | (1<<16) | (1<<17) | (1<<8))
-    or rax, 0x202
-    mov rdx, rax
-
-    push r10
-    push rcx
-    push rdx
-    push r9
-    push r11
-
-    mov cr3, r8
-    iretq
+    ; Canonical Ring3 entry path: all CR3/RFLAGS/IRETQ semantics live in ring3_enter.S.
+    mov rdi, r11 ; rip
+    mov rsi, rcx ; rsp
+    mov rcx, r8  ; user cr3
+    jmp ring3_enter_iretq
 
 ; void switch_to_first(cpu_context_t *ctx)
 switch_to_first:
@@ -189,7 +180,6 @@ switch_to_first:
     mov rcx, [rdi + CTX_RSP]
     mov rdx, [rdi + CTX_RFLAGS]
     mov r8,  [rdi + CTX_CR3]
-    and r8,  0xFFFFFFFFFFFFF000
     movzx r9,  word [rdi + CTX_CS]
     movzx r10, word [rdi + CTX_SS]
 
@@ -202,20 +192,11 @@ switch_to_first:
     jmp r11
 
 .L_first_ring3:
-    ; Same RFLAGS sanitization policy as context_switch ring3 path.
-    mov rax, rdx
-    and rax, ~((3<<12) | (1<<14) | (1<<16) | (1<<17) | (1<<8))
-    or rax, 0x202
-    mov rdx, rax
-
-    push r10
-    push rcx
-    push rdx
-    push r9
-    push r11
-
-    mov cr3, r8
-    iretq
+    ; Canonical Ring3 entry path shared with context_switch().
+    mov rdi, r11 ; rip
+    mov rsi, rcx ; rsp
+    mov rcx, r8  ; user cr3
+    jmp ring3_enter_iretq
 
 ; -----------------------------------------------------------------------------
 ; Timer Interrupt Handler (IRQ0 -> Vector 32)

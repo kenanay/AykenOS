@@ -58,6 +58,10 @@
 #define AYKEN_INTENTIONAL_PERF_REGRESSION_MS 0
 #endif
 
+#ifndef AYKEN_CR3_PCID
+#define AYKEN_CR3_PCID 0
+#endif
+
 // Ring3 VFS removed in Phase 2.5 - Step C completion
 // VFS operations now handled entirely in Ring3
 
@@ -189,6 +193,9 @@ static void validate_tss_for_ring3(void)
     if (kernel_tss.rsp0 == 0) {
         phase10_prereq_panic("tss_rsp0_zero");
     }
+    if (kernel_tss.rsp0 < 0xFFFF800000000000ULL) {
+        phase10_prereq_panic("tss_rsp0_not_kernel_half");
+    }
     if (!is_canonical_addr(kernel_tss.rsp0)) {
         phase10_prereq_panic("tss_rsp0_noncanonical");
     }
@@ -197,11 +204,37 @@ static void validate_tss_for_ring3(void)
     }
 }
 
+static void validate_cr4_ring3_policy(void)
+{
+    const uint64_t cr4_smep = (1ULL << 20);
+    const uint64_t cr4_smap = (1ULL << 21);
+    const uint64_t cr4_pcide = (1ULL << 17);
+    uint64_t cr4 = 0;
+
+    __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
+
+    // Phase10 hardening preparation: fail-closed until SMEP/SMAP-safe paths are explicit.
+    if ((cr4 & (cr4_smep | cr4_smap)) != 0) {
+        phase10_prereq_panic("cr4_smep_smap_unsupported");
+    }
+
+#if AYKEN_CR3_PCID == 1
+    if ((cr4 & cr4_pcide) == 0) {
+        phase10_prereq_panic("cr4_pcide_required");
+    }
+#else
+    if ((cr4 & cr4_pcide) != 0) {
+        phase10_prereq_panic("cr4_pcide_unexpected");
+    }
+#endif
+}
+
 static void validate_phase10_a2_prerequisites(void)
 {
     validate_gdt_user_segments();
     validate_idt_bp_gate();
     validate_tss_for_ring3();
+    validate_cr4_ring3_policy();
 }
 
 // Deterministic (timer-tick based) delay hook for intentional perf regression validation.

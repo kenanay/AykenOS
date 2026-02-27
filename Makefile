@@ -38,6 +38,7 @@ AYKEN_INTENTIONAL_PERF_REGRESSION_MS ?= 0
 AYKEN_MB_SELFTEST ?= 1
 AYKEN_GATE4_POLICY_TEST ?= 0
 KERNEL_EXPORT_POLICY ?= 1
+AYKEN_CR3_PCID ?= 0
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -53,6 +54,10 @@ endif
 
 ifneq ($(filter $(KERNEL_EXPORT_POLICY),0 1),$(KERNEL_EXPORT_POLICY))
 $(error Invalid KERNEL_EXPORT_POLICY='$(KERNEL_EXPORT_POLICY)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_CR3_PCID),0 1),$(AYKEN_CR3_PCID))
+$(error Invalid AYKEN_CR3_PCID='$(AYKEN_CR3_PCID)'. Use 0 or 1)
 endif
 
 ifeq ($(AYKEN_SCHED_FALLBACK),1)
@@ -89,6 +94,8 @@ KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
 KERNEL_CFLAGS += -DAYKEN_INTENTIONAL_PERF_REGRESSION_MS=$(AYKEN_INTENTIONAL_PERF_REGRESSION_MS)
 KERNEL_CFLAGS += -DAYKEN_MB_SELFTEST=$(AYKEN_MB_SELFTEST)
 KERNEL_CFLAGS += -DAYKEN_GATE4_POLICY_TEST=$(AYKEN_GATE4_POLICY_TEST)
+KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
+KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
 
@@ -131,6 +138,10 @@ KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 USER_MINIMAL_DIR = userspace/minimal
 USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
+USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
+                       $(wildcard $(USER_MINIMAL_DIR)/*.S) \
+                       $(USER_MINIMAL_DIR)/user.ld \
+                       $(USER_MINIMAL_DIR)/Makefile
 EMBED_ELF_TOOL = tools/embed_elf.py
 EMBEDDED_ELF_HEADER = kernel/include/embedded_elf.h
 
@@ -195,6 +206,7 @@ PERF_VARIANCE_WARMUP ?= 1
 PERF_VARIANCE_QEMU_TIMEOUT ?= 12
 PERF_VARIANCE_STRICT_MARKERS ?= 1
 PERF_VARIANCE_FORCE_EFI_REBUILD ?= 0
+RING3_QEMU_TIMEOUT ?= 35
 
 
 # ------------------------------------------------------------
@@ -320,7 +332,7 @@ kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 	$(KERNEL_CC) $(KERNEL_CFLAGS) -c $< -o $@
 
 # Phase 10: User binary build and embedding
-$(USER_MINIMAL_ELF):
+$(USER_MINIMAL_ELF): $(USER_MINIMAL_SOURCES)
 	@echo "[PHASE10] Building minimal user ELF..."
 	@$(MAKE) -C $(USER_MINIMAL_DIR) minimal.elf
 
@@ -596,12 +608,16 @@ ci-freeze-guard:
 		echo "ERROR: ci-freeze requires AYKEN_SCHED_FALLBACK=0 (current=$(AYKEN_SCHED_FALLBACK))"; \
 		exit 2; \
 	fi
+	@if [ "$(AYKEN_CR3_PCID)" != "0" ]; then \
+		echo "ERROR: ci-freeze requires AYKEN_CR3_PCID=0 (current=$(AYKEN_CR3_PCID))"; \
+		exit 2; \
+	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -620,6 +636,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -823,6 +840,17 @@ ci-gate-behavioral-suite: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: behavioral-suite evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-ring3-execution-phase10a2: ci-evidence-dir
+	@echo "== CI GATE RING3 EXECUTION PHASE10-A2 =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: validation (enforced)"
+	@echo "ayken_cr3_pcid: 0 (enforced)"
+	@echo "qemu_timeout_seconds: $(RING3_QEMU_TIMEOUT)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2/report.json" "$(EVIDENCE_RUN_DIR)/reports/ring3-execution-phase10a2.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ring3-execution-phase10a2 evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -962,6 +990,7 @@ help:
 	@echo "    (override strict locally: CONSTITUTIONAL_STRICT=0)"
 	@echo "  ci-gate-behavioral-suite - Gate-6 behavioral proof suite (phase-driven)"
 	@echo "    (phase selector: BEHAVIORAL_SUITE_PHASE=5 by default)"
+	@echo "  ci-gate-ring3-execution-phase10a2 - Strict Phase10 scheduler+syscall+Ring3 marker-order gate"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -978,7 +1007,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

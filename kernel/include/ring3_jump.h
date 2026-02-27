@@ -23,7 +23,8 @@
 extern void ring3_enter(uint64_t rip, uint64_t rsp, uint64_t user_cr3);
 
 // Ring3 initialization (C wrapper)
-// Loads embedded user ELF and transitions to Ring3
+// Loads embedded user ELF, creates a runnable user process and returns.
+// Actual Ring3 entry happens via scheduler/context-switch path.
 void jump_to_ring3(void);
 
 #endif // RING3_JUMP_H

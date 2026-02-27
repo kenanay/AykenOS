@@ -1024,9 +1024,9 @@ echo "✓ Ring3 execution gate PASSED"
 **Deliverables:**
 - `kernel/src/elf/loader_phase_a.c` (minimal loader with basic ELF validation)
 - `kernel/src/arch/x86_64/ring3_enter.S` (IRETQ assembly with correct register handling)
-- `userspace/minimal/minimal.c` (minimal Ring3 program with P10_RING3_USER_CODE marker)
+- `userspace/minimal/minimal.S` (minimal Ring3 assembly stub for syscall roundtrip test - Phase 10-A2 Task 3)
 - `userspace/minimal/user.ld` (linker script for static Ring3 binary)
-- `userspace/minimal/Makefile` (build minimal ELF)
+- `userspace/minimal/Makefile` (build minimal ELF from assembly source)
 - `tools/embed_elf.py` (convert ELF to C array)
 - `scripts/ci/gate_ring3_execution.sh` (CI gate)
 - CI gate PASS

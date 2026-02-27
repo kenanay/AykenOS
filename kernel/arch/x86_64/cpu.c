@@ -1,8 +1,9 @@
 // Basic CPU init placeholder
 #include "cpu.h"
 #include "gdt_idt.h"
-#include "../include/mm.h"
-#include "../include/kheap.h"
+
+extern char _tss_rsp0_stack_top[];
+extern char _tss_ist1_stack_top[];
 
 void cpu_init(void)
 {
@@ -14,14 +15,12 @@ void tss_init(void)
 {
     // Initialize TSS structure
     __builtin_memset(&kernel_tss, 0, sizeof(tss_entry_t));
-    
-    // Allocate kernel stack for interrupts (4KB)
-    uint64_t kernel_stack = (uint64_t)kmalloc(4096);
-    kernel_tss.rsp0 = kernel_stack + 4096; // Stack grows down
 
-    // Dedicated IST stack for critical faults/syscalls (bypass rsp0 on entry)
-    static uint8_t ist1_stack[AYKEN_FRAME_SIZE] __attribute__((aligned(16)));
-    kernel_tss.ist1 = (uint64_t)ist1_stack + sizeof(ist1_stack);
+    // Linker-reserved stacks are placed in kernel high-half virtual memory.
+    kernel_tss.rsp0 = (uint64_t)_tss_rsp0_stack_top;
+
+    // Dedicated IST stack for critical faults/syscalls (bypass rsp0 on entry).
+    kernel_tss.ist1 = (uint64_t)_tss_ist1_stack_top;
     
     // Set I/O map base beyond TSS limit to disable I/O permission checking
     // This allows all Ring3 processes to access all I/O ports

@@ -48,6 +48,16 @@
 #define SCHED_DBG_OUT(ch) do { (void)(ch); } while (0)
 #endif
 
+static void sched_emit_marker(const char *text)
+{
+    if (!text) {
+        return;
+    }
+    while (*text) {
+        outb(0xE9, (uint8_t)*text++);
+    }
+}
+
 #if AYKEN_DEBUG_SCHED
 static void sched_dbg_puts(const char *s)
 {
@@ -624,6 +634,7 @@ void sched_start(void)
     // CRITICAL: Call switch_to_first with interrupts disabled
     // Interrupts will be enabled by the first process's RFLAGS (IF=1)
     // This prevents timer interrupts from firing before we have a proper context
+    sched_emit_marker("P10_SCHED_DISPATCH\n");
     switch_to_first(&current_proc->context);
     
     // DEBUG: This should never be reached if switch_to_first works

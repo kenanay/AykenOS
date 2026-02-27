@@ -1,8 +1,9 @@
 # AykenOS Phase 10-A: Minimal Ring3 ELF Build
-# - Task 1.4 output is minimal.elf
+# - Task 3: Assembly stub for syscall roundtrip test
 # - user.bin is kept for current kernel embedding compatibility
 
 CC := clang
+AS := clang
 PYTHON := python3
 
 CFLAGS := -target x86_64-elf \
@@ -16,6 +17,12 @@ CFLAGS := -target x86_64-elf \
           -Wextra \
           -O2
 
+ASFLAGS := -target x86_64-elf \
+           -ffreestanding \
+           -fno-pic \
+           -mno-red-zone \
+           -nostdlib
+
 LDFLAGS := -nostdlib \
            -static \
            -Wl,-T,user.ld \
@@ -24,8 +31,9 @@ LDFLAGS := -nostdlib \
 
 all: minimal.elf user.bin
 
-minimal.o: minimal.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+# Phase 10-A2 Task 3: Use assembly stub for syscall test
+minimal.o: minimal.S
+	$(AS) $(ASFLAGS) -c -o $@ $<
 
 minimal.elf: minimal.o user.ld
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minimal.o

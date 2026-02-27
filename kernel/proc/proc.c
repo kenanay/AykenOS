@@ -744,6 +744,17 @@ void init_process_main(void)
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
 
+    // Phase 10 scheduler-dispatch mode:
+    // If a user process is already prepared before sched_start (PID2),
+    // skip legacy runtime launchers and hand control to that process.
+    proc_t *preloaded = proc_find_by_pid(2);
+    if (preloaded && preloaded->type == PROC_TYPE_USER) {
+        fb_print("[init] Phase10 preloaded user process detected; yielding.\n");
+        sched_block_current();
+        for (;;)
+            __asm__ volatile("hlt");
+    }
+
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     // Gate-4 isolated mode: run only policy mailbox workload.
