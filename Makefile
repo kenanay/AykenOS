@@ -150,7 +150,12 @@ USERSPACE_RUNTIME_BIN = $(USERSPACE_RUST_DIR)/target/debug/dispatcher.exe
 
 # CI evidence and boundary gate defaults
 EVIDENCE_ROOT ?= evidence
-RUN_ID ?= $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+RUN_ID_DEFAULT := $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+RUN_ID ?= $(RUN_ID_DEFAULT)
+# Command-line RUN_ID= (empty) must not collapse evidence path to evidence/run-.
+ifeq ($(strip $(RUN_ID)),)
+override RUN_ID := $(RUN_ID_DEFAULT)
+endif
 RUN_ID := $(RUN_ID)
 EVIDENCE_RUN_DIR := $(EVIDENCE_ROOT)/run-$(RUN_ID)
 CI_TARGETS ?= kernel.elf

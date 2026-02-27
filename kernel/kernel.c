@@ -84,6 +84,126 @@ static void debugcon_write(const char *s)
     }
 }
 
+struct gdtr_snapshot {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+struct gdt_descriptor_entry {
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_mid;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
+} __attribute__((packed));
+
+static int is_canonical_addr(uint64_t addr)
+{
+    const uint64_t upper = addr >> 48;
+    const uint64_t sign = (addr >> 47) & 1ULL;
+    return sign ? (upper == 0xFFFFULL) : (upper == 0x0000ULL);
+}
+
+static void phase10_prereq_panic(const char *reason)
+{
+    debugcon_write("[P10][PREREQ_FAIL] ");
+    debugcon_write(reason);
+    debugcon_write("\n");
+    fb_print("[PANIC] Phase10-A2 prereq failed: ");
+    fb_print(reason);
+    fb_print("\n");
+    for (;;) {
+        __asm__ volatile("cli; hlt");
+    }
+}
+
+static void validate_gdt_user_segments(void)
+{
+    const uint16_t user_data_index = (uint16_t)(GDT_USER_DATA >> 3);
+    const uint16_t user_code_index = (uint16_t)(GDT_USER_CODE >> 3);
+    struct gdtr_snapshot gdtr = {0};
+    __asm__ volatile("sgdt %0" : "=m"(gdtr));
+    if (gdtr.base == 0) {
+        phase10_prereq_panic("gdt_base_zero");
+    }
+    if (gdtr.limit < ((uint16_t)((user_code_index + 1u) * 8u) - 1u)) {
+        phase10_prereq_panic("gdt_limit_small");
+    }
+
+    const struct gdt_descriptor_entry *gdt =
+        (const struct gdt_descriptor_entry *)(uintptr_t)gdtr.base;
+    const struct gdt_descriptor_entry *user_data = &gdt[user_data_index];
+    const struct gdt_descriptor_entry *user_code = &gdt[user_code_index];
+
+    // Present bit and DPL=3 must hold for both user descriptors.
+    if (!(user_data->access & 0x80) || (((user_data->access >> 5) & 0x3) != 0x3)) {
+        phase10_prereq_panic("gdt_user_data_dpl");
+    }
+    if (!(user_code->access & 0x80) || (((user_code->access >> 5) & 0x3) != 0x3)) {
+        phase10_prereq_panic("gdt_user_code_dpl");
+    }
+
+    // S=1 means code/data descriptor. Data must be non-exec, code must be exec.
+    if (!(user_data->access & 0x10) || (user_data->access & 0x08)) {
+        phase10_prereq_panic("gdt_user_data_type");
+    }
+    if (!(user_code->access & 0x10) || !(user_code->access & 0x08)) {
+        phase10_prereq_panic("gdt_user_code_type");
+    }
+}
+
+static void validate_idt_bp_gate(void)
+{
+    const struct idt_entry *bp = &idt_table[3];
+    const uint64_t bp_handler =
+        ((uint64_t)bp->offset_high << 32) |
+        ((uint64_t)bp->offset_mid << 16) |
+        (uint64_t)bp->offset_low;
+
+    // Present bit must be set and handler offset must be non-zero.
+    if ((bp->type_attr & 0x80) == 0) {
+        phase10_prereq_panic("idt_bp_not_present");
+    }
+    if (bp_handler == 0) {
+        phase10_prereq_panic("idt_bp_offset_zero");
+    }
+
+    // Allow either trap gate (0xF) or interrupt gate (0xE).
+    {
+        const uint8_t gate_type = bp->type_attr & 0x0F;
+        if (gate_type != 0x0F && gate_type != 0x0E) {
+            phase10_prereq_panic("idt_bp_gate_type");
+        }
+    }
+}
+
+static void validate_tss_for_ring3(void)
+{
+    uint16_t tr = 0;
+    __asm__ volatile("str %0" : "=r"(tr));
+
+    if ((tr & ~0x7u) != GDT_TSS_SEL) {
+        phase10_prereq_panic("tss_selector_invalid");
+    }
+    if (kernel_tss.rsp0 == 0) {
+        phase10_prereq_panic("tss_rsp0_zero");
+    }
+    if (!is_canonical_addr(kernel_tss.rsp0)) {
+        phase10_prereq_panic("tss_rsp0_noncanonical");
+    }
+    if (paging_get_phys(kernel_tss.rsp0 - 8) == 0) {
+        phase10_prereq_panic("tss_rsp0_unmapped");
+    }
+}
+
+static void validate_phase10_a2_prerequisites(void)
+{
+    validate_gdt_user_segments();
+    validate_idt_bp_gate();
+    validate_tss_for_ring3();
+}
+
 // Deterministic (timer-tick based) delay hook for intentional perf regression validation.
 // Default is disabled in all normal builds.
 static void intentional_perf_regression_delay_if_enabled(void)
@@ -497,6 +617,13 @@ static void kernel_late_init(void)
     // Gate-0: Boot validation marker
     debugcon_write("[[AYKEN_BOOT_OK]]\n");
 #endif
+
+    // ---------------------------------------------------------
+    // Phase 10-A2 Task 1: Validate TSS/GDT/IDT prerequisites
+    // Must run before Ring3 process preparation/dispatch path.
+    // ---------------------------------------------------------
+    validate_phase10_a2_prerequisites();
+    debugcon_write("P10_TSS_OK\n");
 
     // ---------------------------------------------------------
     // Phase 10-A: Prepare embedded Ring3 process

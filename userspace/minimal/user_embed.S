@@ -1,0 +1,9 @@
+.section .rodata
+.global _binary_userspace_minimal_user_bin_start
+.global _binary_userspace_minimal_user_bin_end
+.global _binary_userspace_minimal_user_bin_size
+
+_binary_userspace_minimal_user_bin_start:
+    .incbin "userspace/minimal/user.bin"
+_binary_userspace_minimal_user_bin_end:
+_binary_userspace_minimal_user_bin_size = _binary_userspace_minimal_user_bin_end - _binary_userspace_minimal_user_bin_start

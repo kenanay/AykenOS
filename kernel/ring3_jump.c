@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "arch/x86_64/port_io.h"
 #include "drivers/console/fb_console.h"
-#include "include/embedded_elf.h"
+#include "embedded_elf.h"
 #include "include/proc.h"
 
 static void debugcon_write(const char *s)
