@@ -49,6 +49,7 @@
 #include "arch/x86_64/pic.h"
 #include "arch/x86_64/timer.h"
 #include "arch/x86_64/port_io.h"
+#include "include/ring3_jump.h"
 
 // AI modules removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
@@ -363,6 +364,29 @@ static void kernel_late_init(void)
     fb_print("[AykenOS] LATE INIT starting...\n");
 
     // ---------------------------------------------------------
+    // 0) Boot Validation Stage (Phase 10-A)
+    // ---------------------------------------------------------
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    debugcon_write("[K][LATE]0 BOOT_VALIDATION\n");
+    fb_print("[VALIDATION] Running boot validation tests...\n");
+    
+    // Phase 10-A: ELF parser validation
+    extern void elf_parser_run_validation(void);
+    outb(0xE9, 'E');
+    outb(0xE9, 'L');
+    outb(0xE9, 'F');
+    outb(0xE9, '\n');
+    elf_parser_run_validation();
+    outb(0xE9, 'E');
+    outb(0xE9, 'L');
+    outb(0xE9, 'F');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
+    
+    fb_print("[VALIDATION] Boot validation tests complete.\n");
+#endif
+
+    // ---------------------------------------------------------
     // 1) Interrupt controller + timer
     // ---------------------------------------------------------
     debugcon_write("[K][LATE]1 PIC\n");
@@ -469,4 +493,10 @@ static void kernel_late_init(void)
     // Gate-0: Boot validation marker
     debugcon_write("[[AYKEN_BOOT_OK]]\n");
 #endif
+
+    // ---------------------------------------------------------
+    // Phase 10 Sprint A: Jump to Ring3
+    // ---------------------------------------------------------
+    fb_print("[PHASE10] Jumping to Ring3...\n");
+    jump_to_ring3();  // Never returns
 }

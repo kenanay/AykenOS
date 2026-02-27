@@ -127,9 +127,17 @@ KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOUR
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 
+# Phase 10: User binary embedding
+USER_MINIMAL_DIR = userspace/minimal
+USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
+USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
+USER_MINIMAL_OBJ = $(USER_MINIMAL_DIR)/user_embed.o
+EMBED_ELF_TOOL = tools/embed_elf.py
+EMBEDDED_ELF_HEADER = kernel/include/embedded_elf.h
+
 # Kernel image contains Ring0 code only.
 # Ring3 userspace components are built via separate userspace targets.
-KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o)
+KERNEL_OBJS = $(KERNEL_C_SOURCES:.c=.o) $(KERNEL_ASM_SOURCES:.asm=.o) $(KERNEL_S_SOURCES:.S=.o) $(USER_MINIMAL_OBJ)
 KERNEL_DEPS = $(KERNEL_OBJS:.o=.d)
 
 ifeq ($(KERNEL_EXPORT_POLICY),1)
@@ -235,10 +243,11 @@ BOOT_EFI = $(BOOTLOADER_DIR)/BOOTX64.EFI
 # 3) Top-level hedefler
 # ------------------------------------------------------------
 
-all: check-deps guard-context-offsets $(KERNEL_ELF) $(BOOT_EFI)
+all: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF) $(BOOT_EFI)
 
-kernel: check-deps guard-context-offsets $(KERNEL_ELF)
+kernel: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF)
 bootloader: check-deps $(BOOT_EFI)
+user-minimal: $(USER_MINIMAL_BIN)
 userspace-runtime:
 	@cd $(USERSPACE_RUST_DIR) && cargo build -p bcib-runtime --bin dispatcher
 release:
@@ -258,7 +267,7 @@ $(PROFILE_STAMP): FORCE
 		echo "$(KERNEL_PROFILE)" > $(PROFILE_STAMP); \
 	fi
 
-$(KERNEL_OBJS): $(PROFILE_STAMP)
+$(KERNEL_OBJS): $(PROFILE_STAMP) $(EMBEDDED_ELF_HEADER)
 
 $(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP) $(KERNEL_LINK_EXTRA_DEPS)
 	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(KERNEL_LINK_EXTRA_FLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
@@ -305,6 +314,23 @@ kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 # S -> .o (kernel/arch/x86_64/*.S) - GNU assembler
 %.o: %.S
 	$(KERNEL_CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+# Phase 10: User binary build and embedding
+$(USER_MINIMAL_ELF):
+	@echo "[PHASE10] Building minimal user ELF..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) minimal.elf
+
+$(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF)
+	@echo "[PHASE10] Building minimal user binary..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) user.bin
+
+$(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL)
+	@echo "[PHASE10] Generating embedded ELF header..."
+	@python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER)
+
+$(USER_MINIMAL_OBJ): $(USER_MINIMAL_BIN) $(USER_MINIMAL_DIR)/user_embed.S
+	@echo "[PHASE10] Embedding user binary into kernel..."
+	@$(KERNEL_CC) $(KERNEL_CFLAGS) -c $(USER_MINIMAL_DIR)/user_embed.S -o $(USER_MINIMAL_OBJ)
 
 -include $(KERNEL_DEPS)
 
@@ -360,10 +386,10 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER)
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER)
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
