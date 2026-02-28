@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "description": "Proof marker schema baseline. Marker contract changes require governance review.",
+  "profiles": {
+    "phase10a2": {
+      "description": "Ring3 execution Phase10-A2 marker extraction and ordering baseline.",
+      "markers": {
+        "P10_TSS_OK": {
+          "token": "P10_TSS_OK",
+          "required_count": 1
+        },
+        "KERNEL_BEFORE_RING3": {
+          "token": "[K][PHASE10] KERNEL_BEFORE_RING3",
+          "required_count": 1
+        },
+        "AYKEN_RING3_PREP_OK": {
+          "token": "[[AYKEN_RING3_PREP_OK]]",
+          "required_count": 1
+        },
+        "P10_SCHED_DISPATCH": {
+          "token": "P10_SCHED_DISPATCH",
+          "required_count": 1
+        },
+        "P10_RFLAGS_IF_ON": {
+          "token": "P10_RFLAGS_IF_ON",
+          "required_count": 1
+        },
+        "P10_RFLAGS_IF_OFF": {
+          "token": "P10_RFLAGS_IF_OFF",
+          "required_count": 0
+        },
+        "P10_CR3_SWITCH": {
+          "token": "P10_CR3_SWITCH",
+          "required_count": 1
+        },
+        "P10_RING3_ENTER": {
+          "token": "P10_RING3_ENTER",
+          "required_count": 1
+        },
+        "AYKEN_SYSCALL_ENTER": {
+          "token": "[[AYKEN_SYSCALL_ENTER]]",
+          "required_count": 1
+        },
+        "P10_SYSCALL_ENTER": {
+          "token": "P10_SYSCALL_ENTER",
+          "required_count": 1
+        },
+        "AYKEN_SYSCALL_RETURN": {
+          "token": "[[AYKEN_SYSCALL_RETURN]]",
+          "required_count": 1
+        },
+        "P10_SYSCALL_RETURN": {
+          "token": "P10_SYSCALL_RETURN",
+          "required_count": 1
+        },
+        "P10_CAP_ENFORCED": {
+          "token": "P10_CAP_ENFORCED",
+          "required_count": 1
+        },
+        "P10_RING3_USER_CODE": {
+          "token": "P10_RING3_USER_CODE",
+          "required_count": 1
+        }
+      },
+      "ordering": [
+        ["P10_TSS_OK", "KERNEL_BEFORE_RING3"],
+        ["KERNEL_BEFORE_RING3", "AYKEN_RING3_PREP_OK"],
+        ["AYKEN_RING3_PREP_OK", "P10_SCHED_DISPATCH"],
+        ["P10_SCHED_DISPATCH", "P10_RFLAGS_IF_ON"],
+        ["P10_RFLAGS_IF_ON", "P10_CR3_SWITCH"],
+        ["P10_CR3_SWITCH", "P10_RING3_ENTER"],
+        ["P10_RING3_ENTER", "AYKEN_SYSCALL_ENTER"],
+        ["AYKEN_SYSCALL_ENTER", "P10_SYSCALL_ENTER"],
+        ["P10_SYSCALL_ENTER", "AYKEN_SYSCALL_RETURN"],
+        ["AYKEN_SYSCALL_RETURN", "P10_SYSCALL_RETURN"],
+        ["P10_SYSCALL_RETURN", "P10_CAP_ENFORCED"],
+        ["P10_CAP_ENFORCED", "P10_RING3_USER_CODE"]
+      ]
+    },
+    "gate45_proof": {
+      "description": "Gate-4.5 decision->switch proof marker schema baseline.",
+      "markers": {
+        "ring3_publish": {
+          "pattern": "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "mailbox_accept": {
+          "pattern": "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "arbiter_decision": {
+          "pattern": "\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\]",
+          "required_count": 1
+        },
+        "ctx_switch": {
+          "pattern": "\\[\\[AYKEN_CTX_SWITCH\\]\\]",
+          "required_count": 1
+        },
+        "proof_done": {
+          "pattern": "\\[\\[AYKEN_PROOF_DONE\\]\\]",
+          "required_count": 1
+        }
+      },
+      "ordering": [
+        ["ring3_publish", "mailbox_accept"],
+        ["mailbox_accept", "arbiter_decision"],
+        ["arbiter_decision", "ctx_switch"]
+      ]
+    },
+    "gate4_policy_accept": {
+      "description": "Gate-4 policy-accept proof marker schema baseline.",
+      "markers": {
+        "gate4_pid": {
+          "pattern": "\\[\\[AYKEN_GATE4_PID\\]\\] pid=[0-9]+",
+          "required_count": 1
+        },
+        "ring3_publish": {
+          "pattern": "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "mailbox_accept": {
+          "pattern": "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "proof_done": {
+          "pattern": "\\[\\[AYKEN_PROOF_DONE\\]\\]",
+          "required_count": 0
+        }
+      },
+      "ordering": [
+        ["ring3_publish", "mailbox_accept"]
+      ]
+    },
+    "gate45_decision_switch": {
+      "description": "Gate-4.5 decision->switch runtime marker schema baseline.",
+      "profile_flags": {
+        "requires_multi_owner": true
+      },
+      "markers": {
+        "ring3_publish": {
+          "pattern": "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "mailbox_accept": {
+          "pattern": "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "arbiter_decision": {
+          "pattern": "\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] from=[0-9]+ to=[0-9]+ epoch=[0-9]+",
+          "required_count": 1
+        },
+        "ctx_switch": {
+          "pattern": "\\[\\[AYKEN_CTX_SWITCH\\]\\] from=[0-9]+ to=[0-9]+",
+          "required_count": 1
+        },
+        "proof_done": {
+          "pattern": "\\[\\[AYKEN_PROOF_DONE\\]\\]",
+          "required_count": 1
+        }
+      },
+      "ordering": [
+        ["ring3_publish", "mailbox_accept"],
+        ["mailbox_accept", "arbiter_decision"],
+        ["arbiter_decision", "ctx_switch"]
+      ]
+    }
+  }
+}

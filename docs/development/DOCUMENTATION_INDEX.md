@@ -62,6 +62,8 @@ Ayrica: `ci-summarize`
 8. `docs/development/SCHEDULER_MAILBOX_DEVELOPER_GUIDE.md` - Scheduler mailbox practical developer guide (publish/validate/consume flow)
 9. `docs/development/PROOF_GATE_DEBUG_HANDBOOK.md` - Gate-4/Gate-4.5 debug playbook and invariant triage
 10. `docs/governance/MAILBOX_ABI_HARDENING_NOTES.md` - ABI layout/marker drift hardening checklist
+11. `constitution/markers_schema_v1.json` - Canonical proof marker schema v1 (profile source for extraction/validation)
+12. `docs/governance/MARKER_SCHEMA_V1_FREEZE.md` - Marker schema v1 governance freeze (change class/version bump/CI enforcement rules)
 
 ### CI and Operations
 1. `docs/operations/CONSTITUTIONAL_CI_MODE.md` - Constitutional CI mode specification

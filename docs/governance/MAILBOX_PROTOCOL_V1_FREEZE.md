@@ -144,6 +144,8 @@ Reference scripts:
 
 1. `scripts/ci/gate_4_policy_accept.sh`
 2. `scripts/ci/gate_4_5_decision_switch_proof.sh`
+3. schema source: `constitution/markers_schema_v1.json`
+4. schema governance freeze: `docs/governance/MARKER_SCHEMA_V1_FREEZE.md`
 
 Gate-4 (`AYKEN_GATE45_PROOF=0`, `selftest=0`) requires:
 
@@ -217,4 +219,3 @@ Not part of v1 freeze:
 3. cross-owner consensus protocol
 
 These belong to C2 and require a separate v2 spec.
-

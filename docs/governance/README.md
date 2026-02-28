@@ -8,8 +8,12 @@ Authoritative references:
 - `CONSTITUTION_BOUNDARY.md`: constitutional vs tier-3 boundary contract.
 - `MAILBOX_PROTOCOL_V1_FREEZE.md`: frozen scheduler mailbox protocol v1
   (single-authority C1 baseline + proof contracts).
+- `MARKER_SCHEMA_V1_FREEZE.md`: governance freeze for marker schema v1
+  (change classes, versioning rules, CI enforcement contract).
 - `MAILBOX_ABI_HARDENING_NOTES.md`: technical hardening checklist for ABI and
   marker-contract drift prevention.
+- `../../constitution/markers_schema_v1.json`: canonical proof marker schema
+  baseline (profile-driven contract source).
 - `ci-gate-constitutional`: hard constitutional lock (contract surface only).
 - `ci-gate-governance-policy`: Tier-3 policy checks (source/AHS/waiver).
 - `../../constitution/ARCHITECTURE_GOVERNANCE.md`: tier model and non-negotiable rules.

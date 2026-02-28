@@ -67,17 +67,20 @@ fi
 mkdir -p "${EVIDENCE_DIR}"
 
 MARKER_REGISTRY="${ROOT}/constitution/runtime_markers.json"
+SCHEMA_V1="${ROOT}/constitution/markers_schema_v1.json"
 VERSION_FILE="${ROOT}/constitution/version.json"
 CHANGED_TXT="${EVIDENCE_DIR}/changed-files.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 MARKER_REGISTRY_SHA="${EVIDENCE_DIR}/marker_registry.sha256"
+SCHEMA_V1_SHA="${EVIDENCE_DIR}/marker_schema_v1.sha256"
 
 : > "${CHANGED_TXT}"
 : > "${VIOLATIONS_TXT}"
 : > "${META_TXT}"
 : > "${MARKER_REGISTRY_SHA}"
+: > "${SCHEMA_V1_SHA}"
 
 resolve_diff_range() {
   if [[ -n "${DIFF_RANGE}" ]]; then
@@ -116,6 +119,11 @@ if [[ -f "${MARKER_REGISTRY}" ]]; then
 else
   echo "MISSING" > "${MARKER_REGISTRY_SHA}"
 fi
+if [[ -f "${SCHEMA_V1}" ]]; then
+  sha256_file "${SCHEMA_V1}" > "${SCHEMA_V1_SHA}"
+else
+  echo "MISSING" > "${SCHEMA_V1_SHA}"
+fi
 
 NOW="$(ci_now_utc)"
 GIT_SHA="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo NO_GIT)"
@@ -126,6 +134,7 @@ if [[ "${ENFORCE}" == "0" ]]; then
   META_TXT_ENV="${META_TXT}" \
   REPORT_JSON_ENV="${REPORT_JSON}" \
   MARKER_REGISTRY_SHA_ENV="${MARKER_REGISTRY_SHA}" \
+  SCHEMA_V1_SHA_ENV="${SCHEMA_V1_SHA}" \
   DIFF_RANGE_ENV="${DIFF_RANGE_VAL}" \
   BASE_REV_ENV="${BASE_REV}" \
   NOW_ENV="${NOW}" \
@@ -139,8 +148,10 @@ CHANGED_TXT = Path(os.environ["CHANGED_TXT_ENV"])
 META_TXT = Path(os.environ["META_TXT_ENV"])
 REPORT_JSON = Path(os.environ["REPORT_JSON_ENV"])
 MARKER_REGISTRY_SHA = Path(os.environ["MARKER_REGISTRY_SHA_ENV"])
+SCHEMA_V1_SHA = Path(os.environ["SCHEMA_V1_SHA_ENV"])
 changed = [ln.strip() for ln in CHANGED_TXT.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()] if CHANGED_TXT.exists() else []
 sha_val = MARKER_REGISTRY_SHA.read_text(encoding="utf-8", errors="replace").strip() if MARKER_REGISTRY_SHA.exists() else "MISSING"
+schema_sha_val = SCHEMA_V1_SHA.read_text(encoding="utf-8", errors="replace").strip() if SCHEMA_V1_SHA.exists() else "MISSING"
 meta = {
     "time_utc": os.environ["NOW_ENV"],
     "git_sha": os.environ["GIT_SHA_ENV"],
@@ -149,6 +160,7 @@ meta = {
     "enforced": "0",
     "scope": "tier-2-phase-scoped",
     "marker_registry_sha256": sha_val if sha_val else "MISSING",
+    "marker_schema_v1_sha256": schema_sha_val if schema_sha_val else "MISSING",
     "changed_files_count": len(changed),
     "violations_count": 0,
 }
@@ -162,6 +174,9 @@ report = {
     "meta": meta,
     "checks": {
         "marker_registry_contract": "SKIP",
+        "marker_schema_v1_contract": "SKIP",
+        "marker_schema_v1_breaking_guard": "SKIP",
+        "schema_v2_major_bump_guard": "SKIP",
         "source_marker_anchor": "SKIP",
         "versioning_policy": "SKIP",
     },
@@ -176,12 +191,14 @@ fi
 
 ROOT_ENV="${ROOT}" \
 MARKER_REGISTRY_ENV="${MARKER_REGISTRY}" \
+SCHEMA_V1_ENV="${SCHEMA_V1}" \
 VERSION_FILE_ENV="${VERSION_FILE}" \
 CHANGED_TXT_ENV="${CHANGED_TXT}" \
 VIOLATIONS_TXT_ENV="${VIOLATIONS_TXT}" \
 META_TXT_ENV="${META_TXT}" \
 REPORT_JSON_ENV="${REPORT_JSON}" \
 MARKER_REGISTRY_SHA_ENV="${MARKER_REGISTRY_SHA}" \
+SCHEMA_V1_SHA_ENV="${SCHEMA_V1_SHA}" \
 DIFF_RANGE_ENV="${DIFF_RANGE_VAL}" \
 BASE_REV_ENV="${BASE_REV}" \
 NOW_ENV="${NOW}" \
@@ -195,18 +212,22 @@ from pathlib import Path
 
 ROOT = Path(os.environ["ROOT_ENV"])
 MARKER_REGISTRY = Path(os.environ["MARKER_REGISTRY_ENV"])
+SCHEMA_V1 = Path(os.environ["SCHEMA_V1_ENV"])
 VERSION_FILE = Path(os.environ["VERSION_FILE_ENV"])
 CHANGED_TXT = Path(os.environ["CHANGED_TXT_ENV"])
 VIOLATIONS_TXT = Path(os.environ["VIOLATIONS_TXT_ENV"])
 META_TXT = Path(os.environ["META_TXT_ENV"])
 REPORT_JSON = Path(os.environ["REPORT_JSON_ENV"])
 MARKER_REGISTRY_SHA = Path(os.environ["MARKER_REGISTRY_SHA_ENV"])
+SCHEMA_V1_SHA = Path(os.environ["SCHEMA_V1_SHA_ENV"])
 DIFF_RANGE = os.environ["DIFF_RANGE_ENV"]
 BASE_REV = os.environ["BASE_REV_ENV"]
 NOW = os.environ["NOW_ENV"]
 GIT_SHA = os.environ["GIT_SHA_ENV"]
 
 MARKER_REL = "constitution/runtime_markers.json"
+SCHEMA_V1_REL = "constitution/markers_schema_v1.json"
+SCHEMA_V2_REL = "constitution/markers_schema_v2.json"
 VERSION_REL = "constitution/version.json"
 
 violations = []
@@ -288,9 +309,140 @@ def classify_delta(old_doc, new_doc):
         return "minor"
     return "none"
 
+def normalize_profile_contract(profile):
+    if not isinstance(profile, dict):
+        return None
+    markers = profile.get("markers")
+    if not isinstance(markers, dict):
+        return None
+    norm_markers = {}
+    for name, row in markers.items():
+        if not isinstance(name, str) or not name or not isinstance(row, dict):
+            return None
+        token = row.get("token")
+        pattern = row.get("pattern")
+        required_count = row.get("required_count")
+        if not isinstance(required_count, int) or required_count < 0:
+            return None
+        if token is None and pattern is None:
+            return None
+        if token is not None and not isinstance(token, str):
+            return None
+        if pattern is not None and not isinstance(pattern, str):
+            return None
+        norm_markers[name] = {
+            "token": token,
+            "pattern": pattern,
+            "required_count": required_count,
+        }
+
+    ordering = profile.get("ordering", [])
+    if not isinstance(ordering, list):
+        return None
+    norm_ordering = []
+    for pair in ordering:
+        if not isinstance(pair, list) or len(pair) != 2:
+            return None
+        left, right = pair
+        if not isinstance(left, str) or not isinstance(right, str):
+            return None
+        norm_ordering.append((left, right))
+
+    flags = profile.get("profile_flags", {})
+    if flags is None:
+        flags = {}
+    if not isinstance(flags, dict):
+        return None
+
+    return {
+        "markers": norm_markers,
+        "ordering": sorted(norm_ordering),
+        "profile_flags": {k: flags[k] for k in sorted(flags.keys())},
+    }
+
+def normalize_schema_contract(doc):
+    if not isinstance(doc, dict):
+        return None
+    profiles = doc.get("profiles")
+    if not isinstance(profiles, dict):
+        return None
+    out = {}
+    for profile_name, profile in profiles.items():
+        if not isinstance(profile_name, str) or not profile_name:
+            return None
+        norm = normalize_profile_contract(profile)
+        if norm is None:
+            return None
+        out[profile_name] = norm
+    return out
+
+def classify_schema_v1_delta(old_doc, new_doc):
+    old_norm = normalize_schema_contract(old_doc)
+    new_norm = normalize_schema_contract(new_doc)
+    if old_norm is None or new_norm is None:
+        return "none", []
+
+    change = "none"
+    reasons = []
+
+    old_profiles = set(old_norm.keys())
+    new_profiles = set(new_norm.keys())
+    removed_profiles = sorted(old_profiles - new_profiles)
+    added_profiles = sorted(new_profiles - old_profiles)
+
+    if removed_profiles:
+        return "breaking", [f"removed_profiles:{','.join(removed_profiles)}"]
+    if added_profiles:
+        change = "compatible"
+        reasons.append(f"added_profiles:{','.join(added_profiles)}")
+
+    for profile_name in sorted(old_profiles & new_profiles):
+        old_profile = old_norm[profile_name]
+        new_profile = new_norm[profile_name]
+
+        if old_profile["ordering"] != new_profile["ordering"]:
+            return "breaking", [f"ordering_changed:{profile_name}"]
+
+        old_flags = old_profile["profile_flags"]
+        new_flags = new_profile["profile_flags"]
+        for key, old_value in old_flags.items():
+            if key not in new_flags or new_flags[key] != old_value:
+                return "breaking", [f"profile_flag_changed:{profile_name}:{key}"]
+        added_flag_keys = sorted(set(new_flags.keys()) - set(old_flags.keys()))
+        if added_flag_keys:
+            if change == "none":
+                change = "compatible"
+            reasons.append(f"added_profile_flags:{profile_name}:{','.join(added_flag_keys)}")
+
+        old_markers = old_profile["markers"]
+        new_markers = new_profile["markers"]
+
+        removed_markers = sorted(set(old_markers.keys()) - set(new_markers.keys()))
+        if removed_markers:
+            return "breaking", [f"removed_markers:{profile_name}:{','.join(removed_markers)}"]
+
+        for marker_name in sorted(set(old_markers.keys()) & set(new_markers.keys())):
+            if old_markers[marker_name] != new_markers[marker_name]:
+                return "breaking", [f"marker_contract_changed:{profile_name}:{marker_name}"]
+
+        added_markers = sorted(set(new_markers.keys()) - set(old_markers.keys()))
+        if added_markers:
+            for marker_name in added_markers:
+                req = new_markers[marker_name].get("required_count")
+                if req == 0:
+                    if change == "none":
+                        change = "compatible"
+                    reasons.append(f"added_marker_optional:{profile_name}:{marker_name}")
+                else:
+                    return "breaking", [f"added_marker_required:{profile_name}:{marker_name}"]
+
+    return change, reasons
+
 marker_doc = load_json(MARKER_REGISTRY, "missing_file", "marker_registry_parse_error")
 version_doc = load_json(VERSION_FILE, "missing_file", "version_parse_error")
 marker_ok = True
+schema_v1_contract_ok = True
+schema_v1_breaking_guard_ok = True
 source_ok = True
 versioning_ok = True
 report_schema_ok = True
@@ -487,6 +639,17 @@ else:
     source_ok = False
     report_schema_ok = False
 
+schema_v1_doc = load_json(SCHEMA_V1, "missing_file", "marker_schema_v1_parse_error")
+schema_v1_contract = normalize_schema_contract(schema_v1_doc)
+if not isinstance(schema_v1_doc, dict):
+    schema_v1_contract_ok = False
+elif schema_v1_doc.get("version") != 1:
+    add("marker_schema_v1_version_mismatch")
+    schema_v1_contract_ok = False
+if schema_v1_contract is None:
+    add("marker_schema_v1_contract_invalid")
+    schema_v1_contract_ok = False
+
 changed = [ln.strip() for ln in CHANGED_TXT.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()] if CHANGED_TXT.exists() else []
 changed_set = set(changed)
 
@@ -501,10 +664,16 @@ if MARKER_REL in changed_set and VERSION_REL not in changed_set:
 
 old_version_doc = git_show_json(BASE_REV, VERSION_REL)
 old_marker_doc = git_show_json(BASE_REV, MARKER_REL)
+old_schema_v1_doc = git_show_json(BASE_REV, SCHEMA_V1_REL)
+old_schema_v2_doc = git_show_json(BASE_REV, SCHEMA_V2_REL)
 old_version = parse_semver(old_version_doc.get("constitution_version")) if isinstance(old_version_doc, dict) else None
 
 required_bump = "none"
 reasons = []
+schema_v1_change_class = "none"
+schema_v1_change_reasons = []
+schema_v2_introduced = False
+
 if MARKER_REL in changed_set and old_marker_doc is not None and isinstance(marker_doc, dict):
     delta = classify_delta(old_marker_doc, marker_doc)
     if bump_rank(delta) > bump_rank(required_bump):
@@ -512,7 +681,25 @@ if MARKER_REL in changed_set and old_marker_doc is not None and isinstance(marke
     if delta != "none":
         reasons.append(f"markers:{delta}")
 
+if SCHEMA_V1_REL in changed_set and old_schema_v1_doc is not None and isinstance(schema_v1_doc, dict):
+    schema_v1_change_class, schema_v1_change_reasons = classify_schema_v1_delta(old_schema_v1_doc, schema_v1_doc)
+    if schema_v1_change_class == "breaking":
+        old_v2_exists = old_schema_v2_doc is not None
+        new_v2_exists = (ROOT / SCHEMA_V2_REL).exists()
+        v2_introduced = new_v2_exists and not old_v2_exists
+        if not v2_introduced:
+            add("marker_schema_v1_breaking_requires_v2")
+            schema_v1_breaking_guard_ok = False
+        else:
+            schema_v2_introduced = True
+
+if SCHEMA_V2_REL in changed_set and old_schema_v2_doc is None and (ROOT / SCHEMA_V2_REL).exists():
+    schema_v2_introduced = True
+
 actual_bump = semver_bump(old_version, current_version)
+if schema_v2_introduced and actual_bump != "major":
+    add("constitution_version_major_required:schema_v2_introduced")
+    versioning_ok = False
 if actual_bump == "invalid":
     add("constitution_version_downgrade")
     versioning_ok = False
@@ -527,6 +714,7 @@ violations = sorted(set(violations))
 VIOLATIONS_TXT.write_text("\n".join(violations) + ("\n" if violations else ""), encoding="utf-8")
 
 sha_val = MARKER_REGISTRY_SHA.read_text(encoding="utf-8", errors="replace").strip() if MARKER_REGISTRY_SHA.exists() else "MISSING"
+schema_sha_val = SCHEMA_V1_SHA.read_text(encoding="utf-8", errors="replace").strip() if SCHEMA_V1_SHA.exists() else "MISSING"
 meta = {
     "time_utc": NOW,
     "git_sha": GIT_SHA,
@@ -538,6 +726,10 @@ meta = {
     "required_bump": required_bump,
     "actual_bump": actual_bump,
     "marker_registry_sha256": sha_val if sha_val else "MISSING",
+    "marker_schema_v1_sha256": schema_sha_val if schema_sha_val else "MISSING",
+    "schema_v1_change_class": schema_v1_change_class,
+    "schema_v1_change_reasons": ",".join(schema_v1_change_reasons),
+    "schema_v2_introduced": int(schema_v2_introduced),
     "changed_files_count": len(changed),
     "violations_count": len(violations),
 }
@@ -551,6 +743,9 @@ report = {
     "meta": meta,
     "checks": {
         "marker_registry_contract": "PASS" if marker_ok else "FAIL",
+        "marker_schema_v1_contract": "PASS" if schema_v1_contract_ok else "FAIL",
+        "marker_schema_v1_breaking_guard": "PASS" if schema_v1_breaking_guard_ok else "FAIL",
+        "schema_v2_major_bump_guard": "PASS" if (not schema_v2_introduced or actual_bump == "major") else "FAIL",
         "source_marker_anchor": "PASS" if source_ok else "FAIL",
         "ring3_report_schema_contract": "PASS" if report_schema_ok else "FAIL",
         "versioning_policy": "PASS" if versioning_ok else "FAIL",
