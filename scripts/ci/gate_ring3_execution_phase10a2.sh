@@ -20,6 +20,10 @@ EVIDENCE_DIR=""
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-25}"
 KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
 AYKEN_CR3_PCID="${AYKEN_CR3_PCID:-0}"
+AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS:-0}"
+AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST:-1}"
+AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST:-0}"
+AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY:-0}"
 ENFORCED_AYKEN_CR3_PCID="0"
 
 while [[ $# -gt 0 ]]; do
@@ -54,6 +58,22 @@ if [[ "${KERNEL_PROFILE}" != "validation" ]]; then
 fi
 if ! [[ "${AYKEN_CR3_PCID}" =~ ^[01]$ ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID in {0,1} (current=${AYKEN_CR3_PCID})" >&2
+  exit 2
+fi
+if ! [[ "${AYKEN_C2_STRICT_MARKERS}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_C2_STRICT_MARKERS in {0,1} (current=${AYKEN_C2_STRICT_MARKERS})" >&2
+  exit 2
+fi
+if ! [[ "${AYKEN_MB_SELFTEST}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_MB_SELFTEST in {0,1} (current=${AYKEN_MB_SELFTEST})" >&2
+  exit 2
+fi
+if ! [[ "${AYKEN_GATE4_POLICY_TEST}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_GATE4_POLICY_TEST in {0,1} (current=${AYKEN_GATE4_POLICY_TEST})" >&2
+  exit 2
+fi
+if ! [[ "${AYKEN_SCHED_BOOTSTRAP_POLICY}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_SCHED_BOOTSTRAP_POLICY in {0,1} (current=${AYKEN_SCHED_BOOTSTRAP_POLICY})" >&2
   exit 2
 fi
 if [[ "${AYKEN_CR3_PCID}" != "${ENFORCED_AYKEN_CR3_PCID}" ]]; then
@@ -106,7 +126,8 @@ META_TXT="${EVIDENCE_DIR}/meta.txt"
 : > "${META_TXT}"
 
 set +e
-make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" guard-context-offsets efi-img > "${BUILD_LOG}" 2>&1
+make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" clean > "${BUILD_LOG}" 2>&1 || true
+make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" guard-context-offsets efi-img >> "${BUILD_LOG}" 2>&1
 BUILD_RC=$?
 set -e
 if [[ "${BUILD_RC}" -ne 0 ]]; then
@@ -128,7 +149,7 @@ fi
 set +e
 "${BOOT_AUDIT}" \
   --timeout "${QEMU_TIMEOUT}" \
-  --marker "[[AYKEN_BOOT_OK]]" \
+  --marker "[K][BOOT_OK] Phase 4.4 minimal boot reached" \
   --out-dir "${BOOT_AUDIT_DIR}" > "${BOOT_AUDIT_LOG}" 2>&1
 BOOT_AUDIT_RC=$?
 set -e
@@ -138,24 +159,6 @@ if [[ -s "${BOOT_AUDIT_DIR}/qemu_debugcon.log" ]]; then
   cp -f "${BOOT_AUDIT_DIR}/qemu_debugcon.log" "${MARKER_LOG}"
 else
   cp -f "${COMBINED_LOG}" "${MARKER_LOG}"
-fi
-
-if [[ "${BOOT_AUDIT_RC}" -ne 0 ]]; then
-  cat > "${REPORT_JSON}" <<EOF
-{
-  "gate": "ring3-execution-phase10a2",
-  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
-  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
-  "verdict": "FAIL",
-  "violations_count": 1,
-  "violations": ["boot_audit_failed:rc=${BOOT_AUDIT_RC}"],
-  "boot_audit_exit_code": ${BOOT_AUDIT_RC},
-  "qemu_timeout_seconds": ${QEMU_TIMEOUT}
-}
-EOF
-  echo "boot_audit_failed:rc=${BOOT_AUDIT_RC}" > "${VIOLATIONS_TXT}"
-  echo "ring3-execution-phase10a2: INFRA FAIL (boot_audit_failed rc=${BOOT_AUDIT_RC})"
-  exit 1
 fi
 
 if [[ ! -s "${MARKER_LOG}" ]]; then
@@ -195,7 +198,7 @@ python3 "${VALIDATOR}" --events "${EVENTS_JSONL}" --log "${MARKER_LOG}" --out "$
 VALIDATOR_RC=$?
 set -e
 
-python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" "${ENFORCED_AYKEN_CR3_PCID}" "${AYKEN_CR3_PCID}" <<'PY'
+python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" "${ENFORCED_AYKEN_CR3_PCID}" "${AYKEN_CR3_PCID}" "${AYKEN_C2_STRICT_MARKERS}" "${AYKEN_MB_SELFTEST}" "${AYKEN_GATE4_POLICY_TEST}" "${AYKEN_SCHED_BOOTSTRAP_POLICY}" <<'PY'
 import json
 import sys
 path = sys.argv[1]
@@ -209,6 +212,31 @@ row["boot_audit_exit_code"] = boot_audit_rc
 row["qemu_timeout_seconds"] = qemu_timeout
 row["enforced_ayken_cr3_pcid"] = enforced_ayken_cr3_pcid
 row["observed_ayken_cr3_pcid"] = observed_ayken_cr3_pcid
+row["ayken_c2_strict_markers"] = int(sys.argv[6])
+row["ayken_mb_selftest"] = int(sys.argv[7])
+row["ayken_gate4_policy_test"] = int(sys.argv[8])
+row["ayken_sched_bootstrap_policy"] = int(sys.argv[9])
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(row, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+
+python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+boot_audit_rc = int(sys.argv[2])
+with open(path, "r", encoding="utf-8") as fh:
+    row = json.load(fh)
+if boot_audit_rc != 0:
+    violations = list(row.get("violations", []))
+    tag = f"boot_audit_failed:rc={boot_audit_rc}"
+    if tag not in violations:
+        violations.append(tag)
+    row["verdict"] = "FAIL"
+    row["violations"] = violations
+    row["violations_count"] = len(violations)
 with open(path, "w", encoding="utf-8") as fh:
     json.dump(row, fh, indent=2, sort_keys=True)
     fh.write("\n")
@@ -233,12 +261,16 @@ PY
   echo "enforced_ayken_cr3_pcid=${ENFORCED_AYKEN_CR3_PCID}"
   echo "observed_ayken_cr3_pcid=${AYKEN_CR3_PCID}"
   echo "ayken_cr3_pcid=${AYKEN_CR3_PCID}"
+  echo "ayken_c2_strict_markers=${AYKEN_C2_STRICT_MARKERS}"
+  echo "ayken_mb_selftest=${AYKEN_MB_SELFTEST}"
+  echo "ayken_gate4_policy_test=${AYKEN_GATE4_POLICY_TEST}"
+  echo "ayken_sched_bootstrap_policy=${AYKEN_SCHED_BOOTSTRAP_POLICY}"
   echo "build_rc=${BUILD_RC}"
   echo "boot_audit_rc=${BOOT_AUDIT_RC}"
   echo "validator_rc=${VALIDATOR_RC}"
 } > "${META_TXT}"
 
-if [[ "${VALIDATOR_RC}" -ne 0 ]]; then
+if [[ "${VALIDATOR_RC}" -ne 0 || "${BOOT_AUDIT_RC}" -ne 0 ]]; then
   COUNT="$(grep -c . "${VIOLATIONS_TXT}" 2>/dev/null || true)"
   echo "ring3-execution-phase10a2: FAIL (${COUNT} violations)"
   exit 2

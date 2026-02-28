@@ -20,6 +20,10 @@
 #define AYKEN_GATE45_PROOF 0
 #endif
 
+#ifndef AYKEN_C2_STRICT_MARKERS
+#define AYKEN_C2_STRICT_MARKERS 0
+#endif
+
 // MVP-0 self-test state (kept separate from per-process runtime mailbox path).
 static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
 static uint64_t g_selftest_last_epoch = 0;
@@ -118,12 +122,26 @@ static void dbg_print_u32(uint32_t v) {
     dbg_print_u64((uint64_t)v);
 }
 
-static void marker_accept(int pid, uint64_t epoch) {
+static void marker_accept(uint32_t owner, uint64_t epoch, uint32_t cand, const char *site) {
+#if AYKEN_C2_STRICT_MARKERS
+    dbg_print("[[AYKEN_SCHED_MB_ACCEPT]] owner=");
+    dbg_print_u32(owner);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    dbg_print(" cand=");
+    dbg_print_u32(cand);
+    dbg_print(" site=");
+    dbg_print(site ? site : "IRQ");
+    outb(0xE9, '\n');
+#else
+    (void)owner;
+    (void)site;
     dbg_print("[[AYKEN_SCHED_MB_ACCEPT]] pid=");
-    dbg_print_u64((uint64_t)pid);
+    dbg_print_u64((uint64_t)cand);
     dbg_print(" epoch=");
     dbg_print_u64(epoch);
     outb(0xE9, '\n');
+#endif
 }
 
 static void marker_reject(uint32_t reason, uint64_t epoch, uint32_t pid) {
@@ -200,7 +218,7 @@ void sched_mailbox_selftest(void) {
     mb->candidate_pid = candidate;
 
     int rc = sched_mailbox_validate_candidate(mb, &out);
-    if (rc == 0 && out) marker_accept(out->pid, mb->epoch);
+    if (rc == 0 && out) marker_accept((uint32_t)out->pid, mb->epoch, (uint32_t)out->pid, "IRQ");
     else marker_reject(mb->reject_reason, mb->epoch, mb->candidate_pid);
 
     // CASE 2: STALE epoch reject
@@ -412,13 +430,13 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
     if (e1 == 1) {
         if (!proc->gate4_accept_epoch1_emitted) {
             proc->gate4_accept_epoch1_emitted = 1;
-            marker_accept(proc->pid, e1);
+            marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
         }
     } else {
-        marker_accept(proc->pid, e1);
+        marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
     }
 #else
-    marker_accept((int)pid, e1);
+    marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
 #endif
     return 0;
 

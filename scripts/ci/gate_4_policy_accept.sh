@@ -28,6 +28,9 @@ GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF:-0}"
 AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT:-0}"
+GATE4_C2_STRICT="${GATE4_C2_STRICT:-0}"
+GATE4_C2_OWNER_PID="${GATE4_C2_OWNER_PID:-2}"
+AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS:-${GATE4_C2_STRICT}}"
 
 EVIDENCE_ROOT="evidence/gate-4-policy-accept"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -130,18 +133,34 @@ echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
 echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
 echo "ayken_gate45_proof: ${AYKEN_GATE45_PROOF}"
 echo "ayken_deterministic_exit: ${AYKEN_DETERMINISTIC_EXIT}"
+echo "gate4_c2_strict: ${GATE4_C2_STRICT}"
+echo "gate4_c2_owner_pid: ${GATE4_C2_OWNER_PID}"
+echo "ayken_c2_strict_markers: ${AYKEN_C2_STRICT_MARKERS}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
 
+if ! [[ "${GATE4_C2_STRICT}" =~ ^[01]$ ]]; then
+    echo "gate4_c2_strict_invalid:${GATE4_C2_STRICT}" >> "${VIOLATIONS}"
+fi
+if ! [[ "${GATE4_C2_OWNER_PID}" =~ ^[0-9]+$ ]] || [[ "${GATE4_C2_OWNER_PID}" -le 0 ]]; then
+    echo "gate4_c2_owner_pid_invalid:${GATE4_C2_OWNER_PID}" >> "${VIOLATIONS}"
+fi
+if ! [[ "${AYKEN_C2_STRICT_MARKERS}" =~ ^[01]$ ]]; then
+    echo "ayken_c2_strict_markers_invalid:${AYKEN_C2_STRICT_MARKERS}" >> "${VIOLATIONS}"
+fi
+if [[ "${GATE4_C2_STRICT}" == "1" && "${AYKEN_C2_STRICT_MARKERS}" != "1" ]]; then
+    echo "gate4_c2_strict_requires_c2_markers" >> "${VIOLATIONS}"
+fi
+
 echo "[*] Cleaning build artifacts for isolated profile flags..."
-make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
+make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
 
 echo "[*] Building kernel (Gate-4 isolated mode)..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
     echo "build_failed" >> "${VIOLATIONS}"
 fi
 
 echo "[*] Creating EFI image..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
     echo "efi_image_failed" >> "${VIOLATIONS}"
 fi
 
@@ -269,14 +288,21 @@ if [[ -n "${GATE4_PID}" ]]; then
     if [[ "${TARGET_PID_MARKER_COUNT}" -lt 1 ]]; then
         echo "gate4_pid_marker_mismatch:pid=${GATE4_PID}" >> "${VIOLATIONS}"
     fi
-    TARGET_ACCEPT_COUNT="$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")"
+    if [[ "${GATE4_C2_STRICT}" == "1" ]]; then
+        ACCEPT_PATTERN="\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] owner=${GATE4_C2_OWNER_PID} epoch=1 cand=${GATE4_PID} site=(START|YIELD|BLOCK|IRQ)"
+        EPOCH_FILTER="owner=${GATE4_C2_OWNER_PID}([^0-9]|$)"
+    else
+        ACCEPT_PATTERN="\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1"
+        EPOCH_FILTER="pid=${GATE4_PID}([^0-9]|$)"
+    fi
+    TARGET_ACCEPT_COUNT="$(safe_count_file "${ACCEPT_PATTERN}" "${DEBUGCON_LOG}")"
     RING3_PUBLISH_COUNT="$(safe_count_file "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")"
     if [[ "${RING3_PUBLISH_COUNT}" -lt 1 ]]; then
         echo "ring3_publish_missing:pid=${GATE4_PID}" >> "${VIOLATIONS}"
     fi
 
     RING3_PUBLISH_LINE="$(grep -a -n -E "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}" | head -n1 | cut -d: -f1 || true)"
-    TARGET_ACCEPT_LINE="$(grep -a -n -E "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}" | head -n1 | cut -d: -f1 || true)"
+    TARGET_ACCEPT_LINE="$(grep -a -n -E "${ACCEPT_PATTERN}" "${DEBUGCON_LOG}" | head -n1 | cut -d: -f1 || true)"
     RING3_PUBLISH_LINE="$(printf "%s" "${RING3_PUBLISH_LINE}" | tr -dc '0-9')"
     TARGET_ACCEPT_LINE="$(printf "%s" "${TARGET_ACCEPT_LINE}" | tr -dc '0-9')"
     if [[ -z "${RING3_PUBLISH_LINE}" ]]; then
@@ -325,7 +351,7 @@ fi
 # Epoch monotonic check on scheduler markers for target PID only.
 if [[ -n "${GATE4_PID}" ]]; then
     EPOCHS="$(grep -a -E "\\[\\[AYKEN_SCHED_MB_(ACCEPT|REJECT)\\]\\]" "${DEBUGCON_LOG}" | \
-        grep -a -E "pid=${GATE4_PID}([^0-9]|$)" | grep -a -Eo "epoch=[0-9]+" | cut -d= -f2 || true)"
+        grep -a -E "${EPOCH_FILTER}" | grep -a -Eo "epoch=[0-9]+" | cut -d= -f2 || true)"
     PREV=""
     for E in ${EPOCHS}; do
         if [[ "${E}" -eq 0 ]]; then
@@ -359,6 +385,9 @@ cat > "${REPORT_JSON}" <<EOF
   "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
   "ayken_gate45_proof": ${AYKEN_GATE45_PROOF},
   "ayken_deterministic_exit": ${AYKEN_DETERMINISTIC_EXIT},
+  "gate4_c2_strict": ${GATE4_C2_STRICT},
+  "gate4_c2_owner_pid": ${GATE4_C2_OWNER_PID},
+  "ayken_c2_strict_markers": ${AYKEN_C2_STRICT_MARKERS},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "qemu_attempts": ${QEMU_ATTEMPTS},
   "qemu_exit_code": ${QEMU_EXIT},

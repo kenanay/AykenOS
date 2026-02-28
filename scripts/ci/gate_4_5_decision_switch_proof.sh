@@ -12,6 +12,11 @@
 #   - exactly 1 ctx-switch proof marker
 #   - publish < accept < arbiter < switch
 #   - from != to and decision/switch endpoints match
+#
+# Design note:
+#   This gate is an isolated single-handoff proof and validates the first
+#   matching marker chain only. Full multi-decision sequence validation belongs
+#   to Phase10-C mailbox validator (`validate_scheduler_mailbox_phase10c.py`).
 # ============================================================================
 
 set -euo pipefail
@@ -26,6 +31,9 @@ QEMU_TIMEOUT="${QEMU_TIMEOUT:-20}"
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
 AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT:-1}"
+GATE45_C2_STRICT="${GATE45_C2_STRICT:-0}"
+GATE45_C2_OWNER_PID="${GATE45_C2_OWNER_PID:-2}"
+AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS:-${GATE45_C2_STRICT}}"
 
 EVIDENCE_ROOT="evidence/gate-4.5-decision-switch-proof"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -80,7 +88,23 @@ echo "qemu_timeout: ${QEMU_TIMEOUT}s"
 echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
 echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
 echo "ayken_deterministic_exit: ${AYKEN_DETERMINISTIC_EXIT}"
+echo "gate45_c2_strict: ${GATE45_C2_STRICT}"
+echo "gate45_c2_owner_pid: ${GATE45_C2_OWNER_PID}"
+echo "ayken_c2_strict_markers: ${AYKEN_C2_STRICT_MARKERS}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
+
+if ! [[ "${GATE45_C2_STRICT}" =~ ^[01]$ ]]; then
+    echo "gate45_c2_strict_invalid:${GATE45_C2_STRICT}" >> "${VIOLATIONS}"
+fi
+if ! [[ "${GATE45_C2_OWNER_PID}" =~ ^[0-9]+$ ]] || [[ "${GATE45_C2_OWNER_PID}" -le 0 ]]; then
+    echo "gate45_c2_owner_pid_invalid:${GATE45_C2_OWNER_PID}" >> "${VIOLATIONS}"
+fi
+if ! [[ "${AYKEN_C2_STRICT_MARKERS}" =~ ^[01]$ ]]; then
+    echo "ayken_c2_strict_markers_invalid:${AYKEN_C2_STRICT_MARKERS}" >> "${VIOLATIONS}"
+fi
+if [[ "${GATE45_C2_STRICT}" == "1" && "${AYKEN_C2_STRICT_MARKERS}" != "1" ]]; then
+    echo "gate45_c2_strict_requires_c2_markers" >> "${VIOLATIONS}"
+fi
 
 echo "[*] Running Gate-4 prerequisite with AYKEN_GATE45_PROOF=1..."
 set +e
@@ -89,8 +113,11 @@ KERNEL_PROFILE="${KERNEL_PROFILE}" \
 QEMU_TIMEOUT="${QEMU_TIMEOUT}" \
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" \
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST}" \
+GATE4_C2_STRICT="${GATE45_C2_STRICT}" \
+GATE4_C2_OWNER_PID="${GATE45_C2_OWNER_PID}" \
 AYKEN_GATE45_PROOF=1 \
 AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" \
+AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" \
 bash scripts/ci/gate_4_policy_accept.sh > "${LOG_FILE}" 2>&1
 GATE4_RC=$?
 set -e
@@ -136,35 +163,57 @@ SWITCH_COUNT=0
 ARBITER_FROM=0
 ARBITER_TO=0
 ARBITER_EPOCH=0
+ARBITER_DECISION_ID=0
 SWITCH_FROM=0
 SWITCH_TO=0
+SWITCH_DECISION_ID=0
+C2_REJECT_COUNT=0
 
 if [[ ! -s "${VIOLATIONS}" ]]; then
     PUBLISH_LINE=$(line_of_first "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")
-    ACCEPT_LINE=$(line_of_first "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")
-    TARGET_ACCEPT_COUNT=$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")
+    if [[ "${GATE45_C2_STRICT}" == "1" ]]; then
+        ACCEPT_PATTERN="\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] owner=${GATE45_C2_OWNER_PID} epoch=1 cand=${GATE4_PID} site=(START|YIELD|BLOCK|IRQ)"
+        ARBITER_PATTERN="\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] decision_id=[0-9]+ site=(START|YIELD|BLOCK|IRQ) owner=${GATE45_C2_OWNER_PID} from=[0-9]+ to=[0-9]+ epoch=[0-9]+"
+        SWITCH_PATTERN="\\[\\[AYKEN_CTX_SWITCH\\]\\] decision_id=[0-9]+ from=[0-9]+ to=[0-9]+"
+        REJECT_PATTERN="\\[\\[AYKEN_SCHED_MB_REJECT\\]\\] reason=[A-Z_]+ owner=${GATE45_C2_OWNER_PID} epoch=1 cand=[0-9]+ site=(START|YIELD|BLOCK|IRQ)"
+    else
+        ACCEPT_PATTERN="\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1"
+        ARBITER_PATTERN="\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] from=[0-9]+ to=[0-9]+ epoch=[0-9]+"
+        SWITCH_PATTERN="\\[\\[AYKEN_CTX_SWITCH\\]\\] from=[0-9]+ to=[0-9]+"
+        REJECT_PATTERN=""
+    fi
 
-    ARBITER_COUNT=$(safe_count_file "\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] from=[0-9]+ to=[0-9]+ epoch=[0-9]+" "${DEBUGCON_LOG}")
-    SWITCH_COUNT=$(safe_count_file "\\[\\[AYKEN_CTX_SWITCH\\]\\] from=[0-9]+ to=[0-9]+" "${DEBUGCON_LOG}")
+    ACCEPT_LINE=$(line_of_first "${ACCEPT_PATTERN}" "${DEBUGCON_LOG}")
+    TARGET_ACCEPT_COUNT=$(safe_count_file "${ACCEPT_PATTERN}" "${DEBUGCON_LOG}")
 
-    ARBITER_LINE=$(line_of_first "\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] from=[0-9]+ to=[0-9]+ epoch=[0-9]+" "${DEBUGCON_LOG}")
-    SWITCH_LINE=$(line_of_first "\\[\\[AYKEN_CTX_SWITCH\\]\\] from=[0-9]+ to=[0-9]+" "${DEBUGCON_LOG}")
+    ARBITER_COUNT=$(safe_count_file "${ARBITER_PATTERN}" "${DEBUGCON_LOG}")
+    SWITCH_COUNT=$(safe_count_file "${SWITCH_PATTERN}" "${DEBUGCON_LOG}")
+
+    ARBITER_LINE=$(line_of_first "${ARBITER_PATTERN}" "${DEBUGCON_LOG}")
+    SWITCH_LINE=$(line_of_first "${SWITCH_PATTERN}" "${DEBUGCON_LOG}")
+    if [[ -n "${REJECT_PATTERN}" ]]; then
+        C2_REJECT_COUNT=$(safe_count_file "${REJECT_PATTERN}" "${DEBUGCON_LOG}")
+    fi
 
     if [[ "${ARBITER_COUNT}" -ge 1 ]]; then
-        ARBITER_ROW=$(grep -a -E "\\[\\[AYKEN_SCHED_ARBITER_DECISION\\]\\] from=[0-9]+ to=[0-9]+ epoch=[0-9]+" "${DEBUGCON_LOG}" | head -n1 || true)
+        ARBITER_ROW=$(grep -a -E "${ARBITER_PATTERN}" "${DEBUGCON_LOG}" | head -n1 || true)
         ARBITER_FROM=$(extract_field "${ARBITER_ROW}" "from")
         ARBITER_TO=$(extract_field "${ARBITER_ROW}" "to")
         ARBITER_EPOCH=$(extract_field "${ARBITER_ROW}" "epoch")
+        ARBITER_DECISION_ID=$(extract_field "${ARBITER_ROW}" "decision_id")
         ARBITER_FROM=${ARBITER_FROM:-0}
         ARBITER_TO=${ARBITER_TO:-0}
         ARBITER_EPOCH=${ARBITER_EPOCH:-0}
+        ARBITER_DECISION_ID=${ARBITER_DECISION_ID:-0}
     fi
     if [[ "${SWITCH_COUNT}" -ge 1 ]]; then
-        SWITCH_ROW=$(grep -a -E "\\[\\[AYKEN_CTX_SWITCH\\]\\] from=[0-9]+ to=[0-9]+" "${DEBUGCON_LOG}" | head -n1 || true)
+        SWITCH_ROW=$(grep -a -E "${SWITCH_PATTERN}" "${DEBUGCON_LOG}" | head -n1 || true)
         SWITCH_FROM=$(extract_field "${SWITCH_ROW}" "from")
         SWITCH_TO=$(extract_field "${SWITCH_ROW}" "to")
+        SWITCH_DECISION_ID=$(extract_field "${SWITCH_ROW}" "decision_id")
         SWITCH_FROM=${SWITCH_FROM:-0}
         SWITCH_TO=${SWITCH_TO:-0}
+        SWITCH_DECISION_ID=${SWITCH_DECISION_ID:-0}
     fi
 
     if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
@@ -199,6 +248,20 @@ if [[ ! -s "${VIOLATIONS}" ]]; then
         if [[ "${ARBITER_EPOCH}" -ne 1 ]]; then
             echo "arbiter_epoch_mismatch:epoch=${ARBITER_EPOCH}" >> "${VIOLATIONS}"
         fi
+        if [[ "${GATE45_C2_STRICT}" == "1" ]]; then
+            if [[ "${ARBITER_DECISION_ID}" -le 0 ]]; then
+                echo "arbiter_decision_id_invalid:id=${ARBITER_DECISION_ID}" >> "${VIOLATIONS}"
+            fi
+            if [[ "${SWITCH_DECISION_ID}" -le 0 ]]; then
+                echo "switch_decision_id_invalid:id=${SWITCH_DECISION_ID}" >> "${VIOLATIONS}"
+            fi
+            if [[ "${ARBITER_DECISION_ID}" -ne "${SWITCH_DECISION_ID}" ]]; then
+                echo "decision_id_mismatch:arbiter=${ARBITER_DECISION_ID}:switch=${SWITCH_DECISION_ID}" >> "${VIOLATIONS}"
+            fi
+            if [[ "${C2_REJECT_COUNT}" -gt 0 ]]; then
+                echo "reject_followed_by_switch:count=${C2_REJECT_COUNT}" >> "${VIOLATIONS}"
+            fi
+        fi
     fi
 fi
 
@@ -221,6 +284,9 @@ cat > "${REPORT_JSON}" <<EOF_JSON
   "gate4_bootstrap_policy": ${GATE4_BOOTSTRAP_POLICY},
   "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
   "ayken_deterministic_exit": ${AYKEN_DETERMINISTIC_EXIT},
+  "gate45_c2_strict": ${GATE45_C2_STRICT},
+  "gate45_c2_owner_pid": ${GATE45_C2_OWNER_PID},
+  "ayken_c2_strict_markers": ${AYKEN_C2_STRICT_MARKERS},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "gate4_prereq_rc": ${GATE4_RC},
   "gate4_pid": ${GATE4_PID},
@@ -231,11 +297,14 @@ cat > "${REPORT_JSON}" <<EOF_JSON
   "target_accept_count": ${TARGET_ACCEPT_COUNT},
   "arbiter_count": ${ARBITER_COUNT},
   "switch_count": ${SWITCH_COUNT},
+  "c2_reject_count": ${C2_REJECT_COUNT},
   "arbiter_from": ${ARBITER_FROM},
   "arbiter_to": ${ARBITER_TO},
   "arbiter_epoch": ${ARBITER_EPOCH},
+  "arbiter_decision_id": ${ARBITER_DECISION_ID},
   "switch_from": ${SWITCH_FROM},
   "switch_to": ${SWITCH_TO},
+  "switch_decision_id": ${SWITCH_DECISION_ID},
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF_JSON

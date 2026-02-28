@@ -661,6 +661,21 @@ static void kernel_late_init(void)
     // ---------------------------------------------------------
     // Phase 10-A: Prepare embedded Ring3 process
     // ---------------------------------------------------------
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+  #if defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 0)
+    // Strict Gate-4 mode must preload owner authority before sched_start().
+    fb_print("[PHASE10] Gate-4 strict mode: preloading owner process.\n");
+    debugcon_write("[K][PHASE10] PRELOAD_GATE4_OWNER\n");
+    proc_launch_gate4_policy_test();
+  #else
+    // Transitional Gate-4 mode: init_process_main() owns policy workload creation.
+    // Skip Phase10 preloaded Ring3 path to avoid bypassing Gate-4 PID/ACCEPT markers.
+    fb_print("[PHASE10] Gate-4 isolated mode: skipping preloaded Ring3 process.\n");
+    debugcon_write("[K][PHASE10] SKIP_PRELOAD_GATE4\n");
+  #endif
+#else
     fb_print("[PHASE10] Preparing Ring3 process...\n");
     jump_to_ring3();
+#endif
 }

@@ -27,6 +27,10 @@
 #define AYKEN_GATE45_PROOF 0
 #endif
 
+#ifndef AYKEN_C2_STRICT_MARKERS
+#define AYKEN_C2_STRICT_MARKERS 0
+#endif
+
 #if AYKEN_GATE45_PROOF
 #ifndef AYKEN_GATE45_TARGET_PID
 #define AYKEN_GATE45_TARGET_PID 3u
@@ -91,6 +95,29 @@ static void sched_emit_u64_dec(uint64_t v)
     }
 }
 
+typedef enum {
+    SCHED_DECISION_SITE_START = 0,
+    SCHED_DECISION_SITE_YIELD = 1,
+    SCHED_DECISION_SITE_BLOCK = 2,
+    SCHED_DECISION_SITE_IRQ = 3,
+} sched_decision_site_t;
+
+static const char *sched_site_name(sched_decision_site_t site)
+{
+    switch (site) {
+    case SCHED_DECISION_SITE_START:
+        return "START";
+    case SCHED_DECISION_SITE_YIELD:
+        return "YIELD";
+    case SCHED_DECISION_SITE_BLOCK:
+        return "BLOCK";
+    case SCHED_DECISION_SITE_IRQ:
+        return "IRQ";
+    default:
+        return "YIELD";
+    }
+}
+
 // "valid" mirrors mailbox slot validity: 1 when decision is observed, 0 after consume/apply.
 static void sched_emit_phase10c_decision(
     const char *token,
@@ -111,9 +138,41 @@ static void sched_emit_phase10c_decision(
     sched_emit_marker("\n");
 }
 
-#if AYKEN_GATE45_PROOF
-static void sched_emit_gate45_arbiter_decision(uint32_t from_pid, uint32_t to_pid, uint64_t epoch)
+#if AYKEN_GATE45_PROOF || AYKEN_C2_STRICT_MARKERS
+static uint64_t sched_c2_decision_counter = 0;
+
+static uint64_t sched_next_c2_decision_id(void)
 {
+    sched_c2_decision_counter++;
+    return sched_c2_decision_counter;
+}
+
+static void sched_emit_gate45_arbiter_decision(
+    uint64_t decision_id,
+    sched_decision_site_t site,
+    uint32_t owner_pid,
+    uint32_t from_pid,
+    uint32_t to_pid,
+    uint64_t epoch)
+{
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_SCHED_ARBITER_DECISION]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" site=");
+    sched_emit_marker(sched_site_name(site));
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec((uint64_t)owner_pid);
+    sched_emit_marker(" from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker(" epoch=");
+    sched_emit_u64_dec(epoch);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
+    (void)site;
+    (void)owner_pid;
     sched_emit_marker("[[AYKEN_SCHED_ARBITER_DECISION]] from=");
     sched_emit_u64_dec((uint64_t)from_pid);
     sched_emit_marker(" to=");
@@ -121,28 +180,62 @@ static void sched_emit_gate45_arbiter_decision(uint32_t from_pid, uint32_t to_pi
     sched_emit_marker(" epoch=");
     sched_emit_u64_dec(epoch);
     sched_emit_marker("\n");
+#endif
 }
 
-static void sched_emit_gate45_ctx_switch(uint32_t from_pid, uint32_t to_pid)
+static void sched_emit_gate45_ctx_switch(uint64_t decision_id, uint32_t from_pid, uint32_t to_pid)
 {
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_CTX_SWITCH]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
     sched_emit_marker("[[AYKEN_CTX_SWITCH]] from=");
     sched_emit_u64_dec((uint64_t)from_pid);
     sched_emit_marker(" to=");
     sched_emit_u64_dec((uint64_t)to_pid);
     sched_emit_marker("\n");
+#endif
+}
+
+static void sched_emit_gate45_cursor_advance(
+    uint64_t decision_id,
+    uint32_t owner_pid,
+    uint32_t next_owner_pid)
+{
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_SCHED_CURSOR_ADVANCE]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec((uint64_t)owner_pid);
+    sched_emit_marker(" next_owner=");
+    sched_emit_u64_dec((uint64_t)next_owner_pid);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
+    (void)owner_pid;
+    (void)next_owner_pid;
+#endif
 }
 
 static void sched_emit_gate45_chain_once(
     proc_t *prev,
     proc_t *next,
-    uint64_t decision_id,
-    int used_mailbox)
+    uint64_t epoch,
+    uint32_t owner_pid,
+    int used_mailbox,
+    sched_decision_site_t site)
 {
     static uint8_t gate45_chain_emitted = 0;
     if (gate45_chain_emitted) {
         return;
     }
-    if (!used_mailbox || decision_id == 0 || !prev || !next || prev == next) {
+    if (!used_mailbox || epoch == 0 || !prev || !next || prev == next) {
         return;
     }
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
@@ -152,22 +245,35 @@ static void sched_emit_gate45_chain_once(
     }
 #endif
     gate45_chain_emitted = 1;
+    uint64_t decision_id = sched_next_c2_decision_id();
     sched_emit_gate45_arbiter_decision(
-        (uint32_t)prev->pid, (uint32_t)next->pid, decision_id);
-    sched_emit_gate45_ctx_switch((uint32_t)prev->pid, (uint32_t)next->pid);
+        decision_id,
+        site,
+        owner_pid,
+        (uint32_t)prev->pid,
+        (uint32_t)next->pid,
+        epoch);
+    sched_emit_gate45_ctx_switch(decision_id, (uint32_t)prev->pid, (uint32_t)next->pid);
+    sched_emit_gate45_cursor_advance(decision_id, owner_pid, owner_pid);
+#if AYKEN_GATE45_PROOF
     gate45_proof_done = 1;
+#endif
 }
 #else
 static inline void sched_emit_gate45_chain_once(
     proc_t *prev,
     proc_t *next,
-    uint64_t decision_id,
-    int used_mailbox)
+    uint64_t epoch,
+    uint32_t owner_pid,
+    int used_mailbox,
+    sched_decision_site_t site)
 {
     (void)prev;
     (void)next;
-    (void)decision_id;
+    (void)epoch;
+    (void)owner_pid;
     (void)used_mailbox;
+    (void)site;
 }
 #endif
 
@@ -185,12 +291,12 @@ static void sched_emit_irq_decision(proc_t *prev, proc_t *next, int used_mailbox
 }
 
 static void sched_emit_mailbox_miss_fatal_pre(
-    int site,
+    sched_decision_site_t site,
     const proc_t *prev,
     const proc_t *owner)
 {
     sched_emit_marker("P10_MAILBOX_MISS_FATAL_PRE site=");
-    sched_emit_u64_dec((uint64_t)(site >= 0 ? (uint32_t)site : 0u));
+    sched_emit_marker(sched_site_name(site));
     sched_emit_marker(" owner=");
     sched_emit_u64_dec(owner ? (uint64_t)(uint32_t)owner->pid : 0);
     sched_emit_marker(" current=");
@@ -257,12 +363,6 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
     *out_pid = mb->candidate_pid;
     return 1;
 }
-
-typedef enum {
-    SCHED_DECISION_SITE_START = 0,
-    SCHED_DECISION_SITE_YIELD = 1,
-    SCHED_DECISION_SITE_BLOCK = 2,
-} sched_decision_site_t;
 
 static int sched_is_owner(const proc_t *p)
 {
@@ -1011,7 +1111,8 @@ void sched_start(void)
     // Called here after current_proc is set but before switch_to_first
     // Compile-out in release: self-test is validation-only
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-#if !defined(AYKEN_MB_SELFTEST) || (AYKEN_MB_SELFTEST == 1)
+#if (!defined(AYKEN_MB_SELFTEST) || (AYKEN_MB_SELFTEST == 1)) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
     // Test marker to verify debugcon is working
     outb(0xE9, 'M');
     outb(0xE9, 'B');
@@ -1069,7 +1170,8 @@ void sched_start(void)
     
     // Gate-2: Context switch validation marker (validation-only)
     // Emitted before first context switch (switch_to_first)
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
     {
         static int g_ctx_switch_marker_emitted_first = 0;
         if (!g_ctx_switch_marker_emitted_first) {
@@ -1094,6 +1196,20 @@ void sched_start(void)
         sched_emit_phase10c_decision(
             "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
     }
+#if AYKEN_C2_STRICT_MARKERS && !AYKEN_GATE45_PROOF
+    if (used_mailbox && decision_id > 0 && decision_src_pid > 0) {
+        proc_t *start_prev = proc_find_by_pid(1);
+        if (start_prev && start_prev != first) {
+            sched_emit_gate45_chain_once(
+                start_prev,
+                first,
+                decision_id,
+                decision_src_pid,
+                1,
+                SCHED_DECISION_SITE_START);
+        }
+    }
+#endif
     switch_to_first(&current_proc->context);
     
     // DEBUG: This should never be reached if switch_to_first works
@@ -1147,7 +1263,7 @@ static void sched_yield_core(int reenable_if)
         &decision_src_pid,
         &used_mailbox,
         1,
-        SCHED_DECISION_SITE_YIELD);
+        reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
     SCHED_DBG_OUT((uint8_t)'N');
     if (next) {
         SCHED_DBG_OUT((uint8_t)'1');
@@ -1311,7 +1427,8 @@ static void sched_yield_core(int reenable_if)
         sched_dbg_mark_iret();
         
         // Gate-2: Context switch validation marker (validation-only)
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
         {
             static int g_ctx_switch_marker_emitted = 0;
             if (!g_ctx_switch_marker_emitted) {
@@ -1332,7 +1449,13 @@ static void sched_yield_core(int reenable_if)
             sched_gate45_arm_cross_target_once(current_proc);
         }
         #endif
-        sched_emit_gate45_chain_once(prev, current_proc, decision_id, used_mailbox);
+        sched_emit_gate45_chain_once(
+            prev,
+            current_proc,
+            decision_id,
+            decision_src_pid,
+            used_mailbox,
+            reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
         context_switch(&prev->context, &current_proc->context);
         
         // Ring3 INT80 diagnostic: verify whether user code resumed after syscall.
@@ -1480,7 +1603,13 @@ void sched_block_current(void)
         sched_emit_phase10c_decision(
             "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
     }
-    sched_emit_gate45_chain_once(prev, current_proc, decision_id, used_mailbox);
+    sched_emit_gate45_chain_once(
+        prev,
+        current_proc,
+        decision_id,
+        decision_src_pid,
+        used_mailbox,
+        SCHED_DECISION_SITE_BLOCK);
     context_switch(&prev->context, &current_proc->context);
 
     enable_interrupts();

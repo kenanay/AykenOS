@@ -71,6 +71,7 @@ ring3_enter_iretq:
 
     // Keep marker stream deterministic.
     cli
+    EMIT_CSTR p10_ring3_attempt
 
     // Validation marker: IF bit policy after sanitization.
     testq $0x200, %rdx
@@ -95,6 +96,7 @@ ring3_enter_iretq:
     pushq %rax
     pushq %r11
 
+    EMIT_CSTR p10_ring3_commit
     // Enter marker immediately before transition.
     EMIT_CSTR p10_ring3_enter
     iretq
@@ -116,6 +118,10 @@ ring3_enter:
 .section .rodata
 p10_cr3_switch:
     .asciz "P10_CR3_SWITCH\n"
+p10_ring3_attempt:
+    .asciz "P10_RING3_ATTEMPT\n"
+p10_ring3_commit:
+    .asciz "P10_RING3_COMMIT\n"
 p10_ring3_enter:
     .asciz "P10_RING3_ENTER\n"
 p10_rflags_if_on:

@@ -2,6 +2,7 @@
 #include "interrupts.h"
 #include "gdt_idt.h"
 #include "port_io.h"
+#include "../../sched/sched.h"
 
 struct idt_entry idt_table[256];
 struct idt_ptr idt_descriptor;
@@ -33,26 +34,6 @@ struct idt_ptr idt_descriptor;
 #define HALT_FOREVER() do { \
     for (;;) __asm__ volatile("cli; hlt"); \
 } while (0)
-
-static void debugcon_write_atomic(const char *s)
-{
-    uint64_t rflags = 0;
-    const uint64_t if_mask = (1ULL << 9);
-
-    if (!s) {
-        return;
-    }
-
-    __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
-    __asm__ volatile("cli");
-    while (*s) {
-        OUTC(*s);
-        s++;
-    }
-    if ((rflags & if_mask) != 0) {
-        __asm__ volatile("sti");
-    }
-}
 
 __attribute__((unused))
 static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_frame *frame, int has_cr2)
@@ -135,7 +116,11 @@ static void isr_bp(struct interrupt_frame *frame)
         rip_canonical;
 
     if (is_ring3_bp) {
-        debugcon_write_atomic("P10_RING3_USER_CODE\n");
+        // ISR-safe marker emission: no helper calls in interrupt context.
+        OUTC('P'); OUTC('1'); OUTC('0'); OUTC('_');
+        OUTC('R'); OUTC('I'); OUTC('N'); OUTC('G'); OUTC('3'); OUTC('_');
+        OUTC('U'); OUTC('S'); OUTC('E'); OUTC('R'); OUTC('_');
+        OUTC('C'); OUTC('O'); OUTC('D'); OUTC('E'); OUTC('\n');
         HALT_FOREVER();
     }
 
@@ -232,22 +217,49 @@ static void isr_gp(struct interrupt_frame *frame, uint64_t error_code)
 __attribute__((interrupt))
 static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
 {
-    (void)error_code;
-    // CRITICAL: Page fault marker - ASM safe, no C calls
+    uint64_t cr2 = 0;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+
+    // CRITICAL: Page fault marker - keep ASM-safe emission.
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'P'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'F'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'!'), "Nd"(0xE9));
-    
-    // Show RIP where PF occurred
+
+    // Fault RIP (kept first for compatibility with existing logs/tools).
     uint64_t rip = frame->rip;
     for (int i = 60; i >= 0; i -= 4) {
         uint8_t nibble = (rip >> i) & 0xF;
         uint8_t ch = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
         __asm__ volatile("outb %0, %1" : : "a"(ch), "Nd"(0xE9));
     }
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)' '), "Nd"(0xE9));
+    OUTC('C'); OUTC('R'); OUTC('2'); OUTC('='); DUMP_HEX64(cr2);
+    OUTC(' ');
+    OUTC('E'); OUTC('R'); OUTC('R'); OUTC('='); DUMP_HEX64(error_code);
+    OUTC(' ');
+    OUTC('C'); OUTC('S'); OUTC('='); DUMP_HEX16((uint16_t)frame->cs);
+    OUTC(' ');
+    OUTC('S'); OUTC('S'); OUTC('='); DUMP_HEX16((uint16_t)frame->ss);
+    OUTC(' ');
+    OUTC('R'); OUTC('S'); OUTC('P'); OUTC('='); DUMP_HEX64(frame->rsp);
+    OUTC(' ');
+    OUTC('P'); OUTC('I'); OUTC('D'); OUTC('=');
+    if (current_proc) {
+        DUMP_HEX64((uint64_t)(uint32_t)current_proc->pid);
+        OUTC(' ');
+        OUTC('P'); OUTC('C'); OUTC('S'); OUTC('='); DUMP_HEX16(current_proc->context.cs);
+        OUTC(' ');
+        OUTC('P'); OUTC('R'); OUTC('I'); OUTC('P'); OUTC('='); DUMP_HEX64(current_proc->context.rip);
+        OUTC(' ');
+        OUTC('P'); OUTC('R'); OUTC('S'); OUTC('P'); OUTC('='); DUMP_HEX64(current_proc->context.rsp);
+        OUTC(' ');
+        OUTC('P'); OUTC('C'); OUTC('R'); OUTC('3'); OUTC('='); DUMP_HEX64(current_proc->context.cr3);
+    } else {
+        OUTC('N'); OUTC('U'); OUTC('L'); OUTC('L');
+    }
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
-    
-    // Halt forever - no C calls
+
+    // Halt forever - no recovery from early PF in validation path.
     __asm__ volatile("cli; 1: hlt; jmp 1b");
 }
 
