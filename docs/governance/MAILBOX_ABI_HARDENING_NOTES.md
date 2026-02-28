@@ -98,3 +98,5 @@ Required:
 1. new protocol version/spec
 2. updated invariants and gates
 3. explicit migration path from C1 baseline
+4. review reference for pre-freeze closure:
+   `docs/governance/MAILBOX_PROTOCOL_V2_C2_REVIEW_FREEZE_CANDIDATE.md`

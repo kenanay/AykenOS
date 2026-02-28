@@ -8,6 +8,10 @@ Authoritative references:
 - `CONSTITUTION_BOUNDARY.md`: constitutional vs tier-3 boundary contract.
 - `MAILBOX_PROTOCOL_V1_FREEZE.md`: frozen scheduler mailbox protocol v1
   (single-authority C1 baseline + proof contracts).
+- `MAILBOX_PROTOCOL_V2_C2_REVIEW_FREEZE_CANDIDATE.md`: C2 multi-owner
+  arbitration review-freeze candidate (`non-normative`, pre-v2-freeze).
+- `PHASE10C_C2_STRICT_INVARIANTS.md`: formal strict invariant set and CI
+  enforcement mapping for Phase10-C C2 checks.
 - `MAILBOX_ABI_HARDENING_NOTES.md`: technical hardening checklist for ABI and
   marker-contract drift prevention.
 - `ci-gate-constitutional`: hard constitutional lock (contract surface only).

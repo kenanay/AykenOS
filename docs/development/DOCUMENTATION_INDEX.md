@@ -62,6 +62,8 @@ Ayrica: `ci-summarize`
 8. `docs/development/SCHEDULER_MAILBOX_DEVELOPER_GUIDE.md` - Scheduler mailbox practical developer guide (publish/validate/consume flow)
 9. `docs/development/PROOF_GATE_DEBUG_HANDBOOK.md` - Gate-4/Gate-4.5 debug playbook and invariant triage
 10. `docs/governance/MAILBOX_ABI_HARDENING_NOTES.md` - ABI layout/marker drift hardening checklist
+11. `docs/governance/MAILBOX_PROTOCOL_V2_C2_REVIEW_FREEZE_CANDIDATE.md` - C2 multi-owner review-freeze candidate (`non-normative`)
+12. `docs/governance/PHASE10C_C2_STRICT_INVARIANTS.md` - C2 strict formal invariant set and validator mapping
 
 ### CI and Operations
 1. `docs/operations/CONSTITUTIONAL_CI_MODE.md` - Constitutional CI mode specification

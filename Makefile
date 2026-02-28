@@ -41,6 +41,7 @@ AYKEN_GATE45_PROOF ?= 0
 AYKEN_DETERMINISTIC_EXIT ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 AYKEN_CR3_PCID ?= 0
+AYKEN_C2_STRICT_MARKERS ?= 0
 # Phase10-C1 default: strict mailbox-owner bootstrap (no transitional policy bridge).
 AYKEN_SCHED_BOOTSTRAP_POLICY ?= 0
 
@@ -70,6 +71,10 @@ endif
 
 ifneq ($(filter $(AYKEN_CR3_PCID),0 1),$(AYKEN_CR3_PCID))
 $(error Invalid AYKEN_CR3_PCID='$(AYKEN_CR3_PCID)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_C2_STRICT_MARKERS),0 1),$(AYKEN_C2_STRICT_MARKERS))
+$(error Invalid AYKEN_C2_STRICT_MARKERS='$(AYKEN_C2_STRICT_MARKERS)'. Use 0 or 1)
 endif
 
 ifneq ($(filter $(AYKEN_SCHED_BOOTSTRAP_POLICY),0 1),$(AYKEN_SCHED_BOOTSTRAP_POLICY))
@@ -119,6 +124,7 @@ KERNEL_CFLAGS += -DAYKEN_GATE4_POLICY_TEST=$(AYKEN_GATE4_POLICY_TEST)
 KERNEL_CFLAGS += -DAYKEN_GATE45_PROOF=$(AYKEN_GATE45_PROOF)
 KERNEL_CFLAGS += -DAYKEN_DETERMINISTIC_EXIT=$(AYKEN_DETERMINISTIC_EXIT)
 KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
+KERNEL_CFLAGS += -DAYKEN_C2_STRICT_MARKERS=$(AYKEN_C2_STRICT_MARKERS)
 KERNEL_CFLAGS += -DAYKEN_SCHED_BOOTSTRAP_POLICY=$(AYKEN_SCHED_BOOTSTRAP_POLICY)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
@@ -236,11 +242,18 @@ PHASE10B_MODE ?= negative
 PHASE10B_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
 PHASE10C_REQUIRE_METADATA ?= 1
 PHASE10C_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
-PHASE10C_ENFORCE ?= 0
+# C2 activation default: enabled in freeze chain; can be disabled explicitly
+# via `PHASE10C_ENFORCE=0 make ci-freeze`.
+PHASE10C_ENFORCE ?= 1
+PHASE10C_C2_STRICT ?= 0
+PHASE10C_C2_OWNER_SET ?= 2
+PHASE10C_C2_REQUIRE_CURSOR_MARKER ?= 1
 PHASE10C_FREEZE_GATE = $(if $(filter 1,$(PHASE10C_ENFORCE)),ci-gate-scheduler-mailbox-phase10c,)
 GATE45_QEMU_TIMEOUT ?= 20
 GATE45_BOOTSTRAP_POLICY ?= 1
 GATE45_MB_SELFTEST ?= 0
+GATE45_C2_STRICT ?= 0
+GATE45_C2_OWNER_PID ?= 2
 
 
 # ------------------------------------------------------------
@@ -642,6 +655,10 @@ ci-freeze-guard:
 		echo "ERROR: ci-freeze requires AYKEN_SCHED_FALLBACK=0 (current=$(AYKEN_SCHED_FALLBACK))"; \
 		exit 2; \
 	fi
+	@if [ "$(PHASE10C_ENFORCE)" != "1" ]; then \
+		echo "ERROR: freeze targets require PHASE10C_ENFORCE=1 (current=$(PHASE10C_ENFORCE))"; \
+		exit 2; \
+	fi
 	@if [ "$(AYKEN_CR3_PCID)" != "0" ]; then \
 		echo "ERROR: ci-freeze requires AYKEN_CR3_PCID=0 (current=$(AYKEN_CR3_PCID))"; \
 		exit 2; \
@@ -651,10 +668,12 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
+ci-freeze: PHASE10C_C2_STRICT=1
 ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
+ci-freeze-local: PHASE10C_C2_STRICT=0
 ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
@@ -887,7 +906,7 @@ ci-gate-ring3-execution-phase10a2: ci-evidence-dir
 	@echo "kernel_profile: validation (enforced)"
 	@echo "ayken_cr3_pcid: 0 (enforced)"
 	@echo "qemu_timeout_seconds: $(RING3_QEMU_TIMEOUT)"
-	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation AYKEN_CR3_PCID=0 AYKEN_C2_STRICT_MARKERS="$(PHASE10C_C2_STRICT)" AYKEN_MB_SELFTEST="$(if $(filter 1,$(PHASE10C_C2_STRICT)),0,1)" AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2/report.json" "$(EVIDENCE_RUN_DIR)/reports/ring3-execution-phase10a2.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: ring3-execution-phase10a2 evidence at $(EVIDENCE_RUN_DIR)"
@@ -909,11 +928,17 @@ ci-gate-scheduler-mailbox-phase10c: ci-gate-ring3-execution-phase10a2
 	@echo "== CI GATE SCHEDULER MAILBOX PHASE10-C =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "phase10c_require_metadata: $(PHASE10C_REQUIRE_METADATA)"
+	@echo "phase10c_c2_strict: $(PHASE10C_C2_STRICT)"
+	@echo "phase10c_c2_owner_set: $(PHASE10C_C2_OWNER_SET)"
+	@echo "phase10c_c2_require_cursor_marker: $(PHASE10C_C2_REQUIRE_CURSOR_MARKER)"
 	@echo "phase10c_a2_evidence: $(PHASE10C_A2_EVIDENCE_DIR)"
-	@RUN_ID=$(RUN_ID) PHASE10C_REQUIRE_METADATA="$(PHASE10C_REQUIRE_METADATA)" bash scripts/ci/gate_scheduler_mailbox_phase10c.sh \
+	@RUN_ID=$(RUN_ID) PHASE10C_REQUIRE_METADATA="$(PHASE10C_REQUIRE_METADATA)" PHASE10C_C2_STRICT="$(PHASE10C_C2_STRICT)" PHASE10C_C2_OWNER_SET="$(PHASE10C_C2_OWNER_SET)" PHASE10C_C2_REQUIRE_CURSOR_MARKER="$(PHASE10C_C2_REQUIRE_CURSOR_MARKER)" bash scripts/ci/gate_scheduler_mailbox_phase10c.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c" \
 		--phase10a2-evidence "$(PHASE10C_A2_EVIDENCE_DIR)" \
-		--require-metadata "$(PHASE10C_REQUIRE_METADATA)"
+		--require-metadata "$(PHASE10C_REQUIRE_METADATA)" \
+		--c2-strict "$(PHASE10C_C2_STRICT)" \
+		--c2-owner-set "$(PHASE10C_C2_OWNER_SET)" \
+		--c2-require-cursor-marker "$(PHASE10C_C2_REQUIRE_CURSOR_MARKER)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c/report.json" "$(EVIDENCE_RUN_DIR)/reports/scheduler-mailbox-phase10c.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: scheduler-mailbox-phase10c evidence at $(EVIDENCE_RUN_DIR)"
@@ -937,7 +962,9 @@ ci-gate-decision-switch-phase45: ci-evidence-dir
 	@echo "qemu_timeout_seconds: $(GATE45_QEMU_TIMEOUT)"
 	@echo "gate4_bootstrap_policy: $(GATE45_BOOTSTRAP_POLICY)"
 	@echo "gate4_mb_selftest: $(GATE45_MB_SELFTEST)"
-	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation QEMU_TIMEOUT="$(GATE45_QEMU_TIMEOUT)" GATE4_BOOTSTRAP_POLICY="$(GATE45_BOOTSTRAP_POLICY)" GATE4_MB_SELFTEST="$(GATE45_MB_SELFTEST)" bash scripts/ci/gate_4_5_decision_switch_proof.sh
+	@echo "gate45_c2_strict: $(GATE45_C2_STRICT)"
+	@echo "gate45_c2_owner_pid: $(GATE45_C2_OWNER_PID)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation QEMU_TIMEOUT="$(GATE45_QEMU_TIMEOUT)" GATE4_BOOTSTRAP_POLICY="$(GATE45_BOOTSTRAP_POLICY)" GATE4_MB_SELFTEST="$(GATE45_MB_SELFTEST)" GATE45_C2_STRICT="$(GATE45_C2_STRICT)" GATE45_C2_OWNER_PID="$(GATE45_C2_OWNER_PID)" bash scripts/ci/gate_4_5_decision_switch_proof.sh
 	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45/report.json"
 	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/violations.txt" "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45/violations.txt"
 	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/reports/decision-switch-phase45.json"
@@ -1082,15 +1109,15 @@ help:
 	@echo "    (A2 evidence override: PHASE10B_A2_EVIDENCE_DIR=<path>)"
 	@echo "    (note: positive mode requires a CAP-free runtime scenario)"
 	@echo "  ci-gate-scheduler-mailbox-phase10c - Phase10-C scheduler mailbox policy/mechanism gate (draft)"
-	@echo "    (controls: PHASE10C_REQUIRE_METADATA=0|1)"
+	@echo "    (controls: PHASE10C_REQUIRE_METADATA=0|1, PHASE10C_C2_STRICT=0|1, PHASE10C_C2_OWNER_SET=csv, PHASE10C_C2_REQUIRE_CURSOR_MARKER=0|1)"
 	@echo "    (A2 evidence override: PHASE10C_A2_EVIDENCE_DIR=<path>)"
-	@echo "    (local freeze: enforced; ci-freeze toggle: PHASE10C_ENFORCE=0|1)"
+	@echo "    (ci-freeze default: PHASE10C_ENFORCE=1 + PHASE10C_C2_STRICT=1; local freeze default: PHASE10C_C2_STRICT=0)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
 	@echo "  ci-gate-policy-accept - Gate-4 isolated policy accept proof gate"
 	@echo "  ci-gate-decision-switch-phase45 - Gate-4.5 decision->switch proof gate"
-	@echo "    (controls: GATE45_QEMU_TIMEOUT, GATE45_BOOTSTRAP_POLICY, GATE45_MB_SELFTEST)"
+	@echo "    (controls: GATE45_QEMU_TIMEOUT, GATE45_BOOTSTRAP_POLICY, GATE45_MB_SELFTEST, GATE45_C2_STRICT=0|1, GATE45_C2_OWNER_PID=<pid>)"
 	@echo "  ci-gate-policy-proof-regression - Composite regression suite: Gate-4 then Gate-4.5"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"

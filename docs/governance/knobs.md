@@ -14,6 +14,25 @@ This document defines governance rules for policy-sensitive build knobs.
 - Evidence contract:
   - Ring3 execution gate report must include both `enforced_ayken_cr3_pcid` and `observed_ayken_cr3_pcid`.
 
+## PHASE10C C2 Strict Knobs
+
+- `PHASE10C_ENFORCE`:
+  - `ci-freeze` target sets default `1` (gate included in freeze chain).
+  - `ci-freeze-local` also keeps phase10c gate active.
+- `PHASE10C_C2_STRICT`:
+  - `ci-freeze` target sets default `1`.
+  - `ci-freeze-local` sets default `0` (development-friendly baseline).
+- `PHASE10C_C2_OWNER_SET`:
+  - CSV owner identity set used by strict validator (default `2`).
+- `PHASE10C_C2_REQUIRE_CURSOR_MARKER`:
+  - strict validator cursor/apply coupling check (default `1`).
+- Enforcement contract:
+  - `scripts/ci/gate_scheduler_mailbox_phase10c.sh` must forward these knobs to
+    `tools/ci/validate_scheduler_mailbox_phase10c.py`.
+  - Freeze workflow (`.github/workflows/ci-freeze.yml`) must pin strict values
+    explicitly.
+
 ## Change Control
 
-Any `AYKEN_CR3_PCID` policy change must update all enforcement points above in the same change-set and keep fail-closed behavior.
+Any policy-sensitive knob change above must update all enforcement points in the
+same change-set and keep fail-closed behavior.

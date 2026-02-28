@@ -19,6 +19,10 @@ These are enforced by Gate-5A and Gate-5B.
 The following controls are governance policy, not constitutional law:
 
 - Proof scorer (behavioral invariants, fail-closed within Gate-6 scope).
+- Phase10-C C2 strict invariants:
+  - `docs/governance/PHASE10C_C2_STRICT_INVARIANTS.md`
+  - enforced as governance fail-closed checks in freeze chain when strict mode
+    is active.
 - Envelope policy (threshold-based regression guard, phase/profile controlled).
 - Drift telemetry (distribution/rolling analysis, phase/profile controlled).
 - Source deny/allow scans, waiver audits, and AHS/AHTS threshold policy.

@@ -47,6 +47,10 @@ jobs:
       PERF_ENV_MISMATCH_POLICY: "fail"  # Constitutional mode: strict enforcement
       PERF_REGRESSION_POLICY: "fail"    # Constitutional mode: strict enforcement
       GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
+      PHASE10C_ENFORCE: "1"
+      PHASE10C_C2_STRICT: "1"
+      PHASE10C_C2_OWNER_SET: "2"
+      PHASE10C_C2_REQUIRE_CURSOR_MARKER: "1"
       SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
       SYSCALL_V2_RUNTIME_TIMEOUT: "60"  # Hosted runner needs more time for userspace boot
