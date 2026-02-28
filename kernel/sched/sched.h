@@ -44,6 +44,9 @@ void sched_request_resched(void);
 void sched_request_resched_irq(void);
 uint32_t sched_take_resched(void);
 
+// Gate-4.5 proof status: set after decision->switch chain marker emission.
+uint32_t sched_gate45_proof_done(void);
+
 // Ring0 mechanism: Start scheduler with first mailbox-backed process
 void sched_start(void);
 

@@ -25,6 +25,7 @@ KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-20}"
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
+AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT:-1}"
 
 EVIDENCE_ROOT="evidence/gate-4.5-decision-switch-proof"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -78,6 +79,7 @@ echo "kernel_profile: ${KERNEL_PROFILE}"
 echo "qemu_timeout: ${QEMU_TIMEOUT}s"
 echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
 echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
+echo "ayken_deterministic_exit: ${AYKEN_DETERMINISTIC_EXIT}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
 
 echo "[*] Running Gate-4 prerequisite with AYKEN_GATE45_PROOF=1..."
@@ -88,6 +90,7 @@ QEMU_TIMEOUT="${QEMU_TIMEOUT}" \
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" \
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST}" \
 AYKEN_GATE45_PROOF=1 \
+AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" \
 bash scripts/ci/gate_4_policy_accept.sh > "${LOG_FILE}" 2>&1
 GATE4_RC=$?
 set -e
@@ -217,6 +220,7 @@ cat > "${REPORT_JSON}" <<EOF_JSON
   "kernel_profile": "${KERNEL_PROFILE}",
   "gate4_bootstrap_policy": ${GATE4_BOOTSTRAP_POLICY},
   "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
+  "ayken_deterministic_exit": ${AYKEN_DETERMINISTIC_EXIT},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "gate4_prereq_rc": ${GATE4_RC},
   "gate4_pid": ${GATE4_PID},

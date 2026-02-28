@@ -6,13 +6,19 @@
 #include "pic.h"
 #include "gdt_idt.h"
 #include "../../sched/sched.h"
+#include "../../sched/sched_mailbox.h"
 #include "../../include/ayken_abi.h"
 
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
+#define QEMU_DEBUG_EXIT_PORT 0x501
 
 #ifndef AYKEN_DEBUG_IRQ
 #define AYKEN_DEBUG_IRQ 0
+#endif
+
+#ifndef AYKEN_DETERMINISTIC_EXIT
+#define AYKEN_DETERMINISTIC_EXIT 0
 #endif
 
 #if AYKEN_DEBUG_IRQ
@@ -44,6 +50,36 @@ static void timer_debugcon_hex64(uint64_t value)
     for (int i = 15; i >= 0; --i) {
         outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
     }
+}
+
+static void timer_maybe_exit_on_proof_done(void)
+{
+#if AYKEN_DETERMINISTIC_EXIT && defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    static uint8_t proof_done_emitted = 0;
+    int proof_done = 0;
+#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
+    proof_done = sched_gate45_proof_done() ? 1 : 0;
+#else
+    extern proc_t *current_proc;
+    if (current_proc &&
+        current_proc->type == PROC_TYPE_USER &&
+        (uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID &&
+        !sched_mailbox_gate4_epoch1_pending()) {
+        proof_done = 1;
+    }
+#endif
+    if (!proof_done_emitted && proof_done) {
+        proof_done_emitted = 1;
+        timer_debugcon_write("[[AYKEN_PROOF_DONE]]\n");
+        // Primary deterministic exit path for CI (if device is present):
+        // qemu-system-x86_64 -device isa-debug-exit
+        // Process exit code becomes (value << 1) | 1.
+        outw(QEMU_DEBUG_EXIT_PORT, 0);
+        // Fallback: ACPI poweroff (works when QEMU runs without -no-shutdown).
+        outw(0x604, 0x2000);
+    }
+#endif
 }
 
 typedef struct irq_timer_frame {
@@ -101,6 +137,7 @@ void timer_isr_c(void *frame_ptr)
     // Acknowledge IRQ0 before scheduling. If the scheduler switches context from
     // IRQ path, we still want PIC in-service state to be cleared deterministically.
     pic_send_eoi(0);
+    timer_maybe_exit_on_proof_done();
 
     // PHASE 4.5: Aggressive timer-driven preemption for validation.
     // Snapshot interrupted user context so IRQ-driven switch can restore

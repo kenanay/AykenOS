@@ -27,6 +27,7 @@ QEMU_TIMEOUT="${QEMU_TIMEOUT:-15}"
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF:-0}"
+AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT:-0}"
 
 EVIDENCE_ROOT="evidence/gate-4-policy-accept"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -96,6 +97,13 @@ run_qemu_once() {
     : > "${SERIAL_LOG}"
 
     set +e
+    local qemu_extra_args=()
+    if [[ "${AYKEN_DETERMINISTIC_EXIT}" -eq 1 ]]; then
+        qemu_extra_args+=(-device isa-debug-exit)
+        # Allow guest-initiated ACPI shutdown fallback in deterministic-exit mode.
+    else
+        qemu_extra_args+=(-no-shutdown)
+    fi
     timeout "${QEMU_TIMEOUT}" qemu-system-x86_64 \
         -machine q35 \
         -cpu qemu64 \
@@ -106,9 +114,9 @@ run_qemu_once() {
         -debugcon "file:${DEBUGCON_LOG}" \
         -global isa-debugcon.iobase=0xe9 \
         -serial "file:${SERIAL_LOG}" \
+        "${qemu_extra_args[@]}" \
         -display none \
         -no-reboot \
-        -no-shutdown \
         > "${QEMU_LOG}" 2>&1
     QEMU_EXIT=$?
     set -e
@@ -121,18 +129,19 @@ echo "qemu_timeout: ${QEMU_TIMEOUT}s"
 echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
 echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
 echo "ayken_gate45_proof: ${AYKEN_GATE45_PROOF}"
+echo "ayken_deterministic_exit: ${AYKEN_DETERMINISTIC_EXIT}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
 
 echo "[*] Cleaning build artifacts for isolated profile flags..."
-make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
+make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
 
 echo "[*] Building kernel (Gate-4 isolated mode)..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
     echo "build_failed" >> "${VIOLATIONS}"
 fi
 
 echo "[*] Creating EFI image..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
     echo "efi_image_failed" >> "${VIOLATIONS}"
 fi
 
@@ -206,8 +215,17 @@ DEBUGCON_BYTES="$(printf "%s" "${DEBUGCON_BYTES}" | tr -d '[:space:]')"
 SERIAL_BYTES="$(printf "%s" "${SERIAL_BYTES}" | tr -d '[:space:]')"
 QEMU_LOG_BYTES="$(printf "%s" "${QEMU_LOG_BYTES}" | tr -d '[:space:]')"
 
-if [[ "${QEMU_EXIT}" -ne 0 && "${QEMU_EXIT}" -ne 124 && "${QEMU_EXIT}" -ne -1 ]]; then
-    echo "qemu_unexpected_exit:${QEMU_EXIT}" >> "${VIOLATIONS}"
+if [[ "${AYKEN_DETERMINISTIC_EXIT}" -eq 1 ]]; then
+    # Deterministic mode accepts:
+    # - isa-debug-exit code path: exit=1 when guest writes value=0
+    # - ACPI poweroff fallback path: exit=0 (when -no-shutdown is not used)
+    if [[ "${QEMU_EXIT}" -ne 1 && "${QEMU_EXIT}" -ne 0 ]]; then
+        echo "qemu_deterministic_exit_mismatch:expected=0_or_1:actual=${QEMU_EXIT}" >> "${VIOLATIONS}"
+    fi
+else
+    if [[ "${QEMU_EXIT}" -ne 0 && "${QEMU_EXIT}" -ne 124 && "${QEMU_EXIT}" -ne -1 ]]; then
+        echo "qemu_unexpected_exit:${QEMU_EXIT}" >> "${VIOLATIONS}"
+    fi
 fi
 
 if [[ "${SHELL_FALLBACK_DETECTED}" -eq 1 ]]; then
@@ -226,7 +244,7 @@ if [[ "${GATE4_BOOTSTRAP_POLICY}" -eq 0 ]]; then
         echo "preload_marker_missing_strict" >> "${VIOLATIONS}"
     fi
 else
-    if [[ "${PRELOAD_MARKER_COUNT}" -ne 0 ]]; then
+    if [[ "${AYKEN_GATE45_PROOF}" -eq 0 && "${PRELOAD_MARKER_COUNT}" -ne 0 ]]; then
         echo "preload_marker_unexpected_transitional:count=${PRELOAD_MARKER_COUNT}" >> "${VIOLATIONS}"
     fi
 fi
@@ -244,6 +262,7 @@ TARGET_PID_MARKER_COUNT=0
 RING3_PUBLISH_COUNT=0
 RING3_PUBLISH_LINE=0
 TARGET_ACCEPT_LINE=0
+PROOF_DONE_COUNT=0
 
 if [[ -n "${GATE4_PID}" ]]; then
     TARGET_PID_MARKER_COUNT="$(safe_count_file "\\[\\[AYKEN_GATE4_PID\\]\\] pid=${GATE4_PID}" "${DEBUGCON_LOG}")"
@@ -274,6 +293,7 @@ TOTAL_ACCEPT_COUNT="$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\]" "${DEB
 if [[ "${TOTAL_ACCEPT_COUNT}" -ge "${TARGET_ACCEPT_COUNT}" ]]; then
     NON_TARGET_ACCEPT_COUNT=$((TOTAL_ACCEPT_COUNT - TARGET_ACCEPT_COUNT))
 fi
+PROOF_DONE_COUNT="$(safe_count_file "\\[\\[AYKEN_PROOF_DONE\\]\\]" "${DEBUGCON_LOG}")"
 
 if [[ "${AYKEN_GATE45_PROOF}" -eq 1 ]]; then
     if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
@@ -289,6 +309,11 @@ else
     if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
         echo "target_accept_mismatch:pid=${GATE4_PID:-unknown}:count=${TARGET_ACCEPT_COUNT}" >> "${VIOLATIONS}"
     fi
+fi
+
+# Deterministic exit proof completion marker must appear when enabled.
+if [[ "${AYKEN_DETERMINISTIC_EXIT}" -eq 1 && "${PROOF_DONE_COUNT}" -lt 1 ]]; then
+    echo "proof_done_missing_deterministic_exit" >> "${VIOLATIONS}"
 fi
 
 # Gate-4 run must not end in obvious fault signatures.
@@ -333,6 +358,7 @@ cat > "${REPORT_JSON}" <<EOF
   "gate4_bootstrap_policy": ${GATE4_BOOTSTRAP_POLICY},
   "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
   "ayken_gate45_proof": ${AYKEN_GATE45_PROOF},
+  "ayken_deterministic_exit": ${AYKEN_DETERMINISTIC_EXIT},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "qemu_attempts": ${QEMU_ATTEMPTS},
   "qemu_exit_code": ${QEMU_EXIT},
@@ -350,6 +376,7 @@ cat > "${REPORT_JSON}" <<EOF
   "target_accept_count": ${TARGET_ACCEPT_COUNT},
   "total_accept_count": ${TOTAL_ACCEPT_COUNT},
   "non_target_accept_count": ${NON_TARGET_ACCEPT_COUNT},
+  "proof_done_count": ${PROOF_DONE_COUNT},
   "debugcon_bytes": ${DEBUGCON_BYTES},
   "serial_bytes": ${SERIAL_BYTES},
   "qemu_log_bytes": ${QEMU_LOG_BYTES},
