@@ -184,6 +184,26 @@ static void sched_emit_irq_decision(proc_t *prev, proc_t *next, int used_mailbox
     sched_emit_marker("\n");
 }
 
+static void sched_emit_mailbox_miss_fatal_pre(
+    int site,
+    const proc_t *prev,
+    const proc_t *owner)
+{
+    sched_emit_marker("P10_MAILBOX_MISS_FATAL_PRE site=");
+    sched_emit_u64_dec((uint64_t)(site >= 0 ? (uint32_t)site : 0u));
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec(owner ? (uint64_t)(uint32_t)owner->pid : 0);
+    sched_emit_marker(" current=");
+    sched_emit_u64_dec(prev ? (uint64_t)(uint32_t)prev->pid : 0);
+    // Do not dereference queue nodes here: under user CR3, non-current kernel
+    // heap pages may be unmapped and would fault in the fatal-report path.
+    sched_emit_marker(" ready_head_ptr=");
+    sched_emit_u64_dec((uint64_t)(uintptr_t)ready_head);
+    sched_emit_marker(" blocked_head_ptr=");
+    sched_emit_u64_dec((uint64_t)(uintptr_t)blocked_head);
+    sched_emit_marker("\n");
+}
+
 static ayken_sched_mailbox_t *sched_mailbox_view_for_owner(proc_t *owner)
 {
     if (!owner || !owner->mailbox_pa) {
@@ -330,10 +350,12 @@ static proc_t *sched_select_next_mailbox(
 
     proc_t *owner = sched_owner_proc(prev, site);
     if (!owner) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, NULL);
         sched_emit_marker("P10_MAILBOX_OWNER_MISSING_FATAL\n");
         return NULL;
     }
     if (!(owner->state == PROC_READY || owner->state == PROC_RUNNING)) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_OWNER_NOT_READY_FATAL\n");
         return NULL;
     }
@@ -431,6 +453,7 @@ static proc_t *sched_select_next_mailbox(
         sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
         return prev;
 #else
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
         return NULL;
 #endif
@@ -448,10 +471,13 @@ static proc_t *sched_select_next_mailbox(
 #endif
 #else
     if (site == SCHED_DECISION_SITE_BLOCK) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_BLOCK_FATAL\n");
     } else if (site == SCHED_DECISION_SITE_START) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_BOOTSTRAP_FATAL\n");
     } else {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_NULL\n");
     }
     return NULL;

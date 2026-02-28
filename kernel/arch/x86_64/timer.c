@@ -8,6 +8,7 @@
 #include "../../sched/sched.h"
 #include "../../sched/sched_mailbox.h"
 #include "../../include/ayken_abi.h"
+#include "../../include/ayken.h"
 
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
@@ -118,6 +119,11 @@ void timer_isr_c(void *frame_ptr)
     tick_count++;
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    static uint8_t p10_tick_marker_emitted = 0;
+    if (!p10_tick_marker_emitted && tick_count >= 1) {
+        p10_tick_marker_emitted = 1;
+        timer_debugcon_write("P10_TICK\n");
+    }
     static uint8_t tick_marker_emitted = 0;
     if (!tick_marker_emitted && tick_count >= 10) {
         tick_marker_emitted = 1;
@@ -145,6 +151,25 @@ void timer_isr_c(void *frame_ptr)
     extern proc_t *current_proc;
     if (current_proc && current_proc->type == PROC_TYPE_USER &&
         frame && ((frame->cs & 0x3) == 0x3)) {
+        // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
+        // user stub can publish epoch/syscall markers before strict IRQ arbitration.
+        // Gate-4 isolated policy proof keeps its original timer behavior.
+#if (!defined(AYKEN_GATE4_POLICY_TEST) || (AYKEN_GATE4_POLICY_TEST == 0))
+        // Keep early Ring3 bootstrap window uninterrupted so the stub can
+        // publish mailbox epoch, perform syscall roundtrip, and hit INT3 proof.
+        // This does not alter Gate-4 isolated policy mode.
+        static uint8_t phase10_entry_irq_defer_marker_emitted = 0;
+        if (frame->rip >= USER_TEXT_BASE && frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+            if (!phase10_entry_irq_defer_marker_emitted) {
+                phase10_entry_irq_defer_marker_emitted = 1;
+                timer_debugcon_write("P10_IRQ_DEFER_ENTRY\n");
+            }
+#endif
+            return;
+        }
+#endif
+
         current_proc->context.r15 = frame->r15;
         current_proc->context.r14 = frame->r14;
         current_proc->context.r13 = frame->r13;
