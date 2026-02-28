@@ -1,8 +1,8 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-02-21  
-**Snapshot Basis:** `HEAD 464cd009f4d0`
+**Last Updated:** 2026-02-28  
+**Snapshot Basis:** `WORKTREE (post-mailbox-v1-freeze docs)`
 
 ## Current Phase
 - **Core OS:** Phase 4.5 In Progress (stabilization)
@@ -52,12 +52,16 @@ Ayrica: `ci-summarize`
 ## Technical Specifications
 
 ### Core System Specifications
-1. `docs/development/SCHEDULER_ARBITRATION_CONTRACT.md` - Scheduler Ring0/Ring3 arbitration protocol
+1. `docs/development/SCHEDULER_ARBITRATION_CONTRACT.md` - Legacy/historical arbitration design note (superseded by mailbox v1 freeze for C1)
 2. `docs/development/CAPABILITY_SYSTEM_REFERENCE.md` - Capability-based security system reference
 3. `docs/development/BCIB_SUBMISSION_PROTOCOL.md` - BCIB graph submission and execution protocol
 4. `docs/development/RING3_IMPLEMENTATION.md` - Ring3 policy layer implementation
 5. `docs/development/SYSCALL_TRANSITION_GUIDE.md` - Syscall v2 migration guide
 6. `docs/development/DEVFS_IMPLEMENTATION.md` - DevFS architecture
+7. `docs/governance/MAILBOX_PROTOCOL_V1_FREEZE.md` - Mailbox protocol v1 freeze (C1 authority + Gate-4/4.5 proof contract)
+8. `docs/development/SCHEDULER_MAILBOX_DEVELOPER_GUIDE.md` - Scheduler mailbox practical developer guide (publish/validate/consume flow)
+9. `docs/development/PROOF_GATE_DEBUG_HANDBOOK.md` - Gate-4/Gate-4.5 debug playbook and invariant triage
+10. `docs/governance/MAILBOX_ABI_HARDENING_NOTES.md` - ABI layout/marker drift hardening checklist
 
 ### CI and Operations
 1. `docs/operations/CONSTITUTIONAL_CI_MODE.md` - Constitutional CI mode specification
