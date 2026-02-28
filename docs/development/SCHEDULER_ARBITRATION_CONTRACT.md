@@ -1,8 +1,17 @@
 # Scheduler Arbitration Contract (Yol A)
 
+> Legacy notice (2026-02-28):
+> This document is historical/contextual and is no longer the normative
+> scheduler protocol reference for C1.
+>
+> Current normative references:
+> - `docs/governance/MAILBOX_PROTOCOL_V1_FREEZE.md`
+> - `kernel/include/sched_mailbox_abi.h`
+> - `constitution/abi_mailbox.json`
+
 **Project:** AykenOS  
 **Version:** 1.0  
-**Status:** ACTIVE  
+**Status:** LEGACY (SUPERSEDED FOR C1)  
 **Effective Date:** 2026-02-21  
 **Owner:** AykenOS Core Architecture Team
 
