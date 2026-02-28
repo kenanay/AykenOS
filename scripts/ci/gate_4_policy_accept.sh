@@ -22,6 +22,8 @@ cd "${REPO_ROOT}"
 RUN_ID="${RUN_ID:-gate4-$(date -u +%Y%m%dT%H%M%SZ)}"
 KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-15}"
+GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
+GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
 
 EVIDENCE_ROOT="evidence/gate-4-policy-accept"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -113,18 +115,20 @@ echo "== GATE-4: POLICY ACCEPT PROOF =="
 echo "run_id: ${RUN_ID}"
 echo "kernel_profile: ${KERNEL_PROFILE}"
 echo "qemu_timeout: ${QEMU_TIMEOUT}s"
+echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
+echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
 
 echo "[*] Cleaning build artifacts for isolated profile flags..."
-make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST=0 AYKEN_GATE4_POLICY_TEST=1 clean >> "${BUILD_LOG}" 2>&1 || true
+make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
 
 echo "[*] Building kernel (Gate-4 isolated mode)..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST=0 AYKEN_GATE4_POLICY_TEST=1 kernel >> "${BUILD_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
     echo "build_failed" >> "${VIOLATIONS}"
 fi
 
 echo "[*] Creating EFI image..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST=0 AYKEN_GATE4_POLICY_TEST=1 efi-img > "${EFI_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
     echo "efi_image_failed" >> "${VIOLATIONS}"
 fi
 
@@ -207,6 +211,23 @@ if [[ "${SHELL_FALLBACK_DETECTED}" -eq 1 ]]; then
 fi
 
 echo "[*] Validating markers..."
+BOOT_OK_COUNT="$(safe_count_file "\\[\\[AYKEN_BOOT_OK\\]\\]" "${DEBUGCON_LOG}")"
+if [[ "${BOOT_OK_COUNT}" -lt 1 ]]; then
+    echo "boot_ok_missing" >> "${VIOLATIONS}"
+fi
+
+PRELOAD_MARKER_COUNT="$(safe_count_file "\\[K\\]\\[PHASE10\\] PRELOAD_GATE4_OWNER" "${DEBUGCON_LOG}")"
+if [[ "${GATE4_BOOTSTRAP_POLICY}" -eq 0 ]]; then
+    if [[ "${PRELOAD_MARKER_COUNT}" -lt 1 ]]; then
+        echo "preload_marker_missing_strict" >> "${VIOLATIONS}"
+    fi
+else
+    if [[ "${PRELOAD_MARKER_COUNT}" -ne 0 ]]; then
+        echo "preload_marker_unexpected_transitional:count=${PRELOAD_MARKER_COUNT}" >> "${VIOLATIONS}"
+    fi
+fi
+
+GATE4_PID_MARKER_COUNT="$(safe_count_file "\\[\\[AYKEN_GATE4_PID\\]\\] pid=[0-9]+" "${DEBUGCON_LOG}")"
 GATE4_PID="$(grep -a -Eo '\[\[AYKEN_GATE4_PID\]\] pid=[0-9]+' "${DEBUGCON_LOG}" | tail -n1 | sed 's/.*pid=//' || true)"
 if [[ -z "${GATE4_PID}" ]]; then
     echo "gate4_pid_missing" >> "${VIOLATIONS}"
@@ -215,13 +236,42 @@ fi
 TARGET_ACCEPT_COUNT=0
 TOTAL_ACCEPT_COUNT=0
 NON_TARGET_ACCEPT_COUNT=0
+TARGET_PID_MARKER_COUNT=0
+RING3_PUBLISH_COUNT=0
+RING3_PUBLISH_LINE=0
+TARGET_ACCEPT_LINE=0
 
 if [[ -n "${GATE4_PID}" ]]; then
+    TARGET_PID_MARKER_COUNT="$(safe_count_file "\\[\\[AYKEN_GATE4_PID\\]\\] pid=${GATE4_PID}" "${DEBUGCON_LOG}")"
+    if [[ "${TARGET_PID_MARKER_COUNT}" -lt 1 ]]; then
+        echo "gate4_pid_marker_mismatch:pid=${GATE4_PID}" >> "${VIOLATIONS}"
+    fi
     TARGET_ACCEPT_COUNT="$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")"
+    RING3_PUBLISH_COUNT="$(safe_count_file "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}")"
+    if [[ "${RING3_PUBLISH_COUNT}" -lt 1 ]]; then
+        echo "ring3_publish_missing:pid=${GATE4_PID}" >> "${VIOLATIONS}"
+    fi
+
+    RING3_PUBLISH_LINE="$(grep -a -n -E "\\[\\[AYKEN_RING3_PUBLISH\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}" | head -n1 | cut -d: -f1 || true)"
+    TARGET_ACCEPT_LINE="$(grep -a -n -E "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\] pid=${GATE4_PID} epoch=1" "${DEBUGCON_LOG}" | head -n1 | cut -d: -f1 || true)"
+    RING3_PUBLISH_LINE="$(printf "%s" "${RING3_PUBLISH_LINE}" | tr -dc '0-9')"
+    TARGET_ACCEPT_LINE="$(printf "%s" "${TARGET_ACCEPT_LINE}" | tr -dc '0-9')"
+    if [[ -z "${RING3_PUBLISH_LINE}" ]]; then
+        RING3_PUBLISH_LINE=0
+    fi
+    if [[ -z "${TARGET_ACCEPT_LINE}" ]]; then
+        TARGET_ACCEPT_LINE=0
+    fi
+    if [[ "${RING3_PUBLISH_LINE}" -gt 0 && "${TARGET_ACCEPT_LINE}" -gt 0 && "${RING3_PUBLISH_LINE}" -ge "${TARGET_ACCEPT_LINE}" ]]; then
+        echo "ring3_publish_order_invalid:publish_line=${RING3_PUBLISH_LINE}:accept_line=${TARGET_ACCEPT_LINE}" >> "${VIOLATIONS}"
+    fi
 fi
 TOTAL_ACCEPT_COUNT="$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\]" "${DEBUGCON_LOG}")"
 if [[ "${TOTAL_ACCEPT_COUNT}" -ge "${TARGET_ACCEPT_COUNT}" ]]; then
     NON_TARGET_ACCEPT_COUNT=$((TOTAL_ACCEPT_COUNT - TARGET_ACCEPT_COUNT))
+fi
+if [[ "${GATE4_MB_SELFTEST}" -eq 0 && "${TOTAL_ACCEPT_COUNT}" -ne 1 ]]; then
+    echo "total_accept_mismatch_no_selftest:count=${TOTAL_ACCEPT_COUNT}" >> "${VIOLATIONS}"
 fi
 
 if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
@@ -237,7 +287,7 @@ fi
 # Epoch monotonic check on scheduler markers for target PID only.
 if [[ -n "${GATE4_PID}" ]]; then
     EPOCHS="$(grep -a -E "\\[\\[AYKEN_SCHED_MB_(ACCEPT|REJECT)\\]\\]" "${DEBUGCON_LOG}" | \
-        grep -a "pid=${GATE4_PID}" | grep -a -Eo "epoch=[0-9]+" | cut -d= -f2 || true)"
+        grep -a -E "pid=${GATE4_PID}([^0-9]|$)" | grep -a -Eo "epoch=[0-9]+" | cut -d= -f2 || true)"
     PREV=""
     for E in ${EPOCHS}; do
         if [[ "${E}" -eq 0 ]]; then
@@ -267,13 +317,22 @@ cat > "${REPORT_JSON}" <<EOF
   "verdict": "${VERDICT}",
   "reason": "${REASON}",
   "kernel_profile": "${KERNEL_PROFILE}",
+  "gate4_bootstrap_policy": ${GATE4_BOOTSTRAP_POLICY},
+  "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "qemu_attempts": ${QEMU_ATTEMPTS},
   "qemu_exit_code": ${QEMU_EXIT},
   "varstore_mode": "${VARSTORE_MODE}",
   "shell_fallback_on_template": ${SHELL_FALLBACK_ON_TEMPLATE},
   "shell_fallback_final": ${SHELL_FALLBACK_DETECTED},
+  "boot_ok_count": ${BOOT_OK_COUNT},
+  "preload_marker_count": ${PRELOAD_MARKER_COUNT},
+  "gate4_pid_marker_count": ${GATE4_PID_MARKER_COUNT},
+  "target_pid_marker_count": ${TARGET_PID_MARKER_COUNT},
   "gate4_pid": ${GATE4_PID:-0},
+  "ring3_publish_count": ${RING3_PUBLISH_COUNT},
+  "ring3_publish_line": ${RING3_PUBLISH_LINE},
+  "target_accept_line": ${TARGET_ACCEPT_LINE},
   "target_accept_count": ${TARGET_ACCEPT_COUNT},
   "total_accept_count": ${TOTAL_ACCEPT_COUNT},
   "non_target_accept_count": ${NON_TARGET_ACCEPT_COUNT},
