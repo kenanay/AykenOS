@@ -30,6 +30,22 @@ static void timer_debugcon_write(const char *s)
     }
 }
 
+static void timer_debugcon_hex16(uint16_t value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 3; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
+    }
+}
+
+static void timer_debugcon_hex64(uint64_t value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
+    }
+}
+
 typedef struct irq_timer_frame {
     uint64_t r15, r14, r13, r12;
     uint64_t r11, r10, r9, r8;
@@ -105,15 +121,41 @@ void timer_isr_c(void *frame_ptr)
         current_proc->context.ss = (uint16_t)frame->ss;
         __asm__ volatile("mov %%cr3, %0" : "=r"(current_proc->context.cr3));
 
-        // MVP-1: Validate Ring3 mailbox after user context snapshot
-        // This hook enables Ring3 → Ring0 scheduler bridge validation
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        // Timer-driven mailbox validation is enabled in:
+        // - transitional bootstrap-policy mode, or
+        // - Gate-4 isolated policy proof mode.
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+   ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
+    (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
         extern int sched_mailbox_validate_ring3(proc_t *proc);
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+        // Gate-4/4.5 isolated proofs validate owner authority only.
+        if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
+            sched_mailbox_validate_ring3(current_proc);
+        }
+#else
         sched_mailbox_validate_ring3(current_proc);
+#endif
 #endif
 
         // Tell context_switch.asm old user state is already snapshotted.
         sched_irq_user_ctx_saved = 1;
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        {
+            static uint8_t snapshot_marker_emitted = 0;
+            if (!snapshot_marker_emitted) {
+                snapshot_marker_emitted = 1;
+                timer_debugcon_write("P10_IRQ_SNAPSHOT_OK rip=");
+                timer_debugcon_hex64(frame->rip);
+                timer_debugcon_write(" rsp=");
+                timer_debugcon_hex64(frame->rsp);
+                timer_debugcon_write(" cs=");
+                timer_debugcon_hex16((uint16_t)frame->cs);
+                timer_debugcon_write("\n");
+            }
+        }
+#endif
 
         // Defer context switch to IRQ ASM tail for clean stack discipline.
         sched_request_resched_irq();

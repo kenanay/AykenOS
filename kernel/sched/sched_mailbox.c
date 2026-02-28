@@ -16,6 +16,10 @@
 #include "../arch/x86_64/port_io.h"
 #include "sched_mailbox.h"
 
+#ifndef AYKEN_GATE45_PROOF
+#define AYKEN_GATE45_PROOF 0
+#endif
+
 // MVP-0 self-test state (kept separate from per-process runtime mailbox path).
 static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
 static uint64_t g_selftest_last_epoch = 0;
@@ -357,8 +361,19 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
     }
 
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
-    // Gate-4 proof requires policy proposal to target current process only.
-    if (mb->proposer_pid != (uint32_t)proc->pid || pid != (uint32_t)proc->pid) {
+    // Gate-4 baseline: self-target proposal only.
+    // Gate-4.5 proof: proposer must stay owner, candidate may differ (cross-target).
+    if (mb->proposer_pid != (uint32_t)proc->pid) {
+        reject_reason = MB_VALIDATE_REJECT_OWNER_MISMATCH;
+        goto reject;
+    }
+#if AYKEN_GATE45_PROOF
+    if (cand->type != PROC_TYPE_USER) {
+        reject_reason = MB_VALIDATE_REJECT_OWNER_TARGET_MISMATCH;
+        goto reject;
+    }
+#else
+    if (pid != (uint32_t)proc->pid) {
         reject_reason = MB_VALIDATE_REJECT_OWNER_MISMATCH;
         goto reject;
     }
@@ -366,6 +381,7 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         reject_reason = MB_VALIDATE_REJECT_OWNER_TARGET_MISMATCH;
         goto reject;
     }
+#endif
     if (!(proc->state == PROC_READY || proc->state == PROC_RUNNING)) {
         reject_reason = AYKEN_SCHED_REJECT_NOT_RUNNABLE;
         goto reject;
@@ -377,7 +393,12 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 #endif
 
     // ACCEPT: Update last epoch and emit marker
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5: leave epoch consume to scheduler decision path so decision->switch
+    // proof can consume the first accepted epoch deterministically.
+#else
     proc->mailbox_last_epoch = e1;
+#endif
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     if (e1 == 1) {
@@ -385,7 +406,20 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
     }
     marker_validate_result(proc, e1, pid, 1u, AYKEN_SCHED_REJECT_NONE);
 #endif
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5 proof expects a single owner ACCEPT(epoch=1) marker even if
+    // timer validation sees the same epoch repeatedly before scheduler consume.
+    if (e1 == 1) {
+        if (!proc->gate4_accept_epoch1_emitted) {
+            proc->gate4_accept_epoch1_emitted = 1;
+            marker_accept(proc->pid, e1);
+        }
+    } else {
+        marker_accept(proc->pid, e1);
+    }
+#else
     marker_accept((int)pid, e1);
+#endif
     return 0;
 
 reject:

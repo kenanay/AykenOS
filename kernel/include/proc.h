@@ -77,6 +77,8 @@ typedef struct proc {
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     // Gate-4 isolated proof: per-process publish marker one-shot latch.
     uint8_t gate4_publish_emitted;
+    // Gate-4.5 proof: emit owner ACCEPT(epoch=1) only once per process.
+    uint8_t gate4_accept_epoch1_emitted;
 #endif
 } proc_t;
 

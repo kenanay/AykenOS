@@ -37,8 +37,11 @@ AYKEN_SCHED_FALLBACK ?= 0
 AYKEN_INTENTIONAL_PERF_REGRESSION_MS ?= 0
 AYKEN_MB_SELFTEST ?= 1
 AYKEN_GATE4_POLICY_TEST ?= 0
+AYKEN_GATE45_PROOF ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 AYKEN_CR3_PCID ?= 0
+# Phase10-C1 default: strict mailbox-owner bootstrap (no transitional policy bridge).
+AYKEN_SCHED_BOOTSTRAP_POLICY ?= 0
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -52,12 +55,20 @@ ifneq ($(filter $(AYKEN_GATE4_POLICY_TEST),0 1),$(AYKEN_GATE4_POLICY_TEST))
 $(error Invalid AYKEN_GATE4_POLICY_TEST='$(AYKEN_GATE4_POLICY_TEST)'. Use 0 or 1)
 endif
 
+ifneq ($(filter $(AYKEN_GATE45_PROOF),0 1),$(AYKEN_GATE45_PROOF))
+$(error Invalid AYKEN_GATE45_PROOF='$(AYKEN_GATE45_PROOF)'. Use 0 or 1)
+endif
+
 ifneq ($(filter $(KERNEL_EXPORT_POLICY),0 1),$(KERNEL_EXPORT_POLICY))
 $(error Invalid KERNEL_EXPORT_POLICY='$(KERNEL_EXPORT_POLICY)'. Use 0 or 1)
 endif
 
 ifneq ($(filter $(AYKEN_CR3_PCID),0 1),$(AYKEN_CR3_PCID))
 $(error Invalid AYKEN_CR3_PCID='$(AYKEN_CR3_PCID)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_SCHED_BOOTSTRAP_POLICY),0 1),$(AYKEN_SCHED_BOOTSTRAP_POLICY))
+$(error Invalid AYKEN_SCHED_BOOTSTRAP_POLICY='$(AYKEN_SCHED_BOOTSTRAP_POLICY)'. Use 0 or 1)
 endif
 
 ifeq ($(AYKEN_SCHED_FALLBACK),1)
@@ -94,7 +105,9 @@ KERNEL_CFLAGS += -DAYKEN_SCHED_FALLBACK=$(AYKEN_SCHED_FALLBACK)
 KERNEL_CFLAGS += -DAYKEN_INTENTIONAL_PERF_REGRESSION_MS=$(AYKEN_INTENTIONAL_PERF_REGRESSION_MS)
 KERNEL_CFLAGS += -DAYKEN_MB_SELFTEST=$(AYKEN_MB_SELFTEST)
 KERNEL_CFLAGS += -DAYKEN_GATE4_POLICY_TEST=$(AYKEN_GATE4_POLICY_TEST)
+KERNEL_CFLAGS += -DAYKEN_GATE45_PROOF=$(AYKEN_GATE45_PROOF)
 KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
+KERNEL_CFLAGS += -DAYKEN_SCHED_BOOTSTRAP_POLICY=$(AYKEN_SCHED_BOOTSTRAP_POLICY)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
@@ -209,6 +222,13 @@ PERF_VARIANCE_FORCE_EFI_REBUILD ?= 0
 RING3_QEMU_TIMEOUT ?= 35
 PHASE10B_MODE ?= negative
 PHASE10B_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+PHASE10C_REQUIRE_METADATA ?= 1
+PHASE10C_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+PHASE10C_ENFORCE ?= 0
+PHASE10C_FREEZE_GATE = $(if $(filter 1,$(PHASE10C_ENFORCE)),ci-gate-scheduler-mailbox-phase10c,)
+GATE45_QEMU_TIMEOUT ?= 20
+GATE45_BOOTSTRAP_POLICY ?= 1
+GATE45_MB_SELFTEST ?= 0
 
 
 # ------------------------------------------------------------
@@ -614,12 +634,16 @@ ci-freeze-guard:
 		echo "ERROR: ci-freeze requires AYKEN_CR3_PCID=0 (current=$(AYKEN_CR3_PCID))"; \
 		exit 2; \
 	fi
+	@if [ "$(PHASE10C_ENFORCE)" = "1" ] && [ "$(AYKEN_SCHED_BOOTSTRAP_POLICY)" != "0" ]; then \
+		echo "ERROR: ci-freeze with PHASE10C_ENFORCE=1 requires AYKEN_SCHED_BOOTSTRAP_POLICY=0 (current=$(AYKEN_SCHED_BOOTSTRAP_POLICY))"; \
+		exit 2; \
+	fi
 
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -640,9 +664,11 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
@@ -867,6 +893,19 @@ ci-gate-syscall-semantics-phase10b: ci-gate-ring3-execution-phase10a2
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: syscall-semantics-phase10b evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-scheduler-mailbox-phase10c: ci-gate-ring3-execution-phase10a2
+	@echo "== CI GATE SCHEDULER MAILBOX PHASE10-C =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase10c_require_metadata: $(PHASE10C_REQUIRE_METADATA)"
+	@echo "phase10c_a2_evidence: $(PHASE10C_A2_EVIDENCE_DIR)"
+	@RUN_ID=$(RUN_ID) PHASE10C_REQUIRE_METADATA="$(PHASE10C_REQUIRE_METADATA)" bash scripts/ci/gate_scheduler_mailbox_phase10c.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c" \
+		--phase10a2-evidence "$(PHASE10C_A2_EVIDENCE_DIR)" \
+		--require-metadata "$(PHASE10C_REQUIRE_METADATA)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c/report.json" "$(EVIDENCE_RUN_DIR)/reports/scheduler-mailbox-phase10c.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: scheduler-mailbox-phase10c evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -878,6 +917,23 @@ ci-gate-policy-accept: ci-evidence-dir
 	@cp -f "evidence/gate-4-policy-accept/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/reports/policy-accept.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: policy-accept evidence at evidence/gate-4-policy-accept/$(RUN_ID)"
+
+ci-gate-decision-switch-phase45: ci-evidence-dir
+	@echo "== CI GATE DECISION SWITCH PHASE4.5 =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "kernel_profile: validation (enforced)"
+	@echo "qemu_timeout_seconds: $(GATE45_QEMU_TIMEOUT)"
+	@echo "gate4_bootstrap_policy: $(GATE45_BOOTSTRAP_POLICY)"
+	@echo "gate4_mb_selftest: $(GATE45_MB_SELFTEST)"
+	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation QEMU_TIMEOUT="$(GATE45_QEMU_TIMEOUT)" GATE4_BOOTSTRAP_POLICY="$(GATE45_BOOTSTRAP_POLICY)" GATE4_MB_SELFTEST="$(GATE45_MB_SELFTEST)" bash scripts/ci/gate_4_5_decision_switch_proof.sh
+	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45/report.json"
+	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/violations.txt" "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45/violations.txt"
+	@cp -f "evidence/gate-4.5-decision-switch-proof/$(RUN_ID)/report.json" "$(EVIDENCE_RUN_DIR)/reports/decision-switch-phase45.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: decision-switch-phase45 evidence at evidence/gate-4.5-decision-switch-proof/$(RUN_ID)"
+
+ci-gate-policy-proof-regression: ci-gate-policy-accept ci-gate-decision-switch-phase45
+	@echo "OK: policy-proof regression suite passed (Gate-4 + Gate-4.5)"
 
 ci-gate-performance: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE =="
@@ -1008,14 +1064,22 @@ help:
 	@echo "    (phase selector: BEHAVIORAL_SUITE_PHASE=5 by default)"
 	@echo "  ci-gate-ring3-execution-phase10a2 - Strict Phase10 scheduler+syscall+Ring3 marker-order gate"
 	@echo "    (controls: RING3_QEMU_TIMEOUT, enforced: AYKEN_CR3_PCID=0)"
+	@echo "    (bootstrap mode: AYKEN_SCHED_BOOTSTRAP_POLICY=0 strict default, 1 transitional override)"
 	@echo "  ci-gate-syscall-semantics-phase10b - Phase10-B syscall boundary semantic state-machine gate"
 	@echo "    (controls: PHASE10B_MODE=negative|positive)"
 	@echo "    (A2 evidence override: PHASE10B_A2_EVIDENCE_DIR=<path>)"
 	@echo "    (note: positive mode requires a CAP-free runtime scenario)"
+	@echo "  ci-gate-scheduler-mailbox-phase10c - Phase10-C scheduler mailbox policy/mechanism gate (draft)"
+	@echo "    (controls: PHASE10C_REQUIRE_METADATA=0|1)"
+	@echo "    (A2 evidence override: PHASE10C_A2_EVIDENCE_DIR=<path>)"
+	@echo "    (local freeze: enforced; ci-freeze toggle: PHASE10C_ENFORCE=0|1)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
 	@echo "  ci-gate-policy-accept - Gate-4 isolated policy accept proof gate"
+	@echo "  ci-gate-decision-switch-phase45 - Gate-4.5 decision->switch proof gate"
+	@echo "    (controls: GATE45_QEMU_TIMEOUT, GATE45_BOOTSTRAP_POLICY, GATE45_MB_SELFTEST)"
+	@echo "  ci-gate-policy-proof-regression - Composite regression suite: Gate-4 then Gate-4.5"
 	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
@@ -1028,7 +1092,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-policy-accept ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

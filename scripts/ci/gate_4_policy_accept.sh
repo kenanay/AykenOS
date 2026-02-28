@@ -9,7 +9,9 @@
 #   - Ring3 writes mailbox ABI header + epoch=1
 #   - Kernel deterministically seeds proposer/candidate pid fields
 #   - Timer IRQ invokes sched_mailbox_validate_ring3(current_proc)
-#   - Exactly one target ACCEPT is observed for Gate-4 process PID
+#   - Gate-4 mode (AYKEN_GATE45_PROOF=0): exactly one target ACCEPT (epoch=1)
+#   - Gate-4.5 prereq mode (AYKEN_GATE45_PROOF=1): exactly one target ACCEPT
+#     (epoch=1) and, with selftest disabled, exactly one total ACCEPT
 #   - Kernel fault signatures are absent (PF/PANIC/FATAL)
 # ============================================================================
 
@@ -24,6 +26,7 @@ KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-15}"
 GATE4_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY:-1}"
 GATE4_MB_SELFTEST="${GATE4_MB_SELFTEST:-0}"
+AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF:-0}"
 
 EVIDENCE_ROOT="evidence/gate-4-policy-accept"
 EVIDENCE_DIR="${EVIDENCE_ROOT}/${RUN_ID}"
@@ -117,18 +120,19 @@ echo "kernel_profile: ${KERNEL_PROFILE}"
 echo "qemu_timeout: ${QEMU_TIMEOUT}s"
 echo "gate4_bootstrap_policy: ${GATE4_BOOTSTRAP_POLICY}"
 echo "gate4_mb_selftest: ${GATE4_MB_SELFTEST}"
+echo "ayken_gate45_proof: ${AYKEN_GATE45_PROOF}"
 echo "evidence_dir: ${EVIDENCE_DIR}"
 
 echo "[*] Cleaning build artifacts for isolated profile flags..."
-make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
+make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" clean >> "${BUILD_LOG}" 2>&1 || true
 
 echo "[*] Building kernel (Gate-4 isolated mode)..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" kernel >> "${BUILD_LOG}" 2>&1; then
     echo "build_failed" >> "${VIOLATIONS}"
 fi
 
 echo "[*] Creating EFI image..."
-if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
+if ! make KERNEL_PROFILE="${KERNEL_PROFILE}" AYKEN_MB_SELFTEST="${GATE4_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST=1 AYKEN_GATE45_PROOF="${AYKEN_GATE45_PROOF}" AYKEN_SCHED_BOOTSTRAP_POLICY="${GATE4_BOOTSTRAP_POLICY}" efi-img > "${EFI_LOG}" 2>&1; then
     echo "efi_image_failed" >> "${VIOLATIONS}"
 fi
 
@@ -270,12 +274,21 @@ TOTAL_ACCEPT_COUNT="$(safe_count_file "\\[\\[AYKEN_SCHED_MB_ACCEPT\\]\\]" "${DEB
 if [[ "${TOTAL_ACCEPT_COUNT}" -ge "${TARGET_ACCEPT_COUNT}" ]]; then
     NON_TARGET_ACCEPT_COUNT=$((TOTAL_ACCEPT_COUNT - TARGET_ACCEPT_COUNT))
 fi
-if [[ "${GATE4_MB_SELFTEST}" -eq 0 && "${TOTAL_ACCEPT_COUNT}" -ne 1 ]]; then
-    echo "total_accept_mismatch_no_selftest:count=${TOTAL_ACCEPT_COUNT}" >> "${VIOLATIONS}"
-fi
 
-if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
-    echo "target_accept_mismatch:pid=${GATE4_PID:-unknown}:count=${TARGET_ACCEPT_COUNT}" >> "${VIOLATIONS}"
+if [[ "${AYKEN_GATE45_PROOF}" -eq 1 ]]; then
+    if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
+        echo "target_accept_mismatch_gate45:pid=${GATE4_PID:-unknown}:count=${TARGET_ACCEPT_COUNT}" >> "${VIOLATIONS}"
+    fi
+    if [[ "${GATE4_MB_SELFTEST}" -eq 0 && "${TOTAL_ACCEPT_COUNT}" -ne 1 ]]; then
+        echo "total_accept_mismatch_gate45_no_selftest:count=${TOTAL_ACCEPT_COUNT}" >> "${VIOLATIONS}"
+    fi
+else
+    if [[ "${GATE4_MB_SELFTEST}" -eq 0 && "${TOTAL_ACCEPT_COUNT}" -ne 1 ]]; then
+        echo "total_accept_mismatch_no_selftest:count=${TOTAL_ACCEPT_COUNT}" >> "${VIOLATIONS}"
+    fi
+    if [[ "${TARGET_ACCEPT_COUNT}" -ne 1 ]]; then
+        echo "target_accept_mismatch:pid=${GATE4_PID:-unknown}:count=${TARGET_ACCEPT_COUNT}" >> "${VIOLATIONS}"
+    fi
 fi
 
 # Gate-4 run must not end in obvious fault signatures.
@@ -319,6 +332,7 @@ cat > "${REPORT_JSON}" <<EOF
   "kernel_profile": "${KERNEL_PROFILE}",
   "gate4_bootstrap_policy": ${GATE4_BOOTSTRAP_POLICY},
   "gate4_mb_selftest": ${GATE4_MB_SELFTEST},
+  "ayken_gate45_proof": ${AYKEN_GATE45_PROOF},
   "qemu_timeout": ${QEMU_TIMEOUT},
   "qemu_attempts": ${QEMU_ATTEMPTS},
   "qemu_exit_code": ${QEMU_EXIT},
