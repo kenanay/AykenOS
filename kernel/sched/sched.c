@@ -340,9 +340,13 @@ static proc_t *sched_select_next_mailbox(
     if (prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev) &&
         sched_mailbox_has_any_candidate(prev)) {
         sched_emit_marker("P10_MAILBOX_OWNER_MISMATCH\n");
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
         if (site != SCHED_DECISION_SITE_YIELD) {
             return NULL;
         }
+#else
+        return NULL;
+#endif
     }
 
     // Single-authority path: only owner mailbox is consumed.
@@ -421,15 +425,25 @@ static proc_t *sched_select_next_mailbox(
             sched_debug_assert_fail('Q');
         }
 #endif
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
         sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
         return prev;
+#else
+        sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
+        return NULL;
+#endif
     }
 
     // Transitional fallback is compile-time gated; default constitutional mode is fail-closed.
 #if AYKEN_SCHED_FALLBACK
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
     sched_emit_marker("P10_SCHED_FALLBACK\n");
     sched_emit_marker("P10_READY_HEAD_FALLBACK\n");
     return sched_select_next_ready_head_fallback();
+#else
+    sched_emit_marker("P10_SCHED_FALLBACK_FORBIDDEN\n");
+    return NULL;
+#endif
 #else
     if (site == SCHED_DECISION_SITE_BLOCK) {
         sched_emit_marker("P10_MAILBOX_MISS_BLOCK_FATAL\n");
@@ -1125,6 +1139,10 @@ static void sched_yield_core(int reenable_if)
             // No switch from IRQ path: do not leave stale snapshot state armed.
             sched_irq_user_ctx_saved = 0;
         }
+#if !AYKEN_SCHED_BOOTSTRAP_POLICY
+        fb_print("[PANIC] owner mailbox decision missing on yield\n");
+        for (;;) __asm__ volatile("cli; hlt");
+#endif
         SCHED_DBG_OUT((uint8_t)'X');
         SCHED_DBG_OUT((uint8_t)'\n');
         if (reenable_if)

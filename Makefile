@@ -71,6 +71,12 @@ ifneq ($(filter $(AYKEN_SCHED_BOOTSTRAP_POLICY),0 1),$(AYKEN_SCHED_BOOTSTRAP_POL
 $(error Invalid AYKEN_SCHED_BOOTSTRAP_POLICY='$(AYKEN_SCHED_BOOTSTRAP_POLICY)'. Use 0 or 1)
 endif
 
+ifeq ($(AYKEN_SCHED_BOOTSTRAP_POLICY),0)
+ifeq ($(AYKEN_SCHED_FALLBACK),1)
+$(error AYKEN_SCHED_FALLBACK=1 is forbidden when AYKEN_SCHED_BOOTSTRAP_POLICY=0)
+endif
+endif
+
 ifeq ($(AYKEN_SCHED_FALLBACK),1)
 ifneq ($(KERNEL_PROFILE),validation)
 $(error AYKEN_SCHED_FALLBACK=1 is only allowed with KERNEL_PROFILE=validation)
