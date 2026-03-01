@@ -74,12 +74,21 @@ typedef struct proc {
     // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)
     uint64_t mailbox_pa;        // Physical address of per-process mailbox
     uint64_t mailbox_last_epoch; // Last validated epoch (monotonicity check)
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4 isolated proof: per-process publish marker one-shot latch.
+    uint8_t gate4_publish_emitted;
+    // Gate-4.5 proof: emit owner ACCEPT(epoch=1) only once per process.
+    uint8_t gate4_accept_epoch1_emitted;
+#endif
 } proc_t;
 
 // API
 void proc_init(void);
 proc_t *proc_create_kernel_thread(void (*func)(void));
 void proc_create_init(void);
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+void proc_launch_gate4_policy_test(void);
+#endif
 proc_t *proc_create_user_process(const char *name,
                                  const uint8_t *image,
                                  uint64_t image_size,

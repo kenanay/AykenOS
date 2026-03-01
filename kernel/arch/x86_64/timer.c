@@ -6,13 +6,26 @@
 #include "pic.h"
 #include "gdt_idt.h"
 #include "../../sched/sched.h"
+#include "../../sched/sched_mailbox.h"
 #include "../../include/ayken_abi.h"
+#include "../../include/ayken.h"
 
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
+#define QEMU_DEBUG_EXIT_PORT 0x501
 
 #ifndef AYKEN_DEBUG_IRQ
 #define AYKEN_DEBUG_IRQ 0
+#endif
+
+#ifndef AYKEN_DETERMINISTIC_EXIT
+#define AYKEN_DETERMINISTIC_EXIT 0
+#endif
+
+#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
+#ifndef AYKEN_GATE45_TARGET_PID
+#define AYKEN_GATE45_TARGET_PID 3u
+#endif
 #endif
 
 #if AYKEN_DEBUG_IRQ
@@ -28,6 +41,57 @@ static void timer_debugcon_write(const char *s)
     while (*s) {
         outb(0xE9, (uint8_t)(*s++));
     }
+}
+
+static void timer_debugcon_hex16(uint16_t value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 3; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
+    }
+}
+
+static void timer_debugcon_hex64(uint64_t value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
+    }
+}
+
+static void timer_maybe_exit_on_proof_done(void)
+{
+#if AYKEN_DETERMINISTIC_EXIT && defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    static uint8_t proof_done_emitted = 0;
+    int proof_done = 0;
+    extern proc_t *current_proc;
+#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
+    if (current_proc &&
+        current_proc->type == PROC_TYPE_USER &&
+        (uint32_t)current_proc->pid == AYKEN_GATE45_TARGET_PID &&
+        !sched_mailbox_gate4_epoch1_pending()) {
+        proof_done = 1;
+    }
+#else
+    if (current_proc &&
+        current_proc->type == PROC_TYPE_USER &&
+        (uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID &&
+        !sched_mailbox_gate4_epoch1_pending()) {
+        proof_done = 1;
+    }
+#endif
+    if (!proof_done_emitted && proof_done) {
+        proof_done_emitted = 1;
+        timer_debugcon_write("[[AYKEN_PROOF_DONE]]\n");
+        // Primary deterministic exit path for CI (if device is present):
+        // qemu-system-x86_64 -device isa-debug-exit
+        // Process exit code becomes (value << 1) | 1.
+        outw(QEMU_DEBUG_EXIT_PORT, 0);
+        // Fallback: ACPI poweroff (works when QEMU runs without -no-shutdown).
+        outw(0x604, 0x2000);
+    }
+#endif
 }
 
 typedef struct irq_timer_frame {
@@ -66,6 +130,11 @@ void timer_isr_c(void *frame_ptr)
     tick_count++;
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    static uint8_t p10_tick_marker_emitted = 0;
+    if (!p10_tick_marker_emitted && tick_count >= 1) {
+        p10_tick_marker_emitted = 1;
+        timer_debugcon_write("P10_TICK\n");
+    }
     static uint8_t tick_marker_emitted = 0;
     if (!tick_marker_emitted && tick_count >= 10) {
         tick_marker_emitted = 1;
@@ -85,6 +154,7 @@ void timer_isr_c(void *frame_ptr)
     // Acknowledge IRQ0 before scheduling. If the scheduler switches context from
     // IRQ path, we still want PIC in-service state to be cleared deterministically.
     pic_send_eoi(0);
+    timer_maybe_exit_on_proof_done();
 
     // PHASE 4.5: Aggressive timer-driven preemption for validation.
     // Snapshot interrupted user context so IRQ-driven switch can restore
@@ -92,6 +162,25 @@ void timer_isr_c(void *frame_ptr)
     extern proc_t *current_proc;
     if (current_proc && current_proc->type == PROC_TYPE_USER &&
         frame && ((frame->cs & 0x3) == 0x3)) {
+        // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
+        // user stub can publish epoch/syscall markers before strict IRQ arbitration.
+        // Gate-4 isolated policy proof keeps its original timer behavior.
+#if (!defined(AYKEN_GATE4_POLICY_TEST) || (AYKEN_GATE4_POLICY_TEST == 0))
+        // Keep early Ring3 bootstrap window uninterrupted so the stub can
+        // publish mailbox epoch, perform syscall roundtrip, and hit INT3 proof.
+        // This does not alter Gate-4 isolated policy mode.
+        static uint8_t phase10_entry_irq_defer_marker_emitted = 0;
+        if (frame->rip >= USER_TEXT_BASE && frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+            if (!phase10_entry_irq_defer_marker_emitted) {
+                phase10_entry_irq_defer_marker_emitted = 1;
+                timer_debugcon_write("P10_IRQ_DEFER_ENTRY\n");
+            }
+#endif
+            return;
+        }
+#endif
+
         current_proc->context.r15 = frame->r15;
         current_proc->context.r14 = frame->r14;
         current_proc->context.r13 = frame->r13;
@@ -105,15 +194,41 @@ void timer_isr_c(void *frame_ptr)
         current_proc->context.ss = (uint16_t)frame->ss;
         __asm__ volatile("mov %%cr3, %0" : "=r"(current_proc->context.cr3));
 
-        // MVP-1: Validate Ring3 mailbox after user context snapshot
-        // This hook enables Ring3 → Ring0 scheduler bridge validation
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        // Timer-driven mailbox validation is enabled in:
+        // - transitional bootstrap-policy mode, or
+        // - Gate-4 isolated policy proof mode.
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+   ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
+    (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
         extern int sched_mailbox_validate_ring3(proc_t *proc);
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+        // Gate-4/4.5 isolated proofs validate owner authority only.
+        if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
+            sched_mailbox_validate_ring3(current_proc);
+        }
+#else
         sched_mailbox_validate_ring3(current_proc);
+#endif
 #endif
 
         // Tell context_switch.asm old user state is already snapshotted.
         sched_irq_user_ctx_saved = 1;
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        {
+            static uint8_t snapshot_marker_emitted = 0;
+            if (!snapshot_marker_emitted) {
+                snapshot_marker_emitted = 1;
+                timer_debugcon_write("P10_IRQ_SNAPSHOT_OK rip=");
+                timer_debugcon_hex64(frame->rip);
+                timer_debugcon_write(" rsp=");
+                timer_debugcon_hex64(frame->rsp);
+                timer_debugcon_write(" cs=");
+                timer_debugcon_hex16((uint16_t)frame->cs);
+                timer_debugcon_write("\n");
+            }
+        }
+#endif
 
         // Defer context switch to IRQ ASM tail for clean stack discipline.
         sched_request_resched_irq();

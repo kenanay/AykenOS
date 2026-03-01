@@ -10,8 +10,19 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../arch/x86_64/interrupts.h"
+#include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
 #include "syscall_v2.h"  // Include v2 syscall interface
+
+// Debug output via debugcon (port 0xE9)
+static void debugcon_write(const char *s)
+{
+    if (!s) return;
+    while (*s) {
+        outb(0xE9, (uint8_t)*s);
+        s++;
+    }
+}
 
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4);
@@ -69,6 +80,10 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     uint64_t result;
+
+    // Marker: syscall entry/return for Phase 10-A2 Task 3 roundtrip evidence.
+    debugcon_write("[[AYKEN_SYSCALL_ENTER]]\n");
+    debugcon_write("P10_SYSCALL_ENTER\n");
     
     // Route based on Final Syscall Numbering Plan
     if (syscall_num >= 1000 && syscall_num <= 1010) {
@@ -81,5 +96,14 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
         fb_print(" (valid range: 1000-1010 only)\n");
         result = (uint64_t)-38; // -ENOSYS
     }
+    
+    // Marker: Syscall return
+    debugcon_write("[[AYKEN_SYSCALL_RETURN]]\n");
+    debugcon_write("P10_SYSCALL_RETURN\n");
+    if (syscall_num == 1008 && result != 0) {
+        // Capability negative-path enforcement marker (expected for fresh boot).
+        debugcon_write("P10_CAP_ENFORCED\n");
+    }
+    
     return result;
 }

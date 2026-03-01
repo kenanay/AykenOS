@@ -47,6 +47,9 @@
 ^logo_animator_.*
 ^ayken_(font8x16|logo128|logo256)$
 
+# Phase 10-A: ELF parser mechanism (production API only)
+^elf64_(validate_minimal|get_entry)$
+
 # Required cross-unit mechanism exports
 ^devfs_init$
 ^idt_get_descriptor$

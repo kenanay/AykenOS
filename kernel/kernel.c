@@ -49,12 +49,17 @@
 #include "arch/x86_64/pic.h"
 #include "arch/x86_64/timer.h"
 #include "arch/x86_64/port_io.h"
+#include "include/ring3_jump.h"
 
 // AI modules removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
 
 #ifndef AYKEN_INTENTIONAL_PERF_REGRESSION_MS
 #define AYKEN_INTENTIONAL_PERF_REGRESSION_MS 0
+#endif
+
+#ifndef AYKEN_CR3_PCID
+#define AYKEN_CR3_PCID 0
 #endif
 
 // Ring3 VFS removed in Phase 2.5 - Step C completion
@@ -81,6 +86,155 @@ static void debugcon_write(const char *s)
         outb(0xE9, (uint8_t)*s);
         s++;
     }
+}
+
+struct gdtr_snapshot {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+struct gdt_descriptor_entry {
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_mid;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
+} __attribute__((packed));
+
+static int is_canonical_addr(uint64_t addr)
+{
+    const uint64_t upper = addr >> 48;
+    const uint64_t sign = (addr >> 47) & 1ULL;
+    return sign ? (upper == 0xFFFFULL) : (upper == 0x0000ULL);
+}
+
+static void phase10_prereq_panic(const char *reason)
+{
+    debugcon_write("[P10][PREREQ_FAIL] ");
+    debugcon_write(reason);
+    debugcon_write("\n");
+    fb_print("[PANIC] Phase10-A2 prereq failed: ");
+    fb_print(reason);
+    fb_print("\n");
+    for (;;) {
+        __asm__ volatile("cli; hlt");
+    }
+}
+
+static void validate_gdt_user_segments(void)
+{
+    const uint16_t user_data_index = (uint16_t)(GDT_USER_DATA >> 3);
+    const uint16_t user_code_index = (uint16_t)(GDT_USER_CODE >> 3);
+    struct gdtr_snapshot gdtr = {0};
+    __asm__ volatile("sgdt %0" : "=m"(gdtr));
+    if (gdtr.base == 0) {
+        phase10_prereq_panic("gdt_base_zero");
+    }
+    if (gdtr.limit < ((uint16_t)((user_code_index + 1u) * 8u) - 1u)) {
+        phase10_prereq_panic("gdt_limit_small");
+    }
+
+    const struct gdt_descriptor_entry *gdt =
+        (const struct gdt_descriptor_entry *)(uintptr_t)gdtr.base;
+    const struct gdt_descriptor_entry *user_data = &gdt[user_data_index];
+    const struct gdt_descriptor_entry *user_code = &gdt[user_code_index];
+
+    // Present bit and DPL=3 must hold for both user descriptors.
+    if (!(user_data->access & 0x80) || (((user_data->access >> 5) & 0x3) != 0x3)) {
+        phase10_prereq_panic("gdt_user_data_dpl");
+    }
+    if (!(user_code->access & 0x80) || (((user_code->access >> 5) & 0x3) != 0x3)) {
+        phase10_prereq_panic("gdt_user_code_dpl");
+    }
+
+    // S=1 means code/data descriptor. Data must be non-exec, code must be exec.
+    if (!(user_data->access & 0x10) || (user_data->access & 0x08)) {
+        phase10_prereq_panic("gdt_user_data_type");
+    }
+    if (!(user_code->access & 0x10) || !(user_code->access & 0x08)) {
+        phase10_prereq_panic("gdt_user_code_type");
+    }
+}
+
+static void validate_idt_bp_gate(void)
+{
+    const struct idt_entry *bp = &idt_table[3];
+    const uint64_t bp_handler =
+        ((uint64_t)bp->offset_high << 32) |
+        ((uint64_t)bp->offset_mid << 16) |
+        (uint64_t)bp->offset_low;
+
+    // Present bit must be set and handler offset must be non-zero.
+    if ((bp->type_attr & 0x80) == 0) {
+        phase10_prereq_panic("idt_bp_not_present");
+    }
+    if (bp_handler == 0) {
+        phase10_prereq_panic("idt_bp_offset_zero");
+    }
+
+    // Allow either trap gate (0xF) or interrupt gate (0xE).
+    {
+        const uint8_t gate_type = bp->type_attr & 0x0F;
+        if (gate_type != 0x0F && gate_type != 0x0E) {
+            phase10_prereq_panic("idt_bp_gate_type");
+        }
+    }
+}
+
+static void validate_tss_for_ring3(void)
+{
+    uint16_t tr = 0;
+    __asm__ volatile("str %0" : "=r"(tr));
+
+    if ((tr & ~0x7u) != GDT_TSS_SEL) {
+        phase10_prereq_panic("tss_selector_invalid");
+    }
+    if (kernel_tss.rsp0 == 0) {
+        phase10_prereq_panic("tss_rsp0_zero");
+    }
+    if (kernel_tss.rsp0 < 0xFFFF800000000000ULL) {
+        phase10_prereq_panic("tss_rsp0_not_kernel_half");
+    }
+    if (!is_canonical_addr(kernel_tss.rsp0)) {
+        phase10_prereq_panic("tss_rsp0_noncanonical");
+    }
+    if (paging_get_phys(kernel_tss.rsp0 - 8) == 0) {
+        phase10_prereq_panic("tss_rsp0_unmapped");
+    }
+}
+
+static void validate_cr4_ring3_policy(void)
+{
+    const uint64_t cr4_smep = (1ULL << 20);
+    const uint64_t cr4_smap = (1ULL << 21);
+    const uint64_t cr4_pcide = (1ULL << 17);
+    uint64_t cr4 = 0;
+
+    __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
+
+    // Phase10 hardening preparation: fail-closed until SMEP/SMAP-safe paths are explicit.
+    if ((cr4 & (cr4_smep | cr4_smap)) != 0) {
+        phase10_prereq_panic("cr4_smep_smap_unsupported");
+    }
+
+#if AYKEN_CR3_PCID == 1
+    if ((cr4 & cr4_pcide) == 0) {
+        phase10_prereq_panic("cr4_pcide_required");
+    }
+#else
+    if ((cr4 & cr4_pcide) != 0) {
+        phase10_prereq_panic("cr4_pcide_unexpected");
+    }
+#endif
+}
+
+static void validate_phase10_a2_prerequisites(void)
+{
+    validate_gdt_user_segments();
+    validate_idt_bp_gate();
+    validate_tss_for_ring3();
+    validate_cr4_ring3_policy();
 }
 
 // Deterministic (timer-tick based) delay hook for intentional perf regression validation.
@@ -363,6 +517,33 @@ static void kernel_late_init(void)
     fb_print("[AykenOS] LATE INIT starting...\n");
 
     // ---------------------------------------------------------
+    // 0) Boot Validation Stage (Phase 10-A)
+    // ---------------------------------------------------------
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    debugcon_write("[K][LATE]0 BOOT_VALIDATION\n");
+    fb_print("[VALIDATION] Running boot validation tests...\n");
+    
+    // Phase 10-A: ELF parser validation
+    extern void elf_parser_run_validation(void);
+    outb(0xE9, 'E');
+    outb(0xE9, 'L');
+    outb(0xE9, 'F');
+    outb(0xE9, '\n');
+    elf_parser_run_validation();
+    outb(0xE9, 'E');
+    outb(0xE9, 'L');
+    outb(0xE9, 'F');
+    outb(0xE9, 'E');
+    outb(0xE9, '\n');
+    
+    // Phase 10-A: User address space validation
+    // Note: test_user_as() is in user_as_test.c which is excluded from build
+    // Tests will be integrated in Phase 10-B when full validation is needed
+    
+    fb_print("[VALIDATION] Boot validation tests complete.\n");
+#endif
+
+    // ---------------------------------------------------------
     // 1) Interrupt controller + timer
     // ---------------------------------------------------------
     debugcon_write("[K][LATE]1 PIC\n");
@@ -468,5 +649,33 @@ static void kernel_late_init(void)
 #ifdef AYKEN_VALIDATION
     // Gate-0: Boot validation marker
     debugcon_write("[[AYKEN_BOOT_OK]]\n");
+#endif
+
+    // ---------------------------------------------------------
+    // Phase 10-A2 Task 1: Validate TSS/GDT/IDT prerequisites
+    // Must run before Ring3 process preparation/dispatch path.
+    // ---------------------------------------------------------
+    validate_phase10_a2_prerequisites();
+    debugcon_write("P10_TSS_OK\n");
+
+    // ---------------------------------------------------------
+    // Phase 10-A: Prepare embedded Ring3 process
+    // ---------------------------------------------------------
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+  #if defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 0)
+    // Strict Gate-4 mode must preload owner authority before sched_start().
+    fb_print("[PHASE10] Gate-4 strict mode: preloading owner process.\n");
+    debugcon_write("[K][PHASE10] PRELOAD_GATE4_OWNER\n");
+    proc_launch_gate4_policy_test();
+  #else
+    // Transitional Gate-4 mode: init_process_main() owns policy workload creation.
+    // Skip Phase10 preloaded Ring3 path to avoid bypassing Gate-4 PID/ACCEPT markers.
+    fb_print("[PHASE10] Gate-4 isolated mode: skipping preloaded Ring3 process.\n");
+    debugcon_write("[K][PHASE10] SKIP_PRELOAD_GATE4\n");
+  #endif
+#else
+    fb_print("[PHASE10] Preparing Ring3 process...\n");
+    jump_to_ring3();
 #endif
 }

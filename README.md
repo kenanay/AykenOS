@@ -11,9 +11,9 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Oluşturma Tarihi:** 01.01.2026  
 **Son Güncelleme:** 21.02.2026
 
-**Proje Durumu:** Core OS Phase 4.4 TAMAMLANDI ✅ | Core OS Phase 4.5 STABILIZATION IN PROGRESS 🚧 | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
-**Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 execution model operasyonel ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
-**Scheduler Notu (Kod Gerçekliği):** Ring0->Ring3 doğrudan C çağrısı kapalı; scheduler seçim yolu şu an kernel içi ready-queue mekanik akışla çalışıyor (mailbox/stage-next sözleşmesi dokümanda hedef durumdur).
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-A1 (Ring3 Process Preparation) TAMAMLANDI ✅ | Phase 10-A2 (Real CPL3 Entry) DEVAM EDİYOR 🚧 | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
+**Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
+**Phase 10 Status:** ELF parser (STATIC, Ring0 export minimization) ✅ | PT_LOAD segment loading ✅ | User/kernel stack allocation ✅ | Mailbox allocation ✅ | Process registration ✅ | CPL3 entry (IRETQ) pending 🚧
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); baseline-init akışında ve yerel denemelerde **PROVISIONAL** yol kullanılabilir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md).
 
@@ -422,6 +422,23 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **Ring3 VFS/DevFS:** Kullanıcı modunda dosya sistemi operasyonları
   - ✅ **BCIB Execution Engine:** Binary instruction execution çalışıyor
 
+- ✅ **Phase 10-A1:** Ring3 Process Preparation (TAMAMLANDI ✅)
+  - ✅ **ELF64 Parser:** Minimal ELF validation (STATIC functions, Ring0 export minimization)
+  - ✅ **User Address Space:** PML4 allocation, kernel half copy, USER bit clearing
+  - ✅ **PT_LOAD Segment Loading:** Full iteration, BSS zero-fill, page flag derivation
+  - ✅ **Stack Allocation:** User stack (2 pages) + kernel stack (RSP0) allocation
+  - ✅ **Mailbox Allocation:** Scheduler bridge mailbox at 0x700000
+  - ✅ **Process Registration:** PCB integration, scheduler queueing, PROC_READY state
+  - ✅ **Marker Sequence:** `KERNEL_BEFORE_RING3 → [[AYKEN_RING3_PREP_OK]] → P10_SCHED_ARMED`
+
+- 🚧 **Phase 10-A2:** Real CPL3 Entry Proof (DEVAM EDİYOR - %40)
+  - 🚧 **TSS/GDT/IDT Validation:** Validation functions pending
+  - 🚧 **ring3_enter() Assembly:** IRETQ implementation pending
+  - 🚧 **#BP Handler Update:** Ring3 detection pending
+  - 🚧 **Scheduler Dispatch:** Integration pending
+  - 🚧 **CI Gate:** Phase 10-A2 marker validation pending
+  - 📋 **Expected Markers:** `P10_TSS_OK → P10_CR3_SWITCH → P10_RING3_ENTER → P10_RING3_USER_CODE`
+
 - 🚀 **Constitutional Integration:** Constitutional Stabilization & Lock (başlamaya hazır)
   - **Single Decision Authority:** All decisions flow through Gate C constitutional validation
   - **Evidence-Based Governance:** 100% evidence-backed decisions with complete audit trail
@@ -469,6 +486,13 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 | Ring3 Execution Model | ✅ | Kullanıcı modu süreç yürütme operasyonel |
 | Syscall Roundtrip | ✅ | INT 0x80 kernel ↔ Ring3 geçişleri doğrulandı |
 | Phase 4.4 Ring3 Model | ✅ | Ring3 execution model tamamlandı |
+| Phase 10-A1 Process Prep | ✅ | ELF loader, address space, stack, mailbox, registration |
+| Phase 10-A2 CPL3 Entry | 🚧 | TSS/GDT/IDT validation, ring3_enter(), CI gate pending |
+| ELF Parser (STATIC) | ✅ | Ring0 export minimization, constitutional compliance |
+| PT_LOAD Segment Loading | ✅ | Full iteration, BSS zero-fill, flag derivation |
+| User/Kernel Stack Alloc | ✅ | 2-page user stack, RSP0 kernel stack |
+| Mailbox Allocation | ✅ | Scheduler bridge at 0x700000 |
+| Process Registration | ✅ | PCB integration, PROC_READY state |
 | Evidence-Based Management | ✅ | 100% evidence-backed decisions with audit trail |
 | Constitutional Integration Spec | 🚀 | Single decision authority framework ready to begin |
 | **Ayken Constitutional Rule System** | | **Development Tool for AykenOS** |
@@ -662,14 +686,13 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 21 Şubat 2026 - README, kod gerçekliğiyle hizalandı (`HEAD: 464cd009f4d0`). Yeni teknik dokümantasyon eklendi:
-- Scheduler Arbitration Contract (Yol A)
-- Capability System Reference
-- BCIB Submission Protocol
+**Son Güncelleme:** 28 Şubat 2026 - README, Phase 10-A1 (Ring3 Process Preparation) tamamlanması ile güncellendi (`HEAD: d734fe82`). Phase 10-A2 (Real CPL3 Entry) devam ediyor.
 
 **Güncelleyen:** Kenan AY
 
-AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards ve evidence-based performance optimization özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards, evidence-based performance optimization ve minimal ELF loader özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+
+**Phase 10 Milestone:** ELF64 parser (STATIC, Ring0 export minimization), user address space creation, PT_LOAD segment loading, user/kernel stack allocation, mailbox allocation ve process registration tamamlandı. CPL3 entry (IRETQ) implementasyonu devam ediyor.
 
 **Ayken Constitutional Rule System**: AykenOS'un geliştirilmesi için oluşturulan constitutional rule system, Task 10.1 MARS Module Detection ile modül seviyesinde risk atıfı sağlar.
 

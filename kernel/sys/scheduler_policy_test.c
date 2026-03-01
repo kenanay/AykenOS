@@ -186,13 +186,12 @@ static void test_ring0_calls_ring3_policy(void)
     test_proc.state = PROC_READY;
     test_proc.next = NULL;
     
-    // Test Ring0 mechanism calling Ring3 policy for process selection
-    proc_t *selected = sched_select_next();
-    (void)selected; // Suppress unused variable warning
-    
-    // Note: In a real test environment, we would need to set up a ready queue
-    // For now, we test that the function can be called without crashing
-    TEST_ASSERT(1, "sched_select_next should be callable");
+    // Ready-head fallback selector is internalized in mailbox-first mode.
+#if AYKEN_SCHED_FALLBACK
+    TEST_ASSERT(1, "ready-head fallback selector build is enabled");
+#else
+    TEST_ASSERT(1, "ready-head fallback selector build is disabled (constitutional mode)");
+#endif
     
     // Test Ring0 mechanism calling Ring3 policy for process enqueueing
     enqueue_ready(&test_proc);

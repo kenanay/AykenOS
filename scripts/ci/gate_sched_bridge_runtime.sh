@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 echo "== CI GATE SCHED BRIDGE RUNTIME =="
 
 # --- FAIL-CLOSED: Validation profile enforcement ---
@@ -12,11 +14,19 @@ if [[ "${KERNEL_PROFILE:-}" != "validation" ]]; then
     exit 2
 fi
 
+EXPECTED_USER_MINIMAL_MODE="phase10a2"
+OBSERVED_USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
+if [[ "${OBSERVED_USER_MINIMAL_MODE}" != "${EXPECTED_USER_MINIMAL_MODE}" ]]; then
+    echo "FATAL: sched-bridge-runtime gate invoked with USER_MINIMAL_MODE=${OBSERVED_USER_MINIMAL_MODE:-unset} (expected=${EXPECTED_USER_MINIMAL_MODE})"
+    exit 2
+fi
+
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)}"
 EVIDENCE_DIR="evidence/run-${RUN_ID}/gates/sched-bridge-runtime"
 mkdir -p "${EVIDENCE_DIR}"
 
 LOG_FILE="${EVIDENCE_DIR}/boot.log"
+BUILD_LOG="${EVIDENCE_DIR}/build.log"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 VIOLATIONS="${EVIDENCE_DIR}/violations.txt"
 BOOT_AUDIT_DIR="${EVIDENCE_DIR}/boot-audit"
@@ -27,6 +37,7 @@ RUNTIME_MARKER_CONTRACT_ENFORCE="${RUNTIME_MARKER_CONTRACT_ENFORCE:-1}"
 : > "${VIOLATIONS}"
 : > "${ACCEPT_FORMAT_INVALID_TXT}"
 : > "${REJECT_FORMAT_INVALID_TXT}"
+: > "${BUILD_LOG}"
 
 ACCEPT_COUNT=0
 REJECT_COUNT=0
@@ -38,10 +49,44 @@ if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" != "0" && "${RUNTIME_MARKER_CONTRACT_
     RUNTIME_MARKER_CONTRACT_ENFORCE=1
 fi
 
+# --- Deterministic build for this gate ---
+MAKE_BUILD_ARGS=(
+    -C "${ROOT}"
+    "KERNEL_PROFILE=validation"
+    "USER_MINIMAL_MODE=${EXPECTED_USER_MINIMAL_MODE}"
+    "AYKEN_MB_SELFTEST=1"
+    "AYKEN_SCHED_BOOTSTRAP_POLICY=${AYKEN_SCHED_BOOTSTRAP_POLICY:-0}"
+)
+if ! make "${MAKE_BUILD_ARGS[@]}" clean > "${BUILD_LOG}" 2>&1; then
+    echo "build_failed:clean" >> "${VIOLATIONS}"
+fi
+if ! make "${MAKE_BUILD_ARGS[@]}" efi-img >> "${BUILD_LOG}" 2>&1; then
+    echo "build_failed:efi-img" >> "${VIOLATIONS}"
+fi
+if [[ -s "${VIOLATIONS}" ]]; then
+    VIOLATION_COUNT=$(grep -c . "${VIOLATIONS}" || true)
+    cat > "${REPORT_JSON}" <<EOF
+{
+  "run_id": "${RUN_ID}",
+  "user_minimal_mode": "${OBSERVED_USER_MINIMAL_MODE}",
+  "runtime_marker_contract_enforce": ${RUNTIME_MARKER_CONTRACT_ENFORCE},
+  "accept_count": ${ACCEPT_COUNT},
+  "reject_count": ${REJECT_COUNT},
+  "accept_format_invalid_count": ${ACCEPT_FORMAT_INVALID},
+  "reject_format_invalid_count": ${REJECT_FORMAT_INVALID},
+  "verdict": "FAIL",
+  "violations_count": ${VIOLATION_COUNT}
+}
+EOF
+    echo "sched-bridge-runtime: FAIL (${VIOLATION_COUNT} violations)"
+    echo "See: ${VIOLATIONS}"
+    exit 2
+fi
+
 # --- QEMU BOOT ---
 # Run boot harness and capture output
 mkdir -p "${BOOT_AUDIT_DIR}"
-tools/validation/phase_4_4_qemu_boot_audit.sh --out-dir "${BOOT_AUDIT_DIR}" > "${LOG_FILE}" 2>&1 || true
+"${ROOT}/tools/validation/phase_4_4_qemu_boot_audit.sh" --out-dir "${BOOT_AUDIT_DIR}" > "${LOG_FILE}" 2>&1 || true
 
 # --- Extract actual serial/debugcon logs ---
 if [[ ! -d "${BOOT_AUDIT_DIR}" ]]; then
@@ -63,7 +108,7 @@ else
     REJECT_COUNT=$(echo "${REJECT_LINES}" | grep -c . || true)
 
     if [[ "${RUNTIME_MARKER_CONTRACT_ENFORCE}" == "1" ]]; then
-        MARKER_REGISTRY="${PWD}/constitution/runtime_markers.json"
+        MARKER_REGISTRY="${ROOT}/constitution/runtime_markers.json"
         if [[ ! -f "${MARKER_REGISTRY}" ]]; then
             echo "marker_registry_missing:${MARKER_REGISTRY}" >> "${VIOLATIONS}"
         else

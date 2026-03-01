@@ -43,6 +43,8 @@ USAGE
 EVIDENCE_DIR=""
 KERNEL_PROFILE="${SYSCALL_V2_RUNTIME_KERNEL_PROFILE:-validation}"
 WARMUP_RUNS="${SYSCALL_V2_RUNTIME_WARMUP:-1}"
+EXPECTED_USER_MINIMAL_MODE="syscall-v2-runtime"
+OBSERVED_USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
 
 # Provisional defaults for GitHub-hosted runners
 if [[ "${CI:-}" == "true" ]] && [[ "${PERF_BASELINE_MODE:-}" == "provisional" ]]; then
@@ -123,6 +125,10 @@ done
 if [[ -z "${EVIDENCE_DIR}" ]]; then
   usage
   exit 3
+fi
+if [[ "${OBSERVED_USER_MINIMAL_MODE}" != "${EXPECTED_USER_MINIMAL_MODE}" ]]; then
+  echo "FATAL: syscall-v2-runtime gate invoked with USER_MINIMAL_MODE=${OBSERVED_USER_MINIMAL_MODE:-unset} (expected=${EXPECTED_USER_MINIMAL_MODE})" >&2
+  exit 2
 fi
 
 for value in "${WARMUP_RUNS}" "${MEASUREMENT_RUNS}" "${TIMEOUT_SECONDS}" "${REQUIRED_SUCCESS_RATE}"; do
@@ -532,15 +538,24 @@ PY
 }
 
 # Build once for deterministic runtime runs.
-MAKE_BUILD_ARGS=(-C "${ROOT}" "KERNEL_PROFILE=${KERNEL_PROFILE}")
+# Use a dedicated userspace payload mode for this gate so Phase10-A2 payload
+# semantics remain unchanged for ring3-execution validation.
+MAKE_BUILD_ARGS=(-C "${ROOT}" "KERNEL_PROFILE=${KERNEL_PROFILE}" "USER_MINIMAL_MODE=syscall-v2-runtime" "AYKEN_SCHED_BOOTSTRAP_POLICY=1")
 if [[ -n "${BUILD_AYKEN_DEBUG_SCHED}" ]]; then
   MAKE_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${BUILD_AYKEN_DEBUG_SCHED}")
 fi
 if [[ -n "${BUILD_AYKEN_DEBUG_IRQ}" ]]; then
   MAKE_BUILD_ARGS+=("AYKEN_DEBUG_IRQ=${BUILD_AYKEN_DEBUG_IRQ}")
 fi
-MAKE_BUILD_ARGS+=("efi-img")
-if ! make "${MAKE_BUILD_ARGS[@]}" > "${BUILD_LOG}" 2>&1; then
+if ! make "${MAKE_BUILD_ARGS[@]}" clean > "${BUILD_LOG}" 2>&1; then
+  # Non-fatal: continue with fresh build attempt and keep clean diagnostics.
+  {
+    echo "===== build.log (clean) ====="
+    sed -n '1,160p' "${BUILD_LOG}" 2>/dev/null || true
+    echo
+  } >> "${TRACE_LOG}"
+fi
+if ! make "${MAKE_BUILD_ARGS[@]}" efi-img >> "${BUILD_LOG}" 2>&1; then
   record_violation "syscall_runtime_harness_failed:make_efi_img"
   build_error_summary="$(grep -E -m1 'error:|ERROR:|No such file|not found|failed|undefined reference|command not found' "${BUILD_LOG}" 2>/dev/null || true)"
   if [[ -n "${build_error_summary}" ]]; then
@@ -693,6 +708,8 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "run_id=${RUN_ID_VALUE}"
   echo "git_sha=${GIT_SHA}"
   echo "kernel_profile=${KERNEL_PROFILE}"
+  echo "user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE}"
+  echo "ayken_sched_bootstrap_policy=1"
   echo "warmup_runs=${WARMUP_RUNS}"
   echo "measurement_runs=${MEASUREMENT_RUNS}"
   echo "timeout_seconds=${TIMEOUT_SECONDS}"

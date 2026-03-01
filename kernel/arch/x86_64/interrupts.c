@@ -2,6 +2,7 @@
 #include "interrupts.h"
 #include "gdt_idt.h"
 #include "port_io.h"
+#include "../../sched/sched.h"
 
 struct idt_entry idt_table[256];
 struct idt_ptr idt_descriptor;
@@ -55,22 +56,6 @@ static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_fr
 }
 
 __attribute__((naked))
-static void isr_bp_stub(void)
-{
-    __asm__ volatile(
-        "movb $'B', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'P', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'!', %al\n"
-        "outb %al, $0xE9\n"
-        "movb $'\\n', %al\n"
-        "outb %al, $0xE9\n"
-        "iretq\n"
-    );
-}
-
-__attribute__((naked))
 static void isr_pf_stub(void)
 {
     __asm__ volatile(
@@ -115,9 +100,33 @@ static void isr_df_stub(void)
 __attribute__((interrupt))
 static void isr_bp(struct interrupt_frame *frame)
 {
-    (void)frame;
-    OUTC('B');
-    HALT_FOREVER();
+    const uint16_t cs = (uint16_t)frame->cs;
+    const uint16_t ss = (uint16_t)frame->ss;
+    const uint64_t rip = frame->rip;
+    const uint64_t upper = rip >> 48;
+    const uint64_t sign = (rip >> 47) & 1ULL;
+    const int rip_canonical = sign ? (upper == 0xFFFFULL) : (upper == 0x0000ULL);
+    const int is_ring3_bp =
+        ((cs & 0x3u) == 0x3u) &&
+        ((ss & 0x3u) == 0x3u) &&
+        (cs == GDT_USER_CODE) &&
+        (ss == GDT_USER_DATA) &&
+        (rip >= 0x0000000000400000ULL) &&
+        (rip < 0x00007FFFFFFFFFFFULL) &&
+        rip_canonical;
+
+    if (is_ring3_bp) {
+        // Source anchor token for runtime-marker-contract: P10_RING3_USER_CODE
+        // ISR-safe marker emission: no helper calls in interrupt context.
+        OUTC('P'); OUTC('1'); OUTC('0'); OUTC('_');
+        OUTC('R'); OUTC('I'); OUTC('N'); OUTC('G'); OUTC('3'); OUTC('_');
+        OUTC('U'); OUTC('S'); OUTC('E'); OUTC('R'); OUTC('_');
+        OUTC('C'); OUTC('O'); OUTC('D'); OUTC('E'); OUTC('\n');
+        HALT_FOREVER();
+    }
+
+    // Ring0 breakpoint: keep debug behavior and return.
+    OUTC('B'); OUTC('P'); OUTC('!'); OUTC('\n');
 }
 
 __attribute__((interrupt))
@@ -209,22 +218,49 @@ static void isr_gp(struct interrupt_frame *frame, uint64_t error_code)
 __attribute__((interrupt))
 static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
 {
-    (void)error_code;
-    // CRITICAL: Page fault marker - ASM safe, no C calls
+    uint64_t cr2 = 0;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+
+    // CRITICAL: Page fault marker - keep ASM-safe emission.
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'P'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'F'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'!'), "Nd"(0xE9));
-    
-    // Show RIP where PF occurred
+
+    // Fault RIP (kept first for compatibility with existing logs/tools).
     uint64_t rip = frame->rip;
     for (int i = 60; i >= 0; i -= 4) {
         uint8_t nibble = (rip >> i) & 0xF;
         uint8_t ch = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
         __asm__ volatile("outb %0, %1" : : "a"(ch), "Nd"(0xE9));
     }
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)' '), "Nd"(0xE9));
+    OUTC('C'); OUTC('R'); OUTC('2'); OUTC('='); DUMP_HEX64(cr2);
+    OUTC(' ');
+    OUTC('E'); OUTC('R'); OUTC('R'); OUTC('='); DUMP_HEX64(error_code);
+    OUTC(' ');
+    OUTC('C'); OUTC('S'); OUTC('='); DUMP_HEX16((uint16_t)frame->cs);
+    OUTC(' ');
+    OUTC('S'); OUTC('S'); OUTC('='); DUMP_HEX16((uint16_t)frame->ss);
+    OUTC(' ');
+    OUTC('R'); OUTC('S'); OUTC('P'); OUTC('='); DUMP_HEX64(frame->rsp);
+    OUTC(' ');
+    OUTC('P'); OUTC('I'); OUTC('D'); OUTC('=');
+    if (current_proc) {
+        DUMP_HEX64((uint64_t)(uint32_t)current_proc->pid);
+        OUTC(' ');
+        OUTC('P'); OUTC('C'); OUTC('S'); OUTC('='); DUMP_HEX16(current_proc->context.cs);
+        OUTC(' ');
+        OUTC('P'); OUTC('R'); OUTC('I'); OUTC('P'); OUTC('='); DUMP_HEX64(current_proc->context.rip);
+        OUTC(' ');
+        OUTC('P'); OUTC('R'); OUTC('S'); OUTC('P'); OUTC('='); DUMP_HEX64(current_proc->context.rsp);
+        OUTC(' ');
+        OUTC('P'); OUTC('C'); OUTC('R'); OUTC('3'); OUTC('='); DUMP_HEX64(current_proc->context.cr3);
+    } else {
+        OUTC('N'); OUTC('U'); OUTC('L'); OUTC('L');
+    }
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
-    
-    // Halt forever - no C calls
+
+    // Halt forever - no recovery from early PF in validation path.
     __asm__ volatile("cli; 1: hlt; jmp 1b");
 }
 
@@ -265,9 +301,9 @@ void interrupts_install(void)
         idt_table[i].zero = 0;
     }
 
-    // Install core exception handlers for the late IDT (early IDT gets wiped above)
-    // Use trap gates for debug visibility; allow Ring3 INT3 with DPL=3.
-    idt_set_gate(3,  (interrupt_handler_t)isr_bp_stub, 0xEF);
+    // Install core exception handlers for the late IDT (early IDT gets wiped above).
+    // INT3 uses interrupt gate (DPL=3) to keep marker emission deterministic.
+    idt_set_gate(3,  (interrupt_handler_t)isr_bp, 0xEE);
     idt_set_gate(6,  isr_ud, 0x8F);
     idt_set_gate(8,  (interrupt_handler_t)isr_df_stub, 0x8F);
     idt_set_gate(10, (interrupt_handler_t)isr_ts_stub, 0x8F);
@@ -313,10 +349,9 @@ void interrupts_install_early(void)
         idt_table[i].zero = 0;
     }
 
-    // Exceptions we care about early
-    // Use trap gates (0x8F) so IF is preserved during debug
-    // CRITICAL: INT3 (#BP) must be DPL=3 for Ring3 access
-    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp_stub, 0xEF, cs);  // DPL=3 for Ring3
+    // Exceptions we care about early.
+    // CRITICAL: INT3 (#BP) is DPL=3 interrupt gate for deterministic marker path.
+    idt_set_gate_selector(3,  (interrupt_handler_t)isr_bp, 0xEE, cs);
     idt_set_gate_selector(6,  isr_ud, 0x8F, cs);
     idt_set_gate_selector(8,  (interrupt_handler_t)isr_df_stub, 0x8F, cs);
     idt_set_gate_selector(10, (interrupt_handler_t)isr_ts_stub, 0x8F, cs);
