@@ -392,4 +392,6 @@ static const uint8_t embedded_elf[] = {
 
 static const size_t embedded_elf_size = sizeof(embedded_elf);
 
+static const char embedded_elf_sha256[] = "73ffb40ce1efa6771b15f670aa305c318a1c05dfed2272bcafddf030009022f2";
+
 #endif /* AYKEN_EMBEDDED_ELF_H */

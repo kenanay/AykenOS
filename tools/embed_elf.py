@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 
@@ -47,6 +48,7 @@ def main() -> int:
         raise SystemExit(f"missing input ELF: {input_path}")
 
     blob = input_path.read_bytes()
+    blob_sha256 = hashlib.sha256(blob).hexdigest()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     guard = make_guard(output_path)
 
@@ -59,6 +61,7 @@ def main() -> int:
         f"static const uint8_t {symbol}[] = {{\n"
         f"{format_array(blob)}}};\n\n"
         f"static const size_t {symbol}_size = sizeof({symbol});\n\n"
+        f"static const char {symbol}_sha256[] = \"{blob_sha256}\";\n\n"
         f"#endif /* {guard} */\n"
     )
 
