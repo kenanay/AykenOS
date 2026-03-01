@@ -72,3 +72,7 @@ userspace/minimal/minimal.elf
 # Drift persistence state (CI artifact only, not committed)
 .ci-state/
 .ci-state-test/
+
+# Local agent/spec workspace artifacts
+.kiro/
+AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md
