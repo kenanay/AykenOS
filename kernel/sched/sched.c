@@ -58,7 +58,6 @@ static proc_t *ready_head = NULL;
 static proc_t *ready_tail = NULL;
 static proc_t *blocked_head = NULL;
 static proc_t *sched_owner_cached = NULL;
-static volatile uint32_t gate45_proof_done = 0;
 
 static int sched_list_contains(proc_t *head, const proc_t *target)
 {
@@ -255,9 +254,6 @@ static void sched_emit_gate45_chain_once(
         epoch);
     sched_emit_gate45_ctx_switch(decision_id, (uint32_t)prev->pid, (uint32_t)next->pid);
     sched_emit_gate45_cursor_advance(decision_id, owner_pid, owner_pid);
-#if AYKEN_GATE45_PROOF
-    gate45_proof_done = 1;
-#endif
 }
 #else
 static inline void sched_emit_gate45_chain_once(
@@ -854,11 +850,6 @@ uint32_t sched_take_resched(void)
     SCHED_DBG_OUT((uint8_t)'r'); // Preemption taken marker
     need_resched = 0;
     return 1;
-}
-
-uint32_t sched_gate45_proof_done(void)
-{
-    return gate45_proof_done;
 }
 
 void remove_from_ready_queue(proc_t *p) {

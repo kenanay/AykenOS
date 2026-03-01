@@ -22,6 +22,12 @@
 #define AYKEN_DETERMINISTIC_EXIT 0
 #endif
 
+#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
+#ifndef AYKEN_GATE45_TARGET_PID
+#define AYKEN_GATE45_TARGET_PID 3u
+#endif
+#endif
+
 #if AYKEN_DEBUG_IRQ
 #define TIMER_DBG_CHAR(ch) outb(0xE9, (uint8_t)(ch))
 #else
@@ -59,10 +65,15 @@ static void timer_maybe_exit_on_proof_done(void)
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     static uint8_t proof_done_emitted = 0;
     int proof_done = 0;
-#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
-    proof_done = sched_gate45_proof_done() ? 1 : 0;
-#else
     extern proc_t *current_proc;
+#if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
+    if (current_proc &&
+        current_proc->type == PROC_TYPE_USER &&
+        (uint32_t)current_proc->pid == AYKEN_GATE45_TARGET_PID &&
+        !sched_mailbox_gate4_epoch1_pending()) {
+        proof_done = 1;
+    }
+#else
     if (current_proc &&
         current_proc->type == PROC_TYPE_USER &&
         (uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID &&
