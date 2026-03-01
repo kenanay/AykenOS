@@ -62,6 +62,12 @@ def main() -> int:
         f"#endif /* {guard} */\n"
     )
 
+    # Keep workspace deterministic: avoid rewriting file when content is unchanged.
+    if output_path.exists():
+        current = output_path.read_text(encoding="utf-8")
+        if current == header:
+            return 0
+
     output_path.write_text(header, encoding="utf-8")
     return 0
 
