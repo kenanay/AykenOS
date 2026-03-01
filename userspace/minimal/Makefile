@@ -5,6 +5,16 @@
 CC := clang
 AS := clang
 PYTHON := python3
+MINIMAL_MODE ?= phase10a2
+MODE_STAMP := .build_mode.stamp
+
+ifeq ($(MINIMAL_MODE),phase10a2)
+MINIMAL_SRC := minimal.S
+else ifeq ($(MINIMAL_MODE),syscall-v2-runtime)
+MINIMAL_SRC := minimal_syscall_v2_runtime.S
+else
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2 or syscall-v2-runtime)
+endif
 
 CFLAGS := -target x86_64-elf \
           -ffreestanding \
@@ -31,9 +41,14 @@ LDFLAGS := -nostdlib \
 
 all: minimal.elf user.bin
 
-# Phase 10-A2 Task 3: Use assembly stub for syscall test
-minimal.o: minimal.S
-	$(AS) $(ASFLAGS) -c -o $@ $<
+$(MODE_STAMP): FORCE
+	@if [ ! -f $(MODE_STAMP) ] || [ "$$(cat $(MODE_STAMP) 2>/dev/null)" != "$(MINIMAL_MODE)" ]; then \
+		echo "$(MINIMAL_MODE)" > $(MODE_STAMP); \
+	fi
+
+minimal.o: $(MINIMAL_SRC) $(MODE_STAMP)
+	@echo "[PHASE10] userspace mode: $(MINIMAL_MODE) ($(MINIMAL_SRC))"
+	$(AS) $(ASFLAGS) -c -o $@ $(MINIMAL_SRC)
 
 minimal.elf: minimal.o user.ld
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minimal.o
@@ -45,6 +60,7 @@ test: minimal.elf
 	$(PYTHON) ./test_minimal_elf.py ./minimal.elf
 
 clean:
-	rm -f minimal.o minimal.elf user.bin
+	rm -f minimal.o minimal.elf user.bin $(MODE_STAMP)
 
-.PHONY: all clean test
+.PHONY: all clean test FORCE
+FORCE:

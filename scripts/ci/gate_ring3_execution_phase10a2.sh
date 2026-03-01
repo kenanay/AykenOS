@@ -25,6 +25,8 @@ AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST:-1}"
 AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST:-0}"
 AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY:-0}"
 ENFORCED_AYKEN_CR3_PCID="0"
+EXPECTED_USER_MINIMAL_MODE="phase10a2"
+OBSERVED_USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -51,6 +53,10 @@ done
 if [[ -z "${EVIDENCE_DIR}" ]]; then
   usage
   exit 3
+fi
+if [[ "${OBSERVED_USER_MINIMAL_MODE}" != "${EXPECTED_USER_MINIMAL_MODE}" ]]; then
+  echo "FATAL: ring3-execution-phase10a2 gate invoked with USER_MINIMAL_MODE=${OBSERVED_USER_MINIMAL_MODE:-unset} (expected=${EXPECTED_USER_MINIMAL_MODE})" >&2
+  exit 2
 fi
 if [[ "${KERNEL_PROFILE}" != "validation" ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires KERNEL_PROFILE=validation (current=${KERNEL_PROFILE})" >&2
@@ -280,6 +286,7 @@ PY
   echo "ayken_mb_selftest=${AYKEN_MB_SELFTEST}"
   echo "ayken_gate4_policy_test=${AYKEN_GATE4_POLICY_TEST}"
   echo "ayken_sched_bootstrap_policy=${AYKEN_SCHED_BOOTSTRAP_POLICY}"
+  echo "user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE}"
   echo "build_rc=${BUILD_RC}"
   echo "boot_audit_rc=${BOOT_AUDIT_RC}"
   echo "validator_rc=${VALIDATOR_RC}"

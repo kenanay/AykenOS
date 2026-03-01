@@ -170,6 +170,9 @@ USER_MINIMAL_DIR = userspace/minimal
 USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
 USER_MINIMAL_BIN_SHA = $(USER_MINIMAL_DIR)/user.bin.sha256
+USER_MINIMAL_DEFAULT_MODE := phase10a2
+USER_MINIMAL_EFFECTIVE_MODE := $(if $(strip $(USER_MINIMAL_MODE)),$(strip $(USER_MINIMAL_MODE)),$(USER_MINIMAL_DEFAULT_MODE))
+USER_MINIMAL_MODE_STAMP = $(USER_MINIMAL_DIR)/.mode.$(USER_MINIMAL_EFFECTIVE_MODE)
 USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
                        $(wildcard $(USER_MINIMAL_DIR)/*.S) \
                        $(USER_MINIMAL_DIR)/user.ld \
@@ -383,13 +386,17 @@ kernel/arch/x86_64/gdt_idt.o: KERNEL_CFLAGS := $(KERNEL_CFLAGS_GDT)
 	$(KERNEL_CC) $(KERNEL_CFLAGS) -c $< -o $@
 
 # Phase 10: User binary build and embedding
-$(USER_MINIMAL_ELF): $(USER_MINIMAL_SOURCES)
-	@echo "[PHASE10] Building minimal user ELF..."
-	@$(MAKE) -C $(USER_MINIMAL_DIR) minimal.elf
+$(USER_MINIMAL_MODE_STAMP): FORCE
+	@rm -f $(USER_MINIMAL_DIR)/.mode.*
+	@printf "%s\n" "$(USER_MINIMAL_EFFECTIVE_MODE)" > "$@"
 
-$(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF)
+$(USER_MINIMAL_ELF): $(USER_MINIMAL_SOURCES) $(USER_MINIMAL_MODE_STAMP)
+	@echo "[PHASE10] Building minimal user ELF..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" minimal.elf
+
+$(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Building minimal user binary..."
-	@$(MAKE) -C $(USER_MINIMAL_DIR) user.bin
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" user.bin
 
 $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL)
 	@echo "[PHASE10] Generating embedded ELF header..."
@@ -449,10 +456,10 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.*
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER)
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.*
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
@@ -672,13 +679,22 @@ ci-freeze-guard:
 		exit 2; \
 	fi
 
+preflight-mode-guard:
+	@if [ -n "$${USER_MINIMAL_MODE+x}" ]; then \
+		mode_val="$${USER_MINIMAL_MODE}"; \
+		if [ -z "$$mode_val" ]; then mode_val="<empty>"; fi; \
+		echo "ERROR: freeze chain forbids globally exported USER_MINIMAL_MODE (current=$$mode_val)."; \
+		echo "ERROR: mode must be set only at gate call sites."; \
+		exit 2; \
+	fi
+
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -901,11 +917,12 @@ ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@echo "== CI GATE SYSCALL V2 RUNTIME =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: $(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)"
+	@echo "user_minimal_mode: syscall-v2-runtime (enforced)"
 	@echo "warmup_runs: $(SYSCALL_V2_RUNTIME_WARMUP)"
 	@echo "measurement_runs: $(SYSCALL_V2_RUNTIME_RUNS)"
 	@echo "timeout_seconds: $(SYSCALL_V2_RUNTIME_TIMEOUT)"
 	@echo "required_success_rate: $(SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE)"
-	@./scripts/ci/gate_syscall_v2_runtime.sh \
+	@USER_MINIMAL_MODE=syscall-v2-runtime ./scripts/ci/gate_syscall_v2_runtime.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime" \
 		--kernel-profile "$(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)" \
 		--warmup-runs "$(SYSCALL_V2_RUNTIME_WARMUP)" \
@@ -939,9 +956,10 @@ ci-gate-ring3-execution-phase10a2: ci-evidence-dir
 	@echo "== CI GATE RING3 EXECUTION PHASE10-A2 =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: validation (enforced)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
 	@echo "ayken_cr3_pcid: 0 (enforced)"
 	@echo "qemu_timeout_seconds: $(RING3_QEMU_TIMEOUT)"
-	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation AYKEN_C2_STRICT_MARKERS="$(PHASE10C_C2_STRICT)" AYKEN_MB_SELFTEST="$(if $(filter 1,$(PHASE10C_C2_STRICT)),0,1)" AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_C2_STRICT_MARKERS="$(PHASE10C_C2_STRICT)" AYKEN_MB_SELFTEST="$(if $(filter 1,$(PHASE10C_C2_STRICT)),0,1)" AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2/report.json" "$(EVIDENCE_RUN_DIR)/reports/ring3-execution-phase10a2.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: ring3-execution-phase10a2 evidence at $(EVIDENCE_RUN_DIR)"
@@ -1167,7 +1185,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
