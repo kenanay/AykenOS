@@ -937,8 +937,11 @@ ci-gate-sched-bridge-runtime: ci-evidence-dir
 	@echo "== CI GATE SCHED BRIDGE RUNTIME =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: validation (enforced)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@echo "ayken_mb_selftest: 1 (enforced)"
+	@echo "ayken_sched_bootstrap_policy: $(AYKEN_SCHED_BOOTSTRAP_POLICY)"
 	@echo "runtime_marker_contract_enforce: $(RUNTIME_MARKER_CONTRACT_ENFORCE)"
-	@RUN_ID=$(RUN_ID) KERNEL_PROFILE=validation RUNTIME_MARKER_CONTRACT_ENFORCE="$(RUNTIME_MARKER_CONTRACT_ENFORCE)" bash scripts/ci/gate_sched_bridge_runtime.sh
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_MB_SELFTEST=1 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" RUNTIME_MARKER_CONTRACT_ENFORCE="$(RUNTIME_MARKER_CONTRACT_ENFORCE)" bash scripts/ci/gate_sched_bridge_runtime.sh
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: sched-bridge-runtime evidence at $(EVIDENCE_RUN_DIR)"
 
