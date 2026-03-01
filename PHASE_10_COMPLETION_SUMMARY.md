@@ -1,15 +1,58 @@
-# Phase 10: Deterministic Baseline - COMPLETE
+# Phase 10: Deterministic Baseline - IN PROGRESS
 
 **Date:** 2026-03-01  
-**Status:** LOCKED AND TAGGED  
-**Tag:** `phase10-deterministic-baseline-2026-03-01`  
+**Status:** BASELINE VALIDATED LOCALLY, NOT YET VALIDATED IN CI  
+**Tag:** `phase10-deterministic-baseline-2026-03-01` (PREMATURE - to be removed)  
 **Commit:** `4aa0c4f5`
 
 ---
 
 ## Executive Summary
 
-Phase 10 deterministic baseline has been successfully locked. The system has transitioned from timeout-driven measurement (SW=39408) to exit-driven deterministic measurement (SW=62), achieving 100% reproducible behavior.
+Phase 10 deterministic baseline has been validated locally with 100% reproducible behavior. However, CI freeze FAILED due to gate ordering issue, preventing authoritative baseline validation. The system has transitioned from timeout-driven measurement (SW=39408) to exit-driven deterministic measurement (SW=62).
+
+**CRITICAL:** Baseline is NOT locked until CI freeze PASSES with performance gate validation.
+
+---
+
+## CI Freeze Failure Analysis
+
+### GitHub Actions Run: #22551776668
+
+**Result:** FAILED (12/13 gates PASSED, 1 gate FAILED)
+
+**Failed Gate:** `ci-gate-ring3-execution-phase10a2`  
+**Failure Reason:** `missing_marker:P10_RING3_USER_CODE`
+
+**Critical Issue:**
+- Ring3 execution gate runs in `phase10a2` mode (functional validation)
+- Performance gate runs in `deterministic_preempt_harness` mode (measurement)
+- These are TWO DIFFERENT profiles for different purposes
+- Makefile gate order had `ci-gate-ring3-execution-phase10a2` BEFORE `ci-gate-performance`
+- Ring3 execution failure blocked performance gate from running
+- **Performance gate NEVER executed in CI**
+- Therefore: **Baseline was NEVER validated in authoritative CI environment**
+
+**Root Cause:**
+```makefile
+# OLD (WRONG):
+ci-freeze: ... ci-gate-ring3-execution-phase10a2 ... ci-gate-performance
+
+# This means functional correctness gates block measurement authority gates
+```
+
+**Fix Applied:**
+```makefile
+# NEW (CORRECT):
+ci-freeze: ... ci-gate-performance ci-gate-ring3-execution-phase10a2 ...
+
+# This separates concerns:
+# - Measurement authority validation (performance) runs first
+# - Functional correctness validation (ring3-execution) runs after
+```
+
+**Architectural Principle:**
+Measurement authority gates should NOT be blocked by functional correctness gates. They serve different purposes and should be independent.
 
 ---
 
@@ -219,50 +262,75 @@ This is not "does it work?" level. This is "is it authoritatively locked?" level
 
 ---
 
+## Current Status
+
+### What's Validated
+
+✅ **Local Determinism:** 3+ consecutive runs with SW=62, IRET=62, Exit=1  
+✅ **Pre-CI Discipline:** 4/4 core gates PASS (ABI, Boundary, Hygiene, Constitutional)  
+✅ **Measurement Architecture:** Exit-driven deterministic harness working  
+✅ **Contract Definition:** `measurement_contract="deterministic_preempt_harness"` explicit  
+✅ **Makefile Fix:** Gate ordering corrected to separate measurement from functional validation
+
+### What's NOT Validated
+
+❌ **CI Authority:** Performance gate never ran in GitHub Actions CI  
+❌ **Baseline Lock:** Baseline not validated in authoritative environment  
+❌ **Freeze Status:** CI freeze FAILED, system not frozen  
+❌ **Tag Validity:** Tag was created prematurely, should be removed
+
+### Correct Assessment
+
+**Status:** Baseline validated locally, NOT yet validated in CI  
+**Next Step:** Trigger CI freeze again with corrected gate order  
+**Expected:** Performance gate should PASS, validating baseline in CI  
+**Then:** If CI freeze PASS, baseline is authoritatively locked
+
+---
+
 ## Next Steps
 
-### Immediate
+### Immediate (Required)
 
-1. ✅ Baseline locked (local-simulated)
-2. ✅ Tag created and pushed
-3. ✅ Documentation complete
-4. ✅ Pre-CI discipline clean
+1. ✅ Fix Makefile gate ordering (DONE)
+2. ⏳ Commit Makefile fix with clear rationale
+3. ⏳ Update documentation to reflect actual status
+4. ⏳ Remove premature tag
+5. ⏳ Push changes and trigger CI freeze again
+6. ⏳ Validate performance gate PASSES in CI
+7. ⏳ If CI freeze PASS, THEN create tag and declare completion
 
-### Future (Optional)
+### Engineering Discipline
 
-1. Generate authoritative CI baseline via GitHub Actions (recommended)
-2. Validate CI vs local determinism alignment
-3. Update baseline with real CI environment metadata
+**Do NOT claim "baseline locked" until:**
+- CI freeze PASSES (all gates including performance)
+- Performance gate validates baseline in authoritative environment
+- Evidence shows CI determinism matches local determinism
 
-### Note
-
-Local CI simulation was used due to practical constraints. However:
-- Determinism is proven (3+ runs)
-- Contract is explicit
-- Values are reproducible
-- Measurement architecture is sound
-
-Real CI baseline is recommended but not blocking for Phase 10 completion.
+**Premature celebration violates engineering discipline.**
 
 ---
 
 ## Conclusion
 
-Phase 10 deterministic baseline is **LOCKED AND TAGGED**.
+Phase 10 deterministic baseline is **IN PROGRESS, NOT COMPLETE**.
 
 The system has achieved:
-- 100% deterministic execution
-- Exit-driven measurement architecture
-- Explicit measurement contract
-- Reproducible behavior
-- Clean governance compliance
+- ✅ 100% deterministic execution (locally validated)
+- ✅ Exit-driven measurement architecture
+- ✅ Explicit measurement contract
+- ✅ Reproducible behavior (locally)
+- ✅ Clean governance compliance (pre-CI)
+- ❌ CI authoritative validation (BLOCKED by gate ordering bug)
 
-**Phase 10: COMPLETE 🔐**
+**Phase 10: IN PROGRESS - Awaiting CI Freeze PASS 🔄**
 
 ---
 
 **Maintained by:** AykenOS Architecture Board  
-**Last Updated:** 2026-03-01T20:18Z  
-**Git SHA:** 4aa0c4f5  
+**Last Updated:** 2026-03-01T20:30Z  
+**Git SHA:** 4aa0c4f5 (baseline commit)  
 **Branch:** pr/main-updates-20260301  
-**Tag:** phase10-deterministic-baseline-2026-03-01
+**Tag:** phase10-deterministic-baseline-2026-03-01 (PREMATURE - to be removed)
+
+**Next Update:** After CI freeze validation with corrected gate order
