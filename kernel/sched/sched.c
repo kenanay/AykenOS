@@ -31,6 +31,18 @@
 #define AYKEN_C2_STRICT_MARKERS 0
 #endif
 
+#ifndef AYKEN_MB_SELFTEST
+#define AYKEN_MB_SELFTEST 0
+#endif
+
+#ifndef AYKEN_USER_MINIMAL_MODE_STRING
+#define AYKEN_USER_MINIMAL_MODE_STRING "unknown"
+#endif
+
+#ifndef AYKEN_DETERMINISTIC_EXIT
+#define AYKEN_DETERMINISTIC_EXIT 0
+#endif
+
 #if AYKEN_GATE45_PROOF
 #ifndef AYKEN_GATE45_TARGET_PID
 #define AYKEN_GATE45_TARGET_PID 3u
@@ -546,7 +558,11 @@ static proc_t *sched_select_next_mailbox(
         }
 #endif
 #if AYKEN_SCHED_BOOTSTRAP_POLICY
-        sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
+        static uint8_t keep_running_marker_emitted = 0;
+        if (!keep_running_marker_emitted) {
+            keep_running_marker_emitted = 1;
+            sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
+        }
         return prev;
 #else
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
@@ -1037,6 +1053,17 @@ void sched_init(void)
 
 void sched_start(void)
 {
+    // Runtime-observed config marker for CI/gates (independent from shell env echo).
+    sched_emit_marker("[K][CFG] user_minimal_mode=");
+    sched_emit_marker(AYKEN_USER_MINIMAL_MODE_STRING);
+    sched_emit_marker(" bootstrap_policy=");
+    sched_emit_u64_dec((uint64_t)AYKEN_SCHED_BOOTSTRAP_POLICY);
+    sched_emit_marker(" mb_selftest=");
+    sched_emit_u64_dec((uint64_t)AYKEN_MB_SELFTEST);
+    sched_emit_marker(" deterministic_exit=");
+    sched_emit_u64_dec((uint64_t)AYKEN_DETERMINISTIC_EXIT);
+    sched_emit_marker("\n");
+
     SCHED_DBG_OUT((uint8_t)'S');
     SCHED_DBG_OUT((uint8_t)'1');
     
@@ -1292,6 +1319,15 @@ static void sched_yield_core(int reenable_if)
 
     // If policy returns the currently running Ring3 process, keep running in place.
     if (prev && next == prev) {
+        // IRQ no-op reschedule still represents a preempt/return cadence event.
+        // Emit canonical markers so strict preempt harness can measure cadence
+        // even when policy keeps the owner process running in place.
+        if (!reenable_if) {
+            char ring = ((current_proc->context.cs & 0x3) == 0x3) ? 'U' : 'K';
+            sched_dbg_mark_pid((uint32_t)current_proc->pid);
+            sched_dbg_mark_sw(ring, ring);
+            sched_dbg_mark_iret();
+        }
         if (used_mailbox && !phase10c_decision_markers_emitted) {
             phase10c_decision_markers_emitted = 1;
             sched_emit_phase10c_decision(

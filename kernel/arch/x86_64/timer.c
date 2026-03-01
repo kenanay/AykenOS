@@ -12,7 +12,7 @@
 
 #define PIT_CHANNEL0   0x40
 #define PIT_COMMAND    0x43
-#define QEMU_DEBUG_EXIT_PORT 0x501
+#define QEMU_DEBUG_EXIT_PORT 0xF4
 
 #ifndef AYKEN_DEBUG_IRQ
 #define AYKEN_DEBUG_IRQ 0
@@ -61,11 +61,21 @@ static void timer_debugcon_hex64(uint64_t value)
 
 static void timer_maybe_exit_on_proof_done(void)
 {
-#if AYKEN_DETERMINISTIC_EXIT && defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
-    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+#if AYKEN_DETERMINISTIC_EXIT && defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     static uint8_t proof_done_emitted = 0;
+    static uint32_t owner_user_ticks = 0;
     int proof_done = 0;
     extern proc_t *current_proc;
+
+    if (current_proc &&
+        current_proc->type == PROC_TYPE_USER &&
+        (uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
+        if (owner_user_ticks != UINT32_MAX) {
+            owner_user_ticks++;
+        }
+    }
+
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
 #if defined(AYKEN_GATE45_PROOF) && (AYKEN_GATE45_PROOF == 1)
     if (current_proc &&
         current_proc->type == PROC_TYPE_USER &&
@@ -81,13 +91,20 @@ static void timer_maybe_exit_on_proof_done(void)
         proof_done = 1;
     }
 #endif
+#else
+    // Perf harness deterministic exit: allow enough IRQ cadence before exit.
+    if (owner_user_ticks >= 64u) {
+        proof_done = 1;
+    }
+#endif
+
     if (!proof_done_emitted && proof_done) {
         proof_done_emitted = 1;
         timer_debugcon_write("[[AYKEN_PROOF_DONE]]\n");
         // Primary deterministic exit path for CI (if device is present):
-        // qemu-system-x86_64 -device isa-debug-exit
+        // qemu-system-x86_64 -device isa-debug-exit,iobase=0x501,iosize=0x04
         // Process exit code becomes (value << 1) | 1.
-        outw(QEMU_DEBUG_EXIT_PORT, 0);
+        outl(QEMU_DEBUG_EXIT_PORT, 0);
         // Fallback: ACPI poweroff (works when QEMU runs without -no-shutdown).
         outw(0x604, 0x2000);
     }
@@ -170,7 +187,11 @@ void timer_isr_c(void *frame_ptr)
         // publish mailbox epoch, perform syscall roundtrip, and hit INT3 proof.
         // This does not alter Gate-4 isolated policy mode.
         static uint8_t phase10_entry_irq_defer_marker_emitted = 0;
-        if (frame->rip >= USER_TEXT_BASE && frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
+        static uint8_t phase10_entry_irq_deferred_once = 0;
+        if (!phase10_entry_irq_deferred_once &&
+            frame->rip >= USER_TEXT_BASE &&
+            frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
+            phase10_entry_irq_deferred_once = 1;
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
             if (!phase10_entry_irq_defer_marker_emitted) {
                 phase10_entry_irq_defer_marker_emitted = 1;

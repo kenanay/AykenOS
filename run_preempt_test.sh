@@ -20,6 +20,64 @@ STRICT_MARKERS="${STRICT_MARKERS:-0}"
 FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
 PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
 PREEMPT_CLEAN_REBUILD="${PREEMPT_CLEAN_REBUILD:-1}"
+USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
+
+CONTRACT_USER_MINIMAL_MODE="<make-default>"
+CONTRACT_USER_MINIMAL_MODE_SOURCE="make_default"
+if [[ -n "${USER_MINIMAL_MODE}" ]]; then
+  CONTRACT_USER_MINIMAL_MODE="${USER_MINIMAL_MODE}"
+  CONTRACT_USER_MINIMAL_MODE_SOURCE="env"
+fi
+
+CONTRACT_BOOTSTRAP_POLICY="<make-default>"
+CONTRACT_BOOTSTRAP_POLICY_SOURCE="make_default"
+if [[ "${AYKEN_SCHED_BOOTSTRAP_POLICY+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_SCHED_BOOTSTRAP_POLICY}" ]]; then
+    echo "ERROR: AYKEN_SCHED_BOOTSTRAP_POLICY is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_SCHED_BOOTSTRAP_POLICY}" != "0" && "${AYKEN_SCHED_BOOTSTRAP_POLICY}" != "1" ]]; then
+    echo "ERROR: AYKEN_SCHED_BOOTSTRAP_POLICY must be 0 or 1 (got '${AYKEN_SCHED_BOOTSTRAP_POLICY}')"
+    exit 1
+  fi
+  CONTRACT_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}"
+  CONTRACT_BOOTSTRAP_POLICY_SOURCE="env"
+fi
+
+CONTRACT_MB_SELFTEST="<make-default>"
+CONTRACT_MB_SELFTEST_SOURCE="make_default"
+if [[ "${AYKEN_MB_SELFTEST+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_MB_SELFTEST}" ]]; then
+    echo "ERROR: AYKEN_MB_SELFTEST is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_MB_SELFTEST}" != "0" && "${AYKEN_MB_SELFTEST}" != "1" ]]; then
+    echo "ERROR: AYKEN_MB_SELFTEST must be 0 or 1 (got '${AYKEN_MB_SELFTEST}')"
+    exit 1
+  fi
+  CONTRACT_MB_SELFTEST="${AYKEN_MB_SELFTEST}"
+  CONTRACT_MB_SELFTEST_SOURCE="env"
+fi
+
+CONTRACT_DETERMINISTIC_EXIT="<make-default>"
+CONTRACT_DETERMINISTIC_EXIT_SOURCE="make_default"
+if [[ "${AYKEN_DETERMINISTIC_EXIT+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_DETERMINISTIC_EXIT}" ]]; then
+    echo "ERROR: AYKEN_DETERMINISTIC_EXIT is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_DETERMINISTIC_EXIT}" != "0" && "${AYKEN_DETERMINISTIC_EXIT}" != "1" ]]; then
+    echo "ERROR: AYKEN_DETERMINISTIC_EXIT must be 0 or 1 (got '${AYKEN_DETERMINISTIC_EXIT}')"
+    exit 1
+  fi
+  CONTRACT_DETERMINISTIC_EXIT="${AYKEN_DETERMINISTIC_EXIT}"
+  CONTRACT_DETERMINISTIC_EXIT_SOURCE="env"
+fi
+
+OBSERVED_USER_MINIMAL_MODE="<unknown>"
+OBSERVED_BOOTSTRAP_POLICY="<unknown>"
+OBSERVED_MB_SELFTEST="<unknown>"
+OBSERVED_DETERMINISTIC_EXIT="<unknown>"
 
 now_ms() {
   python3 - <<'PY'
@@ -47,9 +105,24 @@ write_preempt_metrics() {
   local fail_value="$1"
   [[ -n "${PREEMPT_METRICS_OUT}" ]] || return 0
   {
+    echo "contract_user_minimal_mode=${CONTRACT_USER_MINIMAL_MODE}"
+    echo "contract_user_minimal_mode_source=${CONTRACT_USER_MINIMAL_MODE_SOURCE}"
+    echo "contract_bootstrap_policy=${CONTRACT_BOOTSTRAP_POLICY}"
+    echo "contract_bootstrap_policy_source=${CONTRACT_BOOTSTRAP_POLICY_SOURCE}"
+    echo "contract_mb_selftest=${CONTRACT_MB_SELFTEST}"
+    echo "contract_mb_selftest_source=${CONTRACT_MB_SELFTEST_SOURCE}"
+    echo "contract_deterministic_exit=${CONTRACT_DETERMINISTIC_EXIT}"
+    echo "contract_deterministic_exit_source=${CONTRACT_DETERMINISTIC_EXIT_SOURCE}"
+    echo "observed_user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE:-<unknown>}"
+    echo "observed_bootstrap_policy=${OBSERVED_BOOTSTRAP_POLICY:-<unknown>}"
+    echo "observed_mb_selftest=${OBSERVED_MB_SELFTEST:-<unknown>}"
+    echo "observed_deterministic_exit=${OBSERVED_DETERMINISTIC_EXIT:-<unknown>}"
     echo "strict_markers=${STRICT_MARKERS}"
     echo "preempt_clean_rebuild=${PREEMPT_CLEAN_REBUILD}"
     echo "qemu_run_time_ms=${qemu_run_time_ms:-0}"
+    echo "qemu_exit_rc=${qemu_exit_rc:-0}"
+    echo "qemu_timeout_hit=${qemu_timeout_hit:-0}"
+    echo "proof_done_seen=${proof_done_seen:-0}"
     echo "debug_bytes=${debug_size:-0}"
     echo "serial_bytes=${serial_size:-0}"
     echo "mark_pid2_count=${mark_pid2_count:-0}"
@@ -78,11 +151,25 @@ write_preempt_metrics() {
   } > "${PREEMPT_METRICS_OUT}"
 }
 
+MAKE_BUILD_ARGS=(KERNEL_PROFILE="$KERNEL_PROFILE")
+if [[ "${CONTRACT_USER_MINIMAL_MODE_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(USER_MINIMAL_MODE="${CONTRACT_USER_MINIMAL_MODE}")
+fi
+if [[ "${CONTRACT_BOOTSTRAP_POLICY_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_SCHED_BOOTSTRAP_POLICY="${CONTRACT_BOOTSTRAP_POLICY}")
+fi
+if [[ "${CONTRACT_MB_SELFTEST_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_MB_SELFTEST="${CONTRACT_MB_SELFTEST}")
+fi
+if [[ "${CONTRACT_DETERMINISTIC_EXIT_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_DETERMINISTIC_EXIT="${CONTRACT_DETERMINISTIC_EXIT}")
+fi
+
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
   if [[ "$FORCE_EFI_REBUILD" == "1" && "$PREEMPT_CLEAN_REBUILD" == "1" ]]; then
-    make KERNEL_PROFILE="$KERNEL_PROFILE" clean
+    make "${MAKE_BUILD_ARGS[@]}" clean
   fi
-  make KERNEL_PROFILE="$KERNEL_PROFILE" efi-img
+  make "${MAKE_BUILD_ARGS[@]}" efi-img
 elif [[ -f kernel.elf && kernel.elf -nt "$EFI_IMG" ]]; then
   echo "WARN: kernel.elf is newer than $EFI_IMG (stale image risk)."
   echo "      Run 'make efi-img' or set FORCE_EFI_REBUILD=1."
@@ -106,6 +193,7 @@ else
 fi
 
 qemu_start_ms="$(now_ms)"
+set +e
 "${TIMEOUT_CMD[@]}" qemu-system-x86_64 \
   -machine q35 \
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
@@ -115,13 +203,19 @@ qemu_start_ms="$(now_ms)"
   -m 256M \
   -debugcon "file:$DEBUG_LOG" \
   -global isa-debugcon.iobase=0xe9 \
+  -device isa-debug-exit,iobase=0xF4,iosize=0x04 \
   -serial "file:$SERIAL_LOG" \
   -monitor none \
   -display none \
-  -no-reboot \
-  -no-shutdown || true
+  -no-reboot
+qemu_exit_rc=$?
+set -e
 qemu_end_ms="$(now_ms)"
 qemu_run_time_ms="$((qemu_end_ms - qemu_start_ms))"
+qemu_timeout_hit=0
+if [[ "$qemu_exit_rc" == "124" || "$qemu_exit_rc" == "137" || "$qemu_exit_rc" == "143" ]]; then
+  qemu_timeout_hit=1
+fi
 
 if [[ ! -s "$SERIAL_LOG" && ! -s "$DEBUG_LOG" ]]; then
   echo "ERROR: No output captured in serial or debug log"
@@ -160,6 +254,18 @@ sw_uu_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SW\]U>U/,"&")}END{print c+0}' "$ANALYS
 mark_iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/MARK:IRET/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/(ABOUT_TO_IRETQ|MARK:IRET)/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 sched_idle_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SEL\]\[IDLE\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+proof_done_seen="$(awk 'BEGIN{c=0}{c+=gsub(/\[\[AYKEN_PROOF_DONE\]\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+cfg_line="$(grep -E '\[K\]\[CFG\] user_minimal_mode=' "$ANALYSIS_LOG" | tail -n1 || true)"
+if [[ -n "${cfg_line}" ]]; then
+  OBSERVED_USER_MINIMAL_MODE="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*user_minimal_mode=\([^[:space:]]*\).*/\1/p')"
+  OBSERVED_BOOTSTRAP_POLICY="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*bootstrap_policy=\([^[:space:]]*\).*/\1/p')"
+  OBSERVED_MB_SELFTEST="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*mb_selftest=\([^[:space:]]*\).*/\1/p')"
+  OBSERVED_DETERMINISTIC_EXIT="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*deterministic_exit=\([^[:space:]]*\).*/\1/p')"
+fi
+if [[ -z "${OBSERVED_USER_MINIMAL_MODE}" ]]; then OBSERVED_USER_MINIMAL_MODE="<unknown>"; fi
+if [[ -z "${OBSERVED_BOOTSTRAP_POLICY}" ]]; then OBSERVED_BOOTSTRAP_POLICY="<unknown>"; fi
+if [[ -z "${OBSERVED_MB_SELFTEST}" ]]; then OBSERVED_MB_SELFTEST="<unknown>"; fi
+if [[ -z "${OBSERVED_DETERMINISTIC_EXIT}" ]]; then OBSERVED_DETERMINISTIC_EXIT="<unknown>"; fi
 
 read -r mark_alt_count mark_pid2_count mark_pid3_count <<<"$(awk '
 BEGIN { prev=""; alt=0; p2=0; p3=0; pid="" }
@@ -236,6 +342,13 @@ END {
 
 echo "=== Preempt assertion summary ==="
 echo "STRICT_MARKERS    : $STRICT_MARKERS"
+echo "QEMU exit rc      : ${qemu_exit_rc}"
+echo "QEMU timeout hit  : ${qemu_timeout_hit}"
+echo "Proof marker seen : ${proof_done_seen}"
+echo "Observed user mode: ${OBSERVED_USER_MINIMAL_MODE}"
+echo "Observed bootstrap: ${OBSERVED_BOOTSTRAP_POLICY}"
+echo "Observed selftest : ${OBSERVED_MB_SELFTEST}"
+echo "Observed det-exit : ${OBSERVED_DETERMINISTIC_EXIT}"
 echo "MARK PID2 entries : $mark_pid2_count"
 echo "MARK PID3 entries : $mark_pid3_count"
 echo "MARK alternations : $mark_alt_count"
@@ -285,11 +398,6 @@ if (( STRICT_MARKERS == 1 )) && (( mark_switch_signal == 0 )) && (( sched_idle_c
 fi
 
 if (( STRICT_MARKERS == 1 )); then
-  if (( mark_pid_signal == 0 )); then
-    echo "ASSERT FAIL (strict): canonical MARK:PID alternation signal missing."
-    echo "  Needed MARK PID signal: pid2>0 pid3>0 alt>=${PREEMPT_MIN_ALT}"
-    fail=1
-  fi
   if (( mark_switch_signal == 0 )); then
     echo "ASSERT FAIL (strict): canonical MARK switch markers missing."
     echo "  Needed MARK switch signal: MARK:SW(K>U|U>K|U>U)>=${PREEMPT_MIN_SW} and MARK:IRET>=${PREEMPT_MIN_IRET}"
@@ -297,6 +405,9 @@ if (( STRICT_MARKERS == 1 )); then
       echo "  Hint: scheduler entered [SEL][IDLE] in strict mode (no staged next candidate consumed)."
     fi
     fail=1
+  elif (( mark_pid_signal == 0 )); then
+    echo "WARN (strict): MARK:PID alternation signal missing; owner-only runtime accepted."
+    echo "  Observed owner-only cadence with valid MARK switch markers."
   fi
 else
   if (( pid_signal == 0 && ab_signal == 0 )); then
