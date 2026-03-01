@@ -68,6 +68,8 @@ evidence/
 # userspace artifacts (generated; not tracked)
 userspace/minimal/user.bin
 userspace/minimal/minimal.elf
+userspace/minimal/.build_mode.stamp
+userspace/minimal/.mode.*
 
 # Drift persistence state (CI artifact only, not committed)
 .ci-state/
