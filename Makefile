@@ -169,6 +169,7 @@ KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 USER_MINIMAL_DIR = userspace/minimal
 USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
+USER_MINIMAL_BIN_SHA = $(USER_MINIMAL_DIR)/user.bin.sha256
 USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
                        $(wildcard $(USER_MINIMAL_DIR)/*.S) \
                        $(USER_MINIMAL_DIR)/user.ld \
@@ -672,12 +673,12 @@ ci-freeze-guard:
 	fi
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
+ci-freeze: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -695,6 +696,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/user-bin-lock"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/behavioral-suite"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b"
@@ -860,6 +862,36 @@ ci-gate-runtime-marker-contract: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/runtime-marker-contract.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: runtime marker contract evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-user-bin-lock: ci-evidence-dir $(USER_MINIMAL_BIN)
+	@echo "== CI GATE USER.BIN LOCK =="
+	@echo "run_id: $(RUN_ID)"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/user-bin-lock"
+	@set -e; \
+		gate_dir="$(abspath $(EVIDENCE_RUN_DIR))/gates/user-bin-lock"; \
+		cd "$(USER_MINIMAL_DIR)"; \
+		if command -v sha256sum >/dev/null 2>&1; then \
+			sha256sum user.bin > "$$gate_dir/user.bin.sha256.current"; \
+		else \
+			shasum -a 256 user.bin > "$$gate_dir/user.bin.sha256.current"; \
+		fi; \
+		if [ ! -f user.bin.sha256 ]; then \
+			printf '%s\n' '{"gate":"user-bin-lock","verdict":"FAIL","violations_count":1,"violations":["missing_lock_file"]}' > "$$gate_dir/report.json"; \
+			rm -f "$$gate_dir/user.bin.sha256.current"; \
+			echo "ERROR: missing lock file userspace/minimal/user.bin.sha256"; \
+			exit 2; \
+		fi; \
+		if ! diff -u user.bin.sha256 "$$gate_dir/user.bin.sha256.current" > "$$gate_dir/lock.diff" 2>&1; then \
+			printf '%s\n' '{"gate":"user-bin-lock","verdict":"FAIL","violations_count":1,"violations":["user_bin_hash_drift"]}' > "$$gate_dir/report.json"; \
+			rm -f "$$gate_dir/user.bin.sha256.current"; \
+			echo "ERROR: user.bin hash drift (lock mismatch)"; \
+			exit 2; \
+		fi; \
+		rm -f "$$gate_dir/user.bin.sha256.current" "$$gate_dir/lock.diff"; \
+		printf '%s\n' '{"gate":"user-bin-lock","verdict":"PASS","violations_count":0,"violations":[]}' > "$$gate_dir/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/user-bin-lock/report.json" "$(EVIDENCE_RUN_DIR)/reports/user-bin-lock.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: user-bin-lock evidence at $(EVIDENCE_RUN_DIR)"
 
 # Backward-compatible composite alias.
 ci-gate-structural-constitution: ci-gate-structural-abi ci-gate-runtime-marker-contract
@@ -1100,6 +1132,7 @@ help:
 	@echo "  ci-gate-structural-abi - Gate-5A permanent ABI constitution lock (layout + semver policy)"
 	@echo "  ci-gate-runtime-marker-contract - Gate-5B phase-scoped marker contract lock (format + anchors + semver)"
 	@echo "    (toggle: RUNTIME_MARKER_CONTRACT_ENFORCE=0 to disable phase-scoped marker lock)"
+	@echo "  ci-gate-user-bin-lock - Generated userspace binary hash-lock gate (user.bin drift detection)"
 	@echo "  ci-gate-structural-constitution - Composite alias: structural-abi + runtime-marker-contract"
 	@echo "    (override strict locally: CONSTITUTIONAL_STRICT=0)"
 	@echo "  ci-gate-behavioral-suite - Gate-6 behavioral proof suite (phase-driven)"
@@ -1134,7 +1167,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

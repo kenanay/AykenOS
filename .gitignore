@@ -65,6 +65,10 @@ test_baseline_init.sh
 qemu_*.log
 evidence/
 
+# userspace artifacts (generated; not tracked)
+userspace/minimal/user.bin
+userspace/minimal/minimal.elf
+
 # Drift persistence state (CI artifact only, not committed)
 .ci-state/
 .ci-state-test/
