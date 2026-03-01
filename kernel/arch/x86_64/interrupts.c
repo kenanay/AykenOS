@@ -116,6 +116,7 @@ static void isr_bp(struct interrupt_frame *frame)
         rip_canonical;
 
     if (is_ring3_bp) {
+        // Source anchor token for runtime-marker-contract: P10_RING3_USER_CODE
         // ISR-safe marker emission: no helper calls in interrupt context.
         OUTC('P'); OUTC('1'); OUTC('0'); OUTC('_');
         OUTC('R'); OUTC('I'); OUTC('N'); OUTC('G'); OUTC('3'); OUTC('_');
