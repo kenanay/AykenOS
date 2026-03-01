@@ -177,6 +177,7 @@ source_hits = []
 waiver_audit_rows = []
 waiver_violations_count = 0
 ahs_check_lines = []
+knob_violations_count = 0
 
 
 def add_violation(kind: str, detail: str) -> None:
@@ -308,7 +309,61 @@ AHS_CHECK_TXT.write_text(
     encoding="utf-8",
 )
 
-# 3) Waiver policy checks.
+# 3) Policy-sensitive knob contracts (AYKEN_CR3_PCID).
+makefile_path = ROOT / "Makefile"
+ring3_gate_path = ROOT / "scripts/ci/gate_ring3_execution_phase10a2.sh"
+knob_doc_path = ROOT / "docs/governance/knobs.md"
+
+if not makefile_path.exists():
+    knob_violations_count += 1
+    add_violation("knob_missing_file", str(makefile_path))
+else:
+    makefile_text = makefile_path.read_text(encoding="utf-8", errors="replace")
+    makefile_contracts = {
+        "default_zero": r"AYKEN_CR3_PCID\s*\?=\s*0",
+        "value_check": r"ifneq\s*\(\$\(filter \$\(AYKEN_CR3_PCID\),0 1\),\$\(AYKEN_CR3_PCID\)\)",
+        "cflags_define": r"KERNEL_CFLAGS\s*\+=\s*-DAYKEN_CR3_PCID=\$\(AYKEN_CR3_PCID\)",
+        "asmflags_define": r"KERNEL_ASMFLAGS\s*\+=\s*-DAYKEN_CR3_PCID=\$\(AYKEN_CR3_PCID\)",
+        "freeze_guard_enforced": r"ci-freeze requires AYKEN_CR3_PCID=0",
+        "ring3_gate_enforced": r"AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2\.sh",
+    }
+    for name, patt in makefile_contracts.items():
+        if not re.search(patt, makefile_text, flags=re.MULTILINE):
+            knob_violations_count += 1
+            add_violation("knob_contract_missing", f"Makefile:{name}")
+
+if not ring3_gate_path.exists():
+    knob_violations_count += 1
+    add_violation("knob_missing_file", str(ring3_gate_path))
+else:
+    ring3_gate_text = ring3_gate_path.read_text(encoding="utf-8", errors="replace")
+    gate_contract_tokens = {
+        "enforced_constant": 'ENFORCED_AYKEN_CR3_PCID="0"',
+        "numeric_guard": "requires AYKEN_CR3_PCID in {0,1}",
+        "enforced_guard": "requires AYKEN_CR3_PCID=${ENFORCED_AYKEN_CR3_PCID}",
+    }
+    for name, token in gate_contract_tokens.items():
+        if token not in ring3_gate_text:
+            knob_violations_count += 1
+            add_violation("knob_contract_missing", f"gate_ring3_execution_phase10a2.sh:{name}")
+
+if not knob_doc_path.exists():
+    knob_violations_count += 1
+    add_violation("knob_missing_file", str(knob_doc_path))
+else:
+    knob_doc_text = knob_doc_path.read_text(encoding="utf-8", errors="replace")
+    doc_required_tokens = [
+        "AYKEN_CR3_PCID",
+        "ci-freeze-guard",
+        "ci-gate-ring3-execution-phase10a2",
+        "ENFORCED_AYKEN_CR3_PCID",
+    ]
+    for token in doc_required_tokens:
+        if token not in knob_doc_text:
+            knob_violations_count += 1
+            add_violation("knob_doc_missing_token", token)
+
+# 4) Waiver policy checks.
 waiver_files = []
 if not WAIVER_DIR.exists():
     add_violation("missing_dir", str(WAIVER_DIR))
@@ -407,6 +462,7 @@ meta = {
     "source_deny_hits_count": len(source_hits),
     "waiver_file_count": len(waiver_files),
     "waiver_violations_count": waiver_violations_count,
+    "knob_violations_count": knob_violations_count,
     "violations_count": len(violations),
 }
 
@@ -425,6 +481,7 @@ report = {
     "checks": {
         "source_deny_scan": "PASS" if not source_hits else "FAIL",
         "ahs_thresholds": "PASS" if not any(v.startswith("ahs_") for v in violations) else "FAIL",
+        "policy_sensitive_knobs": "PASS" if knob_violations_count == 0 else "FAIL",
         "waiver_policy": "PASS" if waiver_violations_count == 0 else "FAIL",
     },
     "source_deny_hits": source_hits,

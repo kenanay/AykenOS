@@ -22,7 +22,15 @@ Env controls:
   PERF_BASELINE_AUTHORITY=<id>                 (default: scripts/ci/perf_authority.env)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
+  PERF_BASELINE_MODE=constitutional|provisional (default: constitutional)
+  PERF_REGRESSION_POLICY=fail                   (default: fail)
+  PERF_ENV_MISMATCH_POLICY=fail|waiver          (default: fail)
   PERF_PREEMPT_FORCE_EFI_REBUILD=0|1           (default: 1)
+  PERF_PREEMPT_USER_MINIMAL_MODE=<mode>        (default: syscall-v2-runtime)
+  PERF_PREEMPT_BOOTSTRAP_POLICY=0|1            (default: 1)
+  PERF_PREEMPT_MB_SELFTEST=0|1                 (default: 0)
+  PERF_PREEMPT_DETERMINISTIC_EXIT=0|1          (default: 1)
+  PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET=csv      (default: 0,1)
   DRIFT_ALLOWLIST_FILE=<path>                  (default: constitution/drift_blocking_allowlist.json)
 
 Exit codes:
@@ -47,6 +55,12 @@ BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-${PERF_AUTHORITY_DEFAULT}}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"
+PREEMPT_USER_MINIMAL_MODE="${PERF_PREEMPT_USER_MINIMAL_MODE:-syscall-v2-runtime}"
+PREEMPT_BOOTSTRAP_POLICY="${PERF_PREEMPT_BOOTSTRAP_POLICY:-1}"
+PREEMPT_MB_SELFTEST="${PERF_PREEMPT_MB_SELFTEST:-0}"
+PREEMPT_DETERMINISTIC_EXIT="${PERF_PREEMPT_DETERMINISTIC_EXIT:-1}"
+PREEMPT_EXPECTED_QEMU_EXIT_SET="${PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET:-0,1}"
+MEASUREMENT_CONTRACT="deterministic_preempt_harness"
 SCHED_FALLBACK="${AYKEN_SCHED_FALLBACK:-0}"
 BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
 PREEMPT_SW_COUNT_PATTERN='[SW|MARK:SW] count:'
@@ -127,6 +141,38 @@ case "${PREEMPT_FORCE_EFI_REBUILD}" in
     ;;
 esac
 
+case "${PREEMPT_BOOTSTRAP_POLICY}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_BOOTSTRAP_POLICY must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+case "${PREEMPT_MB_SELFTEST}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_MB_SELFTEST must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+case "${PREEMPT_DETERMINISTIC_EXIT}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_DETERMINISTIC_EXIT must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+if [[ ! "${PREEMPT_EXPECTED_QEMU_EXIT_SET}" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+  echo "ERROR: PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET must be comma-separated exit codes (got '${PREEMPT_EXPECTED_QEMU_EXIT_SET}')" >&2
+  exit 3
+fi
+
 # ----------------------------------------------------------------------------
 # Baseline Lock Immutability (PR guard)
 # - PR'larda baseline lock dosyası değiştirilemez.
@@ -164,6 +210,20 @@ is_pinned_ci_digest() {
   return 0
 }
 
+is_expected_qemu_exit_rc() {
+  local rc="$1"
+  local expected_csv="$2"
+  local code
+  IFS=',' read -r -a expected_codes <<< "${expected_csv}"
+  for code in "${expected_codes[@]}"; do
+    code="${code//[[:space:]]/}"
+    if [[ -n "${code}" && "${rc}" == "${code}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 for tool in git make python3 qemu-system-x86_64 jq; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: required tool missing (${tool})" >&2
@@ -198,6 +258,19 @@ extract_kv_metric() {
         else print v + 0
       }
     }
+  ' "${file}"
+}
+
+extract_kv_text() {
+  local key="$1"
+  local file="$2"
+  [[ -f "${file}" ]] || { echo ""; return; }
+  awk -F '=' -v k="${key}" '
+    $1==k {
+      v=$2
+      for (i=3; i<=NF; ++i) v=v"="$i
+    }
+    END { print v }
   ' "${file}"
 }
 
@@ -267,6 +340,12 @@ CI_IMAGE_DIGEST_ENV="${CI_IMAGE_DIGEST}" \
 BOOT_OK_MARKER_ENV="${BOOT_OK_MARKER}" \
 PREEMPT_SW_COUNT_PATTERN_ENV="${PREEMPT_SW_COUNT_PATTERN}" \
 PREEMPT_IRET_COUNT_PATTERN_ENV="${PREEMPT_IRET_COUNT_PATTERN}" \
+PREEMPT_USER_MINIMAL_MODE_ENV="${PREEMPT_USER_MINIMAL_MODE}" \
+PREEMPT_BOOTSTRAP_POLICY_ENV="${PREEMPT_BOOTSTRAP_POLICY}" \
+PREEMPT_MB_SELFTEST_ENV="${PREEMPT_MB_SELFTEST}" \
+PREEMPT_DETERMINISTIC_EXIT_ENV="${PREEMPT_DETERMINISTIC_EXIT}" \
+PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV="${PREEMPT_EXPECTED_QEMU_EXIT_SET}" \
+MEASUREMENT_CONTRACT_ENV="${MEASUREMENT_CONTRACT}" \
 ENV_JSON_ENV="${ENV_JSON}" \
 python3 - <<'PY'
 import hashlib
@@ -290,6 +369,13 @@ payload = {
         "boot_ok_marker": os.environ["BOOT_OK_MARKER_ENV"],
         "preempt_sw_count_pattern": os.environ["PREEMPT_SW_COUNT_PATTERN_ENV"],
         "preempt_iret_count_pattern": os.environ["PREEMPT_IRET_COUNT_PATTERN_ENV"],
+        "measurement_contract": os.environ["MEASUREMENT_CONTRACT_ENV"],
+        # Performance gate measures deterministic harness mode, not constitutional default.
+        "preempt_user_minimal_mode": os.environ["PREEMPT_USER_MINIMAL_MODE_ENV"],
+        "preempt_bootstrap_policy": int(os.environ["PREEMPT_BOOTSTRAP_POLICY_ENV"]),
+        "preempt_mb_selftest": int(os.environ["PREEMPT_MB_SELFTEST_ENV"]),
+        "preempt_deterministic_exit": int(os.environ["PREEMPT_DETERMINISTIC_EXIT_ENV"]),
+        "preempt_expected_qemu_exit_set": os.environ["PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV"],
     },
 }
 canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -324,7 +410,17 @@ BOOT_TIME_MS="$((BOOT_END_MS - BOOT_START_MS))"
 
 # 4) Measure context-switch proxy from preempt validation.
 PREEMPT_START_MS="$(now_ms)"
-if ! (cd "${ROOT}" && QEMU_TIMEOUT="${QEMU_TIMEOUT}" STRICT_MARKERS=1 FORCE_EFI_REBUILD="${PREEMPT_FORCE_EFI_REBUILD}" KERNEL_PROFILE="${KERNEL_PROFILE}" PREEMPT_METRICS_OUT="${PREEMPT_METRICS_TXT}" ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
+if ! (cd "${ROOT}" && \
+  QEMU_TIMEOUT="${QEMU_TIMEOUT}" \
+  STRICT_MARKERS=1 \
+  FORCE_EFI_REBUILD="${PREEMPT_FORCE_EFI_REBUILD}" \
+  KERNEL_PROFILE="${KERNEL_PROFILE}" \
+  USER_MINIMAL_MODE="${PREEMPT_USER_MINIMAL_MODE}" \
+  AYKEN_SCHED_BOOTSTRAP_POLICY="${PREEMPT_BOOTSTRAP_POLICY}" \
+  AYKEN_MB_SELFTEST="${PREEMPT_MB_SELFTEST}" \
+  AYKEN_DETERMINISTIC_EXIT="${PREEMPT_DETERMINISTIC_EXIT}" \
+  PREEMPT_METRICS_OUT="${PREEMPT_METRICS_TXT}" \
+  ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
   record_violation "preempt_test_failed:run_preempt_test.sh"
 fi
 PREEMPT_END_MS="$(now_ms)"
@@ -337,6 +433,57 @@ MARK_SW_COUNT="$(extract_kv_metric "mark_sw_count" "${PREEMPT_METRICS_TXT}")"
 MARK_IRET_COUNT="$(extract_kv_metric "mark_iret_count" "${PREEMPT_METRICS_TXT}")"
 SCHED_IDLE_COUNT="$(extract_kv_metric "sched_idle_count" "${PREEMPT_METRICS_TXT}")"
 STAGE_HINT_MISSING_SIGNAL="$(extract_kv_metric "stage_hint_missing" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_QEMU_EXIT_RC="$(extract_kv_metric "qemu_exit_rc" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_QEMU_TIMEOUT_HIT="$(extract_kv_metric "qemu_timeout_hit" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_PROOF_DONE_SEEN="$(extract_kv_metric "proof_done_seen" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_USER_MODE="$(extract_kv_text "contract_user_minimal_mode" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BOOTSTRAP="$(extract_kv_text "contract_bootstrap_policy" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_MB_SELFTEST="$(extract_kv_text "contract_mb_selftest" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_DETERMINISTIC_EXIT="$(extract_kv_text "contract_deterministic_exit" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_USER_MODE_SOURCE="$(extract_kv_text "contract_user_minimal_mode_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BOOTSTRAP_SOURCE="$(extract_kv_text "contract_bootstrap_policy_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_MB_SELFTEST_SOURCE="$(extract_kv_text "contract_mb_selftest_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_DETERMINISTIC_EXIT_SOURCE="$(extract_kv_text "contract_deterministic_exit_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_USER_MODE="$(extract_kv_text "observed_user_minimal_mode" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_BOOTSTRAP="$(extract_kv_text "observed_bootstrap_policy" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_MB_SELFTEST="$(extract_kv_text "observed_mb_selftest" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_DETERMINISTIC_EXIT="$(extract_kv_text "observed_deterministic_exit" "${PREEMPT_METRICS_TXT}")"
+
+if [[ "${PREEMPT_QEMU_TIMEOUT_HIT}" -gt 0 ]]; then
+  record_violation "preempt_qemu_timeout:exit_rc=${PREEMPT_QEMU_EXIT_RC}:timeout_seconds=${QEMU_TIMEOUT}"
+fi
+if [[ "${PREEMPT_QEMU_TIMEOUT_HIT}" -eq 0 && "${PREEMPT_PROOF_DONE_SEEN}" -le 0 ]]; then
+  record_violation "preempt_proof_done_missing:qemu_exit_rc=${PREEMPT_QEMU_EXIT_RC}"
+fi
+if [[ "${PREEMPT_QEMU_TIMEOUT_HIT}" -eq 0 && "${PREEMPT_PROOF_DONE_SEEN}" -gt 0 ]]; then
+  if ! is_expected_qemu_exit_rc "${PREEMPT_QEMU_EXIT_RC}" "${PREEMPT_EXPECTED_QEMU_EXIT_SET}"; then
+    record_violation "preempt_qemu_exit_rc_unexpected:expected_set=${PREEMPT_EXPECTED_QEMU_EXIT_SET}:actual=${PREEMPT_QEMU_EXIT_RC}"
+  fi
+fi
+if [[ "${PREEMPT_CONTRACT_USER_MODE}" != "${PREEMPT_USER_MINIMAL_MODE}" ]]; then
+  record_violation "preempt_contract_not_consumed:user_minimal_mode:expected=${PREEMPT_USER_MINIMAL_MODE}:actual=${PREEMPT_CONTRACT_USER_MODE:-missing}"
+fi
+if [[ "${PREEMPT_CONTRACT_BOOTSTRAP}" != "${PREEMPT_BOOTSTRAP_POLICY}" ]]; then
+  record_violation "preempt_contract_not_consumed:bootstrap_policy:expected=${PREEMPT_BOOTSTRAP_POLICY}:actual=${PREEMPT_CONTRACT_BOOTSTRAP:-missing}"
+fi
+if [[ "${PREEMPT_CONTRACT_MB_SELFTEST}" != "${PREEMPT_MB_SELFTEST}" ]]; then
+  record_violation "preempt_contract_not_consumed:mb_selftest:expected=${PREEMPT_MB_SELFTEST}:actual=${PREEMPT_CONTRACT_MB_SELFTEST:-missing}"
+fi
+if [[ "${PREEMPT_CONTRACT_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
+  record_violation "preempt_contract_not_consumed:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:actual=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_USER_MODE}" != "${PREEMPT_USER_MINIMAL_MODE}" ]]; then
+  record_violation "preempt_observed_mismatch:user_minimal_mode:expected=${PREEMPT_USER_MINIMAL_MODE}:observed=${PREEMPT_OBSERVED_USER_MODE:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_BOOTSTRAP}" != "${PREEMPT_BOOTSTRAP_POLICY}" ]]; then
+  record_violation "preempt_observed_mismatch:bootstrap_policy:expected=${PREEMPT_BOOTSTRAP_POLICY}:observed=${PREEMPT_OBSERVED_BOOTSTRAP:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_MB_SELFTEST}" != "${PREEMPT_MB_SELFTEST}" ]]; then
+  record_violation "preempt_observed_mismatch:mb_selftest:expected=${PREEMPT_MB_SELFTEST}:observed=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
+  record_violation "preempt_observed_mismatch:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:observed=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
+fi
 
 PREEMPT_TIME_MS="${PREEMPT_TIME_MS_WALL}"
 if [[ "${PREEMPT_QEMU_RUN_TIME_MS}" -gt 0 ]]; then
@@ -526,6 +673,12 @@ b_marker_contract = baseline.get("policy", {}).get("marker_contract")
 a_marker_contract = actual.get("policy", {}).get("marker_contract")
 if b_marker_contract != a_marker_contract:
     diffs.append("marker_contract_mismatch")
+b_measurement_contract = (b_marker_contract or {}).get("measurement_contract")
+a_measurement_contract = (a_marker_contract or {}).get("measurement_contract")
+if b_measurement_contract != a_measurement_contract:
+    diffs.append(
+        f"measurement_contract_mismatch: baseline={b_measurement_contract} actual={a_measurement_contract}"
+    )
 
 b_authority = baseline.get("policy", {}).get("baseline_authority")
 a_authority = actual.get("policy", {}).get("baseline_authority")
@@ -582,6 +735,12 @@ PY
 
         counter_after="$(increment_counter "${metric}")"
         echo "drift_counter_increment:${metric}:counter=${counter_after}" >> "${EVIDENCE_DIR}/drift_counters.txt"
+      fi
+      if [[ "${line}" == "marker_contract_mismatch" ]]; then
+        record_violation "contract_violation:marker_contract_mismatch"
+      fi
+      if [[ "${line}" =~ ^measurement_contract_mismatch: ]]; then
+        record_violation "contract_violation:measurement_contract_mismatch"
       fi
 
       record_violation "baseline_diff:${line}"
@@ -641,9 +800,30 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_sw_count_pattern=${PREEMPT_SW_COUNT_PATTERN}"
   echo "preempt_iret_count_pattern=${PREEMPT_IRET_COUNT_PATTERN}"
   echo "preempt_force_efi_rebuild=${PREEMPT_FORCE_EFI_REBUILD}"
+  echo "preempt_user_minimal_mode=${PREEMPT_USER_MINIMAL_MODE}"
+  echo "preempt_bootstrap_policy=${PREEMPT_BOOTSTRAP_POLICY}"
+  echo "preempt_mb_selftest=${PREEMPT_MB_SELFTEST}"
+  echo "preempt_deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
+  echo "preempt_expected_qemu_exit_set=${PREEMPT_EXPECTED_QEMU_EXIT_SET}"
+  echo "measurement_contract=${MEASUREMENT_CONTRACT}"
   echo "ayken_sched_fallback=${SCHED_FALLBACK}"
   echo "preempt_sched_idle_count=${SCHED_IDLE_COUNT}"
   echo "preempt_stage_hint_missing=${STAGE_HINT_MISSING_SIGNAL}"
+  echo "preempt_qemu_exit_rc=${PREEMPT_QEMU_EXIT_RC}"
+  echo "preempt_qemu_timeout_hit=${PREEMPT_QEMU_TIMEOUT_HIT}"
+  echo "preempt_proof_done_seen=${PREEMPT_PROOF_DONE_SEEN}"
+  echo "preempt_contract_user_minimal_mode=${PREEMPT_CONTRACT_USER_MODE:-missing}"
+  echo "preempt_contract_bootstrap_policy=${PREEMPT_CONTRACT_BOOTSTRAP:-missing}"
+  echo "preempt_contract_mb_selftest=${PREEMPT_CONTRACT_MB_SELFTEST:-missing}"
+  echo "preempt_contract_deterministic_exit=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
+  echo "preempt_contract_user_minimal_mode_source=${PREEMPT_CONTRACT_USER_MODE_SOURCE:-missing}"
+  echo "preempt_contract_bootstrap_policy_source=${PREEMPT_CONTRACT_BOOTSTRAP_SOURCE:-missing}"
+  echo "preempt_contract_mb_selftest_source=${PREEMPT_CONTRACT_MB_SELFTEST_SOURCE:-missing}"
+  echo "preempt_contract_deterministic_exit_source=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT_SOURCE:-missing}"
+  echo "preempt_observed_user_minimal_mode=${PREEMPT_OBSERVED_USER_MODE:-missing}"
+  echo "preempt_observed_bootstrap_policy=${PREEMPT_OBSERVED_BOOTSTRAP:-missing}"
+  echo "preempt_observed_mb_selftest=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"
+  echo "preempt_observed_deterministic_exit=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
   echo "env_hash=${ENV_HASH}"
   echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
   echo "drift_allowlist_file=${DRIFT_ALLOWLIST_FILE}"
@@ -689,6 +869,8 @@ out = {
     "gate": "performance",
     "verdict": "PASS" if violations_count == 0 else "FAIL",
     "violations_count": violations_count,
+    "measurement_contract": meta.get("measurement_contract", "unknown"),
+    "measurement_contract_note": "Deterministic preempt harness scenario is enforced (not constitutional default runtime).",
     "meta": meta,
     "env": read_json("env.json"),
     "results": read_json("results.json"),

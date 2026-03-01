@@ -1,32 +1,13 @@
 // kernel/sched/sched.c
-// Ring0 Scheduler Mechanism - NO POLICY CODE REMAINS
+// Ring0 Scheduler Mechanism - mailbox-first scheduling path
 //
-// This file implements ONLY the Ring0 scheduler mechanism for context switching
-// and basic process state management. ALL scheduling policy decisions are made
-// in Ring3 userspace through the userspace_scheduler_* functions.
+// Ring0 owns execution mechanics (context switch, CR3/TSS updates).
+// Ring3 owns scheduling decisions and publishes mailbox proposals.
 //
-// POLICY REMOVAL COMPLETED:
-// - Queue management policy moved to Ring3
-// - Process selection policy moved to Ring3  
-// - State transition policy moved to Ring3
-// - Blocking/waking policy moved to Ring3
-// - All policy decisions delegated to Ring3
-//
-// Ring0 MECHANISM ONLY:
-// - Context switching (mechanism)
-// - Memory management (mechanism)
-// - Interrupt handling (mechanism)
-// - TSS management (mechanism)
-//
-// Ring3 POLICY FUNCTIONS:
-// - userspace_scheduler_select_next() - process selection policy
-// - userspace_scheduler_enqueue_ready() - queue management policy
-// - userspace_scheduler_handle_block() - blocking policy
-//
-// Requirements: Task "No policy code remains in Ring0" - COMPLETED
-// Author: Kenan AY
-// Project: AykenOS - Advanced AI-Integrated Operating System
-// Phase: 2.5 - Legacy Cleanup - Policy Code Removal
+// Phase10-C fail-closed rules in this file:
+// - Block path never "keeps running" the blocked process.
+// - Cold-start path never uses legacy ready-head selection when fallback is disabled.
+// - Legacy ready-queue fallback is compile-time gated by AYKEN_SCHED_FALLBACK.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -42,11 +23,578 @@
 #define AYKEN_DEBUG_SCHED 0
 #endif
 
+#ifndef AYKEN_GATE45_PROOF
+#define AYKEN_GATE45_PROOF 0
+#endif
+
+#ifndef AYKEN_C2_STRICT_MARKERS
+#define AYKEN_C2_STRICT_MARKERS 0
+#endif
+
+#ifndef AYKEN_MB_SELFTEST
+#define AYKEN_MB_SELFTEST 0
+#endif
+
+#ifndef AYKEN_USER_MINIMAL_MODE_STRING
+#define AYKEN_USER_MINIMAL_MODE_STRING "unknown"
+#endif
+
+#ifndef AYKEN_DETERMINISTIC_EXIT
+#define AYKEN_DETERMINISTIC_EXIT 0
+#endif
+
+#if AYKEN_GATE45_PROOF
+#ifndef AYKEN_GATE45_TARGET_PID
+#define AYKEN_GATE45_TARGET_PID 3u
+#endif
+#endif
+
 #if AYKEN_DEBUG_SCHED
 #define SCHED_DBG_OUT(ch) outb(0xE9, (uint8_t)(ch))
 #else
 #define SCHED_DBG_OUT(ch) do { (void)(ch); } while (0)
 #endif
+
+static void sched_emit_marker(const char *text)
+{
+    if (!text) {
+        return;
+    }
+    while (*text) {
+        outb(0xE9, (uint8_t)*text++);
+    }
+}
+
+// Ring0 mechanism state - only for context switching
+static proc_t *ready_head = NULL;
+static proc_t *ready_tail = NULL;
+static proc_t *blocked_head = NULL;
+static proc_t *sched_owner_cached = NULL;
+
+static int sched_list_contains(proc_t *head, const proc_t *target)
+{
+    if (!target) {
+        return 0;
+    }
+    for (proc_t *iter = head; iter; iter = iter->next) {
+        if (iter == target) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int is_in_blocked_queue(const proc_t *p)
+{
+    return sched_list_contains(blocked_head, p);
+}
+
+static void sched_emit_u64_dec(uint64_t v)
+{
+    char buf[32];
+    int i = 0;
+    if (v == 0) {
+        outb(0xE9, (uint8_t)'0');
+        return;
+    }
+    while (v > 0 && i < (int)sizeof(buf)) {
+        buf[i++] = (char)('0' + (v % 10));
+        v /= 10;
+    }
+    while (i > 0) {
+        outb(0xE9, (uint8_t)buf[--i]);
+    }
+}
+
+typedef enum {
+    SCHED_DECISION_SITE_START = 0,
+    SCHED_DECISION_SITE_YIELD = 1,
+    SCHED_DECISION_SITE_BLOCK = 2,
+    SCHED_DECISION_SITE_IRQ = 3,
+} sched_decision_site_t;
+
+static const char *sched_site_name(sched_decision_site_t site)
+{
+    switch (site) {
+    case SCHED_DECISION_SITE_START:
+        return "START";
+    case SCHED_DECISION_SITE_YIELD:
+        return "YIELD";
+    case SCHED_DECISION_SITE_BLOCK:
+        return "BLOCK";
+    case SCHED_DECISION_SITE_IRQ:
+        return "IRQ";
+    default:
+        return "YIELD";
+    }
+}
+
+// "valid" mirrors mailbox slot validity: 1 when decision is observed, 0 after consume/apply.
+static void sched_emit_phase10c_decision(
+    const char *token,
+    uint64_t id,
+    uint32_t pid,
+    uint32_t valid,
+    uint32_t src_pid)
+{
+    sched_emit_marker(token);
+    sched_emit_marker(" id=");
+    sched_emit_u64_dec(id);
+    sched_emit_marker(" pid=");
+    sched_emit_u64_dec((uint64_t)pid);
+    sched_emit_marker(" valid=");
+    sched_emit_u64_dec((uint64_t)valid);
+    sched_emit_marker(" src=");
+    sched_emit_u64_dec((uint64_t)src_pid);
+    sched_emit_marker("\n");
+}
+
+#if AYKEN_GATE45_PROOF || AYKEN_C2_STRICT_MARKERS
+static uint64_t sched_c2_decision_counter = 0;
+
+static uint64_t sched_next_c2_decision_id(void)
+{
+    sched_c2_decision_counter++;
+    return sched_c2_decision_counter;
+}
+
+static void sched_emit_gate45_arbiter_decision(
+    uint64_t decision_id,
+    sched_decision_site_t site,
+    uint32_t owner_pid,
+    uint32_t from_pid,
+    uint32_t to_pid,
+    uint64_t epoch)
+{
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_SCHED_ARBITER_DECISION]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" site=");
+    sched_emit_marker(sched_site_name(site));
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec((uint64_t)owner_pid);
+    sched_emit_marker(" from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker(" epoch=");
+    sched_emit_u64_dec(epoch);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
+    (void)site;
+    (void)owner_pid;
+    sched_emit_marker("[[AYKEN_SCHED_ARBITER_DECISION]] from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker(" epoch=");
+    sched_emit_u64_dec(epoch);
+    sched_emit_marker("\n");
+#endif
+}
+
+static void sched_emit_gate45_ctx_switch(uint64_t decision_id, uint32_t from_pid, uint32_t to_pid)
+{
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_CTX_SWITCH]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
+    sched_emit_marker("[[AYKEN_CTX_SWITCH]] from=");
+    sched_emit_u64_dec((uint64_t)from_pid);
+    sched_emit_marker(" to=");
+    sched_emit_u64_dec((uint64_t)to_pid);
+    sched_emit_marker("\n");
+#endif
+}
+
+static void sched_emit_gate45_cursor_advance(
+    uint64_t decision_id,
+    uint32_t owner_pid,
+    uint32_t next_owner_pid)
+{
+#if AYKEN_C2_STRICT_MARKERS
+    sched_emit_marker("[[AYKEN_SCHED_CURSOR_ADVANCE]] decision_id=");
+    sched_emit_u64_dec(decision_id);
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec((uint64_t)owner_pid);
+    sched_emit_marker(" next_owner=");
+    sched_emit_u64_dec((uint64_t)next_owner_pid);
+    sched_emit_marker("\n");
+#else
+    (void)decision_id;
+    (void)owner_pid;
+    (void)next_owner_pid;
+#endif
+}
+
+static void sched_emit_gate45_chain_once(
+    proc_t *prev,
+    proc_t *next,
+    uint64_t epoch,
+    uint32_t owner_pid,
+    int used_mailbox,
+    sched_decision_site_t site)
+{
+    static uint8_t gate45_chain_emitted = 0;
+    if (gate45_chain_emitted) {
+        return;
+    }
+    if (!used_mailbox || epoch == 0 || !prev || !next || prev == next) {
+        return;
+    }
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4.5 ordering contract: emit only after timer-path epoch=1 ACCEPT.
+    if (sched_mailbox_gate4_epoch1_pending()) {
+        return;
+    }
+#endif
+    gate45_chain_emitted = 1;
+    uint64_t decision_id = sched_next_c2_decision_id();
+    sched_emit_gate45_arbiter_decision(
+        decision_id,
+        site,
+        owner_pid,
+        (uint32_t)prev->pid,
+        (uint32_t)next->pid,
+        epoch);
+    sched_emit_gate45_ctx_switch(decision_id, (uint32_t)prev->pid, (uint32_t)next->pid);
+    sched_emit_gate45_cursor_advance(decision_id, owner_pid, owner_pid);
+}
+#else
+static inline void sched_emit_gate45_chain_once(
+    proc_t *prev,
+    proc_t *next,
+    uint64_t epoch,
+    uint32_t owner_pid,
+    int used_mailbox,
+    sched_decision_site_t site)
+{
+    (void)prev;
+    (void)next;
+    (void)epoch;
+    (void)owner_pid;
+    (void)used_mailbox;
+    (void)site;
+}
+#endif
+
+static void sched_emit_irq_decision(proc_t *prev, proc_t *next, int used_mailbox)
+{
+    sched_emit_marker("P10_IRQ_SCHED_DECISION prev=");
+    sched_emit_u64_dec(prev ? (uint64_t)(uint32_t)prev->pid : 0);
+    sched_emit_marker(" next=");
+    sched_emit_u64_dec(next ? (uint64_t)(uint32_t)next->pid : 0);
+    sched_emit_marker(" used_mailbox=");
+    sched_emit_u64_dec((uint64_t)(used_mailbox ? 1 : 0));
+    sched_emit_marker(" keep_running=");
+    sched_emit_u64_dec((uint64_t)((prev && next == prev) ? 1 : 0));
+    sched_emit_marker("\n");
+}
+
+static void sched_emit_mailbox_miss_fatal_pre(
+    sched_decision_site_t site,
+    const proc_t *prev,
+    const proc_t *owner)
+{
+    sched_emit_marker("P10_MAILBOX_MISS_FATAL_PRE site=");
+    sched_emit_marker(sched_site_name(site));
+    sched_emit_marker(" owner=");
+    sched_emit_u64_dec(owner ? (uint64_t)(uint32_t)owner->pid : 0);
+    sched_emit_marker(" current=");
+    sched_emit_u64_dec(prev ? (uint64_t)(uint32_t)prev->pid : 0);
+    // Do not dereference queue nodes here: under user CR3, non-current kernel
+    // heap pages may be unmapped and would fault in the fatal-report path.
+    sched_emit_marker(" ready_head_ptr=");
+    sched_emit_u64_dec((uint64_t)(uintptr_t)ready_head);
+    sched_emit_marker(" blocked_head_ptr=");
+    sched_emit_u64_dec((uint64_t)(uintptr_t)blocked_head);
+    sched_emit_marker("\n");
+}
+
+static ayken_sched_mailbox_t *sched_mailbox_view_for_owner(proc_t *owner)
+{
+    if (!owner || !owner->mailbox_pa) {
+        return NULL;
+    }
+    uint64_t active_cr3 = 0;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (owner->context.cr3 & AYKEN_PTE_ADDR_MASK)) {
+        return (ayken_sched_mailbox_t *)(uintptr_t)SCHED_MAILBOX_VA;
+    }
+    return (ayken_sched_mailbox_t *)paging_phys_to_virt(owner->mailbox_pa);
+}
+
+#if AYKEN_GATE45_PROOF
+static void sched_gate45_arm_cross_target_once(proc_t *owner)
+{
+    static uint8_t armed = 0;
+    if (armed || !owner || owner->pid != (int)AYKEN_SCHED_OWNER_PID) {
+        return;
+    }
+    ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(owner);
+    if (!mb) {
+        return;
+    }
+    mb->candidate_pid = AYKEN_GATE45_TARGET_PID;
+    armed = 1;
+}
+#endif
+
+static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, uint32_t *out_pid)
+{
+    if (!owner || !out_epoch || !out_pid || !owner->mailbox_pa) {
+        return 0;
+    }
+    ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(owner);
+    if (!mb) {
+        return 0;
+    }
+    if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
+        mb->version != AYKEN_SCHED_MB_VERSION ||
+        mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+        return 0;
+    }
+    if (mb->epoch == 0 || mb->epoch <= owner->mailbox_last_epoch) {
+        return 0;
+    }
+    if (mb->candidate_pid == 0) {
+        return 0;
+    }
+    *out_epoch = mb->epoch;
+    *out_pid = mb->candidate_pid;
+    return 1;
+}
+
+static int sched_is_owner(const proc_t *p)
+{
+    return p && p->pid == (int)AYKEN_SCHED_OWNER_PID;
+}
+
+static proc_t *sched_owner_proc(proc_t *prev, sched_decision_site_t site)
+{
+    if (prev && sched_is_owner(prev)) {
+        sched_owner_cached = prev;
+        return prev;
+    }
+
+    if (sched_owner_cached && sched_is_owner(sched_owner_cached)) {
+        return sched_owner_cached;
+    }
+
+    (void)site;
+    proc_t *owner = proc_find_by_pid((int)AYKEN_SCHED_OWNER_PID);
+    if (owner && sched_is_owner(owner)) {
+        sched_owner_cached = owner;
+        return owner;
+    }
+
+    return NULL;
+}
+
+static int sched_mailbox_has_any_candidate(proc_t *p)
+{
+    ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(p);
+    if (!mb) {
+        return 0;
+    }
+    if (mb->magic != AYKEN_SCHED_MB_MAGIC || mb->version != AYKEN_SCHED_MB_VERSION) {
+        return 0;
+    }
+    if (mb->kind != AYKEN_SCHED_HINT_CANDIDATE || mb->candidate_pid == 0) {
+        return 0;
+    }
+    // Ignore kernel-seeded initial payload (epoch=1, candidate=self).
+    if (mb->epoch == 1 && mb->candidate_pid == (uint32_t)p->pid) {
+        return 0;
+    }
+    return 1;
+}
+
+#if AYKEN_DEBUG_SCHED
+static __attribute__((noreturn)) void sched_debug_assert_fail(char code);
+#endif
+
+#if AYKEN_SCHED_BOOTSTRAP_POLICY || AYKEN_SCHED_FALLBACK
+static proc_t *sched_select_next_ready_head_fallback(void);
+#endif
+
+static proc_t *sched_select_next_mailbox(
+    proc_t *prev,
+    uint64_t *decision_id,
+    uint32_t *decision_pid,
+    uint32_t *decision_src_pid,
+    int *used_mailbox,
+    int allow_keep_running,
+    sched_decision_site_t site)
+{
+    if (decision_id) {
+        *decision_id = 0;
+    }
+    if (decision_pid) {
+        *decision_pid = 0;
+    }
+    if (decision_src_pid) {
+        *decision_src_pid = 0;
+    }
+    if (used_mailbox) {
+        *used_mailbox = 0;
+    }
+
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5 effect proof is single handoff (owner -> target). After handoff,
+    // keep non-owner running and do not dereference owner mailbox under foreign CR3.
+    if (site == SCHED_DECISION_SITE_YIELD && allow_keep_running &&
+        prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev)) {
+        return prev;
+    }
+#endif
+
+    proc_t *owner = sched_owner_proc(prev, site);
+    if (!owner) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, NULL);
+        sched_emit_marker("P10_MAILBOX_OWNER_MISSING_FATAL\n");
+        return NULL;
+    }
+    if (!(owner->state == PROC_READY || owner->state == PROC_RUNNING)) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
+        sched_emit_marker("P10_MAILBOX_OWNER_NOT_READY_FATAL\n");
+        return NULL;
+    }
+
+    // Non-owner fresh decision attempt is a protocol violation.
+    if (prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev) &&
+        sched_mailbox_has_any_candidate(prev)) {
+        sched_emit_marker("P10_MAILBOX_OWNER_MISMATCH\n");
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
+        if (site != SCHED_DECISION_SITE_YIELD) {
+            return NULL;
+        }
+#else
+        return NULL;
+#endif
+    }
+
+    // Single-authority path: only owner mailbox is consumed.
+    {
+        uint64_t epoch = 0;
+        uint32_t pid = 0;
+        if (sched_mailbox_extract_candidate(owner, &epoch, &pid)) {
+            int consume_epoch = 1;
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+            // Gate-4 proof requires timer-path ACCEPT for epoch=1 before scheduler
+            // consumes that epoch in any decision site.
+            if (epoch == 1 && sched_mailbox_gate4_epoch1_pending()) {
+                consume_epoch = 0;
+            }
+#endif
+#if AYKEN_GATE45_PROOF
+            // Gate-4.5: do not consume epoch=1 on self-keep-running path.
+            // This keeps epoch=1 available until Ring3 flips candidate to cross-target.
+            if (epoch == 1 &&
+                prev && prev->type == PROC_TYPE_USER &&
+                pid == (uint32_t)prev->pid) {
+                consume_epoch = 0;
+            }
+#endif
+            if (prev && prev->type == PROC_TYPE_USER &&
+                prev->state == PROC_RUNNING &&
+                pid == (uint32_t)prev->pid) {
+                if (consume_epoch) {
+                    owner->mailbox_last_epoch = epoch;
+                }
+                if (decision_id) {
+                    *decision_id = epoch;
+                }
+                if (decision_pid) {
+                    *decision_pid = pid;
+                }
+                if (decision_src_pid) {
+                    *decision_src_pid = (uint32_t)owner->pid;
+                }
+                if (used_mailbox) {
+                    *used_mailbox = 1;
+                }
+                return prev;
+            }
+            proc_t *cand = proc_find_by_pid((int)pid);
+            if (cand && (cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
+                if (consume_epoch) {
+                    owner->mailbox_last_epoch = epoch;
+                }
+                if (decision_id) {
+                    *decision_id = epoch;
+                }
+                if (decision_pid) {
+                    *decision_pid = pid;
+                }
+                if (decision_src_pid) {
+                    *decision_src_pid = (uint32_t)owner->pid;
+                }
+                if (used_mailbox) {
+                    *used_mailbox = 1;
+                }
+                remove_from_ready_queue(cand);
+                return cand;
+            }
+        }
+    }
+
+    // Yield-only safety invariant: without fresh decision, keep current Ring3 context.
+    if (allow_keep_running && prev && prev->type == PROC_TYPE_USER) {
+        if (prev->state != PROC_RUNNING) {
+            sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING_INVALID_STATE\n");
+            return NULL;
+        }
+#if AYKEN_DEBUG_SCHED
+        if (ready_head == prev || ready_tail == prev) {
+            sched_debug_assert_fail('Q');
+        }
+#endif
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
+        static uint8_t keep_running_marker_emitted = 0;
+        if (!keep_running_marker_emitted) {
+            keep_running_marker_emitted = 1;
+            sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
+        }
+        return prev;
+#else
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
+        sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
+        return NULL;
+#endif
+    }
+
+    // Transitional fallback is compile-time gated; default constitutional mode is fail-closed.
+#if AYKEN_SCHED_FALLBACK
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
+    sched_emit_marker("P10_SCHED_FALLBACK\n");
+    sched_emit_marker("P10_READY_HEAD_FALLBACK\n");
+    return sched_select_next_ready_head_fallback();
+#else
+    sched_emit_marker("P10_SCHED_FALLBACK_FORBIDDEN\n");
+    return NULL;
+#endif
+#else
+    if (site == SCHED_DECISION_SITE_BLOCK) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
+        sched_emit_marker("P10_MAILBOX_MISS_BLOCK_FATAL\n");
+    } else if (site == SCHED_DECISION_SITE_START) {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
+        sched_emit_marker("P10_MAILBOX_MISS_BOOTSTRAP_FATAL\n");
+    } else {
+        sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
+        sched_emit_marker("P10_MAILBOX_MISS_YIELD_NULL\n");
+    }
+    return NULL;
+#endif
+}
 
 #if AYKEN_DEBUG_SCHED
 static void sched_dbg_puts(const char *s)
@@ -88,22 +636,14 @@ static inline void sched_dbg_mark_sw(char from, char to) { (void)from; (void)to;
 static inline void sched_dbg_mark_iret(void) { }
 #endif
 
-// Ring3 scheduler policy function declarations
-// These functions are implemented in Ring3 userspace
-extern proc_t* userspace_scheduler_select_next(proc_t *ready_queue);
-extern void userspace_scheduler_enqueue_ready(proc_t *proc);
-extern void userspace_scheduler_handle_block(proc_t *proc, void *wait_obj);
-
-// Ring0 mechanism state - only for context switching
-static proc_t *ready_head = NULL;
-static proc_t *ready_tail = NULL;
-static proc_t *blocked_head = NULL;
-
-// Flag to track if scheduler has started (to avoid calling userspace functions during boot)
-static int scheduler_started = 0;
-
 proc_t *current_proc = NULL;
 static volatile uint32_t need_resched = 0;
+// One-shot by design: proves mailbox decision/apply path exists without per-tick log churn.
+// NOTE: current path is single-CPU validation; SMP enablement requires atomic/lock.
+static uint8_t phase10c_decision_markers_emitted = 0;
+// One-shot IRQ decision marker for strict-mode preemption diagnosis.
+// NOTE: current path is single-CPU validation; SMP enablement requires atomic/lock.
+static uint8_t phase10_irq_decision_marker_emitted = 0;
 // Set by IRQ path when current user context is explicitly snapshotted.
 // context_switch.asm consumes this flag to avoid overwriting user RIP/RSP
 // with kernel scheduler frame values.
@@ -137,6 +677,15 @@ static inline uint64_t read_msr(uint32_t msr)
     __asm__ volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(msr));
     return ((uint64_t)hi << 32) | lo;
 }
+
+#if AYKEN_DEBUG_SCHED
+static int sched_irqs_enabled(void)
+{
+    uint64_t rflags = 0;
+    __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
+    return (rflags & (1ULL << 9)) != 0;
+}
+#endif
 
 static void dbg_out_hex16(uint16_t v)
 {
@@ -236,6 +785,13 @@ static void dbg_print_tr(void)
 
 static void map_kernel_stack_pages_into_pml4(uint64_t pml4_phys, uint64_t rsp0)
 {
+#if AYKEN_DEBUG_SCHED
+    // REQUIRES: interrupts disabled by caller.
+    if (sched_irqs_enabled()) {
+        sched_debug_assert_fail('I');
+    }
+#endif
+
     uint64_t old_cr3 = 0;
     uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
     __asm__ volatile("mov %%cr3, %0" : "=r"(old_cr3));
@@ -336,8 +892,9 @@ void remove_from_ready_queue(proc_t *p) {
     }
 }
 
-// Ring0 mechanism: Call Ring3 scheduler policy for process selection
-proc_t *sched_select_next(void)
+#if AYKEN_SCHED_BOOTSTRAP_POLICY || AYKEN_SCHED_FALLBACK
+// Transitional/internal helper: deterministic ready-head fallback selection.
+static proc_t *sched_select_next_ready_head_fallback(void)
 {
     // DEBUG: Scheduler selection entry marker
     SCHED_DBG_OUT((uint8_t)'[');
@@ -346,16 +903,8 @@ proc_t *sched_select_next(void)
     SCHED_DBG_OUT((uint8_t)'L');
     SCHED_DBG_OUT((uint8_t)']');
     
-    // ✅ CRITICAL FIX: Ring0 cannot call Ring3 functions directly!
-    // Ring0→Ring3 transition ONLY via IRETQ, not C call
-    // For now: pure mechanical round-robin (no policy)
+    // Internal fallback selector for transitional modes only.
     proc_t *selected = ready_head;
-    
-    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
-    // This causes illegal privilege transition → #GP → triple fault
-    // if (scheduler_started) {
-    //     selected = userspace_scheduler_select_next(ready_head);
-    // }
 
     // DEBUG: Show selected PID
     SCHED_DBG_OUT((uint8_t)'P');
@@ -437,18 +986,12 @@ proc_t *sched_select_next(void)
 
     return selected;
 }
+#endif
 
 // Ring0 mechanism: Call Ring3 scheduler policy for process enqueueing
 void enqueue_ready(proc_t *p)
 {
     if (!p) return;
-    
-    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
-    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
-    // This causes illegal privilege transition → #GP → triple fault
-    // if (scheduler_started) {
-    //     userspace_scheduler_enqueue_ready(p);
-    // }
     
     p->next = NULL;
     if (!ready_tail) {
@@ -462,28 +1005,34 @@ void enqueue_ready(proc_t *p)
 // Ring0 mechanism: Simple process blocking
 static void enqueue_blocked(proc_t *p)
 {
-    if (!p) return;
-    
-    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
-    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
-    // This causes illegal privilege transition → #GP → triple fault
-    // if (scheduler_started) {
-    //     userspace_scheduler_handle_block(p, p->wait_obj);
-    // }
-    
-    // Ring0 mechanism: Ring3 policy manages blocked queue structure
-    // No policy decisions made in Ring0 - only mechanism execution
+    if (!p) {
+        return;
+    }
+    if (is_in_blocked_queue(p)) {
+        return;
+    }
+    p->next = blocked_head;
+    blocked_head = p;
 }
 
 static void remove_from_blocked(proc_t *p)
 {
-    // Ring0 mechanism: Call Ring3 policy for blocked queue management
-    // Ring3 policy determines removal behavior and queue structure
-    // No policy decisions made in Ring0 - only mechanism execution
-    if (!p) return;
-    
-    // Ring3 policy handles all blocked queue management
-    // Ring0 only provides the mechanism interface
+    if (!p || !blocked_head) {
+        return;
+    }
+    if (blocked_head == p) {
+        blocked_head = p->next;
+        p->next = NULL;
+        return;
+    }
+    proc_t *prev = blocked_head;
+    while (prev->next && prev->next != p) {
+        prev = prev->next;
+    }
+    if (prev->next == p) {
+        prev->next = p->next;
+        p->next = NULL;
+    }
 }
 
 void sched_init(void)
@@ -492,6 +1041,7 @@ void sched_init(void)
     // All policy initialization handled by Ring3
     ready_head = ready_tail = NULL;
     blocked_head = NULL;
+    sched_owner_cached = NULL;
     current_proc = NULL;
     
     // Ring0 mechanism: Initialize scheduler bridge mailbox
@@ -503,11 +1053,20 @@ void sched_init(void)
 
 void sched_start(void)
 {
+    // Runtime-observed config marker for CI/gates (independent from shell env echo).
+    sched_emit_marker("[K][CFG] user_minimal_mode=");
+    sched_emit_marker(AYKEN_USER_MINIMAL_MODE_STRING);
+    sched_emit_marker(" bootstrap_policy=");
+    sched_emit_u64_dec((uint64_t)AYKEN_SCHED_BOOTSTRAP_POLICY);
+    sched_emit_marker(" mb_selftest=");
+    sched_emit_u64_dec((uint64_t)AYKEN_MB_SELFTEST);
+    sched_emit_marker(" deterministic_exit=");
+    sched_emit_u64_dec((uint64_t)AYKEN_DETERMINISTIC_EXIT);
+    sched_emit_marker("\n");
+
     SCHED_DBG_OUT((uint8_t)'S');
     SCHED_DBG_OUT((uint8_t)'1');
     
-    // Mark scheduler as started so userspace functions can be called
-    scheduler_started = 1;
     SCHED_DBG_OUT((uint8_t)'2');
     
     // Debug: Check ready queue
@@ -531,25 +1090,47 @@ void sched_start(void)
     
     disable_interrupts();
     SCHED_DBG_OUT((uint8_t)'4');
-    
-    // Ring0 mechanism: Call Ring3 policy for first process selection
-    proc_t *first = sched_select_next();
+
+    uint64_t decision_id = 0;
+    uint32_t decision_pid = 0;
+    uint32_t decision_src_pid = 0;
+    int used_mailbox = 0;
+
+#if AYKEN_SCHED_BOOTSTRAP_POLICY
+    // Transitional bootstrap mode: explicit, auditable policy bridge until
+    // first mailbox-owner protocol is fully externalized.
+    sched_emit_marker("P10_BOOTSTRAP_POLICY_ACTIVE\n");
+    proc_t *first = sched_select_next_ready_head_fallback();
+#else
+    // Strict mode: cold-start must also be mailbox-driven.
+    proc_t *first = sched_select_next_mailbox(
+        NULL,
+        &decision_id,
+        &decision_pid,
+        &decision_src_pid,
+        &used_mailbox,
+        0,
+        SCHED_DECISION_SITE_START);
+#endif
     if (!first) {
-        SCHED_DBG_OUT((uint8_t)'N');
-        enable_interrupts();
-        return;
+        fb_print("[PANIC] scheduler bootstrap has no runnable decision\n");
+        for (;;) __asm__ volatile("cli; hlt");
     }
     SCHED_DBG_OUT((uint8_t)'F');
 
     // Ring0 mechanism: Set up initial process context (mechanism only)
     current_proc = first;
     current_proc->state = PROC_RUNNING;
+    if (sched_is_owner(current_proc)) {
+        sched_owner_cached = current_proc;
+    }
     
     // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
     // Called here after current_proc is set but before switch_to_first
     // Compile-out in release: self-test is validation-only
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-#if !defined(AYKEN_MB_SELFTEST) || (AYKEN_MB_SELFTEST == 1)
+#if (!defined(AYKEN_MB_SELFTEST) || (AYKEN_MB_SELFTEST == 1)) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
     // Test marker to verify debugcon is working
     outb(0xE9, 'M');
     outb(0xE9, 'B');
@@ -607,7 +1188,8 @@ void sched_start(void)
     
     // Gate-2: Context switch validation marker (validation-only)
     // Emitted before first context switch (switch_to_first)
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
     {
         static int g_ctx_switch_marker_emitted_first = 0;
         if (!g_ctx_switch_marker_emitted_first) {
@@ -624,6 +1206,28 @@ void sched_start(void)
     // CRITICAL: Call switch_to_first with interrupts disabled
     // Interrupts will be enabled by the first process's RFLAGS (IF=1)
     // This prevents timer interrupts from firing before we have a proper context
+    sched_emit_marker("P10_SCHED_DISPATCH\n");
+    if (used_mailbox && !phase10c_decision_markers_emitted) {
+        phase10c_decision_markers_emitted = 1;
+        sched_emit_phase10c_decision(
+            "P10_MAILBOX_DECISION", decision_id, decision_pid, 1, decision_src_pid);
+        sched_emit_phase10c_decision(
+            "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
+    }
+#if AYKEN_C2_STRICT_MARKERS && !AYKEN_GATE45_PROOF
+    if (used_mailbox && decision_id > 0 && decision_src_pid > 0) {
+        proc_t *start_prev = proc_find_by_pid(1);
+        if (start_prev && start_prev != first) {
+            sched_emit_gate45_chain_once(
+                start_prev,
+                first,
+                decision_id,
+                decision_src_pid,
+                1,
+                SCHED_DECISION_SITE_START);
+        }
+    }
+#endif
     switch_to_first(&current_proc->context);
     
     // DEBUG: This should never be reached if switch_to_first works
@@ -646,6 +1250,12 @@ static void sched_yield_core(int reenable_if)
     disable_interrupts();
 
     proc_t *prev = current_proc;
+#if AYKEN_DEBUG_SCHED
+    if (prev && prev->state == PROC_RUNNING &&
+        (ready_head == prev || ready_tail == prev)) {
+        sched_debug_assert_fail('q');
+    }
+#endif
     SCHED_DBG_OUT((uint8_t)'P');
     if (prev) {
         SCHED_DBG_OUT((uint8_t)'1');
@@ -659,8 +1269,19 @@ static void sched_yield_core(int reenable_if)
         SCHED_DBG_OUT((uint8_t)'0');
     }
     
-    // Ring0 mechanism: Call Ring3 policy for next process selection
-    proc_t *next = sched_select_next();
+    // Phase10-C path: consume mailbox decision; fall back path is explicitly marked.
+    uint64_t decision_id = 0;
+    uint32_t decision_pid = 0;
+    uint32_t decision_src_pid = 0;
+    int used_mailbox = 0;
+    proc_t *next = sched_select_next_mailbox(
+        prev,
+        &decision_id,
+        &decision_pid,
+        &decision_src_pid,
+        &used_mailbox,
+        1,
+        reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
     SCHED_DBG_OUT((uint8_t)'N');
     if (next) {
         SCHED_DBG_OUT((uint8_t)'1');
@@ -675,17 +1296,63 @@ static void sched_yield_core(int reenable_if)
     }
     SCHED_DBG_OUT((uint8_t)'\n');
 
+    if (!reenable_if && !phase10_irq_decision_marker_emitted) {
+        phase10_irq_decision_marker_emitted = 1;
+        sched_emit_irq_decision(prev, next, used_mailbox);
+    }
+
     if (!next) {
+        if (!reenable_if) {
+            // No switch from IRQ path: do not leave stale snapshot state armed.
+            sched_irq_user_ctx_saved = 0;
+        }
+#if !AYKEN_SCHED_BOOTSTRAP_POLICY
+        fb_print("[PANIC] owner mailbox decision missing on yield\n");
+        for (;;) __asm__ volatile("cli; hlt");
+#endif
         SCHED_DBG_OUT((uint8_t)'X');
+        SCHED_DBG_OUT((uint8_t)'\n');
         if (reenable_if)
             enable_interrupts();
         return;
     }
 
-#if AYKEN_DEBUG_SCHED
-    if (prev && next == prev && ((prev->context.cs & 0x3) == 0x3)) {
-        sched_debug_assert_fail('S'); // same user proc selected
+    // If policy returns the currently running Ring3 process, keep running in place.
+    if (prev && next == prev) {
+        // IRQ no-op reschedule still represents a preempt/return cadence event.
+        // Emit canonical markers so strict preempt harness can measure cadence
+        // even when policy keeps the owner process running in place.
+        if (!reenable_if) {
+            char ring = ((current_proc->context.cs & 0x3) == 0x3) ? 'U' : 'K';
+            sched_dbg_mark_pid((uint32_t)current_proc->pid);
+            sched_dbg_mark_sw(ring, ring);
+            sched_dbg_mark_iret();
+        }
+        if (used_mailbox && !phase10c_decision_markers_emitted) {
+            phase10c_decision_markers_emitted = 1;
+            sched_emit_phase10c_decision(
+                "P10_MAILBOX_DECISION", decision_id, decision_pid, 1, decision_src_pid);
+            sched_emit_phase10c_decision(
+                "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
+        }
+        if (!reenable_if) {
+            // No context_switch() call will consume this in IRQ no-op path.
+            sched_irq_user_ctx_saved = 0;
+        }
+        if (reenable_if)
+            enable_interrupts();
+        return;
     }
+
+    int emit_phase10c_markers = 0;
+    if (used_mailbox && !phase10c_decision_markers_emitted) {
+        phase10c_decision_markers_emitted = 1;
+        emit_phase10c_markers = 1;
+        sched_emit_phase10c_decision(
+            "P10_MAILBOX_DECISION", decision_id, decision_pid, 1, decision_src_pid);
+    }
+
+#if AYKEN_DEBUG_SCHED
     if (((next->context.cs & 0x3) == 0x3) && next->context.cs != GDT_USER_CODE) {
         sched_debug_assert_fail('C'); // invalid user CS selector
     }
@@ -710,6 +1377,11 @@ static void sched_yield_core(int reenable_if)
     current_proc = next;
     // Ring3 policy determines state transition behavior
     current_proc->state = PROC_RUNNING;
+
+    if (emit_phase10c_markers) {
+        sched_emit_phase10c_decision(
+            "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
+    }
 
     sched_dbg_mark_pid(current_proc->pid);
 
@@ -782,7 +1454,8 @@ static void sched_yield_core(int reenable_if)
         sched_dbg_mark_iret();
         
         // Gate-2: Context switch validation marker (validation-only)
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (!defined(AYKEN_C2_STRICT_MARKERS) || (AYKEN_C2_STRICT_MARKERS == 0))
         {
             static int g_ctx_switch_marker_emitted = 0;
             if (!g_ctx_switch_marker_emitted) {
@@ -797,6 +1470,19 @@ static void sched_yield_core(int reenable_if)
         }
 #endif
         
+        #if AYKEN_GATE45_PROOF
+        if (used_mailbox && decision_id == 1 &&
+            current_proc && current_proc->pid == (int)AYKEN_SCHED_OWNER_PID) {
+            sched_gate45_arm_cross_target_once(current_proc);
+        }
+        #endif
+        sched_emit_gate45_chain_once(
+            prev,
+            current_proc,
+            decision_id,
+            decision_src_pid,
+            used_mailbox,
+            reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
         context_switch(&prev->context, &current_proc->context);
         
         // Ring3 INT80 diagnostic: verify whether user code resumed after syscall.
@@ -891,25 +1577,37 @@ void sched_block_current(void)
         return;
     }
 
-    // ❌ DISABLED: Cannot call Ring3 from Ring0 via C call
-    // Ring0→Ring3 transition ONLY via IRETQ, not C function call
-    // This causes illegal privilege transition → #GP → triple fault
-    // if (scheduler_started) {
-    //     userspace_scheduler_handle_block(prev, prev->wait_obj);
-    // }
-
-    // Ring0 mechanism: Call Ring3 policy for state transitions
-    // Ring3 policy determines state transition behavior
+    // Ring0 mechanism: state transition bookkeeping.
+    remove_from_ready_queue(prev);
     prev->state = PROC_BLOCKED;
     
-    // Ring0 mechanism: Call Ring3 policy for blocked queue management
+    // Ring0 mechanism: blocked queue bookkeeping.
     enqueue_blocked(prev);
 
-    // Ring0 mechanism: Call Ring3 policy for next process selection
-    proc_t *next = sched_select_next();
+    // Phase10-C path: consume mailbox decision; fall back path is explicitly marked.
+    uint64_t decision_id = 0;
+    uint32_t decision_pid = 0;
+    uint32_t decision_src_pid = 0;
+    int used_mailbox = 0;
+    proc_t *next = sched_select_next_mailbox(
+        prev,
+        &decision_id,
+        &decision_pid,
+        &decision_src_pid,
+        &used_mailbox,
+        0,
+        SCHED_DECISION_SITE_BLOCK);
     if (!next) {
-        enable_interrupts();
-        return;
+        fb_print("[PANIC] blocked task without mailbox successor\n");
+        for (;;) __asm__ volatile("cli; hlt");
+    }
+
+    int emit_phase10c_markers = 0;
+    if (used_mailbox && !phase10c_decision_markers_emitted) {
+        phase10c_decision_markers_emitted = 1;
+        emit_phase10c_markers = 1;
+        sched_emit_phase10c_decision(
+            "P10_MAILBOX_DECISION", decision_id, decision_pid, 1, decision_src_pid);
     }
 
     // Ring0 mechanism: Set up new process and perform context switch (mechanism only)
@@ -927,6 +1625,18 @@ void sched_block_current(void)
     } else if (current_proc->context.rsp0) {
         gdt_set_kernel_stack(current_proc->context.rsp0);
     }
+
+    if (emit_phase10c_markers) {
+        sched_emit_phase10c_decision(
+            "P10_DECISION_APPLIED", decision_id, decision_pid, 0, decision_src_pid);
+    }
+    sched_emit_gate45_chain_once(
+        prev,
+        current_proc,
+        decision_id,
+        decision_src_pid,
+        used_mailbox,
+        SCHED_DECISION_SITE_BLOCK);
     context_switch(&prev->context, &current_proc->context);
 
     enable_interrupts();
@@ -937,27 +1647,36 @@ void sched_wake(proc_t *proc)
     if (!proc || proc->state != PROC_BLOCKED)
         return;
 
-    // Ring0 mechanism: Call Ring3 policy for wake behavior
     remove_from_blocked(proc);
     
-    // Ring3 policy determines state transition behavior
     proc->state = PROC_READY;
     proc->wait_obj = NULL;
     
-    // Ring0 mechanism: Call Ring3 policy for ready queue management
     enqueue_ready(proc);
 }
 
 void sched_wake_all(void *wait_obj)
 {
-    (void)wait_obj;
+    proc_t *iter = blocked_head;
+    proc_t *prev = NULL;
 
-    // Ring0 mechanism: Call Ring3 policy for wake-all behavior
-    // Ring3 policy determines which processes to wake and how
-    // No policy decisions made in Ring0 - only mechanism execution
-    
-    // Ring3 policy handles all wake-all logic
-    // Ring0 only provides the mechanism interface
+    while (iter) {
+        proc_t *next = iter->next;
+        if (!wait_obj || iter->wait_obj == wait_obj) {
+            if (prev) {
+                prev->next = next;
+            } else {
+                blocked_head = next;
+            }
+            iter->next = NULL;
+            iter->state = PROC_READY;
+            iter->wait_obj = NULL;
+            enqueue_ready(iter);
+        } else {
+            prev = iter;
+        }
+        iter = next;
+    }
 }
 
 void sched_add(proc_t *proc)

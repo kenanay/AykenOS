@@ -16,9 +16,18 @@
 #include "../arch/x86_64/port_io.h"
 #include "sched_mailbox.h"
 
+#ifndef AYKEN_GATE45_PROOF
+#define AYKEN_GATE45_PROOF 0
+#endif
+
+#ifndef AYKEN_C2_STRICT_MARKERS
+#define AYKEN_C2_STRICT_MARKERS 0
+#endif
+
 // MVP-0 self-test state (kept separate from per-process runtime mailbox path).
 static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
 static uint64_t g_selftest_last_epoch = 0;
+static volatile uint8_t g_gate4_epoch1_pending = 0;
 
 static void mb_reset(void) {
     g_selftest_mb.magic = AYKEN_SCHED_MB_MAGIC;
@@ -35,6 +44,16 @@ static void mb_reset(void) {
 void sched_mailbox_init(void) {
     mb_reset();
     g_selftest_last_epoch = 0;
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    g_gate4_epoch1_pending = 1;
+#else
+    g_gate4_epoch1_pending = 0;
+#endif
+}
+
+int sched_mailbox_gate4_epoch1_pending(void)
+{
+    return g_gate4_epoch1_pending ? 1 : 0;
 }
 
 static ayken_sched_mailbox_t* sched_mailbox_get_selftest(void) {
@@ -103,12 +122,26 @@ static void dbg_print_u32(uint32_t v) {
     dbg_print_u64((uint64_t)v);
 }
 
-static void marker_accept(int pid, uint64_t epoch) {
+static void marker_accept(uint32_t owner, uint64_t epoch, uint32_t cand, const char *site) {
+#if AYKEN_C2_STRICT_MARKERS
+    dbg_print("[[AYKEN_SCHED_MB_ACCEPT]] owner=");
+    dbg_print_u32(owner);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    dbg_print(" cand=");
+    dbg_print_u32(cand);
+    dbg_print(" site=");
+    dbg_print(site ? site : "IRQ");
+    outb(0xE9, '\n');
+#else
+    (void)owner;
+    (void)site;
     dbg_print("[[AYKEN_SCHED_MB_ACCEPT]] pid=");
-    dbg_print_u64((uint64_t)pid);
+    dbg_print_u64((uint64_t)cand);
     dbg_print(" epoch=");
     dbg_print_u64(epoch);
     outb(0xE9, '\n');
+#endif
 }
 
 static void marker_reject(uint32_t reason, uint64_t epoch, uint32_t pid) {
@@ -120,6 +153,49 @@ static void marker_reject(uint32_t reason, uint64_t epoch, uint32_t pid) {
     dbg_print_u32(pid);
     outb(0xE9, '\n');
 }
+
+#define MB_VALIDATE_REJECT_TORN_READ 90u
+#define MB_VALIDATE_REJECT_OWNER_MISMATCH 91u
+#define MB_VALIDATE_REJECT_OWNER_TARGET_MISMATCH 92u
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+
+static void marker_validate_enter(proc_t *proc, uint64_t epoch, uint32_t pid)
+{
+    dbg_print("P10_MB_VALIDATE_ENTER pid=");
+    dbg_print_u32(proc ? (uint32_t)proc->pid : 0u);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    dbg_print(" cand=");
+    dbg_print_u32(pid);
+    outb(0xE9, '\n');
+}
+
+static void marker_validate_result(proc_t *proc, uint64_t epoch, uint32_t pid, uint32_t accept, uint32_t reason)
+{
+    dbg_print("P10_MB_VALIDATE_RESULT pid=");
+    dbg_print_u32(proc ? (uint32_t)proc->pid : 0u);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    dbg_print(" cand=");
+    dbg_print_u32(pid);
+    dbg_print(" accept=");
+    dbg_print_u32(accept);
+    dbg_print(" reason=");
+    dbg_print_u32(reason);
+    outb(0xE9, '\n');
+}
+
+static void marker_ring3_publish(uint32_t pid, uint64_t epoch)
+{
+    dbg_print("[[AYKEN_RING3_PUBLISH]] pid=");
+    dbg_print_u32(pid);
+    dbg_print(" epoch=");
+    dbg_print_u64(epoch);
+    outb(0xE9, '\n');
+}
+#endif
 
 void sched_mailbox_selftest(void) {
     ayken_sched_mailbox_t* mb = sched_mailbox_get_selftest();
@@ -142,7 +218,7 @@ void sched_mailbox_selftest(void) {
     mb->candidate_pid = candidate;
 
     int rc = sched_mailbox_validate_candidate(mb, &out);
-    if (rc == 0 && out) marker_accept(out->pid, mb->epoch);
+    if (rc == 0 && out) marker_accept((uint32_t)out->pid, mb->epoch, (uint32_t)out->pid, "IRQ");
     else marker_reject(mb->reject_reason, mb->epoch, mb->candidate_pid);
 
     // CASE 2: STALE epoch reject
@@ -172,6 +248,7 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
 
     ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
     if (!mb) return;
+    ayken_sched_mailbox_t original = *mb;
 
     dbg_print("[MVP-2] Ring3 Simulation Test Start\n");
 
@@ -204,6 +281,9 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
     sched_mailbox_validate_ring3(proc);
 
     dbg_print("[MVP-2] Ring3 Simulation Test Complete\n");
+
+    // Do not poison runtime mailbox state used by Phase10 scheduler path.
+    *mb = original;
 }
 
 // MVP-1: Ring3 mailbox validation (called from timer tick)
@@ -211,6 +291,9 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
 // Emits standardized markers for CI gate validation
 int sched_mailbox_validate_ring3(proc_t *proc) {
     if (!proc || !proc->mailbox_pa) {
+        return -1;
+    }
+    if (proc->type != PROC_TYPE_USER) {
         return -1;
     }
 
@@ -232,65 +315,137 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         return -1;
     }
 
-#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
-    // Gate-4 isolated proof uses strict ABI checks to ensure ACCEPT cannot be
-    // produced by partial/legacy mailbox layouts.
-    if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
-        mb->version != AYKEN_SCHED_MB_VERSION ||
-        mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
-        return -1;
-    }
-#endif
-
     // Double-read for atomicity (detect torn writes from Ring3)
     uint64_t e1 = mb->epoch;
     uint32_t pid = mb->candidate_pid;
     uint64_t e2 = mb->epoch;
+    uint32_t reject_reason = AYKEN_SCHED_REJECT_NONE;
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    marker_validate_enter(proc, e1, pid);
+#endif
+
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    // Gate-4 isolated proof uses strict ABI checks to ensure ACCEPT cannot be
+    // produced by partial/legacy mailbox layouts.
+    if (mb->magic != AYKEN_SCHED_MB_MAGIC) {
+        reject_reason = AYKEN_SCHED_REJECT_BAD_MAGIC;
+        goto reject;
+    }
+    if (mb->version != AYKEN_SCHED_MB_VERSION) {
+        reject_reason = AYKEN_SCHED_REJECT_BAD_VERSION;
+        goto reject;
+    }
+    if (mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+        reject_reason = AYKEN_SCHED_REJECT_BAD_KIND;
+        goto reject;
+    }
+#endif
 
     // Check 1: Torn read detection
     if (e1 != e2) {
-        return -1;
+        reject_reason = MB_VALIDATE_REJECT_TORN_READ;
+        goto reject;
     }
 
     // Check 2: Epoch monotonicity (must advance)
     // Epoch 0 means Ring3 has not published a valid hint yet.
     // Keep this silent to avoid polluting monotonic gate evidence.
     if (e1 == 0) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_STALE_EPOCH;
+        goto reject;
     }
 
     if (e1 <= proc->mailbox_last_epoch) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_STALE_EPOCH;
+        goto reject;
     }
 
     // Check 3: PID validity (basic sanity check)
     if (pid == 0 || pid > 1000) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_BAD_PID;
+        goto reject;
     }
 
     proc_t *cand = proc_find_by_pid((int)pid);
     if (!cand) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_BAD_PID;
+        goto reject;
     }
     if (!(cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_NOT_RUNNABLE;
+        goto reject;
     }
 
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
-    // Gate-4 proof requires policy proposal to target current process only.
-    if (mb->proposer_pid != (uint32_t)proc->pid || pid != (uint32_t)proc->pid) {
-        return -1;
+    // Gate-4 baseline: self-target proposal only.
+    // Gate-4.5 proof: proposer must stay owner, candidate may differ (cross-target).
+    if (mb->proposer_pid != (uint32_t)proc->pid) {
+        reject_reason = MB_VALIDATE_REJECT_OWNER_MISMATCH;
+        goto reject;
+    }
+#if AYKEN_GATE45_PROOF
+    if (cand->type != PROC_TYPE_USER) {
+        reject_reason = MB_VALIDATE_REJECT_OWNER_TARGET_MISMATCH;
+        goto reject;
+    }
+#else
+    if (pid != (uint32_t)proc->pid) {
+        reject_reason = MB_VALIDATE_REJECT_OWNER_MISMATCH;
+        goto reject;
     }
     if (cand != proc) {
-        return -1;
+        reject_reason = MB_VALIDATE_REJECT_OWNER_TARGET_MISMATCH;
+        goto reject;
     }
+#endif
     if (!(proc->state == PROC_READY || proc->state == PROC_RUNNING)) {
-        return -1;
+        reject_reason = AYKEN_SCHED_REJECT_NOT_RUNNABLE;
+        goto reject;
+    }
+    if (!proc->gate4_publish_emitted && e1 == 1) {
+        proc->gate4_publish_emitted = 1;
+        marker_ring3_publish((uint32_t)proc->pid, e1);
     }
 #endif
 
     // ACCEPT: Update last epoch and emit marker
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5: leave epoch consume to scheduler decision path so decision->switch
+    // proof can consume the first accepted epoch deterministically.
+#else
     proc->mailbox_last_epoch = e1;
-    marker_accept((int)pid, e1);
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    if (e1 == 1) {
+        g_gate4_epoch1_pending = 0;
+    }
+    marker_validate_result(proc, e1, pid, 1u, AYKEN_SCHED_REJECT_NONE);
+#endif
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5 proof expects a single owner ACCEPT(epoch=1) marker even if
+    // timer validation sees the same epoch repeatedly before scheduler consume.
+    if (e1 == 1) {
+        if (!proc->gate4_accept_epoch1_emitted) {
+            proc->gate4_accept_epoch1_emitted = 1;
+            marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
+        }
+    } else {
+        marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
+    }
+#else
+    marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
+#endif
     return 0;
+
+reject:
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    marker_validate_result(proc, e1, pid, 0u, reject_reason);
+#else
+    (void)reject_reason;
+#endif
+    return -1;
 }

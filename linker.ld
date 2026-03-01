@@ -51,6 +51,14 @@ SECTIONS
         _bss_start = .;
         *(COMMON)
         *(.bss*)
+        . = ALIGN(16);
+        _tss_rsp0_stack_bottom = .;
+        . += 0x4000;
+        _tss_rsp0_stack_top = .;
+        . = ALIGN(16);
+        _tss_ist1_stack_bottom = .;
+        . += 0x4000;
+        _tss_ist1_stack_top = .;
         _bss_end = .;
     }
 

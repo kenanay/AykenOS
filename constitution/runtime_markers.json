@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "runtime_markers": [
     {
       "name": "AYKEN_SCHED_MB_ACCEPT",
@@ -30,6 +30,42 @@
       "name": "R3OK_USER_TOKEN",
       "marker": "R3OK",
       "pattern": "^R3OK$",
+      "fields": {}
+    },
+    {
+      "name": "AYKEN_SYSCALL_ENTER",
+      "marker": "[[AYKEN_SYSCALL_ENTER]]",
+      "pattern": "^\\[\\[AYKEN_SYSCALL_ENTER\\]\\]$",
+      "fields": {}
+    },
+    {
+      "name": "P10_SYSCALL_ENTER",
+      "marker": "P10_SYSCALL_ENTER",
+      "pattern": "^P10_SYSCALL_ENTER$",
+      "fields": {}
+    },
+    {
+      "name": "AYKEN_SYSCALL_RETURN",
+      "marker": "[[AYKEN_SYSCALL_RETURN]]",
+      "pattern": "^\\[\\[AYKEN_SYSCALL_RETURN\\]\\]$",
+      "fields": {}
+    },
+    {
+      "name": "P10_SYSCALL_RETURN",
+      "marker": "P10_SYSCALL_RETURN",
+      "pattern": "^P10_SYSCALL_RETURN$",
+      "fields": {}
+    },
+    {
+      "name": "P10_CAP_ENFORCED",
+      "marker": "P10_CAP_ENFORCED",
+      "pattern": "^P10_CAP_ENFORCED$",
+      "fields": {}
+    },
+    {
+      "name": "P10_RING3_USER_CODE",
+      "marker": "P10_RING3_USER_CODE",
+      "pattern": "^P10_RING3_USER_CODE$",
       "fields": {}
     }
   ],

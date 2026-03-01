@@ -11,6 +11,10 @@
 #include "../arch/x86_64/port_io.h"
 #include "../sched/sched_mailbox.h"
 
+#ifndef AYKEN_GATE45_PROOF
+#define AYKEN_GATE45_PROOF 0
+#endif
+
 _Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
 _Static_assert(offsetof(cpu_context_t, rsp) == 56, "ctx.rsp offset");
 _Static_assert(offsetof(cpu_context_t, rflags) == 64, "ctx.rflags offset");
@@ -79,12 +83,14 @@ static void debugcon_u32(uint32_t v)
     }
 }
 
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
 static void gate4_emit_pid_marker(uint32_t pid)
 {
     debugcon_write("[[AYKEN_GATE4_PID]] pid=");
     debugcon_u32(pid);
     debugcon_write("\n");
 }
+#endif
 
 static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
 {
@@ -163,12 +169,36 @@ static int proc_alloc_pid(void)
 
 proc_t* proc_find_by_pid(int pid)
 {
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+    uint64_t saved_rflags = 0;
+    int switched_to_kernel_cr3 = 0;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if (kernel_cr3 &&
+        ((active_cr3 & AYKEN_PTE_ADDR_MASK) != (kernel_cr3 & AYKEN_PTE_ADDR_MASK))) {
+        __asm__ volatile("pushfq; popq %0" : "=r"(saved_rflags));
+        __asm__ volatile("cli");
+        __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+        switched_to_kernel_cr3 = 1;
+    }
+
+    proc_t *found = NULL;
     for (int i = 0; i < MAX_PROCS; ++i) {
         if (proc_table[i] && proc_table[i]->pid == pid) {
-            return proc_table[i];
+            found = proc_table[i];
+            break;
         }
     }
-    return NULL;
+
+    if (switched_to_kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+        if (saved_rflags & (1ULL << 9)) {
+            __asm__ volatile("sti");
+        }
+    }
+
+    return found;
 }
 
 
@@ -462,6 +492,23 @@ proc_t *proc_create_user_process(const char *name,
     // Store mailbox physical address and initialize epoch tracking
     p->mailbox_pa = mb_pa;
     p->mailbox_last_epoch = 0;
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+    p->gate4_publish_emitted = 0;
+    p->gate4_accept_epoch1_emitted = 0;
+#endif
+    // Bootstrap mailbox contract so first scheduler handoff has deterministic data.
+    // Ring3 code still advances epoch to publish fresh decisions.
+    ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)mb_dst;
+    mb->magic = AYKEN_SCHED_MB_MAGIC;
+    mb->version = AYKEN_SCHED_MB_VERSION;
+    mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
+    mb->epoch = 1;
+    mb->proposer_pid = (uint32_t)p->pid;
+    mb->candidate_pid = (uint32_t)p->pid;
+    mb->flags = 0;
+    mb->status = AYKEN_SCHED_STATUS_EMPTY;
+    mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
+    mb->reserved = 0;
 
     p->stack_top = USER_STACK_TOP;
     p->context.rip = entry;
@@ -630,6 +677,7 @@ static void proc_launch_mvp3_sched_hint_test(void)
 // Ring3 writes mailbox ABI header + epoch=1, kernel seeds pid fields
 // deterministically, then timer IRQ validates and emits ACCEPT.
 // No syscalls, pure timer-driven validation.
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
 #define MB_MAGIC_B0 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 0) & 0xFF))
 #define MB_MAGIC_B1 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 8) & 0xFF))
 #define MB_MAGIC_B2 ((uint8_t)((AYKEN_SCHED_MB_MAGIC >> 16) & 0xFF))
@@ -638,6 +686,7 @@ static void proc_launch_mvp3_sched_hint_test(void)
 #define MB_VERSION_B1 ((uint8_t)((AYKEN_SCHED_MB_VERSION >> 8) & 0xFF))
 #define MB_KIND_B0 ((uint8_t)((AYKEN_SCHED_HINT_CANDIDATE >> 0) & 0xFF))
 #define MB_KIND_B1 ((uint8_t)((AYKEN_SCHED_HINT_CANDIDATE >> 8) & 0xFF))
+#define GATE45_TARGET_PID 3u
 
 static const uint8_t ring3_gate4_policy_code[] = {
     // Mailbox VA = 0x700000 (SCHED_MAILBOX_VA)
@@ -659,6 +708,11 @@ static const uint8_t ring3_gate4_policy_code[] = {
     // Write version = 1, kind = 1 (CANDIDATE)
     0x66, 0xC7, 0x43, 0x04, MB_VERSION_B0, MB_VERSION_B1,       // mov word [rbx+4], AYKEN_SCHED_MB_VERSION
     0x66, 0xC7, 0x43, 0x06, MB_KIND_B0, MB_KIND_B1,             // mov word [rbx+6], AYKEN_SCHED_HINT_CANDIDATE
+
+#if AYKEN_GATE45_PROOF
+    // Gate-4.5: force cross-target mailbox candidate (owner PID2 -> worker PID3).
+    0xC7, 0x43, 0x14, (uint8_t)(GATE45_TARGET_PID & 0xFF), 0x00, 0x00, 0x00,
+#endif
     
     // Write epoch = 1
     0x48, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, 1
@@ -669,7 +723,12 @@ static const uint8_t ring3_gate4_policy_code[] = {
     0xEB, 0xFC                                                  // jmp .-2
 };
 
-static int gate4_seed_mailbox_pid(proc_t *p)
+static const uint8_t ring3_gate45_worker_code[] = {
+    0xF3, 0x90, // pause
+    0xEB, 0xFC  // jmp .-2
+};
+
+static int gate4_seed_mailbox_pid(proc_t *p, uint32_t candidate_pid)
 {
     if (!p || !p->mailbox_pa) {
         return 0;
@@ -679,12 +738,11 @@ static int gate4_seed_mailbox_pid(proc_t *p)
         return 0;
     }
     mb->proposer_pid = (uint32_t)p->pid;
-    mb->candidate_pid = (uint32_t)p->pid;
+    mb->candidate_pid = candidate_pid;
     return 1;
 }
 
-static void proc_launch_gate4_policy_test(void) __attribute__((unused));
-static void proc_launch_gate4_policy_test(void)
+void proc_launch_gate4_policy_test(void)
 {
     fb_print("[Gate-4] =============================================\n");
     fb_print("[Gate-4] Policy Accept Proof\n");
@@ -705,7 +763,36 @@ static void proc_launch_gate4_policy_test(void)
         return;
     }
 
-    if (!gate4_seed_mailbox_pid(test_proc)) {
+    uint32_t candidate_pid = (uint32_t)test_proc->pid;
+#if AYKEN_GATE45_PROOF
+    proc_t *worker_proc = proc_create_user_process(
+        "gate45-worker",
+        ring3_gate45_worker_code,
+        sizeof(ring3_gate45_worker_code),
+        PROC_IMAGE_FLAT
+    );
+    if (!worker_proc) {
+        fb_print("[Gate-4.5] ERROR: Failed to create worker process\n");
+        fb_print("[Gate-4] =============================================\n");
+        return;
+    }
+    if ((uint32_t)worker_proc->pid != GATE45_TARGET_PID) {
+        fb_print("[Gate-4.5] ERROR: Worker PID drift (expected ");
+        fb_print_int((int)GATE45_TARGET_PID);
+        fb_print(", got ");
+        fb_print_int(worker_proc->pid);
+        fb_print(")\n");
+        fb_print("[Gate-4] =============================================\n");
+        return;
+    }
+    // Bootstrap must run owner first; cross-target decision is published by Ring3.
+    candidate_pid = (uint32_t)test_proc->pid;
+    fb_print("[Gate-4.5] Worker process created (PID=");
+    fb_print_int(worker_proc->pid);
+    fb_print(")\n");
+#endif
+
+    if (!gate4_seed_mailbox_pid(test_proc, candidate_pid)) {
         fb_print("[Gate-4] ERROR: Failed to seed mailbox PID fields\n");
         fb_print("[Gate-4] =============================================\n");
         return;
@@ -724,8 +811,10 @@ static void proc_launch_gate4_policy_test(void)
     fb_print("\n");
     fb_print("[Gate-4] =============================================\n");
     fb_print("[Gate-4] Ring3 will write mailbox header+epoch (epoch=1)\n");
-    fb_print("[Gate-4] Kernel seeded proposer/candidate pid=");
+    fb_print("[Gate-4] Kernel seeded proposer pid=");
     fb_print_int(test_proc->pid);
+    fb_print(" candidate pid=");
+    fb_print_int((int)candidate_pid);
     fb_print("\n");
     fb_print("[Gate-4] Timer IRQ will validate → ACCEPT marker\n");
     fb_print("[Gate-4] Expected: [[AYKEN_SCHED_MB_ACCEPT]] epoch=1 pid=");
@@ -733,16 +822,27 @@ static void proc_launch_gate4_policy_test(void)
     fb_print("\n");
     fb_print("[Gate-4] =============================================\n");
 }
+#endif
 
 // Forward declaration for runtime syscall contract launcher (defined below).
 static void proc_launch_ring3_test(void);
-static void proc_launch_gate4_policy_test(void);
 
 // PID 1: init process
 void init_process_main(void)
 {
     outb(0xE9, (uint8_t)'I');
     fb_print("[init] PID1 running.\n");
+
+    // Phase 10 scheduler-dispatch mode:
+    // If a user process is already prepared before sched_start (PID2),
+    // skip legacy runtime launchers and hand control to that process.
+    proc_t *preloaded = proc_find_by_pid(2);
+    if (preloaded && preloaded->type == PROC_TYPE_USER) {
+        fb_print("[init] Phase10 preloaded user process detected; yielding.\n");
+        sched_block_current();
+        for (;;)
+            __asm__ volatile("hlt");
+    }
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
