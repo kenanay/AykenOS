@@ -1,37 +1,49 @@
 {
-  "created_at_utc": "2026-02-26T19:41:42Z",
+  "created_at_utc": "2026-03-01T20:12:32Z",
   "env": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
     "ci_image_digest": "gha-ubuntu24-20260224.36.1-X64",
-    "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
-    "env_hash": "b198f0cd6195143696ede006a7141a995e4fbe05ed8177f495ed0d7f503c5aa8",
-    "host_arch": "x86_64",
-    "host_os": "Linux",
+    "clang_version": "Apple clang version 16.0.0 (clang-1600.0.26.4)",
+    "env_hash": "8432c824c4631549f46b70294eb1743df2d308c73ba5e79cb466b56297155342",
+    "host_arch": "arm64",
+    "host_os": "Darwin",
     "kernel_profile": "validation",
-    "ld_version": "Ubuntu LLD 18.1.3 (compatible with GNU linkers)",
+    "ld_version": "Homebrew LLD 21.1.7 (compatible with GNU linkers)",
     "marker_contract": {
       "boot_ok_marker": "[K][BOOT_OK] Phase 4.4 minimal boot reached",
+      "measurement_contract": "deterministic_preempt_harness",
+      "preempt_bootstrap_policy": 1,
+      "preempt_deterministic_exit": 1,
+      "preempt_expected_qemu_exit_set": "0,1",
       "preempt_iret_count_pattern": "[IRET markers] count:",
-      "preempt_sw_count_pattern": "[SW|MARK:SW] count:"
+      "preempt_mb_selftest": 0,
+      "preempt_sw_count_pattern": "[SW|MARK:SW] count:",
+      "preempt_user_minimal_mode": "syscall-v2-runtime"
     },
-    "nasm_version": "NASM version 2.16.01",
+    "nasm_version": "NASM version 3.01 compiled on Oct 11 2025",
     "qemu_timeout_seconds": 30,
-    "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.12)",
+    "qemu_version": "QEMU emulator version 10.2.0",
     "target_triple": "x86_64-elf"
   },
-  "git_sha": "c8cb8aa310ad173996acecf2d440dadb2247b802",
+  "git_sha": "01afa498148890882d538a41ff7776f1438698e1",
   "metrics": {
-    "boot_time_ms": 10770,
-    "context_switch_latency_ms_proxy": 0.761952,
-    "syscall_latency_ms_proxy": 0.761952
+    "boot_time_ms": 11700,
+    "context_switch_latency_ms_proxy": 181.080645,
+    "syscall_latency_ms_proxy": 181.080645
   },
   "policy": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
     "env_mismatch_policy": "fail",
     "marker_contract": {
       "boot_ok_marker": "[K][BOOT_OK] Phase 4.4 minimal boot reached",
+      "measurement_contract": "deterministic_preempt_harness",
+      "preempt_bootstrap_policy": 1,
+      "preempt_deterministic_exit": 1,
+      "preempt_expected_qemu_exit_set": "0,1",
       "preempt_iret_count_pattern": "[IRET markers] count:",
-      "preempt_sw_count_pattern": "[SW|MARK:SW] count:"
+      "preempt_mb_selftest": 0,
+      "preempt_sw_count_pattern": "[SW|MARK:SW] count:",
+      "preempt_user_minimal_mode": "syscall-v2-runtime"
     },
     "thresholds_percent": {
       "boot_time_ms": 10,
@@ -40,14 +52,14 @@
     }
   },
   "raw_metrics": {
-    "boot_time_ms": 10770,
-    "context_switch_latency_ms_proxy": 0.761952,
-    "preempt_iret_count": 39408,
-    "preempt_qemu_run_time_ms": 30027,
-    "preempt_run_time_ms": 30027,
-    "preempt_sw_count": 39408,
-    "preempt_wall_time_ms": 33157,
-    "syscall_latency_ms_proxy": 0.761952
+    "boot_time_ms": 11700,
+    "context_switch_latency_ms_proxy": 181.080645,
+    "preempt_iret_count": 62,
+    "preempt_qemu_run_time_ms": 11227,
+    "preempt_run_time_ms": 11227,
+    "preempt_sw_count": 62,
+    "preempt_wall_time_ms": 17221,
+    "syscall_latency_ms_proxy": 181.080645
   },
   "schema_version": 1
 }
