@@ -125,6 +125,28 @@ META_TXT="${EVIDENCE_DIR}/meta.txt"
 : > "${VIOLATIONS_TXT}"
 : > "${META_TXT}"
 
+refresh_marker_log() {
+  cat "${BOOT_AUDIT_DIR}/qemu_serial.log" "${BOOT_AUDIT_DIR}/qemu_debugcon.log" 2>/dev/null > "${COMBINED_LOG}" || true
+  if [[ -s "${BOOT_AUDIT_DIR}/qemu_debugcon.log" ]]; then
+    cp -f "${BOOT_AUDIT_DIR}/qemu_debugcon.log" "${MARKER_LOG}"
+  else
+    cp -f "${COMBINED_LOG}" "${MARKER_LOG}"
+  fi
+}
+
+wait_for_marker_log() {
+  local attempts=20
+  local i
+  for ((i = 1; i <= attempts; i++)); do
+    refresh_marker_log
+    if [[ -s "${MARKER_LOG}" ]]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
 set +e
 make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" clean > "${BUILD_LOG}" 2>&1 || true
 make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" guard-context-offsets efi-img >> "${BUILD_LOG}" 2>&1
@@ -154,14 +176,7 @@ set +e
 BOOT_AUDIT_RC=$?
 set -e
 
-cat "${BOOT_AUDIT_DIR}/qemu_serial.log" "${BOOT_AUDIT_DIR}/qemu_debugcon.log" 2>/dev/null > "${COMBINED_LOG}" || true
-if [[ -s "${BOOT_AUDIT_DIR}/qemu_debugcon.log" ]]; then
-  cp -f "${BOOT_AUDIT_DIR}/qemu_debugcon.log" "${MARKER_LOG}"
-else
-  cp -f "${COMBINED_LOG}" "${MARKER_LOG}"
-fi
-
-if [[ ! -s "${MARKER_LOG}" ]]; then
+if ! wait_for_marker_log; then
   cat > "${REPORT_JSON}" <<EOF
 {
   "gate": "ring3-execution-phase10a2",

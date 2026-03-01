@@ -192,7 +192,10 @@ USERSPACE_RUNTIME_BIN = $(USERSPACE_RUST_DIR)/target/debug/dispatcher.exe
 
 # CI evidence and boundary gate defaults
 EVIDENCE_ROOT ?= evidence
-RUN_ID_DEFAULT := $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+# Include per-process entropy to avoid evidence path collisions when multiple
+# local make invocations start within the same second.
+RUN_ID_NONCE := $(shell /bin/sh -c 'printf "%s" "$$$$"')
+RUN_ID_DEFAULT := $(shell date -u +"%Y%m%dT%H%M%SZ")-$(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)-$(RUN_ID_NONCE)
 RUN_ID ?= $(RUN_ID_DEFAULT)
 # Command-line RUN_ID= (empty) must not collapse evidence path to evidence/run-.
 ifeq ($(strip $(RUN_ID)),)
