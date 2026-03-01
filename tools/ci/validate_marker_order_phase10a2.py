@@ -10,6 +10,7 @@ from pathlib import Path
 EXPECTED_SEQUENCE = [
     "P10_TSS_OK",
     "KERNEL_BEFORE_RING3",
+    "P10_EMBED_HASH_OK",
     "AYKEN_RING3_PREP_OK",
     "P10_SCHED_DISPATCH",
     "P10_RFLAGS_IF_ON",
