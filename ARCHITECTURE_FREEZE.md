@@ -813,17 +813,19 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.3  
+**Version:** 1.4  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Next Review:** [To be scheduled]  
+**Last Review:** 2026-03-02  
+**Next Review:** 2026-03-16  
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.4 | 2026-03-02 | Kenan AY | Status update: Phase 10-A1 complete, Phase 10-A2 in progress |
 | 1.3 | 2026-02-25 | Kenan AY | Added ci-gate-drift-activation gate documentation |
 | 1.2 | 2026-02-22 | Kenan AY | Added ci-gate-sched-bridge-runtime gate documentation |
 | 1.1 | 2026-02-13 | Kenan AY | Boundary enforcement updated to symbol-scan + deterministic evidence schema |
