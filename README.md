@@ -1,4 +1,8 @@
 # AykenOS
+**The Constitutional AI Operating System**
+
+*Anayasal Yapay Zeka İşletim Sistemi*
+
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Copyright (c) 2026 Kenan AY. All rights reserved.**
@@ -9,11 +13,17 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 02.03.2026
+**Son Güncelleme:** 05.03.2026
+**Snapshot/Head:** `main@7af35acc`  
+**CURRENT_PHASE:** `10`  
+**Freeze Zinciri:** `make ci-freeze` = 21 gate  
+**Acil Blocker:** `missing_marker:P10_RING3_USER_CODE`  
+**Yakın Hedef:** `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` -> PASS  
+**Durum Notu:** Docs updated; gates not rerun in this commit.
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-A1 (Ring3 Process Preparation) TAMAMLANDI ✅ | Phase 10-A2 (Real CPL3 Entry) DEVAM EDİYOR 🚧 (%40) | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-A1 (Ring3 Process Preparation) TAMAMLANDI ✅ | Phase 10-A2 strict marker blocker aktif 🚧 | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
-**Phase 10 Status:** ELF parser (STATIC, Ring0 export minimization) ✅ | PT_LOAD segment loading ✅ | User/kernel stack allocation ✅ | Mailbox allocation ✅ | Process registration ✅ | CPL3 entry (IRETQ) pending 🚧 (%40)
+**Phase 10 Status:** Baseline lock repoda ✅ | A2 strict gate blocker: `missing_marker:P10_RING3_USER_CODE` 🚧
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); baseline-init akışında ve yerel denemelerde **PROVISIONAL** yol kullanılabilir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md).
 
@@ -291,7 +301,7 @@ make ci-summarize
 # Tam CI akışı (boundary + hygiene + validate-full)
 make ci
 
-# Strict freeze suite (planned gate stubları dahil; implement edilene kadar fail expected)
+# Strict freeze suite (as-of 2026-03-05: 21 gate)
 make ci-freeze
 ```
 
@@ -431,13 +441,13 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
   - ✅ **Process Registration:** PCB integration, scheduler queueing, PROC_READY state
   - ✅ **Marker Sequence:** `KERNEL_BEFORE_RING3 → [[AYKEN_RING3_PREP_OK]] → P10_SCHED_ARMED`
 
-- 🚧 **Phase 10-A2:** Real CPL3 Entry Proof (DEVAM EDİYOR - %40)
-  - 🚧 **TSS/GDT/IDT Validation:** Validation functions pending
-  - 🚧 **ring3_enter() Assembly:** IRETQ implementation pending
-  - 🚧 **#BP Handler Update:** Ring3 detection pending
-  - 🚧 **Scheduler Dispatch:** Integration pending
-  - 🚧 **CI Gate:** Phase 10-A2 marker validation pending
-  - 📋 **Expected Markers:** `P10_TSS_OK → P10_CR3_SWITCH → P10_RING3_ENTER → P10_RING3_USER_CODE`
+- 🚧 **Phase 10-A2:** Real CPL3 Entry Proof (STRICT BLOCKER AKTİF)
+  - ✅ **TSS/GDT/IDT Validation:** Implemented
+  - ✅ **ring3_enter() Assembly:** IRETQ path implemented
+  - ✅ **#BP Handler Update:** Ring3 detection path implemented
+  - ✅ **Scheduler Dispatch Integration:** Implemented
+  - ❌ **Strict Gate Blocker:** `missing_marker:P10_RING3_USER_CODE`
+  - 🎯 **Near Target:** `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` PASS
 
 - 🚀 **Constitutional Integration:** Constitutional Stabilization & Lock (başlamaya hazır)
   - **Single Decision Authority:** All decisions flow through Gate C constitutional validation
@@ -487,7 +497,7 @@ AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
 | Syscall Roundtrip | ✅ | INT 0x80 kernel ↔ Ring3 geçişleri doğrulandı |
 | Phase 4.4 Ring3 Model | ✅ | Ring3 execution model tamamlandı |
 | Phase 10-A1 Process Prep | ✅ | ELF loader, address space, stack, mailbox, registration |
-| Phase 10-A2 CPL3 Entry | 🚧 | TSS/GDT/IDT validation, ring3_enter(), CI gate pending |
+| Phase 10-A2 CPL3 Entry | 🚧 | Strict marker blocker: `missing_marker:P10_RING3_USER_CODE` |
 | ELF Parser (STATIC) | ✅ | Ring0 export minimization, constitutional compliance |
 | PT_LOAD Segment Loading | ✅ | Full iteration, BSS zero-fill, flag derivation |
 | User/Kernel Stack Alloc | ✅ | 2-page user stack, RSP0 kernel stack |
@@ -686,13 +696,26 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 2 Mart 2026 - README, Phase 10-A1 tamamlanması ve Phase 10-A2 (%40) durumu ile güncellendi. Detaylı durum raporu: `PROJE_DURUM_RAPORU_2026_03_02.md`
+**Son Güncelleme:** 5 Mart 2026 - Snapshot truth senkronu yapıldı.
 
-**Güncelleyen:** Kenan AY
+**Güncel Raporlar:**
+- **📊 Kapsamlı Durum Raporu:** `AYKENOS_SON_DURUM_RAPORU_2026_03_05.md` (11 bölüm, detaylı analiz)
+- **⚡ Rapor Özeti:** `RAPOR_OZETI_2026_03_05.md` (hızlı bakış, kritik durum, eylem önerileri)
+- **📋 Detaylı Durum:** `PROJE_DURUM_RAPORU_2026_03_02.md` (2 Mart durumu)
 
-AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards, evidence-based performance optimization ve minimal ELF loader özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+**Snapshot Truth (Tek Kaynak Özeti):**
+- `Snapshot/head`: `main@7af35acc`
+- `CURRENT_PHASE`: `10`
+- `make ci-freeze`: 21 gate
+- `Acil blocker`: `missing_marker:P10_RING3_USER_CODE`
+- `Yakın hedef`: `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` PASS
+- `Durum notu`: Docs updated; gates not rerun in this commit
 
-**Phase 10 Milestone:** ELF64 parser (STATIC, Ring0 export minimization), user address space creation, PT_LOAD segment loading, user/kernel stack allocation, mailbox allocation ve process registration tamamlandı. CPL3 entry (IRETQ) implementasyonu devam ediyor.
+**Güncelleyen:** Kiro AI Assistant
+
+AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards, evidence-based performance optimization ve deterministic execution özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
+
+**Phase 10 Milestone:** ELF64 parser (STATIC, Ring0 export minimization), user address space creation, PT_LOAD segment loading, user/kernel stack allocation, mailbox allocation ve process registration tamamlandı. Baseline lock repoda mevcut. A2 tarafında strict marker closure devam ediyor.
 
 **Ayken Constitutional Rule System**: AykenOS'un geliştirilmesi için oluşturulan constitutional rule system, Task 10.1 MARS Module Detection ile modül seviyesinde risk atıfı sağlar.
 

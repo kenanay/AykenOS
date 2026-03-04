@@ -1,44 +1,35 @@
 # AykenOS Roadmap Documentation
-This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
+This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-Bu dizin, AykenOS roadmap dokumanlarini kod gercekligiyle uyumlu sekilde takip etmek icindir.
+Bu dizin, AykenOS roadmap ve freeze durumunu kod gercekligiyle uyumlu sekilde takip etmek icindir.
 
 ## Ana Belgeler
-- `overview.md`: Kod snapshot temelli guncel durum ozeti
+- `overview.md`: Kod + gate evidence temelli guncel mimari durum
+- `ROADMAP_2026_02_23.md`: Aktif uygulama roadmap'i (dosya adi tarihsel)
 - `../../ARCHITECTURE_FREEZE.md`: Freeze kontrati ve zorunlu invariants
-- `freeze-enforcement-workflow.md`: Gate + evidence kapanis proseduru
-- `phase-4-4-status.md`: Phase 4.4 closure baglami
-- `phase-4-5-spec.md`: Phase 4.5 hedef spesifikasyonu
+- `freeze-enforcement-workflow.md`: Gate + evidence operasyon kurallari
 
-## Kod Snapshot Ozeti (2026-02-21)
-- Core OS: Phase 4.4 tamam, Phase 4.5 stabilizasyon devam
-- Syscall v2 araligi: `1000..1010` (11 syscall)
-- Scheduler: Ring3 policy bridge hedefi dokumanda var, runtime kodda tam aktif degil
-- Freeze chain: `make ci-freeze` icinde 9 gate tanimli
+## Kod Snapshot Ozeti (2026-03-05)
+- Snapshot branch/head: `main@7af35acc`
+- Core milestone: `Phase 4.5` complete (`v0.4.6-policy-accept`)
+- Deterministic baseline: CI authority baseline lock repoda mevcut (`scripts/ci/perf-baseline.lock.json`)
+- Active blocker: `Phase 10-A2` strict marker zincirinde `P10_RING3_USER_CODE` eksik
 
-## Freeze Gate Status (Repo Truth)
-### Implemented Gates
-- `ci-gate-abi`
-- `ci-gate-boundary`
-- `ci-gate-ring0-exports`
-- `ci-gate-hygiene`
-- `ci-gate-tooling-isolation`
-- `ci-gate-constitutional`
-- `ci-gate-workspace`
-- `ci-gate-syscall-v2-runtime`
-- `ci-gate-performance`
-- `ci-summarize`
+## Freeze / Gate Gercekligi
+- `make pre-ci`: 4 gate (abi, boundary, hygiene, constitutional), fail-closed
+- `make ci-freeze`: 21 gate strict zincir
+- `make ci-freeze-local`: 19 gate (performance + tooling-isolation hariic)
 
-### Strict Suite
-- `make ci-freeze`
-
-### Local Strict-Without-Perf Shortcut
-- `make ci-freeze-local`
-  - performance + tooling-isolation gate'lerini local gelistirme icin atlar
+## Su Anki Kritik Teknik Durum
+- Ring0 export surface limiti aktif ve sinirda: `165/165`
+- Phase 10-A2 gate'i bu snapshot'ta fail ediyor:
+  - `missing_marker:P10_RING3_USER_CODE`
+- Pre-CI bu worktree'de hygiene nedeniyle fail veriyor (dirty tracked dosyalar mevcut)
 
 ## Not
-Eski roadmap markdown'larinda kalan bazi "tamamlandi" iddialari kodla birebir ortusmeyebilir. Bu dizinde referans otoritesi artik `overview.md` (kod snapshot temelli) dokumanidir.
+Eski roadmap markdown'larinda kalan bazi "tamamlandi" iddialari kodla birebir ortusmeyebilir.
+Bu dizinde referans otoritesi `overview.md` + `ROADMAP_2026_02_23.md` (guncel icerik) dokuman ciftidir.
 
 ---
-**Son Guncelleme:** 2026-02-21  
-**Guncelleme Temeli:** Repo kodu + build/CI tanimlari
+**Son Guncelleme:** 2026-03-05
+**Guncelleme Temeli:** Repo kodu + local gate evidence

@@ -78,11 +78,11 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 2. Merge context temiz (`git diff --exit-code HEAD` policy)
 3. Evidence: `evidence/run-<RUN_ID>/gates/hygiene/`
 
-**Temporary Status (2026-02-22):**
-- Hygiene gate temporarily SKIPPED due to 55GB evidence/ directory (388 runs) causing timeout
-- Manual hygiene verification required until evidence/ cleanup complete
-- Action: evidence/ will be moved to .gitignore in future commit
-- Impact: MVP-1 validation not affected (code changes minimal, other gates pass)
+**Current Status (2026-03-05):**
+- Hygiene gate active and merge-blocking (`make ci-gate-hygiene`)
+- Gate `scripts/ci/gate_hygiene_simple.sh` uzerinden fail-closed calisir
+- Aktif gelistirme worktree'sinde dirty tracked dosyalar hygiene fail uretebilir
+- Merge oncesi temiz tracked state zorunludur
 
 ---
 
@@ -90,30 +90,42 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 ### 2.1 Mandatory Gate Targets
 
+`make ci-freeze` strict zinciri (as-of 2026-03-05):
 1. `make ci-gate-abi`
 2. `make ci-gate-boundary`
-3. `make ci-gate-hygiene`
-4. `make ci-gate-tooling-isolation`
-5. `make ci-gate-constitutional`
-6. `make ci-gate-workspace`
-7. `make ci-gate-syscall-v2-runtime`
-8. `make ci-gate-sched-bridge-runtime`
-9. `make ci-gate-performance`
-10. `make ci-summarize`
+3. `make ci-gate-ring0-exports`
+4. `make ci-gate-hygiene`
+5. `make ci-gate-tooling-isolation`
+6. `make ci-gate-constitutional`
+7. `make ci-gate-governance-policy`
+8. `make ci-gate-drift-activation`
+9. `make ci-gate-structural-abi`
+10. `make ci-gate-runtime-marker-contract`
+11. `make ci-gate-user-bin-lock`
+12. `make ci-gate-embedded-elf-hash`
+13. `make ci-gate-performance`
+14. `make ci-gate-ring3-execution-phase10a2`
+15. `make ci-gate-syscall-semantics-phase10b`
+16. `make $(PHASE10C_FREEZE_GATE)`
+17. `make ci-gate-workspace`
+18. `make ci-gate-syscall-v2-runtime`
+19. `make ci-gate-sched-bridge-runtime`
+20. `make ci-gate-behavioral-suite`
+21. `make ci-gate-policy-accept`
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
-1. **Implemented:** `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
+1. Implemented gate'ler strict freeze zincirinde aktif (2.1 listesi).
 2. Runtime gate spec: `docs/development/SYSCALL_V2_RUNTIME_GATE_SPEC.md`
-3. Sched bridge runtime gate: Validates scheduler mailbox accept/reject markers and epoch progression
-4. Baseline lock olmayan gate'ler fail-closed kalır; bu, "varmış gibi" geçmeyi engeller.
+3. Sched bridge runtime gate: scheduler mailbox accept/reject marker ve epoch ilerlemesini dogrular.
+4. Baseline lock olmayan veya kontrat uyumsuz gate'ler fail-closed kalir.
 
 ### 2.3 CI Entry Point Contract
 
 1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `ci-gate-hygiene` + `validate-full`)
 2. `make ci-freeze` = strict freeze suite (tüm implemented gate'ler)
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
-4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-latest` + fail-closed baseline policy).
+4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-24.04` + fail-closed baseline policy).
 5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
 6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
 
@@ -152,34 +164,22 @@ evidence/
 2. Make target, `scripts/ci/gate_hygiene_simple.sh evidence/run-<RUN_ID>/gates/hygiene` çağırır.
 3. `reports/hygiene.json` kopyalanır ve `make ci-summarize` ile global verdict zorunlu tutulur.
 
-**Implementation Change (2026-02-22):**
-- Switched from `gate_hygiene.sh` to `gate_hygiene_simple.sh` for performance
-- Simplified implementation focuses on:
-  - Dirty tracked files detection
-  - Forbidden tracked artifacts (build outputs)
-- Source deny scan disabled (was causing 55GB evidence/ timeout)
-- Evidence/ directory still tracked (will be moved to .gitignore in future)
-- Performance: O(files) instead of O(files × patterns × hits)
+**Implementation Notes (Current):**
+- Active implementation: `scripts/ci/gate_hygiene_simple.sh`
+- Focus:
+  - dirty tracked files detection
+  - forbidden tracked artifacts detection
+- Source deny scan bu basit gate'te aktif degildir
+- Performans: O(files) sinifinda hizli kontrol
 
 **Hygiene Rules (merge-blocking, simplified implementation)**
-1. Dirty tracked files (excluding evidence/)
-2. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`)
-3. Source deny scan: DISABLED (performance optimization)
-2. Tracked executable/binary files (allowlist hariç)
-3. Oversized tracked files (`> 5,000,000` bytes, allowlist hariç)
-4. Dirty tracked workspace (`git status --porcelain --untracked-files=no`)
-5. Source deny scan: `static malloc/free` fonksiyon tanımı yasak (kernel + `userspace/libayken`)
+1. Dirty tracked files (excluding `evidence/`)
+2. Forbidden tracked artifacts (`target/`, `build/`, `obj/`, `*.o`, `*.elf`, `*.a`, `*.so`, `*.tmp`, `*.dSYM`)
+3. Source deny scan bu gate versiyonunda uygulanmaz (ayri governance kontrolleri mevcut)
 
 **Hygiene Evidence Files**
-1. `evidence/run-<RUN_ID>/gates/hygiene/tracked.files.txt`
-2. `evidence/run-<RUN_ID>/gates/hygiene/forbidden-tracked.txt`
-3. `evidence/run-<RUN_ID>/gates/hygiene/tracked-binary.txt`
-4. `evidence/run-<RUN_ID>/gates/hygiene/oversized-tracked.txt`
-5. `evidence/run-<RUN_ID>/gates/hygiene/dirty-tracked.txt`
-6. `evidence/run-<RUN_ID>/gates/hygiene/source-deny-hits.txt`
-7. `evidence/run-<RUN_ID>/gates/hygiene/violations.txt`
-8. `evidence/run-<RUN_ID>/gates/hygiene/meta.txt`
-9. `evidence/run-<RUN_ID>/gates/hygiene/report.json`
+1. `evidence/run-<RUN_ID>/gates/hygiene/violations.txt`
+2. `evidence/run-<RUN_ID>/gates/hygiene/report.json`
 
 ---
 
@@ -233,7 +233,7 @@ Kernel artifact içinde istemediğimiz semboller:
 6. Baseline init authority default: CI-only (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=1`).
 7. Marker format freeze-contract olarak kilitlidir (`boot_ok_marker`, `preempt_sw_count_pattern`, `preempt_iret_count_pattern`) ve baseline compare içinde doğrulanır.
 8. Local baseline init yalnızca explicit override + waiver ile yapılır (`PERF_REQUIRE_CI_FOR_BASELINE_INIT=0` + waiver referansı).
-9. Baseline authority tek-doğru: `PERF_BASELINE_AUTHORITY=github-hosted-ubuntu-latest-x64`.
+9. Baseline authority tek-dogru: `PERF_BASELINE_AUTHORITY=github-hosted-ubuntu-24.04-x64`.
 10. Runner image/build kimliği baseline sözleşmesine dahil edilir: `PERF_CI_IMAGE_DIGEST=<pinned digest/id>`.
 11. Baseline init `PERF_CI_IMAGE_DIGEST=unknown` ile yapılamaz; pinned digest zorunludur.
 12. Default pinned digest source: GitHub hosted image metadata (`ImageOS`, `ImageVersion`, `RUNNER_ARCH`) (workflow input only override).
@@ -344,14 +344,15 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 
 ## 10) Work Queue (Live Checklist)
 
-- [ ] Close ABI single-source + generator determinism
-- [ ] Close syscall register mapping invariant test
-- [ ] Remove/isolate scheduler fallback (default off)
-- [ ] Repo hygiene: remove tracked artifacts and enforce
-- [ ] Finalize boundary deny/allow lists and document rationale
-- [ ] Add perf baseline manifest + perf gate
-- [x] Wire constitutional gate + waiver docs
-- [x] RFC + waiver directories and templates
+- [x] ABI single-source + generator determinism
+- [x] Syscall register mapping invariant testi
+- [x] Scheduler fallback default-off guard (freeze guard aktif)
+- [ ] Phase 10-A2 strict marker closure (`P10_RING3_USER_CODE`)
+- [ ] Repo hygiene: merge-oncesi clean tracked state disiplini
+- [ ] Syscall v2 placeholder mekanizmalarinin kademeli kapanisi (10-B)
+- [ ] Scheduler/process marker stabilizasyonu (10-C)
+- [x] Constitutional gate + waiver docs wiring
+- [x] RFC + waiver directories ve template seti
 - [ ] Freeze exit bundle run + board approval record
 
 ---

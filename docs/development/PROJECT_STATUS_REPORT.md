@@ -1,92 +1,98 @@
-# AykenOS Project Status Report (Code-Snapshot)
+# AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-02-21  
-**Status:** Phase 4.5 In Progress (Stabilization)  
-**Snapshot:** `464cd009f4d0`
+**Date:** 2026-03-05
+**Status:** Phase 10-A2 In Progress (strict marker blocker)
+**Snapshot:** `main@7af35acc`
 
 ## Executive Summary
-Bu rapor, markdown iddialarindan bagimsiz olarak repo kodu uzerinden hazirlandi.
+Bu rapor, markdown iddialarindan bagimsiz olarak repo kodu ve local gate evidence uzerinden hazirlandi.
 
-- Core OS tarafinda **Phase 4.4 seviyesi** (boot + ring3 + int80 hatti) mevcut.
-- Proje **Phase 4.5 stabilizasyon** asamasinda.
-- Syscall v2 ABI araligi **1000-1010 (11 syscall)** olarak kilitli.
-- CI freeze zinciri kodda **9 gate** olarak tanimli.
-- Scheduler arbitration/mailbox hedefi dokumanlarda geciyor; runtime kodda tam aktif degil.
+- `Phase 4.5` milestone tamam (policy-accept proof)
+- Deterministic baseline lock repoda mevcut
+- `Phase 10-A2` strict gate PASS degil
+- Ana blocker: `missing_marker:P10_RING3_USER_CODE`
+- Not: Bu guncelleme docs-only'dir; bu dokuman commitinde build/test/gate rerun yapilmamistir.
 
-## Koddan Dogrudan Bulgular
+## 1) Koddan Dogrudan Bulgular
 
-### 1) Syscall ABI ve Dispatcher
-- ABI tanimi: `kernel/sys/syscall_v2.h`
+### 1.1 Syscall ABI ve Dispatcher
+- ABI: `kernel/sys/syscall_v2.h`
   - `SYS_V2_BASE=1000`
   - `SYS_V2_MAX_INDEX=10`
   - `SYS_V2_LAST=1010`
   - `SYS_V2_NR=11`
-- Ana dispatcher: `kernel/sys/syscall.c`
-  - Sadece `1000..1010` kabul eder.
+- Dispatcher: `kernel/sys/syscall.c`
+  - Yalniz `1000..1010` kabul eder
 
-### 2) Syscall Uygulama Seviyesi
+### 1.2 Syscall Uygulama Olgunlugu
 `kernel/sys/syscall_v2.c`:
-- Calisan/etkin kisimlar: `debug_putchar`, capability bind/revoke yolu.
-- Placeholder/TODO kalan alanlar:
-  - map/unmap
-  - submit/wait
-  - interrupt_return
-  - time_query (dummy timestamp)
-  - exit (sonsuz `sched_yield` dongusu)
+- Daha olgun kisimlar: `debug_putchar`, capability bind/revoke
+- Placeholder/TODO kalan mekanizmalar:
+  - `map_memory`, `unmap_memory`
+  - `submit_execution`, `wait_result`
+  - `interrupt_return`
+  - `time_query`
+  - `exit`
 
-### 3) Scheduler
-`kernel/sched/sched.c`:
-- Ring3 policy C-call yolu yorum satirina alinmis.
-- Etkin secim yolu kernel ready queue mekanik akisi.
-- `AYKEN_SCHED_FALLBACK` default 0; strict guard mevcut (`Makefile`, constitutional gate).
+### 1.3 Phase 10-A2 Kod Durumu
+- Prereq validation fonksiyonlari mevcut
+- `ring3_enter_iretq` mevcut
+- #BP Ring3 detection mevcut
+- `ci-gate-ring3-execution-phase10a2` scripti mevcut
+- Strict runtime proofte final marker eksigi devam ediyor
 
-### 4) VFS/DevFS
-- `kernel/fs/vfs.c` ve `kernel/fs/devfs.c` policy yerine placeholder/compat katmani davranisinda.
-- Ring3 tarafindaki policy niyeti (`userspace/libayken/*`) korunuyor.
+## 2) CI / Freeze Gercekligi
 
-## CI / Freeze Gercekligi
+### 2.1 `make pre-ci`
+Zincir:
+1. `ci-gate-abi`
+2. `ci-gate-boundary`
+3. `ci-gate-hygiene`
+4. `ci-gate-constitutional`
 
-### `make ci-freeze` (kodda tanimli zincir)
-1. abi
-2. boundary (symbol-scan)
-3. ring0-exports
-4. hygiene
-5. tooling-isolation
-6. constitutional
-7. workspace
-8. syscall-v2-runtime
-9. performance
+Not:
+- Bu snapshot'ta hygiene, dirty tracked dosyalar nedeniyle fail uretiyor.
 
-### Modlar
-- `ci-freeze` workflow freeze job: `PERF_BASELINE_MODE=constitutional`.
-- Baseline init job: `PERF_BASELINE_MODE=provisional`.
-- Provisional modda tooling-isolation gate `SKIP` olabilir.
-- Summarizer `PASS/SKIP/WARN` kombinasyonlarini kabul eder.
+### 2.2 `make ci-freeze`
+Strict zincir 21 gate ile calisiyor; eski 9-gate tanimi artik gecerli degil.
 
-## Faz Degerlendirmesi
+### 2.3 Performance Gate Operasyonu
+- Baseline lock authority CI ortamina bagli
+- Local Darwin/arm64 run'da `env_hash` ve `ci_image_digest` farki ile fail beklenebilir
 
-### Guncel Faz
-- **Current:** Phase 4.5 (stabilization/integration)
+## 3) Evidence Tabanli Sonuclar
 
-### Neden 4.5 tamam degil?
-- Scheduler hedef mimarisi (Ring3 policy bridge) runtime kodda tam devrede degil.
-- Birden fazla syscall hala TODO/placeholder davranista.
-- Performance governance tarafinda constitutional/provisional yol farklari operasyonel olarak dikkat gerektiriyor.
+### 3.1 Dogrulananlar
+- Ring0 export gate PASS
+- Export count limitte: `165/165`
 
-## Oncelikli Sonraki Adimlar
-1. Scheduler bridge'i runtime'da gercekten etkinlestir (mailbox/hint->arbiter modeli veya final karar).
-2. TODO syscall'lari gercek mekanizma semantigiyle tamamla.
-3. 9-gate freeze run'larini tek run-id altinda istikrarli PASS seviyesine getir.
-4. Sonra Phase 3 AI entegrasyonunu ana mile-stone'a al.
+### 3.2 Aktif Fail
+- `ci-gate-ring3-execution-phase10a2` strict run: FAIL
+- Violation: `missing_marker:P10_RING3_USER_CODE`
 
-## Referans
+## 4) Faz Degerlendirmesi
+
+### 4.1 Guncel Faz
+- Current: `Phase 10-A2` (final proof kapanis asamasi)
+
+### 4.2 Neden Faz Kapanmadi?
+- Strict marker kontrati eksiksiz degil
+- Final user-code marker run zincirinde gorunmuyor
+
+## 5) Oncelikli Sonraki Adimlar
+
+1. A2 strict marker eksigini kapat (`P10_RING3_USER_CODE`)
+2. A2 gate PASS evidence run-id olustur
+3. Status + roadmap dokumanlarini yeni run-id ile senkronla
+4. Merge oncesi hygiene temizligini tamamla
+5. Sonraki sprintte syscall TODO semantiklerini azalt
+
+## 6) Referanslar
 - `Makefile`
 - `.github/workflows/ci-freeze.yml`
-- `kernel/sys/syscall_v2.h`
-- `kernel/sys/syscall_v2.c`
-- `kernel/sys/syscall.c`
-- `kernel/sched/sched.c`
-- `kernel/fs/vfs.c`
-- `kernel/fs/devfs.c`
+- `.github/workflows/perf-baseline-init.yml`
+- `scripts/ci/gate_ring3_execution_phase10a2.sh`
 - `scripts/ci/gate_performance.sh`
-- `scripts/ci/gate_syscall_v2_runtime.sh`
+- `kernel/sys/syscall_v2.c`
+- `kernel/arch/x86_64/ring3_enter.S`
+- `kernel/arch/x86_64/interrupts.c`
