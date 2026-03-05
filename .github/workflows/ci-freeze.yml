@@ -266,6 +266,21 @@ jobs:
           set -euo pipefail
           ls -la scripts/ci/perf-baseline.lock.json
           sed -n '1,120p' scripts/ci/perf-baseline.lock.json
+      - name: Validate baseline lock matches checked out commit
+        run: |
+          set -euo pipefail
+          BASELINE_SHA="$(jq -r '.git_sha // empty' scripts/ci/perf-baseline.lock.json)"
+          HEAD_SHA="$(git rev-parse HEAD)"
+          if [ -z "${BASELINE_SHA}" ]; then
+            echo "ERROR: Baseline lock is missing git_sha"
+            exit 1
+          fi
+          if [ "${BASELINE_SHA}" != "${HEAD_SHA}" ]; then
+            echo "ERROR: Baseline lock git_sha does not match checkout HEAD"
+            echo "baseline.git_sha=${BASELINE_SHA}"
+            echo "checkout.HEAD=${HEAD_SHA}"
+            exit 1
+          fi
       - name: Debug artifact paths before upload
         if: ${{ always() }}
         run: |
