@@ -1,5 +1,8 @@
 # AykenOS Dokümantasyon Planı ve Roadmap
 
+**AykenOS - The Constitutional AI Operating System**  
+*Anayasal Yapay Zeka İşletim Sistemi*
+
 ## 📋 Genel Strateji
 
 ### Hedef Kitle

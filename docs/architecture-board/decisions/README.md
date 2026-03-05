@@ -12,3 +12,9 @@ Bu dizin freeze dönemindeki mimari karar kayıtlarının resmi arşividir.
 ## File Naming
 
 `YYYYMMDD-<decision-title>.md`
+
+## Current Records
+
+1. `20260214-scheduler-arbitration-contract.md` - scheduler arbitration contract strict mode
+2. `20260305-runtime-integration-order.md` - phase-gated runtime integration order freeze
+3. `20260305-two-level-authority-scheduler.md` - distributed two-level scheduler authority freeze

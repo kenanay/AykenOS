@@ -24,6 +24,25 @@ EXPECTED_SEQUENCE = [
     "P10_RING3_USER_CODE",
 ]
 
+MINI_TRACE_SEQUENCE = [
+    ("S1_RING3_ENTER", "P10_RING3_ENTER"),
+    ("S2_SYSCALL_ENTER", "P10_SYSCALL_ENTER"),
+    ("S3_SYSCALL_RETURN", "P10_SYSCALL_RETURN"),
+    ("S4_CAP_ENFORCED", "P10_CAP_ENFORCED"),
+    ("S5_MAILBOX_DECISION", "P10_MAILBOX_DECISION"),
+    ("S6_RING3_USER_CODE", "P10_RING3_USER_CODE"),
+]
+
+MAILBOX_FATAL_MARKERS = [
+    "P10_MAILBOX_MISS_YIELD_FATAL",
+    "P10_MAILBOX_MISS_YIELD_NULL",
+    "P10_MAILBOX_MISS_BLOCK_FATAL",
+    "P10_MAILBOX_MISS_BOOTSTRAP_FATAL",
+    "P10_MAILBOX_OWNER_MISSING_FATAL",
+    "P10_MAILBOX_OWNER_NOT_READY_FATAL",
+    "P10_MAILBOX_OWNER_MISMATCH",
+]
+
 FORBIDDEN_AFTER_ENTER = [
     "GP!",
     "PF!",
@@ -143,6 +162,106 @@ def validate(events: list[dict], log_text: str) -> dict:
                 line = log_text.count("\n", 0, absolute) + 1
                 violations.append(f"forbidden_token_after_enter:{token}:line={line}")
 
+    def first_event(marker_type: str) -> dict | None:
+        rows = by_type.get(marker_type, [])
+        if not rows:
+            return None
+        return rows[0]
+
+    mini_trace_observed = []
+    for state_id, marker_type in MINI_TRACE_SEQUENCE:
+        row = first_event(marker_type)
+        if row is None:
+            mini_trace_observed.append(
+                {
+                    "state": state_id,
+                    "marker": marker_type,
+                    "offset": -1,
+                    "line": 0,
+                    "status": "missing",
+                }
+            )
+            continue
+        mini_trace_observed.append(
+            {
+                "state": state_id,
+                "marker": marker_type,
+                "offset": int(row.get("offset", -1)),
+                "line": int(row.get("line", 0)),
+                "status": "present",
+            }
+        )
+
+    user_row = first_event("P10_RING3_USER_CODE")
+    user_offset = int(user_row.get("offset", -1)) if user_row else -1
+    cap_row = first_event("P10_CAP_ENFORCED")
+    cap_offset = int(cap_row.get("offset", -1)) if cap_row else -1
+    irq_first_row = first_event("P10_IRQ_SCHED_DECISION")
+    irq_first_offset = int(irq_first_row.get("offset", -1)) if irq_first_row else -1
+    irq_first_line = int(irq_first_row.get("line", 0)) if irq_first_row else 0
+    irq_sched_count = len(by_type.get("P10_IRQ_SCHED_DECISION", []))
+
+    fatal_rows = []
+    for marker in MAILBOX_FATAL_MARKERS:
+        row = first_event(marker)
+        if row is None:
+            continue
+        fatal_rows.append(
+            (
+                marker,
+                int(row.get("offset", -1)),
+                int(row.get("line", 0)),
+            )
+        )
+    fatal_rows.sort(key=lambda item: item[1])
+
+    first_fatal_before_user = None
+    if fatal_rows:
+        for marker, offset, line in fatal_rows:
+            if offset < 0:
+                continue
+            if user_offset >= 0:
+                if offset < user_offset:
+                    first_fatal_before_user = {
+                        "marker": marker,
+                        "offset": offset,
+                        "line": line,
+                    }
+                    break
+            else:
+                if cap_offset < 0 or offset >= cap_offset:
+                    first_fatal_before_user = {
+                        "marker": marker,
+                        "offset": offset,
+                        "line": line,
+                    }
+                    break
+
+    cut_state = None
+    for state_id, marker_type in MINI_TRACE_SEQUENCE:
+        if marker_type == "P10_MAILBOX_DECISION":
+            # S5 is diagnostic-only (optional in A2), do not treat as cut gate.
+            continue
+        if first_event(marker_type) is None:
+            cut_state = state_id
+            break
+
+    risk_signals = []
+    if first_fatal_before_user is not None:
+        risk_signals.append("mailbox_liveness_risk")
+        violations.append(
+            "trace_cut_before_user:"
+            f"{first_fatal_before_user['marker']}:line={first_fatal_before_user['line']}"
+        )
+    scheduler_preemption_before_user = False
+    if irq_first_offset >= 0 and (user_offset < 0 or irq_first_offset < user_offset):
+        scheduler_preemption_before_user = True
+        risk_signals.append("scheduler_preemption_before_user")
+    if user_offset < 0 and irq_sched_count >= 3:
+        risk_signals.append("scheduler_priority_inversion_signal")
+    if user_offset < 0 and first_fatal_before_user is None:
+        risk_signals.append("user_path_visibility_gap")
+
     verdict = "PASS" if len(violations) == 0 else "FAIL"
     return {
         "gate": "ring3-execution-phase10a2",
@@ -152,6 +271,26 @@ def validate(events: list[dict], log_text: str) -> dict:
         "expected_sequence": EXPECTED_SEQUENCE,
         "observed_sequence": details,
         "forbidden_after_enter": FORBIDDEN_AFTER_ENTER,
+        "mini_trace_sequence": [
+            {"state": state_id, "marker": marker_type}
+            for state_id, marker_type in MINI_TRACE_SEQUENCE
+        ],
+        "mini_trace_observed": mini_trace_observed,
+        "mini_trace_summary": {
+            "cut_state": cut_state,
+            "first_fatal_before_user": first_fatal_before_user,
+            "first_irq_sched_before_user": (
+                {
+                    "marker": "P10_IRQ_SCHED_DECISION",
+                    "offset": irq_first_offset,
+                    "line": irq_first_line,
+                }
+                if scheduler_preemption_before_user
+                else None
+            ),
+            "irq_sched_decision_count": irq_sched_count,
+            "risk_signals": risk_signals,
+        },
     }
 
 

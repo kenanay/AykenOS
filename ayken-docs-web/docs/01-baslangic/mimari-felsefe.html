@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimari Felsefe - AykenOS Dokümantasyon</title>
+    <link rel="stylesheet" href="../../assets/css/documentation.css">
+    <link rel="icon" href="../../assets/images/ayken-favicon.svg" type="image/svg+xml">
+    <meta name="description" content="[SAYFA AÇIKLAMASI]">
+    <meta name="keywords" content="AykenOS, [ANAHTAR KELİMELER]">
+</head>
+<body>
+    <header class="doc-header">
+        <nav class="doc-navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="../../assets/images/AykenOS Logo.png" alt="AykenOS Logo" class="logo-image">
+                    <div class="logo-text">
+                        <h1>Ayken OS</h1>
+                        <span class="tagline">Dokümantasyon</span>
+                    </div>
+                </div>
+                <div class="nav-actions">
+                    <a href="../../index.html" class="nav-link">Ana Sayfa</a>
+                    <a href="../../documentation.html" class="nav-link">Dokümantasyon</a>
+                    <button id="theme-toggle" class="theme-btn" title="Tema Değiştir">🌙</button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="doc-container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../documentation.html">Dokümantasyon</a>
+            <span class="separator">›</span>
+            <a href="./index.html">Başlangıç</a>
+            <span class="separator">›</span>
+            <span class="current">Mimari Felsefe</span>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="doc-main">
+            <article class="doc-content">
+                <div class="section-header">
+                    <h1>Mimari Felsefe</h1>
+                    <div class="section-meta">
+                        <span class="author">Geliştirici: <strong>Kenan AY</strong></span>
+                        <span class="location">📍 Kütahya, Türkiye</span>
+                        <span class="date">Son Güncelleme: 2026-03-03</span>
+                    </div>
+                </div>
+
+                <div class="content-body">
+                    <!-- Özet -->
+                    <div class="summary-box">
+                        <h3>📋 Bu Sayfada</h3>
+                        <ul>
+                            <li>Geleneksel işletim sistemleri vs AykenOS karşılaştırması</li>
+                            <li>Execution-centric paradigma nedir?</li>
+                            <li>Ring0/Ring3 ayrımı ve politika-mekanizma separation</li>
+                            <li>11 syscall felsefesi</li>
+                            <li>Pratik kod örnekleri ve karşılaştırmalar</li>
+                        </ul>
+                    </div>
+
+                    <!-- Ön Koşullar -->
+                    <div class="prerequisites-box">
+                        <h3>✅ Ön Koşullar</h3>
+                        <ul>
+                            <li>Temel işletim sistemi bilgisi (process, memory, syscall kavramları)</li>
+                            <li>C programlama dili bilgisi (pointer, struct)</li>
+                            <li>Linux/Unix komut satırı deneyimi (önerilen)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Ana İçerik -->
+                    <h2>Geleneksel vs AykenOS</h2>
+                    
+                    <h3>Geleneksel İşletim Sistemleri</h3>
+                    <p>Linux, Windows ve macOS gibi geleneksel işletim sistemleri <strong>dosya odaklı (file-centric)</strong> bir paradigma kullanır:</p>
+                    
+                    <ul>
+                        <li><strong>300+ syscall:</strong> Linux ~400, Windows ~2000 sistem çağrısı</li>
+                        <li><strong>Dosya sistemi merkezi:</strong> Her şey dosya (device, socket, pipe)</li>
+                        <li><strong>Kernel'da politika:</strong> Erişim kontrolü, scheduler logic kernel'da</li>
+                        <li><strong>POSIX uyumluluğu:</strong> Standart API (open, read, write, close)</li>
+                    </ul>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Geleneksel Dosya İşlemleri (Linux)</span>
+                            <button class="copy-btn" data-copy="code-traditional">📋</button>
+                        </div>
+                        <pre><code id="code-traditional">// Linux'ta dosya açma ve okuma
+int fd = open("/path/to/file", O_RDONLY);
+if (fd < 0) {
+    perror("open failed");
+    return -1;
+}
+
+char buffer[1024];
+ssize_t bytes_read = read(fd, buffer, sizeof(buffer));
+if (bytes_read < 0) {
+    perror("read failed");
+    close(fd);
+    return -1;
+}
+
+close(fd);
+
+// Kullanılan syscall'lar: open(), read(), close()
+// Toplam: 3 farklı syscall</code></pre>
+                    </div>
+
+                    <h3>AykenOS Yaklaşımı</h3>
+                    <p>AykenOS, <strong>yürütme odaklı (execution-centric)</strong> bir paradigma benimser:</p>
+                    
+                    <ul>
+                        <li><strong>11 syscall:</strong> Sadece temel mekanizmalar (1000-1010)</li>
+                        <li><strong>Veri odaklı:</strong> Dosya yerine veri konteynerları</li>
+                        <li><strong>Ring3'te politika:</strong> Tüm kararlar userspace'te</li>
+                        <li><strong>BCIB execution:</strong> Binary Compressed Instruction Bundle</li>
+                    </ul>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">AykenOS Veri Erişimi</span>
+                            <button class="copy-btn" data-copy="code-ayken">📋</button>
+                        </div>
+                        <pre><code id="code-ayken">// AykenOS'ta veri konteynerine erişim
+execution_plan_t plan = {
+    .operation = OP_DATA_QUERY,
+    .target = "users",
+    .filter = "age > 18",
+    .projection = "name, email"
+};
+
+// Execution plan'ı gönder
+uint64_t exec_id = sys_v2_submit_execution(&plan, sizeof(plan));
+
+// Sonucu bekle
+result_t result = sys_v2_wait_result(exec_id);
+
+// Kullanılan syscall'lar: sys_v2_submit_execution(), sys_v2_wait_result()
+// Toplam: 2 syscall (ama çok daha güçlü!)</code></pre>
+                    </div>
+
+                    <div class="info-box">
+                        <h4>💡 Temel Fark</h4>
+                        <p><strong>Geleneksel:</strong> "Dosyayı aç, oku, kapat" - Imperative (emir kipi)</p>
+                        <p><strong>AykenOS:</strong> "Bu veriyi getir" - Declarative (bildirimsel)</p>
+                        <p>AykenOS'ta "nasıl" yapılacağını değil, "ne" istediğinizi söylersiniz. Sistem en iyi yolu kendisi bulur.</p>
+                    </div>
+
+                    <h2>Neden 11 Syscall?</h2>
+                    
+                    <p>AykenOS'un sadece 11 syscall kullanmasının arkasında derin bir felsefe var:</p>
+
+                    <h3>1. Minimal Kernel Surface</h3>
+                    <p>Her syscall, kernel'in "attack surface"ini artırır. Daha az syscall = daha güvenli kernel.</p>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">AykenOS 11 Syscall Listesi</span>
+                            <button class="copy-btn" data-copy="code-syscalls">📋</button>
+                        </div>
+                        <pre><code id="code-syscalls">// kernel/include/ayken_abi.h
+#define SYS_V2_BASE 1000
+
+#define SYS_V2_MAP_MEMORY       (SYS_V2_BASE + 0)  // 1000: Bellek haritalama
+#define SYS_V2_UNMAP_MEMORY     (SYS_V2_BASE + 1)  // 1001: Bellek kaldırma
+#define SYS_V2_SWITCH_CONTEXT   (SYS_V2_BASE + 2)  // 1002: Context switch
+#define SYS_V2_SUBMIT_EXECUTION (SYS_V2_BASE + 3)  // 1003: BCIB yürütme
+#define SYS_V2_WAIT_RESULT      (SYS_V2_BASE + 4)  // 1004: Sonuç bekleme
+#define SYS_V2_INTERRUPT_RETURN (SYS_V2_BASE + 5)  // 1005: Interrupt dönüşü
+#define SYS_V2_TIME_QUERY       (SYS_V2_BASE + 6)  // 1006: Zaman sorgulama
+#define SYS_V2_CAPABILITY_BIND  (SYS_V2_BASE + 7)  // 1007: Yetenek bağlama
+#define SYS_V2_CAPABILITY_REVOKE (SYS_V2_BASE + 8) // 1008: Yetenek iptal
+#define SYS_V2_EXIT             (SYS_V2_BASE + 9)  // 1009: Süreç sonlandırma
+#define SYS_V2_DEBUG_PUTCHAR    (SYS_V2_BASE + 10) // 1010: Debug output</code></pre>
+                    </div>
+
+                    <h3>2. Mechanism vs Policy Separation</h3>
+                    <p>Bu, AykenOS'un en önemli tasarım prensibidir:</p>
+
+                    <div class="comparison-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Katman</th>
+                                    <th>Sorumluluk</th>
+                                    <th>Örnek</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Ring0 (Kernel)</strong></td>
+                                    <td>Mekanizma - "Nasıl?"</td>
+                                    <td>Bellek sayfalarını haritalama</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ring3 (Userspace)</strong></td>
+                                    <td>Politika - "Ne?"</td>
+                                    <td>Hangi dosyaya erişim izni var?</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>Ring0 vs Ring3 Ayrımı</h2>
+
+                    <h3>Ring0 (Kernel) - Sadece Mekanizma</h3>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Ring0: Bellek Haritalama Mekanizması</span>
+                            <button class="copy-btn" data-copy="code-ring0">📋</button>
+                        </div>
+                        <pre><code id="code-ring0">// kernel/sys/syscall_v2.c
+void* sys_v2_map_memory(void* addr, size_t size, int flags) {
+    // Sadece sayfa tablosunu güncelle
+    // POLİTİKA KARARI YOK!
+    
+    // 1. Fiziksel sayfa al
+    uint64_t phys_addr = phys_mem_alloc_page();
+    if (phys_addr == 0) {
+        return (void*)-ENOMEM;  // Bellek yok
+    }
+    
+    // 2. Virtual adrese map et
+    uint64_t virt_addr = (uint64_t)addr;
+    page_table_entry_t *pte = get_pte(virt_addr);
+    
+    pte->present = 1;
+    pte->writable = (flags & MAP_WRITE) ? 1 : 0;
+    pte->user = (flags & MAP_USER) ? 1 : 0;
+    pte->physical_addr = phys_addr >> 12;
+    
+    // 3. TLB'yi flush et
+    asm volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
+    
+    return addr;
+}
+
+// Kernel SADECE "nasıl map edileceğini" bilir
+// "Kimin map edebileceğini" BİLMEZ!</code></pre>
+                    </div>
+
+                    <h3>Ring3 (Userspace) - Tüm Politika</h3>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Ring3: VFS Politika Kararı</span>
+                            <button class="copy-btn" data-copy="code-ring3">📋</button>
+                        </div>
+                        <pre><code id="code-ring3">// userspace/libayken/vfs.c
+int vfs_open(const char* path, int flags) {
+    // 1. Erişim kontrolü (POLİTİKA)
+    if (!check_permission(current_user(), path, flags)) {
+        return -EACCES;  // İzin yok
+    }
+    
+    // 2. Dosya sistemi seçimi (POLİTİKA)
+    filesystem_t* fs = select_filesystem(path);
+    if (!fs) {
+        return -ENOENT;  // Dosya sistemi bulunamadı
+    }
+    
+    // 3. Dosya boyutunu öğren
+    size_t file_size = fs->get_size(path);
+    
+    // 4. Bellek haritalama (MEKANIZMA - Ring0'a syscall)
+    void* mapped = sys_v2_map_memory(
+        NULL,                    // Kernel adres seçsin
+        file_size,               // Dosya boyutu
+        MAP_READ | MAP_USER      // Flags
+    );
+    
+    if (mapped == (void*)-1) {
+        return -ENOMEM;
+    }
+    
+    // 5. File descriptor oluştur
+    int fd = create_file_descriptor(mapped, file_size, flags);
+    
+    return fd;
+}
+
+// Userspace "kimin ne yapabileceğine" karar verir
+// Kernel'e sadece "bunu yap" der</code></pre>
+                    </div>
+
+                    <div class="warning-box">
+                        <h4>⚠️ Kritik Kural</h4>
+                        <p><strong>Ring0'da POLİTİKA KARARI YASAK!</strong></p>
+                        <p>Kernel asla "bu kullanıcı bu dosyayı açabilir mi?" diye sormaz. Bu Ring3'ün işidir.</p>
+                        <p>Bu kural, AykenOS'un constitutional gates ile zorlanır. İhlal = PR AUTO-REJECT!</p>
+                    </div>
+
+                    <h2>Pratik Örnek: Dosya Okuma</h2>
+
+                    <h3>Geleneksel Sistem (Linux)</h3>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Linux: Dosya Okuma</span>
+                            <button class="copy-btn" data-copy="code-linux-read">📋</button>
+                        </div>
+                        <pre><code id="code-linux-read">// Linux'ta dosya okuma
+int fd = open("/etc/passwd", O_RDONLY);  // Syscall 1: open()
+if (fd < 0) {
+    perror("open");
+    return -1;
+}
+
+struct stat st;
+fstat(fd, &st);  // Syscall 2: fstat() - dosya boyutunu öğren
+
+char *buffer = malloc(st.st_size);  // Userspace malloc
+read(fd, buffer, st.st_size);  // Syscall 3: read()
+
+close(fd);  // Syscall 4: close()
+
+// Toplam: 4 syscall
+// Kernel'de: Erişim kontrolü, dosya sistemi logic, buffer yönetimi</code></pre>
+                    </div>
+
+                    <h3>AykenOS</h3>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">AykenOS: Veri Okuma</span>
+                            <button class="copy-btn" data-copy="code-ayken-read">📋</button>
+                        </div>
+                        <pre><code id="code-ayken-read">// AykenOS'ta veri okuma
+execution_plan_t plan = {
+    .operation = OP_DATA_READ,
+    .target = "/etc/passwd",
+    .flags = READ_ONLY
+};
+
+// Ring3 VFS: Erişim kontrolü, dosya sistemi seçimi
+int result = vfs_check_and_prepare(&plan);
+if (result < 0) {
+    return result;  // İzin yok veya dosya yok
+}
+
+// Ring0: Sadece bellek haritalama
+uint64_t exec_id = sys_v2_submit_execution(&plan, sizeof(plan));  // Syscall 1
+result_t data = sys_v2_wait_result(exec_id);  // Syscall 2
+
+// Toplam: 2 syscall
+// Kernel'de: Sadece bellek haritalama
+// Ring3'te: Erişim kontrolü, dosya sistemi logic</code></pre>
+                    </div>
+
+                    <div class="info-box">
+                        <h4>💡 Performans Avantajı</h4>
+                        <p>AykenOS daha az syscall kullanır, ama bu sadece sayı değil. Asıl avantaj:</p>
+                        <ul>
+                            <li><strong>Daha az context switch:</strong> Ring0↔Ring3 geçişi pahalıdır (~100-200 ns)</li>
+                            <li><strong>Daha az kernel kodu:</strong> Daha az bug, daha kolay audit</li>
+                            <li><strong>Daha esnek:</strong> Politika değişikliği için kernel recompile gerekmez</li>
+                        </ul>
+                    </div>
+
+                    <h2>Hands-On Alıştırma</h2>
+
+                    <h3>Alıştırma 1: Syscall Sayısını Karşılaştırma</h3>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Linux Syscall Sayısı</span>
+                            <button class="copy-btn" data-copy="code-exercise1">📋</button>
+                        </div>
+                        <pre><code id="code-exercise1"># Linux'ta ls komutunun kullandığı syscall'ları göster
+strace ls 2>&1 | grep -E "^[a-z_]+" | cut -d'(' -f1 | sort -u | wc -l
+
+# Beklenen çıktı: ~50-80 farklı syscall
+
+# AykenOS'ta aynı işlev için kaç syscall gerekir?
+# Cevap: 2-3 (submit_execution, wait_result, belki map_memory)</code></pre>
+                    </div>
+
+                    <h3>Alıştırma 2: Ring0 vs Ring3 Analizi</h3>
+                    
+                    <p>Aşağıdaki işlevleri Ring0 (mekanizma) mı Ring3 (politika) mı yapmalı?</p>
+                    
+                    <ol>
+                        <li>Bellek sayfasını fiziksel adrese map etme → <strong>Ring0</strong></li>
+                        <li>Kullanıcının dosya erişim iznini kontrol etme → <strong>Ring3</strong></li>
+                        <li>CPU context'ini kaydetme/yükleme → <strong>Ring0</strong></li>
+                        <li>Hangi process'in önce çalışacağına karar verme → <strong>Ring3</strong></li>
+                        <li>Interrupt handler'ı çağırma → <strong>Ring0</strong></li>
+                        <li>AI model inference → <strong>Ring3</strong></li>
+                    </ol>
+
+                    <div class="info-box">
+                        <h4>💡 Kural</h4>
+                        <p>Eğer "karar verme" i��eriyorsa → Ring3</p>
+                        <p>Eğer "donanım erişimi" içeriyorsa → Ring0</p>
+                    </div>
+
+                    <!-- Sonraki Adımlar -->
+                    <div class="next-steps">
+                        <h3>🎯 Sonraki Adımlar</h3>
+                        <ul>
+                            <li><a href="kod-yapisini-kesfetme.html">Kod Yapısını Keşfetme</a> - Kaynak kodunu incelemeye başlayın</li>
+                            <li><a href="boot-surecini-anlama.html">Boot Sürecini Anlama</a> - UEFI'den kernel'e geçiş</li>
+                            <li><a href="../02-mimari/bellek-yonetimi.html">Bellek Yönetimi</a> - Paging ve virtual memory</li>
+                        </ul>
+                    </div>
+
+                    <div class="reference-box">
+                        <h3>📚 Referans Kaynaklar</h3>
+                        <h4>Kitaplar</h4>
+                        <ul>
+                            <li>"Operating Systems: Three Easy Pieces" - Remzi Arpaci-Dusseau (Bölüm 4: Process API)</li>
+                            <li>"Linux Kernel Development" - Robert Love (Bölüm 5: System Calls)</li>
+                            <li>"Understanding the Linux Kernel" - Daniel P. Bovet (Bölüm 10: System Calls)</li>
+                        </ul>
+                        <h4>Online Kaynaklar</h4>
+                        <ul>
+                            <li><a href="https://wiki.osdev.org/System_Calls" target="_blank">OSDev Wiki: System Calls</a></li>
+                            <li><a href="https://www.kernel.org/doc/html/latest/process/adding-syscalls.html" target="_blank">Linux Kernel: Adding System Calls</a></li>
+                            <li><a href="https://github.com/kenanay/AykenOS" target="_blank">AykenOS GitHub Repository</a></li>
+                        </ul>
+                        <h4>Akademik Makaleler</h4>
+                        <ul>
+                            <li>"The UNIX Time-Sharing System" - Dennis Ritchie & Ken Thompson (1974)</li>
+                            <li>"Exokernel: An Operating System Architecture for Application-Level Resource Management" - MIT (1995)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Sayfa Navigasyonu -->
+                <div class="section-navigation">
+                    <a href="[ÖNCEKİ-SAYFA].html" class="nav-btn prev-btn">← Önceki: [BAŞLIK]</a>
+                    <a href="[SONRAKİ-SAYFA].html" class="nav-btn next-btn">Sonraki: [BAŞLIK] →</a>
+                </div>
+            </article>
+
+            <!-- Sidebar (Opsiyonel) -->
+            <aside class="doc-sidebar">
+                <div class="sidebar-section">
+                    <h4>Bu Bölümde</h4>
+                    <ul>
+                        <li><a href="#[ANCHOR]">[BAŞLIK]</a></li>
+                    </ul>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <footer class="doc-footer">
+        <div class="footer-content">
+            <p>&copy; 2026 Kenan AY - AykenOS</p>
+            <p>Kütahya, Türkiye</p>
+        </div>
+    </footer>
+
+    <script src="../../assets/js/documentation.js"></script>
+</body>
+</html>

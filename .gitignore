@@ -20,6 +20,7 @@ debug_run.log
 
 # OVMF variables
 OVMF_VARS.fd
+ovmf_vars.fd
 ovmf_vars_*.fd
 test_vars.fd
 

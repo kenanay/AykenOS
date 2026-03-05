@@ -98,8 +98,18 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 VALIDATOR="${ROOT}/tools/ci/validate_scheduler_mailbox_phase10c.py"
+SCHED_SOURCE="${ROOT}/kernel/sched/sched.c"
+TIMER_SOURCE="${ROOT}/kernel/arch/x86_64/timer.c"
 if [[ ! -f "${VALIDATOR}" ]]; then
   echo "ERROR: missing validator: ${VALIDATOR}" >&2
+  exit 3
+fi
+if [[ ! -f "${SCHED_SOURCE}" ]]; then
+  echo "ERROR: missing scheduler source: ${SCHED_SOURCE}" >&2
+  exit 3
+fi
+if [[ ! -f "${TIMER_SOURCE}" ]]; then
+  echo "ERROR: missing timer source: ${TIMER_SOURCE}" >&2
   exit 3
 fi
 
@@ -173,6 +183,8 @@ python3 "${VALIDATOR}" \
   --c2-strict "${C2_STRICT}" \
   --c2-owner-set "${C2_OWNER_SET}" \
   --c2-require-cursor-marker "${C2_REQUIRE_CURSOR_MARKER}" \
+  --sched-source "${SCHED_SOURCE}" \
+  --timer-source "${TIMER_SOURCE}" \
   --out "${REPORT_JSON}"
 VALIDATOR_RC=$?
 set -e

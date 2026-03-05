@@ -19,10 +19,13 @@ TOKEN_DISPATCH = "P10_SCHED_DISPATCH"
 TOKEN_MAILBOX = "P10_MAILBOX_DECISION"
 TOKEN_APPLIED = "P10_DECISION_APPLIED"
 TOKEN_USER = "P10_RING3_USER_CODE"
+TOKEN_NOTIFY = "P10_SCHED_EVENT_NOTIFY"
+TOKEN_IRQ_DECISION = "P10_IRQ_SCHED_DECISION"
 OWNER_PID = 2
 
 REQUIRED_SEQUENCE = [TOKEN_DISPATCH, TOKEN_MAILBOX, TOKEN_APPLIED, TOKEN_USER]
 SEMANTIC_TOKENS = tuple(REQUIRED_SEQUENCE)
+ACTIVATION_TOKENS = (TOKEN_NOTIFY,)
 FORBIDDEN_TOKENS = (
     "P10_SCHED_FALLBACK",
     "P10_READY_HEAD_FALLBACK",
@@ -33,7 +36,7 @@ FORBIDDEN_TOKENS = (
 
 TOKEN_PATTERNS = {
     token: re.compile(rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])")
-    for token in SEMANTIC_TOKENS + FORBIDDEN_TOKENS
+    for token in SEMANTIC_TOKENS + ACTIVATION_TOKENS + FORBIDDEN_TOKENS
 }
 FORBIDDEN_X_PREFIX_PATTERN = re.compile(r"(?<![A-Za-z0-9_])(XP10_[A-Za-z0-9_]+)")
 
@@ -140,6 +143,16 @@ def parse_args() -> argparse.Namespace:
         choices=("0", "1"),
         default="1",
         help="Require [[AYKEN_SCHED_CURSOR_ADVANCE]] for each applied decision in C2 strict mode (default: 1).",
+    )
+    parser.add_argument(
+        "--sched-source",
+        default="",
+        help="Optional kernel scheduler source file for authority source checks.",
+    )
+    parser.add_argument(
+        "--timer-source",
+        default="",
+        help="Optional timer IRQ source file for activation marker/source checks.",
     )
     return parser.parse_args()
 
@@ -264,6 +277,100 @@ def parse_c2_rows(
 
 def raw_token_count(text: str, token: str) -> int:
     return len(re.findall(re.escape(token), text))
+
+
+def first_token_offset(log_text: str, token: str) -> int:
+    pattern = TOKEN_PATTERNS.get(token)
+    if pattern is None:
+        pattern = re.compile(rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])")
+    match = pattern.search(log_text)
+    if match is None:
+        return -1
+    return int(match.start())
+
+
+def validate_activation_authority(report: dict[str, Any], log_text: str) -> None:
+    notify_count = len(TOKEN_PATTERNS[TOKEN_NOTIFY].findall(log_text))
+    report["activation_markers"]["notify_count"] = notify_count
+    if notify_count <= 0:
+        report["violations"].append("missing_required_activation:P10_SCHED_EVENT_NOTIFY")
+        return
+
+    first_notify = first_token_offset(log_text, TOKEN_NOTIFY)
+    first_irq_decision = first_token_offset(log_text, TOKEN_IRQ_DECISION)
+    first_mailbox = first_token_offset(log_text, TOKEN_MAILBOX)
+    first_applied = first_token_offset(log_text, TOKEN_APPLIED)
+    first_user = first_token_offset(log_text, TOKEN_USER)
+
+    report["activation_markers"]["first_notify_offset"] = first_notify
+    report["activation_markers"]["first_irq_decision_offset"] = first_irq_decision
+    report["activation_markers"]["first_mailbox_offset"] = first_mailbox
+    report["activation_markers"]["first_applied_offset"] = first_applied
+    report["activation_markers"]["first_user_offset"] = first_user
+
+    if first_irq_decision >= 0:
+        if first_notify < 0 or first_notify > first_irq_decision:
+            report["violations"].append(
+                "activation_notify_after_irq_decision:"
+                f"notify={first_notify}:first_irq_decision={first_irq_decision}"
+            )
+
+
+def validate_source_authority(
+    report: dict[str, Any],
+    sched_source: Path,
+    timer_source: Path,
+) -> None:
+    source_meta = report["metadata"]["authority_source"]
+    source_meta["sched_source"] = str(sched_source)
+    source_meta["timer_source"] = str(timer_source)
+
+    if not sched_source.is_file():
+        report["violations"].append(f"missing_sched_source:{sched_source}")
+        return
+    if not timer_source.is_file():
+        report["violations"].append(f"missing_timer_source:{timer_source}")
+        return
+
+    sched_text = sched_source.read_text(encoding="utf-8", errors="replace")
+    timer_text = timer_source.read_text(encoding="utf-8", errors="replace")
+
+    fallback_calls = re.findall(r"\bsched_select_next_ready_head_fallback\s*\(", sched_text)
+    source_meta["fallback_call_count"] = len(fallback_calls)
+    if len(fallback_calls) >= 1:
+        if "#if AYKEN_SCHED_FALLBACK" not in sched_text:
+            report["violations"].append("policy_authority_missing_fallback_compile_guard")
+        if "P10_SCHED_FALLBACK_FORBIDDEN" not in sched_text:
+            report["violations"].append("policy_authority_missing_forbidden_fallback_marker")
+
+    userspace_policy_calls = re.findall(
+        r"\buserspace_scheduler_[A-Za-z0-9_]+\s*\(",
+        sched_text,
+    )
+    source_meta["userspace_policy_call_refs"] = sorted(set(userspace_policy_calls))
+    if userspace_policy_calls:
+        report["violations"].append(
+            "policy_authority_kernel_policy_call_reference:"
+            f"count={len(set(userspace_policy_calls))}"
+        )
+
+    has_notify_marker = TOKEN_NOTIFY in timer_text
+    has_irq_resched = "sched_request_resched_irq();" in timer_text
+    source_meta["timer_has_notify_marker"] = bool(has_notify_marker)
+    source_meta["timer_has_irq_resched_call"] = bool(has_irq_resched)
+
+    if not has_notify_marker:
+        report["violations"].append("source_missing_activation_notify_marker")
+    if not has_irq_resched:
+        report["violations"].append("source_missing_irq_resched_request")
+
+    notify_bound = re.search(
+        r"P10_SCHED_EVENT_NOTIFY[\s\S]{0,800}sched_request_resched_irq\(\);",
+        timer_text,
+    )
+    source_meta["notify_bound_to_irq_resched"] = bool(notify_bound)
+    if not notify_bound:
+        report["violations"].append("source_activation_notify_not_bound_to_irq_resched")
 
 
 def validate_c1(
@@ -635,6 +742,8 @@ def main() -> int:
     require_metadata = args.require_metadata == "1"
     c2_strict = args.c2_strict == "1"
     c2_require_cursor_marker = args.c2_require_cursor_marker == "1"
+    sched_source_path = Path(args.sched_source) if args.sched_source else None
+    timer_source_path = Path(args.timer_source) if args.timer_source else None
 
     report: dict[str, Any] = {
         "gate": "scheduler-mailbox-phase10c",
@@ -651,6 +760,8 @@ def main() -> int:
             "cursor_applied_only",
             "fairness_smoke",
             "owner_pid_immutability",
+            "activation_event_precedes_decision",
+            "policy_authority_source_guard",
         ],
         "violations_count": 0,
         "violations": [],
@@ -663,9 +774,26 @@ def main() -> int:
         "forbidden_event_counts": {token: 0 for token in FORBIDDEN_TOKENS},
         "forbidden_log_counts": {token: 0 for token in FORBIDDEN_TOKENS},
         "forbidden_log_tokens": [],
+        "activation_markers": {
+            "notify_count": 0,
+            "first_notify_offset": -1,
+            "first_irq_decision_offset": -1,
+            "first_mailbox_offset": -1,
+            "first_applied_offset": -1,
+            "first_user_offset": -1,
+        },
         "metadata": {
             "mailbox_decisions": [],
             "applied_decisions": [],
+            "authority_source": {
+                "sched_source": "",
+                "timer_source": "",
+                "fallback_call_count": 0,
+                "userspace_policy_call_refs": [],
+                "timer_has_notify_marker": False,
+                "timer_has_irq_resched_call": False,
+                "notify_bound_to_irq_resched": False,
+            },
             "c2": {
                 "owner_set": [],
                 "accept_rows": [],
@@ -724,6 +852,15 @@ def main() -> int:
     report["forbidden_log_tokens"] = forbidden_prefixes
     for token in forbidden_prefixes:
         report["violations"].append(f"forbidden_marker_prefix:{token}")
+
+    validate_activation_authority(report=report, log_text=log_text)
+
+    if sched_source_path is not None and timer_source_path is not None:
+        validate_source_authority(
+            report=report,
+            sched_source=sched_source_path,
+            timer_source=timer_source_path,
+        )
 
     if c2_strict:
         validate_c2_strict(

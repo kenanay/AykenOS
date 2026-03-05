@@ -252,6 +252,13 @@ void timer_isr_c(void *frame_ptr)
 #endif
 
         // Defer context switch to IRQ ASM tail for clean stack discipline.
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        static uint8_t sched_event_notify_marker_emitted = 0;
+        if (!sched_event_notify_marker_emitted) {
+            sched_event_notify_marker_emitted = 1;
+            timer_debugcon_write("P10_SCHED_EVENT_NOTIFY\n");
+        }
+#endif
         sched_request_resched_irq();
     }
 }
