@@ -625,7 +625,21 @@ PY
 # 8) Baseline policy and compare.
 DRIFT_ALLOWLIST_BYPASS_COUNT=0
 
-if [[ -f "${BASELINE_FILE}" ]]; then
+if [[ "${INIT_BASELINE}" -eq 1 ]]; then
+  IS_CI="0"
+  if [[ "${CI:-}" == "1" || "${CI:-}" == "true" || "${CI:-}" == "TRUE" ]]; then
+    IS_CI="1"
+  fi
+  if [[ "${REQUIRE_CI_FOR_BASELINE_INIT}" -eq 1 && "${IS_CI}" -ne 1 ]]; then
+    record_violation "baseline_init_requires_ci:CI env is not true/1"
+  elif [[ "${IS_CI}" -eq 1 ]] && ! is_pinned_ci_digest "${CI_IMAGE_DIGEST}" "${BASELINE_AUTHORITY}"; then
+    record_violation "baseline_init_requires_ci_image_digest:PERF_CI_IMAGE_DIGEST must be pinned (authority=${BASELINE_AUTHORITY}, digest=${CI_IMAGE_DIGEST})"
+  else
+    mkdir -p "$(dirname "${BASELINE_FILE}")"
+    cp -f "${ACTUAL_LOCK_JSON}" "${BASELINE_FILE}"
+    record_violation "baseline_initialized_requires_commit:${BASELINE_FILE}"
+  fi
+elif [[ -f "${BASELINE_FILE}" ]]; then
   BASELINE_REL=""
   if [[ "${BASELINE_FILE}" == "${ROOT}/"* ]]; then
     BASELINE_REL="${BASELINE_FILE#${ROOT}/}"
@@ -752,29 +766,13 @@ PY
     fi
   fi
 else
-  if [[ "${INIT_BASELINE}" -eq 1 ]]; then
-    IS_CI="0"
-    if [[ "${CI:-}" == "1" || "${CI:-}" == "true" || "${CI:-}" == "TRUE" ]]; then
-      IS_CI="1"
-    fi
-    if [[ "${REQUIRE_CI_FOR_BASELINE_INIT}" -eq 1 && "${IS_CI}" -ne 1 ]]; then
-      record_violation "baseline_init_requires_ci:CI env is not true/1"
-    elif [[ "${IS_CI}" -eq 1 ]] && ! is_pinned_ci_digest "${CI_IMAGE_DIGEST}" "${BASELINE_AUTHORITY}"; then
-      record_violation "baseline_init_requires_ci_image_digest:PERF_CI_IMAGE_DIGEST must be pinned (authority=${BASELINE_AUTHORITY}, digest=${CI_IMAGE_DIGEST})"
-    else
-      mkdir -p "$(dirname "${BASELINE_FILE}")"
-      cp -f "${ACTUAL_LOCK_JSON}" "${BASELINE_FILE}"
-      record_violation "baseline_initialized_requires_commit:${BASELINE_FILE}"
-    fi
+  # Baseline missing
+  if [[ "${BASELINE_MODE}" == "provisional" ]]; then
+    # Provisional mode: baseline missing is acceptable, skip gate
+    echo "WARN: Baseline missing in provisional mode, skipping enforcement" >&2
   else
-    # Baseline missing
-    if [[ "${BASELINE_MODE}" == "provisional" ]]; then
-      # Provisional mode: baseline missing is acceptable, skip gate
-      echo "WARN: Baseline missing in provisional mode, skipping enforcement" >&2
-    else
-      # Constitutional mode: baseline missing is a violation
-      record_violation "baseline_missing:${BASELINE_FILE}"
-    fi
+    # Constitutional mode: baseline missing is a violation
+    record_violation "baseline_missing:${BASELINE_FILE}"
   fi
 fi
 
