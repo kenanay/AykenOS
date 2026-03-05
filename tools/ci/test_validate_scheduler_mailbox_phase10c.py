@@ -13,6 +13,7 @@ TOKEN_DISPATCH = "P10_SCHED_DISPATCH"
 TOKEN_MAILBOX = "P10_MAILBOX_DECISION"
 TOKEN_APPLIED = "P10_DECISION_APPLIED"
 TOKEN_USER = "P10_RING3_USER_CODE"
+TOKEN_NOTIFY = "P10_SCHED_EVENT_NOTIFY"
 TOKEN_FALLBACK = "P10_SCHED_FALLBACK"
 C2_ACCEPT = "[[AYKEN_SCHED_MB_ACCEPT]] owner=2 epoch=1 cand=42 site=IRQ"
 C2_REJECT = "[[AYKEN_SCHED_MB_REJECT]] reason=EPOCH_STALE owner=2 epoch=1 cand=42 site=IRQ"
@@ -94,6 +95,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=2",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 TOKEN_USER,
@@ -117,6 +119,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=2",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 TOKEN_USER,
@@ -137,6 +140,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=2",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 TOKEN_USER,
@@ -154,6 +158,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 TOKEN_MAILBOX,
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 TOKEN_USER,
@@ -170,6 +175,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=2",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 "XP10_RING3_USER_CODE",
@@ -187,6 +193,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=3",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=3",
                 TOKEN_USER,
@@ -204,6 +211,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 "P10_MAILBOX_DECISION id=9 pid=42 valid=1 src=2",
                 "P10_DECISION_APPLIED id=9 pid=42 valid=0 src=2",
                 TOKEN_USER,
@@ -224,6 +232,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
         self._write_marker_log(
             [
                 TOKEN_DISPATCH,
+                TOKEN_NOTIFY,
                 C2_ACCEPT,
                 C2_ARB_1,
                 C2_SWITCH_1,
@@ -241,7 +250,9 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
 
     def test_c2_strict_fail_when_reject_followed_by_apply(self) -> None:
         self._write_events([TOKEN_DISPATCH, TOKEN_MAILBOX, TOKEN_APPLIED, TOKEN_USER])
-        self._write_marker_log([TOKEN_DISPATCH, C2_REJECT, C2_ARB_1, C2_SWITCH_1, C2_CURSOR_1, TOKEN_USER])
+        self._write_marker_log(
+            [TOKEN_DISPATCH, TOKEN_NOTIFY, C2_REJECT, C2_ARB_1, C2_SWITCH_1, C2_CURSOR_1, TOKEN_USER]
+        )
         rc, report = self._run(c2_strict="1", c2_owner_set="2")
         self.assertEqual(rc, 2)
         self.assertIn(
@@ -251,7 +262,7 @@ class Phase10CMailboxValidatorTest(unittest.TestCase):
 
     def test_c2_strict_fail_when_cursor_marker_missing(self) -> None:
         self._write_events([TOKEN_DISPATCH, TOKEN_MAILBOX, TOKEN_APPLIED, TOKEN_USER])
-        self._write_marker_log([TOKEN_DISPATCH, C2_ACCEPT, C2_ARB_1, C2_SWITCH_1, TOKEN_USER])
+        self._write_marker_log([TOKEN_DISPATCH, TOKEN_NOTIFY, C2_ACCEPT, C2_ARB_1, C2_SWITCH_1, TOKEN_USER])
         rc, report = self._run(c2_strict="1", c2_owner_set="2", c2_require_cursor_marker="1")
         self.assertEqual(rc, 2)
         self.assertIn(

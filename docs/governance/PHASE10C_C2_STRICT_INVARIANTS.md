@@ -33,6 +33,11 @@ It is the enforcement bridge between C2 design intent and CI behavior.
    Arbiter and switch transitions MUST satisfy `from != to`.
 9. `INV-C2-009` (`marker_shape_freeze`):
    C2 strict markers MUST match frozen schema and enum sets.
+10. `INV-C2-010` (`activation_event_precedes_decision`):
+   `P10_SCHED_EVENT_NOTIFY` MUST appear before first `P10_IRQ_SCHED_DECISION` marker.
+11. `INV-C2-011` (`policy_authority_source_guard`):
+   Kernel scheduler source MUST NOT introduce Ring0 policy-call paths; fallback helper call
+   MUST remain compile-time guarded and timer IRQ path MUST keep notify->resched binding.
 
 ## 2. Marker Domains
 
@@ -58,6 +63,8 @@ Invariant to validator mapping:
 7. `INV-C2-007` -> `decision_switch_endpoint_mismatch`
 8. `INV-C2-008` -> `arbiter_noop_forbidden`, `ctx_switch_noop_forbidden`
 9. `INV-C2-009` -> `malformed_marker_shape`
+10. `INV-C2-010` -> `missing_required_activation:P10_SCHED_EVENT_NOTIFY`, `activation_notify_after_irq_decision`
+11. `INV-C2-011` -> `policy_authority_*`, `source_missing_*`, `source_activation_notify_not_bound_to_irq_resched`
 
 ## 4. Profile Policy
 
@@ -76,3 +83,14 @@ Any change to invariant semantics MUST update in one change set:
 2. `docs/governance/MAILBOX_PROTOCOL_V2_C2_REVIEW_FREEZE_CANDIDATE.md`
 3. `tools/ci/validate_scheduler_mailbox_phase10c.py`
 4. `tools/ci/test_validate_scheduler_mailbox_phase10c.py`
+
+## 6. Scope Clarification (C1 vs C2)
+1. C1 runtime contract:
+   - `P10_SCHED_DISPATCH -> P10_MAILBOX_DECISION -> P10_DECISION_APPLIED -> P10_RING3_USER_CODE`
+   - single-owner execution path (`AYKEN_SCHED_OWNER_PID=2`) aktif gercekliktir.
+2. C2 strict contract:
+   - C2 marker domain + invariants governance-grade enforcement saglar.
+   - owner-set/fairness kontrolleri validator seviyesinde fail-closed calisir.
+3. Snapshot notu:
+   - owner-set >1 kontrolleri, multi-owner runtime'in tamamen aktif oldugu anlamina gelmez.
+   - Multi-owner runtime davranisi Phase10-C sonrasi roadmap kalemi olarak ele alinir.

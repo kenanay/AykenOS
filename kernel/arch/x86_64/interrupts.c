@@ -6,6 +6,7 @@
 
 struct idt_entry idt_table[256];
 struct idt_ptr idt_descriptor;
+volatile uint32_t phase10_ring3_user_code_seen = 0;
 
 // Early debugcon output (QEMU port 0xE9) — use macros to avoid calls in ISRs
 #define OUTC(ch) do { \
@@ -116,6 +117,7 @@ static void isr_bp(struct interrupt_frame *frame)
         rip_canonical;
 
     if (is_ring3_bp) {
+        phase10_ring3_user_code_seen = 1u;
         // Source anchor token for runtime-marker-contract: P10_RING3_USER_CODE
         // ISR-safe marker emission: no helper calls in interrupt context.
         OUTC('P'); OUTC('1'); OUTC('0'); OUTC('_');

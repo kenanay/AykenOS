@@ -19,6 +19,9 @@
 #include "../include/mm.h"
 #include "../include/gdt_idt.h"
 
+// Set by Ring3 #BP proof path once user instruction marker is emitted.
+extern volatile uint32_t phase10_ring3_user_code_seen;
+
 #ifndef AYKEN_DEBUG_SCHED
 #define AYKEN_DEBUG_SCHED 0
 #endif
@@ -565,6 +568,16 @@ static proc_t *sched_select_next_mailbox(
         }
         return prev;
 #else
+        // Phase10-A2 bootstrap barrier: until first user-code proof marker is seen,
+        // avoid mailbox fatal on yield miss and keep current Ring3 context running.
+        if (phase10_ring3_user_code_seen == 0u) {
+            static uint8_t pre_user_bypass_marker_emitted = 0;
+            if (!pre_user_bypass_marker_emitted) {
+                pre_user_bypass_marker_emitted = 1;
+                sched_emit_marker("P10_MAILBOX_MISS_PRE_USER_BYPASS\n");
+            }
+            return prev;
+        }
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
         return NULL;
