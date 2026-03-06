@@ -37,7 +37,7 @@
 | #47 | P11-17 ABDF Snapshot Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | abdf-snapshot-identity gate PASS (canonical binary hash identity evidence) |
 | #48 | P11-18 BCIB Plan and Trace Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | bcib-trace-identity gate PASS (plan+trace execution identity evidence) |
 | #37 | P11-04 Replay v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | replay-determinism gate PASS (record/replay identity parity over #47/#48 evidence) |
-| #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-07 | unblocked after #37 bootstrap closure |
+| #41 | P11-11 KPL Proof Layer | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | kpl-proof-verify gate PASS (hash-bound proof manifest verification evidence) |
 
 ---
 
@@ -413,14 +413,30 @@ Security/Performance snapshot:
 - Branch: `feat/p11-kpl-proof-manifest`
 - Owner: Kenan AY
 - Invariant: run validity requires verifiable proof manifest
+- Status: COMPLETED_LOCAL_BOOTSTRAP (hash-bound proof manifest verification)
 - Deliverables:
   - proof manifest schema
-  - signing + verification
-  - manifest join checks
+  - proof manifest validator
+  - KPL gate script + fail-closed checks
 - Gate: `ci-gate-kpl-proof-verify`
 - Evidence:
   - `proof_manifest.json`
   - `proof_verify.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_kpl_proof_manifest.py` -> PASS
+- `tmp_root="$$(mktemp -d)" && mkdir -p "$$tmp_root/abdf" "$$tmp_root/execution-gate" "$$tmp_root/replay-gate" "$$tmp_root/ledger-gate" "$$tmp_root/eti-gate" "$$tmp_root/kpl-gate" "$$tmp_root/meta" && printf '%064d\n' 0 | tr '0' 'a' > "$$tmp_root/abdf/abdf_snapshot_hash.txt" && printf '%064d\n' 0 | tr '0' 'b' > "$$tmp_root/execution-gate/bcib_plan_hash.txt" && printf '%064d\n' 0 | tr '0' 'c' > "$$tmp_root/execution-gate/execution_trace_hash.txt" && printf '%s\n' '{\"status\":\"PASS\",\"replay_result_hash\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"final_state_hash\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"replay_event_count\":2,\"violations_count\":0}' > "$$tmp_root/replay-gate/replay_report.json" && printf '%s\n' '{\"event_seq\":1,\"ltick\":1}' > "$$tmp_root/ledger-gate/decision_ledger.jsonl" && printf '%s\n' '{\"event_seq\":1,\"ltick\":1,\"event_type\":\"AY_EVT_SYSCALL_ENTER\"}' > "$$tmp_root/eti-gate/eti_transcript.jsonl" && printf 'KERNEL' > "$$tmp_root/kernel.elf" && printf '%s\n' '{\"run_id\":\"local-kpl\"}' > "$$tmp_root/meta/run.json" && bash scripts/ci/gate_kpl_proof_verify.sh --evidence-dir "$$tmp_root/kpl-gate" --abdf-evidence "$$tmp_root/abdf" --execution-evidence "$$tmp_root/execution-gate" --replay-evidence "$$tmp_root/replay-gate" --ledger-evidence "$$tmp_root/ledger-gate" --eti-evidence "$$tmp_root/eti-gate" --kernel-image-bin "$$tmp_root/kernel.elf" --config-json "$$tmp_root/meta/run.json"` -> PASS
+- `make -n ci-gate-kpl-proof-verify RUN_ID=dryrun-p11-41-kpl-proof` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- KPL proof layer currently operates in bootstrap CI mode with hash-bound manifest verification over identity-locked evidence roots.
+- Signature trust path is bootstrap-only (`signature_mode=bootstrap-none`), and strict signer/trust-policy verification is deferred to later proof hardening stage.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing referenced evidence artifacts, malformed hash fields, unsupported manifest version, missing required fields, proof self-hash mismatch, and replay binding mismatches.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 ---
 
@@ -514,6 +530,7 @@ make ci-gate-eti-dlt-binding
 make ci-gate-dlt-determinism
 make ci-gate-gcp-finalization
 make ci-gate-replay-determinism
+make ci-gate-kpl-proof-verify
 make ci-gate-hash-chain-validity
 make ci-gate-mailbox-capability-negative
 ```

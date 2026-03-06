@@ -387,6 +387,45 @@ Boundary statement:
 - Replay v1 in this milestone is CI/offline bootstrap parity verification over identity-locked evidence.
 - Runtime replay execution, strict kernel panic policy, and multicore runtime replay semantics remain deferred to strict runtime replay integration stage.
 
+### 4.11 KPL Proof Manifest Bootstrap Path (#41)
+
+Bootstrap KPL proof manifest binds replay determinism outputs with evidence-root identities:
+
+1. Inputs:
+   - `gates/abdf-snapshot-identity/abdf_snapshot_hash.txt`
+   - `gates/execution-identity/bcib_plan_hash.txt`
+   - `gates/execution-identity/execution_trace_hash.txt`
+   - `gates/replay-v1/replay_report.json`
+   - `gates/ledger-v1/decision_ledger.jsonl`
+   - `gates/eti/eti_transcript.jsonl`
+   - `kernel.elf` (or configured kernel image binary)
+   - `meta/run.json` (or configured runtime config evidence)
+2. Materialize proof manifest fields:
+   - `kernel_image_hash = SHA256(kernel_image_bytes)`
+   - `config_hash = SHA256(config_json_bytes)`
+   - `ledger_root_hash = SHA256(decision_ledger.jsonl bytes)`
+   - `transcript_root_hash = SHA256(eti_transcript.jsonl bytes)`
+   - replay-bound fields from replay report: `replay_result_hash`, `final_state_hash`, `event_count`, `violation_count`
+   - identity-bound fields from prior gates: `abdf_snapshot_hash`, `bcib_plan_hash`, `execution_trace_hash`
+3. Compute self-sealing manifest hash:
+   - `proof_hash = H(canonical_json(proof_manifest_without_proof_hash))`
+4. Validate KPL invariants:
+   - required fields present and SHA-256 formatted
+   - manifest version supported
+   - `proof_hash` equals recomputed self-hash
+   - manifest replay fields match replay evidence (`replay_result_hash`, `final_state_hash`, `event_count`, `violation_count`)
+   - optional expected proof/final-state hash inputs match
+5. Emit:
+   - `proof_manifest.json`
+   - `proof_verify.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- KPL in this milestone is CI/offline bootstrap hash-bound manifest verification.
+- Signature trust policy remains bootstrap (`signature_mode=bootstrap-none`, empty `signer_sig`) and strict signer verification is deferred to later proof hardening stage.
+- Runtime proof sealing/in-kernel signature semantics remain out of scope for this milestone.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -471,6 +510,7 @@ Required gates:
 - `ci-gate-abdf-snapshot-identity`
 - `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
 - `ci-gate-replay-determinism`
+- `ci-gate-kpl-proof-verify` (alias: `ci-gate-proof-manifest`)
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
 Extended Phase-11 gates (issue-driven):

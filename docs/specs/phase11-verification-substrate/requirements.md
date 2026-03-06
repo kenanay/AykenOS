@@ -295,6 +295,13 @@ This spec covers the **core verification substrate**. Individual components (P11
 8.8. THE Proof manifest SHALL be immutable after creation  
 8.9. WHEN proof is verified, THE System SHALL check signature validity  
 8.10. WHEN proof is verified, THE System SHALL check hash chain integrity
+8.11. THE System SHALL implement `ci-gate-kpl-proof-verify` (alias: `ci-gate-proof-manifest`) and export `proof_manifest.json`, `proof_verify.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/kpl-proof/`  
+8.12. THE KPL gate SHALL fail-closed enforce manifest self-hash integrity (`proof_hash == H(canonical_manifest_without_proof_hash)`)  
+8.13. THE KPL gate SHALL include and verify manifest core fields: `kernel_image_hash`, `config_hash`, `ledger_root_hash`, `transcript_root_hash`, `replay_result_hash`, `final_state_hash`, `event_count`, `violation_count`  
+8.14. THE KPL gate SHALL fail-closed bind manifest replay fields to replay evidence (`manifest.replay_result_hash == replay_report.replay_result_hash`, `manifest.final_state_hash == replay_report.final_state_hash`)  
+8.15. WHEN expected proof/final-state hash inputs are provided, THE KPL gate SHALL fail-closed enforce equality with manifest/evidence values  
+8.16. THE KPL gate SHALL fail-closed reject unsupported manifest version, missing required fields, malformed hash fields, and missing referenced evidence artifacts  
+8.17. UNTIL strict signature trust policy is enabled, bootstrap KPL mode MAY emit `signature_mode=bootstrap-none` with empty `signer_sig` while preserving hash-bound manifest verification
 
 ---
 
@@ -352,6 +359,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.27. WHEN BCIB plan identity or execution trace identity invariants are violated, THE `ci-gate-bcib-trace-identity` SHALL fail
 10.28. THE System SHALL implement `ci-gate-replay-determinism` (alias: `ci-gate-replay-v1`)
 10.29. WHEN record/replay parity invariants (`event_seq`, `ltick`, trace hash) are violated, THE `ci-gate-replay-determinism` SHALL fail
+10.30. THE System SHALL implement `ci-gate-kpl-proof-verify` (alias: `ci-gate-proof-manifest`)
+10.31. WHEN proof manifest binding or self-hash invariants are violated, THE `ci-gate-kpl-proof-verify` SHALL fail
 
 ---
 
