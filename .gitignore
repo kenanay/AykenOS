@@ -79,3 +79,6 @@ userspace/minimal/.mode.*
 # Local agent/spec workspace artifacts
 .kiro/
 AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md
+
+# local experiments
+_wip_local/

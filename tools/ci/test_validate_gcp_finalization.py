@@ -168,6 +168,43 @@ class GcpFinalizationValidatorTest(unittest.TestCase):
             any(v.startswith("previous_gcp_hash_mismatch:") for v in report.get("violations", []))
         )
 
+    def test_fail_on_drop_event(self) -> None:
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(3, 3)])
+        rc, report, _, _ = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("dlt_event_seq_gap", report.get("violations", []))
+        self.assertIn("dlt_ltick_gap", report.get("violations", []))
+
+    def test_fail_on_duplicate_event(self) -> None:
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(1, 1), self._dlt_row(2, 2)])
+        rc, report, _, _ = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("dlt_event_seq_duplicate", report.get("violations", []))
+        self.assertIn("dlt_ltick_duplicate", report.get("violations", []))
+
+    def test_fail_on_reordered_events(self) -> None:
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(3, 3), self._dlt_row(2, 2)])
+        rc, report, _, _ = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("dlt_event_seq_non_monotonic", report.get("violations", []))
+        self.assertIn("dlt_ltick_non_monotonic", report.get("violations", []))
+
+    def test_fail_on_event_seq_tamper(self) -> None:
+        tampered_rows = [self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)]
+        tampered_rows[1]["event_seq"] = 99
+        self._write_dlt_rows(tampered_rows)
+        rc, report, _, _ = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("dlt_event_seq_gap", report.get("violations", []))
+
+    def test_fail_on_ltick_tamper(self) -> None:
+        tampered_rows = [self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)]
+        tampered_rows[1]["ltick"] = 99
+        self._write_dlt_rows(tampered_rows)
+        rc, report, _, _ = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("dlt_ltick_gap", report.get("violations", []))
+
 
 if __name__ == "__main__":
     unittest.main()
