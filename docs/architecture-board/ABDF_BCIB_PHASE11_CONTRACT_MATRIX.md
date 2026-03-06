@@ -43,6 +43,7 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 | **Kernel → Phase-11** | event | `ay_event_type_t` | sequence check | ordering layer |
 | **Phase-11 → Evidence** | serialized proof | JSON/binary | hash check | CI gates |
 | **ABDF → Replay Engine** | snapshot | ABDF buffer | schema validation | replay engine |
+| **Replay Engine → BCIB Runtime** | execution replay | plan + snapshot | opcode validation | BCIB runtime |
 | **Replay Engine → Phase-11** | verification input | transcript + snapshot | hash chain | Phase-11 |
 
 ### Critical Rules
@@ -64,6 +65,7 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 | **BCIB** | `plan_hash` | instruction stream | SHA-256 | execution plan identity |
 | **Replay Engine** | `execution_trace_hash` | syscall sequence + results | SHA-256 | replay verification |
 | **Phase-11** | `entry_hash` | ledger entry | SHA-256 | hash chain link |
+| **Phase-11** | `ledger_root_hash` | all ledger entries | SHA-256 | ledger merkle root |
 | **Phase-11** | `transcript_hash` | transcript entry | SHA-256 | execution reality |
 | **Phase-11** | `proof_hash` | manifest | SHA-256 | final proof seal |
 
@@ -272,6 +274,8 @@ deterministic finalization
 2. `ltick` MUST be deterministic logical time
 3. `entry_hash` MUST match `H(prev_hash || payload)`
 4. `transcript` MUST record ALL significant kernel events
+5. `ledger` MUST be append-only (no modification of past entries)
+6. `ledger_root_hash` MUST be computed from all entries (merkle root or chain tip)
 
 ---
 
