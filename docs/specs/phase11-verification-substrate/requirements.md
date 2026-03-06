@@ -229,7 +229,12 @@ This spec covers the **core verification substrate**. Individual components (P11
 6.5. WHEN DLT assigns ltick, THE System SHALL record it in ledger/transcript  
 6.6. THE DLT SHALL NOT depend on wall-clock time  
 6.7. THE DLT SHALL NOT depend on CPU clock speed  
-6.8. THE DLT SHALL be replay-friendly (same input → same ltick sequence)
+6.8. THE DLT SHALL be replay-friendly (same input → same ltick sequence)  
+6.9. THE System SHALL implement `ci-gate-dlt-monotonicity` and export `ltick_trace.jsonl`, `report.json`, and `violations.txt` under `evidence/run-*/gates/dlt-monotonicity/`  
+6.10. BOOTSTRAP mode SHALL generate contiguous deterministic DLT ordering identities (`event_seq = 1..N`, `ltick = 1..N`) while retaining ETI source identities (`source_event_seq`, `source_ltick`)  
+6.11. THE System SHALL implement `ci-gate-eti-dlt-binding` and export `binding_report.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/eti-dlt-binding/`  
+6.12. THE ETI-DLT binding gate SHALL fail-closed enforce `dlt.source_event_seq == eti.event_seq` and `dlt.source_ltick == eti.ltick`  
+6.13. UNTIL strict kernel DLT allocator/merge is active, THE DLT gates MAY run in bootstrap materialization mode over ETI evidence
 
 ---
 
@@ -310,6 +315,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.12. THE System SHALL implement `ci-gate-ledger-eti-binding`
 10.13. WHEN ETI sequence is corrupted (drop/dup/reorder/tamper), THE `ci-gate-eti-sequence` SHALL fail
 10.14. WHEN ledger and ETI ordering identities mismatch, THE `ci-gate-ledger-eti-binding` SHALL fail
+10.15. THE System SHALL implement `ci-gate-dlt-monotonicity`
+10.16. THE System SHALL implement `ci-gate-eti-dlt-binding`
+10.17. WHEN DLT trace ordering invariants are violated, THE `ci-gate-dlt-monotonicity` SHALL fail
+10.18. WHEN ETI and DLT source identities mismatch, THE `ci-gate-eti-dlt-binding` SHALL fail
 
 ---
 

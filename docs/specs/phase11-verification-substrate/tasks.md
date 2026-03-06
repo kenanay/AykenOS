@@ -32,7 +32,7 @@
 | #36 | P11-03 Ledger Hash Chain | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | hash-chain gate PASS + one-bit tamper detection PASS |
 | #40 | P11-10 DEOL | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | deol-sequence gate PASS (bootstrap ordering evidence) |
 | #43 | P11-13 ETI | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | eti-sequence + ledger-eti-binding + transcript-integrity gates PASS (bootstrap evidence mode) |
-| #44 | P11-14 DLT | PENDING | 2026-03-07 | waits #43 closure |
+| #44 | P11-14 DLT | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | dlt-monotonicity + eti-dlt-binding gates PASS (bootstrap ordering evidence) |
 | #45 | P11-15 GCP | PENDING | 2026-03-06 | waits #44 |
 | #47 | P11-17 ABDF Snapshot Identity | PENDING | 2026-03-06 | waits #43/#44 |
 | #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
@@ -248,9 +248,10 @@ Security/Performance snapshot:
 - Branch: `feat/p11-dlt-ordering`
 - Owner: Kenan AY
 - Invariant: deterministic logical time ordering across cores
+- Status: COMPLETED_LOCAL_BOOTSTRAP (ETI-derived DLT proof)
 - Deliverables:
-  - `ltick` assignment
-  - cross-core merge rules
+  - bootstrap DLT trace materialization (`ltick_trace.jsonl`)
+  - ETI<->DLT source identity binding validator
   - ordering parity checks
 - Gates:
   - `ci-gate-dlt-monotonicity`
@@ -258,6 +259,22 @@ Security/Performance snapshot:
 - Evidence:
   - `ltick_trace.jsonl`
   - `binding_report.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_dlt_monotonicity.py` -> PASS
+- `python3 -m unittest tools/ci/test_validate_eti_dlt_binding.py` -> PASS
+- `bash scripts/ci/gate_dlt_monotonicity.sh --evidence-dir evidence/run-local-p11-44-dlt-monotonicity-r1/gates/dlt-monotonicity --eti-evidence evidence/run-local-p11-43-eti-sequence-r1/gates/eti` -> PASS
+- `bash scripts/ci/gate_eti_dlt_binding.sh --evidence-dir evidence/run-local-p11-44-eti-dlt-binding-r1/gates/eti-dlt-binding --eti-evidence evidence/run-local-p11-43-eti-sequence-r1/gates/eti --dlt-evidence evidence/run-local-p11-44-dlt-monotonicity-r1/gates/dlt-monotonicity` -> PASS
+
+Scope note (normative for this milestone):
+- DLT currently operates in bootstrap mode by materializing deterministic ltick trace from ETI evidence.
+- Direct kernel hot-path DLT allocator and multicore merge/finalization integration remain deferred to strict runtime stage.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing/invalid ordering fields, source ordering anomalies, DLT trace monotonicity/uniqueness/gap violations, and ETI-DLT source identity mismatches.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T7 - P11-15 GCP (#45)
 - Branch: `feat/p11-gcp-finalization`
@@ -415,6 +432,8 @@ make ci-gate-deol-sequence
 make ci-gate-eti-sequence
 make ci-gate-ledger-eti-binding
 make ci-gate-transcript-integrity
+make ci-gate-dlt-monotonicity
+make ci-gate-eti-dlt-binding
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity
 make ci-gate-mailbox-capability-negative

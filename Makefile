@@ -265,6 +265,10 @@ PHASE11_ETI_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10
 PHASE11_ETI_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/eti
 PHASE11_LEDGER_ETI_EVIDENCE_DIR ?= $(PHASE11_ETI_EVIDENCE_DIR)
 PHASE11_LEDGER_ETI_LEDGER_EVIDENCE_DIR ?= $(PHASE11_LEDGER_V1_EVIDENCE_DIR)
+PHASE11_DLT_ETI_EVIDENCE_DIR ?= $(PHASE11_ETI_EVIDENCE_DIR)
+PHASE11_DLT_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/dlt-monotonicity
+PHASE11_ETI_DLT_EVIDENCE_DIR ?= $(PHASE11_ETI_EVIDENCE_DIR)
+PHASE11_ETI_DLT_DLT_EVIDENCE_DIR ?= $(PHASE11_DLT_EVIDENCE_DIR)
 # C2 activation default: enabled in freeze chain; can be disabled explicitly
 # via `PHASE10C_ENFORCE=0 make ci-freeze`.
 PHASE10C_ENFORCE ?= 1
@@ -741,6 +745,8 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/eti"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ledger-eti-binding"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/transcript-integrity"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/dlt-monotonicity"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/eti-dlt-binding"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -1121,6 +1127,30 @@ ci-gate-transcript-integrity: ci-gate-eti-sequence
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: transcript-integrity evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-dlt-monotonicity: ci-gate-eti-sequence
+	@echo "== CI GATE DLT MONOTONICITY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_dlt_eti_evidence: $(PHASE11_DLT_ETI_EVIDENCE_DIR)"
+	@bash scripts/ci/gate_dlt_monotonicity.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/dlt-monotonicity" \
+		--eti-evidence "$(PHASE11_DLT_ETI_EVIDENCE_DIR)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/dlt-monotonicity/report.json" "$(EVIDENCE_RUN_DIR)/reports/dlt-monotonicity.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: dlt-monotonicity evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-eti-dlt-binding: ci-gate-dlt-monotonicity
+	@echo "== CI GATE ETI DLT BINDING =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_eti_dlt_evidence: $(PHASE11_ETI_DLT_EVIDENCE_DIR)"
+	@echo "phase11_eti_dlt_dlt_evidence: $(PHASE11_ETI_DLT_DLT_EVIDENCE_DIR)"
+	@bash scripts/ci/gate_eti_dlt_binding.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/eti-dlt-binding" \
+		--eti-evidence "$(PHASE11_ETI_DLT_EVIDENCE_DIR)" \
+		--dlt-evidence "$(PHASE11_ETI_DLT_DLT_EVIDENCE_DIR)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/eti-dlt-binding/report.json" "$(EVIDENCE_RUN_DIR)/reports/eti-dlt-binding.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: eti-dlt-binding evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1313,6 +1343,12 @@ help:
 	@echo "  ci-gate-transcript-integrity - P11-13 transcript integrity gate"
 	@echo "    (controls: PHASE11_ETI_EVIDENCE_DIR=<path>)"
 	@echo "    (artifacts: report.json, violations.txt)"
+	@echo "  ci-gate-dlt-monotonicity - P11-14 DLT bootstrap ltick monotonicity gate"
+	@echo "    (controls: PHASE11_DLT_ETI_EVIDENCE_DIR=<path>)"
+	@echo "    (artifacts: ltick_trace.jsonl, report.json, violations.txt)"
+	@echo "  ci-gate-eti-dlt-binding - P11-14 strict ETI<->DLT source event_seq/ltick binding gate"
+	@echo "    (controls: PHASE11_ETI_DLT_EVIDENCE_DIR=<path>, PHASE11_ETI_DLT_DLT_EVIDENCE_DIR=<path>)"
+	@echo "    (artifacts: binding_report.json, report.json, violations.txt)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1332,7 +1368,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

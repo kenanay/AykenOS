@@ -242,6 +242,33 @@ Boundary statement:
 - ETI is bootstrap materialization in this milestone.
 - Direct kernel runtime ETI hook emission and lock-free buffering are deferred to strict runtime integration stage.
 
+### 4.5 DLT Ordering Bootstrap Path (#44)
+
+Bootstrap DLT ordering is materialized from ETI transcript evidence:
+
+1. Input:
+   - `eti/eti_transcript.jsonl`
+2. Generate DLT trace stream:
+   - generated `event_seq = 1..N`
+   - generated `ltick = 1..N`
+   - retain source identities: `source_event_seq`, `source_ltick`
+3. Validate DLT invariants:
+   - generated `ltick` monotonic + unique + no gaps
+   - generated `event_seq` monotonic + unique + no gaps
+   - source identities monotonic + unique
+4. Enforce strict ETI<->DLT source binding:
+   - `dlt.source_event_seq == eti.event_seq`
+   - `dlt.source_ltick == eti.ltick`
+5. Emit:
+   - `ltick_trace.jsonl`
+   - `binding_report.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- DLT in this milestone is bootstrap CI materialization over ETI evidence.
+- Direct kernel hot-path `ltick` assignment and multicore merge rules remain deferred to strict runtime DLT integration stage.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -319,6 +346,8 @@ Required gates:
 - `ci-gate-eti-sequence`
 - `ci-gate-ledger-eti-binding`
 - `ci-gate-transcript-integrity`
+- `ci-gate-dlt-monotonicity`
+- `ci-gate-eti-dlt-binding`
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
