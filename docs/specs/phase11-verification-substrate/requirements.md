@@ -216,7 +216,11 @@ This spec covers the **core verification substrate**. Individual components (P11
 5.16. THE System SHALL implement `ci-gate-abdf-snapshot-identity` and export `abdf_snapshot_hash.txt`, `snapshot_identity_report.json`, `snapshot_identity_consistency.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/abdf-snapshot-identity/`  
 5.17. THE ABDF snapshot identity gate SHALL compute `abdf_snapshot_hash = SHA256(snapshot_binary_bytes)` over canonical raw snapshot bytes (`snapshot.abdf`)  
 5.18. WHEN expected hash input is provided, THE gate SHALL fail-closed enforce equality (`computed_abdf_snapshot_hash == expected_abdf_snapshot_hash`)  
-5.19. WHEN snapshot input is missing/empty or expected hash input is malformed, THE gate SHALL fail-closed reject identity verification
+5.19. WHEN snapshot input is missing/empty or expected hash input is malformed, THE gate SHALL fail-closed reject identity verification  
+5.20. THE System SHALL implement `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`) and export `bcib_plan_hash.txt`, `execution_trace.jsonl`, `execution_trace_hash.txt`, `trace_verify.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/execution-identity/`  
+5.21. THE BCIB trace identity gate SHALL compute `bcib_plan_hash = SHA256(plan.bcib bytes)` and `execution_trace_hash = SHA256(normalized execution_trace.jsonl bytes)`  
+5.22. WHEN expected plan/trace hash inputs are provided, THE gate SHALL fail-closed enforce equality for both identities  
+5.23. WHEN BCIB plan input is missing/empty, ETI-derived execution trace is missing/invalid, or execution identity ordering invariants are violated, THE gate SHALL fail-closed reject verification
 
 ---
 
@@ -339,6 +343,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.23. WHEN previous GCP hash continuity invariants are violated, THE `ci-gate-gcp-finalization` SHALL fail
 10.24. THE System SHALL implement `ci-gate-abdf-snapshot-identity`
 10.25. WHEN ABDF snapshot hash identity invariants are violated, THE `ci-gate-abdf-snapshot-identity` SHALL fail
+10.26. THE System SHALL implement `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
+10.27. WHEN BCIB plan identity or execution trace identity invariants are violated, THE `ci-gate-bcib-trace-identity` SHALL fail
 
 ---
 

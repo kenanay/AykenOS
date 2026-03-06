@@ -329,6 +329,33 @@ Boundary statement:
 - ABDF snapshot identity in this milestone is CI/offline bootstrap verification over exported `snapshot.abdf` bytes.
 - Runtime replay integration and proof-layer composition consume this identity but do not alter hash semantics.
 
+### 4.9 BCIB Plan + Execution Trace Identity Bootstrap Path (#48)
+
+Bootstrap execution identity binds intent (`plan.bcib`) with ETI-derived execution stream:
+
+1. Inputs:
+   - `execution/plan.bcib`
+   - `gates/eti/eti_transcript.jsonl`
+2. Compute identities:
+   - `bcib_plan_hash = SHA256(plan.bcib bytes)`
+   - `execution_trace_hash = SHA256(normalized execution_trace.jsonl bytes)`
+3. Validate execution identity invariants:
+   - plan binary exists and is non-empty
+   - ETI-derived execution trace is valid and deterministic (no duplicate/non-monotonic ordering identities)
+   - deterministic recomputation yields identical plan/trace hashes
+   - optional expected-hash inputs match computed identities
+4. Emit:
+   - `bcib_plan_hash.txt`
+   - `execution_trace.jsonl`
+   - `execution_trace_hash.txt`
+   - `trace_verify.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- BCIB execution identity in this milestone is CI/offline bootstrap materialization over exported plan bytes and ETI evidence.
+- Runtime replay engine consumes these identities; runtime execution semantics remain deferred to Replay v1 integration stage.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -411,6 +438,7 @@ Required gates:
 - `ci-gate-dlt-determinism`
 - `ci-gate-gcp-finalization` (aliases: `ci-gate-gcp-atomicity`, `ci-gate-gcp-ordering`)
 - `ci-gate-abdf-snapshot-identity`
+- `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 

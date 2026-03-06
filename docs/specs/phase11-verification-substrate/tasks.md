@@ -35,7 +35,7 @@
 | #44 | P11-14 DLT | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | dlt-monotonicity + eti-dlt-binding + dlt-determinism gates PASS (bootstrap ordering evidence + reproducibility hardening) |
 | #45 | P11-15 GCP | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | gcp-finalization gate PASS (bootstrap commit-point contract evidence) |
 | #47 | P11-17 ABDF Snapshot Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | abdf-snapshot-identity gate PASS (canonical binary hash identity evidence) |
-| #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
+| #48 | P11-18 BCIB Plan and Trace Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | bcib-trace-identity gate PASS (plan+trace execution identity evidence) |
 | #37 | P11-04 Replay v1 | PENDING | 2026-03-06 | waits #47/#48 |
 | #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-06 | waits #37 |
 
@@ -350,15 +350,32 @@ Security/Performance snapshot:
 - Branch: `feat/p11-bcib-trace-identity`
 - Owner: Kenan AY
 - Invariant: replay/proof only valid with matching plan and trace identity
+- Status: COMPLETED_LOCAL_BOOTSTRAP (plan+trace execution identity proof)
 - Deliverables:
   - plan hash generator
   - execution trace export
   - trace hash verifier
-- Gate: `ci-gate-bcib-trace-identity`
+- Gate: `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
 - Evidence:
   - `bcib_plan_hash.txt`
-  - `execution_trace_hash.txt`
   - `execution_trace.jsonl`
+  - `execution_trace_hash.txt`
+  - `trace_verify.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_bcib_trace_identity.py` -> PASS
+- `tmp_root="$$(mktemp -d)" && mkdir -p "$$tmp_root/execution" "$$tmp_root/gates/eti" "$$tmp_root/gate" && printf 'BCIB\x01\x02\x03' > "$$tmp_root/execution/plan.bcib" && printf '%s\n' '{"event_seq":1,"ltick":1,"cpu_id":0,"event_type":"AY_EVT_SYSCALL_ENTER"}' '{"event_seq":2,"ltick":2,"cpu_id":0,"event_type":"AY_EVT_SYSCALL_EXIT"}' > "$$tmp_root/gates/eti/eti_transcript.jsonl" && bash scripts/ci/gate_bcib_trace_identity.sh --evidence-dir "$$tmp_root/gate" --bcib-plan "$$tmp_root/execution/plan.bcib" --eti-evidence "$$tmp_root/gates/eti"` -> PASS
+- `make -n ci-gate-bcib-trace-identity RUN_ID=dryrun-p11-48-bcib-trace-identity` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- BCIB plan + execution trace identity currently operates in bootstrap CI mode over `plan.bcib` bytes and ETI evidence.
+- Runtime replay integration consumes plan/trace identities but does not alter hash semantics in this milestone.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing/empty BCIB plan, malformed/invalid ETI-derived execution trace, ordering-identity anomalies, and expected-hash mismatches.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T10 - P11-04 Replay v1 (#37)
 - Branch: `feat/p11-deterministic-replay`
