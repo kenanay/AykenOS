@@ -39,15 +39,19 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 |--------|--------|--------|-----------|-----------|
 | **ABDF → BCIB** | object reference | `obj_id` | type check | BCIB runtime |
 | **BCIB → Kernel** | syscall | syscall ABI (1000-1010) | capability check | kernel |
+| **BCIB → Phase-11** | indirect (via kernel events) | syscall → event | ordering | Phase-11 |
 | **Kernel → Phase-11** | event | `ay_event_type_t` | sequence check | ordering layer |
 | **Phase-11 → Evidence** | serialized proof | JSON/binary | hash check | CI gates |
-| **ABDF → Phase-11** | snapshot | ABDF buffer | schema validation | replay engine |
+| **ABDF → Replay Engine** | snapshot | ABDF buffer | schema validation | replay engine |
+| **Replay Engine → Phase-11** | verification input | transcript + snapshot | hash chain | Phase-11 |
 
 ### Critical Rules
 
 1. **BCIB → Kernel**: ONLY via syscall interface (no direct kernel calls)
-2. **Kernel → Phase-11**: EVERY significant event MUST produce ledger/transcript entry
-3. **Phase-11 → Evidence**: Evidence MUST be immutable after creation
+2. **BCIB → Phase-11**: INDIRECT only (BCIB execution → syscalls → kernel events → Phase-11)
+3. **ABDF → Phase-11**: INDIRECT only (ABDF snapshot → Replay Engine → Phase-11 verification)
+4. **Kernel → Phase-11**: EVERY significant event MUST produce ledger/transcript entry
+5. **Phase-11 → Evidence**: Evidence MUST be immutable after creation
 
 ---
 
@@ -58,6 +62,7 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 | **ABDF** | `content_hash` | segment data | SHA-256 | data integrity |
 | **ABDF** | `schema_hash` | type + meta | SHA-256 | schema versioning |
 | **BCIB** | `plan_hash` | instruction stream | SHA-256 | execution plan identity |
+| **Replay Engine** | `execution_trace_hash` | syscall sequence + results | SHA-256 | replay verification |
 | **Phase-11** | `entry_hash` | ledger entry | SHA-256 | hash chain link |
 | **Phase-11** | `transcript_hash` | transcript entry | SHA-256 | execution reality |
 | **Phase-11** | `proof_hash` | manifest | SHA-256 | final proof seal |
@@ -82,7 +87,26 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 
 1. **ABDF Replay**: Same input snapshot → same data state
 2. **BCIB Replay**: Same plan + same data → same syscall sequence
-3. **Phase-11 Replay**: Same transcript → same final state hash
+3. **Execution Trace Replay**: Same plan + same snapshot → same execution trace
+4. **Phase-11 Replay**: Same transcript → same final state hash
+
+### Replay Flow
+
+```
+ABDF snapshot
+    ↓
+Replay Engine
+    ↓
+BCIB execution
+    ↓
+syscall sequence
+    ↓
+kernel events
+    ↓
+Phase-11 transcript
+    ↓
+verification
+```
 
 ---
 
@@ -103,20 +127,24 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 
 ---
 
-## 6. Type System Compatibility Matrix
+## 6. Type System Compatibility Matrix (NON-NORMATIVE EXAMPLES)
 
-| ABDF Type | BCIB Opcode | Phase-11 Event | Mapping |
-|-----------|-------------|----------------|---------|
-| `Tabular` | `DataQuery` | `EVT_SYSCALL_ENTER` | BCIB query → syscall → ledger entry |
-| `Log` | `DataAdd` | `EVT_SYSCALL_EXIT` | BCIB append → syscall → transcript entry |
-| `UiScene` | `UiRender` | `EVT_CTX_SWITCH` | BCIB render → context switch → ledger |
-| `GpuBuffer` | `DataCreate` | `EVT_MAILBOX_ACCEPT` | BCIB create → mailbox → decision ledger |
-| `Tensor` | `AiAsk` | `EVT_POLICY_SWAP` | BCIB AI call → policy swap → ledger |
+**Note**: This section provides illustrative examples only. Kernel MUST NOT know ABDF types or BCIB semantics.
 
-### Type Preservation Rules
+| ABDF Type | BCIB Opcode | Kernel Mechanism | Phase-11 Event |
+|-----------|-------------|------------------|----------------|
+| `Tabular` | `DataQuery` | syscall (1000-1010) | `EVT_SYSCALL_ENTER/EXIT` |
+| `Log` | `DataAdd` | syscall (1000-1010) | `EVT_SYSCALL_ENTER/EXIT` |
+| `UiScene` | `UiRender` | context switch | `EVT_CTX_SWITCH` |
+| `GpuBuffer` | `DataCreate` | mailbox | `EVT_MAILBOX_ACCEPT/REJECT` |
+| `Tensor` | `AiAsk` | policy swap | `EVT_POLICY_SWAP` |
+
+### Type Preservation Rules (NORMATIVE)
 
 - **ABDF type** MUST be preserved across BCIB operations
 - **BCIB opcode** MUST map to valid syscall sequence
+- **Kernel** MUST NOT know ABDF types (Tensor, Tabular, etc.)
+- **Kernel** MUST NOT know BCIB semantics (AiAsk, UiRender, etc.)
 - **Phase-11 event** MUST NOT leak ABDF schema details
 
 ---
@@ -143,12 +171,27 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 |-------|---------------|-----------------|----------|
 | **ABDF** | shared data substrate | lock-free reads | N/A |
 | **BCIB** | per-CPU execution plan | mailbox coordination | logical time |
-| **Phase-11** | global ordering + GCP | DLT + commit protocol | event_seq + ltick |
+| **Phase-11 (DLT)** | global logical ordering | deterministic time assignment | ltick |
+| **Phase-11 (GCP)** | deterministic finalization | commit protocol | event_seq |
+
+### Multicore Architecture
+
+```
+DLT (Deterministic Logical Time)
+    ↓
+global logical ordering
+    ↓
+GCP (Global Commit Protocol)
+    ↓
+deterministic finalization
+```
 
 ### Multicore Invariants
 
 - **ABDF**: Concurrent reads allowed, writes serialized
 - **BCIB**: Each CPU has independent execution plan
+- **DLT**: Assigns global logical time (ltick) to local events
+- **GCP**: Ensures deterministic commit across all CPUs
 - **Phase-11**: Global event_seq MUST be monotonic across all CPUs
 
 ---
