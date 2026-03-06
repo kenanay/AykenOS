@@ -22,7 +22,7 @@ Phase-11 consists of multiple components:
 - Multicore Coordination (DLT + GCP)
 - Proof Layer (cryptographic sealing)
 
-This spec covers the **core verification substrate**. Individual components (P11-01 through P11-16) are tracked as GitHub issues.
+This spec covers the **core verification substrate**. Individual components (P11-01 through P11-18) are tracked as GitHub issues.
 
 ---
 
@@ -51,17 +51,18 @@ This spec covers the **core verification substrate**. Individual components (P11
 - **ltick**: Deterministic logical time (for multicore ordering)
 - **ctx_id**: Process/thread/execution context identifier
 - **cap_id**: Capability identifier
-- **entry_hash**: Hash of ledger/transcript entry
+- **payload_hash**: `H(normalized_payload)`
+- **entry_hash**: `H(prev_hash || payload_hash)`
 - **prev_hash**: Previous entry hash (for hash chain)
 
 ### Event Types
 
-- **EVT_SYSCALL_ENTER/EXIT**: Syscall boundary events
-- **EVT_CTX_SWITCH**: Context switch decision
-- **EVT_CTX_BLOCK/WAKE**: Context blocking/waking
-- **EVT_IRQ_ENTER/EXIT**: Interrupt handling
-- **EVT_MAILBOX_ACCEPT/REJECT**: Mailbox decision
-- **EVT_POLICY_SWAP**: Policy module swap
+- **AY_EVT_SYSCALL_ENTER/EXIT**: Syscall boundary events
+- **AY_EVT_CTX_SWITCH**: Context switch decision
+- **AY_EVT_CTX_BLOCK/WAKE**: Context blocking/waking
+- **AY_EVT_IRQ_ENTER/EXIT**: Interrupt handling
+- **AY_EVT_MAILBOX_ACCEPT/REJECT**: Mailbox decision
+- **AY_EVT_POLICY_SWAP**: Policy module swap
 
 ### Multicore
 
@@ -79,10 +80,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 #### Acceptance Criteria
 
-1.1. WHEN a context switch occurs, THE System SHALL append a ledger entry with event_type=EVT_CTX_SWITCH  
-1.2. WHEN a mailbox proposal is accepted, THE System SHALL append a ledger entry with event_type=EVT_MAILBOX_ACCEPT  
-1.3. WHEN a mailbox proposal is rejected, THE System SHALL append a ledger entry with event_type=EVT_MAILBOX_REJECT  
-1.4. WHEN a policy swap occurs, THE System SHALL append a ledger entry with event_type=EVT_POLICY_SWAP  
+1.1. WHEN a context switch occurs, THE System SHALL append a ledger entry with event_type=AY_EVT_CTX_SWITCH  
+1.2. WHEN a mailbox proposal is accepted, THE System SHALL append a ledger entry with event_type=AY_EVT_MAILBOX_ACCEPT  
+1.3. WHEN a mailbox proposal is rejected, THE System SHALL append a ledger entry with event_type=AY_EVT_MAILBOX_REJECT  
+1.4. WHEN a policy swap occurs, THE System SHALL append a ledger entry with event_type=AY_EVT_POLICY_SWAP  
 1.5. WHEN a ledger entry is created, THE System SHALL include: event_seq, ltick, cpu_id, event_type, prev_ctx, next_ctx, decision_cap, reason_code  
 1.6. WHEN a ledger entry is created, THE System SHALL compute payload_hash = H(normalized_payload)  
 1.7. WHEN a ledger entry is created, THE System SHALL compute entry_hash = H(prev_hash || payload_hash)  
@@ -100,7 +101,7 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 2.1. WHEN the first ledger entry is created, THE System SHALL set prev_hash = 0  
 2.2. WHEN a subsequent ledger entry is created, THE System SHALL set prev_hash = previous_entry.entry_hash  
-2.3. WHEN a ledger entry is created, THE System SHALL compute entry_hash = H(header || normalized_payload)  
+2.3. WHEN a ledger entry is created, THE System SHALL compute payload_hash = H(normalized_payload) and entry_hash = H(prev_hash || payload_hash)  
 2.4. WHEN ledger is exported, THE System SHALL compute ledger_root_hash = H(all_entry_hashes)  
 2.5. WHEN ledger is loaded for replay, THE System SHALL verify hash chain integrity  
 2.6. WHEN hash chain verification fails, THE System SHALL reject ledger and fail replay  
@@ -115,11 +116,11 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 #### Acceptance Criteria
 
-3.1. WHEN a syscall enters, THE System SHALL append a transcript entry with event_type=EVT_SYSCALL_ENTER  
-3.2. WHEN a syscall exits, THE System SHALL append a transcript entry with event_type=EVT_SYSCALL_EXIT  
-3.3. WHEN an interrupt enters, THE System SHALL append a transcript entry with event_type=EVT_IRQ_ENTER  
-3.4. WHEN an interrupt exits, THE System SHALL append a transcript entry with event_type=EVT_IRQ_EXIT  
-3.5. WHEN a trap occurs, THE System SHALL append a transcript entry with event_type=EVT_TRAP_ENTER  
+3.1. WHEN a syscall enters, THE System SHALL append a transcript entry with event_type=AY_EVT_SYSCALL_ENTER  
+3.2. WHEN a syscall exits, THE System SHALL append a transcript entry with event_type=AY_EVT_SYSCALL_EXIT  
+3.3. WHEN an interrupt enters, THE System SHALL append a transcript entry with event_type=AY_EVT_IRQ_ENTER  
+3.4. WHEN an interrupt exits, THE System SHALL append a transcript entry with event_type=AY_EVT_IRQ_EXIT  
+3.5. WHEN a trap occurs, THE System SHALL append a transcript entry with event_type=AY_EVT_TRAP_ENTER  
 3.6. WHEN a transcript entry is created, THE System SHALL include: event_seq, ltick, cpu_id, ctx_id, rip, rsp, cr3  
 3.7. WHEN a transcript entry is for syscall, THE System SHALL include: syscall_no, arg0, arg1, arg2, result0  
 3.8. WHEN a transcript entry is for interrupt, THE System SHALL include: irq_vec  
@@ -168,6 +169,9 @@ This spec covers the **core verification substrate**. Individual components (P11
 5.10. WHEN final_state_hash matches, THE System SHALL mark replay as PASS  
 5.11. WHEN final_state_hash does NOT match, THE System SHALL mark replay as FAIL  
 5.12. THE Replay engine SHALL produce `evidence/run-*/replay_report.json`
+5.13. THE Replay engine SHALL compute and verify `abdf_snapshot_hash` for input identity  
+5.14. THE Replay engine SHALL compute and verify `bcib_plan_hash` for plan identity  
+5.15. THE Replay engine SHALL compute and verify `execution_trace_hash` parity across record/replay  
 
 ---
 
@@ -228,7 +232,7 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 ### Requirement 9: Evidence Export
 
-**User Story:** As a kernel architect, I want evidence exported to git, so that CI can validate execution.
+**User Story:** As a kernel architect, I want evidence exported as CI artifacts, so that CI can validate execution.
 
 #### Acceptance Criteria
 
@@ -239,7 +243,7 @@ This spec covers the **core verification substrate**. Individual components (P11
 9.5. THE Evidence directory SHALL include: replay_report.json (if replay executed)  
 9.6. THE Evidence directory SHALL include: gcp_record.json (if multicore)  
 9.7. THE Evidence directory SHALL include: meta/run_metadata.json  
-9.8. THE Evidence SHALL be committed to git  
+9.8. THE Evidence SHALL be exported and retained as CI artifact(s)  
 9.9. THE Evidence SHALL NOT be modified after creation  
 9.10. WHEN evidence is missing, THE CI SHALL fail
 
@@ -300,7 +304,7 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 The following are explicitly OUT OF SCOPE for Phase-11:
 
-- BCIB execution engine integration (Phase 12)
+- BCIB runtime redesign / new opcode semantics (existing BCIB plan loading for replay identity remains in scope)
 - AI scheduler integration (Phase 12)
 - Full multicore stress testing (Phase 12)
 - Hardware root of trust (Phase 13)
@@ -319,7 +323,7 @@ Phase-11 is considered complete when:
 4. ✅ Deterministic event ordering is operational
 5. ✅ Replay engine can verify execution
 6. ✅ Proof manifest is generated and signed
-7. ✅ Evidence is exported to git
+7. ✅ Evidence is exported as CI artifacts
 8. ✅ All CI gates pass
 9. ✅ Constitutional compliance is maintained
 10. ✅ Documentation is complete (Contract Matrix, State Machine)
@@ -331,7 +335,7 @@ Phase-11 is considered complete when:
 - `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md` - Layer contracts
 - `docs/architecture-board/RUNTIME_STATE_MACHINE.md` - Execution flow
 - `kernel/include/ayken_abi.h` - Syscall ABI
-- GitHub Issues: P11-01 through P11-16
+- GitHub Issues: P11-01 through P11-18
 
 ---
 

@@ -51,7 +51,7 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 1. **BCIB → Kernel**: ONLY via syscall interface (no direct kernel calls)
 2. **BCIB → Phase-11**: INDIRECT only (BCIB execution → syscalls → kernel events → Phase-11)
 3. **ABDF → Phase-11**: INDIRECT only (ABDF snapshot → Replay Engine → Phase-11 verification)
-4. **Kernel → Phase-11**: EVERY significant event MUST produce ledger/transcript entry
+4. **Kernel → Phase-11**: EVERY significant event MUST produce required record(s) (ledger and/or transcript) per taxonomy
 5. **Phase-11 → Evidence**: Evidence MUST be immutable after creation
 
 ---
@@ -71,7 +71,8 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 
 ### Hash Chain Rules
 
-- **Ledger**: `entry_hash = H(prev_hash || normalized_payload)`
+- **Ledger**: `payload_hash = H(normalized_payload)`
+- **Ledger**: `entry_hash = H(prev_hash || payload_hash)`
 - **Transcript**: `transcript_hash = H(state_before || event || state_after)`
 - **Proof**: `proof_hash = H(ledger_root || transcript_root || replay_result)`
 
@@ -135,11 +136,11 @@ verification
 
 | ABDF Type | BCIB Opcode | Kernel Mechanism | Phase-11 Event |
 |-----------|-------------|------------------|----------------|
-| `Tabular` | `DataQuery` | syscall (1000-1010) | `EVT_SYSCALL_ENTER/EXIT` |
-| `Log` | `DataAdd` | syscall (1000-1010) | `EVT_SYSCALL_ENTER/EXIT` |
-| `UiScene` | `UiRender` | context switch | `EVT_CTX_SWITCH` |
-| `GpuBuffer` | `DataCreate` | mailbox | `EVT_MAILBOX_ACCEPT/REJECT` |
-| `Tensor` | `AiAsk` | policy swap | `EVT_POLICY_SWAP` |
+| `Tabular` | `DataQuery` | syscall (1000-1010) | `AY_EVT_SYSCALL_ENTER/EXIT` |
+| `Log` | `DataAdd` | syscall (1000-1010) | `AY_EVT_SYSCALL_ENTER/EXIT` |
+| `UiScene` | `UiRender` | context switch | `AY_EVT_CTX_SWITCH` |
+| `GpuBuffer` | `DataCreate` | mailbox | `AY_EVT_MAILBOX_ACCEPT/REJECT` |
+| `Tensor` | `AiAsk` | policy swap | `AY_EVT_POLICY_SWAP` |
 
 ### Type Preservation Rules (NORMATIVE)
 
@@ -161,9 +162,10 @@ verification
 
 ### Evidence Integrity Rules
 
-1. Evidence MUST be committed to git
+1. Evidence MUST be exported as CI artifact(s) under `evidence/run-*`
 2. Evidence MUST NOT be modified after creation
 3. Evidence MUST include all three layers for complete replay
+4. Committing raw evidence directories to git is optional and repository-policy dependent
 
 ---
 
@@ -223,7 +225,7 @@ deterministic finalization
 |------|-----------|-----------|----------------|
 | **ABI** | schema stability | opcode stability | event type stability |
 | **Boundary** | N/A | syscall-only enforcement | Ring0 mechanism-only |
-| **Hygiene** | snapshot committed | plan committed | evidence committed |
+| **Hygiene** | snapshot exported | plan exported | evidence exported |
 | **Constitutional** | type system compliance | instruction compliance | ordering compliance |
 | **Performance** | N/A | N/A | deterministic baseline |
 | **Replay** | snapshot match | plan match | transcript match |

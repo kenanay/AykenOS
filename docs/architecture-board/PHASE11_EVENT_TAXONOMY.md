@@ -10,9 +10,10 @@
 
 This document defines the **complete taxonomy** of kernel events that MUST be recorded by Phase-11.
 
-Every significant kernel state transition MUST produce:
-1. **Ledger entry** (decision record)
-2. **Transcript entry** (execution reality)
+Every significant kernel state transition MUST produce Phase-11 record(s) according to event class:
+1. **Ledger entry** (decision record) for decision-class events
+2. **Transcript entry** (execution reality) for execution-class events
+3. **Both** for dual-class events (where explicitly required)
 
 This is the **canonical event specification** for Phase-11 implementation.
 
@@ -60,7 +61,10 @@ typedef enum {
     /* Error / Violation (50-59) */
     AY_EVT_CAPABILITY_VIOLATION = 50,
     AY_EVT_ORDERING_VIOLATION   = 51,
-    AY_EVT_REPLAY_MISMATCH      = 52
+    AY_EVT_REPLAY_MISMATCH      = 52,
+
+    /* Bounds */
+    AY_EVT_MAX                  = 53
 } ay_event_type_t;
 ```
 
@@ -70,7 +74,7 @@ typedef enum {
 
 ### 2.1 MUST Record (Mandatory)
 
-These events MUST ALWAYS produce ledger + transcript entries:
+These events MUST ALWAYS produce the required Phase-11 record(s) shown below:
 
 | Event | Ledger | Transcript | Reason |
 |-------|--------|-----------|--------|
@@ -125,21 +129,21 @@ These events MUST NOT produce Phase-11 entries:
 **Ledger Entry:**
 ```c
 ay_decision_ledger_entry_t {
-    .event_type = EVT_CTX_SWITCH,
+    .event_type = AY_EVT_CTX_SWITCH,
     .prev_ctx = current_ctx_id,
     .next_ctx = target_ctx_id,
     .decision_cap = scheduler_cap_id,
     .reason_code = REASON_MAILBOX_ACCEPT | REASON_PREEMPT | REASON_YIELD,
-    .payload_hash = H(mailbox_proposal | preempt_reason),
+    .payload_hash = H(normalized_payload),
     .prev_hash = ledger_tip_hash,
-    .entry_hash = H(header || payload)
+    .entry_hash = H(prev_hash || payload_hash)
 }
 ```
 
 **Transcript Entry:**
 ```c
 ay_transcript_entry_t {
-    .event_type = EVT_CTX_SWITCH,
+    .event_type = AY_EVT_CTX_SWITCH,
     .ctx_id = next_ctx_id,
     .rip = next_ctx->rip,
     .rsp = next_ctx->rsp,
@@ -168,7 +172,7 @@ ay_transcript_entry_t {
 **Transcript Entry:**
 ```c
 ay_transcript_entry_t {
-    .event_type = EVT_SYSCALL_ENTER,
+    .event_type = AY_EVT_SYSCALL_ENTER,
     .ctx_id = current_ctx_id,
     .rip = saved_rip,
     .rsp = saved_rsp,
@@ -194,7 +198,7 @@ ay_transcript_entry_t {
 **Transcript Entry:**
 ```c
 ay_transcript_entry_t {
-    .event_type = EVT_SYSCALL_EXIT,
+    .event_type = AY_EVT_SYSCALL_EXIT,
     .ctx_id = current_ctx_id,
     .rip = return_rip,
     .rsp = return_rsp,
@@ -216,14 +220,14 @@ ay_transcript_entry_t {
 **Ledger Entry:**
 ```c
 ay_decision_ledger_entry_t {
-    .event_type = EVT_MAILBOX_ACCEPT,
+    .event_type = AY_EVT_MAILBOX_ACCEPT,
     .prev_ctx = current_ctx_id,
     .next_ctx = proposed_ctx_id,
     .decision_cap = mailbox_cap_id,
     .reason_code = REASON_SCHEDULER_PROPOSAL,
-    .payload_hash = H(mailbox_proposal),
+    .payload_hash = H(normalized_payload),
     .prev_hash = ledger_tip_hash,
-    .entry_hash = H(header || proposal)
+    .entry_hash = H(prev_hash || payload_hash)
 }
 ```
 
@@ -245,14 +249,14 @@ ay_decision_ledger_entry_t {
 **Ledger Entry:**
 ```c
 ay_decision_ledger_entry_t {
-    .event_type = EVT_MAILBOX_REJECT,
+    .event_type = AY_EVT_MAILBOX_REJECT,
     .prev_ctx = current_ctx_id,
     .next_ctx = 0,  // no switch
     .decision_cap = mailbox_cap_id,
     .reason_code = REASON_CAP_VIOLATION | REASON_INVALID_PROPOSAL,
-    .payload_hash = H(mailbox_proposal),
+    .payload_hash = H(normalized_payload),
     .prev_hash = ledger_tip_hash,
-    .entry_hash = H(header || proposal)
+    .entry_hash = H(prev_hash || payload_hash)
 }
 ```
 
@@ -276,7 +280,7 @@ ay_decision_ledger_entry_t {
 **Transcript Entry:**
 ```c
 ay_transcript_entry_t {
-    .event_type = EVT_IRQ_ENTER,
+    .event_type = AY_EVT_IRQ_ENTER,
     .ctx_id = interrupted_ctx_id,
     .rip = interrupted_rip,
     .rsp = interrupted_rsp,
@@ -299,7 +303,7 @@ ay_transcript_entry_t {
 **Transcript Entry:**
 ```c
 ay_transcript_entry_t {
-    .event_type = EVT_IRQ_EXIT,
+    .event_type = AY_EVT_IRQ_EXIT,
     .ctx_id = resumed_ctx_id,
     .rip = resume_rip,
     .rsp = resume_rsp,
@@ -320,16 +324,16 @@ ay_transcript_entry_t {
 **Ledger Entry:**
 ```c
 ay_decision_ledger_entry_t {
-    .event_type = EVT_POLICY_SWAP,
+    .event_type = AY_EVT_POLICY_SWAP,
     .prev_ctx = 0,  // not context-specific
     .next_ctx = 0,
     .decision_cap = policy_swap_cap_id,
     .reason_code = REASON_POLICY_CHANGE,
     .aux0 = old_policy_id,
     .aux1 = new_policy_id,
-    .payload_hash = H(policy_descriptor),
+    .payload_hash = H(normalized_payload),
     .prev_hash = ledger_tip_hash,
-    .entry_hash = H(header || descriptor)
+    .entry_hash = H(prev_hash || payload_hash)
 }
 ```
 
@@ -346,16 +350,16 @@ ay_decision_ledger_entry_t {
 **Ledger Entry:**
 ```c
 ay_decision_ledger_entry_t {
-    .event_type = EVT_GCP_COMMIT,
+    .event_type = AY_EVT_GCP_COMMIT,
     .prev_ctx = 0,
     .next_ctx = 0,
     .decision_cap = gcp_coordinator_cap,
     .reason_code = REASON_MULTICORE_FINALIZE,
     .aux0 = commit_id,
     .aux1 = participant_count,
-    .payload_hash = H(gcp_record),
+    .payload_hash = H(normalized_payload),
     .prev_hash = ledger_tip_hash,
-    .entry_hash = H(header || gcp_record)
+    .entry_hash = H(prev_hash || payload_hash)
 }
 ```
 
@@ -535,7 +539,7 @@ bool ay_phase11_validate_ledger_entry(
     if (entry->event_type >= AY_EVT_MAX) return false;
     
     // Hash chain check
-    ay_hash256_t computed_hash = H(entry->prev_hash, entry->payload_hash);
+    ay_hash256_t computed_hash = H(entry->prev_hash || entry->payload_hash);
     if (memcmp(&computed_hash, &entry->entry_hash, 32) != 0) return false;
     
     return true;
@@ -664,11 +668,12 @@ bool ay_phase11_validate_transcript_entry(
    - Violation → CI fail
 
 3. **Transcript Completeness**
-   - EVERY significant kernel event MUST produce transcript entry
+   - Every event classified as `Transcript=YES` in Section 2 MUST produce transcript entry
    - Violation → CI fail
 
 4. **Hash Chain Integrity**
-   - `entry_hash = H(prev_hash || payload)`
+   - `payload_hash = H(normalized_payload)`
+   - `entry_hash = H(prev_hash || payload_hash)`
    - Violation → replay fail
 
 ---
