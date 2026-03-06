@@ -1,0 +1,340 @@
+# Requirements Document: Phase-11 Verification Substrate
+
+**Version:** 1.0  
+**Status:** Draft  
+**Date:** 2026-03-06  
+**Prerequisites:** 
+- ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md
+- RUNTIME_STATE_MACHINE.md
+- Phase 10-A2 (Ring3 execution proof)
+
+---
+
+## Introduction
+
+Phase-11 implements the **verification substrate** for AykenOS - the deterministic, replayable, and provable kernel reality layer. This phase transforms AykenOS from a functional kernel into a **verifiable execution system** with formal proof capabilities.
+
+Phase-11 consists of multiple components:
+- Decision Ledger (what decisions were made)
+- Execution Transcript (what actually happened)
+- Deterministic Event Ordering (global sequencing)
+- Replay Engine (verification)
+- Multicore Coordination (DLT + GCP)
+- Proof Layer (cryptographic sealing)
+
+This spec covers the **core verification substrate**. Individual components (P11-01 through P11-16) are tracked as GitHub issues.
+
+---
+
+## Glossary
+
+### Core Concepts
+
+- **Verification Substrate**: Layer that records, orders, and proves kernel execution
+- **Decision Ledger**: Append-only log of kernel decisions (context switches, mailbox accepts, policy swaps)
+- **Execution Transcript**: Append-only log of kernel reality (syscalls, interrupts, traps, state transitions)
+- **Event Ordering**: Global sequencing mechanism ensuring deterministic event order
+- **Replay Engine**: System that verifies execution by replaying transcript
+- **Proof Manifest**: Cryptographically sealed evidence of execution correctness
+
+### Data Structures
+
+- **ay_decision_ledger_entry_t**: Single ledger entry (decision record)
+- **ay_transcript_entry_t**: Single transcript entry (execution reality)
+- **ay_ordering_state_t**: Global ordering state (event_seq, ltick)
+- **ay_replay_state_t**: Replay verification state
+- **ay_proof_manifest_t**: Final proof artifact
+
+### Identifiers
+
+- **event_seq**: Global monotonic event sequence number
+- **ltick**: Deterministic logical time (for multicore ordering)
+- **ctx_id**: Process/thread/execution context identifier
+- **cap_id**: Capability identifier
+- **entry_hash**: Hash of ledger/transcript entry
+- **prev_hash**: Previous entry hash (for hash chain)
+
+### Event Types
+
+- **EVT_SYSCALL_ENTER/EXIT**: Syscall boundary events
+- **EVT_CTX_SWITCH**: Context switch decision
+- **EVT_CTX_BLOCK/WAKE**: Context blocking/waking
+- **EVT_IRQ_ENTER/EXIT**: Interrupt handling
+- **EVT_MAILBOX_ACCEPT/REJECT**: Mailbox decision
+- **EVT_POLICY_SWAP**: Policy module swap
+
+### Multicore
+
+- **DLT**: Deterministic Logical Time (assigns ltick to local events)
+- **GCP**: Global Commit Protocol (deterministic finalization)
+- **Commit**: Deterministic state finalization across all CPUs
+
+---
+
+## Requirements
+
+### Requirement 1: Decision Ledger (P11-02)
+
+**User Story:** As a kernel architect, I want a decision ledger that records all significant kernel decisions, so that I can audit and replay kernel behavior.
+
+#### Acceptance Criteria
+
+1.1. WHEN a context switch occurs, THE System SHALL append a ledger entry with event_type=EVT_CTX_SWITCH  
+1.2. WHEN a mailbox proposal is accepted, THE System SHALL append a ledger entry with event_type=EVT_MAILBOX_ACCEPT  
+1.3. WHEN a mailbox proposal is rejected, THE System SHALL append a ledger entry with event_type=EVT_MAILBOX_REJECT  
+1.4. WHEN a policy swap occurs, THE System SHALL append a ledger entry with event_type=EVT_POLICY_SWAP  
+1.5. WHEN a ledger entry is created, THE System SHALL include: event_seq, ltick, cpu_id, event_type, prev_ctx, next_ctx, decision_cap, reason_code  
+1.6. WHEN a ledger entry is created, THE System SHALL compute payload_hash = H(normalized_payload)  
+1.7. WHEN a ledger entry is created, THE System SHALL compute entry_hash = H(prev_hash || payload_hash)  
+1.8. THE Ledger SHALL be append-only (no modification of past entries)  
+1.9. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.bin`  
+1.10. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.jsonl` (human-readable)
+
+---
+
+### Requirement 2: Ledger Hash Chain (P11-03)
+
+**User Story:** As a kernel architect, I want ledger entries linked by hash chain, so that I can detect tampering and ensure integrity.
+
+#### Acceptance Criteria
+
+2.1. WHEN the first ledger entry is created, THE System SHALL set prev_hash = 0  
+2.2. WHEN a subsequent ledger entry is created, THE System SHALL set prev_hash = previous_entry.entry_hash  
+2.3. WHEN a ledger entry is created, THE System SHALL compute entry_hash = H(header || normalized_payload)  
+2.4. WHEN ledger is exported, THE System SHALL compute ledger_root_hash = H(all_entry_hashes)  
+2.5. WHEN ledger is loaded for replay, THE System SHALL verify hash chain integrity  
+2.6. WHEN hash chain verification fails, THE System SHALL reject ledger and fail replay  
+2.7. THE Hash algorithm SHALL be SHA-256  
+2.8. THE Hash chain SHALL be tamper-evident (any modification breaks chain)
+
+---
+
+### Requirement 3: Execution Transcript (P11-13)
+
+**User Story:** As a kernel architect, I want an execution transcript that records kernel reality, so that I can verify what actually happened.
+
+#### Acceptance Criteria
+
+3.1. WHEN a syscall enters, THE System SHALL append a transcript entry with event_type=EVT_SYSCALL_ENTER  
+3.2. WHEN a syscall exits, THE System SHALL append a transcript entry with event_type=EVT_SYSCALL_EXIT  
+3.3. WHEN an interrupt enters, THE System SHALL append a transcript entry with event_type=EVT_IRQ_ENTER  
+3.4. WHEN an interrupt exits, THE System SHALL append a transcript entry with event_type=EVT_IRQ_EXIT  
+3.5. WHEN a trap occurs, THE System SHALL append a transcript entry with event_type=EVT_TRAP_ENTER  
+3.6. WHEN a transcript entry is created, THE System SHALL include: event_seq, ltick, cpu_id, ctx_id, rip, rsp, cr3  
+3.7. WHEN a transcript entry is for syscall, THE System SHALL include: syscall_no, arg0, arg1, arg2, result0  
+3.8. WHEN a transcript entry is for interrupt, THE System SHALL include: irq_vec  
+3.9. WHEN a transcript entry is for trap, THE System SHALL include: trap_no  
+3.10. WHEN a transcript entry is created, THE System SHALL compute state_hash_before and state_hash_after  
+3.11. THE Transcript SHALL be append-only (no modification of past entries)  
+3.12. THE Transcript SHALL be serialized to `evidence/run-*/transcript.bin`  
+3.13. THE Transcript SHALL be serialized to `evidence/run-*/transcript.jsonl` (human-readable)
+
+---
+
+### Requirement 4: Deterministic Event Ordering (P11-10)
+
+**User Story:** As a kernel architect, I want deterministic event ordering, so that replay produces identical results.
+
+#### Acceptance Criteria
+
+4.1. WHEN an event occurs, THE System SHALL assign a globally unique event_seq  
+4.2. THE event_seq SHALL be monotonically increasing  
+4.3. WHEN event_seq is not monotonic, THE System SHALL panic (ordering violation)  
+4.4. WHEN an event occurs, THE System SHALL assign a deterministic ltick (logical time)  
+4.5. THE ltick SHALL be deterministic (same input → same ltick)  
+4.6. WHEN ordering state is updated, THE System SHALL update ordering_state_hash  
+4.7. THE Ordering layer SHALL ensure interrupt order is deterministic  
+4.8. THE Ordering layer SHALL ensure syscall order is deterministic  
+4.9. THE Ordering layer SHALL ensure scheduler order is deterministic  
+4.10. THE Ordering SHALL be independent of wall-clock time
+
+---
+
+### Requirement 5: Replay Engine (P11-04)
+
+**User Story:** As a kernel architect, I want a replay engine that verifies execution, so that I can prove determinism.
+
+#### Acceptance Criteria
+
+5.1. WHEN replay starts, THE System SHALL load ABDF snapshot (input state)  
+5.2. WHEN replay starts, THE System SHALL load BCIB plan (execution intent)  
+5.3. WHEN replay starts, THE System SHALL load Phase-11 transcript (execution reality)  
+5.4. WHEN replay executes, THE System SHALL compare actual events with transcript  
+5.5. WHEN actual event_seq matches expected event_seq, THE System SHALL continue replay  
+5.6. WHEN actual event_seq does NOT match expected event_seq, THE System SHALL increment mismatch_count  
+5.7. WHEN replay is in strict mode AND mismatch occurs, THE System SHALL panic  
+5.8. WHEN replay completes, THE System SHALL compute replay_result_hash  
+5.9. WHEN replay completes, THE System SHALL compare final_state_hash with expected  
+5.10. WHEN final_state_hash matches, THE System SHALL mark replay as PASS  
+5.11. WHEN final_state_hash does NOT match, THE System SHALL mark replay as FAIL  
+5.12. THE Replay engine SHALL produce `evidence/run-*/replay_report.json`
+
+---
+
+### Requirement 6: Multicore Deterministic Logical Time (P11-14)
+
+**User Story:** As a kernel architect, I want deterministic logical time for multicore, so that events have global ordering.
+
+#### Acceptance Criteria
+
+6.1. WHEN a local event occurs on CPU N, THE DLT SHALL assign a global ltick  
+6.2. THE ltick SHALL be deterministic (same local event order → same ltick)  
+6.3. WHEN multiple CPUs produce events, THE DLT SHALL merge them into global order  
+6.4. THE DLT SHALL ensure ltick is monotonic across all CPUs  
+6.5. WHEN DLT assigns ltick, THE System SHALL record it in ledger/transcript  
+6.6. THE DLT SHALL NOT depend on wall-clock time  
+6.7. THE DLT SHALL NOT depend on CPU clock speed  
+6.8. THE DLT SHALL be replay-friendly (same input → same ltick sequence)
+
+---
+
+### Requirement 7: Global Commit Protocol (P11-15)
+
+**User Story:** As a kernel architect, I want global commit protocol for multicore, so that final state is deterministic.
+
+#### Acceptance Criteria
+
+7.1. WHEN all CPUs reach commit point, THE GCP SHALL initiate prepare phase  
+7.2. WHEN prepare phase completes, THE GCP SHALL initiate commit vote  
+7.3. WHEN all CPUs vote yes, THE GCP SHALL commit state  
+7.4. WHEN any CPU votes no, THE GCP SHALL abort commit  
+7.5. WHEN commit succeeds, THE GCP SHALL compute transcript_root_hash  
+7.6. WHEN commit succeeds, THE GCP SHALL compute ledger_root_hash  
+7.7. WHEN commit succeeds, THE GCP SHALL compute commit_hash  
+7.8. THE GCP SHALL ensure deterministic finalization (same input → same final state)  
+7.9. THE GCP SHALL record commit in `evidence/run-*/gcp_record.json`  
+7.10. THE GCP SHALL be replay-friendly
+
+---
+
+### Requirement 8: Proof Manifest (P11-11)
+
+**User Story:** As a kernel architect, I want a proof manifest that seals execution, so that I can cryptographically verify correctness.
+
+#### Acceptance Criteria
+
+8.1. WHEN execution completes, THE System SHALL create proof manifest  
+8.2. THE Proof manifest SHALL include: kernel_image_hash, config_hash, ledger_root_hash, transcript_root_hash, replay_result_hash, final_state_hash  
+8.3. THE Proof manifest SHALL include: event_count, violation_count  
+8.4. THE Proof manifest SHALL include: build_id, run_id  
+8.5. WHEN proof manifest is created, THE System SHALL compute proof_hash = H(manifest)  
+8.6. WHEN proof manifest is created, THE System SHALL sign it with signer_sig  
+8.7. THE Proof manifest SHALL be serialized to `evidence/run-*/proof.json`  
+8.8. THE Proof manifest SHALL be immutable after creation  
+8.9. WHEN proof is verified, THE System SHALL check signature validity  
+8.10. WHEN proof is verified, THE System SHALL check hash chain integrity
+
+---
+
+### Requirement 9: Evidence Export
+
+**User Story:** As a kernel architect, I want evidence exported to git, so that CI can validate execution.
+
+#### Acceptance Criteria
+
+9.1. WHEN execution completes, THE System SHALL export evidence to `evidence/run-<RUN_ID>/`  
+9.2. THE Evidence directory SHALL include: decision_ledger.bin, decision_ledger.jsonl  
+9.3. THE Evidence directory SHALL include: transcript.bin, transcript.jsonl  
+9.4. THE Evidence directory SHALL include: proof.json  
+9.5. THE Evidence directory SHALL include: replay_report.json (if replay executed)  
+9.6. THE Evidence directory SHALL include: gcp_record.json (if multicore)  
+9.7. THE Evidence directory SHALL include: meta/run_metadata.json  
+9.8. THE Evidence SHALL be committed to git  
+9.9. THE Evidence SHALL NOT be modified after creation  
+9.10. WHEN evidence is missing, THE CI SHALL fail
+
+---
+
+### Requirement 10: CI Gate Integration
+
+**User Story:** As a kernel architect, I want CI gates for Phase-11, so that violations are detected automatically.
+
+#### Acceptance Criteria
+
+10.1. THE System SHALL implement `ci-gate-ledger-completeness`  
+10.2. THE System SHALL implement `ci-gate-transcript-integrity`  
+10.3. THE System SHALL implement `ci-gate-replay-determinism`  
+10.4. THE System SHALL implement `ci-gate-hash-chain-validity`  
+10.5. WHEN ledger is incomplete, THE `ci-gate-ledger-completeness` SHALL fail  
+10.6. WHEN transcript is corrupted, THE `ci-gate-transcript-integrity` SHALL fail  
+10.7. WHEN replay fails, THE `ci-gate-replay-determinism` SHALL fail  
+10.8. WHEN hash chain is broken, THE `ci-gate-hash-chain-validity` SHALL fail  
+10.9. WHEN any Phase-11 gate fails, THE PR SHALL be blocked  
+10.10. THE CI gates SHALL produce evidence reports
+
+---
+
+### Requirement 11: Constitutional Compliance
+
+**User Story:** As a kernel architect, I want Phase-11 to comply with constitutional rules, so that architectural integrity is maintained.
+
+#### Acceptance Criteria
+
+11.1. THE Phase-11 layer SHALL NOT contain policy decisions (Rule 1: Ring0 Policy Prohibition)  
+11.2. THE Phase-11 layer SHALL NOT modify ABI (Rule 2: ABI Stability)  
+11.3. THE Phase-11 layer SHALL NOT add Ring0 exports without ADR (Rule 3: Ring0 Export Surface)  
+11.4. THE Phase-11 layer SHALL NOT modify evidence manually (Rule 4: Evidence Integrity)  
+11.5. THE Phase-11 layer SHALL be deterministic (Rule 5: Determinism Requirement)  
+11.6. THE Phase-11 layer SHALL pass all constitutional gates  
+11.7. THE Phase-11 layer SHALL follow contract matrix (ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md)  
+11.8. THE Phase-11 layer SHALL follow state machine (RUNTIME_STATE_MACHINE.md)
+
+---
+
+### Requirement 12: Backward Compatibility
+
+**User Story:** As a kernel architect, I want Phase-11 to be backward compatible, so that existing evidence can be replayed.
+
+#### Acceptance Criteria
+
+12.1. WHEN Phase-11 v2 is released, THE System SHALL replay Phase-11 v1 transcripts  
+12.2. WHEN ledger format changes, THE System SHALL increment version number  
+12.3. WHEN transcript format changes, THE System SHALL increment version number  
+12.4. THE System SHALL support at least 2 previous versions  
+12.5. WHEN old evidence is loaded, THE System SHALL validate version compatibility  
+12.6. WHEN version is incompatible, THE System SHALL reject evidence with clear error
+
+---
+
+## Out of Scope (Phase 12+)
+
+The following are explicitly OUT OF SCOPE for Phase-11:
+
+- BCIB execution engine integration (Phase 12)
+- AI scheduler integration (Phase 12)
+- Full multicore stress testing (Phase 12)
+- Hardware root of trust (Phase 13)
+- Distributed replay (Phase 14)
+- Formal verification (Phase 15)
+
+---
+
+## Success Criteria
+
+Phase-11 is considered complete when:
+
+1. ✅ Decision ledger records all significant kernel decisions
+2. ✅ Execution transcript records all kernel events
+3. ✅ Hash chain integrity is enforced
+4. ✅ Deterministic event ordering is operational
+5. ✅ Replay engine can verify execution
+6. ✅ Proof manifest is generated and signed
+7. ✅ Evidence is exported to git
+8. ✅ All CI gates pass
+9. ✅ Constitutional compliance is maintained
+10. ✅ Documentation is complete (Contract Matrix, State Machine)
+
+---
+
+## References
+
+- `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md` - Layer contracts
+- `docs/architecture-board/RUNTIME_STATE_MACHINE.md` - Execution flow
+- `kernel/include/ayken_abi.h` - Syscall ABI
+- GitHub Issues: P11-01 through P11-16
+
+---
+
+**Maintained by:** AykenOS Architecture Board  
+**Last Updated:** 2026-03-06  
+**Status:** Draft (awaiting design document)
