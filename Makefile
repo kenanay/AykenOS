@@ -272,6 +272,9 @@ PHASE11_ETI_DLT_DLT_EVIDENCE_DIR ?= $(PHASE11_DLT_EVIDENCE_DIR)
 PHASE11_DLT_DETERMINISM_ETI_EVIDENCE_DIR ?= $(PHASE11_ETI_EVIDENCE_DIR)
 PHASE11_GCP_DLT_EVIDENCE_DIR ?= $(PHASE11_DLT_EVIDENCE_DIR)
 PHASE11_GCP_PREVIOUS_SNAPSHOT ?=
+PHASE11_ABDF_INPUT_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/input
+PHASE11_ABDF_SNAPSHOT_BIN ?= $(PHASE11_ABDF_INPUT_EVIDENCE_DIR)/snapshot.abdf
+PHASE11_ABDF_EXPECTED_HASH_FILE ?=
 # C2 activation default: enabled in freeze chain; can be disabled explicitly
 # via `PHASE10C_ENFORCE=0 make ci-freeze`.
 PHASE10C_ENFORCE ?= 1
@@ -723,6 +726,7 @@ ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-bounda
 # CI boundary gate with evidence collection
 ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/meta"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/input"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/artifacts"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/abi"
@@ -752,6 +756,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/eti-dlt-binding"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/dlt-determinism"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/gcp-finalization"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/abdf-snapshot-identity"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -1185,6 +1190,18 @@ ci-gate-gcp-atomicity: ci-gate-gcp-finalization
 ci-gate-gcp-ordering: ci-gate-gcp-finalization
 	@echo "OK: gcp-ordering alias passed (gcp-finalization bootstrap)"
 
+ci-gate-abdf-snapshot-identity: ci-evidence-dir
+	@echo "== CI GATE ABDF SNAPSHOT IDENTITY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_abdf_snapshot_bin: $(PHASE11_ABDF_SNAPSHOT_BIN)"
+	@echo "phase11_abdf_expected_hash_file: $(if $(PHASE11_ABDF_EXPECTED_HASH_FILE),$(PHASE11_ABDF_EXPECTED_HASH_FILE),<none>)"
+	@bash scripts/ci/gate_abdf_snapshot_identity.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/abdf-snapshot-identity" \
+		--snapshot-bin "$(PHASE11_ABDF_SNAPSHOT_BIN)" $(if $(PHASE11_ABDF_EXPECTED_HASH_FILE),--expected-hash-file "$(PHASE11_ABDF_EXPECTED_HASH_FILE)",)
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/abdf-snapshot-identity/report.json" "$(EVIDENCE_RUN_DIR)/reports/abdf-snapshot-identity.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: abdf-snapshot-identity evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1391,6 +1408,9 @@ help:
 	@echo "    (artifacts: gcp_snapshot.json, gcp_record.json, gcp_consistency_report.json, report.json, violations.txt)"
 	@echo "  ci-gate-gcp-atomicity - Alias of ci-gate-gcp-finalization"
 	@echo "  ci-gate-gcp-ordering - Alias of ci-gate-gcp-finalization"
+	@echo "  ci-gate-abdf-snapshot-identity - P11-17 ABDF replay snapshot identity gate"
+	@echo "    (controls: PHASE11_ABDF_SNAPSHOT_BIN=<path>, PHASE11_ABDF_EXPECTED_HASH_FILE=<path>)"
+	@echo "    (artifacts: abdf_snapshot_hash.txt, snapshot_identity_report.json, snapshot_identity_consistency.json, report.json, violations.txt)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1410,7 +1430,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

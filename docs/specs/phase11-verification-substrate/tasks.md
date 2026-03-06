@@ -34,7 +34,7 @@
 | #43 | P11-13 ETI | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | eti-sequence + ledger-eti-binding + transcript-integrity gates PASS (bootstrap evidence mode) |
 | #44 | P11-14 DLT | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | dlt-monotonicity + eti-dlt-binding + dlt-determinism gates PASS (bootstrap ordering evidence + reproducibility hardening) |
 | #45 | P11-15 GCP | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | gcp-finalization gate PASS (bootstrap commit-point contract evidence) |
-| #47 | P11-17 ABDF Snapshot Identity | PENDING | 2026-03-06 | waits #43/#44 |
+| #47 | P11-17 ABDF Snapshot Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | abdf-snapshot-identity gate PASS (canonical binary hash identity evidence) |
 | #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
 | #37 | P11-04 Replay v1 | PENDING | 2026-03-06 | waits #47/#48 |
 | #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-06 | waits #37 |
@@ -320,6 +320,7 @@ Security/Performance snapshot:
 - Branch: `feat/p11-abdf-snapshot-identity`
 - Owner: Kenan AY
 - Invariant: replay starts only with verified snapshot identity
+- Status: COMPLETED_LOCAL_BOOTSTRAP (canonical snapshot hash identity proof)
 - Deliverables:
   - snapshot hash generator
   - snapshot identity verifier
@@ -328,6 +329,22 @@ Security/Performance snapshot:
 - Evidence:
   - `abdf_snapshot_hash.txt`
   - `snapshot_identity_report.json`
+  - `snapshot_identity_consistency.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_abdf_snapshot_identity.py` -> PASS
+- `tmp_root="$$(mktemp -d)" && mkdir -p "$$tmp_root/input" "$$tmp_root/gate" && printf 'ABDF\x01\x02\x03' > "$$tmp_root/input/snapshot.abdf" && bash scripts/ci/gate_abdf_snapshot_identity.sh --evidence-dir "$$tmp_root/gate" --snapshot-bin "$$tmp_root/input/snapshot.abdf"` -> PASS
+- `make -n ci-gate-abdf-snapshot-identity RUN_ID=dryrun-p11-47-abdf-snapshot-identity` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- ABDF snapshot identity currently operates in bootstrap CI mode over canonical binary snapshot bytes.
+- Runtime replay/proof integration consumes `abdf_snapshot_hash` identity but does not alter hash semantics in this milestone.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing/empty snapshot, malformed expected hash input, and computed-vs-expected hash mismatch.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T9 - P11-18 BCIB Plan and Trace Identity (#48)
 - Branch: `feat/p11-bcib-trace-identity`

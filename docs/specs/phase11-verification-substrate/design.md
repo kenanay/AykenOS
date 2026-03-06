@@ -306,6 +306,29 @@ Boundary statement:
 - Bootstrap validator semantics intentionally enforce contiguous DLT identities (`event_seq = 1..N`, `ltick = 1..N`).
 - Strict runtime/sharded DLT+GCP semantics will be introduced via versioned validator path at runtime integration milestone.
 
+### 4.8 ABDF Snapshot Identity Bootstrap Path (#47)
+
+Bootstrap ABDF snapshot identity is materialized from canonical binary snapshot evidence:
+
+1. Input:
+   - `input/snapshot.abdf`
+2. Compute identity hash:
+   - `abdf_snapshot_hash = SHA256(snapshot_binary_bytes)`
+3. Validate ABDF identity invariants:
+   - snapshot input exists and is non-empty
+   - deterministic recomputation yields identical hash
+   - optional expected-hash input matches computed hash
+4. Emit:
+   - `abdf_snapshot_hash.txt`
+   - `snapshot_identity_report.json`
+   - `snapshot_identity_consistency.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- ABDF snapshot identity in this milestone is CI/offline bootstrap verification over exported `snapshot.abdf` bytes.
+- Runtime replay integration and proof-layer composition consume this identity but do not alter hash semantics.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -387,6 +410,7 @@ Required gates:
 - `ci-gate-eti-dlt-binding`
 - `ci-gate-dlt-determinism`
 - `ci-gate-gcp-finalization` (aliases: `ci-gate-gcp-atomicity`, `ci-gate-gcp-ordering`)
+- `ci-gate-abdf-snapshot-identity`
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
