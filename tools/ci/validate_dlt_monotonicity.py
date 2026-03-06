@@ -120,10 +120,11 @@ def main() -> int:
         source_event_seq_values.append(source_event_seq)
         source_ltick_values.append(source_ltick)
 
+        generated_seq = idx
         trace_rows.append(
             {
-                "event_seq": len(trace_rows) + 1,
-                "ltick": len(trace_rows) + 1,
+                "event_seq": generated_seq,
+                "ltick": generated_seq,
                 "source_event_seq": source_event_seq,
                 "source_ltick": source_ltick,
                 "cpu_id": cpu_id,

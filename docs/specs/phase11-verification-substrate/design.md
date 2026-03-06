@@ -269,6 +269,15 @@ Boundary statement:
 - DLT in this milestone is bootstrap CI materialization over ETI evidence.
 - Direct kernel hot-path `ltick` assignment and multicore merge rules remain deferred to strict runtime DLT integration stage.
 
+### 4.6 Verification Kernel Boundary (Hardening Addendum)
+
+To avoid verification-layer observer effects and architecture drift:
+
+1. Runtime kernel hot-path keeps only minimal event contract emission.
+2. Heavy verification work (hashing, binding, parity checks, report synthesis) remains CI/offline.
+3. Runtime integration stages must preserve non-blocking O(1) event publication semantics.
+4. Event contract schema changes require synchronized updates across `design.md`, `requirements.md`, and `tasks.md` in the same PR.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -348,6 +357,7 @@ Required gates:
 - `ci-gate-transcript-integrity`
 - `ci-gate-dlt-monotonicity`
 - `ci-gate-eti-dlt-binding`
+- `ci-gate-dlt-determinism`
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 

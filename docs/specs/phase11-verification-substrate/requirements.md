@@ -234,7 +234,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 6.10. BOOTSTRAP mode SHALL generate contiguous deterministic DLT ordering identities (`event_seq = 1..N`, `ltick = 1..N`) while retaining ETI source identities (`source_event_seq`, `source_ltick`)  
 6.11. THE System SHALL implement `ci-gate-eti-dlt-binding` and export `binding_report.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/eti-dlt-binding/`  
 6.12. THE ETI-DLT binding gate SHALL fail-closed enforce `dlt.source_event_seq == eti.event_seq` and `dlt.source_ltick == eti.ltick`  
-6.13. UNTIL strict kernel DLT allocator/merge is active, THE DLT gates MAY run in bootstrap materialization mode over ETI evidence
+6.13. UNTIL strict kernel DLT allocator/merge is active, THE DLT gates MAY run in bootstrap materialization mode over ETI evidence  
+6.14. THE System SHALL implement `ci-gate-dlt-determinism` and fail-closed enforce reproducibility: same ETI input SHALL produce identical bootstrap DLT trace hash (`ltick_trace_a == ltick_trace_b`)
 
 ---
 
@@ -319,6 +320,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.16. THE System SHALL implement `ci-gate-eti-dlt-binding`
 10.17. WHEN DLT trace ordering invariants are violated, THE `ci-gate-dlt-monotonicity` SHALL fail
 10.18. WHEN ETI and DLT source identities mismatch, THE `ci-gate-eti-dlt-binding` SHALL fail
+10.19. THE System SHALL implement `ci-gate-dlt-determinism`
+10.20. WHEN identical ETI evidence yields non-identical bootstrap DLT trace hash, THE `ci-gate-dlt-determinism` SHALL fail
 
 ---
 
@@ -333,6 +336,9 @@ This spec covers the **core verification substrate**. Individual components (P11
 10A.3. WHEN malformed/tampered inputs are tested, THE System SHALL fail-closed  
 10A.4. WHEN performance baseline regresses beyond gate limits, THE CI SHALL fail  
 10A.5. THE PR SHALL include executed gate outputs relevant to security/performance checks  
+10A.6. Verification logic SHALL NOT expand kernel hot-path complexity beyond minimal event-contract emission in bootstrap stages  
+10A.7. Heavy verification operations (hashing, binding, parity checks) SHALL run in CI/offline path unless explicitly promoted by runtime integration milestone  
+10A.8. Any event-contract schema change SHALL be synchronized across design/requirements/tasks documents in the same PR
 
 ---
 
@@ -349,7 +355,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 11.5. THE Phase-11 layer SHALL be deterministic (Rule 5: Determinism Requirement)  
 11.6. THE Phase-11 layer SHALL pass all constitutional gates  
 11.7. THE Phase-11 layer SHALL follow contract matrix (ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md)  
-11.8. THE Phase-11 layer SHALL follow state machine (RUNTIME_STATE_MACHINE.md)
+11.8. THE Phase-11 layer SHALL follow state machine (RUNTIME_STATE_MACHINE.md)  
+11.9. THE Phase-11 layer SHALL preserve Verification Kernel Boundary discipline: minimal runtime event contract, heavy verification in CI/offline path
 
 ---
 

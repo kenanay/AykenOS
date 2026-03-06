@@ -6,6 +6,7 @@ from __future__ import annotations
 # Author: Kenan AY
 
 import json
+import random
 import subprocess
 import tempfile
 import unittest
@@ -94,6 +95,41 @@ class DltMonotonicityValidatorTest(unittest.TestCase):
         rc, report, _ = self._run()
         self.assertEqual(rc, 2)
         self.assertIn("source_event_seq_non_monotonic", report.get("violations", []))
+
+    def test_property_style_corruption_matrix_fail_closed(self) -> None:
+        seed = 44
+        base_rows = [self._eti_row(10, 10), self._eti_row(11, 11), self._eti_row(12, 12)]
+        rng = random.Random(seed)
+
+        def mutate_duplicate(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            out.append(dict(out[-1]))
+            return out
+
+        def mutate_reorder(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            rng.shuffle(out)
+            if [row["event_seq"] for row in out] == [row["event_seq"] for row in rows]:
+                out.reverse()
+            return out
+
+        def mutate_tamper(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            out[1]["ltick"] = "corrupt"
+            return out
+
+        cases = (
+            ("duplicate", mutate_duplicate, "source_event_seq_duplicate"),
+            ("reorder", mutate_reorder, "source_event_seq_non_monotonic"),
+            ("tamper", mutate_tamper, "invalid_source_ordering_fields:entry=2"),
+        )
+
+        for name, mutator, expected_violation in cases:
+            with self.subTest(name=name):
+                self._write_eti_rows(mutator(base_rows))
+                rc, report, _ = self._run()
+                self.assertEqual(rc, 2)
+                self.assertIn(expected_violation, report.get("violations", []))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from __future__ import annotations
 # Author: Kenan AY
 
 import json
+import random
 import subprocess
 import tempfile
 import unittest
@@ -96,6 +97,56 @@ class EtiDltBindingValidatorTest(unittest.TestCase):
         self.assertTrue(
             any(v.startswith("source_ltick_mismatch:event_seq=12") for v in report.get("violations", []))
         )
+
+    def test_property_style_corruption_matrix_fail_closed(self) -> None:
+        seed = 43
+        rng = random.Random(seed)
+        eti_rows = [self._eti_row(21, 21), self._eti_row(22, 22), self._eti_row(23, 23)]
+        dlt_rows = [
+            self._dlt_row(1, 1, 21, 21),
+            self._dlt_row(2, 2, 22, 22),
+            self._dlt_row(3, 3, 23, 23),
+        ]
+
+        def mutate_drop(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            out.pop(1)
+            return out
+
+        def mutate_duplicate(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            out.append(dict(out[-1]))
+            return out
+
+        def mutate_reorder(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            rng.shuffle(out)
+            if [row["event_seq"] for row in out] == [row["event_seq"] for row in rows]:
+                out.reverse()
+            return out
+
+        def mutate_tamper(rows: list[dict]) -> list[dict]:
+            out = [dict(row) for row in rows]
+            out[1]["source_ltick"] = 99
+            return out
+
+        cases = (
+            ("drop", mutate_drop, "missing_dlt_binding:event_seq=22"),
+            ("duplicate", mutate_duplicate, "duplicate_dlt_source_event_seq:23"),
+            ("reorder", mutate_reorder, "dlt_event_seq_gap"),
+            ("tamper", mutate_tamper, "source_ltick_mismatch:event_seq=22"),
+        )
+
+        for name, mutator, expected_prefix in cases:
+            with self.subTest(name=name):
+                self._write_jsonl(self.eti_jsonl, eti_rows)
+                self._write_jsonl(self.ltick_trace, mutator(dlt_rows))
+                rc, report, _ = self._run()
+                self.assertEqual(rc, 2)
+                self.assertTrue(
+                    any(v.startswith(expected_prefix) for v in report.get("violations", [])),
+                    msg=f"missing expected violation prefix: {expected_prefix}",
+                )
 
 
 if __name__ == "__main__":
