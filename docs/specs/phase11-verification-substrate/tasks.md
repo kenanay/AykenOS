@@ -33,7 +33,7 @@
 | #40 | P11-10 DEOL | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | deol-sequence gate PASS (bootstrap ordering evidence) |
 | #43 | P11-13 ETI | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | eti-sequence + ledger-eti-binding + transcript-integrity gates PASS (bootstrap evidence mode) |
 | #44 | P11-14 DLT | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | dlt-monotonicity + eti-dlt-binding + dlt-determinism gates PASS (bootstrap ordering evidence + reproducibility hardening) |
-| #45 | P11-15 GCP | PENDING | 2026-03-06 | waits #44 |
+| #45 | P11-15 GCP | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | gcp-finalization gate PASS (bootstrap commit-point contract evidence) |
 | #47 | P11-17 ABDF Snapshot Identity | PENDING | 2026-03-06 | waits #43/#44 |
 | #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
 | #37 | P11-04 Replay v1 | PENDING | 2026-03-06 | waits #47/#48 |
@@ -285,16 +285,34 @@ Security/Performance snapshot:
 - Branch: `feat/p11-gcp-finalization`
 - Owner: Kenan AY
 - Invariant: multicore finalization is atomic and deterministic
+- Status: COMPLETED_LOCAL_BOOTSTRAP (DLT-derived GCP finalization proof)
 - Deliverables:
-  - prepare/vote/commit flow
-  - commit record model
-  - abort path handling
+  - bootstrap GCP snapshot/record materialization
+  - finalization consistency validator
+  - previous-snapshot monotonicity check (optional input)
 - Gates:
-  - `ci-gate-gcp-atomicity`
-  - `ci-gate-gcp-ordering`
+  - `ci-gate-gcp-finalization` (bootstrap)
+  - `ci-gate-gcp-atomicity` (alias)
+  - `ci-gate-gcp-ordering` (alias)
 - Evidence:
+  - `gcp_snapshot.json`
   - `gcp_record.json`
   - `gcp_consistency_report.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_gcp_finalization.py` -> PASS
+- `bash scripts/ci/gate_gcp_finalization.sh --evidence-dir evidence/run-local-p11-45-gcp-finalization-r1/gates/gcp-finalization --dlt-evidence evidence/run-local-p11-44-dlt-monotonicity-r2/gates/dlt-monotonicity` -> PASS
+- `make -n ci-gate-gcp-finalization RUN_ID=dryrun-p11-45-gcp-finalization` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- GCP currently operates in bootstrap CI finalization mode over DLT evidence.
+- Runtime multicore prepare/vote/commit integration remains deferred to strict runtime stage.
+
+Security/Performance snapshot:
+- Security: fail-closed on malformed/invalid DLT trace, non-monotonic/non-contiguous ordering identity stream, prefix alignment failure, and previous-snapshot monotonicity violation.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T8 - P11-17 ABDF Snapshot Identity (#47)
 - Branch: `feat/p11-abdf-snapshot-identity`
@@ -440,6 +458,7 @@ make ci-gate-transcript-integrity
 make ci-gate-dlt-monotonicity
 make ci-gate-eti-dlt-binding
 make ci-gate-dlt-determinism
+make ci-gate-gcp-finalization
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity
 make ci-gate-mailbox-capability-negative

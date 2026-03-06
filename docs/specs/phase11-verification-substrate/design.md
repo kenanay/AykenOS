@@ -278,6 +278,30 @@ To avoid verification-layer observer effects and architecture drift:
 3. Runtime integration stages must preserve non-blocking O(1) event publication semantics.
 4. Event contract schema changes require synchronized updates across `design.md`, `requirements.md`, and `tasks.md` in the same PR.
 
+### 4.7 GCP Finalization Bootstrap Path (#45)
+
+Bootstrap GCP finalization is materialized from DLT ordering evidence:
+
+1. Input:
+   - `dlt-monotonicity/ltick_trace.jsonl`
+2. Construct bootstrap commit-point snapshot:
+   - `gcp_ltick = last_ltick`
+   - `gcp_event_seq = last_event_seq`
+3. Validate GCP invariants:
+   - prefix immutability: all `ltick <= gcp_ltick` are finalized
+   - DLT prefix alignment: `gcp_ltick` exists in DLT trace
+   - optional previous-snapshot monotonicity: `current_gcp_ltick >= previous_gcp_ltick`
+4. Emit:
+   - `gcp_snapshot.json`
+   - `gcp_record.json`
+   - `gcp_consistency_report.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- GCP in this milestone is bootstrap CI finalization contract verification.
+- Runtime multicore prepare/vote/commit path remains deferred to strict runtime GCP integration stage.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -358,6 +382,7 @@ Required gates:
 - `ci-gate-dlt-monotonicity`
 - `ci-gate-eti-dlt-binding`
 - `ci-gate-dlt-determinism`
+- `ci-gate-gcp-finalization` (aliases: `ci-gate-gcp-atomicity`, `ci-gate-gcp-ordering`)
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 

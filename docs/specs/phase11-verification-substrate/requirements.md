@@ -254,7 +254,12 @@ This spec covers the **core verification substrate**. Individual components (P11
 7.7. WHEN commit succeeds, THE GCP SHALL compute commit_hash  
 7.8. THE GCP SHALL ensure deterministic finalization (same input → same final state)  
 7.9. THE GCP SHALL record commit in `evidence/run-*/gcp_record.json`  
-7.10. THE GCP SHALL be replay-friendly
+7.10. THE GCP SHALL be replay-friendly  
+7.11. THE System SHALL implement `ci-gate-gcp-finalization` (aliases: `ci-gate-gcp-atomicity`, `ci-gate-gcp-ordering`)  
+7.12. THE GCP bootstrap gate SHALL export `gcp_snapshot.json`, `gcp_record.json`, `gcp_consistency_report.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/gcp-finalization/`  
+7.13. THE GCP bootstrap gate SHALL fail-closed enforce prefix immutability (`ltick <= gcp_ltick` finalized) and DLT prefix alignment (`gcp_ltick` in DLT trace)  
+7.14. WHEN previous GCP snapshot is provided, THE gate SHALL fail-closed enforce monotonicity (`current_gcp_ltick >= previous_gcp_ltick`)  
+7.15. UNTIL strict runtime GCP prepare/vote/commit path is active, GCP MAY run in bootstrap CI finalization mode over DLT evidence
 
 ---
 
@@ -322,6 +327,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.18. WHEN ETI and DLT source identities mismatch, THE `ci-gate-eti-dlt-binding` SHALL fail
 10.19. THE System SHALL implement `ci-gate-dlt-determinism`
 10.20. WHEN identical ETI evidence yields non-identical bootstrap DLT trace hash, THE `ci-gate-dlt-determinism` SHALL fail
+10.21. THE System SHALL implement `ci-gate-gcp-finalization`
+10.22. WHEN GCP prefix immutability or DLT prefix alignment invariants are violated, THE `ci-gate-gcp-finalization` SHALL fail
 
 ---
 
