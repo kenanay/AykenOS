@@ -356,6 +356,37 @@ Boundary statement:
 - BCIB execution identity in this milestone is CI/offline bootstrap materialization over exported plan bytes and ETI evidence.
 - Runtime replay engine consumes these identities; runtime execution semantics remain deferred to Replay v1 integration stage.
 
+### 4.10 Replay Determinism Bootstrap Path (#37)
+
+Bootstrap replay determinism is validated over identity-locked artifacts from ABDF/BCIB gates:
+
+1. Inputs:
+   - `gates/abdf-snapshot-identity/abdf_snapshot_hash.txt`
+   - `gates/execution-identity/bcib_plan_hash.txt`
+   - `gates/execution-identity/execution_trace.jsonl`
+   - `gates/execution-identity/execution_trace_hash.txt`
+2. Materialize deterministic replay trace:
+   - normalize record rows (`trace_seq`, `event_seq`, `ltick`, `cpu_id`, `event_type`)
+   - emit `replay_trace.jsonl` via canonical serialization
+3. Validate replay invariants:
+   - record trace ordering identities are monotonic+unique (`event_seq`, `ltick`)
+   - `record_execution_trace_hash == SHA256(record_trace_bytes)`
+   - `record_execution_trace_hash == replay_execution_trace_hash`
+   - record/replay pairwise parity for `event_seq` and `ltick`
+   - optional expected final-state hash equality (bootstrap final state derived from replay result hash)
+4. Emit:
+   - `replay_trace.jsonl`
+   - `replay_trace_hash.txt`
+   - `replay_report.json`
+   - `event_diff.txt`
+   - `ltick_diff.txt`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- Replay v1 in this milestone is CI/offline bootstrap parity verification over identity-locked evidence.
+- Runtime replay execution, strict kernel panic policy, and multicore runtime replay semantics remain deferred to strict runtime replay integration stage.
+
 ---
 
 ## 5. Ordering and Concurrency

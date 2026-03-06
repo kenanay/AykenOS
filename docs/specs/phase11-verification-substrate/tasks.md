@@ -36,8 +36,8 @@
 | #45 | P11-15 GCP | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | gcp-finalization gate PASS (bootstrap commit-point contract evidence) |
 | #47 | P11-17 ABDF Snapshot Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | abdf-snapshot-identity gate PASS (canonical binary hash identity evidence) |
 | #48 | P11-18 BCIB Plan and Trace Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | bcib-trace-identity gate PASS (plan+trace execution identity evidence) |
-| #37 | P11-04 Replay v1 | PENDING | 2026-03-06 | waits #47/#48 |
-| #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-06 | waits #37 |
+| #37 | P11-04 Replay v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | replay-determinism gate PASS (record/replay identity parity over #47/#48 evidence) |
+| #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-07 | unblocked after #37 bootstrap closure |
 
 ---
 
@@ -381,15 +381,33 @@ Security/Performance snapshot:
 - Branch: `feat/p11-deterministic-replay`
 - Owner: Kenan AY
 - Invariant: record/replay parity for `event_seq`, `ltick`, trace hash
+- Status: COMPLETED_LOCAL_BOOTSTRAP (identity-locked replay parity proof)
 - Deliverables:
-  - replay runtime
-  - strict mismatch policy
-  - parity validator
+  - replay parity validator
+  - replay-determinism gate script
+  - mismatch diff artifacts (`event_diff`, `ltick_diff`)
 - Gate: `ci-gate-replay-determinism`
 - Evidence:
+  - `replay_trace.jsonl`
+  - `replay_trace_hash.txt`
   - `replay_report.json`
   - `event_diff.txt`
   - `ltick_diff.txt`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_replay_determinism.py` -> PASS
+- `tmp_root="$$(mktemp -d)" && mkdir -p "$$tmp_root/abdf" "$$tmp_root/execution" "$$tmp_root/eti" "$$tmp_root/execution-gate" "$$tmp_root/replay-gate" && printf '%064d\n' 0 | tr '0' 'a' > "$$tmp_root/abdf/abdf_snapshot_hash.txt" && printf 'BCIB\x01\x02\x03' > "$$tmp_root/execution/plan.bcib" && printf '%s\n' '{"event_seq":1,"ltick":1,"cpu_id":0,"event_type":"AY_EVT_SYSCALL_ENTER"}' '{"event_seq":2,"ltick":2,"cpu_id":0,"event_type":"AY_EVT_SYSCALL_EXIT"}' > "$$tmp_root/eti/eti_transcript.jsonl" && bash scripts/ci/gate_bcib_trace_identity.sh --evidence-dir "$$tmp_root/execution-gate" --bcib-plan "$$tmp_root/execution/plan.bcib" --eti-evidence "$$tmp_root/eti" && bash scripts/ci/gate_replay_determinism.sh --evidence-dir "$$tmp_root/replay-gate" --abdf-evidence "$$tmp_root/abdf" --execution-evidence "$$tmp_root/execution-gate"` -> PASS
+- `make -n ci-gate-replay-determinism RUN_ID=dryrun-p11-37-replay-determinism` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- Replay v1 currently operates in bootstrap CI mode over identity-locked artifacts from #47 (`abdf_snapshot_hash`) and #48 (`bcib_plan_hash`, `execution_trace_hash`).
+- Runtime replay execution engine and strict panic-path semantics remain deferred to strict runtime replay integration stage.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing/invalid identity hashes, malformed/non-monotonic/duplicate record trace rows, record-vs-replay hash parity break, and expected final-state hash mismatch.
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T11 - P11-11 KPL Proof Layer (#41)
 - Branch: `feat/p11-kpl-proof-manifest`

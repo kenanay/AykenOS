@@ -221,6 +221,11 @@ This spec covers the **core verification substrate**. Individual components (P11
 5.21. THE BCIB trace identity gate SHALL compute `bcib_plan_hash = SHA256(plan.bcib bytes)` and `execution_trace_hash = SHA256(normalized execution_trace.jsonl bytes)`  
 5.22. WHEN expected plan/trace hash inputs are provided, THE gate SHALL fail-closed enforce equality for both identities  
 5.23. WHEN BCIB plan input is missing/empty, ETI-derived execution trace is missing/invalid, or execution identity ordering invariants are violated, THE gate SHALL fail-closed reject verification
+5.24. THE System SHALL implement `ci-gate-replay-determinism` and export `replay_trace.jsonl`, `replay_trace_hash.txt`, `replay_report.json`, `event_diff.txt`, `ltick_diff.txt`, `report.json`, and `violations.txt` under `evidence/run-*/gates/replay-v1/`  
+5.25. THE replay determinism gate SHALL fail-closed enforce record trace ordering identity invariants (`event_seq` monotonic+unique, `ltick` monotonic+unique) prior to replay parity evaluation  
+5.26. THE replay determinism gate SHALL fail-closed enforce hash parity (`record_execution_trace_hash == recomputed_record_execution_trace_hash == replay_execution_trace_hash`)  
+5.27. WHEN expected final state hash input is provided, THE replay determinism gate SHALL fail-closed enforce equality (`expected_final_state_hash == final_state_hash`)  
+5.28. UNTIL strict runtime replay execution is active, Replay v1 MAY run in bootstrap CI materialization mode over identity-locked artifacts from #47/#48
 
 ---
 
@@ -345,6 +350,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.25. WHEN ABDF snapshot hash identity invariants are violated, THE `ci-gate-abdf-snapshot-identity` SHALL fail
 10.26. THE System SHALL implement `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
 10.27. WHEN BCIB plan identity or execution trace identity invariants are violated, THE `ci-gate-bcib-trace-identity` SHALL fail
+10.28. THE System SHALL implement `ci-gate-replay-determinism` (alias: `ci-gate-replay-v1`)
+10.29. WHEN record/replay parity invariants (`event_seq`, `ltick`, trace hash) are violated, THE `ci-gate-replay-determinism` SHALL fail
 
 ---
 
