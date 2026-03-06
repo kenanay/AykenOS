@@ -180,6 +180,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 4.8. THE Ordering layer SHALL ensure syscall order is deterministic  
 4.9. THE Ordering layer SHALL ensure scheduler order is deterministic  
 4.10. THE Ordering SHALL be independent of wall-clock time
+4.11. THE System SHALL implement `ci-gate-deol-sequence` for bootstrap ordering verification  
+4.12. THE DEOL gate SHALL export `event_seq.jsonl`, `sequence_report.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/deol-sequence/`  
+4.13. BOOTSTRAP mode SHALL enforce generated DEOL `event_seq` monotonicity, uniqueness, and no-gap property over ledger-derived stream  
+4.14. BOOTSTRAP mode SHALL record `ltick` alongside generated `event_seq` and retain source ordering identity fields for ETI/DLT transition
 
 ---
 

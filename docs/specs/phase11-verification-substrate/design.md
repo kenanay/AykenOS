@@ -170,6 +170,30 @@ Artifacts:
 - `report.json`
 - `violations.txt`
 
+### 4.3 DEOL Ordering Bootstrap Path (#40)
+
+Bootstrap DEOL sequencing is generated from verified ledger stream:
+
+1. Input:
+   - `ledger-v1/decision_ledger.jsonl`
+2. Generate DEOL sequence stream:
+   - `event_seq = 1..N` (contiguous bootstrap sequence)
+   - `ltick = 1..N` (bootstrap logical-time mirror)
+   - carry source identities: `source_event_seq`, `source_ltick`
+3. Validate invariants:
+   - generated `event_seq` monotonic + unique + no gaps
+   - generated `ltick` monotonic + unique + no gaps
+   - source ordering identities monotonic + unique
+4. Emit:
+   - `event_seq.jsonl`
+   - `sequence_report.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- This is a bootstrap ordering proof over ledger-derived stream.
+- Direct kernel hot-path DEOL allocator and ETI/DLT strict join are deferred to #43/#44.
+
 ---
 
 ## 5. Ordering and Concurrency

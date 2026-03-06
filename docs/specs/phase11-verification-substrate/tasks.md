@@ -30,7 +30,7 @@
 | #34 | P11-01 Mailbox Capability Contract | COMPLETED_LOCAL | 2026-03-06 | gate PASS + phase10c regression PASS |
 | #35 | P11-02 Decision Ledger v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | bootstrap materialization gate PASS (compat mode), strict kernel append + ETI/DLT binding deferred to #43/#44 |
 | #36 | P11-03 Ledger Hash Chain | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | hash-chain gate PASS + one-bit tamper detection PASS |
-| #40 | P11-10 DEOL | PENDING | 2026-03-06 | waits #35/#36 |
+| #40 | P11-10 DEOL | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | deol-sequence gate PASS (bootstrap ordering evidence) |
 | #43 | P11-13 ETI | PENDING | 2026-03-06 | waits #40 |
 | #44 | P11-14 DLT | PENDING | 2026-03-06 | waits #43 |
 | #45 | P11-15 GCP | PENDING | 2026-03-06 | waits #44 |
@@ -185,6 +185,7 @@ Security/Performance snapshot:
 - Branch: `feat/p11-deol-sequence`
 - Owner: Kenan AY
 - Invariant: all kernel-visible events receive monotonic unique `event_seq`
+- Status: COMPLETED_LOCAL_BOOTSTRAP (ledger-derived sequence proof)
 - Deliverables:
   - sequence allocator
   - sequence validator
@@ -193,6 +194,18 @@ Security/Performance snapshot:
 - Evidence:
   - `event_seq.jsonl`
   - `sequence_report.json`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_deol_sequence.py` -> PASS
+- `make ci-gate-deol-sequence RUN_ID=local-p11-40-deol-sequence-r1 PHASE11_DEOL_LEDGER_EVIDENCE_DIR=evidence/run-local-p11-36-ledger-integrity-r2/gates/ledger-v1` -> PASS
+
+Scope note (normative for this milestone):
+- DEOL validation currently operates in bootstrap mode over ledger-derived evidence.
+- Direct kernel event allocator integration remains deferred until ETI/DLT strict path (#43/#44).
+
+Security/Performance snapshot:
+- Security: fail-closed on ordering field parse errors, source duplicates, source non-monotonicity, and generated sequence invariant breaks
+- Performance: offline CI/evidence path only; no Ring0 hot-path overhead introduced in this milestone
 
 #### T5 - P11-13 ETI (#43)
 - Branch: `feat/p11-eti-transcript`
@@ -376,6 +389,7 @@ Run before pushing:
 make pre-ci
 make ci-gate-ledger-completeness
 make ci-gate-ledger-integrity
+make ci-gate-deol-sequence
 make ci-gate-transcript-integrity
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity
