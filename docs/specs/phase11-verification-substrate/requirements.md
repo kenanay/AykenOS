@@ -3,6 +3,9 @@
 **Version:** 1.0  
 **Status:** Draft  
 **Date:** 2026-03-06  
+**Created by:** Kenan AY  
+**Maintained by:** Kenan AY  
+**Last Edited by:** Kenan AY  
 **Prerequisites:** 
 - ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md
 - RUNTIME_STATE_MACHINE.md
@@ -268,6 +271,20 @@ This spec covers the **core verification substrate**. Individual components (P11
 
 ---
 
+### Requirement 10A: Security and Performance Verification
+
+**User Story:** As a kernel architect, I want each Phase-11 task to include security and performance checks, so that correctness does not regress system safety or runtime behavior.
+
+#### Acceptance Criteria
+
+10A.1. WHEN a Phase-11 PR is prepared, THE System SHALL include a security check summary  
+10A.2. WHEN a Phase-11 PR is prepared, THE System SHALL include a performance check summary  
+10A.3. WHEN malformed/tampered inputs are tested, THE System SHALL fail-closed  
+10A.4. WHEN performance baseline regresses beyond gate limits, THE CI SHALL fail  
+10A.5. THE PR SHALL include executed gate outputs relevant to security/performance checks  
+
+---
+
 ### Requirement 11: Constitutional Compliance
 
 **User Story:** As a kernel architect, I want Phase-11 to comply with constitutional rules, so that architectural integrity is maintained.
@@ -297,6 +314,20 @@ This spec covers the **core verification substrate**. Individual components (P11
 12.4. THE System SHALL support at least 2 previous versions  
 12.5. WHEN old evidence is loaded, THE System SHALL validate version compatibility  
 12.6. WHEN version is incompatible, THE System SHALL reject evidence with clear error
+
+---
+
+### Requirement 12A: Documentation Synchronization
+
+**User Story:** As a kernel architect, I want docs to be updated with every completed task, so that implementation and architecture never drift.
+
+#### Acceptance Criteria
+
+12A.1. WHEN a task is completed, THE PR SHALL update `tasks.md` status  
+12A.2. WHEN architecture behavior changes, THE PR SHALL update `design.md`  
+12A.3. WHEN acceptance criteria changes, THE PR SHALL update `requirements.md`  
+12A.4. WHEN event/hash/order contracts change, THE PR SHALL update relevant architecture-board docs  
+12A.5. THE PR description SHALL include a `Documentation Delta` section  
 
 ---
 

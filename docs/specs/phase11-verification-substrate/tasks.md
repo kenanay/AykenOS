@@ -4,6 +4,9 @@
 **Status:** Draft  
 **Date:** 2026-03-06  
 **Related Spec:** `requirements.md`, `design.md`
+**Created by:** Kenan AY  
+**Maintained by:** Kenan AY  
+**Last Edited by:** Kenan AY
 
 ---
 
@@ -13,6 +16,65 @@
 - Fail-closed validation only
 - No direct merge without gate PASS
 - Evidence artifacts mandatory for each gate
+- Default task owner: Kenan AY (unless explicitly reassigned)
+
+---
+
+## Documentation Sync Policy (Mandatory)
+
+For every completed task, documentation MUST be updated in the same PR.
+
+Minimum required updates:
+- `docs/specs/phase11-verification-substrate/tasks.md`
+  - task status/progress
+  - gate result summary
+- `docs/specs/phase11-verification-substrate/design.md`
+  - architecture or implementation-flow changes
+- `docs/specs/phase11-verification-substrate/requirements.md`
+  - acceptance criteria changes/new constraints
+
+Update when impacted:
+- `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md`
+- `docs/architecture-board/PHASE11_EVENT_TAXONOMY.md`
+- `docs/architecture-board/RUNTIME_STATE_MACHINE.md`
+- root-level operational files (e.g. `README.md`, `.github/workflows/ci-freeze.yml`, `Makefile`)
+
+PR documentation rule:
+- Every Phase-11 PR MUST include a `Documentation Delta` section in PR body.
+- If no doc changed, PR must state explicit reason.
+
+---
+
+## Language Selection Policy
+
+Use the most suitable language per layer:
+- **C**: Ring0/kernel hooks, low-level structs, interrupt/scheduler critical path
+- **Rust**: ABDF/BCIB tooling, replay verifiers, identity/hash tooling, offline proof utilities
+- **Bash/Python**: CI gate orchestration, evidence parsing, report generation
+
+Rules:
+- Prefer Rust where memory safety and parser/verifier correctness matter.
+- Keep kernel hot-path logic in C unless an approved architecture decision says otherwise.
+- Do not force Rust into Ring0 where it increases integration risk without clear gain.
+
+---
+
+## Security and Performance Control Plan
+
+Each task PR MUST include both:
+- **Security Check**
+  - capability enforcement unchanged or tightened
+  - fail-closed behavior on malformed/tampered input
+  - no new privilege escalation path
+- **Performance Check**
+  - event recording overhead measured
+  - replay/verification runtime impact measured
+  - no regression on existing performance gates
+
+Minimum commands before PR update:
+- `make pre-ci`
+- `make ci-gate-performance`
+- task-specific Phase-11 gate(s)
 
 ---
 
@@ -22,6 +84,7 @@
 
 #### T1 - P11-01 Mailbox Capability Contract (#34)
 - Branch: `feat/p11-mailbox-capability-contract`
+- Owner: Kenan AY
 - Invariant: invalid proposal never executes
 - Deliverables:
   - capability schema
@@ -33,6 +96,7 @@
 
 #### T2 - P11-02 Decision Ledger v1 (#35)
 - Branch: `feat/p11-decision-ledger-v1`
+- Owner: Kenan AY
 - Invariant: every decision-class event writes exactly one ledger entry
 - Deliverables:
   - `ay_decision_ledger_entry_t`
@@ -45,6 +109,7 @@
 
 #### T3 - P11-03 Ledger Hash Chain Integrity (#36)
 - Branch: `feat/p11-ledger-hash-chain`
+- Owner: Kenan AY
 - Invariant: hash chain tamper is always detected
 - Deliverables:
   - canonical hash implementation
@@ -57,6 +122,7 @@
 
 #### T4 - P11-10 DEOL (#40)
 - Branch: `feat/p11-deol-sequence`
+- Owner: Kenan AY
 - Invariant: all kernel-visible events receive monotonic unique `event_seq`
 - Deliverables:
   - sequence allocator
@@ -69,6 +135,7 @@
 
 #### T5 - P11-13 ETI (#43)
 - Branch: `feat/p11-eti-transcript`
+- Owner: Kenan AY
 - Invariant: canonical transcript is the execution join surface
 - Deliverables:
   - ETI binary+jsonl export
@@ -83,6 +150,7 @@
 
 #### T6 - P11-14 DLT (#44)
 - Branch: `feat/p11-dlt-ordering`
+- Owner: Kenan AY
 - Invariant: deterministic logical time ordering across cores
 - Deliverables:
   - `ltick` assignment
@@ -97,6 +165,7 @@
 
 #### T7 - P11-15 GCP (#45)
 - Branch: `feat/p11-gcp-finalization`
+- Owner: Kenan AY
 - Invariant: multicore finalization is atomic and deterministic
 - Deliverables:
   - prepare/vote/commit flow
@@ -111,6 +180,7 @@
 
 #### T8 - P11-17 ABDF Snapshot Identity (#47)
 - Branch: `feat/p11-abdf-snapshot-identity`
+- Owner: Kenan AY
 - Invariant: replay starts only with verified snapshot identity
 - Deliverables:
   - snapshot hash generator
@@ -123,6 +193,7 @@
 
 #### T9 - P11-18 BCIB Plan and Trace Identity (#48)
 - Branch: `feat/p11-bcib-trace-identity`
+- Owner: Kenan AY
 - Invariant: replay/proof only valid with matching plan and trace identity
 - Deliverables:
   - plan hash generator
@@ -136,6 +207,7 @@
 
 #### T10 - P11-04 Replay v1 (#37)
 - Branch: `feat/p11-deterministic-replay`
+- Owner: Kenan AY
 - Invariant: record/replay parity for `event_seq`, `ltick`, trace hash
 - Deliverables:
   - replay runtime
@@ -149,6 +221,7 @@
 
 #### T11 - P11-11 KPL Proof Layer (#41)
 - Branch: `feat/p11-kpl-proof-manifest`
+- Owner: Kenan AY
 - Invariant: run validity requires verifiable proof manifest
 - Deliverables:
   - proof manifest schema
@@ -165,16 +238,19 @@
 
 #### T12 - P11-05 Arbitration Bus (#38)
 - Branch: `feat/p11-arbitration-bus`
+- Owner: Kenan AY
 - Invariant: arbitration never violates safety envelope
 - Gate: `ci-gate-arbitration-safety`
 
 #### T13 - P11-06 Hot Swap and Rollback (#39)
 - Branch: `feat/p11-policy-hotswap`
+- Owner: Kenan AY
 - Invariant: policy violation triggers deterministic rollback
 - Gate: `ci-gate-hotswap-rollback`
 
 #### T14 - P11-12 AI Policy Module (#42)
 - Branch: `feat/p11-ai-policy-untrusted`
+- Owner: Kenan AY
 - Invariant: AI policy remains untrusted and envelope-validated
 - Gate: `ci-gate-ai-policy-untrusted`
 
@@ -184,6 +260,7 @@
 
 #### T15 - P11-16 Runtime Bridge Contract (#46)
 - Branch: `research/p11-runtime-bridge-contract`
+- Owner: Kenan AY
 - Invariant: execution identity tuple is deterministic and recomputable
 - Gate: `ci-gate-runtime-bridge-contract`
 
@@ -223,6 +300,10 @@ Research path:
 - [ ] Fail-closed behavior verified
 - [ ] No policy leakage into Ring0
 - [ ] No ABI drift
+- [ ] Documentation Delta section added and complete
+- [ ] Security check completed and summarized
+- [ ] Performance check completed and summarized
+- [ ] Language choice justified (C/Rust/Bash/Python)
 
 ---
 
@@ -249,4 +330,3 @@ Phase-11 implementation is closure-ready when:
 - Required artifacts are reproducible in CI
 - Core proof chain (#35/#36/#40/#43/#44/#45/#37/#41) is green
 - Documentation and issue acceptance criteria remain aligned
-

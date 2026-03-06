@@ -3,6 +3,9 @@
 **Version:** 1.0  
 **Status:** Draft  
 **Date:** 2026-03-06  
+**Created by:** Kenan AY  
+**Maintained by:** Kenan AY  
+**Last Edited by:** Kenan AY  
 **Prerequisites:**  
 - `requirements.md`  
 - `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md`  
@@ -181,6 +184,16 @@ All gates are fail-closed.
 
 ---
 
+## 8.1 Documentation Update Contract
+
+For each task completion PR:
+- Update `tasks.md` with task progress and gate result.
+- Update `requirements.md` if acceptance criteria changed.
+- Update architecture-board docs if event model/hash/order contracts changed.
+- Include `Documentation Delta` section in PR body.
+
+---
+
 ## 9. Migration and Compatibility
 
 Versioning requirements:
@@ -237,4 +250,3 @@ Phase-11 is done when:
 - Proof manifest is generated and verified.
 - CI Phase-11 gates pass in fail-closed mode.
 - Documentation and issue acceptance criteria are aligned.
-
