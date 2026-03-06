@@ -167,8 +167,14 @@ def main() -> int:
         return fail(report_path, hash_path, identity_report_path, consistency_report_path, report)
 
     computed_hash = sha256_hex(snapshot_bytes)
-    recomputed_hash = sha256_hex(snapshot_bytes)
-    hash_recomputed_match = computed_hash == recomputed_hash
+    recomputed_hash = ""
+    try:
+        recomputed_hash = sha256_hex(snapshot_path.read_bytes())
+    except Exception as exc:  # pragma: no cover
+        report["violations"].append(
+            f"abdf_snapshot_reread_error:{snapshot_path}:{type(exc).__name__}"
+        )
+    hash_recomputed_match = bool(recomputed_hash) and computed_hash == recomputed_hash
     report["abdf_snapshot_hash"] = computed_hash
     report["hash_recomputed_match"] = hash_recomputed_match
     if not hash_recomputed_match:
