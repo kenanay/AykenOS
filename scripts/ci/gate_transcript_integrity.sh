@@ -61,6 +61,14 @@ fi
 
 ETI_JSONL="${ETI_EVIDENCE_DIR}/eti_transcript.jsonl"
 ETI_BIN="${ETI_EVIDENCE_DIR}/eti_transcript.bin"
+if [[ ! -s "${ETI_JSONL}" ]]; then
+  echo "ERROR: missing_or_empty:${ETI_JSONL}" >&2
+  exit 3
+fi
+if [[ ! -s "${ETI_BIN}" ]]; then
+  echo "ERROR: missing_or_empty:${ETI_BIN}" >&2
+  exit 3
+fi
 
 mkdir -p "${EVIDENCE_DIR}"
 

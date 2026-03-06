@@ -67,6 +67,14 @@ fi
 
 LEDGER_JSONL="${LEDGER_EVIDENCE_DIR}/decision_ledger.jsonl"
 ETI_JSONL="${ETI_EVIDENCE_DIR}/eti_transcript.jsonl"
+if [[ ! -s "${LEDGER_JSONL}" ]]; then
+  echo "ERROR: missing_or_empty:${LEDGER_JSONL}" >&2
+  exit 3
+fi
+if [[ ! -s "${ETI_JSONL}" ]]; then
+  echo "ERROR: missing_or_empty:${ETI_JSONL}" >&2
+  exit 3
+fi
 
 mkdir -p "${EVIDENCE_DIR}"
 
