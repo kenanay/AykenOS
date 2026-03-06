@@ -194,6 +194,54 @@ Boundary statement:
 - This is a bootstrap ordering proof over ledger-derived stream.
 - Direct kernel hot-path DEOL allocator and ETI/DLT strict join are deferred to #43/#44.
 
+### 4.4 ETI Transcript Bootstrap Path (#43)
+
+Bootstrap ETI transcript is materialized from Phase10-A2 event evidence:
+
+1. Input:
+   - `ring3-execution-phase10a2/events.jsonl`
+2. Select kernel-visible ETI marker classes:
+   - `AYKEN_CTX_SWITCH` -> `AY_EVT_CTX_SWITCH`
+   - `AYKEN_SYSCALL_ENTER` -> `AY_EVT_SYSCALL_ENTER`
+   - `AYKEN_SYSCALL_RETURN|AYKEN_SYSCALL_EXIT` -> `AY_EVT_SYSCALL_EXIT`
+   - additional IRQ/TRAP/MAILBOX classes when present
+3. Assign ordering identity (bootstrap mode):
+   - `event_seq` uses source event index
+   - `ltick = event_seq` deterministic fallback
+4. Canonical ETI entry hash:
+   - `eti_entry_hash = H(normalized_eti_payload)`
+5. Canonical transcript chain hashes:
+   - `event_seq_chain_hash = H(seq_1 || ... || seq_n)`
+   - `ltick_chain_hash = H(ltick_1 || ... || ltick_n)`
+   - `eti_chain_hash = H(entry_hash_1 || ... || entry_hash_n)`
+6. Emit:
+   - `eti_transcript.bin`
+   - `eti_transcript.jsonl`
+   - `eti_chain_verify.json`
+   - `eti_diff.txt`
+   - `report.json`
+   - `violations.txt`
+
+Bootstrap artifact note:
+- In bootstrap mode, `eti_diff.txt` is a placeholder parity artifact and mirrors detected violations.
+- In strict runtime ETI stage, `eti_diff.txt` will carry concrete drop/dup/reorder diff output.
+
+Ledger strict binding gate:
+- Input: `ledger-v1/decision_ledger.jsonl` + `eti/eti_transcript.jsonl`
+- Enforce:
+  - `ledger.event_seq == eti.event_seq`
+  - `ledger.ltick == eti.ltick`
+- Missing/mismatch is fail-closed and exported as `binding_report.json`.
+
+Transcript integrity gate:
+- Validates ETI jsonl ordering + required fields + entry hash recomputation.
+- Validates ETI binary header/layout/count + row parity with jsonl.
+- Any corruption/tamper is fail-closed.
+
+Boundary statement:
+- ETI is bootstrap materialization in this milestone.
+- Direct kernel runtime ETI hook emission and lock-free buffering are deferred to strict runtime integration stage.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -268,13 +316,14 @@ Proof manifest minimum fields:
 
 Required gates:
 - `ci-gate-ledger-completeness`
+- `ci-gate-eti-sequence`
+- `ci-gate-ledger-eti-binding`
 - `ci-gate-transcript-integrity`
 - `ci-gate-replay-determinism`
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
 Extended Phase-11 gates (issue-driven):
 - DEOL sequence validation
-- ETI binding validation
 - DLT monotonicity/parity validation
 - GCP atomicity/consistency validation
 - KPL proof verification

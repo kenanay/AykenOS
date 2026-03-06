@@ -31,8 +31,8 @@
 | #35 | P11-02 Decision Ledger v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | bootstrap materialization gate PASS (compat mode), strict kernel append + ETI/DLT binding deferred to #43/#44 |
 | #36 | P11-03 Ledger Hash Chain | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | hash-chain gate PASS + one-bit tamper detection PASS |
 | #40 | P11-10 DEOL | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | deol-sequence gate PASS (bootstrap ordering evidence) |
-| #43 | P11-13 ETI | PENDING | 2026-03-06 | waits #40 |
-| #44 | P11-14 DLT | PENDING | 2026-03-06 | waits #43 |
+| #43 | P11-13 ETI | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | eti-sequence + ledger-eti-binding + transcript-integrity gates PASS (bootstrap evidence mode) |
+| #44 | P11-14 DLT | PENDING | 2026-03-07 | waits #43 closure |
 | #45 | P11-15 GCP | PENDING | 2026-03-06 | waits #44 |
 | #47 | P11-17 ABDF Snapshot Identity | PENDING | 2026-03-06 | waits #43/#44 |
 | #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
@@ -211,6 +211,7 @@ Security/Performance snapshot:
 - Branch: `feat/p11-eti-transcript`
 - Owner: Kenan AY
 - Invariant: canonical transcript is the execution join surface
+- Status: COMPLETED_LOCAL_BOOTSTRAP (CI transcript materialization + strict binding gate path)
 - Deliverables:
   - ETI binary+jsonl export
   - ETI chain hash
@@ -218,9 +219,30 @@ Security/Performance snapshot:
 - Gates:
   - `ci-gate-eti-sequence`
   - `ci-gate-ledger-eti-binding`
+  - `ci-gate-transcript-integrity`
 - Evidence:
   - `eti_transcript.bin`
   - `eti_transcript.jsonl`
+  - `eti_chain_verify.json`
+  - `eti_diff.txt`
+  - `binding_report.json`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_eti_sequence.py` -> PASS
+- `python3 -m unittest tools/ci/test_validate_ledger_eti_binding.py` -> PASS
+- `python3 -m unittest tools/ci/test_validate_transcript_integrity.py` -> PASS
+- `bash scripts/ci/gate_eti_sequence.sh --evidence-dir evidence/run-local-p11-43-eti-sequence-r1/gates/eti --phase10a2-evidence evidence/run-local-p11-36-ledger-integrity-r2/gates/ring3-execution-phase10a2` -> PASS
+- `bash scripts/ci/gate_ledger_eti_binding.sh --evidence-dir evidence/run-local-p11-43-ledger-eti-binding-r1/gates/ledger-eti-binding --ledger-evidence evidence/run-local-p11-36-ledger-integrity-r2/gates/ledger-v1 --eti-evidence evidence/run-local-p11-43-eti-sequence-r1/gates/eti` -> PASS
+- `bash scripts/ci/gate_transcript_integrity.sh --evidence-dir evidence/run-local-p11-43-transcript-integrity-r1/gates/transcript-integrity --eti-evidence evidence/run-local-p11-43-eti-sequence-r1/gates/eti` -> PASS
+
+Scope note (normative for this milestone):
+- ETI currently operates in bootstrap mode using Phase10-A2 event evidence materialization.
+- Direct kernel ETI emission hooks and lock-free runtime buffering remain deferred to strict runtime integration stage.
+- `eti_diff.txt` is currently emitted as bootstrap placeholder parity artifact and mirrors violation output until strict runtime ETI diffing is enabled.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing required ETI event classes, ordering anomalies, hash mismatches, binary/jsonl divergence, and ledger-binding mismatches.
+- Performance: CI/offline parser-validator path only; no Ring0 hot-path mutation in this milestone.
 
 #### T6 - P11-14 DLT (#44)
 - Branch: `feat/p11-dlt-ordering`
@@ -390,6 +412,8 @@ make pre-ci
 make ci-gate-ledger-completeness
 make ci-gate-ledger-integrity
 make ci-gate-deol-sequence
+make ci-gate-eti-sequence
+make ci-gate-ledger-eti-binding
 make ci-gate-transcript-integrity
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity

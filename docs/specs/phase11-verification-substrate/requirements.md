@@ -161,6 +161,11 @@ This spec covers the **core verification substrate**. Individual components (P11
 3.11. THE Transcript SHALL be append-only (no modification of past entries)  
 3.12. THE Transcript SHALL be serialized to `evidence/run-*/transcript.bin`  
 3.13. THE Transcript SHALL be serialized to `evidence/run-*/transcript.jsonl` (human-readable)
+3.14. THE System SHALL implement `ci-gate-eti-sequence` and export `eti_transcript.bin`, `eti_transcript.jsonl`, `eti_chain_verify.json`, `eti_diff.txt`, `report.json`, and `violations.txt` under `evidence/run-*/gates/eti/`
+3.15. THE System SHALL implement `ci-gate-ledger-eti-binding` and fail-closed enforce `ledger.event_seq == eti.event_seq` and `ledger.ltick == eti.ltick`
+3.16. UNTIL strict kernel ETI hooks are fully active, THE ETI gate MAY run in bootstrap materialization mode over Phase10-A2 evidence with deterministic fallback `ltick = event_seq`
+3.17. THE `ci-gate-transcript-integrity` gate SHALL fail-closed on ETI ordering anomalies, missing required fields, entry hash mismatch, and ETI bin/jsonl parity mismatch
+3.18. IN bootstrap mode, THE `eti_diff.txt` artifact MAY be emitted as a placeholder parity artifact that mirrors violation output; strict runtime ETI stage SHALL emit concrete drop/dup/reorder diff details
 
 ---
 
@@ -301,6 +306,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.8. WHEN hash chain is broken, THE `ci-gate-ledger-integrity` SHALL fail  
 10.9. WHEN any Phase-11 gate fails, THE PR SHALL be blocked  
 10.10. THE CI gates SHALL produce evidence reports
+10.11. THE System SHALL implement `ci-gate-eti-sequence`
+10.12. THE System SHALL implement `ci-gate-ledger-eti-binding`
+10.13. WHEN ETI sequence is corrupted (drop/dup/reorder/tamper), THE `ci-gate-eti-sequence` SHALL fail
+10.14. WHEN ledger and ETI ordering identities mismatch, THE `ci-gate-ledger-eti-binding` SHALL fail
 
 ---
 
