@@ -6,11 +6,15 @@
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  
 **Last Edited by:** Kenan AY  
+**Gelistiren:** Kenan AY  
+**Olusturan:** Kenan AY  
+**Duzenleyen:** Kenan AY  
 **Prerequisites:**  
 - `requirements.md`  
 - `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md`  
 - `docs/architecture-board/PHASE11_EVENT_TAXONOMY.md`  
 - `docs/architecture-board/RUNTIME_STATE_MACHINE.md`
+- `docs/governance/MAILBOX_PROTOCOL_V2_CAPABILITIES.md`
 
 ---
 
@@ -67,6 +71,24 @@ Single kernel event processing pipeline:
 Implementation note:
 - Ledger and transcript are sibling outputs of the same classified event.
 - They are not sequential dependencies of each other.
+
+### 3.1 Mailbox Capability Contract (P11-01)
+
+Ring0 mailbox validation includes a fail-closed capability envelope:
+- signature validity check
+- capability presence check
+- budget bound check
+- invalid PID reject mapping
+
+Canonical reject aliases:
+- `REJ_BAD_SIG`
+- `REJ_CAP_MISSING`
+- `REJ_BUDGET_EXCEEDED`
+- `REJ_INVALID_PID`
+
+Validation evidence gate:
+- `ci-gate-mailbox-capability-negative`
+- artifacts: `negative_matrix.json`, `report.json`, `violations.txt`
 
 ---
 

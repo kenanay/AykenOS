@@ -229,6 +229,7 @@ deterministic finalization
 | **Constitutional** | type system compliance | instruction compliance | ordering compliance |
 | **Performance** | N/A | N/A | deterministic baseline |
 | **Replay** | snapshot match | plan match | transcript match |
+| **Mailbox Capability Negative** | N/A | proposal envelope intent | fail-closed reject matrix |
 
 ### Gate Failure Policy
 

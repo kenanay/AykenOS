@@ -44,6 +44,7 @@ AYKEN_CR3_PCID ?= 0
 AYKEN_C2_STRICT_MARKERS ?= 0
 # Phase10-C1 default: strict mailbox-owner bootstrap (no transitional policy bridge).
 AYKEN_SCHED_BOOTSTRAP_POLICY ?= 0
+AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE ?= 0
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -79,6 +80,10 @@ endif
 
 ifneq ($(filter $(AYKEN_SCHED_BOOTSTRAP_POLICY),0 1),$(AYKEN_SCHED_BOOTSTRAP_POLICY))
 $(error Invalid AYKEN_SCHED_BOOTSTRAP_POLICY='$(AYKEN_SCHED_BOOTSTRAP_POLICY)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE),0 1),$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE))
+$(error Invalid AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE='$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE)'. Use 0 or 1)
 endif
 
 ifeq ($(AYKEN_SCHED_BOOTSTRAP_POLICY),0)
@@ -126,6 +131,7 @@ KERNEL_CFLAGS += -DAYKEN_DETERMINISTIC_EXIT=$(AYKEN_DETERMINISTIC_EXIT)
 KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 KERNEL_CFLAGS += -DAYKEN_C2_STRICT_MARKERS=$(AYKEN_C2_STRICT_MARKERS)
 KERNEL_CFLAGS += -DAYKEN_SCHED_BOOTSTRAP_POLICY=$(AYKEN_SCHED_BOOTSTRAP_POLICY)
+KERNEL_CFLAGS += -DAYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE=$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
@@ -690,12 +696,12 @@ preflight-mode-guard:
 	fi
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -719,6 +725,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/mailbox-cap"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -1014,6 +1021,15 @@ ci-gate-scheduler-mailbox-phase10c: ci-gate-ring3-execution-phase10a2
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: scheduler-mailbox-phase10c evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-mailbox-capability-negative: ci-evidence-dir
+	@echo "== CI GATE MAILBOX CAPABILITY NEGATIVE =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_mailbox_capability_negative.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/mailbox-cap"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/mailbox-cap/report.json" "$(EVIDENCE_RUN_DIR)/reports/mailbox-capability-negative.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: mailbox-capability-negative evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1185,6 +1201,8 @@ help:
 	@echo "    (controls: PHASE10C_REQUIRE_METADATA=0|1, PHASE10C_C2_STRICT=0|1, PHASE10C_C2_OWNER_SET=csv, PHASE10C_C2_REQUIRE_CURSOR_MARKER=0|1)"
 	@echo "    (A2 evidence override: PHASE10C_A2_EVIDENCE_DIR=<path>)"
 	@echo "    (ci-freeze default: PHASE10C_ENFORCE=1 + PHASE10C_C2_STRICT=1; local freeze default: PHASE10C_C2_STRICT=0)"
+	@echo "  ci-gate-mailbox-capability-negative - P11-01 mailbox capability fail-closed negative matrix gate"
+	@echo "    (artifacts: negative_matrix.json, report.json, violations.txt)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1204,7 +1222,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

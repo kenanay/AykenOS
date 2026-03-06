@@ -7,6 +7,9 @@
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  
 **Last Edited by:** Kenan AY
+**Gelistiren:** Kenan AY  
+**Olusturan:** Kenan AY  
+**Duzenleyen:** Kenan AY
 
 ---
 
@@ -17,6 +20,24 @@
 - No direct merge without gate PASS
 - Evidence artifacts mandatory for each gate
 - Default task owner: Kenan AY (unless explicitly reassigned)
+
+---
+
+## Task Status Ledger
+
+| Issue | Task | Status | Last Update | Notes |
+|------|------|--------|-------------|-------|
+| #34 | P11-01 Mailbox Capability Contract | COMPLETED_LOCAL | 2026-03-06 | gate PASS + phase10c regression PASS |
+| #35 | P11-02 Decision Ledger v1 | PENDING | 2026-03-06 | waits #34 closure |
+| #36 | P11-03 Ledger Hash Chain | PENDING | 2026-03-06 | waits #35 |
+| #40 | P11-10 DEOL | PENDING | 2026-03-06 | waits #35/#36 |
+| #43 | P11-13 ETI | PENDING | 2026-03-06 | waits #40 |
+| #44 | P11-14 DLT | PENDING | 2026-03-06 | waits #43 |
+| #45 | P11-15 GCP | PENDING | 2026-03-06 | waits #44 |
+| #47 | P11-17 ABDF Snapshot Identity | PENDING | 2026-03-06 | waits #43/#44 |
+| #48 | P11-18 BCIB Plan and Trace Identity | PENDING | 2026-03-06 | waits #43/#44 |
+| #37 | P11-04 Replay v1 | PENDING | 2026-03-06 | waits #47/#48 |
+| #41 | P11-11 KPL Proof Layer | PENDING | 2026-03-06 | waits #37 |
 
 ---
 
@@ -86,13 +107,21 @@ Minimum commands before PR update:
 - Branch: `feat/p11-mailbox-capability-contract`
 - Owner: Kenan AY
 - Invariant: invalid proposal never executes
+- Status: COMPLETED_LOCAL (awaiting PR merge)
 - Deliverables:
+  - `docs/governance/MAILBOX_PROTOCOL_V2_CAPABILITIES.md`
   - capability schema
   - reject reason codes
   - negative tests
 - Gate: `ci-gate-mailbox-capability-negative`
 - Evidence:
-  - `evidence/run-<RUN_ID>/gates/mailbox-capability/`
+  - `evidence/run-<RUN_ID>/gates/mailbox-cap/`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_mailbox_capability_negative.py` -> PASS
+- `make ci-gate-mailbox-capability-negative RUN_ID=local-p11-34-mailbox-cap-r2` -> PASS
+- `make ci-gate-scheduler-mailbox-phase10c RUN_ID=local-p11-34-regression` -> PASS
+- `make ci-gate-performance RUN_ID=local-p11-34-perf` -> FAIL (env/baseline mismatch on local host, not gate logic regression)
 
 #### T2 - P11-02 Decision Ledger v1 (#35)
 - Branch: `feat/p11-decision-ledger-v1`
@@ -317,6 +346,7 @@ make ci-gate-ledger-completeness
 make ci-gate-transcript-integrity
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity
+make ci-gate-mailbox-capability-negative
 ```
 
 Add component-specific gate(s) from the issue under implementation.

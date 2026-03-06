@@ -6,9 +6,13 @@
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  
 **Last Edited by:** Kenan AY  
+**Gelistiren:** Kenan AY  
+**Olusturan:** Kenan AY  
+**Duzenleyen:** Kenan AY  
 **Prerequisites:** 
 - ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md
 - RUNTIME_STATE_MACHINE.md
+- docs/governance/MAILBOX_PROTOCOL_V2_CAPABILITIES.md
 - Phase 10-A2 (Ring3 execution proof)
 
 ---
@@ -93,6 +97,23 @@ This spec covers the **core verification substrate**. Individual components (P11
 1.8. THE Ledger SHALL be append-only (no modification of past entries)  
 1.9. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.bin`  
 1.10. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.jsonl` (human-readable)
+
+---
+
+### Requirement 1A: Mailbox Capability Contract (P11-01)
+
+**User Story:** As a kernel architect, I want mailbox proposals validated by capability envelope rules, so that invalid proposals are fail-closed rejected before scheduling.
+
+#### Acceptance Criteria
+
+1A.1. THE System SHALL define canonical reject aliases: `REJ_BAD_SIG`, `REJ_CAP_MISSING`, `REJ_BUDGET_EXCEEDED`, `REJ_INVALID_PID`  
+1A.2. WHEN mailbox capability checks are required, THE Ring0 validator SHALL reject missing/invalid signature with `REJ_BAD_SIG`  
+1A.3. WHEN mailbox capability checks are required, THE Ring0 validator SHALL reject missing capability proof with `REJ_CAP_MISSING`  
+1A.4. WHEN mailbox capability checks are required, THE Ring0 validator SHALL reject invalid/over-limit budget with `REJ_BUDGET_EXCEEDED`  
+1A.5. WHEN candidate PID is invalid, THE Ring0 validator SHALL reject with `REJ_INVALID_PID`  
+1A.6. THE System SHALL implement `ci-gate-mailbox-capability-negative`  
+1A.7. THE gate SHALL export `negative_matrix.json`, `report.json`, `violations.txt` under `evidence/run-*/gates/mailbox-cap/`  
+1A.8. Negative matrix cases (signature/capability/budget/pid) SHALL be fail-closed and MUST PASS gate verification  
 
 ---
 
@@ -348,16 +369,17 @@ The following are explicitly OUT OF SCOPE for Phase-11:
 
 Phase-11 is considered complete when:
 
-1. ✅ Decision ledger records all significant kernel decisions
-2. ✅ Execution transcript records all kernel events
-3. ✅ Hash chain integrity is enforced
-4. ✅ Deterministic event ordering is operational
-5. ✅ Replay engine can verify execution
-6. ✅ Proof manifest is generated and signed
-7. ✅ Evidence is exported as CI artifacts
-8. ✅ All CI gates pass
-9. ✅ Constitutional compliance is maintained
-10. ✅ Documentation is complete (Contract Matrix, State Machine)
+1. ✅ Mailbox capability contract is enforced with fail-closed negative gate coverage
+2. ✅ Decision ledger records all significant kernel decisions
+3. ✅ Execution transcript records all kernel events
+4. ✅ Hash chain integrity is enforced
+5. ✅ Deterministic event ordering is operational
+6. ✅ Replay engine can verify execution
+7. ✅ Proof manifest is generated and signed
+8. ✅ Evidence is exported as CI artifacts
+9. ✅ All CI gates pass
+10. ✅ Constitutional compliance is maintained
+11. ✅ Documentation is complete (Contract Matrix, State Machine)
 
 ---
 
@@ -365,6 +387,7 @@ Phase-11 is considered complete when:
 
 - `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md` - Layer contracts
 - `docs/architecture-board/RUNTIME_STATE_MACHINE.md` - Execution flow
+- `docs/governance/MAILBOX_PROTOCOL_V2_CAPABILITIES.md` - Mailbox capability contract
 - `kernel/include/ayken_abi.h` - Syscall ABI
 - GitHub Issues: P11-01 through P11-18
 

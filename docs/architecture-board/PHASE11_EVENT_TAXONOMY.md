@@ -267,6 +267,12 @@ ay_decision_ledger_entry_t {
 - `REASON_INVALID_PROPOSAL` (0x21): Malformed proposal
 - `REASON_INVALID_CTX` (0x22): Target context invalid
 
+**Reject Aliases (P11-01 Mailbox Capability Contract):**
+- `REJ_BAD_SIG`: signature/envelope validation failed
+- `REJ_CAP_MISSING`: capability proof missing
+- `REJ_BUDGET_EXCEEDED`: budget envelope missing/invalid/exceeded
+- `REJ_INVALID_PID`: target pid invalid
+
 ---
 
 ### 3.6 Interrupt Entry Event
