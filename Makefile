@@ -256,6 +256,10 @@ PHASE10B_MODE ?= negative
 PHASE10B_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
 PHASE10C_REQUIRE_METADATA ?= 1
 PHASE10C_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+PHASE11_LEDGER_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+PHASE11_LEDGER_REQUIRE_ETI ?= 0
+PHASE11_LEDGER_ETI_EVENTS ?=
+PHASE11_LEDGER_V1_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ledger-v1
 # C2 activation default: enabled in freeze chain; can be disabled explicitly
 # via `PHASE10C_ENFORCE=0 make ci-freeze`.
 PHASE10C_ENFORCE ?= 1
@@ -726,6 +730,8 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/mailbox-cap"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ledger-v1"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ledger-integrity"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -1030,6 +1036,36 @@ ci-gate-mailbox-capability-negative: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: mailbox-capability-negative evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-ledger-completeness: ci-gate-ring3-execution-phase10a2
+	@echo "== CI GATE LEDGER COMPLETENESS =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_ledger_a2_evidence: $(PHASE11_LEDGER_A2_EVIDENCE_DIR)"
+	@echo "phase11_ledger_require_eti: $(PHASE11_LEDGER_REQUIRE_ETI)"
+	@echo "phase11_ledger_eti_events: $(if $(PHASE11_LEDGER_ETI_EVENTS),$(PHASE11_LEDGER_ETI_EVENTS),<none>)"
+	@PHASE11_LEDGER_REQUIRE_ETI="$(PHASE11_LEDGER_REQUIRE_ETI)" PHASE11_LEDGER_ETI_EVENTS="$(PHASE11_LEDGER_ETI_EVENTS)" \
+		bash scripts/ci/gate_ledger_completeness.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ledger-v1" \
+		--phase10a2-evidence "$(PHASE11_LEDGER_A2_EVIDENCE_DIR)" \
+		--require-eti-binding "$(PHASE11_LEDGER_REQUIRE_ETI)" \
+		--eti-events "$(PHASE11_LEDGER_ETI_EVENTS)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ledger-v1/report.json" "$(EVIDENCE_RUN_DIR)/reports/ledger-completeness.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ledger-completeness evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-ledger-integrity: ci-gate-ledger-completeness
+	@echo "== CI GATE LEDGER INTEGRITY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_ledger_v1_evidence: $(PHASE11_LEDGER_V1_EVIDENCE_DIR)"
+	@bash scripts/ci/gate_ledger_integrity.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ledger-integrity" \
+		--ledger-evidence "$(PHASE11_LEDGER_V1_EVIDENCE_DIR)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ledger-integrity/report.json" "$(EVIDENCE_RUN_DIR)/reports/ledger-integrity.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ledger-integrity evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-hash-chain-validity: ci-gate-ledger-integrity
+	@echo "OK: hash-chain-validity alias passed (ledger-integrity)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1203,6 +1239,13 @@ help:
 	@echo "    (ci-freeze default: PHASE10C_ENFORCE=1 + PHASE10C_C2_STRICT=1; local freeze default: PHASE10C_C2_STRICT=0)"
 	@echo "  ci-gate-mailbox-capability-negative - P11-01 mailbox capability fail-closed negative matrix gate"
 	@echo "    (artifacts: negative_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-ledger-completeness - P11-02 decision ledger completeness/materialization gate"
+	@echo "    (controls: PHASE11_LEDGER_REQUIRE_ETI=0|1, PHASE11_LEDGER_ETI_EVENTS=<path>)"
+	@echo "    (artifacts: decision_ledger.bin, decision_ledger.jsonl, report.json, violations.txt)"
+	@echo "    (note: set PHASE11_LEDGER_REQUIRE_ETI=1 after ETI integration (#43))"
+	@echo "  ci-gate-ledger-integrity - P11-03 ledger hash-chain integrity gate"
+	@echo "    (artifacts: chain_verify.json, tamper_test.json, report.json, violations.txt)"
+	@echo "  ci-gate-hash-chain-validity - Alias of ci-gate-ledger-integrity"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1222,7 +1265,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

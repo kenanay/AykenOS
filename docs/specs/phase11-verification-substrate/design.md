@@ -115,6 +115,61 @@ Ledger hashing (canonical):
 Transcript hashing:
 - `transcript_hash = H(state_before || event || state_after)`
 
+### 4.1 Decision Ledger v1 Materialization Path (#35)
+
+Current implementation phase uses a deterministic CI materialization path:
+
+1. Source evidence:
+   - `ring3-execution-phase10a2/events.jsonl`
+   - `ring3-execution-phase10a2/marker.log`
+2. Extract schedule decision markers:
+   - `P10_MAILBOX_DECISION id=<id> pid=<pid> valid=<0|1> src=<pid>`
+3. Bind decisions to originating `[[AYKEN_CTX_SWITCH]]` events.
+4. Emit:
+   - `decision_ledger.jsonl`
+   - `decision_ledger.bin`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- This milestone is a bootstrap completeness/materialization implementation.
+- It is not yet the final kernel-hotpath append implementation.
+
+Compatibility mode until #43/#44 strict binding:
+- `event_seq` is sourced from originating event order.
+- `ltick = event_seq` deterministic fallback.
+
+Strict mode (post #43/#44):
+- `ledger.event_seq == eti_event.event_seq`
+- `ledger.ltick == eti_event.ltick`
+- Missing binding is fail-closed.
+
+### 4.2 Ledger Hash-Chain Integrity Path (#36)
+
+Bootstrap integrity validation runs on materialized ledger output:
+
+1. Input:
+   - `ledger-v1/decision_ledger.jsonl`
+2. Recompute per-entry fields:
+   - `payload_hash = H(normalized_payload)`
+   - `entry_hash = H(prev_hash || payload_hash)`
+3. Verify continuity:
+   - genesis `prev_hash = 0x00...00`
+   - `entry[i].prev_hash == entry[i-1].entry_hash`
+4. Verify ordering identities:
+   - `event_seq` monotonic + unique
+   - `ltick` monotonic + unique (compat mode currently mirrors event order)
+   - `event_seq_chain_hash = H(seq_1 || ... || seq_n)`
+5. Execute one-bit tamper simulation:
+   - mutate one bit in first entry payload hash
+   - validator MUST detect and fail-closed
+
+Artifacts:
+- `chain_verify.json`
+- `tamper_test.json`
+- `report.json`
+- `violations.txt`
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -191,7 +246,7 @@ Required gates:
 - `ci-gate-ledger-completeness`
 - `ci-gate-transcript-integrity`
 - `ci-gate-replay-determinism`
-- `ci-gate-hash-chain-validity`
+- `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
 Extended Phase-11 gates (issue-driven):
 - DEOL sequence validation

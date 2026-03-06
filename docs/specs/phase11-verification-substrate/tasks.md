@@ -28,8 +28,8 @@
 | Issue | Task | Status | Last Update | Notes |
 |------|------|--------|-------------|-------|
 | #34 | P11-01 Mailbox Capability Contract | COMPLETED_LOCAL | 2026-03-06 | gate PASS + phase10c regression PASS |
-| #35 | P11-02 Decision Ledger v1 | PENDING | 2026-03-06 | waits #34 closure |
-| #36 | P11-03 Ledger Hash Chain | PENDING | 2026-03-06 | waits #35 |
+| #35 | P11-02 Decision Ledger v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | bootstrap materialization gate PASS (compat mode), strict kernel append + ETI/DLT binding deferred to #43/#44 |
+| #36 | P11-03 Ledger Hash Chain | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-06 | hash-chain gate PASS + one-bit tamper detection PASS |
 | #40 | P11-10 DEOL | PENDING | 2026-03-06 | waits #35/#36 |
 | #43 | P11-13 ETI | PENDING | 2026-03-06 | waits #40 |
 | #44 | P11-14 DLT | PENDING | 2026-03-06 | waits #43 |
@@ -123,10 +123,11 @@ Validation snapshot:
 - `make ci-gate-scheduler-mailbox-phase10c RUN_ID=local-p11-34-regression` -> PASS
 - `make ci-gate-performance RUN_ID=local-p11-34-perf` -> FAIL (env/baseline mismatch on local host, not gate logic regression)
 
-#### T2 - P11-02 Decision Ledger v1 (#35)
+#### T2 - P11-02 Decision Ledger v1 (Bootstrap Completeness) (#35)
 - Branch: `feat/p11-decision-ledger-v1`
 - Owner: Kenan AY
 - Invariant: every decision-class event writes exactly one ledger entry
+- Status: COMPLETED_LOCAL_BOOTSTRAP (offline materialization mode)
 - Deliverables:
   - `ay_decision_ledger_entry_t`
   - binary/jsonl export
@@ -136,18 +137,49 @@ Validation snapshot:
   - `decision_ledger.bin`
   - `decision_ledger.jsonl`
 
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_ledger_completeness.py` -> PASS
+- `make ci-gate-ledger-completeness RUN_ID=local-p11-35-ledger-v1` -> PASS
+- `make pre-ci RUN_ID=local-p11-35-preci` -> FAIL (expected local hygiene fail while tracked patch set is uncommitted)
+- `make ci-gate-performance RUN_ID=local-p11-35-perf` -> FAIL (local env/baseline hash mismatch, no new gate logic regression)
+
+Scope note (normative for this milestone):
+- This task currently establishes CI-side ledger materialization/completeness proof from runtime evidence.
+- Direct kernel-side append path remains deferred and will be completed with ETI/DLT integration in #43/#44.
+
+Security/Performance snapshot:
+- Security: fail-closed on count mismatch, duplicate/non-monotonic IDs, missing required fields, missing origin binding
+- Performance: gate is offline parser/validator path; no Ring0 hot-path mutation in this task
+
 #### T3 - P11-03 Ledger Hash Chain Integrity (#36)
 - Branch: `feat/p11-ledger-hash-chain`
 - Owner: Kenan AY
 - Invariant: hash chain tamper is always detected
+- Status: COMPLETED_LOCAL_BOOTSTRAP (CI integrity path)
 - Deliverables:
   - canonical hash implementation
   - chain validator
   - tamper negative tests
 - Gate: `ci-gate-ledger-integrity`
 - Evidence:
-  - `ledger_integrity_report.json`
+  - `chain_verify.json`
+  - `tamper_test.json`
+  - `report.json`
   - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_ledger_hash_chain.py` -> PASS
+- `make ci-gate-ledger-integrity RUN_ID=local-p11-36-ledger-integrity-r2` -> PASS
+- `make ci-gate-hash-chain-validity RUN_ID=local-p11-36-hash-chain-alias-r3` -> PASS (alias)
+- `make ci-gate-performance RUN_ID=local-p11-36-perf` -> FAIL (local env/baseline hash mismatch, no new gate logic regression)
+
+Scope note (normative for this milestone):
+- Hash-chain integrity currently validates CI-materialized ledger entries from #35 bootstrap path.
+- Direct kernel append + strict ETI/DLT binding remains deferred to #43/#44.
+
+Security/Performance snapshot:
+- Security: fail-closed on continuity break, payload hash mismatch, entry hash mismatch, event_seq/ltick ordering anomalies, and tamper simulation
+- Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path regression in this milestone
 
 #### T4 - P11-10 DEOL (#40)
 - Branch: `feat/p11-deol-sequence`
@@ -343,6 +375,7 @@ Run before pushing:
 ```bash
 make pre-ci
 make ci-gate-ledger-completeness
+make ci-gate-ledger-integrity
 make ci-gate-transcript-integrity
 make ci-gate-replay-determinism
 make ci-gate-hash-chain-validity

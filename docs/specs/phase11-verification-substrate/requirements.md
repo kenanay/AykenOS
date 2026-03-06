@@ -97,6 +97,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 1.8. THE Ledger SHALL be append-only (no modification of past entries)  
 1.9. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.bin`  
 1.10. THE Ledger SHALL be serialized to `evidence/run-*/decision_ledger.jsonl` (human-readable)
+1.11. THE System SHALL implement `ci-gate-ledger-completeness` and export `report.json` + `violations.txt` under `evidence/run-*/gates/ledger-v1/`  
+1.12. UNTIL #43/#44 are fully active, THE Ledger v1 gate MAY run in compatibility mode where `ltick = event_seq` deterministically for each recorded entry  
+1.13. WHEN ETI/DLT binding is enabled, THE gate SHALL enforce strict mapping: `ledger.event_seq == originating_event.event_seq` and `ledger.ltick == eti_event.ltick`
+1.14. BOOTSTRAP MILESTONE: #35 local closure MAY be satisfied by CI-side materialization/completeness proof before direct kernel append path is finalized
 
 ---
 
@@ -131,6 +135,10 @@ This spec covers the **core verification substrate**. Individual components (P11
 2.6. WHEN hash chain verification fails, THE System SHALL reject ledger and fail replay  
 2.7. THE Hash algorithm SHALL be SHA-256  
 2.8. THE Hash chain SHALL be tamper-evident (any modification breaks chain)
+2.9. THE System SHALL implement `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)  
+2.10. THE integrity gate SHALL export `chain_verify.json`, `tamper_test.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/ledger-integrity/`  
+2.11. THE integrity gate SHALL compute and verify `event_seq_chain_hash = H(seq_1 || seq_2 || ... || seq_n)` over ordered event stream  
+2.12. THE integrity gate SHALL include one-bit tamper simulation and MUST fail-closed detect tamper
 
 ---
 
@@ -282,11 +290,11 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.1. THE System SHALL implement `ci-gate-ledger-completeness`  
 10.2. THE System SHALL implement `ci-gate-transcript-integrity`  
 10.3. THE System SHALL implement `ci-gate-replay-determinism`  
-10.4. THE System SHALL implement `ci-gate-hash-chain-validity`  
+10.4. THE System SHALL implement `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)  
 10.5. WHEN ledger is incomplete, THE `ci-gate-ledger-completeness` SHALL fail  
 10.6. WHEN transcript is corrupted, THE `ci-gate-transcript-integrity` SHALL fail  
 10.7. WHEN replay fails, THE `ci-gate-replay-determinism` SHALL fail  
-10.8. WHEN hash chain is broken, THE `ci-gate-hash-chain-validity` SHALL fail  
+10.8. WHEN hash chain is broken, THE `ci-gate-ledger-integrity` SHALL fail  
 10.9. WHEN any Phase-11 gate fails, THE PR SHALL be blocked  
 10.10. THE CI gates SHALL produce evidence reports
 
