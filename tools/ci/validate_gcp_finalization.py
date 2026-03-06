@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+ZERO_HASH = "0" * 64
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -62,6 +64,12 @@ def sha256_hex(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def is_sha256_hex(value: str) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    return all(ch in "0123456789abcdef" for ch in value.lower())
+
+
 def canonical_dlt_row(row: dict[str, Any]) -> bytes:
     payload = {
         "event_seq": int(row["event_seq"]),
@@ -72,6 +80,18 @@ def canonical_dlt_row(row: dict[str, Any]) -> bytes:
         "event_type": str(row.get("event_type", "")),
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def compute_gcp_hash(
+    previous_gcp_hash: str,
+    dlt_prefix_hash: str,
+    gcp_ltick: int,
+    gcp_event_seq: int,
+) -> str:
+    payload = (
+        f"{previous_gcp_hash.lower()}|{dlt_prefix_hash.lower()}|{int(gcp_ltick)}|{int(gcp_event_seq)}"
+    )
+    return sha256_hex(payload.encode("utf-8"))
 
 
 def fail(
@@ -93,6 +113,8 @@ def fail(
         "dlt_event_count": int(report.get("dlt_event_count", 0)),
         "dlt_trace_hash": str(report.get("dlt_trace_hash", "")),
         "dlt_prefix_hash": str(report.get("dlt_prefix_hash", "")),
+        "previous_gcp_hash": str(report.get("previous_gcp_hash", ZERO_HASH)),
+        "gcp_hash": str(report.get("gcp_hash", "")),
         "violations": list(report.get("violations", [])),
         "violations_count": len(report.get("violations", [])),
     }
@@ -103,6 +125,9 @@ def fail(
         "gcp_ltick": int(report.get("gcp_ltick", 0)),
         "gcp_event_seq": int(report.get("gcp_event_seq", 0)),
         "dlt_trace_hash": str(report.get("dlt_trace_hash", "")),
+        "dlt_prefix_hash": str(report.get("dlt_prefix_hash", "")),
+        "previous_gcp_hash": str(report.get("previous_gcp_hash", ZERO_HASH)),
+        "gcp_hash": str(report.get("gcp_hash", "")),
         "violations": list(report.get("violations", [])),
         "violations_count": len(report.get("violations", [])),
     }
@@ -114,6 +139,8 @@ def fail(
         "dlt_event_count": int(report.get("dlt_event_count", 0)),
         "gcp_ltick": int(report.get("gcp_ltick", 0)),
         "gcp_event_seq": int(report.get("gcp_event_seq", 0)),
+        "previous_gcp_hash": str(report.get("previous_gcp_hash", ZERO_HASH)),
+        "gcp_hash": str(report.get("gcp_hash", "")),
         "prefix_immutable": bool(report.get("prefix_immutable", False)),
         "dlt_prefix_alignment": bool(report.get("dlt_prefix_alignment", False)),
         "violations": list(report.get("violations", [])),
@@ -234,26 +261,81 @@ def main() -> int:
         report["violations"].append("gcp_ltick_not_in_dlt_trace")
 
     previous_gcp_ltick = None
+    previous_gcp_hash = ZERO_HASH
     if previous_gcp_path is not None:
         if not previous_gcp_path.is_file():
             report["violations"].append(f"missing_previous_gcp:{previous_gcp_path}")
         else:
             try:
                 previous_payload = json.loads(previous_gcp_path.read_text(encoding="utf-8"))
-                previous_gcp_ltick = int(previous_payload.get("gcp_ltick", 0))
             except Exception:
                 report["violations"].append(f"invalid_previous_gcp:{previous_gcp_path}")
             else:
-                if gcp_ltick < previous_gcp_ltick:
+                try:
+                    previous_gcp_ltick = int(previous_payload.get("gcp_ltick", 0))
+                except Exception:
+                    report["violations"].append(f"invalid_previous_gcp_ltick:{previous_gcp_path}")
+
+                previous_gcp_hash_raw = str(previous_payload.get("gcp_hash", "")).lower()
+                if not is_sha256_hex(previous_gcp_hash_raw):
+                    report["violations"].append(f"invalid_previous_gcp_hash:{previous_gcp_path}")
+                else:
+                    previous_gcp_hash = previous_gcp_hash_raw
+
+                previous_previous_hash_raw = str(
+                    previous_payload.get("previous_gcp_hash", ZERO_HASH)
+                ).lower()
+                previous_dlt_prefix_hash_raw = str(
+                    previous_payload.get("dlt_prefix_hash", "")
+                ).lower()
+                try:
+                    previous_gcp_event_seq = int(previous_payload.get("gcp_event_seq", 0))
+                except Exception:
+                    previous_gcp_event_seq = None
+                    report["violations"].append(
+                        f"invalid_previous_gcp_event_seq:{previous_gcp_path}"
+                    )
+
+                if not is_sha256_hex(previous_previous_hash_raw):
+                    report["violations"].append(
+                        f"invalid_previous_previous_gcp_hash:{previous_gcp_path}"
+                    )
+                if not is_sha256_hex(previous_dlt_prefix_hash_raw):
+                    report["violations"].append(
+                        f"invalid_previous_dlt_prefix_hash:{previous_gcp_path}"
+                    )
+                if (
+                    previous_gcp_ltick is not None
+                    and previous_gcp_event_seq is not None
+                    and is_sha256_hex(previous_previous_hash_raw)
+                    and is_sha256_hex(previous_dlt_prefix_hash_raw)
+                    and is_sha256_hex(previous_gcp_hash_raw)
+                ):
+                    expected_previous_hash = compute_gcp_hash(
+                        previous_previous_hash_raw,
+                        previous_dlt_prefix_hash_raw,
+                        previous_gcp_ltick,
+                        previous_gcp_event_seq,
+                    )
+                    if previous_gcp_hash_raw != expected_previous_hash:
+                        report["violations"].append(
+                            f"previous_gcp_hash_mismatch:expected={expected_previous_hash}:actual={previous_gcp_hash_raw}"
+                        )
+
+                if previous_gcp_ltick is not None and gcp_ltick < previous_gcp_ltick:
                     report["violations"].append(
                         f"gcp_non_monotonic_previous:prev={previous_gcp_ltick}:current={gcp_ltick}"
                     )
+
+    gcp_hash = compute_gcp_hash(previous_gcp_hash, dlt_prefix_hash, gcp_ltick, gcp_event_seq)
 
     report["dlt_event_count"] = dlt_event_count
     report["gcp_ltick"] = gcp_ltick
     report["gcp_event_seq"] = gcp_event_seq
     report["dlt_trace_hash"] = dlt_trace_hash
     report["dlt_prefix_hash"] = dlt_prefix_hash
+    report["previous_gcp_hash"] = previous_gcp_hash
+    report["gcp_hash"] = gcp_hash
     report["prefix_immutable"] = prefix_immutable
     report["dlt_prefix_alignment"] = dlt_prefix_alignment
     report["previous_gcp_ltick"] = previous_gcp_ltick
@@ -266,6 +348,8 @@ def main() -> int:
         "dlt_event_count": dlt_event_count,
         "dlt_trace_hash": dlt_trace_hash,
         "dlt_prefix_hash": dlt_prefix_hash,
+        "previous_gcp_hash": previous_gcp_hash,
+        "gcp_hash": gcp_hash,
         "previous_gcp_ltick": previous_gcp_ltick,
         "prefix_immutable": prefix_immutable,
         "dlt_prefix_alignment": dlt_prefix_alignment,
@@ -277,6 +361,9 @@ def main() -> int:
         "gcp_ltick": gcp_ltick,
         "gcp_event_seq": gcp_event_seq,
         "dlt_trace_hash": dlt_trace_hash,
+        "dlt_prefix_hash": dlt_prefix_hash,
+        "previous_gcp_hash": previous_gcp_hash,
+        "gcp_hash": gcp_hash,
         "dlt_event_count": dlt_event_count,
         "violations": list(report["violations"]),
         "violations_count": len(report["violations"]),
@@ -287,6 +374,8 @@ def main() -> int:
         "dlt_event_count": dlt_event_count,
         "gcp_ltick": gcp_ltick,
         "gcp_event_seq": gcp_event_seq,
+        "previous_gcp_hash": previous_gcp_hash,
+        "gcp_hash": gcp_hash,
         "prefix_immutable": prefix_immutable,
         "dlt_prefix_alignment": dlt_prefix_alignment,
         "previous_gcp_ltick": previous_gcp_ltick,

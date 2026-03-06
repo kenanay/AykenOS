@@ -291,6 +291,8 @@ Bootstrap GCP finalization is materialized from DLT ordering evidence:
    - prefix immutability: all `ltick <= gcp_ltick` are finalized
    - DLT prefix alignment: `gcp_ltick` exists in DLT trace
    - optional previous-snapshot monotonicity: `current_gcp_ltick >= previous_gcp_ltick`
+   - hash continuity: `gcp_hash = H(previous_gcp_hash || dlt_prefix_hash || gcp_ltick || gcp_event_seq)`
+     where bootstrap genesis uses `previous_gcp_hash = 0...0`
 4. Emit:
    - `gcp_snapshot.json`
    - `gcp_record.json`
@@ -301,6 +303,8 @@ Bootstrap GCP finalization is materialized from DLT ordering evidence:
 Boundary statement:
 - GCP in this milestone is bootstrap CI finalization contract verification.
 - Runtime multicore prepare/vote/commit path remains deferred to strict runtime GCP integration stage.
+- Bootstrap validator semantics intentionally enforce contiguous DLT identities (`event_seq = 1..N`, `ltick = 1..N`).
+- Strict runtime/sharded DLT+GCP semantics will be introduced via versioned validator path at runtime integration milestone.
 
 ---
 

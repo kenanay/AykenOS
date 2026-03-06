@@ -290,6 +290,7 @@ Security/Performance snapshot:
   - bootstrap GCP snapshot/record materialization
   - finalization consistency validator
   - previous-snapshot monotonicity check (optional input)
+  - GCP hash identity (`gcp_hash`) and previous-link identity (`previous_gcp_hash`) continuity enforcement
 - Gates:
   - `ci-gate-gcp-finalization` (bootstrap)
   - `ci-gate-gcp-atomicity` (alias)
@@ -309,9 +310,10 @@ Validation snapshot:
 Scope note (normative for this milestone):
 - GCP currently operates in bootstrap CI finalization mode over DLT evidence.
 - Runtime multicore prepare/vote/commit integration remains deferred to strict runtime stage.
+- Bootstrap validator semantics intentionally require contiguous DLT identities (`event_seq = 1..N`, `ltick = 1..N`); runtime/sharded semantics remain deferred and versioned.
 
 Security/Performance snapshot:
-- Security: fail-closed on malformed/invalid DLT trace, non-monotonic/non-contiguous ordering identity stream, prefix alignment failure, and previous-snapshot monotonicity violation.
+- Security: fail-closed on malformed/invalid DLT trace, non-monotonic/non-contiguous ordering identity stream, prefix alignment failure, previous-snapshot monotonicity violation, and previous-snapshot hash continuity mismatch.
 - Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
 #### T8 - P11-17 ABDF Snapshot Identity (#47)

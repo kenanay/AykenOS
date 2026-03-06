@@ -6,6 +6,7 @@ from __future__ import annotations
 # Author: Kenan AY
 
 import json
+import hashlib
 import subprocess
 import tempfile
 import unittest
@@ -66,6 +67,12 @@ class GcpFinalizationValidatorTest(unittest.TestCase):
             "event_type": "AY_EVT_SYSCALL_ENTER",
         }
 
+    def _gcp_hash(
+        self, previous_gcp_hash: str, dlt_prefix_hash: str, gcp_ltick: int, gcp_event_seq: int
+    ) -> str:
+        payload = f"{previous_gcp_hash.lower()}|{dlt_prefix_hash.lower()}|{gcp_ltick}|{gcp_event_seq}"
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
     def test_pass_with_valid_trace(self) -> None:
         self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)])
         rc, report, snapshot, consistency = self._run()
@@ -75,6 +82,17 @@ class GcpFinalizationValidatorTest(unittest.TestCase):
         self.assertEqual(consistency.get("status"), "PASS")
         self.assertEqual(int(snapshot.get("gcp_ltick")), 3)
         self.assertEqual(int(snapshot.get("gcp_event_seq")), 3)
+        self.assertEqual(snapshot.get("previous_gcp_hash"), "0" * 64)
+        self.assertEqual(
+            snapshot.get("gcp_hash"),
+            self._gcp_hash(
+                str(snapshot.get("previous_gcp_hash")),
+                str(snapshot.get("dlt_prefix_hash")),
+                int(snapshot.get("gcp_ltick")),
+                int(snapshot.get("gcp_event_seq")),
+            ),
+        )
+        self.assertEqual(str(snapshot.get("gcp_hash")), str(report.get("gcp_hash")))
 
     def test_fail_on_ltick_gap(self) -> None:
         self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 3)])
@@ -86,14 +104,68 @@ class GcpFinalizationValidatorTest(unittest.TestCase):
 
     def test_fail_on_previous_gcp_non_monotonic(self) -> None:
         self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)])
+        previous_previous_hash = "0" * 64
+        previous_dlt_prefix_hash = "a" * 64
+        previous_gcp_ltick = 9
+        previous_gcp_event_seq = 9
+        previous_gcp_hash = self._gcp_hash(
+            previous_previous_hash,
+            previous_dlt_prefix_hash,
+            previous_gcp_ltick,
+            previous_gcp_event_seq,
+        )
         self.previous_gcp.write_text(
-            json.dumps({"gcp_ltick": 9}, sort_keys=True) + "\n",
+            json.dumps(
+                {
+                    "gcp_ltick": previous_gcp_ltick,
+                    "gcp_event_seq": previous_gcp_event_seq,
+                    "previous_gcp_hash": previous_previous_hash,
+                    "dlt_prefix_hash": previous_dlt_prefix_hash,
+                    "gcp_hash": previous_gcp_hash,
+                },
+                sort_keys=True,
+            )
+            + "\n",
             encoding="utf-8",
         )
         rc, report, _, _ = self._run(previous_gcp=self.previous_gcp)
         self.assertEqual(rc, 2)
         self.assertTrue(
             any(v.startswith("gcp_non_monotonic_previous:") for v in report.get("violations", []))
+        )
+
+    def test_pass_on_previous_gcp_hash_chain(self) -> None:
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 2)])
+        rc1, _, snapshot1, _ = self._run()
+        self.assertEqual(rc1, 0)
+        self.previous_gcp.write_text(json.dumps(snapshot1, sort_keys=True) + "\n", encoding="utf-8")
+
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)])
+        rc2, report2, snapshot2, _ = self._run(previous_gcp=self.previous_gcp)
+        self.assertEqual(rc2, 0)
+        self.assertEqual(str(snapshot2.get("previous_gcp_hash")), str(snapshot1.get("gcp_hash")))
+        self.assertEqual(str(snapshot2.get("gcp_hash")), str(report2.get("gcp_hash")))
+
+    def test_fail_on_previous_gcp_hash_mismatch(self) -> None:
+        self._write_dlt_rows([self._dlt_row(1, 1), self._dlt_row(2, 2), self._dlt_row(3, 3)])
+        self.previous_gcp.write_text(
+            json.dumps(
+                {
+                    "gcp_ltick": 2,
+                    "gcp_event_seq": 2,
+                    "previous_gcp_hash": "0" * 64,
+                    "dlt_prefix_hash": "a" * 64,
+                    "gcp_hash": "b" * 64,
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        rc, report, _, _ = self._run(previous_gcp=self.previous_gcp)
+        self.assertEqual(rc, 2)
+        self.assertTrue(
+            any(v.startswith("previous_gcp_hash_mismatch:") for v in report.get("violations", []))
         )
 
 
