@@ -303,6 +303,23 @@ This spec covers the **core verification substrate**. Individual components (P11
 8.16. THE KPL gate SHALL fail-closed reject unsupported manifest version, missing required fields, malformed hash fields, and missing referenced evidence artifacts  
 8.17. UNTIL strict signature trust policy is enabled, bootstrap KPL mode MAY emit `signature_mode=bootstrap-none` with empty `signer_sig` while preserving hash-bound manifest verification
 
+### Requirement 8A: Proof Bundle Portability (P11-42)
+
+**User Story:** As a kernel architect, I want proof evidence packaged into a portable bundle, so that a verifier on another machine can reproduce the same manifest verdict offline.
+
+#### Acceptance Criteria
+
+8A.1. THE System SHALL implement `ci-gate-proof-bundle` (alias: `ci-gate-proof-portability`)  
+8A.2. THE proof bundle SHALL use a versioned bootstrap directory schema rooted at `proof_bundle/` with `manifest.json`, `checksums.json`, `evidence/`, `traces/`, `reports/`, and `meta/`  
+8A.3. THE proof bundle SHALL include, at minimum: `abdf_snapshot_hash.txt`, `bcib_plan_hash.txt`, `execution_trace_hash.txt`, `replay_trace_hash.txt`, `proof_manifest.json`, `report.json`, and `summary.json`  
+8A.4. THE proof bundle gate SHALL export `proof_bundle/`, `bundle_verify.json`, `report.json`, and `violations.txt` under `evidence/run-*/gates/proof-bundle/`  
+8A.5. THE proof bundle gate SHALL generate `checksums.json` over all required bundled artifacts and bind the schema with `bundle_id = H(canonical_manifest_without_bundle_id || canonical_checksums)`  
+8A.6. WHEN any required bundled artifact is missing, THE proof bundle verifier SHALL fail-closed reject verification  
+8A.7. WHEN any bundled artifact checksum does not match `checksums.json`, THE proof bundle verifier SHALL fail-closed reject verification  
+8A.8. THE offline proof bundle verifier SHALL reproduce manifest-bound proof verdict from bundled evidence and SHALL fail-closed enforce portability parity (`source_manifest_verdict == reproduced_manifest_verdict` and `source_proof_verify_status == reproduced_proof_verify_status`)  
+8A.9. THE proof bundle verifier SHALL validate bundled trace-hash parity (`execution_trace_hash == SHA256(traces/execution_trace.jsonl)` and `replay_trace_hash == SHA256(traces/replay_trace.jsonl)`)  
+8A.10. UNTIL signed transport/trust policy is enabled, P11-42 MAY remain a bootstrap directory-bundle portability contract and SHALL NOT be interpreted as runtime replay execution
+
 ---
 
 ### Requirement 9: Evidence Export
@@ -361,6 +378,8 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.29. WHEN record/replay parity invariants (`event_seq`, `ltick`, trace hash) are violated, THE `ci-gate-replay-determinism` SHALL fail
 10.30. THE System SHALL implement `ci-gate-kpl-proof-verify` (alias: `ci-gate-proof-manifest`)
 10.31. WHEN proof manifest binding or self-hash invariants are violated, THE `ci-gate-kpl-proof-verify` SHALL fail
+10.32. THE System SHALL implement `ci-gate-proof-bundle` (alias: `ci-gate-proof-portability`)
+10.33. WHEN proof bundle schema, checksum integrity, or portability parity invariants are violated, THE `ci-gate-proof-bundle` SHALL fail
 
 ---
 

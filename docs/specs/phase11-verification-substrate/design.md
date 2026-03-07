@@ -426,6 +426,47 @@ Boundary statement:
 - Signature trust policy remains bootstrap (`signature_mode=bootstrap-none`, empty `signer_sig`) and strict signer verification is deferred to later proof hardening stage.
 - Runtime proof sealing/in-kernel signature semantics remain out of scope for this milestone.
 
+### 4.12 Proof Bundle Bootstrap Portability Path (P11-42)
+
+Bootstrap proof bundle portability packages manifest-bound execution proof into a machine-independent directory bundle:
+
+1. Inputs:
+   - `gates/abdf-snapshot-identity/abdf_snapshot_hash.txt`
+   - `gates/execution-identity/bcib_plan_hash.txt`
+   - `gates/execution-identity/execution_trace_hash.txt`
+   - `gates/execution-identity/execution_trace.jsonl`
+   - `gates/replay-v1/replay_trace_hash.txt`
+   - `gates/replay-v1/replay_trace.jsonl`
+   - `gates/replay-v1/replay_report.json`
+   - `gates/kpl-proof/proof_manifest.json`
+   - `gates/kpl-proof/proof_verify.json`
+   - `gates/kpl-proof/report.json`
+   - `gates/ledger-v1/decision_ledger.jsonl`
+   - `gates/eti/eti_transcript.jsonl`
+   - `reports/summary.json`
+   - `meta/run.json`
+   - `kernel.elf` (or configured kernel image binary)
+2. Materialize portable bundle schema:
+   - root: `proof_bundle/manifest.json`, `proof_bundle/checksums.json`
+   - bundled data: `proof_bundle/evidence/`, `proof_bundle/traces/`, `proof_bundle/reports/`, `proof_bundle/meta/`
+   - required files are checksum-bound with `checksums.json`
+   - root identity is sealed with `bundle_id = H(canonical_manifest_without_bundle_id || canonical_checksums)`
+3. Offline verification responsibilities:
+   - verify required schema/files exist
+   - verify file checksums match `checksums.json`
+   - recompute trace hashes from bundled `execution_trace.jsonl` and `replay_trace.jsonl`
+   - recompute manifest proof bindings from bundled ledger/transcript/kernel/config/replay evidence
+   - reproduce source KPL verdict and proof-verify status from bundle contents only
+4. Emit:
+   - `proof_bundle/`
+   - `bundle_verify.json`
+   - `report.json`
+   - `violations.txt`
+
+Boundary statement:
+- P11-42 is proof portability only: bundle verification reproduces verdicts from packaged evidence but does not execute runtime replay.
+- Signed transport, trust roots, and archive/signature wrapping remain deferred to later proof portability hardening.
+
 ---
 
 ## 5. Ordering and Concurrency
@@ -478,6 +519,7 @@ Core artifacts:
 - `replay_report.json`
 - `gcp_record.json` (multicore runs)
 - `proof.json`
+- `gates/proof-bundle/proof_bundle/` (when portability gate executes)
 
 Policy:
 - Evidence is exported and retained as CI artifacts.
@@ -511,6 +553,7 @@ Required gates:
 - `ci-gate-bcib-trace-identity` (alias: `ci-gate-execution-identity`)
 - `ci-gate-replay-determinism`
 - `ci-gate-kpl-proof-verify` (alias: `ci-gate-proof-manifest`)
+- `ci-gate-proof-bundle` (alias: `ci-gate-proof-portability`)
 - `ci-gate-ledger-integrity` (alias: `ci-gate-hash-chain-validity`)
 
 Extended Phase-11 gates (issue-driven):
@@ -518,6 +561,7 @@ Extended Phase-11 gates (issue-driven):
 - DLT monotonicity/parity validation
 - GCP atomicity/consistency validation
 - KPL proof verification
+- Proof bundle portability verification
 - ABDF snapshot identity validation
 - BCIB plan/trace identity validation
 
@@ -562,8 +606,9 @@ Order follows dependency and risk:
 9. P11-18 BCIB plan + execution trace identity (#48)
 10. P11-04 Replay v1 (#37)
 11. P11-11 KPL (#41)
-12. Policy track in parallel: #38 -> #39 -> #42
-13. Research track after core closure: #46
+12. P11-42 Proof bundle portability
+13. Policy track in parallel: #38 -> #39 -> #42
+14. Research track after core closure: #46
 
 Rule:
 - 1 PR = 1 invariant.
@@ -589,5 +634,6 @@ Phase-11 is done when:
 - Required structures and hooks are implemented.
 - Deterministic replay pass conditions are met.
 - Proof manifest is generated and verified.
+- Portable proof bundle is generated and verified offline with matching verdict parity.
 - CI Phase-11 gates pass in fail-closed mode.
 - Documentation and issue acceptance criteria are aligned.

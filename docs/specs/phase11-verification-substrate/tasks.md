@@ -38,6 +38,7 @@
 | #48 | P11-18 BCIB Plan and Trace Identity | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | bcib-trace-identity gate PASS (plan+trace execution identity evidence) |
 | #37 | P11-04 Replay v1 | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | replay-determinism gate PASS (record/replay identity parity over #47/#48 evidence) |
 | #41 | P11-11 KPL Proof Layer | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | kpl-proof-verify gate PASS (hash-bound proof manifest verification evidence) |
+| P11-42 | Proof Bundle Portability | COMPLETED_LOCAL_BOOTSTRAP | 2026-03-07 | proof-bundle gate PASS (portable proof package + offline verdict parity evidence) |
 
 ---
 
@@ -438,23 +439,54 @@ Security/Performance snapshot:
 - Security: fail-closed on missing referenced evidence artifacts, malformed hash fields, unsupported manifest version, missing required fields, proof self-hash mismatch, and replay binding mismatches.
 - Performance: validator runs offline in CI/evidence pipeline; no Ring0 hot-path mutation in this milestone.
 
+#### T12 - P11-42 Proof Bundle Portability
+- Branch: `feat/p11-proof-bundle-portability`
+- Owner: Kenan AY
+- Invariant: portable proof bundle verified on machine B reproduces the manifest verdict from machine A
+- Status: COMPLETED_LOCAL_BOOTSTRAP (portable bundle schema + offline verifier parity)
+- Deliverables:
+  - proof bundle schema (`manifest.json`, `checksums.json`, `evidence/`, `traces/`, `reports/`, `meta/`)
+  - offline proof bundle verifier
+  - bundle generation gate + portability alias
+- Gates:
+  - `ci-gate-proof-bundle`
+  - `ci-gate-proof-portability` (alias)
+- Evidence:
+  - `proof_bundle/`
+  - `bundle_verify.json`
+  - `report.json`
+  - `violations.txt`
+
+Validation snapshot:
+- `python3 -m unittest tools/ci/test_validate_proof_bundle.py` -> PASS
+- `tmp_root="$$(mktemp -d)" && mkdir -p "$$tmp_root/abdf" "$$tmp_root/execution" "$$tmp_root/replay" "$$tmp_root/kpl" "$$tmp_root/ledger" "$$tmp_root/eti" "$$tmp_root/meta" "$$tmp_root/gate" && printf '%064d\n' 0 | tr '0' 'a' > "$$tmp_root/abdf/abdf_snapshot_hash.txt" && printf '%064d\n' 0 | tr '0' 'b' > "$$tmp_root/execution/bcib_plan_hash.txt" && printf '%s\n' '{"cpu_id":0,"event_seq":1,"event_type":"AY_EVT_SYSCALL_ENTER","ltick":1}' '{"cpu_id":0,"event_seq":2,"event_type":"AY_EVT_SYSCALL_EXIT","ltick":2}' > "$$tmp_root/execution/execution_trace.jsonl" && python3 - <<'PY' "$$tmp_root/execution/execution_trace.jsonl" "$$tmp_root/execution/execution_trace_hash.txt" "$$tmp_root/replay/replay_trace.jsonl" "$$tmp_root/replay/replay_trace_hash.txt" "$$tmp_root/replay/replay_report.json" "$$tmp_root/ledger/decision_ledger.jsonl" "$$tmp_root/eti/eti_transcript.jsonl" "$$tmp_root/kernel.elf" "$$tmp_root/meta/run.json" "$$tmp_root/kpl/proof_manifest.json" "$$tmp_root/kpl/proof_verify.json" "$$tmp_root/kpl/report.json" "$$tmp_root/summary.json"\nimport hashlib, json, pathlib, sys\nexec_trace, exec_hash, replay_trace, replay_hash, replay_report, ledger, eti, kernel, run_json, proof_manifest, proof_verify, proof_report, summary = [pathlib.Path(p) for p in sys.argv[1:]]\nreplay_trace.write_text(exec_trace.read_text(encoding='utf-8'), encoding='utf-8')\nledger.write_text('{\"event_seq\":1,\"ltick\":1}\\n{\"event_seq\":2,\"ltick\":2}\\n', encoding='utf-8')\neti.write_text('{\"cpu_id\":0,\"event_seq\":1,\"event_type\":\"AY_EVT_SYSCALL_ENTER\",\"ltick\":1}\\n{\"cpu_id\":0,\"event_seq\":2,\"event_type\":\"AY_EVT_SYSCALL_EXIT\",\"ltick\":2}\\n', encoding='utf-8')\nkernel.write_bytes(b'KERNEL')\nrun_json.write_text('{\"run_id\":\"local-proof-bundle\"}\\n', encoding='utf-8')\nsummary.write_text('{\"gate\":\"summary\",\"verdict\":\"PASS\"}\\n', encoding='utf-8')\ndef sha(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\nexec_digest = sha(exec_trace)\nreplay_digest = sha(replay_trace)\nexec_hash.write_text(exec_digest + '\\n', encoding='utf-8')\nreplay_hash.write_text(replay_digest + '\\n', encoding='utf-8')\nreplay_payload = {\"status\":\"PASS\",\"replay_execution_trace_hash\":replay_digest,\"replay_result_hash\":\"d\" * 64,\"final_state_hash\":\"e\" * 64,\"replay_event_count\":2,\"violations_count\":0}\nreplay_report.write_text(json.dumps(replay_payload, sort_keys=True) + '\\n', encoding='utf-8')\nmanifest = {\"manifest_version\":1,\"mode\":\"bootstrap_kpl_proof_manifest\",\"signature_mode\":\"bootstrap-none\",\"signer_sig\":\"\",\"hash_algorithm\":\"sha256\",\"kernel_image_hash\":sha(kernel),\"config_hash\":sha(run_json),\"ledger_root_hash\":sha(ledger),\"transcript_root_hash\":sha(eti),\"abdf_snapshot_hash\":\"a\" * 64,\"bcib_plan_hash\":\"b\" * 64,\"execution_trace_hash\":exec_digest,\"replay_result_hash\":\"d\" * 64,\"final_state_hash\":\"e\" * 64,\"event_count\":2,\"violation_count\":0}\nmanifest['proof_hash'] = hashlib.sha256(json.dumps({k: v for k, v in manifest.items() if k != 'proof_hash'}, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()\nproof_manifest.write_text(json.dumps(manifest, sort_keys=True) + '\\n', encoding='utf-8')\nproof_verify.write_text('{\"status\":\"PASS\"}\\n', encoding='utf-8')\nproof_report.write_text('{\"gate\":\"kpl-proof\",\"verdict\":\"PASS\"}\\n', encoding='utf-8')\nPY\n&& bash scripts/ci/gate_proof_bundle.sh --evidence-dir "$$tmp_root/gate" --abdf-evidence "$$tmp_root/abdf" --execution-evidence "$$tmp_root/execution" --replay-evidence "$$tmp_root/replay" --kpl-evidence "$$tmp_root/kpl" --ledger-evidence "$$tmp_root/ledger" --eti-evidence "$$tmp_root/eti" --kernel-image-bin "$$tmp_root/kernel.elf" --summary-json "$$tmp_root/summary.json" --meta-run-json "$$tmp_root/meta/run.json"` -> PASS
+- `make -n ci-gate-proof-bundle RUN_ID=dryrun-p11-42-proof-bundle` -> PASS (target graph/contract dry-run)
+
+Scope note (normative for this milestone):
+- P11-42 currently solves portable proof packaging and offline verdict parity only.
+- Bundle verification does not execute runtime replay and does not introduce signed transport/trust policy in this milestone.
+
+Security/Performance snapshot:
+- Security: fail-closed on missing required bundle artifacts, checksum mismatches, bundle schema drift, trace-hash parity mismatch, and source-vs-reproduced verdict divergence.
+- Performance: generate/verify pipeline runs entirely offline in CI/evidence path; no Ring0 hot-path mutation in this milestone.
+
 ---
 
 ### WS-B: Policy Track (Parallel After Core Baseline)
 
-#### T12 - P11-05 Arbitration Bus (#38)
+#### T13 - P11-05 Arbitration Bus (#38)
 - Branch: `feat/p11-arbitration-bus`
 - Owner: Kenan AY
 - Invariant: arbitration never violates safety envelope
 - Gate: `ci-gate-arbitration-safety`
 
-#### T13 - P11-06 Hot Swap and Rollback (#39)
+#### T14 - P11-06 Hot Swap and Rollback (#39)
 - Branch: `feat/p11-policy-hotswap`
 - Owner: Kenan AY
 - Invariant: policy violation triggers deterministic rollback
 - Gate: `ci-gate-hotswap-rollback`
 
-#### T14 - P11-12 AI Policy Module (#42)
+#### T15 - P11-12 AI Policy Module (#42)
 - Branch: `feat/p11-ai-policy-untrusted`
 - Owner: Kenan AY
 - Invariant: AI policy remains untrusted and envelope-validated
@@ -464,7 +496,7 @@ Security/Performance snapshot:
 
 ### WS-C: Research Track (After Phase-11 Closure Candidate)
 
-#### T15 - P11-16 Runtime Bridge Contract (#46)
+#### T16 - P11-16 Runtime Bridge Contract (#46)
 - Branch: `research/p11-runtime-bridge-contract`
 - Owner: Kenan AY
 - Invariant: execution identity tuple is deterministic and recomputable
@@ -486,6 +518,7 @@ Core critical path:
 9. #48
 10. #37
 11. #41
+12. P11-42
 
 Parallel policy path:
 1. #38
@@ -531,6 +564,7 @@ make ci-gate-dlt-determinism
 make ci-gate-gcp-finalization
 make ci-gate-replay-determinism
 make ci-gate-kpl-proof-verify
+make ci-gate-proof-bundle
 make ci-gate-hash-chain-validity
 make ci-gate-mailbox-capability-negative
 ```
@@ -544,5 +578,5 @@ Add component-specific gate(s) from the issue under implementation.
 Phase-11 implementation is closure-ready when:
 - WS-A tasks are complete with gate PASS
 - Required artifacts are reproducible in CI
-- Core proof chain (#35/#36/#40/#43/#44/#45/#37/#41) is green
+- Core proof chain (#35/#36/#40/#43/#44/#45/#37/#41/P11-42) is green
 - Documentation and issue acceptance criteria remain aligned

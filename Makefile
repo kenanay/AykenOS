@@ -293,6 +293,15 @@ PHASE11_KPL_CONFIG_JSON ?= $(EVIDENCE_RUN_DIR)/meta/run.json
 PHASE11_KPL_INPUT_PROOF_MANIFEST ?=
 PHASE11_KPL_EXPECTED_PROOF_HASH_FILE ?=
 PHASE11_KPL_EXPECTED_FINAL_STATE_HASH_FILE ?=
+PHASE11_BUNDLE_ABDF_EVIDENCE_DIR ?= $(PHASE11_KPL_ABDF_EVIDENCE_DIR)
+PHASE11_BUNDLE_EXECUTION_EVIDENCE_DIR ?= $(PHASE11_KPL_EXECUTION_EVIDENCE_DIR)
+PHASE11_BUNDLE_REPLAY_EVIDENCE_DIR ?= $(PHASE11_KPL_REPLAY_EVIDENCE_DIR)
+PHASE11_BUNDLE_KPL_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/kpl-proof
+PHASE11_BUNDLE_LEDGER_EVIDENCE_DIR ?= $(PHASE11_KPL_LEDGER_EVIDENCE_DIR)
+PHASE11_BUNDLE_ETI_EVIDENCE_DIR ?= $(PHASE11_KPL_ETI_EVIDENCE_DIR)
+PHASE11_BUNDLE_KERNEL_IMAGE_BIN ?= $(PHASE11_KPL_KERNEL_IMAGE_BIN)
+PHASE11_BUNDLE_SUMMARY_JSON ?= $(EVIDENCE_RUN_DIR)/reports/summary.json
+PHASE11_BUNDLE_META_RUN_JSON ?= $(EVIDENCE_RUN_DIR)/meta/run.json
 # C2 activation default: enabled in freeze chain; can be disabled explicitly
 # via `PHASE10C_ENFORCE=0 make ci-freeze`.
 PHASE10C_ENFORCE ?= 1
@@ -779,6 +788,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-identity"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/replay-v1"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/kpl-proof"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/proof-bundle"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
@@ -1290,6 +1300,37 @@ ci-gate-kpl-proof-verify: ci-gate-replay-determinism ci-gate-ledger-integrity ci
 ci-gate-proof-manifest: ci-gate-kpl-proof-verify
 	@echo "OK: proof-manifest alias passed (kpl-proof-verify bootstrap)"
 
+ci-gate-proof-bundle: ci-gate-kpl-proof-verify
+	@echo "== CI GATE PROOF BUNDLE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "phase11_bundle_abdf_evidence: $(PHASE11_BUNDLE_ABDF_EVIDENCE_DIR)"
+	@echo "phase11_bundle_execution_evidence: $(PHASE11_BUNDLE_EXECUTION_EVIDENCE_DIR)"
+	@echo "phase11_bundle_replay_evidence: $(PHASE11_BUNDLE_REPLAY_EVIDENCE_DIR)"
+	@echo "phase11_bundle_kpl_evidence: $(PHASE11_BUNDLE_KPL_EVIDENCE_DIR)"
+	@echo "phase11_bundle_ledger_evidence: $(PHASE11_BUNDLE_LEDGER_EVIDENCE_DIR)"
+	@echo "phase11_bundle_eti_evidence: $(PHASE11_BUNDLE_ETI_EVIDENCE_DIR)"
+	@echo "phase11_bundle_kernel_image_bin: $(PHASE11_BUNDLE_KERNEL_IMAGE_BIN)"
+	@echo "phase11_bundle_summary_json: $(PHASE11_BUNDLE_SUMMARY_JSON)"
+	@echo "phase11_bundle_meta_run_json: $(PHASE11_BUNDLE_META_RUN_JSON)"
+	@bash scripts/ci/gate_proof_bundle.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-bundle" \
+		--abdf-evidence "$(PHASE11_BUNDLE_ABDF_EVIDENCE_DIR)" \
+		--execution-evidence "$(PHASE11_BUNDLE_EXECUTION_EVIDENCE_DIR)" \
+		--replay-evidence "$(PHASE11_BUNDLE_REPLAY_EVIDENCE_DIR)" \
+		--kpl-evidence "$(PHASE11_BUNDLE_KPL_EVIDENCE_DIR)" \
+		--ledger-evidence "$(PHASE11_BUNDLE_LEDGER_EVIDENCE_DIR)" \
+		--eti-evidence "$(PHASE11_BUNDLE_ETI_EVIDENCE_DIR)" \
+		--kernel-image-bin "$(PHASE11_BUNDLE_KERNEL_IMAGE_BIN)" \
+		--summary-json "$(PHASE11_BUNDLE_SUMMARY_JSON)" \
+		--meta-run-json "$(PHASE11_BUNDLE_META_RUN_JSON)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle/bundle_verify.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle-verify.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-bundle evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-portability: ci-gate-proof-bundle
+	@echo "OK: proof-portability alias passed (proof-bundle bootstrap)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1511,6 +1552,10 @@ help:
 	@echo "    (controls: PHASE11_KPL_* vars for abdf/execution/replay/ledger/eti evidence, kernel image, config, expected proof/final-state hashes)"
 	@echo "    (artifacts: proof_manifest.json, proof_verify.json, report.json, violations.txt)"
 	@echo "  ci-gate-proof-manifest - Alias of ci-gate-kpl-proof-verify"
+	@echo "  ci-gate-proof-bundle - P11-42 bootstrap proof bundle portability gate"
+	@echo "    (controls: PHASE11_BUNDLE_* vars for identity/replay/kpl evidence, kernel image, summary, meta)"
+	@echo "    (artifacts: proof_bundle/, bundle_verify.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-portability - Alias of ci-gate-proof-bundle"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1530,7 +1575,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
