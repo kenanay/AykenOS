@@ -1,80 +1,62 @@
 # AykenOS Documentation Index
-This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
+This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-02-28  
-**Snapshot Basis:** `WORKTREE (post-mailbox-v1-freeze docs)`
+**Last Updated:** 2026-03-07  
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` (`git_sha=9cb2171b`)
 
-## Current Phase
-- **Core OS:** Phase 4.5 In Progress (stabilization)
-- **Constitutional System:** Phases 1-12 complete
-- **Phase 4.4:** complete baseline (boot/ring3/int80)
+## Current Status
+- **Runtime:** `Phase-10` locally closed via freeze evidence
+- **Verification Substrate:** `Phase-11` bootstrap/local closure confirmed
+- **Formal Governance Pointer:** `CURRENT_PHASE=10` (phase transition not yet executed)
+- **Next Focus:** remote `ci-freeze`, closure tag confirmation, Phase-12 trust-transport prep
 
 ## Primary Truth Sources
-Kod gercekligi icin once su dosyalari referans alin:
+Current repo truth icin once su dosyalari referans alin:
 
 1. `README.md`
-2. `ARCHITECTURE_FREEZE.md`
-3. `docs/roadmap/overview.md`
-4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `docs/development/PHASE_4_5_PROGRESS_REPORT.md`
-6. `.github/workflows/ci-freeze.yml`
-7. `Makefile`
+2. `AYKENOS_SON_DURUM_RAPORU_2026_03_07.md`
+3. `RAPOR_OZETI_2026_03_07.md`
+4. `reports/phase10_phase11_closure_2026-03-07.md`
+5. `docs/development/PROJECT_STATUS_REPORT.md`
+6. `docs/roadmap/overview.md`
+7. `docs/specs/phase11-verification-substrate/tasks.md`
+8. `Makefile`
+9. `.github/workflows/ci-freeze.yml`
+
+## Live Evidence References
+1. `evidence/run-local-freeze-p10p11/reports/summary.json`
+2. `evidence/run-local-phase11-closure/reports/summary.json`
+3. `evidence/run-local-freeze-p10p11/gates/`
+4. `evidence/run-local-phase11-closure/gates/`
 
 ## CI / Freeze Documentation
 1. `docs/operations/CONSTITUTIONAL_CI_MODE.md`
 2. `docs/operations/PROVISIONAL_CI_MODE.md`
 3. `docs/operations/PERF_BASELINE_POLICY.md`
 4. `docs/roadmap/freeze-enforcement-workflow.md`
+5. `docs/operations/RUNTIME_INTEGRATION_GUARDRAILS.md`
 
-## Gate References
-`make ci-freeze` zincirinde aktif dokumanlanan gate'ler:
-1. abi
-2. boundary
-3. ring0-exports
-4. hygiene
-5. tooling-isolation
-6. constitutional
-7. workspace
-8. syscall-v2-runtime
-9. performance
+## Roadmap and Status Surfaces
+1. `docs/roadmap/README.md`
+2. `docs/roadmap/overview.md`
+3. `docs/roadmap/CURRENT_PHASE`
+4. `docs/development/PROJECT_STATUS_REPORT.md`
 
-Ayrica: `ci-summarize`
+## Phase-11 Reference Set
+1. `docs/specs/phase11-verification-substrate/design.md`
+2. `docs/specs/phase11-verification-substrate/requirements.md`
+3. `docs/specs/phase11-verification-substrate/tasks.md`
+4. `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md`
+5. `docs/architecture-board/RUNTIME_STATE_MACHINE.md`
 
-## Core Code References
-1. `kernel/sys/syscall_v2.h`
-2. `kernel/sys/syscall_v2.c`
-3. `kernel/sys/syscall.c`
-4. `kernel/sched/sched.c`
-5. `kernel/sched/sched.h`
-6. `kernel/fs/vfs.c`
-7. `kernel/fs/devfs.c`
+## Historical / Superseded Snapshots
+Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrudan kullanilmamalidir:
 
-## Technical Specifications
-
-### Core System Specifications
-1. `docs/development/SCHEDULER_ARBITRATION_CONTRACT.md` - Legacy/historical arbitration design note (superseded by mailbox v1 freeze for C1)
-2. `docs/development/CAPABILITY_SYSTEM_REFERENCE.md` - Capability-based security system reference
-3. `docs/development/BCIB_SUBMISSION_PROTOCOL.md` - BCIB graph submission and execution protocol
-4. `docs/development/RING3_IMPLEMENTATION.md` - Ring3 policy layer implementation
-5. `docs/development/SYSCALL_TRANSITION_GUIDE.md` - Syscall v2 migration guide
-6. `docs/development/DEVFS_IMPLEMENTATION.md` - DevFS architecture
-7. `docs/governance/MAILBOX_PROTOCOL_V1_FREEZE.md` - Mailbox protocol v1 freeze (C1 authority + Gate-4/4.5 proof contract)
-8. `docs/development/SCHEDULER_MAILBOX_DEVELOPER_GUIDE.md` - Scheduler mailbox practical developer guide (publish/validate/consume flow)
-9. `docs/development/PROOF_GATE_DEBUG_HANDBOOK.md` - Gate-4/Gate-4.5 debug playbook and invariant triage
-10. `docs/governance/MAILBOX_ABI_HARDENING_NOTES.md` - ABI layout/marker drift hardening checklist
-11. `docs/governance/MAILBOX_PROTOCOL_V2_C2_REVIEW_FREEZE_CANDIDATE.md` - C2 multi-owner review-freeze candidate (`non-normative`)
-12. `docs/governance/PHASE10C_C2_STRICT_INVARIANTS.md` - C2 strict formal invariant set and validator mapping
-
-### CI and Operations
-1. `docs/operations/CONSTITUTIONAL_CI_MODE.md` - Constitutional CI mode specification
-2. `docs/operations/PROVISIONAL_CI_MODE.md` - Provisional CI mode specification
-3. `docs/operations/PERF_BASELINE_POLICY.md` - Performance baseline policy
-4. `docs/operations/CI_GATE_TROUBLESHOOTING.md` - CI gate troubleshooting guide
-
-### Architecture Documentation
-1. `ARCHITECTURE_FREEZE.md` - Architecture freeze specification
-2. `docs/roadmap/freeze-enforcement-workflow.md` - Freeze enforcement workflow
-3. `docs/development/PROJECT_STRUCTURE.md` - Project structure documentation
+1. `AYKENOS_SON_DURUM_RAPORU_2026_03_05.md`
+2. `PROJE_DURUM_RAPORU_2026_03_02.md`
+3. `PHASE_10_FINAL_STATUS.md`
+4. `PHASE_10_COMPLETION_SUMMARY.md`
+5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
 
 ## Note
-Eski raporlarda gecen bazi "tamamlandi" iddialari kod snapshot'i ile birebir ortusmeyebilir. Bu dosya, merkezi giris noktasi olarak kod-temelli guncel referans setini listeler.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin 2026-03-07 closure evidence ve yukaridaki primary truth kaynaklari kullanilmalidir.

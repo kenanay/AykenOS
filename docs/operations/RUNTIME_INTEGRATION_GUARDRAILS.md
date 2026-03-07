@@ -3,7 +3,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 
 **Status:** ACTIVE (Fail-Closed)  
 **Scope:** `kernel/`, `userspace/`, `ayken-core/`, `ayken/`, `userspace/semantic-cli`  
-**Last Updated:** 2026-03-05
+**Last Updated:** 2026-03-07
 
 ## 1) Purpose
 Bu belge, gelistirme sirasinda entegrasyon sirasinin gozden kacmasini engellemek icin zorunlu mimari guardrail setini tanimlar.
@@ -34,10 +34,11 @@ Asagidaki baglantilar fail-closed ihlal kabul edilir:
 4. Kernel icinden `userspace/` header/API dogrudan cagri
 
 ## 5) Phase-Gated Integration Rules
-### Phase 10-A2 (Current)
-1. Odak: Ring3 execution stabilization (`missing_marker:P10_RING3_USER_CODE` kapatisi).
+### Phase 10-A2 (Closure Baseline)
+1. Local closure evidence mevcuttur: `local-freeze-p10p11`.
 2. `ayken-core` ve `semantic-cli` gelistirilebilir, ancak kernel runtime yoluna baglanmaz.
-3. Runtime claim icin zorunlu kanit: `ci-gate-ring3-execution-phase10a2` strict PASS.
+3. Runtime claim icin zorunlu kanit hala `ci-gate-ring3-execution-phase10a2` strict PASS'tir.
+4. Bu kontratin tekrar kirilmasi halinde `missing_marker:P10_RING3_USER_CODE` yeniden blocker kabul edilir.
 
 ### Phase 10-B
 1. `bcib-runtime` <-> `ayken-core/bcib` entegrasyonu acilabilir.
