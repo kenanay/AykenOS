@@ -467,6 +467,275 @@ Boundary statement:
 - P11-42 is proof portability only: bundle verification reproduces verdicts from packaged evidence but does not execute runtime replay.
 - Signed transport, trust roots, and archive/signature wrapping remain deferred to later proof portability hardening.
 
+### 4.13 Phase-12 Deterministic Distributed Proof Architecture (Draft)
+
+Status note:
+- This section is forward-looking and non-normative for Phase-11 closure.
+- It defines the intended architectural direction for Phase-12 without expanding Phase-11 scope, acceptance, or Definition of Done.
+
+Purpose:
+
+Phase-12 extends Phase-11 proof portability into a trusted and cross-node verifiable proof architecture.
+
+Phase-11 guarantees that execution proof artifacts:
+- exist,
+- are portable,
+- are checksum-bound,
+- and can reproduce the same offline verdict.
+
+Phase-12 adds the missing trust and distributed acceptance layers:
+- producer attribution,
+- signature verification,
+- verifier policy compatibility,
+- and deterministic cross-node acceptance semantics.
+
+Boundary:
+
+Phase-12 does not collapse proof transport, proof trust, and distributed replay into a single milestone.
+
+The boundary is intentionally split:
+- Phase-11: proof portability
+- Phase-12A: trusted proof transport
+- Phase-12B: cross-node proof acceptance
+- Phase-12C: replicated replay boundary
+
+This separation preserves scope discipline and prevents trust/distribution semantics from contaminating the bootstrap portability contract.
+
+#### 4.13.1 Core Normative Definitions
+
+Phase-11 definition:
+- Execution proof exists, is portable, and is offline-verifiable.
+
+Phase-12 definition:
+- Execution proof is signed, producer-attributed, policy-checked, and cross-node acceptable.
+
+#### 4.13.2 Trust Model
+
+Phase-12 introduces explicit trust semantics for proof acceptance.
+
+A transported proof bundle is not accepted solely because:
+- it is structurally valid,
+- checksums match,
+- or proof parity reproduces successfully.
+
+A proof is accepted only when trust invariants also hold.
+
+Trust invariant:
+- `accepted_proof => signature_valid && producer_trusted && policy_compatible`
+
+Consequences:
+- A proof MAY be portable but untrusted.
+- A proof MAY be valid but not accepted.
+- A proof MAY be reproduced but rejected by policy.
+
+This makes a strict distinction between:
+- valid proof artifact
+- accepted proof artifact
+
+That distinction is required for deterministic cross-node verification.
+
+#### 4.13.3 Producer Identity Model
+
+Every trusted proof bundle SHALL be bound to an explicit producer identity.
+
+Minimum producer identity fields:
+- `producer_id`
+- `producer_pubkey_id`
+- `build_id`
+- `policy_version`
+
+Purpose:
+
+These fields make the question "who produced this proof?" normatively answerable.
+
+Invariants:
+- `producer_id` identifies the producing node, builder, or authority domain.
+- `producer_pubkey_id` identifies the public key used to verify the detached signature.
+- `build_id` binds proof production to a concrete build instance.
+- `policy_version` binds the proof to the verifier compatibility surface.
+
+Design note:
+- Producer identity is not merely metadata.
+- It participates in proof acceptance and trust policy evaluation.
+
+#### 4.13.4 Signature Format
+
+Phase-12 adopts a detached signature model.
+
+This keeps:
+- bundle packaging,
+- checksum integrity,
+- and signature trust
+
+cleanly separated.
+
+Recommended initial transport set built over the portable proof bundle:
+- `proof_bundle.tar.zst`
+- `proof_bundle.sha256`
+- `proof_bundle.sig`
+- `proof_bundle.meta.json`
+
+Recommended initial algorithm:
+- `Ed25519`
+
+Signature invariant:
+- `verify(bundle_hash, sig, pubkey) == PASS`
+- `bundle_hash = H(bundle_payload)` and SHALL NOT include detached signature bytes or detached signature metadata generated after bundle sealing
+
+Rationale:
+- Detached signatures preserve portability.
+- Detached signatures avoid mutating the bundle payload after sealing.
+- Detached signatures simplify offline verification.
+- Detached signatures allow transport and trust tooling to evolve independently.
+
+#### 4.13.5 Verifier Policy and Version Compatibility
+
+A verifier SHALL not accept a proof only because the signature is valid.
+
+The verifier SHALL also apply an explicit acceptance policy.
+
+Minimum verifier policy inputs:
+- `bundle_version`
+- `manifest_version`
+- `policy_version`
+- `producer trust set`
+
+Purpose:
+
+This separates:
+- proof validity
+
+from:
+- proof acceptability
+
+Compatibility invariant:
+- `accepted_proof => bundle_version_supported && manifest_version_supported && policy_version_supported && producer_in_trust_set`
+
+Determinism invariant:
+- `same_bundle + same_verifier_policy => same_acceptance_verdict`
+
+This invariant is mandatory for reproducible distributed verification.
+
+#### 4.13.6 Cross-Node Proof Acceptance Protocol
+
+When Node B receives a proof bundle produced by Node A, verification SHALL proceed in a strict deterministic order.
+
+Acceptance pipeline:
+1. archive integrity
+2. checksum integrity
+3. manifest parity
+4. signature validity
+5. producer trust
+6. policy compatibility
+
+Acceptance invariant:
+- `same_bundle + same_verifier_policy => same_acceptance_verdict`
+
+Interpretation:
+- Node acceptance SHALL be explicit.
+- Node acceptance SHALL be deterministic.
+- Node acceptance SHALL be policy-bound.
+- Node acceptance SHALL be reproducible.
+
+No node may silently substitute local assumptions for declared proof policy semantics.
+
+#### 4.13.7 Distributed Replay Boundary
+
+Phase-12 still maintains a strict boundary between:
+- proof acceptance
+- distributed replay
+
+These are not the same system concern.
+
+Rule:
+- First: portable trusted proof
+- Then: replicated replay
+
+Reason:
+- If distributed replay enters before trust transport and cross-node acceptance are stable, scope expands uncontrollably, invariants blur, and verification semantics become ambiguous.
+
+Boundary statement:
+- Phase-12 MAY validate trusted proof transport and cross-node acceptance without executing replicated replay.
+- Replicated replay remains a later layer.
+
+#### 4.13.8 Phase Decomposition
+
+Phase-12A - Trusted Proof Transport
+
+Focus:
+- detached signature artifacts
+- producer identity fields
+- trust-root inputs
+- archive + signature verification
+
+Phase-12B - Cross-Node Proof Acceptance
+
+Focus:
+- verifier acceptance policy
+- policy/version compatibility
+- trust-set evaluation
+- deterministic remote acceptance verdict
+
+Phase-12C - Replicated Replay Boundary
+
+Focus:
+- replay admission boundary
+- proof-backed replay eligibility
+- distributed replay protocol boundary
+- replicated verification prerequisites
+
+#### 4.13.9 Forward-Compatible Schema Direction
+
+The current Phase-11 proof bundle schema SHOULD remain forward-compatible with Phase-12.
+
+Reserved future fields:
+- `producer_id`
+- `producer_pubkey_id`
+- `build_id`
+- `policy_version`
+- `signature_algorithm`
+- `signature_ref`
+- `trust_policy_ref`
+- `archive_hash`
+- `archive_format`
+
+Design rule:
+- Future trust metadata SHALL extend the proof portability schema without breaking existing checksum semantics.
+- Future trust metadata SHALL extend the proof portability schema without breaking existing bundle identity semantics.
+- Future trust metadata SHALL extend the proof portability schema without breaking existing offline verification semantics.
+- Detached signature attachment SHALL NOT mutate pre-existing bundle identity semantics established by Phase-11 portability.
+
+#### 4.13.10 Target Acceptance Semantics
+
+Phase-12 trusted proof acceptance is satisfied only when all of the following are true:
+- bundle is structurally valid,
+- checksum contract passes,
+- manifest parity reproduces,
+- signature is valid,
+- producer is trusted,
+- policy is compatible.
+
+Acceptance invariant:
+- `accepted_proof => archive_integrity_pass && checksum_integrity_pass && manifest_parity_pass && signature_valid && producer_trusted && policy_compatible`
+
+Rejection rule:
+- Failure of any single component SHALL be fail-closed.
+
+#### 4.13.11 Design Summary
+
+Phase-11 proved that execution proof can exist and travel.
+
+Phase-12 will prove that execution proof can be:
+- trusted,
+- attributed,
+- checked under policy,
+- and accepted across nodes deterministically.
+
+This preserves a clean architectural ladder:
+- Phase-11 -> proof portability
+- Phase-12 -> proof trust + distributed acceptance
+- Phase-13+ -> replicated replay / distributed execution verification
+
 ---
 
 ## 5. Ordering and Concurrency
