@@ -39,6 +39,9 @@ Current repo truth icin once su dosyalari referans alin:
 4. `docs/roadmap/freeze-enforcement-workflow.md`
 5. `docs/operations/RUNTIME_INTEGRATION_GUARDRAILS.md`
 
+## Development Notes
+1. `docs/development/VENDORED_TOOLCHAIN_SNAPSHOTS.md`
+
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
 2. `docs/roadmap/overview.md`
@@ -62,7 +65,9 @@ Current repo truth icin once su dosyalari referans alin:
 7. `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
 8. `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
 9. `docs/specs/phase12-trust-layer/N_NODE_CONVERGENCE_FORMAL_MODEL.md`
-10. `docs/specs/phase12-trust-layer/CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`
+10. `docs/specs/phase12-trust-layer/AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`
+11. `docs/specs/phase12-trust-layer/CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`
+12. `docs/specs/phase12-trust-layer/PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
 
 ## Historical / Superseded Snapshots
 Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrudan kullanilmamalidir:

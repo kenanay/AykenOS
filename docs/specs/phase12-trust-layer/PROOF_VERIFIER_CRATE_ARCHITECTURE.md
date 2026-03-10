@@ -4,7 +4,7 @@
 **Status:** Draft
 **Date:** 2026-03-07
 **Phase:** Kernel Phase 12 - Trusted Proof Transport and Distributed Verification
-**Related Spec:** `requirements.md`, `PROOF_BUNDLE_V2_SPEC.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFICATION_CONTEXT_OBJECT_SPEC.md`, `VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`, `VERIFIER_ATTESTATION_AND_TRUST_REGISTRY_CONTRACT.md`, `VERIFIER_AUTHORITY_SEMANTICS_AND_DELEGATION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `VERIFIER_AUTHORITY_GRAPH_CONSTRAINTS.md`, `VERIFIER_AUTHORITY_RESOLUTION_ALGORITHM.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `PARITY_LAYER_ARCHITECTURE.md`, `tasks.md`
+**Related Spec:** `requirements.md`, `PROOF_BUNDLE_V2_SPEC.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFICATION_CONTEXT_OBJECT_SPEC.md`, `VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`, `VERIFIER_ATTESTATION_AND_TRUST_REGISTRY_CONTRACT.md`, `VERIFIER_AUTHORITY_SEMANTICS_AND_DELEGATION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `VERIFIER_AUTHORITY_GRAPH_CONSTRAINTS.md`, `VERIFIER_AUTHORITY_RESOLUTION_ALGORITHM.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `PARITY_LAYER_ARCHITECTURE.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`, `tasks.md`
 **Target Crate:** `ayken-core/crates/proof-verifier/`
 
 ---
@@ -328,7 +328,10 @@ Responsibilities:
 - compare cross-node delegated authority outcomes into deterministic parity/failure-matrix surfaces
 - build canonical `NodeParityOutcome` objects as the single hash authority for `D_i` / `K_i`
 - attribute node-derived drift across subject/context/authority/verdict/evidence surfaces
-- emit explicit `DeterminismIncident` artifacts with stable hash-based `incident_id` values when nodes share `D_i` but diverge on `K_i`
+- emit explicit `DeterminismIncident` artifacts with stable hash-based `incident_id` values and deterministically derived severity metadata when nodes share `D_i` but diverge on `K_i`, while suppressing drift-shaped or non-current-evidence false determinism candidates
+- normalize authority-chain / scope identity for diagnostics and emit suppression reports when semantic-equivalent authority surfaces would otherwise appear as false drift
+- derive `parity_authority_drift_topology.json` from canonical authority-chain and scope partitions without turning authority clustering into truth selection or consensus semantics
+- derive `parity_incident_graph.json` from `NodeParityOutcome` plus true determinism incidents without introducing new truth-bearing objects or consensus semantics
 
 Phase-12 depth semantics are counted as explicit delegation hops from an explicit root.
 

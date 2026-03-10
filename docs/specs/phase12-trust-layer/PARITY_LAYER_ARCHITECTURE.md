@@ -5,7 +5,7 @@
 **Date:** 2026-03-09
 **Phase:** Kernel Phase 12 - Trusted Proof Transport and Distributed Verification
 **Type:** Non-normative architecture boundary note
-**Related Spec:** `requirements.md`, `tasks.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`
+**Related Spec:** `requirements.md`, `tasks.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
 
 ---
 
@@ -135,7 +135,7 @@ Parity MUST NOT introduce alternative truth-bearing object definitions for:
 
 ### 5.7 Derived Severity Invariant
 
-When Phase-13 introduces `DeterminismIncidentSeverity`, severity MUST be deterministically derived from existing diagnostics signals.
+When parity exports `DeterminismIncidentSeverity`, severity MUST be deterministically derived from existing diagnostics signals.
 
 Severity MUST NOT be manually assigned.
 
@@ -166,6 +166,9 @@ Current artifact surfaces include:
 - `parity_consistency_report.json`
 - `parity_determinism_report.json`
 - `parity_determinism_incidents.json`
+- `parity_authority_suppression_report.json`
+- `parity_authority_drift_topology.json`
+- `parity_incident_graph.json`
 - `parity_drift_attribution_report.json`
 - `parity_convergence_report.json`
 
@@ -186,6 +189,8 @@ These incidents are diagnostics events.
 They are not consensus triggers.
 
 Stable incident identifiers are required so the same semantic incident can be correlated across runs.
+If severity is present, it remains derived diagnostics metadata rather than policy or authority input.
+Drift-shaped, historical-only, or insufficient-evidence same-surface splits MUST NOT be elevated as true determinism incidents; parity MUST suppress them as false determinism candidates.
 
 ---
 
@@ -227,10 +232,20 @@ Phase-13 may introduce read-only diagnostic APIs such as:
 - `GET /diagnostics/incidents/{incident_id}`
 - `GET /diagnostics/incidents?severity=...`
 - `GET /diagnostics/surfaces`
+- `GET /diagnostics/runs`
+- `GET /diagnostics/runs/{run_id}/incidents`
+- `GET /diagnostics/runs/{run_id}/parity`
+- `GET /diagnostics/authority-topology`
+- `GET /diagnostics/authority-suppression`
+- `GET /diagnostics/runs/{run_id}/authority-topology`
+- `GET /diagnostics/runs/{run_id}/authority-suppression`
+- `GET /diagnostics/graph`
+- `GET /diagnostics/runs/{run_id}/graph`
 
 These APIs MUST expose existing diagnostics artifacts or canonical derived views.
 
 They MUST NOT introduce new trust semantics.
+They MUST NOT merge, reinterpret, or reclassify diagnostics artifacts across runs.
 
 ---
 
@@ -266,6 +281,10 @@ and:
 `Graph != consensus topology`
 
 The graph is derived and non-canonical.
+
+Authority normalization and suppression reports MAY also exist as derived diagnostics.
+They MUST explain semantic authority equivalence or skew.
+They MUST NOT arbitrate authority.
 
 ---
 

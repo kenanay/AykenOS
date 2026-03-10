@@ -86,7 +86,7 @@ Trust verification remains userspace/offline and MUST NOT migrate into Ring0.
 | P12-13 | Bundle Exchange Protocol | COMPLETED_LOCAL | 2026-03-08 | local `ci-gate-proof-exchange` validates portable identity-preserving inline transport and mutation semantics |
 | P12-14 | Cross-Node Verification Parity Suite | IN_PROGRESS | 2026-03-09 | local theorem-driven parity matrix now exercises match, subject, context, verifier-root, verifier-scope, historical, insufficient-evidence, verdict-guard, and receipt-absent cases |
 | P12-15 | Multi-Signature / N-of-M Acceptance Policy | PLANNED | 2026-03-07 | quorum trust evaluation |
-| P12-16 | `proofd` Userspace Verification Service | PLANNED | 2026-03-07 | long-running verification and receipt service |
+| P12-16 | `proofd` Userspace Verification Service | IN_PROGRESS | 2026-03-10 | minimal read-only diagnostics skeleton active; full verification execution, receipt emission, and closure gates remain pending |
 | P12-17 | Replay Admission Boundary Contract | PLANNED | 2026-03-07 | accepted proof != automatic replay |
 | P12-18 | Replicated Verification Research Track | PLANNED | 2026-03-07 | explicit bridge to Phase-13 without scope leak |
 
@@ -117,6 +117,8 @@ Update when impacted:
 - `docs/specs/phase12-trust-layer/N_NODE_CONVERGENCE_FORMAL_MODEL.md`
 - `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
 - `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
+- `docs/specs/phase12-trust-layer/PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
+- `docs/specs/phase12-trust-layer/AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`
 - `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
 - `docs/specs/phase12-trust-layer/PROOF_VERIFIER_SEMANTIC_CLI_ROADMAP.md`
 - `docs/specs/phase12-trust-layer/TRUTH_STABILITY_THEOREM.md`
@@ -503,6 +505,8 @@ Progress note:
   - `parity_consistency_report.json`
   - `parity_determinism_report.json`
   - `parity_determinism_incidents.json`
+  - `parity_authority_suppression_report.json`
+  - `parity_authority_drift_topology.json`
   - `parity_convergence_report.json`
   - `parity_drift_attribution_report.json`
   - `failure_matrix.json`
@@ -514,10 +518,14 @@ Progress note:
 - Scenario-specific evidence is now exported under `scenario_reports/` alongside the matrix-level artifacts.
 - The local gate now exports `parity_consistency_report.json` and `parity_determinism_report.json` so ordinary distributed drift and deterministic model-alarm surfaces are reported separately.
 - The local gate now also exports `parity_determinism_incidents.json`, lifting same-`D_i` / different-`K_i` conditions into first-class `DeterminismIncident` objects with stable hash-based `incident_id` values instead of leaving them implicit inside pairwise rows.
+- The local determinism incident surface now also exports deterministically derived severity labels, keeping incident classification in diagnostics space rather than turning it into policy or authority input.
+- The local determinism surface now also suppresses false determinism candidates when same-surface verdict splits are explained by historical-only, insufficient-evidence, or hidden drift conditions; those cases are reported as suppressions rather than first-class incidents.
+- The local parity gate now also exports `parity_authority_suppression_report.json`, making false authority drift suppression explicit when semantic-equivalent authority surfaces are normalized across scope aliases, registry skew, or historical shadow conditions.
 - The local gate now also exports `parity_convergence_report.json` as a node-derived aggregate built from stable `NodeParityOutcome` objects plus `D_i` / `K_i` partitions, while preserving the underlying pairwise classifier and raw `failure_matrix.json`.
 - `NodeParityOutcome` generation is now crate-owned through `authority/parity.rs`; `surface_key` and `outcome_key` are no longer treated as ad hoc harness-computed fields.
 - The local gate now also exports `parity_drift_attribution_report.json`, explaining each node-derived surface partition in terms of subject/context/authority/verdict/evidence drift relative to the dominant surface.
 - The local drift-attribution artifact now also reports cluster-level `historical_authority_islands` and `insufficient_evidence_islands`, so Phase-12 diagnostics can distinguish isolated epoch/evidence lag from ordinary partition counts.
+- The local parity gate now also exports `parity_authority_drift_topology.json`, grouping nodes by canonical authority-chain plus effective-scope identity so authority islands and dominant current clusters can be inspected without turning diagnostics into authority selection.
 - The current matrix now makes the receipt-absent artifact contract explicit through `local_verification_outcome` rather than silently depending on receipt transport.
 - `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md` now defines the broader hardening matrix, including remaining subject/context/authority drift and full matrix aggregation scenarios beyond the active local slice.
 - `P12-14` remains open until the parity suite moves beyond the current minimal failure matrix into the broader theorem-driven scenario set.
@@ -542,7 +550,7 @@ Progress note:
 - Branch: `feat/p12-proofd-service`
 - Owner: Kenan AY
 - Invariant: distributed acceptance remains userspace/policy layer
-- Status: PLANNED
+- Status: IN_PROGRESS
 - Deliverables:
   - `userspace/proofd/`
   - bundle intake
@@ -555,6 +563,14 @@ Progress note:
   - `proofd_receipt_report.json`
   - `report.json`
   - `violations.txt`
+
+Preparatory architecture note:
+- `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md` now freezes the intended read-only diagnostics/query boundary so future `proofd` work serves parity artifacts without becoming an authority or control-plane surface.
+- A minimal `userspace/proofd/` read-only diagnostics skeleton is now active for Phase-13 preparation; it serves existing parity artifacts and incidents without introducing new trust semantics, and does not yet satisfy full `P12-16` closure requirements.
+- The current local skeleton now exposes run discovery plus run-scoped `parity` / `incidents` endpoints so multiple evidence runs can be browsed without merging, reinterpreting, or reclassifying diagnostics artifacts.
+- The current local skeleton now also exposes root and run-scoped `authority-suppression` endpoints, serving `parity_authority_suppression_report.json` as produced by parity analysis without recomputing suppression decisions or authority semantics.
+- The current local skeleton now also exposes root and run-scoped `authority-topology` endpoints, serving `parity_authority_drift_topology.json` as produced by parity analysis without recomputing trust semantics.
+- The current local diagnostics stack now also exports `parity_incident_graph.json`, and `proofd` may serve it read-only via root or run-scoped graph endpoints without turning topology into consensus semantics.
 
 #### T17 - P12-17 Replay Admission Boundary Contract
 - Branch: `feat/p12-replay-admission-boundary`

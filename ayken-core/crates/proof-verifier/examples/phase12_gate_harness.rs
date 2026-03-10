@@ -3,6 +3,10 @@ use proof_verifier::audit::verify::{
     verify_audit_event_against_receipt, verify_audit_event_against_receipt_with_authority,
     verify_audit_ledger, verify_audit_ledger_with_receipts, AuditReceiptBinding,
 };
+use proof_verifier::authority::authority_drift_topology::{
+    analyze_authority_drift_suppressions, build_authority_drift_topology,
+};
+use proof_verifier::authority::incident_graph::build_incident_graph;
 use proof_verifier::bundle::checksums::load_checksums;
 use proof_verifier::bundle::layout::validate_bundle_layout;
 use proof_verifier::bundle::loader::load_bundle;
@@ -2781,6 +2785,9 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "consistency_report_path": "parity_consistency_report.json",
         "determinism_report_path": "parity_determinism_report.json",
         "determinism_incidents_path": "parity_determinism_incidents.json",
+        "incident_graph_path": "parity_incident_graph.json",
+        "authority_drift_topology_path": "parity_authority_drift_topology.json",
+        "authority_suppression_report_path": "parity_authority_suppression_report.json",
         "convergence_report_path": "parity_convergence_report.json",
         "drift_attribution_report_path": "parity_drift_attribution_report.json",
         "node_a_findings": findings_to_json(&node_a.findings),
@@ -2823,10 +2830,14 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "mode": "phase12_cross_node_parity_determinism_report",
         "surface": "determinism",
         "status": "PASS",
+        "false_determinism_guard_active": true,
         "row_count": determinism_incident_report.determinism_incident_count,
         "determinism_violation_present": determinism_incident_report.determinism_incident_count > 0,
         "determinism_violation_count": determinism_incident_report.determinism_incident_count,
         "conflict_surface_count": determinism_incident_report.determinism_incident_count,
+        "severity_counts": determinism_incident_report.severity_counts,
+        "suppressed_incident_count": determinism_incident_report.suppressed_incident_count,
+        "suppression_reason_counts": determinism_incident_report.suppression_reason_counts,
         "determinism_incidents_path": "parity_determinism_incidents.json",
         "conflict_pairs": [{
             "scenario": "p14-18-verdict-mismatch-guard",
@@ -2851,14 +2862,46 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "gate": "cross-node-parity",
         "mode": "phase12_cross_node_parity_determinism_incidents",
         "status": "PASS",
+        "false_determinism_guard_active": true,
         "node_count": determinism_incident_report.node_count,
         "surface_partition_count": determinism_incident_report.surface_partition_count,
         "determinism_incident_count": determinism_incident_report.determinism_incident_count,
+        "severity_counts": determinism_incident_report.severity_counts,
+        "suppressed_incident_count": determinism_incident_report.suppressed_incident_count,
+        "suppression_reason_counts": determinism_incident_report.suppression_reason_counts,
         "incidents": determinism_incident_report.incidents,
+        "suppressed_incidents": determinism_incident_report.suppressed_incidents,
     });
     write_json(
         out_dir.join("parity_determinism_incidents.json"),
         &parity_determinism_incidents,
+    )?;
+    let parity_incident_graph = json!({
+        "gate": "cross-node-parity",
+        "mode": "phase12_cross_node_parity_incident_graph",
+        "status": "PASS",
+        "graph": build_incident_graph(&node_parity_outcomes, &determinism_incident_report),
+    });
+    write_json(out_dir.join("parity_incident_graph.json"), &parity_incident_graph)?;
+    let parity_authority_drift_topology = json!({
+        "gate": "cross-node-parity",
+        "mode": "phase12_cross_node_parity_authority_drift_topology",
+        "status": "PASS",
+        "topology": build_authority_drift_topology(&node_parity_outcomes),
+    });
+    write_json(
+        out_dir.join("parity_authority_drift_topology.json"),
+        &parity_authority_drift_topology,
+    )?;
+    let parity_authority_suppression_report = json!({
+        "gate": "cross-node-parity",
+        "mode": "phase12_cross_node_parity_authority_suppression",
+        "status": "PASS",
+        "suppression": analyze_authority_drift_suppressions(&node_parity_outcomes),
+    });
+    write_json(
+        out_dir.join("parity_authority_suppression_report.json"),
+        &parity_authority_suppression_report,
     )?;
 
     let parity_convergence_report =

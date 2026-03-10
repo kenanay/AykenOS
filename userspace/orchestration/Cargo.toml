@@ -1,0 +1,9 @@
+[package]
+name = "orchestration"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kenan AY"]
+description = "Placeholder userspace orchestration crate for workspace integrity"
+
+[lib]
+path = "src/lib.rs"

@@ -5,7 +5,7 @@
 **Date:** 2026-03-09
 **Phase:** Kernel Phase 12 - Trusted Proof Transport and Distributed Verification
 **Type:** Non-normative formal model note
-**Related Spec:** `AYKENOS_DISTRIBUTED_TRUTH_MODEL_FORMAL_SECURITY_PROPERTIES.md`, `VERIFICATION_CONVERGENCE_THEOREM.md`, `TRUTH_STABILITY_THEOREM.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `tasks.md`
+**Related Spec:** `AYKENOS_DISTRIBUTED_TRUTH_MODEL_FORMAL_SECURITY_PROPERTIES.md`, `VERIFICATION_CONVERGENCE_THEOREM.md`, `TRUTH_STABILITY_THEOREM.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `PROOF_BUNDLE_ATTACK_SURFACE_SECURITY_MODEL.md`, `tasks.md`
 
 ---
 
@@ -261,10 +261,17 @@ The current local gate now exports a split surface:
 - `parity_consistency_report.json`
 - `parity_determinism_report.json`
 - `parity_determinism_incidents.json`
+- `parity_authority_suppression_report.json`
+- `parity_authority_drift_topology.json`
+- `parity_incident_graph.json`
 - `parity_convergence_report.json`
 
 The convergence artifact is now built from stable node-level `Outcome` material rather than only re-reading pairwise match edges.
 The determinism artifact set now also lifts same-surface verdict divergence into explicit `DeterminismIncident` objects rather than leaving it implicit inside pairwise rows.
+Those incident objects now also carry deterministically derived severity metadata so observability can classify pure model failures without turning severity into policy. Same-surface verdict splits with historical-only or insufficient-evidence semantics, or with hidden subject/context/authority drift, are suppressed as false determinism candidates instead of being emitted as first-class incidents.
+Future `proofd` query surfaces are expected to expose these same incident artifacts read-only rather than re-deriving new trust-bearing objects.
+Authority-chain and effective-scope partitions may also be exported as derived authority-drift topology artifacts, but those remain observability views over `A_i` rather than new authority or consensus surfaces.
+Authority normalization and suppression artifacts may further explain when apparent `A_i` divergence is semantically equivalent or lag-shaped rather than a true drift condition; those reports stay diagnostic and MUST NOT arbitrate authority.
 
 This is the cleanest shape because it preserves the distinction between:
 

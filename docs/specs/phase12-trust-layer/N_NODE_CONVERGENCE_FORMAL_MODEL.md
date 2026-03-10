@@ -5,7 +5,7 @@
 **Date:** 2026-03-09
 **Phase:** Kernel Phase 12 - Trusted Proof Transport and Distributed Verification
 **Type:** Non-normative formal model note
-**Related Spec:** `PARITY_LAYER_FORMAL_MODEL.md`, `AYKENOS_DISTRIBUTED_TRUTH_MODEL_FORMAL_SECURITY_PROPERTIES.md`, `VERIFICATION_CONVERGENCE_THEOREM.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `tasks.md`
+**Related Spec:** `PARITY_LAYER_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `AYKENOS_DISTRIBUTED_TRUTH_MODEL_FORMAL_SECURITY_PROPERTIES.md`, `VERIFICATION_CONVERGENCE_THEOREM.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `tasks.md`
 
 ---
 
@@ -15,7 +15,10 @@ This document extends the current pairwise parity model into an `N`-node converg
 
 The current local gate now exports `parity_convergence_report.json` as a first node-derived aggregate over stable `NodeParityOutcome` objects. That artifact now materializes `D_i` / `K_i` partitions in local evidence, while the underlying raw classifier still remains pairwise.
 The local drift artifact also now summarizes `historical_authority_islands` and `insufficient_evidence_islands`, so early cluster-level lag classes are visible before service-backed diagnostics exist.
-The local determinism surface now also exports `parity_determinism_incidents.json`, lifting same-`D_i` / different-`K_i` conditions into explicit node-derived incident artifacts.
+The local determinism surface now also exports `parity_determinism_incidents.json`, lifting same-`D_i` / different-`K_i` conditions into explicit node-derived incident artifacts with deterministic severity labels. Drift-shaped or non-current-evidence same-surface splits are suppressed as false determinism candidates instead of being counted as true determinism violations.
+The local parity stack may also export `parity_authority_drift_topology.json`, grouping nodes by canonical `A_i` identity so dominant current authority clusters and drift islands remain derived observability artifacts rather than authority-selection outputs.
+The local parity stack may also export `parity_authority_suppression_report.json`, recording where semantic authority normalization suppresses apparent drift caused by scope aliases, registry skew, or historical shadowing.
+The future `proofd` layer is expected to expose these node-derived artifacts through read-only query surfaces rather than redefining convergence objects.
 
 It is non-normative.
 

@@ -4,7 +4,7 @@
 **Status:** Draft
 **Date:** 2026-03-07
 **Phase:** Kernel Phase 12 - Trusted Proof Transport and Distributed Verification
-**Related Spec:** `requirements.md`, `PROOF_BUNDLE_V2_SPEC.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFICATION_CONTEXT_OBJECT_SPEC.md`, `VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`, `VERIFIER_ATTESTATION_AND_TRUST_REGISTRY_CONTRACT.md`, `VERIFIER_AUTHORITY_SEMANTICS_AND_DELEGATION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `VERIFIER_AUTHORITY_GRAPH_CONSTRAINTS.md`, `VERIFIER_AUTHORITY_RESOLUTION_ALGORITHM.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `tasks.md`
+**Related Spec:** `requirements.md`, `PROOF_BUNDLE_V2_SPEC.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFICATION_CONTEXT_OBJECT_SPEC.md`, `VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`, `VERIFIER_ATTESTATION_AND_TRUST_REGISTRY_CONTRACT.md`, `VERIFIER_AUTHORITY_SEMANTICS_AND_DELEGATION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `VERIFIER_AUTHORITY_GRAPH_CONSTRAINTS.md`, `VERIFIER_AUTHORITY_RESOLUTION_ALGORITHM.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `CROSS_NODE_PARITY_FAILURE_SEMANTICS_SPEC.md`, `tasks.md`
 
 ---
 
@@ -521,9 +521,13 @@ Current security posture:
 - local cross-node parity gate evidence now classifies baseline parity, subject drift, context drift (including verifier-contract-version drift), delegated authority-chain drift, authority-scope drift, historical-only authority, insufficient-evidence, explicit verdict-drift guard, and receipt-absent parity-artifact conditions into `failure_matrix.json` with real `authority_chain_id_equal` and `effective_authority_scope_equal` comparison
 - local parity reporting is now split into `parity_consistency_report.json` for distributed drift classes and `parity_determinism_report.json` for same-surface verdict divergence alarms
 - local parity evidence now also exports `parity_determinism_incidents.json`, making same-`D_i` / different-`K_i` determinism failures explicit incident artifacts with stable hash-based `incident_id` values instead of only aggregate counts
+- determinism incidents now also carry derived severity labels so pure model failures can be distinguished from drift-shaped incidents without turning severity into policy or consensus semantics
+- the local parity pipeline now suppresses historical-only, insufficient-evidence, or hidden-drift same-surface verdict splits as false determinism candidates instead of escalating them as true determinism incidents
 - local parity evidence now also exports `parity_convergence_report.json`, giving a first node-derived `N`-node aggregate surface over stable `NodeParityOutcome` objects and explicit `D_i` / `K_i` partitions
 - local parity evidence now also exports `parity_drift_attribution_report.json`, attributing each surface partition to subject/context/authority/verdict/evidence causes rather than reporting only aggregate split counts
 - local parity drift evidence now also summarizes `historical_authority_islands` and `insufficient_evidence_islands`, so authority-epoch lag and evidence-gap clusters are visible as explicit diagnostics artifacts instead of being buried inside generic partition counts
+- local parity evidence may now also export `parity_authority_drift_topology.json`, making dominant current authority clusters and drifted authority islands visible without turning topology into authority selection or consensus semantics
+- local parity evidence may now also export `parity_authority_suppression_report.json`, making false authority drift suppression explicit when scope aliases, registry skew, or historical shadowing would otherwise inflate drift diagnostics
 - parity node-object generation is now centralized in `authority/parity.rs`, making the crate parity layer the single hash authority for `surface_key` / `outcome_key` derivation
 - portable-core negative coverage now includes proof-manifest count and digest drift for `event_count`, `violation_count`, `proof_hash`, `replay_result_hash`, `config_hash`, and `kernel_image_hash`
 - the current verifier / transport stack is still not closure-complete because full proof-manifest field coverage, broader audit tamper corpus, multisignature/quorum transport, and service-backed distributed verification context transport remain pending

@@ -1,0 +1,13 @@
+[package]
+name = "proofd"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kenan AY"]
+description = "AykenOS proofd read-only diagnostics service skeleton"
+
+[[bin]]
+name = "proofd"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1.0"

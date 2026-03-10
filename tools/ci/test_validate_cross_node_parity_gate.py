@@ -48,6 +48,21 @@ class CrossNodeParityGateTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
+        incident_graph = json.loads(
+            (self.evidence_dir / "parity_incident_graph.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        authority_topology = json.loads(
+            (self.evidence_dir / "parity_authority_drift_topology.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        authority_suppression = json.loads(
+            (self.evidence_dir / "parity_authority_suppression_report.json").read_text(
+                encoding="utf-8"
+            )
+        )
         convergence_report = json.loads(
             (self.evidence_dir / "parity_convergence_report.json").read_text(
                 encoding="utf-8"
@@ -79,6 +94,9 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertEqual(consistency_report.get("status"), "PASS")
         self.assertEqual(determinism_report.get("status"), "PASS")
         self.assertEqual(determinism_incidents.get("status"), "PASS")
+        self.assertEqual(incident_graph.get("status"), "PASS")
+        self.assertEqual(authority_topology.get("status"), "PASS")
+        self.assertEqual(authority_suppression.get("status"), "PASS")
         self.assertEqual(convergence_report.get("status"), "PASS")
         self.assertEqual(drift_report.get("status"), "PASS")
         self.assertEqual(parity_report.get("row_count"), 10)
@@ -185,6 +203,11 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertTrue(determinism_report.get("determinism_violation_present") is True)
         self.assertEqual(determinism_report.get("determinism_violation_count"), 1)
         self.assertEqual(determinism_report.get("conflict_surface_count"), 1)
+        self.assertTrue(determinism_report.get("false_determinism_guard_active") is True)
+        self.assertEqual(
+            determinism_report.get("severity_counts", {}).get("pure_determinism_failure"), 1
+        )
+        self.assertEqual(determinism_report.get("suppressed_incident_count"), 0)
         self.assertEqual(
             determinism_report.get("determinism_incidents_path"),
             "parity_determinism_incidents.json",
@@ -192,9 +215,20 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertEqual(determinism_incidents.get("node_count"), 13)
         self.assertEqual(determinism_incidents.get("surface_partition_count"), 8)
         self.assertEqual(determinism_incidents.get("determinism_incident_count"), 1)
+        self.assertTrue(determinism_incidents.get("false_determinism_guard_active") is True)
+        self.assertEqual(
+            determinism_incidents.get("severity_counts", {}).get("pure_determinism_failure"),
+            1,
+        )
+        self.assertEqual(determinism_incidents.get("suppressed_incident_count"), 0)
+        self.assertEqual(determinism_incidents.get("suppressed_incidents"), [])
         self.assertEqual(
             determinism_incidents.get("incidents", [{}])[0].get("drift_class"),
             "determinism_failure",
+        )
+        self.assertEqual(
+            determinism_incidents.get("incidents", [{}])[0].get("severity"),
+            "pure_determinism_failure",
         )
         self.assertTrue(
             determinism_incidents.get("incidents", [{}])[0]
@@ -259,6 +293,84 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertEqual(
             parity_report.get("drift_attribution_report_path"),
             "parity_drift_attribution_report.json",
+        )
+        self.assertEqual(
+            parity_report.get("incident_graph_path"),
+            "parity_incident_graph.json",
+        )
+        self.assertEqual(
+            parity_report.get("authority_drift_topology_path"),
+            "parity_authority_drift_topology.json",
+        )
+        self.assertEqual(
+            parity_report.get("authority_suppression_report_path"),
+            "parity_authority_suppression_report.json",
+        )
+        self.assertEqual(incident_graph.get("graph", {}).get("node_count"), 13)
+        self.assertEqual(incident_graph.get("graph", {}).get("incident_count"), 1)
+        self.assertEqual(incident_graph.get("graph", {}).get("edge_count"), 10)
+        self.assertEqual(
+            incident_graph.get("graph", {}).get("incidents", [{}])[0].get("severity"),
+            "pure_determinism_failure",
+        )
+        self.assertIn(
+            "node-g-verdict-drift",
+            incident_graph.get("graph", {}).get("incidents", [{}])[0].get("nodes", []),
+        )
+        self.assertEqual(authority_topology.get("topology", {}).get("node_count"), 13)
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("authority_cluster_count"), 4
+        )
+        self.assertTrue(
+            authority_topology.get("topology", {})
+            .get("dominant_authority_chain_id", "")
+            .startswith("sha256:")
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("drifted_node_count"), 2
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("historical_only_node_count"), 2
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("unresolved_node_count"), 0
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("clusters", [{}])[0].get("kind"),
+            "current",
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("clusters", [{}])[0].get("node_count"),
+            9,
+        )
+        self.assertEqual(
+            authority_topology.get("topology", {}).get("clusters", [{}])[1].get("kind"),
+            "historical_only",
+        )
+        topology_node_ids = {
+            node_id
+            for cluster in authority_topology.get("topology", {}).get("clusters", [])
+            for node_id in cluster.get("node_ids", [])
+        }
+        self.assertIn("node-c-alt-root", topology_node_ids)
+        self.assertIn("node-scope-scope-drift", topology_node_ids)
+        self.assertTrue(
+            authority_suppression.get("suppression", {}).get("suppression_guard_active")
+            is True
+        )
+        self.assertEqual(
+            authority_suppression.get("suppression", {}).get("suppressed_drift_count"), 0
+        )
+        self.assertEqual(
+            authority_suppression.get("suppression", {})
+            .get("rule_counts", {})
+            .get("historical_shadow"),
+            None,
+        )
+        self.assertEqual(
+            authority_suppression.get("suppression", {})
+            .get("suppressed_drifts"),
+            [],
         )
         self.assertEqual(
             convergence_report.get("surface_partitions", [{}])[0].get("size"), 5
@@ -390,6 +502,9 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertTrue((self.evidence_dir / "parity_consistency_report.json").is_file())
         self.assertTrue((self.evidence_dir / "parity_determinism_report.json").is_file())
         self.assertTrue((self.evidence_dir / "parity_determinism_incidents.json").is_file())
+        self.assertTrue((self.evidence_dir / "parity_incident_graph.json").is_file())
+        self.assertTrue((self.evidence_dir / "parity_authority_drift_topology.json").is_file())
+        self.assertTrue((self.evidence_dir / "parity_authority_suppression_report.json").is_file())
         self.assertTrue((self.evidence_dir / "parity_convergence_report.json").is_file())
         self.assertTrue((self.evidence_dir / "parity_drift_attribution_report.json").is_file())
         self.assertTrue((self.evidence_dir / "violations.txt").is_file())
