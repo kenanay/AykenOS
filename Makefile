@@ -1331,6 +1331,175 @@ ci-gate-proof-bundle: ci-gate-kpl-proof-verify
 ci-gate-proof-portability: ci-gate-proof-bundle
 	@echo "OK: proof-portability alias passed (proof-bundle bootstrap)"
 
+ci-gate-proof-producer-schema: ci-evidence-dir
+	@echo "== CI GATE PROOF PRODUCER SCHEMA =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode producer-schema \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-producer-schema"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-producer-schema/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-producer-schema.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-producer-schema/producer_schema_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-producer-schema-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-producer-schema evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-signature-envelope: ci-gate-proof-producer-schema
+	@echo "== CI GATE PROOF SIGNATURE ENVELOPE =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode signature-envelope \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-signature-envelope"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-signature-envelope/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-signature-envelope.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-signature-envelope/signature_envelope_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-signature-envelope-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-signature-envelope evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-bundle-v2-schema: ci-gate-proof-signature-envelope
+	@echo "== CI GATE PROOF BUNDLE V2 SCHEMA =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode bundle-v2-schema \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-schema"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-schema/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle-v2-schema.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-schema/bundle_schema_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle-v2-schema-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-bundle-v2-schema evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-bundle-v2-compat: ci-gate-proof-bundle-v2-schema
+	@echo "== CI GATE PROOF BUNDLE V2 COMPAT =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode bundle-v2-compat \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-compat"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-compat/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle-v2-compat.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-bundle-v2-compat/compatibility_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-bundle-v2-compat-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-bundle-v2-compat evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-signature-verify: ci-gate-proof-bundle-v2-compat
+	@echo "== CI GATE PROOF SIGNATURE VERIFY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode signature-verify \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-signature-verify"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-signature-verify/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-signature-verify.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-signature-verify/signature_verify.json" "$(EVIDENCE_RUN_DIR)/reports/proof-signature-verify-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-signature-verify evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-registry-resolution: ci-gate-proof-signature-verify
+	@echo "== CI GATE PROOF REGISTRY RESOLUTION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode registry-resolution \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-registry-resolution"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-registry-resolution/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-registry-resolution.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-registry-resolution/registry_resolution_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proof-registry-resolution-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-registry-resolution evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-key-rotation: ci-gate-proof-registry-resolution
+	@echo "== CI GATE PROOF KEY ROTATION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_phase12_harness.sh \
+		--mode key-rotation \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-key-rotation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-key-rotation/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-key-rotation.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-key-rotation/rotation_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proof-key-rotation-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-key-rotation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-verifier-core: ci-gate-proof-key-rotation
+	@echo "== CI GATE PROOF VERIFIER CORE =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_verifier_core.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-core"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-core/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verifier-core.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-core/verifier_core_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verifier-core-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-verifier-core evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-trust-policy: ci-gate-proof-verifier-core
+	@echo "== CI GATE PROOF TRUST POLICY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_trust_policy.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-trust-policy"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-trust-policy/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-trust-policy.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-trust-policy/policy_hash_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-trust-policy-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-trust-policy evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-verdict-binding: ci-gate-proof-trust-policy
+	@echo "== CI GATE PROOF VERDICT BINDING =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_verdict_binding.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-verdict-binding"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verdict-binding/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verdict-binding.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verdict-binding/verdict_binding_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verdict-binding-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-verdict-binding evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-verifier-cli: ci-gate-proof-verdict-binding
+	@echo "== CI GATE PROOF VERIFIER CLI =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_verifier_cli.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-cli"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-cli/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verifier-cli.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-cli/cli_output_contract.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verifier-cli-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-verifier-cli/cli_smoke_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-verifier-cli-smoke.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-verifier-cli evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-receipt: ci-gate-proof-verifier-cli
+	@echo "== CI GATE PROOF RECEIPT =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_receipt.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-receipt"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-receipt/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-receipt.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-receipt/receipt_emit_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-receipt-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-receipt evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-audit-ledger: ci-gate-proof-receipt
+	@echo "== CI GATE PROOF AUDIT LEDGER =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_audit_ledger.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-audit-ledger"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-audit-ledger/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-audit-ledger.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-audit-ledger/audit_integrity_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-audit-ledger-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-audit-ledger evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-exchange: ci-gate-proof-audit-ledger
+	@echo "== CI GATE PROOF EXCHANGE =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_exchange.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-exchange"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-exchange/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-exchange.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-exchange/exchange_contract_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-exchange-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-exchange/transport_mutation_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proof-exchange-matrix.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-exchange evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-verifier-authority-resolution: ci-gate-proof-exchange
+	@echo "== CI GATE VERIFIER AUTHORITY RESOLUTION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_verifier_authority_resolution.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/verifier-authority-resolution"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-authority-resolution/report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-authority-resolution.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-authority-resolution/authority_resolution_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-authority-resolution-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: verifier-authority-resolution evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-cross-node-parity: ci-gate-verifier-authority-resolution
+	@echo "== CI GATE CROSS-NODE PARITY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_cross_node_parity.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity/report.json" "$(EVIDENCE_RUN_DIR)/reports/cross-node-parity.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity/parity_report.json" "$(EVIDENCE_RUN_DIR)/reports/cross-node-parity-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: cross-node-parity evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
 	@echo "run_id: $(RUN_ID)"
@@ -1556,6 +1725,38 @@ help:
 	@echo "    (controls: PHASE11_BUNDLE_* vars for identity/replay/kpl evidence, kernel image, summary, meta)"
 	@echo "    (artifacts: proof_bundle/, bundle_verify.json, report.json, violations.txt)"
 	@echo "  ci-gate-proof-portability - Alias of ci-gate-proof-bundle"
+	@echo "  ci-gate-proof-producer-schema - P12-01 producer identity schema gate"
+	@echo "    (artifacts: producer_schema_report.json, producer_identity_examples.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-signature-envelope - P12-02 detached signature envelope schema gate"
+	@echo "    (artifacts: signature_envelope_report.json, identity_stability_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-bundle-v2-schema - P12-03 bundle v2 layout/schema gate"
+	@echo "    (artifacts: bundle_schema_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-bundle-v2-compat - P12-03 bundle v2 compatibility gate"
+	@echo "    (artifacts: compatibility_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-signature-verify - P12-04 detached signature verification gate"
+	@echo "    (artifacts: signature_verify.json, registry_resolution_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-registry-resolution - P12-05 registry resolution gate"
+	@echo "    (artifacts: registry_snapshot.json, registry_resolution_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-key-rotation - P12-06 key rotation/revocation gate"
+	@echo "    (artifacts: rotation_matrix.json, revocation_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-verifier-core - P12-07 verifier core determinism gate"
+	@echo "    (artifacts: verifier_core_report.json, determinism_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-trust-policy - P12-08 trust policy schema/hash gate"
+	@echo "    (artifacts: policy_schema_report.json, policy_hash_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-verdict-binding - P12-09 verdict subject binding gate"
+	@echo "    (artifacts: verdict_binding_report.json, verdict_subject_examples.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-verifier-cli - P12-10 thin offline verifier CLI gate"
+	@echo "    (artifacts: cli_smoke_report.json, cli_output_contract.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-receipt - P12-11 signed verification receipt gate"
+	@echo "    (artifacts: receipt_schema_report.json, receipt_emit_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-audit-ledger - P12-12 append-only verification audit ledger gate"
+	@echo "    (artifacts: verification_audit_ledger.jsonl, audit_integrity_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-exchange - P12-13 proof bundle exchange transport contract gate"
+	@echo "    (artifacts: exchange_contract_report.json, transport_mutation_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-verifier-authority-resolution - P12 authority graph / deterministic authority resolution gate"
+	@echo "    (artifacts: authority_resolution_report.json, authority_chain_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-cross-node-parity - P12 distributed parity failure-matrix gate"
+	@echo "    (artifacts: parity_report.json, failure_matrix.json, report.json, violations.txt)"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1575,7 +1776,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

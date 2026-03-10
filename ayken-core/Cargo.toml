@@ -4,6 +4,7 @@ members = [
     "crates/bcib",
     "crates/abdf-builder",
     "crates/d4-constitutional",
+    "crates/proof-verifier",
     "examples",
 ]
 

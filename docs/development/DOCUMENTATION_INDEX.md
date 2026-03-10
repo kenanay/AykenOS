@@ -1,14 +1,15 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-03-07  
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` (`git_sha=9cb2171b`)
+**Last Updated:** 2026-03-10
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` (`evidence_sha=9cb2171b`, `closure_sync_sha=fe9031d7`, `ci_freeze_run=22797401328`)
 
 ## Current Status
-- **Runtime:** `Phase-10` locally closed via freeze evidence
-- **Verification Substrate:** `Phase-11` bootstrap/local closure confirmed
+- **Runtime:** `Phase-10` officially closed via freeze evidence + remote `ci-freeze`
+- **Verification Substrate:** `Phase-11` officially closed via proof-chain evidence + remote `ci-freeze`
+- **Phase-12 Local Track:** verifier / CLI / receipt / audit / exchange / parity diagnostics gates active in the current worktree
 - **Formal Governance Pointer:** `CURRENT_PHASE=10` (phase transition not yet executed)
-- **Next Focus:** remote `ci-freeze`, closure tag confirmation, Phase-12 trust-transport prep
+- **Next Focus:** official closure tag, `P12-14` determinism-severity hardening, `P12-16` `proofd` read-only diagnostics prep
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -22,6 +23,8 @@ Current repo truth icin once su dosyalari referans alin:
 7. `docs/specs/phase11-verification-substrate/tasks.md`
 8. `Makefile`
 9. `.github/workflows/ci-freeze.yml`
+10. `docs/specs/phase12-trust-layer/tasks.md`
+11. `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
 
 ## Live Evidence References
 1. `evidence/run-local-freeze-p10p11/reports/summary.json`
@@ -49,6 +52,18 @@ Current repo truth icin once su dosyalari referans alin:
 4. `docs/architecture-board/ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md`
 5. `docs/architecture-board/RUNTIME_STATE_MACHINE.md`
 
+## Phase-12 Reference Set
+1. `docs/specs/phase12-trust-layer/tasks.md`
+2. `docs/specs/phase12-trust-layer/requirements.md`
+3. `docs/specs/phase12-trust-layer/PROOF_VERIFIER_CRATE_ARCHITECTURE.md`
+4. `docs/specs/phase12-trust-layer/PROOF_VERIFIER_SEMANTIC_CLI_ROADMAP.md`
+5. `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
+6. `docs/specs/phase12-trust-layer/VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`
+7. `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
+8. `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
+9. `docs/specs/phase12-trust-layer/N_NODE_CONVERGENCE_FORMAL_MODEL.md`
+10. `docs/specs/phase12-trust-layer/CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`
+
 ## Historical / Superseded Snapshots
 Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrudan kullanilmamalidir:
 
@@ -59,4 +74,4 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
 
 ## Note
-Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin 2026-03-07 closure evidence ve yukaridaki primary truth kaynaklari kullanilmalidir.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin 2026-03-07 official closure truth ve yukaridaki primary truth kaynaklari kullanilmalidir.
