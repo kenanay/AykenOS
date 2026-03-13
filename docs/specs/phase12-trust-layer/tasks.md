@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** Draft
-**Date:** 2026-03-07
+**Date:** 2026-03-11
 **Related Spec:** `PROOF_BUNDLE_V2_SPEC.md`, `requirements.md`
 **Created by:** Kenan AY
 **Maintained by:** Kenan AY
@@ -84,11 +84,11 @@ Trust verification remains userspace/offline and MUST NOT migrate into Ring0.
 | P12-11 | Verification Receipt / Acceptance Certificate | COMPLETED_LOCAL | 2026-03-08 | signed receipt payload/sign/verify path active; `ci-gate-proof-receipt` local PASS |
 | P12-12 | Verification Audit Ledger | COMPLETED_LOCAL | 2026-03-08 | append-only hash-chained audit events active; `ci-gate-proof-audit-ledger` local PASS |
 | P12-13 | Bundle Exchange Protocol | COMPLETED_LOCAL | 2026-03-08 | local `ci-gate-proof-exchange` validates portable identity-preserving inline transport and mutation semantics |
-| P12-14 | Cross-Node Verification Parity Suite | IN_PROGRESS | 2026-03-09 | local theorem-driven parity matrix now exercises match, subject, context, verifier-root, verifier-scope, historical, insufficient-evidence, verdict-guard, and receipt-absent cases |
-| P12-15 | Multi-Signature / N-of-M Acceptance Policy | PLANNED | 2026-03-07 | quorum trust evaluation |
-| P12-16 | `proofd` Userspace Verification Service | IN_PROGRESS | 2026-03-10 | minimal read-only diagnostics skeleton active; full verification execution, receipt emission, and closure gates remain pending |
-| P12-17 | Replay Admission Boundary Contract | PLANNED | 2026-03-07 | accepted proof != automatic replay |
-| P12-18 | Replicated Verification Research Track | PLANNED | 2026-03-07 | explicit bridge to Phase-13 without scope leak |
+| P12-14 | Cross-Node Verification Parity Suite | COMPLETED_LOCAL | 2026-03-11 | local `ci-gate-cross-node-parity` now exports closure-audit evidence plus the full ten-scenario parity diagnostics matrix, stable determinism incidents, drift attribution, authority topology/suppression, and convergence artifacts |
+| P12-15 | Multi-Signature / N-of-M Acceptance Policy | COMPLETED_LOCAL | 2026-03-11 | local `ci-gate-proof-multisig-quorum` proves distinct-key quorum acceptance, duplicate-key dedup, partial-trust reject, and revoked-key fail-closed behavior |
+| P12-16 | `proofd` Userspace Verification Service | COMPLETED_LOCAL | 2026-03-11 | local `ci-gate-proofd-service` now proves final hardening: repeated signed-receipt determinism, run-manifest stability, diagnostics purity, receipt verification evidence, and closure-complete service contract assertions |
+| P12-17 | Replay Admission Boundary Contract | COMPLETED_LOCAL | 2026-03-11 | local `ci-gate-proof-replay-admission-boundary` proves trusted proof remains distinct from replay admission and exports the boundary contract as machine-readable evidence |
+| P12-18 | Replicated Verification Research Track | COMPLETED_LOCAL | 2026-03-11 | local `ci-gate-proof-replicated-verification-boundary` exports the Phase-13 bridge note and proves replicated verification remains outside Phase-12 core closure |
 
 ---
 
@@ -118,6 +118,19 @@ Update when impacted:
 - `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
 - `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
 - `docs/specs/phase12-trust-layer/PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
+- `docs/specs/phase12-trust-layer/PROOFD_SERVICE_CLOSURE_PLAN.md`
+- `docs/specs/phase12-trust-layer/PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`
+- `docs/specs/phase12-trust-layer/PHASE12_CLOSURE_ORDER.md`
+- `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md`
+- `docs/specs/phase12-trust-layer/AYKENOS_RESEARCH_POSITIONING.md`
+- `docs/specs/phase12-trust-layer/AYKENOS_UNIQUE_ARCHITECTURAL_DECISIONS.md`
+- `docs/specs/phase12-trust-layer/AYKENOS_VS_BLOCKCHAIN_ARCHITECTURAL_DIFFERENCE.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_VS_CAP_THEOREM.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_FORMAL_MODEL.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_SECURITY_MODEL.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER_OUTLINE.md`
+- `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER.md`
 - `docs/specs/phase12-trust-layer/AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`
 - `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
 - `docs/specs/phase12-trust-layer/PROOF_VERIFIER_SEMANTIC_CLI_ROADMAP.md`
@@ -494,7 +507,7 @@ Progress note:
 - Branch: `feat/p12-cross-node-parity`
 - Owner: Kenan AY
 - Invariant: distributed verification parity MUST be deterministic
-- Status: IN_PROGRESS
+- Status: COMPLETED_LOCAL
 - Deliverables:
   - node A/B/C verification parity tests
   - parity report
@@ -509,6 +522,7 @@ Progress note:
   - `parity_authority_drift_topology.json`
   - `parity_convergence_report.json`
   - `parity_drift_attribution_report.json`
+  - `parity_closure_audit_report.json`
   - `failure_matrix.json`
   - `report.json`
   - `violations.txt`
@@ -528,13 +542,14 @@ Progress note:
 - The local parity gate now also exports `parity_authority_drift_topology.json`, grouping nodes by canonical authority-chain plus effective-scope identity so authority islands and dominant current clusters can be inspected without turning diagnostics into authority selection.
 - The current matrix now makes the receipt-absent artifact contract explicit through `local_verification_outcome` rather than silently depending on receipt transport.
 - `CROSS_NODE_PARITY_HARDENING_CHECKLIST.md` now defines the broader hardening matrix, including remaining subject/context/authority drift and full matrix aggregation scenarios beyond the active local slice.
-- `P12-14` remains open until the parity suite moves beyond the current minimal failure matrix into the broader theorem-driven scenario set.
+- The local gate now also exports `parity_closure_audit_report.json`, freezing the required artifact set, scenario coverage, and parity-status coverage for closure review.
+- `P12-14` is now `COMPLETED_LOCAL`; the theorem-driven parity surface plus closure audit passed together in `run-local-phase12c-closure-2026-03-11`.
 
 #### T15 - P12-15 Multi-Signature / N-of-M Acceptance Policy
 - Branch: `feat/p12-multisig-quorum`
 - Owner: Kenan AY
 - Invariant: quorum policy evaluation MUST be deterministic
-- Status: PLANNED
+- Status: COMPLETED_LOCAL
 - Deliverables:
   - quorum policy schema
   - quorum evaluator
@@ -546,11 +561,16 @@ Progress note:
   - `report.json`
   - `violations.txt`
 
+Progress note:
+- The local `ci-gate-proof-multisig-quorum` gate now proves distinct-key `N-of-M` acceptance over the verifier’s trust-policy path instead of only validating schema shape.
+- Duplicate signer/key entries are now deduplicated at policy-evaluation time, so repeated copies of the same key cannot falsely satisfy quorum.
+- The active local matrix now covers baseline single-signature acceptance, two-of-two distinct-key acceptance, single-signature under-quorum reject, partial trust-set reject, duplicate-key fail-closed reject, revoked secondary-key invalidation, and unsupported quorum-kind invalidation.
+
 #### T16 - P12-16 `proofd` Userspace Verification Service
 - Branch: `feat/p12-proofd-service`
 - Owner: Kenan AY
 - Invariant: distributed acceptance remains userspace/policy layer
-- Status: IN_PROGRESS
+- Status: COMPLETED_LOCAL
 - Deliverables:
   - `userspace/proofd/`
   - bundle intake
@@ -561,22 +581,33 @@ Progress note:
 - Evidence:
   - `proofd_service_report.json`
   - `proofd_receipt_report.json`
+  - `proofd_endpoint_contract.json`
+  - `proofd_receipt_verification_report.json`
+  - `proofd_repeated_execution_report.json`
   - `report.json`
   - `violations.txt`
 
-Preparatory architecture note:
+Closure architecture note:
 - `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md` now freezes the intended read-only diagnostics/query boundary so future `proofd` work serves parity artifacts without becoming an authority or control-plane surface.
-- A minimal `userspace/proofd/` read-only diagnostics skeleton is now active for Phase-13 preparation; it serves existing parity artifacts and incidents without introducing new trust semantics, and does not yet satisfy full `P12-16` closure requirements.
-- The current local skeleton now exposes run discovery plus run-scoped `parity` / `incidents` endpoints so multiple evidence runs can be browsed without merging, reinterpreting, or reclassifying diagnostics artifacts.
+- `PROOFD_SERVICE_CLOSURE_PLAN.md` now records the executed local closure path from diagnostics skeleton to closure-ready verification service behavior.
+- `PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md` now freezes the signed-path determinism contract, exact gate assertions, and the conditions already satisfied by the local `P12-16` closure gate.
+- `PHASE12_CLOSURE_ORDER.md` now freezes the executed local closure order so status surfaces are updated only after the full gate set is green together.
+- `PHASE13_ARCHITECTURE_MAP.md` now maps the intended post-closure direction for replicated verification, verifier federation, registry propagation, and replay-boundary growth without redefining Phase-12 truth surfaces.
+- A minimal `userspace/proofd/` diagnostics skeleton is now active for Phase-13 preparation; it serves existing parity artifacts and incidents without introducing new trust semantics and now also exposes a local verifier-core execution path while preserving the read-only `/diagnostics/*` boundary.
+- The local `ci-gate-proofd-service` gate now validates root and run-scoped diagnostics passthrough, `POST /verify/bundle` contract stability, explicit policy/registry binding, signed receipt emission evidence, receipt signature verification, authority-aware receipt verification, receipt-boundary preservation, and repeated-execution determinism as normative `P12-16` closure-ready evidence.
+- The current local skeleton now exposes run discovery, run summary, and run-scoped `parity` / `incidents` / `drift` / `convergence` / `failure-matrix` endpoints so multiple evidence runs can be browsed without merging, reinterpreting, or reclassifying diagnostics artifacts.
 - The current local skeleton now also exposes root and run-scoped `authority-suppression` endpoints, serving `parity_authority_suppression_report.json` as produced by parity analysis without recomputing suppression decisions or authority semantics.
 - The current local skeleton now also exposes root and run-scoped `authority-topology` endpoints, serving `parity_authority_drift_topology.json` as produced by parity analysis without recomputing trust semantics.
 - The current local diagnostics stack now also exports `parity_incident_graph.json`, and `proofd` may serve it read-only via root or run-scoped graph endpoints without turning topology into consensus semantics.
+- The current local execution slice now delegates `POST /verify/bundle` directly to `proof-verifier` core semantics, writes `proofd_run_manifest.json`, and emits signed `receipts/verification_receipt.json` without widening `/diagnostics/*` into policy or authority behavior.
+- The final local hardening gate now also exports `proofd_receipt_verification_report.json` and `proofd_repeated_execution_report.json`, proving signed-path determinism, request-bound timestamp preservation, run-manifest stability, and diagnostics purity under repeated identical execution.
+- `P12-16` is now `COMPLETED_LOCAL`; the local gate no longer stops at execution-slice PASS and now proves the closure-ready service contract in `run-local-phase12c-closure-2026-03-11`.
 
 #### T17 - P12-17 Replay Admission Boundary Contract
 - Branch: `feat/p12-replay-admission-boundary`
 - Owner: Kenan AY
 - Invariant: accepted proof and replicated replay are distinct concerns
-- Status: PLANNED
+- Status: COMPLETED_LOCAL
 - Deliverables:
   - replay admission rules
   - verifier/replay interface contract
@@ -588,11 +619,15 @@ Preparatory architecture note:
   - `report.json`
   - `violations.txt`
 
+Progress note:
+- The local `ci-gate-proof-replay-admission-boundary` gate now proves that trusted proof output and signed receipts do not emit replay-admission authority.
+- The active local boundary contract explicitly preserves: `accepted proof != replay admission`.
+
 #### T18 - P12-18 Replicated Verification Research Track
 - Branch: `research/p12-replicated-verification-boundary`
 - Owner: Kenan AY
 - Invariant: replicated replay MUST NOT leak into P12A/P12B/P12C core closure criteria
-- Status: PLANNED
+- Status: COMPLETED_LOCAL
 - Deliverables:
   - research-track note
   - explicit non-goals
@@ -603,6 +638,10 @@ Preparatory architecture note:
   - `phase13_bridge_report.json`
   - `report.json`
   - `violations.txt`
+
+Progress note:
+- The local `ci-gate-proof-replicated-verification-boundary` gate now exports a machine-checked Phase-13 bridge report plus a research-boundary note.
+- The active local gate proves that current `proofd` service surfaces do not expose replay, consensus, cluster, or federation routes and that replicated verification remains outside Phase-12 core closure.
 
 ---
 

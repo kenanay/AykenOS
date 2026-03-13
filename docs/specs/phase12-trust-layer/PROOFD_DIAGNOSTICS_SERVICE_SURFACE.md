@@ -1,11 +1,11 @@
 # `proofd` Diagnostics Service Surface
 
 **Version:** 1.0
-**Status:** Draft (Phase-13 preparation)
-**Date:** 2026-03-10
-**Phase:** Phase-13 Observability Layer
+**Status:** Draft (local closure-ready sync; Phase-13 preparation)
+**Date:** 2026-03-11
+**Phase:** Kernel Phase 12 / Phase-13 preparation
 **Type:** Non-normative architecture/service boundary note
-**Related Spec:** `PARITY_LAYER_ARCHITECTURE.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `tasks.md`
+**Related Spec:** `PARITY_LAYER_ARCHITECTURE.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `PROOFD_SERVICE_CLOSURE_PLAN.md`, `PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `tasks.md`
 
 ---
 
@@ -20,14 +20,18 @@ This document defines the read-only diagnostics service surface for `proofd`.
 Current local status:
 
 - a minimal `userspace/proofd/` skeleton may serve diagnostics artifacts read-only
-- run-level diagnostics discovery and run-scoped parity / incidents endpoints may expose multi-run observability without changing parity semantics
-- full verification execution, receipt emission, and normative `P12-16` closure behavior remain pending
+- a local `ci-gate-proofd-service` execution slice may validate root and run-scoped diagnostics passthrough without changing parity semantics
+- a local `POST /verify/bundle` execution family may delegate to verifier-core with explicit `bundle_path`, `policy_path`, `registry_path`, `receipt_mode`, `receipt_signer`, and `run_id` binding while keeping diagnostics endpoints read-only
+- run-level diagnostics discovery, run summary, and run-scoped parity / incidents / drift / convergence / graph / authority endpoints may expose multi-run observability without changing parity semantics
+- local `P12-16` closure-ready evidence now proves repeated signed-receipt determinism, request-bound timestamp preservation, run-manifest stability, and diagnostics purity in `run-local-phase12c-closure-2026-03-11`
 
 ---
 
 ## 2. Architectural Role
 
-`proofd` acts as a verification diagnostics service.
+`proofd` acts as a verification execution service with a read-only diagnostics surface.
+
+Its diagnostics surface remains read-only even when a local verification execution family exists.
 
 It exposes:
 
@@ -44,7 +48,7 @@ It does not:
 
 Formally:
 
-`proofd = diagnostics service surface`
+`proofd = verification execution service + diagnostics service surface`
 
 and:
 
@@ -107,6 +111,8 @@ over canonical artifact data.
 ---
 
 ## 5. Proposed Endpoint Set
+
+The diagnostics surface below remains read-only. A local execution family such as `POST /verify/bundle` belongs to the closure plan and MUST NOT change the semantics of any `GET /diagnostics/*` endpoint.
 
 ### 5.1 Incidents
 
@@ -179,7 +185,16 @@ Returns:
 
 - run-local `parity_determinism_incidents.json`
 
-### 5.9 Run-Scoped Parity
+### 5.9 Run Summary
+
+`GET /diagnostics/runs/{run_id}`
+
+Returns:
+
+- run identifier
+- run-local known artifact list
+
+### 5.10 Run-Scoped Parity
 
 `GET /diagnostics/runs/{run_id}/parity`
 
@@ -187,7 +202,31 @@ Returns:
 
 - run-local `parity_report.json`
 
-### 5.10 Graph Surface
+### 5.11 Run-Scoped Drift Attribution
+
+`GET /diagnostics/runs/{run_id}/drift`
+
+Returns:
+
+- run-local `parity_drift_attribution_report.json`
+
+### 5.12 Run-Scoped Convergence
+
+`GET /diagnostics/runs/{run_id}/convergence`
+
+Returns:
+
+- run-local `parity_convergence_report.json`
+
+### 5.13 Run-Scoped Failure Matrix
+
+`GET /diagnostics/runs/{run_id}/failure-matrix`
+
+Returns:
+
+- run-local `failure_matrix.json`
+
+### 5.14 Graph Surface
 
 `GET /diagnostics/graph`
 
@@ -195,7 +234,7 @@ Returns:
 
 - `parity_incident_graph.json`
 
-### 5.11 Run-Scoped Graph
+### 5.15 Run-Scoped Graph
 
 `GET /diagnostics/runs/{run_id}/graph`
 
@@ -203,7 +242,7 @@ Returns:
 
 - run-local `parity_incident_graph.json`
 
-### 5.12 Authority Drift Topology
+### 5.16 Authority Drift Topology
 
 `GET /diagnostics/authority-topology`
 
@@ -211,15 +250,7 @@ Returns:
 
 - `parity_authority_drift_topology.json`
 
-### 5.13 Run-Scoped Authority Drift Topology
-
-`GET /diagnostics/runs/{run_id}/authority-topology`
-
-Returns:
-
-- run-local `parity_authority_drift_topology.json`
-
-### 5.14 Authority Drift Suppression
+### 5.17 Authority Suppression
 
 `GET /diagnostics/authority-suppression`
 
@@ -227,13 +258,33 @@ Returns:
 
 - `parity_authority_suppression_report.json`
 
-### 5.15 Run-Scoped Authority Drift Suppression
+### 5.18 Run-Scoped Authority Drift Topology
+
+`GET /diagnostics/runs/{run_id}/authority-topology`
+
+Returns:
+
+- run-local `parity_authority_drift_topology.json`
+
+### 5.19 Run-Scoped Authority Suppression
 
 `GET /diagnostics/runs/{run_id}/authority-suppression`
 
 Returns:
 
 - run-local `parity_authority_suppression_report.json`
+
+### 5.20 Verification Execute
+
+`POST /verify/bundle`
+
+Returns:
+
+- verifier-core-derived verdict response
+- optional signed receipt emission metadata
+- run-scoped artifact updates limited to the requested verification run
+
+This endpoint is part of the service contract but not part of the read-only diagnostics family.
 
 ---
 
