@@ -1,0 +1,114 @@
+{
+  "blockers": [
+    {
+      "code": "ATTESTATION_UNSIGNED",
+      "message": "closure candidate is not signed with real attestor material"
+    },
+    {
+      "code": "WORKTREE_DIRTY",
+      "message": "git worktree has 52 dirty entries; official closure requires clean git state"
+    },
+    {
+      "code": "HEAD_SHA_MISMATCH",
+      "message": "HEAD c28029e1bd5a511a8edc0d3c29c7b31b52897852 does not match closure evidence SHA 01d1cb5c99d5eec476eeeee0413e15cedc380e00"
+    }
+  ],
+  "candidate": {
+    "attestation": {
+      "attestation_state": "UNSIGNED",
+      "attestation_verified": false
+    },
+    "boundary_invariants": [
+      "proofd != authority_surface",
+      "parity != consensus",
+      "system computes truth; it does not choose truth"
+    ],
+    "evidence_index_path": "reports/phase12_official_closure_candidate/evidence_index.json",
+    "evidence_index_sha256_verified": true,
+    "evidence_root_hash_verified": true,
+    "failing_gates": [],
+    "manifest_path": "reports/phase12_official_closure_candidate/closure_manifest.json",
+    "manifest_sha256_verified": true,
+    "missing_gates": [],
+    "required_gate_count": 20
+  },
+  "generated_at_utc": "2026-03-13T18:22:29Z",
+  "governance": {
+    "phase_transition_required": true,
+    "remote_ci_run_id": null,
+    "remote_ci_workflow": "ci-freeze"
+  },
+  "local_execution_state": "BLOCKED",
+  "next_actions": [
+    "regenerate_closure_candidate_with_real_attestor_material",
+    "clean_git_worktree_before_official_closure",
+    "regenerate_candidate_on_current_head_or_rewind_to_evidence_sha"
+  ],
+  "official_closure_state": "BLOCKED",
+  "preflight_version": 1,
+  "repo_state": {
+    "current_phase": "10",
+    "dirty_entries": [
+      "M Makefile",
+      " M README.md",
+      " M ayken-core/crates/abdf-builder/benches/abdf_benchmark.rs",
+      " M ayken-core/crates/abdf-builder/src/lib.rs",
+      " M ayken-core/crates/abdf/src/header.rs",
+      " M ayken-core/crates/abdf/src/lib.rs",
+      " M ayken-core/crates/abdf/src/segment.rs",
+      " M ayken-core/crates/abdf/src/types.rs",
+      " M ayken-core/crates/bcib/src/lib.rs",
+      " M ayken-core/crates/proof-verifier/examples/phase12_gate_harness.rs",
+      " M ayken-core/crates/proof-verifier/src/authority/authority_drift_topology.rs",
+      " M ayken-core/crates/proof-verifier/src/authority/determinism_incident.rs",
+      " M ayken-core/crates/proof-verifier/src/authority/drift_attribution.rs",
+      " M ayken-core/crates/proof-verifier/src/authority/incident_graph.rs",
+      " M ayken-core/crates/proof-verifier/src/authority/parity.rs",
+      " M ayken-core/crates/proof-verifier/src/bin/proof-verifier.rs",
+      " M ayken-core/crates/proof-verifier/src/policy/policy_engine.rs",
+      " M ayken-core/examples/basic_usage.rs",
+      " M binutils-2.42/.DS_Store",
+      " M docs/development/DOCUMENTATION_INDEX.md",
+      " M docs/development/PROJECT_STATUS_REPORT.md",
+      " M docs/roadmap/README.md",
+      " M docs/roadmap/overview.md",
+      " D docs/specs/phase12-trust-layer/VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md",
+      " M scripts/ci/gate_cross_node_parity.sh",
+      " M tools/ci/test_validate_cross_node_parity_gate.py",
+      " M userspace/proofd/Cargo.toml",
+      " M userspace/proofd/src/lib.rs",
+      " M userspace/proofd/src/main.rs",
+      "?? AYKENOS_GENEL_ILERLEME_RAPORU_2026_03_10.md",
+      "?? ayken-core/crates/proof-verifier/src/bin/closure-attest.rs",
+      "?? docs/development/VENDORED_TOOLCHAIN_SNAPSHOTS.md",
+      "?? reports/phase12_official_closure_candidate/README.md",
+      "?? reports/phase12_official_closure_candidate/closure_manifest.json",
+      "?? reports/phase12_official_closure_candidate/closure_manifest.sha256",
+      "?? reports/phase12_official_closure_candidate/evidence_index.json",
+      "?? reports/phase12_official_closure_candidate/evidence_index.sha256",
+      "?? reports/phase12_official_closure_preflight/README.md",
+      "?? reports/phase12_official_closure_preflight/preflight_report.json",
+      "?? scripts/ci/gate_proof_multisig_quorum.sh",
+      "?? scripts/ci/gate_proof_replay_admission_boundary.sh",
+      "?? scripts/ci/gate_proof_replicated_verification_boundary.sh",
+      "?? scripts/ci/gate_proofd_service.sh",
+      "?? tools/ci/generate_phase12_closure_bundle.py",
+      "?? tools/ci/generate_phase12_official_closure_preflight.py",
+      "?? tools/ci/test_generate_phase12_closure_bundle.py",
+      "?? tools/ci/test_generate_phase12_official_closure_preflight.py",
+      "?? tools/ci/test_validate_proof_multisig_quorum_gate.py",
+      "?? tools/ci/test_validate_proof_replay_admission_boundary_gate.py",
+      "?? tools/ci/test_validate_proof_replicated_verification_boundary_gate.py"
+    ],
+    "dirty_entry_count": 52,
+    "expected_current_phase": "10",
+    "expected_tag": "phase12-official-closure",
+    "head_commit": "c28029e1bd5a511a8edc0d3c29c7b31b52897852",
+    "head_matches_manifest_git_sha": false,
+    "manifest_git_sha": "01d1cb5c99d5eec476eeeee0413e15cedc380e00",
+    "tag_exists": false,
+    "tag_points_to_head": false,
+    "tag_target": null,
+    "worktree_clean": false
+  }
+}

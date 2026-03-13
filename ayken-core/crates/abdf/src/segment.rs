@@ -107,8 +107,7 @@ mod tests {
     fn create_descriptor_v2() {
         let descriptor = SegmentDescriptor::new(
             5, // 5. meta kaydına işaret ediyor.
-            1024, 
-            4096
+            1024, 4096,
         );
 
         assert_eq!(descriptor.meta_idx, 5);
@@ -119,15 +118,15 @@ mod tests {
     #[test]
     fn create_metacontainer_and_kind() {
         let meta = MetaContainer {
-            name_idx: 0, // "users"
-            type_idx: 1, // "table/generic"
+            name_idx: 0,   // "users"
+            type_idx: 1,   // "table/generic"
             schema_idx: 2, // "id:int,name:string"
             permissions: 0,
             embedding_idx: 0,
         };
 
         let kind = SegmentKind::Tabular(meta);
-        
+
         assert!(kind.is_tabular());
         if let SegmentKind::Tabular(m) = kind {
             assert_eq!(m.name_idx, 0);

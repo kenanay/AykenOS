@@ -214,6 +214,16 @@ override RUN_ID := $(RUN_ID_DEFAULT)
 endif
 RUN_ID := $(RUN_ID)
 EVIDENCE_RUN_DIR := $(EVIDENCE_ROOT)/run-$(RUN_ID)
+PHASE12_CLOSURE_RUN_DIR ?= $(EVIDENCE_ROOT)/run-run-local-phase12c-closure-2026-03-11
+PHASE12_CLOSURE_OUTPUT_DIR ?= reports/phase12_official_closure_candidate
+PHASE12_CLOSURE_ATTESTOR_NODE_ID ?=
+PHASE12_CLOSURE_ATTESTOR_KEY_ID ?=
+PHASE12_CLOSURE_ATTESTOR_PRIVATE_KEY ?=
+PHASE12_CLOSURE_ATTESTED_AT_UTC ?=
+PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY ?=
+PHASE12_CLOSURE_PREFLIGHT_OUTPUT_DIR ?= reports/phase12_official_closure_preflight
+PHASE12_CLOSURE_REMOTE_CI_WORKFLOW ?= ci-freeze
+PHASE12_CLOSURE_REMOTE_CI_RUN_ID ?=
 CI_TARGETS ?= kernel.elf
 ABI_INIT_BASELINE ?= 0
 ABI_DIFF_RANGE ?=
@@ -861,6 +871,10 @@ ci-summarize:
 	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
 	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); acceptable=("PASS","SKIP","WARN"); print(f"ERROR: summary verdict is {v} ({p})") if v not in acceptable else None; sys.exit(0 if v in acceptable else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
 
+ci-kill-switch-summary:
+	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)" --require-kill-switch-completeness
+	@python3 -c 'import json,sys; p=sys.argv[1]; payload=json.load(open(p, encoding="utf-8")); ok=payload.get("coverage", {}).get("coverage_status") == "COMPLETE"; print(f"ERROR: kill-switch coverage incomplete ({p})") if not ok else None; sys.exit(0 if ok else 2)' "$(EVIDENCE_RUN_DIR)/reports/kill_switch_summary.json"
+
 # ABI gate (implemented): deterministic generation + baseline lock compare.
 ci-gate-abi: ci-evidence-dir
 	@echo "== CI GATE ABI =="
@@ -1497,8 +1511,221 @@ ci-gate-cross-node-parity: ci-gate-verifier-authority-resolution
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity/report.json" "$(EVIDENCE_RUN_DIR)/reports/cross-node-parity.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity/parity_report.json" "$(EVIDENCE_RUN_DIR)/reports/cross-node-parity-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/cross-node-parity/parity_closure_audit_report.json" "$(EVIDENCE_RUN_DIR)/reports/cross-node-parity-closure-audit.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: cross-node-parity evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proofd-service: ci-evidence-dir
+	@echo "== CI GATE PROOFD SERVICE =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proofd_service.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proofd-service"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-service.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_service_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-service-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_receipt_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-receipt-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_endpoint_contract.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-endpoint-contract.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_verify_request.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-verify-request.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_verify_response.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-verify-response.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_run_manifest.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-run-manifest.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_receipt_verification_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-receipt-verification.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-service/proofd_repeated_execution_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-repeated-execution.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proofd-service evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proofd-observability-boundary: ci-evidence-dir
+	@echo "== CI GATE PROOFD OBSERVABILITY BOUNDARY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proofd_observability_boundary.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-boundary.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/proofd_observability_boundary_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-boundary-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/proofd_observability_negative_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-negative-matrix.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proofd-observability-boundary evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-graph-non-authoritative-contract: ci-evidence-dir
+	@echo "== CI GATE GRAPH NON-AUTHORITATIVE CONTRACT =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_graph_non_authoritative_contract.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/graph-non-authoritative-contract"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/graph-non-authoritative-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/graph-non-authoritative-contract.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/graph-non-authoritative-contract/graph_non_authoritative_report.json" "$(EVIDENCE_RUN_DIR)/reports/graph-non-authoritative-contract-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: graph-non-authoritative-contract evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-convergence-non-election-boundary: ci-evidence-dir
+	@echo "== CI GATE CONVERGENCE NON-ELECTION BOUNDARY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_convergence_non_election_boundary.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/convergence-non-election-boundary"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/convergence-non-election-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/convergence-non-election-boundary.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/convergence-non-election-boundary/convergence_non_election_report.json" "$(EVIDENCE_RUN_DIR)/reports/convergence-non-election-boundary-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: convergence-non-election-boundary evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-diagnostics-consumer-non-authoritative-contract: ci-evidence-dir
+	@echo "== CI GATE DIAGNOSTICS CONSUMER NON-AUTHORITATIVE CONTRACT =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_diagnostics_consumer_non_authoritative_contract.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/diagnostics-consumer-non-authoritative-contract"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/diagnostics-consumer-non-authoritative-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/diagnostics-consumer-non-authoritative-contract.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/diagnostics-consumer-non-authoritative-contract/diagnostics_consumer_contract_report.json" "$(EVIDENCE_RUN_DIR)/reports/diagnostics-consumer-non-authoritative-contract-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: diagnostics-consumer-non-authoritative-contract evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-diagnostics-callsite-correlation: ci-evidence-dir
+	@echo "== CI GATE DIAGNOSTICS CALLSITE CORRELATION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_diagnostics_callsite_correlation.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/diagnostics-callsite-correlation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/diagnostics-callsite-correlation/report.json" "$(EVIDENCE_RUN_DIR)/reports/diagnostics-callsite-correlation.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/diagnostics-callsite-correlation/diagnostics_callsite_correlation_report.json" "$(EVIDENCE_RUN_DIR)/reports/diagnostics-callsite-correlation-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: diagnostics-callsite-correlation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-observability-routing-separation: ci-evidence-dir
+	@echo "== CI GATE OBSERVABILITY ROUTING SEPARATION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_observability_routing_separation.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/observability-routing-separation"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/observability-routing-separation/report.json" "$(EVIDENCE_RUN_DIR)/reports/observability-routing-separation.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/observability-routing-separation/observability_routing_separation_report.json" "$(EVIDENCE_RUN_DIR)/reports/observability-routing-separation-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/observability-routing-separation/observability_routing_negative_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/observability-routing-negative-matrix.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: observability-routing-separation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-verification-diversity-floor: ci-evidence-dir
+	@echo "== CI GATE VERIFICATION DIVERSITY FLOOR =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_verification_diversity_floor.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor" \
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/verification_diversity_floor_report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/vdl_window.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-vdl-window.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/diversity_metrics.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-metrics.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/lineage_distribution.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-lineage-distribution.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/cluster_distribution.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-cluster-distribution.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/dominance_analysis.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-dominance-analysis.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-diversity-floor/entropy_report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-floor-entropy-report.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: verification-diversity-floor evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-verifier-cartel-correlation: ci-evidence-dir
+	@echo "== CI GATE VERIFIER CARTEL CORRELATION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_verifier_cartel_correlation.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation" \
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/verifier_cartel_correlation_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/cartel_correlation_metrics.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-metrics.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/pairwise_correlation_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-pairwise.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/lineage_correlation_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-lineage.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/authority_chain_correlation_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-authority-chain.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/cluster_overlap_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-cluster-overlap.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-cartel-correlation/correlation_stability_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-cartel-correlation-stability.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: verifier-cartel-correlation evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-produce-verification-diversity-ledger: ci-evidence-dir
+	@echo "== CI PRODUCE VERIFICATION DIVERSITY LEDGER =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/produce_verification_diversity_ledger.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger" \
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+	@cp -f "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger/report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-ledger-producer.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger/verification_diversity_ledger_append_report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-ledger-producer-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger/verification_diversity_ledger.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-ledger-snapshot.json"
+	@echo "OK: verification-diversity-ledger producer evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-verification-determinism-contract: ci-evidence-dir
+	@echo "== CI GATE VERIFICATION DETERMINISM CONTRACT =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_verification_determinism_contract.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/verification-determinism-contract"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-determinism-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-determinism-contract.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verification-determinism-contract/verification_determinism_contract_report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-determinism-contract-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: verification-determinism-contract evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-verifier-reputation-prohibition: ci-evidence-dir
+	@echo "== CI GATE VERIFIER REPUTATION PROHIBITION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_verifier_reputation_prohibition.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/verifier-reputation-prohibition"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-reputation-prohibition/report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-reputation-prohibition.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/verifier-reputation-prohibition/reputation_prohibition_report.json" "$(EVIDENCE_RUN_DIR)/reports/verifier-reputation-prohibition-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: verifier-reputation-prohibition evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-multisig-quorum: ci-gate-cross-node-parity ci-gate-proofd-service
+	@echo "== CI GATE PROOF MULTISIG QUORUM =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_multisig_quorum.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-multisig-quorum"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-multisig-quorum/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-multisig-quorum.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-multisig-quorum/quorum_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proof-multisig-quorum-matrix.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-multisig-quorum/quorum_evaluator_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-multisig-quorum-details.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-multisig-quorum evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-replay-admission-boundary: ci-gate-proof-multisig-quorum
+	@echo "== CI GATE PROOF REPLAY ADMISSION BOUNDARY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_replay_admission_boundary.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-replay-admission-boundary"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replay-admission-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-replay-admission-boundary.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replay-admission-boundary/replay_admission_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-replay-admission-boundary-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replay-admission-boundary/boundary_contract.json" "$(EVIDENCE_RUN_DIR)/reports/proof-replay-admission-boundary-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-replay-admission-boundary evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-proof-replicated-verification-boundary: ci-gate-proof-replay-admission-boundary
+	@echo "== CI GATE PROOF REPLICATED VERIFICATION BOUNDARY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_proof_replicated_verification_boundary.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/proof-replicated-verification-boundary"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replicated-verification-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-replicated-verification-boundary.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replicated-verification-boundary/phase13_bridge_report.json" "$(EVIDENCE_RUN_DIR)/reports/proof-replicated-verification-boundary-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proof-replicated-verification-boundary/research_boundary_note.md" "$(EVIDENCE_RUN_DIR)/reports/proof-replicated-verification-boundary-note.md"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: proof-replicated-verification-boundary evidence at $(EVIDENCE_RUN_DIR)"
+
+phase12-official-closure-prep:
+	@echo "== PHASE12 OFFICIAL CLOSURE PREP =="
+	@python3 tools/ci/generate_phase12_closure_bundle.py \
+		--run-dir "$(PHASE12_CLOSURE_RUN_DIR)" \
+		--output-dir "$(PHASE12_CLOSURE_OUTPUT_DIR)" \
+		$(if $(PHASE12_CLOSURE_ATTESTOR_NODE_ID),--attestor-node-id "$(PHASE12_CLOSURE_ATTESTOR_NODE_ID)") \
+		$(if $(PHASE12_CLOSURE_ATTESTOR_KEY_ID),--attestor-key-id "$(PHASE12_CLOSURE_ATTESTOR_KEY_ID)") \
+		$(if $(PHASE12_CLOSURE_ATTESTOR_PRIVATE_KEY),--attestor-private-key "$(PHASE12_CLOSURE_ATTESTOR_PRIVATE_KEY)") \
+		$(if $(PHASE12_CLOSURE_ATTESTED_AT_UTC),--attested-at-utc "$(PHASE12_CLOSURE_ATTESTED_AT_UTC)")
+	@echo "OK: phase12 official closure candidate at $(PHASE12_CLOSURE_OUTPUT_DIR)"
+
+phase12-closure: phase12-official-closure-prep
+	@echo "OK: phase12-closure alias passed"
+
+phase12-official-closure-preflight:
+	@echo "== PHASE12 OFFICIAL CLOSURE PREFLIGHT =="
+	@python3 tools/ci/generate_phase12_official_closure_preflight.py \
+		--candidate-dir "$(PHASE12_CLOSURE_OUTPUT_DIR)" \
+		--output-dir "$(PHASE12_CLOSURE_PREFLIGHT_OUTPUT_DIR)" \
+		--remote-ci-workflow "$(PHASE12_CLOSURE_REMOTE_CI_WORKFLOW)" \
+		$(if $(PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY),--attestor-public-key "$(PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY)") \
+		$(if $(PHASE12_CLOSURE_REMOTE_CI_RUN_ID),--remote-ci-run-id "$(PHASE12_CLOSURE_REMOTE_CI_RUN_ID)")
+	@echo "OK: phase12 official closure preflight at $(PHASE12_CLOSURE_PREFLIGHT_OUTPUT_DIR)"
+
+phase12-official-closure-execute: phase12-official-closure-prep
+	@echo "== PHASE12 OFFICIAL CLOSURE EXECUTE =="
+	@python3 tools/ci/generate_phase12_official_closure_preflight.py \
+		--candidate-dir "$(PHASE12_CLOSURE_OUTPUT_DIR)" \
+		--output-dir "$(PHASE12_CLOSURE_PREFLIGHT_OUTPUT_DIR)" \
+		--remote-ci-workflow "$(PHASE12_CLOSURE_REMOTE_CI_WORKFLOW)" \
+		--fail-on-blockers \
+		$(if $(PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY),--attestor-public-key "$(PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY)") \
+		$(if $(PHASE12_CLOSURE_REMOTE_CI_RUN_ID),--remote-ci-run-id "$(PHASE12_CLOSURE_REMOTE_CI_RUN_ID)")
+	@echo "OK: phase12 official closure local execution is ready"
 
 ci-gate-policy-accept: ci-evidence-dir
 	@echo "== CI GATE POLICY ACCEPT =="
@@ -1642,6 +1869,9 @@ help:
 	@echo "                 Advisory only. CI remains mandatory."
 	@echo "  ci           - Current CI chain (boundary + hygiene + validate-full)"
 	@echo "  ci-freeze    - Strict freeze suite (all implemented gates)"
+	@echo "  phase12-official-closure-prep - Generate Phase-12 official closure candidate artifacts"
+	@echo "  phase12-official-closure-preflight - Validate local official closure readiness and write blocker report"
+	@echo "  phase12-official-closure-execute - Fail-closed local official closure execution preflight"
 	@echo "    (hard guard: AYKEN_SCHED_FALLBACK must be 0)"
 	@echo "  ci-gate-boundary - Boundary symbol scan gate with evidence output"
 	@echo "  ci-gate-ring0-exports - Link-time Ring0 export surface gate (nm + whitelist + max count)"
@@ -1756,7 +1986,34 @@ help:
 	@echo "  ci-gate-verifier-authority-resolution - P12 authority graph / deterministic authority resolution gate"
 	@echo "    (artifacts: authority_resolution_report.json, authority_chain_report.json, report.json, violations.txt)"
 	@echo "  ci-gate-cross-node-parity - P12 distributed parity failure-matrix gate"
-	@echo "    (artifacts: parity_report.json, failure_matrix.json, report.json, violations.txt)"
+	@echo "    (artifacts: parity_report.json, parity_closure_audit_report.json, failure_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-proofd-service - P12-16 read-only proofd diagnostics service gate"
+	@echo "    (artifacts: proofd_service_report.json, proofd_receipt_report.json, proofd_endpoint_contract.json, proofd_verify_request.json, proofd_verify_response.json, proofd_run_manifest.json, proofd_receipt_verification_report.json, proofd_repeated_execution_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proofd-observability-boundary - Phase13 boundary gate locking proofd diagnostics namespace"
+	@echo "    (artifacts: proofd_observability_boundary_report.json, proofd_observability_negative_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-graph-non-authoritative-contract - Phase13 boundary gate blocking graph truth inference"
+	@echo "    (artifacts: graph_non_authoritative_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-convergence-non-election-boundary - Phase13 boundary gate blocking convergence election semantics"
+	@echo "    (artifacts: convergence_non_election_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-diagnostics-consumer-non-authoritative-contract - Phase13 boundary gate blocking descriptive diagnostics from becoming execution input"
+	@echo "    (artifacts: diagnostics_consumer_contract_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-diagnostics-callsite-correlation - Phase13 boundary gate blocking descriptive diagnostics from flowing into decision call sites"
+	@echo "    (artifacts: diagnostics_callsite_correlation_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-observability-routing-separation - Phase13 boundary gate enforcing routing blindness against observability artifacts"
+	@echo "    (artifacts: observability_routing_separation_report.json, observability_routing_negative_matrix.json, report.json, violations.txt)"
+	@echo "  ci-gate-verification-determinism-contract - Phase13 gate blocking ambient verifier dependencies"
+	@echo "    (artifacts: verification_determinism_contract_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-verifier-reputation-prohibition - Phase13 boundary gate blocking hidden verifier scoring"
+	@echo "    (artifacts: reputation_prohibition_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-multisig-quorum - P12-15 multisignature / N-of-M quorum gate"
+	@echo "    (artifacts: quorum_matrix.json, quorum_evaluator_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-replay-admission-boundary - P12-17 replay admission boundary gate"
+	@echo "    (artifacts: replay_admission_report.json, boundary_contract.json, report.json, violations.txt)"
+	@echo "  ci-gate-proof-replicated-verification-boundary - P12-18 replicated verification boundary gate"
+	@echo "    (artifacts: research_boundary_note.md, phase13_bridge_report.json, report.json, violations.txt)"
+	@echo "  phase12-official-closure-prep - Generate closure manifest + evidence index for the Phase-12 local closure-ready run"
+	@echo "    (controls: PHASE12_CLOSURE_RUN_DIR, PHASE12_CLOSURE_OUTPUT_DIR, PHASE12_CLOSURE_ATTESTOR_*)"
+	@echo "  phase12-closure - Alias for phase12-official-closure-prep"
 	@echo "  ci-gate-workspace - Workspace determinism/repro/linkset gate (override: WORKSPACE_STRICT=0)"
 	@echo "  ci-gate-syscall-v2-runtime - Runtime syscall v2 contract gate (Ring3 -> int80 -> Ring0)"
 	@echo "    (controls: SYSCALL_V2_RUNTIME_* vars)"
@@ -1764,7 +2021,11 @@ help:
 	@echo "  ci-gate-decision-switch-phase45 - Gate-4.5 decision->switch proof gate"
 	@echo "    (controls: GATE45_QEMU_TIMEOUT, GATE45_BOOTSTRAP_POLICY, GATE45_MB_SELFTEST, GATE45_C2_STRICT=0|1, GATE45_C2_OWNER_PID=<pid>)"
 	@echo "  ci-gate-policy-proof-regression - Composite regression suite: Gate-4 then Gate-4.5"
-	@echo "  ci-summarize - Summarize discovered gate reports and enforce PASS"
+	@echo "  ci-summarize - Summarize discovered gate reports, emit kill-switch category summary, and enforce PASS"
+	@echo "  ci-kill-switch-summary - Require full architectural kill-switch gate coverage for an existing run"
+	@echo "  ci-gate-verification-diversity-floor - Collapse-horizon harness over Verification Diversity Ledger evidence"
+	@echo "  ci-gate-verifier-cartel-correlation - Stage-1 collapse-horizon harness for verifier independence and cartel correlation"
+	@echo "  ci-produce-verification-diversity-ledger - Produce / append canonical VDL entries from verifier audit evidence"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
 	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
@@ -1776,7 +2037,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-produce-verification-diversity-ledger ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

@@ -54,6 +54,7 @@ mkdir -p "${EVIDENCE_DIR}"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 PARITY_REPORT_JSON="${EVIDENCE_DIR}/parity_report.json"
 FAILURE_MATRIX_JSON="${EVIDENCE_DIR}/failure_matrix.json"
+PARITY_CLOSURE_AUDIT_REPORT_JSON="${EVIDENCE_DIR}/parity_closure_audit_report.json"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 
@@ -62,7 +63,7 @@ cargo run --quiet --manifest-path "${ROOT}/ayken-core/Cargo.toml" -p proof-verif
 HARNESS_RC=$?
 set -e
 
-if [[ ! -f "${REPORT_JSON}" || ! -f "${PARITY_REPORT_JSON}" || ! -f "${FAILURE_MATRIX_JSON}" ]]; then
+if [[ ! -f "${REPORT_JSON}" || ! -f "${PARITY_REPORT_JSON}" || ! -f "${FAILURE_MATRIX_JSON}" || ! -f "${PARITY_CLOSURE_AUDIT_REPORT_JSON}" ]]; then
   echo "ERROR: cross-node parity harness did not produce required outputs" >&2
   exit 3
 fi

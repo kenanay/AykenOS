@@ -63,6 +63,11 @@ class CrossNodeParityGateTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
+        closure_audit = json.loads(
+            (self.evidence_dir / "parity_closure_audit_report.json").read_text(
+                encoding="utf-8"
+            )
+        )
         convergence_report = json.loads(
             (self.evidence_dir / "parity_convergence_report.json").read_text(
                 encoding="utf-8"
@@ -97,6 +102,11 @@ class CrossNodeParityGateTest(unittest.TestCase):
         self.assertEqual(incident_graph.get("status"), "PASS")
         self.assertEqual(authority_topology.get("status"), "PASS")
         self.assertEqual(authority_suppression.get("status"), "PASS")
+        self.assertEqual(closure_audit.get("status"), "PASS")
+        self.assertTrue(closure_audit.get("required_artifacts_present") is True)
+        self.assertTrue(closure_audit.get("scenario_reports_present") is True)
+        self.assertTrue(closure_audit.get("status_coverage_complete") is True)
+        self.assertTrue(closure_audit.get("closure_audit_complete") is True)
         self.assertEqual(convergence_report.get("status"), "PASS")
         self.assertEqual(drift_report.get("status"), "PASS")
         self.assertEqual(parity_report.get("row_count"), 10)

@@ -311,7 +311,8 @@ fn unique_count<F>(nodes: &[&NodeParityOutcome], key_fn: F) -> usize
 where
     F: Fn(&NodeParityOutcome) -> &str,
 {
-    nodes.iter()
+    nodes
+        .iter()
         .map(|node| key_fn(node).to_string())
         .collect::<BTreeSet<_>>()
         .len()

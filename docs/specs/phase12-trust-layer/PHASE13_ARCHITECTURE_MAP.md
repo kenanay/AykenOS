@@ -5,7 +5,7 @@
 **Date:** 2026-03-11
 **Phase:** Phase-13 Distributed Verification Expansion
 **Type:** Non-normative architecture map
-**Related Spec:** `requirements.md`, `tasks.md`, `PHASE12_CLOSURE_ORDER.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `VERIFICATION_OBSERVABILITY_MODEL.md`, `VERIFICATION_RELATIONSHIP_GRAPH.md`, `GLOBAL_VERIFICATION_GRAPH_MODEL.md`, `PARITY_LAYER_ARCHITECTURE.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`
+**Related Spec:** `requirements.md`, `tasks.md`, `PHASE12_CLOSURE_ORDER.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `VERIFICATION_OBSERVABILITY_MODEL.md`, `VERIFICATION_RELATIONSHIP_GRAPH.md`, `GLOBAL_VERIFICATION_GRAPH_MODEL.md`, `PARITY_LAYER_ARCHITECTURE.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `VERIFICATION_CONTEXT_DISTRIBUTION_CONTRACT.md`, `VERIFIER_REGISTRY_LINEAGE_AND_DISTRIBUTION_MODEL.md`, `GENERIC_DETERMINISTIC_TRUTH_VERIFICATION_ARCHITECTURE.md`, `PHASE13_NEGATIVE_TEST_SPEC.md`, `PHASE13_KILL_SWITCH_GATES.md`, `PHASE13_COLLAPSE_SCENARIOS.md`, `VERIFICATION_DIVERSITY_LEDGER_SPEC.md`, `VERIFICATION_DIVERSITY_FLOOR_GATE.md`, `OBSERVABILITY_ROUTING_SEPARATION_GATE.md`, `AYKENOS_GATE_ARCHITECTURE.md`, `GATE_REGISTRY.md`
 
 ---
 
@@ -206,6 +206,8 @@ Phase-13 should deepen derived observability artifacts:
 - convergence partitions
 - historical authority islands
 - insufficient evidence islands
+- verification diversity ledger
+- verification diversity ledger producer
 
 These are observability structures.
 
@@ -228,7 +230,7 @@ The expected Phase-13 stack is:
 3. distributed trust transport
    - context, receipt, attestation, registry, and run artifact exchange
 4. federation diagnostics
-   - parity, convergence, authority topology, incident graph
+   - parity, convergence, authority topology, incident graph, verification diversity ledger
 5. replay boundary analysis
    - admission contracts and replicated verification boundary checks
 
@@ -265,9 +267,10 @@ The most plausible implementation order is:
 1. finish Phase-12 closure
 2. stabilize `proofd` as closure-ready verification service
 3. expand read-only diagnostics query surfaces
-4. add federated verifier-trust and registry propagation diagnostics
-5. add replicated verification boundary artifacts
-6. define controlled replay-admission interfaces
+4. add verification diversity ledger as behavioral observability surface
+5. add federated verifier-trust and registry propagation diagnostics
+6. add replicated verification boundary artifacts
+7. define controlled replay-admission interfaces
 
 So Phase-13 starts with:
 
@@ -307,6 +310,46 @@ Replicated verification can easily slide into replay execution if the replay bou
 
 `proofd` must remain a service wrapper over canonical verifier and diagnostics artifacts, not a second semantic engine.
 
+### 8.6 Hidden Reputation Drift
+
+Graph and topology analytics could quietly become a verifier reputation system.
+
+This must be resisted.
+
+Historical divergence frequency, agreement ratios, dominant-cluster recurrence, or reliability-style scoring MUST NOT become implicit trust ranking.
+
+### 8.7 Authority Topology Feedback Loop
+
+Authority topology, convergence, or suppression observability could quietly bias verification routing or scheduling behavior.
+
+This must be resisted.
+
+Phase-13 diagnostics may explain topology and drift, but they MUST NOT become verifier ordering, preferred-node, or routing-priority input.
+
+### 8.8 Verification Gravity Collapse
+
+Verification activity could quietly concentrate around a small verifier subset even without explicit authority election.
+
+This must be resisted.
+
+Phase-13 should remain distributed in behavior, not only in nominal topology width.
+
+### 8.9 Verifier Cartel Formation
+
+Multiple verifiers could remain formally distinct while becoming operationally or linearly correlated enough to behave like one trust bloc.
+
+This must be resisted.
+
+Node multiplicity alone is not enough if verifier independence collapses.
+
+### 8.10 Verification Basin Collapse
+
+Verification reuse, replay review, or trust reuse could quietly fall into one practical authority basin through repeated convenience and reuse.
+
+This must be resisted.
+
+Phase-13 must not allow operational reuse to become authority absorption.
+
 ---
 
 ## 9. Governing Invariants
@@ -318,7 +361,19 @@ Phase-13 growth should preserve these invariants:
 - service surfaces remain wrappers over canonical artifacts
 - federation does not imply authority arbitration
 - replicated verification does not imply replay admission
+- verification history does not imply verifier reputation
+- observability does not imply verification scheduling
+
+The executable contract direction for these invariants is captured in:
+
+- `PHASE13_NEGATIVE_TEST_SPEC.md`
+- `VERIFICATION_INVARIANTS.md`
+- `PHASE13_COLLAPSE_SCENARIOS.md`
+
+The shortest operational reading remains:
+
 - observability does not imply consensus
+- observability does not imply scheduling
 
 The shortest correct rule is:
 

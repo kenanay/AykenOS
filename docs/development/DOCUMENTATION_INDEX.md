@@ -8,8 +8,9 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Runtime:** `Phase-10` officially closed via freeze evidence + remote `ci-freeze`
 - **Verification Substrate:** `Phase-11` officially closed via proof-chain evidence + remote `ci-freeze`
 - **Phase-12 Local Track:** normative `Phase-12C` gate set green in `run-local-phase12c-closure-2026-03-11`; task-local `P12-14..P12-18` work is now `COMPLETED_LOCAL`
+- **Phase-13 Preparation:** observability architecture corpus + GitHub milestone active; policy experiments are isolated into deferred `policy-track`
 - **Formal Governance Pointer:** `CURRENT_PHASE=10` (phase transition not yet executed)
-- **Next Focus:** official closure tag, remote / official `Phase-12` confirmation, formal phase transition workflow
+- **Next Focus:** official closure tag, remote / official `Phase-12` confirmation, formal phase transition workflow; `Phase-13` remains architecture-prep only
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -38,6 +39,8 @@ Current repo truth icin once su dosyalari referans alin:
 3. `docs/operations/PERF_BASELINE_POLICY.md`
 4. `docs/roadmap/freeze-enforcement-workflow.md`
 5. `docs/operations/RUNTIME_INTEGRATION_GUARDRAILS.md`
+6. `docs/operations/PHASE12_OFFICIAL_CLOSURE_EXECUTION.md`
+7. `docs/operations/PHASE_TRANSITION_RUNBOOK.md`
 
 ## Development Notes
 1. `docs/development/VENDORED_TOOLCHAIN_SNAPSHOTS.md`
@@ -62,48 +65,66 @@ Current repo truth icin once su dosyalari referans alin:
 3. `docs/specs/phase12-trust-layer/PROOF_VERIFIER_CRATE_ARCHITECTURE.md`
 4. `docs/specs/phase12-trust-layer/PROOF_VERIFIER_SEMANTIC_CLI_ROADMAP.md`
 5. `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
-6. `docs/specs/phase12-trust-layer/VERIFICATION_CONTEXT_PORTABILITY_AND_DISTRIBUTION_PROTOCOL.md`
-7. `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
-8. `docs/specs/phase12-trust-layer/CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`
-9. `docs/specs/phase12-trust-layer/PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
-10. `docs/specs/phase12-trust-layer/PROOFD_SERVICE_CLOSURE_PLAN.md`
-11. `docs/specs/phase12-trust-layer/PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`
-12. `docs/specs/phase12-trust-layer/PHASE12_CLOSURE_ORDER.md`
-13. `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md`
-14. `docs/specs/phase12-trust-layer/AYKENOS_ARCHITECTURE_ONE_PAGE.md`
-15. `docs/specs/phase12-trust-layer/AYKENOS_GLOBAL_ARCHITECTURE_DIAGRAM.md`
-16. `docs/specs/phase12-trust-layer/AYKENOS_TECHNICAL_DEFINITION_SET.md`
-17. `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_POSITIONING_TABLE.md`
+6. `docs/specs/phase12-trust-layer/PARITY_LAYER_ARCHITECTURE.md`
+7. `docs/specs/phase12-trust-layer/CROSS_NODE_PARITY_HARDENING_CHECKLIST.md`
+8. `docs/specs/phase12-trust-layer/PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
+9. `docs/specs/phase12-trust-layer/PROOFD_OBSERVABILITY_BOUNDARY_GATE.md`
+10. `docs/specs/phase12-trust-layer/GRAPH_NON_AUTHORITATIVE_CONTRACT_GATE.md`
+11. `docs/specs/phase12-trust-layer/CONVERGENCE_NON_ELECTION_BOUNDARY_GATE.md`
+12. `docs/specs/phase12-trust-layer/DIAGNOSTICS_CONSUMER_NON_AUTHORITATIVE_CONTRACT_GATE.md`
+13. `docs/specs/phase12-trust-layer/DIAGNOSTICS_CALLSITE_CORRELATION_GATE.md`
+14. `docs/specs/phase12-trust-layer/OBSERVABILITY_ROUTING_SEPARATION_GATE.md`
+15. `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
+16. `docs/specs/phase12-trust-layer/GATE_REGISTRY.md`
+17. `docs/specs/phase12-trust-layer/VERIFICATION_DETERMINISM_CONTRACT_GATE.md`
+18. `docs/specs/phase12-trust-layer/PROOFD_SERVICE_CLOSURE_PLAN.md`
+19. `docs/specs/phase12-trust-layer/PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`
+20. `docs/specs/phase12-trust-layer/PHASE12_CLOSURE_ORDER.md`
+21. `docs/operations/PHASE12_OFFICIAL_CLOSURE_EXECUTION.md`
+22. `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md`
+23. `docs/specs/phase12-trust-layer/PHASE13_NEGATIVE_TEST_SPEC.md`
+24. `docs/specs/phase12-trust-layer/PHASE13_KILL_SWITCH_GATES.md`
+25. `docs/specs/phase12-trust-layer/PHASE13_COLLAPSE_SCENARIOS.md`
+26. `docs/specs/phase12-trust-layer/VERIFICATION_DIVERSITY_LEDGER_SPEC.md`
+27. `docs/specs/phase12-trust-layer/VERIFICATION_DIVERSITY_LEDGER_PRODUCER_SPEC.md`
+28. `docs/specs/phase12-trust-layer/VERIFICATION_DIVERSITY_FLOOR_GATE.md`
+29. `docs/specs/phase12-trust-layer/VERIFIER_CARTEL_CORRELATION_GATE.md`
+30. `docs/specs/phase12-trust-layer/AUTHORITY_SINKHOLE_ABSORPTION_GATE.md`
+31. `docs/specs/phase12-trust-layer/VERIFIER_REPUTATION_PROHIBITION_GATE.md`
+32. `docs/specs/phase12-trust-layer/AYKENOS_ARCHITECTURE_ONE_PAGE.md`
+33. `docs/specs/phase12-trust-layer/AYKENOS_GLOBAL_ARCHITECTURE_DIAGRAM.md`
+34. `docs/specs/phase12-trust-layer/AYKENOS_TECHNICAL_DEFINITION_SET.md`
+35. `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_POSITIONING_TABLE.md`
 
 ### Verification Core
-18. `docs/specs/phase12-trust-layer/VERIFICATION_MODEL.md`
-19. `docs/specs/phase12-trust-layer/VERIFICATION_INVARIANTS.md`
-20. `docs/specs/phase12-trust-layer/VERIFICATION_FAILURE_MODEL.md`
-21. `docs/specs/phase12-trust-layer/VERIFICATION_OBSERVABILITY_MODEL.md`
-22. `docs/specs/phase12-trust-layer/VERIFICATION_RELATIONSHIP_GRAPH.md`
-23. `docs/specs/phase12-trust-layer/GLOBAL_VERIFICATION_GRAPH_MODEL.md`
-24. `docs/specs/phase12-trust-layer/ARTIFACT_SCHEMA.md`
-25. `docs/specs/phase12-trust-layer/VERIFIER_AUTHORITY_MODEL.md`
-26. `docs/specs/phase12-trust-layer/PARITY_GRAPH_MODEL.md`
-27. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_TOPOLOGY.md`
+23. `docs/specs/phase12-trust-layer/VERIFICATION_MODEL.md`
+24. `docs/specs/phase12-trust-layer/VERIFICATION_INVARIANTS.md`
+25. `docs/specs/phase12-trust-layer/VERIFICATION_FAILURE_MODEL.md`
+26. `docs/specs/phase12-trust-layer/VERIFICATION_OBSERVABILITY_MODEL.md`
+27. `docs/specs/phase12-trust-layer/VERIFICATION_RELATIONSHIP_GRAPH.md`
+28. `docs/specs/phase12-trust-layer/GLOBAL_VERIFICATION_GRAPH_MODEL.md`
+29. `docs/specs/phase12-trust-layer/ARTIFACT_SCHEMA.md`
+30. `docs/specs/phase12-trust-layer/VERIFIER_AUTHORITY_MODEL.md`
+31. `docs/specs/phase12-trust-layer/PARITY_GRAPH_MODEL.md`
+32. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_TOPOLOGY.md`
 
 ### Theory and Formal Set
-28. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_THEORY.md`
-29. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS.md`
-30. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_FORMAL_MODEL.md`
-31. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_SECURITY_MODEL.md`
-32. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_VS_CAP_THEOREM.md`
-33. `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
-34. `docs/specs/phase12-trust-layer/N_NODE_CONVERGENCE_FORMAL_MODEL.md`
-35. `docs/specs/phase12-trust-layer/AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`
+33. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_THEORY.md`
+34. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS.md`
+35. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_FORMAL_MODEL.md`
+36. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_SECURITY_MODEL.md`
+37. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_VS_CAP_THEOREM.md`
+38. `docs/specs/phase12-trust-layer/PARITY_LAYER_FORMAL_MODEL.md`
+39. `docs/specs/phase12-trust-layer/N_NODE_CONVERGENCE_FORMAL_MODEL.md`
+40. `docs/specs/phase12-trust-layer/AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`
 
 ### Research and Comparative Set
-36. `docs/specs/phase12-trust-layer/AYKENOS_RESEARCH_POSITIONING.md`
-37. `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_CATEGORY_NOTE.md`
-38. `docs/specs/phase12-trust-layer/AYKENOS_UNIQUE_ARCHITECTURAL_DECISIONS.md`
-39. `docs/specs/phase12-trust-layer/AYKENOS_VS_BLOCKCHAIN_ARCHITECTURAL_DIFFERENCE.md`
-40. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER_OUTLINE.md`
-41. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER.md`
+41. `docs/specs/phase12-trust-layer/AYKENOS_RESEARCH_POSITIONING.md`
+42. `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_CATEGORY_NOTE.md`
+43. `docs/specs/phase12-trust-layer/AYKENOS_UNIQUE_ARCHITECTURAL_DECISIONS.md`
+44. `docs/specs/phase12-trust-layer/AYKENOS_VS_BLOCKCHAIN_ARCHITECTURAL_DIFFERENCE.md`
+45. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER_OUTLINE.md`
+46. `docs/specs/phase12-trust-layer/DISTRIBUTED_VERIFICATION_SYSTEMS_PAPER.md`
 
 ## Historical / Superseded Snapshots
 Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrudan kullanilmamalidir:

@@ -13,21 +13,29 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY  
 **Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 10.03.2026
+**Son Güncelleme:** 13.03.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure`  
 **Evidence Git SHA:** `9cb2171b`  
 **Closure Sync / Remote CI:** `fe9031d7` (`ci-freeze#22797401328 = success`)<br>
 **CURRENT_PHASE:** `10` (`formal phase transition pending`)  
 **Freeze Zinciri:** `make ci-freeze` = 21 gate | `make ci-freeze-local` = 20 gate  
 **Acil Blocker:** `yok` (`official closure confirmed`)<br>
-**Yakın Hedef:** `official closure tag + Phase-12 parity/proofd distributed hardening`<br>
-**Durum Notu:** Local closure evidence remote `ci-freeze` run `22797401328` ile `fe9031d7` uzerinde dogrulandi; bunun ustunde worktree-local `Phase-12` verifier/CLI/receipt/audit/exchange ve node-derived parity diagnostics calismalari aktif. Parity hatti artik `distributed verification diagnostics` seviyesinde ele alinir; bu, `consensus` anlami tasimaz.
+**Yakın Hedef:** `official closure tag + remote Phase-12 closure confirmation + formal phase transition`<br>
+**Durum Notu:** Local closure evidence remote `ci-freeze` run `22797401328` ile `fe9031d7` uzerinde dogrulandi; bunun ustunde worktree-local `Phase-12` normatif gate seti `run-local-phase12c-closure-2026-03-11` ile yesil gecmistir. Bu durum local `closure-ready` seviyesidir; remote / official `Phase-12` closure claim'i ve `CURRENT_PHASE` gecisi halen ayri governance adimidir. Parity hatti `distributed verification diagnostics` seviyesinde ele alinir; bu, `consensus` anlami tasimaz.
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official closure confirmed) ✅ | Phase 11 verification substrate CLOSED (official closure confirmed) ✅ | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅<br>
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official closure confirmed) ✅ | Phase 11 verification substrate CLOSED (official closure confirmed) ✅ | Phase 12 local closure-ready gate set GREEN ✅ | Architecture Freeze ACTIVE ✅<br>
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`<br>
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅ | trust/distributed semantics Phase-12 scope'u
-**Phase 12 Status:** local `P12-01..P12-13 = COMPLETED_LOCAL` ✅ | `P12-14` parity diagnostics `IN_PROGRESS` ✅ | full `Phase-12` closure henuz acik (`P12-15..P12-18` ve normatif `Phase-12C` gate seti beklemede)
+**Phase 12 Status:** local `P12-01..P12-18 = COMPLETED_LOCAL` ✅ | normatif `Phase-12C` gate seti `run-local-phase12c-closure-2026-03-11` ile GREEN ✅ | remote / official closure ve `CURRENT_PHASE` gecisi henuz beklemede
+**Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_ARCHITECTURE_ONE_PAGE.md` Phase-12 / Phase-13 sinirinda tek sayfalik mimari ozeti sunar.
+**Global Architecture Diagram:** `docs/specs/phase12-trust-layer/AYKENOS_GLOBAL_ARCHITECTURE_DIAGRAM.md` katmanli sistem akisini, `proofd` service boundary'sini ve federation sinirini tek diyagramda toplar.
+**Technical Definition Set:** `docs/specs/phase12-trust-layer/AYKENOS_TECHNICAL_DEFINITION_SET.md` AykenOS icin 1 cumlelik, 3 cumlelik ve canonical paragraf tanimlarini sabitler.
+**System Positioning Table:** `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_POSITIONING_TABLE.md` AykenOS'u blockchain, TUF, Sigstore, `in-toto` ve reproducible-builds siniflariyla mimari eksenlerde konumlandirir.
+**Verification Observability Model:** `docs/specs/phase12-trust-layer/VERIFICATION_OBSERVABILITY_MODEL.md` derived diagnostics katmanini, incident / convergence / authority graph yuzeyleriyle birlikte sabitler.
+**Global Verification Graph Model:** `docs/specs/phase12-trust-layer/GLOBAL_VERIFICATION_GRAPH_MODEL.md` node topology, truth surface, relationship graph ve overlay katmanlarini tek global modelde birlestirir.
+**System Category Note:** `docs/specs/phase12-trust-layer/AYKENOS_SYSTEM_CATEGORY_NOTE.md` canonical kategori dilini `Distributed Verification Systems` cizgisinde sabitler.
+**Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus. In this model, artifacts are the canonical truth interface, services wrap canonical artifacts, and distributed verification scales through evidence-first observability rather than truth election or replicated-state consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); baseline-init akışında ve yerel denemelerde **PROVISIONAL** yol kullanılabilir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md).
 
@@ -708,9 +716,12 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 
 ---
 
-**Son Güncelleme:** 7 Mart 2026 - Phase-10/Phase-11 official closure truth remote `ci-freeze` run `22797401328` ile senkronize edildi.
+**Son Güncelleme:** 13 Mart 2026 - Phase-12 local closure-ready truth, architecture corpus ve Phase-13 observability roadmap senkronize edildi.
 
 **Güncel Raporlar:**
+- **📘 Proje Status Surface:** `docs/development/PROJECT_STATUS_REPORT.md` (Phase-10/11 official closure + Phase-12 local closure-ready + Phase-13 prep)
+- **🧭 Roadmap Status Surface:** `docs/roadmap/overview.md` (roadmap kararlari, risk konsantrasyonu, sonraki yol)
+- **🗂️ Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md` (current truth surface ve reference set)
 - **📊 Kapsamlı Durum Raporu:** `AYKENOS_SON_DURUM_RAPORU_2026_03_07.md` (current truth, official closure confirmed)
 - **⚡ Rapor Özeti:** `RAPOR_OZETI_2026_03_07.md` (hızlı bakış, closure seviyesi, sonraki adımlar)
 - **📋 Closure Özeti:** `reports/phase10_phase11_closure_2026-03-07.md`
@@ -724,8 +735,10 @@ AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kulla
 - `CURRENT_PHASE`: `10` (`formal phase transition pending`)
 - `make ci-freeze`: 21 gate
 - `Acil blocker`: `yok` (`official closure confirmed`)
-- `Yakın hedef`: `official closure tag` + Phase-12 distributed transport hardening
-- `Durum notu`: Runtime freeze PASS, bootstrap proof chain PASS, remote `ci-freeze` confirmation tamamlandi
+- `Phase-12`: `LOCAL_CLOSURE_READY` (local `Phase-12C` gate set green)
+- `Phase-13 hazirligi`: observability architecture corpus + GitHub milestone aktif
+- `Yakın hedef`: `official closure tag` + remote / official `Phase-12` confirmation + formal phase transition
+- `Durum notu`: Runtime freeze PASS, bootstrap proof chain PASS, local `Phase-12C` PASS ve Phase-13 observability roadmap hazir
 
 **Güncelleyen:** Codex
 

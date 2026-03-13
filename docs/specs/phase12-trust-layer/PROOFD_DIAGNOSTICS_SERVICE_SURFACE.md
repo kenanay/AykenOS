@@ -5,7 +5,7 @@
 **Date:** 2026-03-11
 **Phase:** Kernel Phase 12 / Phase-13 preparation
 **Type:** Non-normative architecture/service boundary note
-**Related Spec:** `PARITY_LAYER_ARCHITECTURE.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `PROOFD_SERVICE_CLOSURE_PLAN.md`, `PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `tasks.md`
+**Related Spec:** `PARITY_LAYER_ARCHITECTURE.md`, `PARITY_LAYER_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `PROOFD_SERVICE_CLOSURE_PLAN.md`, `PROOFD_SERVICE_FINAL_HARDENING_CHECKLIST.md`, `PROOF_VERIFIER_CRATE_ARCHITECTURE.md`, `PHASE13_NEGATIVE_TEST_SPEC.md`, `tasks.md`
 
 ---
 
@@ -21,6 +21,7 @@ Current local status:
 
 - a minimal `userspace/proofd/` skeleton may serve diagnostics artifacts read-only
 - a local `ci-gate-proofd-service` execution slice may validate root and run-scoped diagnostics passthrough without changing parity semantics
+- a local `ci-gate-proofd-observability-boundary` execution slice may validate that `/diagnostics/*` remains read-only, query-safe, and non-authoritative
 - a local `POST /verify/bundle` execution family may delegate to verifier-core with explicit `bundle_path`, `policy_path`, `registry_path`, `receipt_mode`, `receipt_signer`, and `run_id` binding while keeping diagnostics endpoints read-only
 - run-level diagnostics discovery, run summary, and run-scoped parity / incidents / drift / convergence / graph / authority endpoints may expose multi-run observability without changing parity semantics
 - local `P12-16` closure-ready evidence now proves repeated signed-receipt determinism, request-bound timestamp preservation, run-manifest stability, and diagnostics purity in `run-local-phase12c-closure-2026-03-11`
@@ -107,6 +108,8 @@ The service exposes canonical diagnostics objects:
 - projection
 
 over canonical artifact data.
+
+`proofd` MUST NOT convert those aggregations into verifier reputation, correctness, reliability, or weighted-authority metrics.
 
 ---
 
@@ -319,6 +322,10 @@ The `proofd` diagnostics surface MUST NOT:
 - enforce policy decisions
 - rewrite parity artifacts
 - redefine canonical verification objects
+- compute verifier reputation
+- expose historical correctness scores
+- rank nodes by trust or reliability
+- emit actionable control signals such as `recommended_action`, `routing_hint`, or `execution_override`
 
 If a service performs these functions, it is no longer `proofd`.
 
@@ -377,3 +384,7 @@ The repository architecture rule remains:
 `proofd != authority surface`
 
 `proofd` must preserve this boundary.
+
+The negative-test contract for preserving this boundary is defined in:
+
+- `PHASE13_NEGATIVE_TEST_SPEC.md`

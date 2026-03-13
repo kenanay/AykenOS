@@ -5,7 +5,7 @@
 **Date:** 2026-03-13
 **Phase:** Phase-12 / Phase-13 boundary
 **Type:** Non-normative observability model note
-**Related Spec:** `VERIFICATION_MODEL.md`, `VERIFICATION_FAILURE_MODEL.md`, `VERIFICATION_RELATIONSHIP_GRAPH.md`, `GLOBAL_VERIFICATION_GRAPH_MODEL.md`, `PARITY_GRAPH_MODEL.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `DISTRIBUTED_VERIFICATION_THEORY.md`, `PHASE13_ARCHITECTURE_MAP.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
+**Related Spec:** `VERIFICATION_MODEL.md`, `VERIFICATION_FAILURE_MODEL.md`, `VERIFICATION_RELATIONSHIP_GRAPH.md`, `GLOBAL_VERIFICATION_GRAPH_MODEL.md`, `PARITY_GRAPH_MODEL.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `DISTRIBUTED_VERIFICATION_THEORY.md`, `PHASE13_ARCHITECTURE_MAP.md`, `VERIFICATION_DIVERSITY_LEDGER_SPEC.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
 
 ---
 
@@ -111,6 +111,14 @@ It is a structured derived model over verification outputs.
 The strict interpretation is:
 
 `observability is a projection over verification outputs, not an extension of the verification function`
+
+For multi-run concentration analysis, the observability family may additionally derive:
+
+- `Verification Diversity Ledger (VDL)`
+
+The `VDL` remains a behavioral observability artifact only.
+
+It MUST NOT create trust ranking, routing hints, or authority selection.
 
 ---
 

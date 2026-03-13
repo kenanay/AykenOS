@@ -5,7 +5,7 @@
 **Date:** 2026-03-13
 **Phase:** Phase-12 / Phase-13 boundary
 **Type:** Non-normative global graph artifact
-**Related Spec:** `VERIFICATION_RELATIONSHIP_GRAPH.md`, `VERIFICATION_OBSERVABILITY_MODEL.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `PHASE13_ARCHITECTURE_MAP.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
+**Related Spec:** `VERIFICATION_RELATIONSHIP_GRAPH.md`, `VERIFICATION_OBSERVABILITY_MODEL.md`, `DISTRIBUTED_VERIFICATION_TOPOLOGY.md`, `AUTHORITY_TOPOLOGY_FORMAL_MODEL.md`, `N_NODE_CONVERGENCE_FORMAL_MODEL.md`, `PHASE13_ARCHITECTURE_MAP.md`, `VERIFICATION_DIVERSITY_LEDGER_SPEC.md`, `PROOFD_DIAGNOSTICS_SERVICE_SURFACE.md`
 
 ---
 
@@ -53,6 +53,12 @@ So it is not a replacement for:
 - the node topology model
 
 It is the global projection that binds them together.
+
+Behavior across multiple runs may additionally be projected through the Verification Diversity Ledger (`VDL`).
+
+That ledger remains a derived observability companion.
+
+It MUST NOT promote graph structure into authority or scheduling output.
 
 ---
 

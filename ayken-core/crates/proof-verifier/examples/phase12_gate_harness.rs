@@ -1,3 +1,5 @@
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use ed25519_dalek::SigningKey;
 use proof_verifier::audit::schema::compute_receipt_hash;
 use proof_verifier::audit::verify::{
     verify_audit_event_against_receipt, verify_audit_event_against_receipt_with_authority,
@@ -6,14 +8,9 @@ use proof_verifier::audit::verify::{
 use proof_verifier::authority::authority_drift_topology::{
     analyze_authority_drift_suppressions, build_authority_drift_topology,
 };
-use proof_verifier::authority::incident_graph::build_incident_graph;
-use proof_verifier::bundle::checksums::load_checksums;
-use proof_verifier::bundle::layout::validate_bundle_layout;
-use proof_verifier::bundle::loader::load_bundle;
-use proof_verifier::bundle::manifest::load_manifest;
-use proof_verifier::canonical::jcs::{canonicalize_json, canonicalize_json_value};
 use proof_verifier::authority::determinism_incident::analyze_determinism_incidents;
 use proof_verifier::authority::drift_attribution::analyze_parity_drift;
+use proof_verifier::authority::incident_graph::build_incident_graph;
 use proof_verifier::authority::parity::{
     build_node_parity_outcome, compare_authority_resolution, compare_cross_node_parity,
     CrossNodeParityInput, CrossNodeParityRecord, CrossNodeParityStatus, NodeParityOutcome,
@@ -21,7 +18,12 @@ use proof_verifier::authority::parity::{
 };
 use proof_verifier::authority::resolution::resolve_verifier_authority;
 use proof_verifier::authority::snapshot::compute_verifier_trust_registry_snapshot_hash;
-use proof_verifier::crypto::verify_detached_signatures;
+use proof_verifier::bundle::checksums::load_checksums;
+use proof_verifier::bundle::layout::validate_bundle_layout;
+use proof_verifier::bundle::loader::load_bundle;
+use proof_verifier::bundle::manifest::load_manifest;
+use proof_verifier::canonical::jcs::{canonicalize_json, canonicalize_json_value};
+use proof_verifier::crypto::{sign_ed25519_bytes, verify_detached_signatures};
 use proof_verifier::overlay::overlay_validator::verify_overlay;
 use proof_verifier::policy::policy_engine::compute_policy_hash;
 use proof_verifier::policy::schema::validate_policy;
@@ -37,14 +39,14 @@ use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
 use proof_verifier::testing::fixtures::{create_fixture_bundle, FixtureBundle};
 use proof_verifier::types::{
     AuditMode, ChecksumsFile, FindingSeverity, KeyStatus, LoadedBundle, Manifest, OverlayState,
-    ProducerDeclaration, ReceiptMode, RegistryEntry, RegistryResolution, RegistrySnapshot,
-    SignatureEnvelope, SignatureRequirement, TrustPolicy, VerificationFinding,
-    VerificationVerdict, VerifierAuthorityNode,
-    VerifierAuthorityResolution, VerifierAuthorityResolutionClass, VerifierAuthorityState,
-    VerifierDelegationEdge, VerifierTrustRegistryPublicKey, VerifierTrustRegistrySnapshot,
-    VerifyRequest, VerificationOutcome,
+    ProducerDeclaration, ReceiptMode, RegistryEntry, RegistryPublicKey, RegistryResolution,
+    RegistrySnapshot, SignatureEnvelope, SignatureRequirement, TrustPolicy, VerificationFinding,
+    VerificationOutcome, VerificationVerdict, VerifierAuthorityNode, VerifierAuthorityResolution,
+    VerifierAuthorityResolutionClass, VerifierAuthorityState, VerifierDelegationEdge,
+    VerifierTrustRegistryPublicKey, VerifierTrustRegistrySnapshot, VerifyRequest,
 };
 use proof_verifier::verify_bundle;
+use proof_verifier::DetachedSignature;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -71,6 +73,9 @@ enum GateMode {
     ProofExchange,
     AuthorityResolution,
     CrossNodeParity,
+    MultisigQuorum,
+    ReplayAdmissionBoundary,
+    ReplicatedVerificationBoundary,
 }
 
 struct HarnessArgs {
@@ -111,15 +116,17 @@ fn run() -> Result<i32, String> {
         GateMode::VerifierCore => Ok(run_verifier_core_gate(&out_dir)),
         GateMode::TrustPolicy => Ok(run_trust_policy_gate(&out_dir)),
         GateMode::VerdictBinding => Ok(run_verdict_binding_gate(&out_dir)),
-        GateMode::VerifierCli => Ok(run_verifier_cli_gate(
-            &out_dir,
-            args.cli_bin.as_deref(),
-        )),
+        GateMode::VerifierCli => Ok(run_verifier_cli_gate(&out_dir, args.cli_bin.as_deref())),
         GateMode::Receipt => Ok(run_receipt_gate(&out_dir)),
         GateMode::AuditLedger => Ok(run_audit_ledger_gate(&out_dir)),
         GateMode::ProofExchange => Ok(run_proof_exchange_gate(&out_dir)),
         GateMode::AuthorityResolution => Ok(run_authority_resolution_gate(&out_dir)),
         GateMode::CrossNodeParity => Ok(run_cross_node_parity_gate(&out_dir)),
+        GateMode::MultisigQuorum => Ok(run_multisig_quorum_gate(&out_dir)),
+        GateMode::ReplayAdmissionBoundary => Ok(run_replay_admission_boundary_gate(&out_dir)),
+        GateMode::ReplicatedVerificationBoundary => {
+            Ok(run_replicated_verification_boundary_gate(&out_dir))
+        }
     }
 }
 
@@ -142,10 +149,13 @@ fn parse_args() -> Result<HarnessArgs, String> {
         Some("proof-exchange") => GateMode::ProofExchange,
         Some("authority-resolution") => GateMode::AuthorityResolution,
         Some("cross-node-parity") => GateMode::CrossNodeParity,
+        Some("multisig-quorum") => GateMode::MultisigQuorum,
+        Some("replay-admission-boundary") => GateMode::ReplayAdmissionBoundary,
+        Some("replicated-verification-boundary") => GateMode::ReplicatedVerificationBoundary,
         Some(other) => return Err(format!("unknown mode: {other}")),
         None => {
             return Err(
-                "missing mode (expected producer-schema, signature-envelope, bundle-v2-schema, bundle-v2-compat, signature-verify, registry-resolution, key-rotation, verifier-core, trust-policy, verdict-binding, verifier-cli, receipt, audit-ledger, proof-exchange, authority-resolution, or cross-node-parity)".to_string(),
+                "missing mode (expected producer-schema, signature-envelope, bundle-v2-schema, bundle-v2-compat, signature-verify, registry-resolution, key-rotation, verifier-core, trust-policy, verdict-binding, verifier-cli, receipt, audit-ledger, proof-exchange, authority-resolution, cross-node-parity, multisig-quorum, replay-admission-boundary, or replicated-verification-boundary)".to_string(),
             )
         }
     };
@@ -186,7 +196,10 @@ fn run_producer_schema_gate(out_dir: &Path) -> i32 {
                 out_dir,
                 "proof-producer-schema",
                 "phase12_producer_schema_gate",
-                &["producer_schema_report.json", "producer_identity_examples.json"],
+                &[
+                    "producer_schema_report.json",
+                    "producer_identity_examples.json",
+                ],
                 &error,
             );
             2
@@ -202,7 +215,10 @@ fn run_signature_envelope_gate(out_dir: &Path) -> i32 {
                 out_dir,
                 "proof-signature-envelope",
                 "phase12_signature_envelope_gate",
-                &["signature_envelope_report.json", "identity_stability_report.json"],
+                &[
+                    "signature_envelope_report.json",
+                    "identity_stability_report.json",
+                ],
                 &error,
             );
             2
@@ -391,6 +407,36 @@ fn run_cross_node_parity_gate(out_dir: &Path) -> i32 {
     }
 }
 
+fn run_multisig_quorum_gate(out_dir: &Path) -> i32 {
+    match build_multisig_quorum_gate_artifacts(out_dir) {
+        Ok(code) => code,
+        Err(error) => {
+            write_multisig_quorum_failure_artifacts(out_dir, &error);
+            2
+        }
+    }
+}
+
+fn run_replay_admission_boundary_gate(out_dir: &Path) -> i32 {
+    match build_replay_admission_boundary_gate_artifacts(out_dir) {
+        Ok(code) => code,
+        Err(error) => {
+            write_replay_admission_boundary_failure_artifacts(out_dir, &error);
+            2
+        }
+    }
+}
+
+fn run_replicated_verification_boundary_gate(out_dir: &Path) -> i32 {
+    match build_replicated_verification_boundary_gate_artifacts(out_dir) {
+        Ok(code) => code,
+        Err(error) => {
+            write_replicated_verification_boundary_failure_artifacts(out_dir, &error);
+            2
+        }
+    }
+}
+
 struct Phase12AContext {
     fixture: FixtureBundle,
     bundle: LoadedBundle,
@@ -488,8 +534,10 @@ fn build_producer_schema_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
             .map_err(|error| format!("producer canonicalization failed: {error}"))?,
     );
 
-    let bundle_id_after_rotation = recompute_bundle_id(&ctx.manifest, &ctx.checksums)
-        .map_err(|error| format!("bundle_id recomputation after producer rotation failed: {error}"))?;
+    let bundle_id_after_rotation =
+        recompute_bundle_id(&ctx.manifest, &ctx.checksums).map_err(|error| {
+            format!("bundle_id recomputation after producer rotation failed: {error}")
+        })?;
     let bundle_id_stable_under_producer_rotation = ctx.bundle_id == bundle_id_after_rotation;
     if !bundle_id_stable_under_producer_rotation {
         violations.push("producer_rotation_mutated_bundle_id".to_string());
@@ -558,14 +606,15 @@ fn build_signature_envelope_gate_artifacts(out_dir: &Path) -> Result<i32, String
     }
 
     let mut augmented_envelope = envelope.clone();
-    let duplicate_signature = envelope
-        .signatures
-        .first()
-        .cloned()
-        .ok_or_else(|| "signature envelope fixture is missing a baseline signature".to_string())?;
+    let duplicate_signature =
+        envelope.signatures.first().cloned().ok_or_else(|| {
+            "signature envelope fixture is missing a baseline signature".to_string()
+        })?;
     augmented_envelope.signatures.push(duplicate_signature);
-    let bundle_id_after_mutation = recompute_bundle_id(&ctx.manifest, &ctx.checksums)
-        .map_err(|error| format!("bundle_id recomputation after envelope mutation failed: {error}"))?;
+    let bundle_id_after_mutation =
+        recompute_bundle_id(&ctx.manifest, &ctx.checksums).map_err(|error| {
+            format!("bundle_id recomputation after envelope mutation failed: {error}")
+        })?;
     let bundle_id_stable_under_envelope_mutation = ctx.bundle_id == bundle_id_after_mutation;
     if !bundle_id_stable_under_envelope_mutation {
         violations.push("signature_envelope_mutated_bundle_id".to_string());
@@ -681,7 +730,10 @@ fn build_bundle_v2_schema_gate_artifacts(out_dir: &Path) -> Result<i32, String> 
         "proof_chain_findings": findings_to_json(&ctx.proof_chain_findings),
         "verification_findings": findings_to_json(&outcome.findings),
     });
-    write_json(out_dir.join("bundle_schema_report.json"), &bundle_schema_report)?;
+    write_json(
+        out_dir.join("bundle_schema_report.json"),
+        &bundle_schema_report,
+    )?;
 
     let report = json!({
         "gate": "proof-bundle-v2-schema",
@@ -704,9 +756,9 @@ fn build_bundle_v2_compat_gate_artifacts(out_dir: &Path) -> Result<i32, String> 
     let ctx = build_phase12a_context()?;
     let mut violations = Vec::new();
     let required_files = &ctx.manifest.required_files;
-    let overlay_is_external = !required_files
-        .iter()
-        .any(|path| path == "producer/producer.json" || path == "signatures/signature-envelope.json");
+    let overlay_is_external = !required_files.iter().any(|path| {
+        path == "producer/producer.json" || path == "signatures/signature-envelope.json"
+    });
     if !overlay_is_external {
         violations.push("overlay_paths_leaked_into_portable_required_files".to_string());
     }
@@ -749,7 +801,10 @@ fn build_bundle_v2_compat_gate_artifacts(out_dir: &Path) -> Result<i32, String> 
         "required_file_count": required_files.len(),
         "required_files": required_files,
     });
-    write_json(out_dir.join("compatibility_report.json"), &compatibility_report)?;
+    write_json(
+        out_dir.join("compatibility_report.json"),
+        &compatibility_report,
+    )?;
 
     let report = json!({
         "gate": "proof-bundle-v2-compat",
@@ -854,8 +909,16 @@ fn build_registry_resolution_gate_artifacts(out_dir: &Path) -> Result<i32, Strin
         &ctx.producer,
         &ctx.signature_envelope,
     )?;
-    let matrix = vec![baseline_row, ambiguous_row, unknown_row, missing_material_row];
-    write_json(out_dir.join("registry_snapshot.json"), &ctx.fixture.registry)?;
+    let matrix = vec![
+        baseline_row,
+        ambiguous_row,
+        unknown_row,
+        missing_material_row,
+    ];
+    write_json(
+        out_dir.join("registry_snapshot.json"),
+        &ctx.fixture.registry,
+    )?;
     write_json(out_dir.join("registry_resolution_matrix.json"), &matrix)?;
 
     let mut violations = Vec::new();
@@ -1055,7 +1118,10 @@ fn build_verifier_core_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
         "invalid_case_count": invalid_case_count,
         "determinism_matrix_path": "determinism_matrix.json",
     });
-    write_json(out_dir.join("verifier_core_report.json"), &verifier_core_report)?;
+    write_json(
+        out_dir.join("verifier_core_report.json"),
+        &verifier_core_report,
+    )?;
 
     let mut violations = Vec::new();
     for row in &matrix {
@@ -1171,8 +1237,9 @@ fn build_trust_policy_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
         &fixture.registry,
     )?;
 
-    let rejected_policy_hash = compute_policy_hash(&rejected_policy)
-        .map_err(|error| format!("trust policy rejected-policy hash computation failed: {error}"))?;
+    let rejected_policy_hash = compute_policy_hash(&rejected_policy).map_err(|error| {
+        format!("trust policy rejected-policy hash computation failed: {error}")
+    })?;
     let policy_hash_changes_under_mutation = baseline_hash != rejected_policy_hash;
     let verdict_rows = vec![trusted_row, rejected_row, untrusted_row, invalid_quorum_row];
 
@@ -1209,7 +1276,10 @@ fn build_trust_policy_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
             "quorum_policy_ref": has_explicit_quorum_policy,
         },
     });
-    write_json(out_dir.join("policy_schema_report.json"), &policy_schema_report)?;
+    write_json(
+        out_dir.join("policy_schema_report.json"),
+        &policy_schema_report,
+    )?;
 
     let policy_hash_report = json!({
         "gate": "proof-trust-policy",
@@ -1340,7 +1410,10 @@ fn build_verdict_binding_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
         "receipt_verifier_node_id": receipt.payload.verifier_node_id,
         "receipt_verifier_key_id": receipt.payload.verifier_key_id,
     });
-    write_json(out_dir.join("verdict_binding_report.json"), &verdict_binding_report)?;
+    write_json(
+        out_dir.join("verdict_binding_report.json"),
+        &verdict_binding_report,
+    )?;
 
     let verdict_subject_examples = json!({
         "full_verdict_subject": {
@@ -1370,7 +1443,10 @@ fn build_verdict_binding_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
             "registry_snapshot_hash": receipt.payload.registry_snapshot_hash,
         }
     });
-    write_json(out_dir.join("verdict_subject_examples.json"), &verdict_subject_examples)?;
+    write_json(
+        out_dir.join("verdict_subject_examples.json"),
+        &verdict_subject_examples,
+    )?;
 
     let mut violations = error_violations(&outcome_a.findings);
     violations.extend(error_violations(&outcome_b.findings));
@@ -1431,8 +1507,10 @@ fn build_verifier_cli_gate_artifacts(out_dir: &Path, cli_bin: &Path) -> Result<i
         run_core_verification(&fixture.root, &fixture.policy, &fixture.registry)?;
     let expected_verdict = verdict_label(&expected_outcome.verdict);
 
-    let human_run = run_cli_verify_bundle(cli_bin, &fixture.root, &policy_path, &registry_path, false)?;
-    let json_run = run_cli_verify_bundle(cli_bin, &fixture.root, &policy_path, &registry_path, true)?;
+    let human_run =
+        run_cli_verify_bundle(cli_bin, &fixture.root, &policy_path, &registry_path, false)?;
+    let json_run =
+        run_cli_verify_bundle(cli_bin, &fixture.root, &policy_path, &registry_path, true)?;
 
     fs::write(out_dir.join("cli_human_stdout.txt"), &human_run.stdout).map_err(|error| {
         format!(
@@ -1453,9 +1531,8 @@ fn build_verifier_cli_gate_artifacts(out_dir: &Path, cli_bin: &Path) -> Result<i
         )
     })?;
 
-    let cli_json_output: Value = serde_json::from_str(&json_run.stdout).map_err(|error| {
-        format!("CLI JSON output contract parse failed: {error}")
-    })?;
+    let cli_json_output: Value = serde_json::from_str(&json_run.stdout)
+        .map_err(|error| format!("CLI JSON output contract parse failed: {error}"))?;
     write_json(out_dir.join("cli_json_output.json"), &cli_json_output)?;
 
     let human_contains_verdict = human_run
@@ -1545,7 +1622,10 @@ fn build_verifier_cli_gate_artifacts(out_dir: &Path, cli_bin: &Path) -> Result<i
             "registry_snapshot_hash": json_registry_snapshot_hash == Some(expected_outcome.subject.registry_snapshot_hash.as_str()),
         },
     });
-    write_json(out_dir.join("cli_output_contract.json"), &cli_output_contract)?;
+    write_json(
+        out_dir.join("cli_output_contract.json"),
+        &cli_output_contract,
+    )?;
 
     let mut violations = Vec::new();
     if human_run.exit_code != 0 {
@@ -1686,8 +1766,7 @@ fn build_proof_exchange_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
         Value::String(format!("sha256:{}", "f".repeat(64)));
 
     let mut overlay_hash_mutation = baseline_package.clone();
-    overlay_hash_mutation["trust_overlay"]["trust_overlay_hash"] =
-        Value::String("f".repeat(64));
+    overlay_hash_mutation["trust_overlay"]["trust_overlay_hash"] = Value::String("f".repeat(64));
 
     let mut context_id_mutation = baseline_package.clone();
     context_id_mutation["verification_context"]["verification_context_id"] =
@@ -2227,7 +2306,9 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         &fixture.authority_requested_verifier_id,
         &scope_drift_requested_scope,
     )
-    .map_err(|error| format!("cross-node parity node-scope authority resolution failed: {error}"))?;
+    .map_err(|error| {
+        format!("cross-node parity node-scope authority resolution failed: {error}")
+    })?;
     let receipt_absent_resolution = resolve_verifier_authority(
         &fixture.verifier_registry,
         &fixture.authority_requested_verifier_id,
@@ -2259,9 +2340,7 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
             "phase12-context-v2",
             &build_cross_node_parity_context_rules_object(),
         )
-        .map_err(|error| {
-            format!("cross-node parity contract-version identity failed: {error}")
-        })?;
+        .map_err(|error| format!("cross-node parity contract-version identity failed: {error}"))?;
 
     let match_row = compare_cross_node_parity(
         CrossNodeParityInput {
@@ -2433,10 +2512,7 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         CrossNodeParityStatus::ParityVerdictMismatch,
     );
     if let Value::Object(map) = &mut verdict_mismatch_scenario {
-        map.insert(
-            "determinism_guard".to_string(),
-            Value::Bool(true),
-        );
+        map.insert("determinism_guard".to_string(), Value::Bool(true));
         map.insert(
             "guard_surface".to_string(),
             Value::String("same_sca_different_v".to_string()),
@@ -2554,10 +2630,7 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
             .get("scenario")
             .and_then(Value::as_str)
             .ok_or_else(|| "cross-node parity scenario row missing scenario".to_string())?;
-        write_json(
-            scenario_reports_dir.join(format!("{scenario}.json")),
-            row,
-        )?;
+        write_json(scenario_reports_dir.join(format!("{scenario}.json")), row)?;
     }
     write_json(out_dir.join("failure_matrix.json"), &failure_matrix)?;
 
@@ -2882,7 +2955,10 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "status": "PASS",
         "graph": build_incident_graph(&node_parity_outcomes, &determinism_incident_report),
     });
-    write_json(out_dir.join("parity_incident_graph.json"), &parity_incident_graph)?;
+    write_json(
+        out_dir.join("parity_incident_graph.json"),
+        &parity_incident_graph,
+    )?;
     let parity_authority_drift_topology = json!({
         "gate": "cross-node-parity",
         "mode": "phase12_cross_node_parity_authority_drift_topology",
@@ -2982,7 +3058,8 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
             parity_status_label(&historical_only_row.parity_status)
         ));
     }
-    if insufficient_evidence_row.parity_status != CrossNodeParityStatus::ParityInsufficientEvidence {
+    if insufficient_evidence_row.parity_status != CrossNodeParityStatus::ParityInsufficientEvidence
+    {
         violations.push(format!(
             "unexpected_insufficient_evidence_status:{}",
             parity_status_label(&insufficient_evidence_row.parity_status)
@@ -3016,12 +3093,91 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         }
     }
 
+    let required_artifacts = [
+        "parity_report.json",
+        "parity_consistency_report.json",
+        "parity_determinism_report.json",
+        "parity_determinism_incidents.json",
+        "parity_drift_attribution_report.json",
+        "parity_convergence_report.json",
+        "parity_authority_drift_topology.json",
+        "parity_authority_suppression_report.json",
+        "parity_incident_graph.json",
+        "failure_matrix.json",
+    ];
+    let required_scenarios = [
+        "p14-01-baseline-identical-nodes",
+        "p14-05-overlay-hash-drift-same-bundle",
+        "p14-10-verification-context-id-drift",
+        "p14-12-verifier-contract-version-drift",
+        "p14-13-different-trusted-root-set",
+        "p14-15-authority-scope-drift",
+        "p14-16-historical-only-authority",
+        "p14-19-insufficient-evidence",
+        "p14-18-verdict-mismatch-guard",
+        "p14-20-receipt-absent-parity-artifact",
+    ];
+    let required_statuses = [
+        "PARITY_MATCH",
+        "PARITY_SUBJECT_MISMATCH",
+        "PARITY_CONTEXT_MISMATCH",
+        "PARITY_VERIFIER_MISMATCH",
+        "PARITY_VERDICT_MISMATCH",
+        "PARITY_HISTORICAL_ONLY",
+        "PARITY_INSUFFICIENT_EVIDENCE",
+    ];
+    let required_artifacts_present = required_artifacts
+        .iter()
+        .all(|artifact| out_dir.join(artifact).is_file());
+    let scenario_reports_present = required_scenarios.iter().all(|scenario| {
+        scenario_reports_dir
+            .join(format!("{scenario}.json"))
+            .is_file()
+    });
+    let emitted_statuses = failure_matrix
+        .iter()
+        .filter_map(|row| row.get("actual_status").and_then(Value::as_str))
+        .collect::<BTreeSet<_>>();
+    let status_coverage_complete = required_statuses
+        .iter()
+        .all(|status| emitted_statuses.contains(status));
+    let closure_audit_complete =
+        required_artifacts_present && scenario_reports_present && status_coverage_complete;
+    if !required_artifacts_present {
+        violations.push("parity_closure_audit_missing_artifacts".to_string());
+    }
+    if !scenario_reports_present {
+        violations.push("parity_closure_audit_missing_scenarios".to_string());
+    }
+    if !status_coverage_complete {
+        violations.push("parity_closure_audit_status_coverage_incomplete".to_string());
+    }
+
+    let parity_closure_audit_report = json!({
+        "gate": "cross-node-parity",
+        "mode": "phase12_cross_node_parity_closure_audit",
+        "status": status_label(closure_audit_complete),
+        "required_artifacts": required_artifacts,
+        "required_artifacts_present": required_artifacts_present,
+        "required_scenarios": required_scenarios,
+        "scenario_reports_present": scenario_reports_present,
+        "required_statuses": required_statuses,
+        "emitted_statuses": emitted_statuses.into_iter().collect::<Vec<_>>(),
+        "status_coverage_complete": status_coverage_complete,
+        "closure_audit_complete": closure_audit_complete,
+    });
+    write_json(
+        out_dir.join("parity_closure_audit_report.json"),
+        &parity_closure_audit_report,
+    )?;
+
     let report = json!({
         "gate": "cross-node-parity",
         "mode": "phase12_cross_node_parity_gate",
         "verdict": status_label(violations.is_empty()),
         "parity_report_path": "parity_report.json",
         "failure_matrix_path": "failure_matrix.json",
+        "closure_audit_report_path": "parity_closure_audit_report.json",
         "determinism_incidents_path": "parity_determinism_incidents.json",
         "drift_attribution_report_path": "parity_drift_attribution_report.json",
         "violations": violations,
@@ -3034,6 +3190,635 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
     } else {
         2
     })
+}
+
+fn build_multisig_quorum_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
+    let fixture = create_fixture_bundle();
+    let bundle = load_bundle(&fixture.root);
+    let manifest = load_manifest(&bundle.manifest_path)
+        .map_err(|error| format!("multisig quorum gate failed to load manifest: {error}"))?;
+    let producer: ProducerDeclaration = serde_json::from_slice(
+        &fs::read(&bundle.producer_path)
+            .map_err(|error| format!("failed to read producer declaration: {error}"))?,
+    )
+    .map_err(|error| format!("failed to parse producer declaration: {error}"))?;
+    let baseline_envelope: SignatureEnvelope = serde_json::from_slice(
+        &fs::read(&bundle.signature_envelope_path)
+            .map_err(|error| format!("failed to read signature envelope: {error}"))?,
+    )
+    .map_err(|error| format!("failed to parse signature envelope: {error}"))?;
+
+    let secondary_key_id = "ed25519-key-2026-03-b".to_string();
+    let secondary_private_key = multisig_secondary_private_key_material();
+    let secondary_public_key = multisig_secondary_public_key_material()?;
+    let two_signature_registry = registry_with_secondary_active_key(
+        &fixture.registry,
+        &producer.producer_id,
+        &secondary_key_id,
+        &secondary_public_key,
+    )?;
+    let revoked_secondary_registry = registry_with_revoked_secondary_key(
+        &two_signature_registry,
+        &producer.producer_id,
+        &secondary_key_id,
+    )?;
+    let two_signature_envelope = envelope_with_secondary_signature(
+        &baseline_envelope,
+        &manifest.bundle_id,
+        &producer.producer_id,
+        &secondary_key_id,
+        &secondary_private_key,
+    )?;
+    let duplicate_signature_envelope =
+        envelope_with_duplicate_primary_signature(&baseline_envelope)?;
+
+    let two_of_two_policy = TrustPolicy {
+        quorum_policy_ref: Some("policy://quorum/at-least-2-of-n".to_string()),
+        trusted_pubkey_ids: vec![
+            producer.producer_pubkey_id.clone(),
+            secondary_key_id.clone(),
+        ],
+        required_signatures: Some(SignatureRequirement {
+            kind: "at_least".to_string(),
+            count: 2,
+        }),
+        ..fixture.policy.clone()
+    };
+    let partial_trust_policy = TrustPolicy {
+        trusted_pubkey_ids: vec![producer.producer_pubkey_id.clone()],
+        ..two_of_two_policy.clone()
+    };
+    let invalid_quorum_policy = TrustPolicy {
+        required_signatures: Some(SignatureRequirement {
+            kind: "unsupported".to_string(),
+            count: 2,
+        }),
+        ..two_of_two_policy.clone()
+    };
+
+    let quorum_matrix = vec![
+        multisig_quorum_row(
+            "baseline_single_signature_quorum",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &baseline_envelope,
+            &fixture.policy,
+            &fixture.registry,
+            VerificationVerdict::Trusted,
+        )?,
+        multisig_quorum_row(
+            "two_of_two_distinct_keys_trusted",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &two_signature_envelope,
+            &two_of_two_policy,
+            &two_signature_registry,
+            VerificationVerdict::Trusted,
+        )?,
+        multisig_quorum_row(
+            "two_of_two_single_signature_rejected",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &baseline_envelope,
+            &two_of_two_policy,
+            &two_signature_registry,
+            VerificationVerdict::RejectedByPolicy,
+        )?,
+        multisig_quorum_row(
+            "two_of_two_partial_trust_set_rejected",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &two_signature_envelope,
+            &partial_trust_policy,
+            &two_signature_registry,
+            VerificationVerdict::RejectedByPolicy,
+        )?,
+        multisig_quorum_row(
+            "two_of_two_duplicate_key_entries_rejected",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &duplicate_signature_envelope,
+            &two_of_two_policy,
+            &fixture.registry,
+            VerificationVerdict::RejectedByPolicy,
+        )?,
+        multisig_quorum_row(
+            "two_of_two_revoked_secondary_key_invalid",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &two_signature_envelope,
+            &two_of_two_policy,
+            &revoked_secondary_registry,
+            VerificationVerdict::Invalid,
+        )?,
+        multisig_quorum_row(
+            "unsupported_quorum_kind_invalid",
+            &fixture.root,
+            &manifest.bundle_id,
+            &producer,
+            &two_signature_envelope,
+            &invalid_quorum_policy,
+            &two_signature_registry,
+            VerificationVerdict::Invalid,
+        )?,
+    ];
+    write_json(out_dir.join("quorum_matrix.json"), &quorum_matrix)?;
+
+    let mut violations = Vec::new();
+    for row in &quorum_matrix {
+        if row.get("pass").and_then(Value::as_bool) != Some(true) {
+            let scenario = row
+                .get("scenario")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown_scenario");
+            violations.push(format!("unexpected_quorum_verdict:{scenario}"));
+        }
+    }
+
+    let duplicate_row = quorum_matrix
+        .iter()
+        .find(|row| {
+            row.get("scenario").and_then(Value::as_str)
+                == Some("two_of_two_duplicate_key_entries_rejected")
+        })
+        .ok_or_else(|| "missing duplicate key quorum scenario".to_string())?;
+    if duplicate_row
+        .get("unique_trusted_key_count")
+        .and_then(Value::as_u64)
+        != Some(1)
+    {
+        violations.push("duplicate_key_entries_not_deduplicated".to_string());
+    }
+
+    let trusted_scenarios = count_actual_verdict(&quorum_matrix, "TRUSTED");
+    let rejected_scenarios = count_actual_verdict(&quorum_matrix, "REJECTED_BY_POLICY");
+    let invalid_scenarios = count_actual_verdict(&quorum_matrix, "INVALID");
+    let explicit_quorum_policy_active = quorum_matrix.iter().all(|row| {
+        row.get("quorum_policy_ref")
+            .and_then(Value::as_str)
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false)
+    });
+    if !explicit_quorum_policy_active {
+        violations.push("quorum_policy_ref_missing".to_string());
+    }
+
+    let quorum_evaluator_report = json!({
+        "gate": "proof-multisig-quorum",
+        "mode": "phase12_multisig_quorum_gate",
+        "status": status_label(violations.is_empty()),
+        "scenario_count": quorum_matrix.len(),
+        "trusted_scenarios": trusted_scenarios,
+        "rejected_scenarios": rejected_scenarios,
+        "invalid_scenarios": invalid_scenarios,
+        "explicit_quorum_policy_active": explicit_quorum_policy_active,
+        "distinct_key_quorum_enforced": true,
+        "duplicate_key_entries_fail_closed": duplicate_row
+            .get("actual_verdict")
+            .and_then(Value::as_str)
+            == Some("REJECTED_BY_POLICY"),
+        "quorum_matrix_path": "quorum_matrix.json",
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(
+        out_dir.join("quorum_evaluator_report.json"),
+        &quorum_evaluator_report,
+    )?;
+
+    let report = json!({
+        "gate": "proof-multisig-quorum",
+        "mode": "phase12_multisig_quorum_gate",
+        "verdict": status_label(violations.is_empty()),
+        "quorum_matrix_path": "quorum_matrix.json",
+        "quorum_evaluator_report_path": "quorum_evaluator_report.json",
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(out_dir.join("report.json"), &report)?;
+
+    Ok(if violations_from_report(&report).is_empty() {
+        0
+    } else {
+        2
+    })
+}
+
+fn build_replay_admission_boundary_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
+    let fixture = create_fixture_bundle();
+    let request = VerifyRequest {
+        bundle_path: &fixture.root,
+        policy: &fixture.policy,
+        registry_snapshot: &fixture.registry,
+        receipt_mode: ReceiptMode::EmitSigned,
+        receipt_signer: Some(&fixture.receipt_signer),
+        audit_mode: AuditMode::None,
+        audit_ledger_path: None,
+    };
+    let outcome = verify_bundle(&request)
+        .map_err(|error| format!("replay admission boundary verification failed: {error}"))?;
+    let bundle = load_bundle(&fixture.root);
+    let manifest = load_manifest(&bundle.manifest_path)
+        .map_err(|error| format!("replay admission boundary manifest load failed: {error}"))?;
+    let receipt = outcome
+        .receipt
+        .as_ref()
+        .ok_or_else(|| "replay admission boundary expected a signed receipt".to_string())?;
+    let receipt_json = serde_json::to_value(receipt)
+        .map_err(|error| format!("failed to serialize receipt: {error}"))?;
+    let subject_json = serde_json::to_value(&outcome.subject)
+        .map_err(|error| format!("failed to serialize verdict subject: {error}"))?;
+    let forbidden_fields = [
+        "replay_admitted",
+        "replay_admission",
+        "replay_contract_id",
+        "replay_ticket",
+        "execution_authorized",
+        "execution_admission",
+        "admission_contract_id",
+    ];
+    let subject_forbidden_fields = find_forbidden_keys(&subject_json, &forbidden_fields);
+    let receipt_forbidden_fields = find_forbidden_keys(&receipt_json, &forbidden_fields);
+    let replay_report_bound_in_proof_chain = manifest
+        .required_files
+        .iter()
+        .any(|path| path == "reports/replay_report.json");
+    let mut violations = Vec::new();
+
+    if outcome.verdict != VerificationVerdict::Trusted {
+        violations.push("trusted_proof_baseline_missing".to_string());
+    }
+    if !replay_report_bound_in_proof_chain {
+        violations.push("replay_report_binding_missing".to_string());
+    }
+    if !subject_forbidden_fields.is_empty() {
+        violations.push("verdict_subject_exposes_replay_admission".to_string());
+    }
+    if !receipt_forbidden_fields.is_empty() {
+        violations.push("receipt_exposes_replay_admission".to_string());
+    }
+
+    let boundary_contract = json!({
+        "gate": "proof-replay-admission-boundary",
+        "mode": "phase12_replay_admission_boundary_gate",
+        "status": status_label(violations.is_empty()),
+        "accepted_proof_requires_separate_replay_contract": true,
+        "replay_report_bound_in_proof_chain": replay_report_bound_in_proof_chain,
+        "proof_chain_replay_evidence_is_not_admission": replay_report_bound_in_proof_chain,
+        "verdict_subject_forbidden_fields_present": subject_forbidden_fields,
+        "receipt_forbidden_fields_present": receipt_forbidden_fields,
+        "forbidden_output_fields_checked": forbidden_fields,
+    });
+    write_json(out_dir.join("boundary_contract.json"), &boundary_contract)?;
+
+    let replay_admission_report = json!({
+        "gate": "proof-replay-admission-boundary",
+        "mode": "phase12_replay_admission_boundary_gate",
+        "status": status_label(violations.is_empty()),
+        "trusted_verdict": verdict_label(&outcome.verdict),
+        "receipt_emitted": outcome.receipt.is_some(),
+        "replay_admission_granted": false,
+        "separate_replay_contract_required": true,
+        "proof_chain_replay_evidence_present": replay_report_bound_in_proof_chain,
+        "verdict_subject_fields": json_key_list(&subject_json),
+        "receipt_fields": json_key_list(&receipt_json),
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(
+        out_dir.join("replay_admission_report.json"),
+        &replay_admission_report,
+    )?;
+
+    let report = json!({
+        "gate": "proof-replay-admission-boundary",
+        "mode": "phase12_replay_admission_boundary_gate",
+        "verdict": status_label(violations.is_empty()),
+        "replay_admission_report_path": "replay_admission_report.json",
+        "boundary_contract_path": "boundary_contract.json",
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(out_dir.join("report.json"), &report)?;
+
+    Ok(if violations_from_report(&report).is_empty() {
+        0
+    } else {
+        2
+    })
+}
+
+fn build_replicated_verification_boundary_gate_artifacts(out_dir: &Path) -> Result<i32, String> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve repo root: {error}"))?;
+    let phase13_map_path =
+        repo_root.join("docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md");
+    let proofd_lib_path = repo_root.join("userspace/proofd/src/lib.rs");
+    let phase13_map = fs::read_to_string(&phase13_map_path)
+        .map_err(|error| format!("failed to read {}: {error}", phase13_map_path.display()))?;
+    let proofd_lib = fs::read_to_string(&proofd_lib_path)
+        .map_err(|error| format!("failed to read {}: {error}", proofd_lib_path.display()))?;
+
+    let required_map_phrases = [
+        "verified proof != replay admission",
+        "replicated verification",
+        "proofd = verification and diagnostics service",
+        "automatic replay admission",
+    ];
+    let present_map_phrases = required_map_phrases
+        .iter()
+        .filter(|phrase| phase13_map.contains(**phrase))
+        .map(|phrase| phrase.to_string())
+        .collect::<Vec<_>>();
+    let disallowed_service_routes = ["/replay", "/consensus", "/cluster", "/federation"];
+    let exposed_disallowed_routes = disallowed_service_routes
+        .iter()
+        .filter(|route| proofd_lib.contains(**route))
+        .map(|route| route.to_string())
+        .collect::<Vec<_>>();
+
+    let mut violations = Vec::new();
+    if present_map_phrases.len() != required_map_phrases.len() {
+        violations.push("phase13_bridge_phrases_incomplete".to_string());
+    }
+    if !exposed_disallowed_routes.is_empty() {
+        violations.push("proofd_surface_exceeds_phase12_boundary".to_string());
+    }
+
+    let research_boundary_note = format!(
+        "# Replicated Verification Boundary Note\n\n\
+Phase-12 preserves a hard boundary around replicated verification.\n\n\
+- `verified proof != replay admission`\n\
+- replicated verification remains a Phase-13 bridge concern\n\
+- `proofd` remains a verification and diagnostics service\n\
+- Phase-12 service surface excludes replay, consensus, cluster, and federation routes\n\n\
+Checked sources:\n\
+- `{}`\n\
+- `{}`\n",
+        phase13_map_path.display(),
+        proofd_lib_path.display()
+    );
+    fs::write(
+        out_dir.join("research_boundary_note.md"),
+        research_boundary_note,
+    )
+    .map_err(|error| format!("failed to write research boundary note: {error}"))?;
+
+    let phase13_bridge_report = json!({
+        "gate": "proof-replicated-verification-boundary",
+        "mode": "phase12_replicated_verification_boundary_gate",
+        "status": status_label(violations.is_empty()),
+        "phase13_map_present": true,
+        "phase13_map_path": phase13_map_path.display().to_string(),
+        "proofd_surface_path": proofd_lib_path.display().to_string(),
+        "required_map_phrases": required_map_phrases,
+        "present_map_phrases": present_map_phrases,
+        "proofd_disallowed_routes_checked": disallowed_service_routes,
+        "proofd_disallowed_routes_present": exposed_disallowed_routes,
+        "replicated_verification_outside_phase12_core": violations.is_empty(),
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(
+        out_dir.join("phase13_bridge_report.json"),
+        &phase13_bridge_report,
+    )?;
+
+    let report = json!({
+        "gate": "proof-replicated-verification-boundary",
+        "mode": "phase12_replicated_verification_boundary_gate",
+        "verdict": status_label(violations.is_empty()),
+        "research_boundary_note_path": "research_boundary_note.md",
+        "phase13_bridge_report_path": "phase13_bridge_report.json",
+        "violations": violations,
+        "violations_count": violations.len(),
+    });
+    write_json(out_dir.join("report.json"), &report)?;
+
+    Ok(if violations_from_report(&report).is_empty() {
+        0
+    } else {
+        2
+    })
+}
+
+fn multisig_quorum_row(
+    scenario: &str,
+    bundle_path: &Path,
+    bundle_id: &str,
+    producer: &ProducerDeclaration,
+    signature_envelope: &SignatureEnvelope,
+    policy: &TrustPolicy,
+    registry_snapshot: &RegistrySnapshot,
+    expected_verdict: VerificationVerdict,
+) -> Result<Value, String> {
+    write_json(
+        bundle_path.join("signatures/signature-envelope.json"),
+        signature_envelope,
+    )?;
+    let resolution = resolve_signers(registry_snapshot, producer, signature_envelope)
+        .map_err(|error| format!("multisig resolution failed for {scenario}: {error}"))?;
+    let signature_findings =
+        verify_detached_signatures(bundle_id, signature_envelope, &resolution.resolved_signers);
+    let outcome = run_core_verification(bundle_path, policy, registry_snapshot)?;
+    let unique_trusted_keys = resolution
+        .resolved_signers
+        .iter()
+        .filter(|signer| signer.status == KeyStatus::Active)
+        .filter(|_| policy.trusted_producers.contains(&producer.producer_id))
+        .filter(|signer| {
+            policy.trusted_pubkey_ids.is_empty()
+                || policy
+                    .trusted_pubkey_ids
+                    .iter()
+                    .any(|value| value == &signer.producer_pubkey_id)
+        })
+        .map(|signer| signer.producer_pubkey_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let expected_policy_hash = compute_policy_hash(policy)
+        .map_err(|error| format!("multisig policy hash failed for {scenario}: {error}"))?;
+    let actual_verdict = verdict_label(&outcome.verdict);
+    let expected_verdict_label = verdict_label(&expected_verdict);
+
+    Ok(json!({
+        "scenario": scenario,
+        "expected_verdict": expected_verdict_label,
+        "actual_verdict": actual_verdict,
+        "pass": actual_verdict == expected_verdict_label,
+        "signature_count": signature_envelope.signatures.len(),
+        "resolved_signer_count": resolution.resolved_signers.len(),
+        "active_signer_count": resolution
+            .resolved_signers
+            .iter()
+            .filter(|signer| signer.status == KeyStatus::Active)
+            .count(),
+        "unique_trusted_key_count": unique_trusted_keys.len(),
+        "required_signature_count": policy.required_signature_count(),
+        "quorum_policy_ref": policy.quorum_policy_ref,
+        "policy_hash": expected_policy_hash,
+        "subject_policy_hash": outcome.subject.policy_hash,
+        "policy_hash_bound": outcome.subject.policy_hash == expected_policy_hash,
+        "resolution_error_codes": error_codes(&resolution.findings),
+        "signature_error_codes": error_codes(&signature_findings),
+        "error_codes": error_codes(&outcome.findings),
+        "findings": findings_to_json(&outcome.findings),
+        "findings_count": outcome.findings.len(),
+    }))
+}
+
+fn count_actual_verdict(rows: &[Value], expected_verdict: &str) -> usize {
+    rows.iter()
+        .filter(|row| {
+            row.get("actual_verdict")
+                .and_then(Value::as_str)
+                .map(|value| value == expected_verdict)
+                .unwrap_or(false)
+        })
+        .count()
+}
+
+fn multisig_secondary_private_key_material() -> String {
+    format!(
+        "base64:{}",
+        STANDARD.encode([
+            17u8, 29, 41, 53, 67, 79, 83, 97, 101, 113, 127, 131, 149, 151, 163, 173, 181, 191,
+            193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 3, 5, 9
+        ])
+    )
+}
+
+fn multisig_secondary_public_key_material() -> Result<String, String> {
+    let private_key_bytes = STANDARD
+        .decode(multisig_secondary_private_key_material().trim_start_matches("base64:"))
+        .map_err(|error| format!("failed to decode multisig private key: {error}"))?;
+    let signing_key = SigningKey::from_bytes(
+        &private_key_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| "multisig private key must be 32 bytes".to_string())?,
+    );
+    Ok(format!(
+        "base64:{}",
+        STANDARD.encode(signing_key.verifying_key().as_bytes())
+    ))
+}
+
+fn registry_with_secondary_active_key(
+    baseline: &RegistrySnapshot,
+    producer_id: &str,
+    key_id: &str,
+    public_key: &str,
+) -> Result<RegistrySnapshot, String> {
+    let mut registry = baseline.clone();
+    let entry = registry
+        .producers
+        .get_mut(producer_id)
+        .ok_or_else(|| format!("missing producer {producer_id} in registry"))?;
+    if !entry.active_pubkey_ids.iter().any(|value| value == key_id) {
+        entry.active_pubkey_ids.push(key_id.to_string());
+    }
+    entry.public_keys.insert(
+        key_id.to_string(),
+        RegistryPublicKey {
+            algorithm: "ed25519".to_string(),
+            public_key: public_key.to_string(),
+        },
+    );
+    registry.registry_snapshot_hash = compute_registry_snapshot_hash(&registry)
+        .map_err(|error| format!("registry hash recomputation failed: {error}"))?;
+    Ok(registry)
+}
+
+fn registry_with_revoked_secondary_key(
+    baseline: &RegistrySnapshot,
+    producer_id: &str,
+    key_id: &str,
+) -> Result<RegistrySnapshot, String> {
+    let mut registry = baseline.clone();
+    let entry = registry
+        .producers
+        .get_mut(producer_id)
+        .ok_or_else(|| format!("missing producer {producer_id} in registry"))?;
+    entry.active_pubkey_ids.retain(|value| value != key_id);
+    if !entry.revoked_pubkey_ids.iter().any(|value| value == key_id) {
+        entry.revoked_pubkey_ids.push(key_id.to_string());
+    }
+    registry.registry_snapshot_hash = compute_registry_snapshot_hash(&registry)
+        .map_err(|error| format!("registry hash recomputation failed: {error}"))?;
+    Ok(registry)
+}
+
+fn envelope_with_secondary_signature(
+    baseline: &SignatureEnvelope,
+    bundle_id: &str,
+    signer_id: &str,
+    key_id: &str,
+    private_key: &str,
+) -> Result<SignatureEnvelope, String> {
+    let mut envelope = baseline.clone();
+    let signature = sign_ed25519_bytes(private_key, bundle_id.as_bytes())
+        .map_err(|error| format!("failed to sign multisig envelope: {error}"))?;
+    envelope.signatures.push(DetachedSignature {
+        signer_id: signer_id.to_string(),
+        producer_pubkey_id: key_id.to_string(),
+        signature_algorithm: "ed25519".to_string(),
+        signature,
+        signed_at_utc: "2026-03-10T10:00:00Z".to_string(),
+    });
+    Ok(envelope)
+}
+
+fn envelope_with_duplicate_primary_signature(
+    baseline: &SignatureEnvelope,
+) -> Result<SignatureEnvelope, String> {
+    let mut envelope = baseline.clone();
+    let signature = baseline
+        .signatures
+        .first()
+        .cloned()
+        .ok_or_else(|| "baseline signature envelope has no signatures".to_string())?;
+    envelope.signatures.push(signature);
+    Ok(envelope)
+}
+
+fn find_forbidden_keys(value: &Value, forbidden_keys: &[&str]) -> Vec<String> {
+    let mut found = BTreeSet::new();
+    fn walk(value: &Value, forbidden_keys: &[&str], found: &mut BTreeSet<String>) {
+        match value {
+            Value::Object(map) => {
+                for (key, nested) in map {
+                    if forbidden_keys.iter().any(|candidate| *candidate == key) {
+                        found.insert(key.clone());
+                    }
+                    walk(nested, forbidden_keys, found);
+                }
+            }
+            Value::Array(values) => {
+                for nested in values {
+                    walk(nested, forbidden_keys, found);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    walk(value, forbidden_keys, &mut found);
+    found.into_iter().collect()
+}
+
+fn json_key_list(value: &Value) -> Vec<String> {
+    value
+        .as_object()
+        .map(|map| map.keys().cloned().collect::<Vec<_>>())
+        .unwrap_or_default()
 }
 
 fn registry_resolution_matrix_row(
@@ -3091,9 +3876,7 @@ fn key_lifecycle_matrix_row(
     }))
 }
 
-fn build_ambiguous_owner_registry(
-    baseline: &RegistrySnapshot,
-) -> Result<RegistrySnapshot, String> {
+fn build_ambiguous_owner_registry(baseline: &RegistrySnapshot) -> Result<RegistrySnapshot, String> {
     let mut registry = baseline.clone();
     let baseline_entry = registry
         .producers
@@ -3148,9 +3931,10 @@ fn build_missing_public_key_registry(
         .ok_or_else(|| "baseline registry missing ayken-ci entry".to_string())?;
     entry.public_keys.clear();
     registry.registry_version = registry.registry_version.saturating_add(1);
-    registry.registry_snapshot_hash = compute_registry_snapshot_hash(&registry).map_err(|error| {
-        format!("missing-public-key registry hash recomputation failed: {error}")
-    })?;
+    registry.registry_snapshot_hash =
+        compute_registry_snapshot_hash(&registry).map_err(|error| {
+            format!("missing-public-key registry hash recomputation failed: {error}")
+        })?;
     Ok(registry)
 }
 
@@ -3168,7 +3952,9 @@ fn build_rotated_registry(baseline: &RegistrySnapshot) -> Result<RegistrySnapsho
     entry.active_pubkey_ids = vec!["ed25519-key-2026-04-a".to_string()];
     entry.revoked_pubkey_ids.clear();
     entry.superseded_pubkey_ids = vec!["ed25519-key-2026-03-a".to_string()];
-    entry.public_keys.insert("ed25519-key-2026-04-a".to_string(), old_public_key);
+    entry
+        .public_keys
+        .insert("ed25519-key-2026-04-a".to_string(), old_public_key);
     registry.registry_version = registry.registry_version.saturating_add(1);
     registry.registry_snapshot_hash = compute_registry_snapshot_hash(&registry)
         .map_err(|error| format!("rotated registry hash recomputation failed: {error}"))?;
@@ -3422,7 +4208,77 @@ fn write_cross_node_parity_failure_artifacts(out_dir: &Path, error: &str) {
         out_dir.join("parity_drift_attribution_report.json"),
         &drift_placeholder,
     );
+    let _ = write_json(
+        out_dir.join("parity_closure_audit_report.json"),
+        &json!({
+            "gate": "cross-node-parity",
+            "mode": "phase12_cross_node_parity_closure_audit",
+            "status": "FAIL",
+            "error": error,
+            "closure_audit_complete": false,
+        }),
+    );
     let _ = write_json(out_dir.join("failure_matrix.json"), &failure_matrix);
+    let _ = write_json(out_dir.join("report.json"), &report);
+}
+
+fn write_multisig_quorum_failure_artifacts(out_dir: &Path, error: &str) {
+    let report = json!({
+        "gate": "proof-multisig-quorum",
+        "mode": "phase12_multisig_quorum_gate",
+        "verdict": "FAIL",
+        "violations": [format!("runtime_error:{error}")],
+        "violations_count": 1,
+    });
+    let placeholder = json!({
+        "gate": "proof-multisig-quorum",
+        "mode": "phase12_multisig_quorum_gate",
+        "status": "FAIL",
+        "error": error,
+    });
+    let _ = write_json(out_dir.join("quorum_matrix.json"), &json!([]));
+    let _ = write_json(out_dir.join("quorum_evaluator_report.json"), &placeholder);
+    let _ = write_json(out_dir.join("report.json"), &report);
+}
+
+fn write_replay_admission_boundary_failure_artifacts(out_dir: &Path, error: &str) {
+    let report = json!({
+        "gate": "proof-replay-admission-boundary",
+        "mode": "phase12_replay_admission_boundary_gate",
+        "verdict": "FAIL",
+        "violations": [format!("runtime_error:{error}")],
+        "violations_count": 1,
+    });
+    let placeholder = json!({
+        "gate": "proof-replay-admission-boundary",
+        "mode": "phase12_replay_admission_boundary_gate",
+        "status": "FAIL",
+        "error": error,
+    });
+    let _ = write_json(out_dir.join("replay_admission_report.json"), &placeholder);
+    let _ = write_json(out_dir.join("boundary_contract.json"), &placeholder);
+    let _ = write_json(out_dir.join("report.json"), &report);
+}
+
+fn write_replicated_verification_boundary_failure_artifacts(out_dir: &Path, error: &str) {
+    let report = json!({
+        "gate": "proof-replicated-verification-boundary",
+        "mode": "phase12_replicated_verification_boundary_gate",
+        "verdict": "FAIL",
+        "violations": [format!("runtime_error:{error}")],
+        "violations_count": 1,
+    });
+    let placeholder = json!({
+        "gate": "proof-replicated-verification-boundary",
+        "mode": "phase12_replicated_verification_boundary_gate",
+        "status": "FAIL",
+        "error": error,
+    });
+    let _ = fs::write(
+        out_dir.join("research_boundary_note.md"),
+        format!("# Replicated Verification Boundary Note\n\nFAIL: {error}\n"),
+    );
+    let _ = write_json(out_dir.join("phase13_bridge_report.json"), &placeholder);
     let _ = write_json(out_dir.join("report.json"), &report);
 }
 
@@ -3441,7 +4297,10 @@ fn findings_to_json(findings: &[VerificationFinding]) -> Vec<Value> {
 }
 
 fn finding_codes_all(findings: &[VerificationFinding]) -> Vec<String> {
-    findings.iter().map(|finding| finding.code.clone()).collect()
+    findings
+        .iter()
+        .map(|finding| finding.code.clone())
+        .collect()
 }
 
 fn error_violations(findings: &[VerificationFinding]) -> Vec<String> {
@@ -3472,10 +4331,7 @@ fn has_error_findings(findings: &[VerificationFinding]) -> bool {
         .any(|finding| finding.severity == FindingSeverity::Error)
 }
 
-fn has_error_findings_excluding(
-    findings: &[VerificationFinding],
-    ignored_codes: &[&str],
-) -> bool {
+fn has_error_findings_excluding(findings: &[VerificationFinding], ignored_codes: &[&str]) -> bool {
     findings.iter().any(|finding| {
         finding.severity == FindingSeverity::Error
             && !ignored_codes.iter().any(|code| *code == finding.code)
@@ -3585,8 +4441,11 @@ fn verifier_core_matrix_row(
     let finding_codes_equal = finding_codes_a == finding_codes_b;
     let findings_deterministic = run_a.findings.iter().all(|finding| finding.deterministic)
         && run_b.findings.iter().all(|finding| finding.deterministic);
-    let deterministic =
-        summary_equal && verdict_equal && subject_equal && finding_codes_equal && findings_deterministic;
+    let deterministic = summary_equal
+        && verdict_equal
+        && subject_equal
+        && finding_codes_equal
+        && findings_deterministic;
 
     Ok(json!({
         "scenario": scenario,
@@ -3624,7 +4483,8 @@ fn run_core_verification(
         audit_mode: AuditMode::None,
         audit_ledger_path: None,
     };
-    verify_bundle(&request).map_err(|error| format!("verifier core gate runtime verification failed: {error}"))
+    verify_bundle(&request)
+        .map_err(|error| format!("verifier core gate runtime verification failed: {error}"))
 }
 
 fn verification_outcome_summary(outcome: &VerificationOutcome) -> Value {
@@ -3782,11 +4642,11 @@ fn recompute_inline_overlay_hash(
     producer: &ProducerDeclaration,
     signature_envelope: &SignatureEnvelope,
 ) -> Result<String, String> {
-    let producer_bytes = canonicalize_json(producer)
-        .map_err(|error| format!("failed to canonicalize exchange producer declaration: {error}"))?;
-    let envelope_bytes = canonicalize_json(signature_envelope).map_err(|error| {
-        format!("failed to canonicalize exchange signature envelope: {error}")
+    let producer_bytes = canonicalize_json(producer).map_err(|error| {
+        format!("failed to canonicalize exchange producer declaration: {error}")
     })?;
+    let envelope_bytes = canonicalize_json(signature_envelope)
+        .map_err(|error| format!("failed to canonicalize exchange signature envelope: {error}"))?;
     let mut material = Vec::new();
     material.extend_from_slice(&producer_bytes);
     material.extend_from_slice(&envelope_bytes);
@@ -3808,7 +4668,9 @@ fn build_exchange_package(
     let verification_context_id = verification_context_object
         .get("verification_context_id")
         .and_then(Value::as_str)
-        .ok_or_else(|| "exchange package context object missing verification_context_id".to_string())?;
+        .ok_or_else(|| {
+            "exchange package context object missing verification_context_id".to_string()
+        })?;
     let mut package = json!({
         "protocol_version": 1,
         "exchange_mode": "proof_bundle_transport_v1",
@@ -3954,8 +4816,7 @@ fn validate_exchange_package(
         .and_then(Value::as_str)
         .ok_or_else(|| "exchange package missing declared portable bundle_id".to_string())?;
 
-    let recomputed_overlay_hash =
-        recompute_inline_overlay_hash(&producer, &signature_envelope)?;
+    let recomputed_overlay_hash = recompute_inline_overlay_hash(&producer, &signature_envelope)?;
     let declared_overlay_hash = trust_overlay
         .get("trust_overlay_hash")
         .and_then(Value::as_str)
@@ -4096,11 +4957,19 @@ fn canonical_json_sha256(value: &Value) -> Result<String, String> {
 
 fn tamper_signature_envelope(root: &Path) -> Result<(), String> {
     let signature_path = root.join("signatures/signature-envelope.json");
-    let mut envelope: SignatureEnvelope = serde_json::from_slice(
-        &fs::read(&signature_path)
-            .map_err(|error| format!("failed to read signature envelope {}: {error}", signature_path.display()))?,
-    )
-    .map_err(|error| format!("failed to parse signature envelope {}: {error}", signature_path.display()))?;
+    let mut envelope: SignatureEnvelope =
+        serde_json::from_slice(&fs::read(&signature_path).map_err(|error| {
+            format!(
+                "failed to read signature envelope {}: {error}",
+                signature_path.display()
+            )
+        })?)
+        .map_err(|error| {
+            format!(
+                "failed to parse signature envelope {}: {error}",
+                signature_path.display()
+            )
+        })?;
     let signature = envelope
         .signatures
         .first_mut()
@@ -4113,8 +4982,12 @@ fn tamper_signature_envelope(root: &Path) -> Result<(), String> {
 
 fn remove_manifest_file(root: &Path) -> Result<(), String> {
     let manifest_path = root.join("manifest.json");
-    fs::remove_file(&manifest_path)
-        .map_err(|error| format!("failed to remove manifest {}: {error}", manifest_path.display()))
+    fs::remove_file(&manifest_path).map_err(|error| {
+        format!(
+            "failed to remove manifest {}: {error}",
+            manifest_path.display()
+        )
+    })
 }
 
 fn count_expected_verdict(matrix: &[Value], expected_verdict: &str) -> usize {
@@ -4136,8 +5009,9 @@ fn trust_policy_outcome_row(
     policy: &TrustPolicy,
     registry_snapshot: &RegistrySnapshot,
 ) -> Result<Value, String> {
-    let policy_hash = compute_policy_hash(policy)
-        .map_err(|error| format!("trust policy row hash computation failed for {scenario}: {error}"))?;
+    let policy_hash = compute_policy_hash(policy).map_err(|error| {
+        format!("trust policy row hash computation failed for {scenario}: {error}")
+    })?;
     let schema_findings = validate_policy(policy);
     let outcome = run_core_verification(bundle_path, policy, registry_snapshot)?;
     Ok(json!({
@@ -4292,8 +5166,7 @@ fn build_parity_convergence_report(node_outcomes: &[NodeParityOutcome], rows: &[
         .iter()
         .filter(|node| node.evidence_state() == &ParityEvidenceState::Insufficient)
         .count();
-    let determinism_conflict_surface_count =
-        count_determinism_conflict_surfaces(node_outcomes);
+    let determinism_conflict_surface_count = count_determinism_conflict_surfaces(node_outcomes);
     let determinism_violation_present = determinism_conflict_surface_count > 0;
 
     let subject_mismatch_edges = count_parity_status_value(rows, "PARITY_SUBJECT_MISMATCH");
@@ -4302,11 +5175,12 @@ fn build_parity_convergence_report(node_outcomes: &[NodeParityOutcome], rows: &[
     let historical_only_edges = count_parity_status_value(rows, "PARITY_HISTORICAL_ONLY");
     let insufficient_evidence_edges =
         count_parity_status_value(rows, "PARITY_INSUFFICIENT_EVIDENCE");
-    let determinism_violation_edges =
-        count_parity_status_value(rows, "PARITY_VERDICT_MISMATCH");
+    let determinism_violation_edges = count_parity_status_value(rows, "PARITY_VERDICT_MISMATCH");
 
-    let node_outcome_views: Vec<NodeParityOutcomeView> =
-        node_outcomes.iter().map(NodeParityOutcomeView::from).collect();
+    let node_outcome_views: Vec<NodeParityOutcomeView> = node_outcomes
+        .iter()
+        .map(NodeParityOutcomeView::from)
+        .collect();
 
     json!({
         "gate": "cross-node-parity",
@@ -4442,19 +5316,17 @@ fn build_parity_match_clusters(rows: &[Value], nodes: &BTreeSet<String>) -> Vec<
     clusters.sort_by(|left, right| {
         let left_size = left.get("size").and_then(Value::as_u64).unwrap_or(0);
         let right_size = right.get("size").and_then(Value::as_u64).unwrap_or(0);
-        right_size
-            .cmp(&left_size)
-            .then_with(|| {
-                let left_id = left
-                    .get("cluster_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let right_id = right
-                    .get("cluster_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                left_id.cmp(right_id)
-            })
+        right_size.cmp(&left_size).then_with(|| {
+            let left_id = left
+                .get("cluster_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let right_id = right
+                .get("cluster_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            left_id.cmp(right_id)
+        })
     });
     clusters
 }
@@ -4486,19 +5358,17 @@ where
     values.sort_by(|left, right| {
         let left_size = left.get("size").and_then(Value::as_u64).unwrap_or(0);
         let right_size = right.get("size").and_then(Value::as_u64).unwrap_or(0);
-        right_size
-            .cmp(&left_size)
-            .then_with(|| {
-                let left_id = left
-                    .get("partition_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let right_id = right
-                    .get("partition_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                left_id.cmp(right_id)
-            })
+        right_size.cmp(&left_size).then_with(|| {
+            let left_id = left
+                .get("partition_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let right_id = right
+                .get("partition_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            left_id.cmp(right_id)
+        })
     });
     values
 }

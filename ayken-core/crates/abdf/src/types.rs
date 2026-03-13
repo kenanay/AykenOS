@@ -56,10 +56,7 @@ pub enum AbdfType {
     /// Çok boyutlu tensor (örn: görüntü, matris, 3D/4D veri)
     ///
     /// `rank`: kaç boyutlu olduğunu belirtir (örn: 2 = matris)
-    Tensor {
-        base: AbdfScalarType,
-        rank: u8,
-    },
+    Tensor { base: AbdfScalarType, rank: u8 },
 }
 
 impl AbdfScalarType {
@@ -95,7 +92,6 @@ impl AbdfType {
         matches!(self, AbdfType::Tensor { .. })
     }
 }
-
 
 #[cfg(test)]
 mod tests {

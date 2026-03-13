@@ -126,12 +126,8 @@ pub fn build_node_parity_outcome(
     let context_hash = verification_context_id.to_string();
     let authority_hash = compute_authority_hash(authority_resolution)?;
     let surface_key = compute_surface_key(&subject_hash, &context_hash, &authority_hash)?;
-    let outcome_key = compute_outcome_key(
-        &subject_hash,
-        &context_hash,
-        &authority_hash,
-        local_verdict,
-    )?;
+    let outcome_key =
+        compute_outcome_key(&subject_hash, &context_hash, &authority_hash, local_verdict)?;
 
     Ok(NodeParityOutcome {
         node_id: node_id.to_string(),
@@ -395,9 +391,7 @@ fn compute_outcome_key(
     }))
 }
 
-fn compute_canonical_value_hash(
-    value: &serde_json::Value,
-) -> Result<String, VerifierRuntimeError> {
+fn compute_canonical_value_hash(value: &serde_json::Value) -> Result<String, VerifierRuntimeError> {
     let bytes = canonicalize_json_value(value)?;
     Ok(format!("sha256:{}", sha256_hex(&bytes)))
 }

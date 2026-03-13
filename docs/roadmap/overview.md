@@ -1,4 +1,4 @@
-# AykenOS Roadmap - Code and Evidence Status (2026-03-10)
+# AykenOS Roadmap - Code and Evidence Status (2026-03-13)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## Scope
@@ -26,8 +26,10 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Runtime determinism local freeze ile dogrulandi.
 - Replay / proof / portable bundle zinciri bootstrap/local yol uzerinden dogrulandi.
 - Bu iki evidence seti remote `ci-freeze` run `22797401328` ile official closure seviyesine tasindi.
-- `Phase-11` closure temeli korunurken trust, signatures, producer identity ve cross-node acceptance artik worktree-local `Phase-12` implementasyon hattinda ilerliyor; formal phase pointer yine `CURRENT_PHASE=10` olarak kalir.
-- Local `P12-14` parity hatti artik `NodeParityOutcome`, drift attribution, island diagnostics, stable `DeterminismIncident`, and node-derived convergence reporting ile `distributed verification diagnostics` seviyesine ulasmistir; bu seviye `consensus` anlami tasimaz.
+- `Phase-11` closure temeli korunurken trust, signatures, producer identity ve cross-node acceptance worktree-local `Phase-12` implementasyon hattinda tamamlandi; formal phase pointer yine `CURRENT_PHASE=10` olarak kalir.
+- Local `P12-14` parity hatti artik closure-audit artifact'i ile birlikte `NodeParityOutcome`, drift attribution, island diagnostics, stable `DeterminismIncident`, and node-derived convergence reporting uretir; bu seviye `consensus` anlami tasimaz.
+- Local `Phase-12C` normatif gate seti `run-local-phase12c-closure-2026-03-11` ile yesil gecmistir; bu, remote / official closure claim'i degil, local closure-ready kanitidir.
+- Phase-13 observability architecture corpus ve GitHub roadmap artik aktif hazirlik seviyesindedir; bu, implementation claim'i degil, sonraki mimari buyume hattidir.
 
 ## 2) Gate Reality
 
@@ -89,7 +91,23 @@ Interpretation:
 3. KPL manifest binding is verified
 4. Portable proof bundle can reproduce the same local verdict offline
 
-### 3.3 Official Closure Basis
+### 3.3 Phase-12
+`Phase-12 = LOCAL_CLOSURE_READY (normative gate set green locally, remote closure not yet claimed)`
+
+Interpretation:
+1. `P12-14..P12-18` are complete at local / worktree scope
+2. The normative `Phase-12C` gate set is green locally
+3. The parity / graph layer remains derived diagnostics, not consensus
+
+### 3.4 Phase-13
+`Phase-13 = PREPARATION_ACTIVE (architecture corpus and roadmap active, implementation not yet claimed)`
+
+Interpretation:
+1. Observability, relationship graph, global graph, and topology models are now explicit
+2. GitHub tracker now separates `phase13`, `policy-track`, and `research-track`
+3. This is roadmap preparation, not a formal phase transition
+
+### 3.5 Official Closure Basis
 1. Underlying evidence runs remain `local-freeze-p10p11` and `local-phase11-closure`.
 2. Remote `ci-freeze` run `22797401328` provided the official confirmation on `fe9031d7`.
 3. `CURRENT_PHASE=10` remains unchanged until the formal transition workflow runs.
@@ -97,20 +115,21 @@ Interpretation:
 ## 4) Current Risk Concentration
 1. Runtime A2 blocker kapanmistir; `missing_marker:P10_RING3_USER_CODE` current blocker degildir.
 2. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
-3. `CURRENT_PHASE=10` pointer'ini degistirmeden Phase-12 whole-phase closure claim'i acilmamalidir.
-4. `proofd` ve ilerideki graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+3. `CURRENT_PHASE=10` pointer'ini degistirmeden remote / official `Phase-12` closure claim'i acilmamalidir.
+4. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
 
 ## 5) Roadmap Decision
 
 ### 5.1 Immediate
 1. Dedicated official closure tag olustur
-2. Historical docs'taki current-truth notlarini official closure durumuna hizala
-3. Local `P12-14` theorem-driven parity diagnostics hattini `DeterminismIncidentSeverity` ve `proofd` read-only diagnostics hazirligina baglayarak ilerlet
+2. Historical docs'taki current-truth notlarini local `Phase-12` closure-ready durumuna hizala
+3. Remote / official `Phase-12` confirmation ve formal phase transition icin governance akisini hazirla
+4. `Phase-13` observability roadmap'ini derived-only diagnostics sinirinda uygula
 
 ### 5.2 Near Term
-1. `proofd` icin query/service boundary'lerini authority semantics'ten ayri dondur
-2. Replay determinism stability hardening
-3. Cross-node verification observability graph'i derived diagnostics olarak tasarla; consensus topology olarak degil
+1. Replay determinism stability hardening
+2. `proofd` icin query/service boundary'lerini authority semantics'ten ayri tut
+3. Cross-node verification observability graph'i derived diagnostics olarak koru; consensus topology olarak degil
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
@@ -123,12 +142,10 @@ Local closure icin saglananlar:
 2. Proof chain `PASS`
 3. Closure docs synchronized
 
-Official closure icin saglananlar:
-1. remote `ci-freeze` confirmation
-2. status surfaces synchronized at `fe9031d7`
-
-Remaining governance follow-through:
-1. dedicated closure tag
+Official closure icin halen gerekenler:
+1. remote `ci-freeze` confirmation for the updated Phase-12 closure-ready state
+2. dedicated closure tag
+3. formal phase transition workflow after the updated status surfaces are accepted
 
 ## References
 - `README.md`
@@ -140,5 +157,5 @@ Remaining governance follow-through:
 - `docs/specs/phase11-verification-substrate/tasks.md`
 
 ---
-**Son Guncelleme:** 2026-03-10
-**Guncelleme Yontemi:** code + Make hedefleri + local freeze evidence + remote ci-freeze confirmation
+**Son Guncelleme:** 2026-03-13
+**Guncelleme Yontemi:** code + Make hedefleri + local freeze evidence + remote ci-freeze confirmation + local Phase-12C gate pass + architecture corpus sync + GitHub tracker normalization

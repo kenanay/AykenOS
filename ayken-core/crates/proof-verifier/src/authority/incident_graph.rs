@@ -185,7 +185,10 @@ fn pairwise_node_ids(node_ids: &[String]) -> Vec<(&str, &str)> {
     let mut pairs = Vec::new();
     for left_index in 0..node_ids.len() {
         for right_index in (left_index + 1)..node_ids.len() {
-            pairs.push((node_ids[left_index].as_str(), node_ids[right_index].as_str()));
+            pairs.push((
+                node_ids[left_index].as_str(),
+                node_ids[right_index].as_str(),
+            ));
         }
     }
     pairs

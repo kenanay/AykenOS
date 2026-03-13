@@ -111,8 +111,7 @@ fn parse_verify_bundle_command(args: Vec<OsString>) -> Result<ParsedCommand, Str
     }
 
     let policy_path = policy_path.ok_or_else(|| "missing required `--policy`".to_string())?;
-    let registry_path =
-        registry_path.ok_or_else(|| "missing required `--registry`".to_string())?;
+    let registry_path = registry_path.ok_or_else(|| "missing required `--registry`".to_string())?;
 
     Ok(ParsedCommand::VerifyBundle {
         bundle_path: PathBuf::from(bundle_path),
@@ -147,8 +146,8 @@ fn run_verify_bundle(
         audit_mode: AuditMode::None,
         audit_ledger_path: None,
     };
-    let outcome = verify_bundle(&request)
-        .map_err(|error| format!("runtime verification failed: {error}"))?;
+    let outcome =
+        verify_bundle(&request).map_err(|error| format!("runtime verification failed: {error}"))?;
 
     if json {
         let payload = CliVerificationOutput::from_outcome(&outcome);

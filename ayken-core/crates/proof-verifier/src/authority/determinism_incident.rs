@@ -1,5 +1,5 @@
-use crate::canonical::digest::sha256_hex;
 use crate::authority::parity::{NodeParityOutcome, ParityEvidenceState};
+use crate::canonical::digest::sha256_hex;
 use crate::types::VerificationVerdict;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -7,9 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 #[cfg(test)]
 use crate::authority::parity::{build_node_parity_outcome, ParityArtifactForm};
 #[cfg(test)]
-use crate::types::{
-    VerdictSubject, VerifierAuthorityResolution, VerifierAuthorityResolutionClass,
-};
+use crate::types::{VerdictSubject, VerifierAuthorityResolution, VerifierAuthorityResolutionClass};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -288,7 +286,8 @@ fn unique_count<F>(nodes: &[&NodeParityOutcome], key_fn: F) -> usize
 where
     F: Fn(&NodeParityOutcome) -> &str,
 {
-    nodes.iter()
+    nodes
+        .iter()
         .map(|node| key_fn(node).to_string())
         .collect::<BTreeSet<_>>()
         .len()
@@ -346,7 +345,9 @@ mod tests {
         }
     }
 
-    fn sample_authority(result_class: VerifierAuthorityResolutionClass) -> VerifierAuthorityResolution {
+    fn sample_authority(
+        result_class: VerifierAuthorityResolutionClass,
+    ) -> VerifierAuthorityResolution {
         VerifierAuthorityResolution {
             result_class,
             requested_verifier_id: "verifier-a".to_string(),
@@ -428,7 +429,9 @@ mod tests {
         assert_eq!(report.determinism_incident_count, 0);
         assert_eq!(report.suppressed_incident_count, 1);
         assert_eq!(
-            report.suppression_reason_counts.get("insufficient_evidence"),
+            report
+                .suppression_reason_counts
+                .get("insufficient_evidence"),
             Some(&1usize)
         );
     }

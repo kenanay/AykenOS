@@ -274,7 +274,11 @@ fn build_scope_alias_suppressions(
         suppressions.push(SuppressedAuthorityDrift {
             rule: AuthoritySuppressionRule::ScopeAlias,
             authority_chain_id: Some(group.identity.authority_chain_id.clone()),
-            node_ids: group.nodes.iter().map(|node| node.node_id.clone()).collect(),
+            node_ids: group
+                .nodes
+                .iter()
+                .map(|node| node.node_id.clone())
+                .collect(),
             node_count: group.nodes.len(),
             raw_effective_authority_scopes: raw_scope_sets,
             verifier_registry_snapshot_hashes: unique_registry_snapshot_hashes(&group.nodes),
@@ -299,7 +303,11 @@ fn build_registry_skew_suppressions(
         suppressions.push(SuppressedAuthorityDrift {
             rule: AuthoritySuppressionRule::RegistrySkew,
             authority_chain_id: Some(group.identity.authority_chain_id.clone()),
-            node_ids: group.nodes.iter().map(|node| node.node_id.clone()).collect(),
+            node_ids: group
+                .nodes
+                .iter()
+                .map(|node| node.node_id.clone())
+                .collect(),
             node_count: group.nodes.len(),
             raw_effective_authority_scopes: unique_scope_sets(&group.nodes),
             verifier_registry_snapshot_hashes: registry_hashes,
@@ -347,7 +355,12 @@ fn build_historical_shadow_suppressions(
             .map(|node| node.node_id.clone())
             .collect::<Vec<_>>();
         let suppressed_against_cluster_key = dominant_authority_cluster_key
-            .filter(|current| current_by_chain.get(&authority_chain_id).map(|value| value.as_str()) == Some(*current))
+            .filter(|current| {
+                current_by_chain
+                    .get(&authority_chain_id)
+                    .map(|value| value.as_str())
+                    == Some(*current)
+            })
             .map(ToString::to_string)
             .or_else(|| current_by_chain.get(&authority_chain_id).cloned());
         suppressions.push(SuppressedAuthorityDrift {
@@ -437,7 +450,10 @@ fn parse_cluster_identity(key: &str) -> Option<AuthorityClusterIdentity> {
     let effective_authority_scope = if scope == "<none>" {
         Vec::new()
     } else {
-        scope.split(',').map(ToString::to_string).collect::<Vec<_>>()
+        scope
+            .split(',')
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
     };
     Some(AuthorityClusterIdentity {
         authority_chain_id: authority_chain_id.to_string(),
@@ -493,10 +509,7 @@ mod tests {
         }
     }
 
-    fn sample_node(
-        node_id: &str,
-        authority: &VerifierAuthorityResolution,
-    ) -> NodeParityOutcome {
+    fn sample_node(node_id: &str, authority: &VerifierAuthorityResolution) -> NodeParityOutcome {
         build_node_parity_outcome(
             node_id,
             node_id,

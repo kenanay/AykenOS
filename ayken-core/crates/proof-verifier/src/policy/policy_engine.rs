@@ -8,6 +8,7 @@ use crate::types::{
     VerificationFinding, VerificationVerdict,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 pub fn compute_policy_hash(policy: &TrustPolicy) -> Result<String, VerifierRuntimeError> {
     let mut policy_value = serde_json::to_value(policy)
@@ -32,7 +33,9 @@ pub fn evaluate_policy(
         .filter(|signer| signer.status == KeyStatus::Active)
         .filter(|_| is_trusted_producer(policy, producer))
         .filter(|signer| is_trusted_key(policy, &signer.producer_pubkey_id))
-        .count();
+        .map(|signer| signer.producer_pubkey_id.as_str())
+        .collect::<BTreeSet<_>>()
+        .len();
 
     let verdict = if !policy.revoked_pubkey_ids.is_empty()
         && resolved_signers.iter().any(|signer| {
@@ -76,4 +79,88 @@ fn is_trusted_key(policy: &TrustPolicy, producer_pubkey_id: &str) -> bool {
         .trusted_pubkey_ids
         .iter()
         .any(|value| value == producer_pubkey_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::evaluate_policy;
+    use crate::types::{
+        KeyStatus, ProducerDeclaration, ResolvedSigner, SignatureRequirement, TrustPolicy,
+        VerificationVerdict,
+    };
+
+    fn baseline_policy(required_count: u32) -> TrustPolicy {
+        TrustPolicy {
+            policy_version: 1,
+            policy_hash: None,
+            quorum_policy_ref: Some("policy://quorum/at-least-2-of-n".to_string()),
+            trusted_producers: vec!["ayken-ci".to_string()],
+            trusted_pubkey_ids: vec![
+                "ed25519-key-2026-03-a".to_string(),
+                "ed25519-key-2026-03-b".to_string(),
+            ],
+            required_signatures: Some(SignatureRequirement {
+                kind: "at_least".to_string(),
+                count: required_count,
+            }),
+            revoked_pubkey_ids: Vec::new(),
+        }
+    }
+
+    fn producer() -> ProducerDeclaration {
+        ProducerDeclaration {
+            metadata_version: 1,
+            producer_id: "ayken-ci".to_string(),
+            producer_pubkey_id: "ed25519-key-2026-03-a".to_string(),
+            producer_registry_ref: "trust://registry/ayken-ci".to_string(),
+            producer_key_epoch: "2026-03".to_string(),
+            build_id: None,
+        }
+    }
+
+    #[test]
+    fn duplicate_key_entries_do_not_satisfy_quorum() {
+        let policy = baseline_policy(2);
+        let resolved_signers = vec![
+            ResolvedSigner {
+                signer_id: "ayken-ci".to_string(),
+                producer_pubkey_id: "ed25519-key-2026-03-a".to_string(),
+                status: KeyStatus::Active,
+                public_key: None,
+            },
+            ResolvedSigner {
+                signer_id: "ayken-ci".to_string(),
+                producer_pubkey_id: "ed25519-key-2026-03-a".to_string(),
+                status: KeyStatus::Active,
+                public_key: None,
+            },
+        ];
+
+        let decision =
+            evaluate_policy(&policy, &producer(), &resolved_signers).expect("policy evaluation");
+        assert_eq!(decision.verdict, VerificationVerdict::RejectedByPolicy);
+    }
+
+    #[test]
+    fn distinct_active_keys_can_satisfy_quorum() {
+        let policy = baseline_policy(2);
+        let resolved_signers = vec![
+            ResolvedSigner {
+                signer_id: "ayken-ci".to_string(),
+                producer_pubkey_id: "ed25519-key-2026-03-a".to_string(),
+                status: KeyStatus::Active,
+                public_key: None,
+            },
+            ResolvedSigner {
+                signer_id: "ayken-ci".to_string(),
+                producer_pubkey_id: "ed25519-key-2026-03-b".to_string(),
+                status: KeyStatus::Active,
+                public_key: None,
+            },
+        ];
+
+        let decision =
+            evaluate_policy(&policy, &producer(), &resolved_signers).expect("policy evaluation");
+        assert_eq!(decision.verdict, VerificationVerdict::Trusted);
+    }
 }
