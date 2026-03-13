@@ -1,3 +1,3 @@
 pub mod header;
-pub mod types;
 pub mod segment;
+pub mod types;

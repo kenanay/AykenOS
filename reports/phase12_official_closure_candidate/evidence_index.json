@@ -1,0 +1,462 @@
+{
+  "evidence_root_algorithm": "sha256_path_digest_tree_v1",
+  "evidence_root_hash": "667e7af77fb2bd74135078cf82ebcf40c13a0eb6020102714bde0ce26b1fe184",
+  "gate_reports": [
+    {
+      "gate": "proof-producer-schema",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-producer-schema/report.json",
+      "sha256": "ff07fdc7866a48628d75be0a234b06f97e7763a6a44b19d4ddb92ae00316ace4",
+      "size_bytes": 228,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-signature-envelope",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-signature-envelope/report.json",
+      "sha256": "ed6c4b39fc7d354963cbf409fe407ab2b4840f7bca0de68d294d3625b8803bb8",
+      "size_bytes": 151,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-bundle-v2-schema",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-bundle-v2-schema/report.json",
+      "sha256": "8dcc7ec97c85e3d1b5c2ec617ab838f554ccc704efa71eca70f2f09de0fe8e66",
+      "size_bytes": 230,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-bundle-v2-compat",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-bundle-v2-compat/report.json",
+      "sha256": "e28b4acecdd1f0b006424564fde59ddcf5eb0bbe4bd43a9fafd6aa541bc2aa14",
+      "size_bytes": 147,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-signature-verify",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-signature-verify/report.json",
+      "sha256": "b31140963e74d192aa3512b107d2b732c14384250ed50e2a8fbdbd85a2a87014",
+      "size_bytes": 147,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-registry-resolution",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-registry-resolution/report.json",
+      "sha256": "ede2e9b9f6bedd8f1c9f9879829652e784ddd9def17bad5fada1847dc48379bd",
+      "size_bytes": 153,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-key-rotation",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-key-rotation/report.json",
+      "sha256": "615c2a731beea8d56a9d1b69585be8d7e0c4148211e9d870e8a14b72b66c3c39",
+      "size_bytes": 139,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-verifier-core",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-verifier-core/report.json",
+      "sha256": "51100951e5fa95973193112002c6d6f82aecf325b393ff4c426306a6eeb48682",
+      "size_bytes": 263,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-trust-policy",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-trust-policy/report.json",
+      "sha256": "440ab2271f6772edab3cb067ef6e5d664552c750617437f39d76e14db29ab87b",
+      "size_bytes": 255,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-verdict-binding",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-verdict-binding/report.json",
+      "sha256": "eb82efd9d195a62a7a393e699e8dd3de34f8f22178f9289168b9f11a0aada895",
+      "size_bytes": 277,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-verifier-cli",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-verifier-cli/report.json",
+      "sha256": "0b79b62b4cb857f040930c50875bd51bc6bb96ce1200a48b57467be6e57cdae3",
+      "size_bytes": 255,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-receipt",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-receipt/report.json",
+      "sha256": "e6750ddb18f6fcbda1866a81eabda9d0591da83c2e27cafd37f26c267545c7e9",
+      "size_bytes": 269,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-audit-ledger",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-audit-ledger/report.json",
+      "sha256": "aee88a5bc55994c808d1d7647612b58cd7c726ff9a9101d43475a85b55bec144",
+      "size_bytes": 313,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-exchange",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-exchange/report.json",
+      "sha256": "c247e2b4d18db2334061bb900b8426a82440fc9775d8b35cfe2913e6cae64206",
+      "size_bytes": 275,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "verifier-authority-resolution",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/verifier-authority-resolution/report.json",
+      "sha256": "be1ddc649cd2758fef605716d4dad304aaa30fc60833472a0946815b1c41594d",
+      "size_bytes": 313,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "cross-node-parity",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/cross-node-parity/report.json",
+      "sha256": "f4ddc0ad2dc03e6d407d924ca90e51868687d448ade7883d485fb413e3649278",
+      "size_bytes": 448,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proofd-service",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proofd-service/report.json",
+      "sha256": "d9c1b738c21c6906740ba6d77b5d54cb24c6a9f22d829869dcbb5941eb1bdd69",
+      "size_bytes": 153,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-multisig-quorum",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-multisig-quorum/report.json",
+      "sha256": "f86211fb31a07143ffda8c7b018615ff7953d4d1b66f136b00ea323c55553e0c",
+      "size_bytes": 257,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-replay-admission-boundary",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-replay-admission-boundary/report.json",
+      "sha256": "5fe1d867d43e5cfdaefa3f37ac6d71308d236bd708227f9a635156f10d055b6c",
+      "size_bytes": 285,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "proof-replicated-verification-boundary",
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/gates/proof-replicated-verification-boundary/report.json",
+      "sha256": "694516d35bad080690d13bbb8b2298bd0c936e1faa969ddcffb8723237994957",
+      "size_bytes": 303,
+      "verdict": "PASS",
+      "violations_count": 0
+    }
+  ],
+  "generated_at_utc": "2026-03-13T18:22:29Z",
+  "index_version": 1,
+  "meta_artifacts": [
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/meta/git.txt",
+      "sha256": "c1d8551db9ec86ba8078b4e9f8ff950eb93281f46ebac0cf100959174c848591",
+      "size_bytes": 41
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/meta/run.json",
+      "sha256": "685ed2542962cbc7386e47257c16c9fa95ffd0d5350bf541f97328d5a0415c73",
+      "size_bytes": 94
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/meta/toolchain.txt",
+      "sha256": "998f88e75d714e8713bdd2b68113292485f9818870b501784c9cca8913eddcd2",
+      "size_bytes": 160
+    }
+  ],
+  "report_artifacts": [
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/cross-node-parity-closure-audit.json",
+      "sha256": "3589910457cb23ba56373eca9b37456fb395e3dd92b659dad9d79e141159185d",
+      "size_bytes": 1576
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/cross-node-parity-details.json",
+      "sha256": "17c62adc1fde583093e6ba1edfc8388a1c30d303fc1d9b967c8fa87a7c526be9",
+      "size_bytes": 2101
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/cross-node-parity.json",
+      "sha256": "f4ddc0ad2dc03e6d407d924ca90e51868687d448ade7883d485fb413e3649278",
+      "size_bytes": 448
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-audit-ledger-details.json",
+      "sha256": "015f94afc4591997ef4204cfea458bba916507cddcecbe062fcc87698ad0fbf9",
+      "size_bytes": 540
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-audit-ledger.json",
+      "sha256": "aee88a5bc55994c808d1d7647612b58cd7c726ff9a9101d43475a85b55bec144",
+      "size_bytes": 313
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-bundle-v2-compat-details.json",
+      "sha256": "ea19f3a286a6763c14d76da38ccae314a3c174c21befbdcee0cced9e28634daf",
+      "size_bytes": 920
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-bundle-v2-compat.json",
+      "sha256": "e28b4acecdd1f0b006424564fde59ddcf5eb0bbe4bd43a9fafd6aa541bc2aa14",
+      "size_bytes": 147
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-bundle-v2-schema-details.json",
+      "sha256": "bf24ff9b12fadf6fbc684ff201be55feef5a49cedf6028829183d937a489dded",
+      "size_bytes": 644
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-bundle-v2-schema.json",
+      "sha256": "8dcc7ec97c85e3d1b5c2ec617ab838f554ccc704efa71eca70f2f09de0fe8e66",
+      "size_bytes": 230
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-exchange-details.json",
+      "sha256": "16470906c6bada976f4c0e11574d90f8246856db4c8e445ebf4462a256ef4b77",
+      "size_bytes": 783
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-exchange-matrix.json",
+      "sha256": "0c387001b8938f2d25a539883bf3e55a7f86f6a228a328e8a0167f8df0eb39e5",
+      "size_bytes": 2669
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-exchange.json",
+      "sha256": "c247e2b4d18db2334061bb900b8426a82440fc9775d8b35cfe2913e6cae64206",
+      "size_bytes": 275
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-key-rotation-details.json",
+      "sha256": "9bbf092abd1e204e725ed5611f20b9c056b0936a108e0af7898b7e042cb7b5f3",
+      "size_bytes": 831
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-key-rotation.json",
+      "sha256": "615c2a731beea8d56a9d1b69585be8d7e0c4148211e9d870e8a14b72b66c3c39",
+      "size_bytes": 139
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-multisig-quorum-details.json",
+      "sha256": "503bf00f01df27ab0cd78ab7f3ab1a3b8023442d773ad9d726a6f02199001623",
+      "size_bytes": 418
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-multisig-quorum-matrix.json",
+      "sha256": "6001b65e9a4e1eed309e644ffa89100b492cbd21d3d7b5e17f7fd609dee83744",
+      "size_bytes": 6287
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-multisig-quorum.json",
+      "sha256": "f86211fb31a07143ffda8c7b018615ff7953d4d1b66f136b00ea323c55553e0c",
+      "size_bytes": 257
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-producer-schema-details.json",
+      "sha256": "6d8be70e84a9af03cd73d3c3531f3dce97851020d0a34bf2d9e62bd4d7363d6e",
+      "size_bytes": 527
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-producer-schema.json",
+      "sha256": "ff07fdc7866a48628d75be0a234b06f97e7763a6a44b19d4ddb92ae00316ace4",
+      "size_bytes": 228
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-receipt-details.json",
+      "sha256": "2f4e93b27249e0024db4240ed2fc21b5ea9d62a8edead337e4c83b7f5b6e4825",
+      "size_bytes": 776
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-receipt.json",
+      "sha256": "e6750ddb18f6fcbda1866a81eabda9d0591da83c2e27cafd37f26c267545c7e9",
+      "size_bytes": 269
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-registry-resolution-details.json",
+      "sha256": "6716a0975dfb2eede1d774f7deb82beea4b85c44f91b16128ac382b6c91ab1ea",
+      "size_bytes": 2045
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-registry-resolution.json",
+      "sha256": "ede2e9b9f6bedd8f1c9f9879829652e784ddd9def17bad5fada1847dc48379bd",
+      "size_bytes": 153
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replay-admission-boundary-contract.json",
+      "sha256": "9282d6c89b65bd8788c5b29d901013fdafd32ad2f6932d9e5e350507c75de815",
+      "size_bytes": 594
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replay-admission-boundary-details.json",
+      "sha256": "2068866df9833464be7aafdab1b1c7ed2958f68b759c9944f6575d168f3c67e0",
+      "size_bytes": 766
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replay-admission-boundary.json",
+      "sha256": "5fe1d867d43e5cfdaefa3f37ac6d71308d236bd708227f9a635156f10d055b6c",
+      "size_bytes": 285
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replicated-verification-boundary-details.json",
+      "sha256": "d65bedb119edf95eae41f1995cfeff6b744ffa4bbcc12a97d37bd0a129f76814",
+      "size_bytes": 998
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replicated-verification-boundary-note.md",
+      "sha256": "679100757c90b8db0fb7cd015201926646735a040dc51026698a65832c32fb6d",
+      "size_bytes": 521
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-replicated-verification-boundary.json",
+      "sha256": "694516d35bad080690d13bbb8b2298bd0c936e1faa969ddcffb8723237994957",
+      "size_bytes": 303
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-signature-envelope-details.json",
+      "sha256": "6655aa6c309e5cc6ce18dfce4f8c0acc4fcf7128f51b439a608796a33c7e5771",
+      "size_bytes": 362
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-signature-envelope.json",
+      "sha256": "ed6c4b39fc7d354963cbf409fe407ab2b4840f7bca0de68d294d3625b8803bb8",
+      "size_bytes": 151
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-signature-verify-details.json",
+      "sha256": "7512a2ce7a10433ee5290b73c802d5f7728fc3d54f538fea8ca711ee2cf16768",
+      "size_bytes": 317
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-signature-verify.json",
+      "sha256": "b31140963e74d192aa3512b107d2b732c14384250ed50e2a8fbdbd85a2a87014",
+      "size_bytes": 147
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-trust-policy-details.json",
+      "sha256": "6a52f4277c1c186058ad982cc0bbfaabc1cdb4729faa889bd95e9afd928019ba",
+      "size_bytes": 2765
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-trust-policy.json",
+      "sha256": "440ab2271f6772edab3cb067ef6e5d664552c750617437f39d76e14db29ab87b",
+      "size_bytes": 255
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verdict-binding-details.json",
+      "sha256": "60bf66d477d9a37ea2b3841b3521f35311e779eab0df14d114d042c33d4c6b3e",
+      "size_bytes": 681
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verdict-binding.json",
+      "sha256": "eb82efd9d195a62a7a393e699e8dd3de34f8f22178f9289168b9f11a0aada895",
+      "size_bytes": 277
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verifier-cli-details.json",
+      "sha256": "0c423d105100038eafc31489561bbc4822dde219c5800243e3e76d955b5adefc",
+      "size_bytes": 866
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verifier-cli-smoke.json",
+      "sha256": "fae41ea294fa7d0ea6a43c3a7fae85441f7e69bad4e1ed7c11de26cbbaee655e",
+      "size_bytes": 825
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verifier-cli.json",
+      "sha256": "0b79b62b4cb857f040930c50875bd51bc6bb96ce1200a48b57467be6e57cdae3",
+      "size_bytes": 255
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verifier-core-details.json",
+      "sha256": "083e938b2905d0d73823879b309813892f064b630231982e324755687826f489",
+      "size_bytes": 819
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proof-verifier-core.json",
+      "sha256": "51100951e5fa95973193112002c6d6f82aecf325b393ff4c426306a6eeb48682",
+      "size_bytes": 263
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-endpoint-contract.json",
+      "sha256": "9136cbc454e6b81a7fc3d6b40fada7b6c1e107d11d227ebe671d2d53d8e5784f",
+      "size_bytes": 3407
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-receipt-details.json",
+      "sha256": "ce63e941898de0b9887597a86a52a127a6e1bdab3602e03601ed6ef86143eb15",
+      "size_bytes": 764
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-receipt-verification.json",
+      "sha256": "0e35be7ebc11d864c4d59561d79df0db954e3e1c4a47da7bb06d4cb3ac034bee",
+      "size_bytes": 500
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-repeated-execution.json",
+      "sha256": "291c20e7d0eb032dc56f83e7ec397b008c010df350930381dd4cc583ab73ecd5",
+      "size_bytes": 391
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-run-manifest.json",
+      "sha256": "330ca66039fc1c3368caafbcc3eb7395e25e6b4fd2a25337b8e5eb7546bdb0ca",
+      "size_bytes": 1060
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-service-details.json",
+      "sha256": "f06d9d3fb01a892659d5a72dac838a9e6cd3a8e12b92aa75f1fc95ed3bf63bcd",
+      "size_bytes": 1047
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-service.json",
+      "sha256": "d9c1b738c21c6906740ba6d77b5d54cb24c6a9f22d829869dcbb5941eb1bdd69",
+      "size_bytes": 153
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-verify-request.json",
+      "sha256": "27f9074ae5ed5305fa53d864653dcb9a6e709f28d894635a1bfd375e36ea9c00",
+      "size_bytes": 744
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/proofd-verify-response.json",
+      "sha256": "2d9130400848b36053ae0ff62c508ef8020f6cc45636166250971f914db48b2e",
+      "size_bytes": 576
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/summary.json",
+      "sha256": "35b6c96e5a3e19ee5314a9374fb0de4e4bcff71e5e05bce13a8f85b6d9b9be0f",
+      "size_bytes": 2175
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/verifier-authority-resolution-details.json",
+      "sha256": "7ac221a7115b9b5b0ef4777d6a5cd493f63463a6df09f7a4b92646081420609b",
+      "size_bytes": 595
+    },
+    {
+      "path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/verifier-authority-resolution.json",
+      "sha256": "be1ddc649cd2758fef605716d4dad304aaa30fc60833472a0946815b1c41594d",
+      "size_bytes": 313
+    }
+  ],
+  "run": {
+    "evidence_run_dir": "evidence/run-run-local-phase12c-closure-2026-03-11",
+    "git_sha": "01d1cb5c99d5eec476eeeee0413e15cedc380e00",
+    "run_id": "run-local-phase12c-closure-2026-03-11"
+  }
+}

@@ -1,4 +1,3 @@
-
 //! BCIB (Binary CLI Instruction Buffer) v0.2
 //! DSL-uyumlu, hafif header + opcode set (data/ui/ai) ile stub executor.
 
@@ -73,11 +72,19 @@ pub struct BcibInstruction {
 
 impl BcibInstruction {
     pub fn new(opcode: BcibOpcode, flags: u8, args: [u16; 2]) -> Self {
-        Self { opcode, flags, args }
+        Self {
+            opcode,
+            flags,
+            args,
+        }
     }
 
-    pub fn nop() -> Self { Self::new(BcibOpcode::Nop, 0, [0, 0]) }
-    pub fn end() -> Self { Self::new(BcibOpcode::End, 0, [0, 0]) }
+    pub fn nop() -> Self {
+        Self::new(BcibOpcode::Nop, 0, [0, 0])
+    }
+    pub fn end() -> Self {
+        Self::new(BcibOpcode::End, 0, [0, 0])
+    }
     pub fn data_create(target_idx: u16, schema_idx: u16) -> Self {
         Self::new(BcibOpcode::DataCreate, 0, [target_idx, schema_idx])
     }
@@ -103,9 +110,17 @@ pub struct BcibBuffer {
 }
 
 impl BcibBuffer {
-    pub fn new() -> Self { Self { instructions: Vec::new() } }
-    pub fn len(&self) -> usize { self.instructions.len() }
-    pub fn is_empty(&self) -> bool { self.instructions.is_empty() }
+    pub fn new() -> Self {
+        Self {
+            instructions: Vec::new(),
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.instructions.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.instructions.is_empty()
+    }
 
     pub fn add(&mut self, instr: BcibInstruction) -> usize {
         let idx = self.instructions.len();
@@ -123,7 +138,11 @@ impl BcibBuffer {
         let mut buf = vec![0u8; total_size];
 
         unsafe {
-            ptr::copy_nonoverlapping(&header as *const _ as *const u8, buf.as_mut_ptr(), header_size);
+            ptr::copy_nonoverlapping(
+                &header as *const _ as *const u8,
+                buf.as_mut_ptr(),
+                header_size,
+            );
             let mut p = buf.as_mut_ptr().add(header_size);
             for instr in &self.instructions {
                 ptr::copy_nonoverlapping(instr as *const _ as *const u8, p, instr_size);
@@ -149,13 +168,20 @@ impl BcibBuffer {
             return Err(DecodeError::CorruptLayout);
         }
         let raw_instrs: &[BcibInstruction] = unsafe {
-            slice::from_raw_parts(buf.as_ptr().add(header_size) as *const BcibInstruction, header.instr_count as usize)
+            slice::from_raw_parts(
+                buf.as_ptr().add(header_size) as *const BcibInstruction,
+                header.instr_count as usize,
+            )
         };
         // Validate opcodes
         let mut instructions = Vec::with_capacity(raw_instrs.len());
         for instr in raw_instrs {
             let opcode = BcibOpcode::try_from(instr.opcode as u8)?;
-            instructions.push(BcibInstruction { opcode, flags: instr.flags, args: instr.args });
+            instructions.push(BcibInstruction {
+                opcode,
+                flags: instr.flags,
+                args: instr.args,
+            });
         }
         Ok(Self { instructions })
     }
@@ -168,9 +194,18 @@ impl BcibBuffer {
         *pc += 1;
         match instr.opcode {
             BcibOpcode::Nop => {}
-            BcibOpcode::DataCreate => println!("BCIB: data.create target={} schema={}", instr.args[0], instr.args[1]),
-            BcibOpcode::DataAdd => println!("BCIB: data.add target={} payload={} ", instr.args[0], instr.args[1]),
-            BcibOpcode::DataQuery => println!("BCIB: data.query target={} filter={}", instr.args[0], instr.args[1]),
+            BcibOpcode::DataCreate => println!(
+                "BCIB: data.create target={} schema={}",
+                instr.args[0], instr.args[1]
+            ),
+            BcibOpcode::DataAdd => println!(
+                "BCIB: data.add target={} payload={} ",
+                instr.args[0], instr.args[1]
+            ),
+            BcibOpcode::DataQuery => println!(
+                "BCIB: data.query target={} filter={}",
+                instr.args[0], instr.args[1]
+            ),
             BcibOpcode::UiRender => println!("BCIB: ui.render scene={}", instr.args[0]),
             BcibOpcode::AiAsk => println!("BCIB: ai.ask prompt={}", instr.args[0]),
             BcibOpcode::End => return Ok(false),

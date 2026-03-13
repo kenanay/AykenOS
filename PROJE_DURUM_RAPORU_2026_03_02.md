@@ -1,5 +1,7 @@
 # AykenOS Proje Durum Raporu
 
+> Historical snapshot note (2026-03-07): Bu rapor 2026-03-02 tarihli durum fotografidir. Guncel official closure durumu icin `AYKENOS_SON_DURUM_RAPORU_2026_03_07.md`, `RAPOR_OZETI_2026_03_07.md` ve `reports/phase10_phase11_closure_2026-03-07.md` kullanilmalidir.
+
 **Tarih:** 2 Mart 2026  
 **Hazırlayan:** Kenan AY  
 **Versiyon:** v0.4.6-policy-accept + Phase 10-A1  

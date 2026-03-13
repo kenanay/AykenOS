@@ -129,7 +129,6 @@ impl TryFrom<&RawSegmentKind> for SegmentKind {
     }
 }
 
-
 /// 8 byte alignment helper.
 fn align_to8(len: usize) -> usize {
     (len + 7) & !7
@@ -176,7 +175,7 @@ impl AbdfBuilder {
         self.string_pool.push(s_ref.to_string());
         idx as u32
     }
-    
+
     /// Yeni bir segment ve ilişkili meta-veriyi ekler.
     pub fn add_segment(&mut self, kind: SegmentKind, bytes: &[u8]) -> u32 {
         // 1. Meta-veriyi meta tablosuna ekle ve index'ini al (meta_idx).
@@ -215,7 +214,7 @@ impl AbdfBuilder {
 
         let seg_desc_size = mem::size_of::<SegmentDescriptor>();
         let segment_table_size = self.segments.len() * seg_desc_size;
-        
+
         let raw_kind_size = mem::size_of::<RawSegmentKind>();
         let meta_table_size = self.meta_table.len() * raw_kind_size;
 
@@ -226,7 +225,7 @@ impl AbdfBuilder {
             .flat_map(|s| s.bytes().chain(std::iter::once(0)))
             .collect();
         let string_pool_size = string_pool_bytes.len();
-        
+
         let data_size = self.data.len();
 
         // 3. Toplam buffer boyutunu hizalamaları dikkate alarak hesapla.
@@ -239,10 +238,14 @@ impl AbdfBuilder {
         let mut buf = vec![0u8; total_size];
 
         // 4. Bölümleri sırayla buffer'a yaz.
-        
+
         // Header
         unsafe {
-            ptr::copy_nonoverlapping(&self.header as *const _ as *const u8, buf.as_mut_ptr(), header_size);
+            ptr::copy_nonoverlapping(
+                &self.header as *const _ as *const u8,
+                buf.as_mut_ptr(),
+                header_size,
+            );
         }
         let mut current_offset = align_to8(header_size);
 
@@ -266,7 +269,7 @@ impl AbdfBuilder {
             }
         }
         current_offset += align_to8(meta_table_size);
-        
+
         // String Pool
         buf[current_offset..current_offset + string_pool_size].copy_from_slice(&string_pool_bytes);
         let data_offset = current_offset + align_to8(string_pool_size);
@@ -305,15 +308,20 @@ impl<'a> AbdfView<'a> {
 
     /// Bir string index'ini kullanarak string pool'dan string'e erişir.
     pub fn get_string(&self, string_idx: u32) -> Option<&str> {
-        self.string_pool.get(string_idx as usize).map(|s| s.as_str())
+        self.string_pool
+            .get(string_idx as usize)
+            .map(|s| s.as_str())
     }
-    
+
     /// Bir segmentin adını (string pool'dan) döner.
     pub fn segment_name(&self, segment_idx: usize) -> Option<&str> {
         let kind = self.segment_kind(segment_idx)?;
         let meta = match kind {
-            SegmentKind::Tabular(m) | SegmentKind::Log(m) | SegmentKind::Text(m) |
-            SegmentKind::UiScene(m) | SegmentKind::GpuBuffer(m) => Some(m),
+            SegmentKind::Tabular(m)
+            | SegmentKind::Log(m)
+            | SegmentKind::Text(m)
+            | SegmentKind::UiScene(m)
+            | SegmentKind::GpuBuffer(m) => Some(m),
             SegmentKind::Raw => None,
         }?;
         self.get_string(meta.name_idx)
@@ -376,7 +384,7 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
     if header.version != ABDF_VERSION {
         return Err(DecodeError::UnsupportedVersion);
     }
-    
+
     let mut current_offset = align_to8(header_size);
 
     // 2) Segment Table'ı oku.
@@ -389,7 +397,10 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
         return Err(DecodeError::CorruptLayout);
     }
     let segments: &[SegmentDescriptor] = unsafe {
-        slice::from_raw_parts(buf.as_ptr().add(current_offset) as *const SegmentDescriptor, seg_count)
+        slice::from_raw_parts(
+            buf.as_ptr().add(current_offset) as *const SegmentDescriptor,
+            seg_count,
+        )
     };
     current_offset += align_to8(seg_table_size);
 
@@ -402,7 +413,10 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
         return Err(DecodeError::CorruptLayout);
     }
     let raw_kinds: &[RawSegmentKind] = unsafe {
-        slice::from_raw_parts(buf.as_ptr().add(current_offset) as *const RawSegmentKind, seg_count)
+        slice::from_raw_parts(
+            buf.as_ptr().add(current_offset) as *const RawSegmentKind,
+            seg_count,
+        )
     };
     let meta_table: Vec<SegmentKind> = raw_kinds
         .iter()
@@ -433,14 +447,14 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
     if file_len < data_section_total_size {
         return Err(DecodeError::CorruptLayout);
     }
-	let data_section_start = file_len - data_section_total_size;
-	let string_pool_end = data_section_start;
+    let data_section_start = file_len - data_section_total_size;
+    let string_pool_end = data_section_start;
 
-	if current_offset > string_pool_end {
-		return Err(DecodeError::CorruptLayout);
-	}
+    if current_offset > string_pool_end {
+        return Err(DecodeError::CorruptLayout);
+    }
 
-	let string_pool_bytes = &buf[current_offset..string_pool_end];
+    let string_pool_bytes = &buf[current_offset..string_pool_end];
     let data_section = &buf[data_section_start..];
 
     // Segmentlerin offset+length'i data_section sınırını aşmamalı.
@@ -458,12 +472,15 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
     let mut string_pool = Vec::new();
     if !string_pool_bytes.is_empty() {
         // Son null byte'ı handle etmek için `trim_end`
-        for s in string_pool_bytes.split(|&b| b == 0).filter(|s| !s.is_empty()) {
+        for s in string_pool_bytes
+            .split(|&b| b == 0)
+            .filter(|s| !s.is_empty())
+        {
             let decoded_str = str::from_utf8(s).map_err(DecodeError::Utf8)?;
             string_pool.push(decoded_str.to_string());
         }
     }
-    
+
     Ok(AbdfView {
         header,
         segments,
@@ -472,7 +489,6 @@ pub fn decode_abdf(buf: &[u8]) -> Result<AbdfView<'_>, DecodeError> {
         data_section,
     })
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -487,7 +503,7 @@ mod tests {
         let users_name = builder.intern_string("users");
         let table_type = builder.intern_string("table/generic");
         let schema_str = builder.intern_string("id:u64,name:string");
-        
+
         let syslog_name = builder.intern_string("syslog");
         let log_type = builder.intern_string("log/syslog");
         let log_schema = builder.intern_string("ts:u64,level:u8,msg:string");
@@ -502,10 +518,10 @@ mod tests {
             embedding_idx: 0,
         };
         builder.add_segment(SegmentKind::Tabular(user_meta), user_data);
-        
+
         // Segment 2: Log data
         let log_data = b"some_log_entries";
-         let log_meta = MetaContainer {
+        let log_meta = MetaContainer {
             name_idx: syslog_name,
             type_idx: log_type,
             schema_idx: log_schema,
@@ -542,7 +558,7 @@ mod tests {
         assert_eq!(view.segment_name(1), Some("syslog"));
         assert_eq!(view.segment_data(1), Some(log_data.as_slice()));
         assert!(matches!(view.segment_kind(1), Some(SegmentKind::Log(_))));
-        
+
         // Check Segment 3 (Raw)
         assert_eq!(view.segment_name(2), None); // Raw segment has no meta container
         assert_eq!(view.segment_data(2), Some(raw_data.as_slice()));

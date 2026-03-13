@@ -2,6 +2,7 @@
 #include "interrupts.h"
 #include "gdt_idt.h"
 #include "port_io.h"
+#include "../../include/ayken.h"
 #include "../../sched/sched.h"
 
 struct idt_entry idt_table[256];
@@ -107,13 +108,11 @@ static void isr_bp(struct interrupt_frame *frame)
     const uint64_t upper = rip >> 48;
     const uint64_t sign = (rip >> 47) & 1ULL;
     const int rip_canonical = sign ? (upper == 0xFFFFULL) : (upper == 0x0000ULL);
+    const int user_cpl = ((cs & 0x3u) == 0x3u);
+    const int user_rip = (rip >= USER_TEXT_BASE) && (rip < USER_STACK_TOP);
     const int is_ring3_bp =
-        ((cs & 0x3u) == 0x3u) &&
-        ((ss & 0x3u) == 0x3u) &&
-        (cs == GDT_USER_CODE) &&
-        (ss == GDT_USER_DATA) &&
-        (rip >= 0x0000000000400000ULL) &&
-        (rip < 0x00007FFFFFFFFFFFULL) &&
+        user_cpl &&
+        user_rip &&
         rip_canonical;
 
     if (is_ring3_bp) {

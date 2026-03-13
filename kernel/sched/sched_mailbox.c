@@ -24,6 +24,10 @@
 #define AYKEN_C2_STRICT_MARKERS 0
 #endif
 
+#ifndef AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE
+#define AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE 0
+#endif
+
 // MVP-0 self-test state (kept separate from per-process runtime mailbox path).
 static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
 static uint64_t g_selftest_last_epoch = 0;
@@ -66,6 +70,48 @@ static int reject(ayken_sched_mailbox_t* mb, ayken_sched_reject_reason_t why) {
     return -((int)why);
 }
 
+static int sched_mailbox_validate_capability_envelope(
+    const ayken_sched_mailbox_t* mb,
+    uint32_t* reject_reason
+) {
+    if (!mb || !reject_reason) {
+        return -1;
+    }
+
+#if AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE
+    if ((mb->flags & AYKEN_SCHED_MB_FLAG_CAP_CHECK_REQUIRED) == 0u) {
+        *reject_reason = REJ_CAP_MISSING;
+        return -1;
+    }
+#else
+    /*
+     * Backward-compatible default:
+     * enforce capability envelope only when explicitly requested by Ring3.
+     */
+    if ((mb->flags & AYKEN_SCHED_MB_FLAG_CAP_CHECK_REQUIRED) == 0u) {
+        return 0;
+    }
+#endif
+
+    if ((mb->flags & AYKEN_SCHED_MB_FLAG_SIG_VALID) == 0u) {
+        *reject_reason = REJ_BAD_SIG;
+        return -1;
+    }
+
+    if ((mb->flags & AYKEN_SCHED_MB_FLAG_CAP_PRESENT) == 0u) {
+        *reject_reason = REJ_CAP_MISSING;
+        return -1;
+    }
+
+    if ((mb->flags & AYKEN_SCHED_MB_FLAG_BUDGET_OK) == 0u ||
+        mb->reserved > AYKEN_SCHED_MB_CAP_BUDGET_MAX) {
+        *reject_reason = REJ_BUDGET_EXCEEDED;
+        return -1;
+    }
+
+    return 0;
+}
+
 static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** out_proc) {
     if (!mb || !out_proc) return -1;
     *out_proc = NULL;
@@ -74,11 +120,16 @@ static int sched_mailbox_validate_candidate(ayken_sched_mailbox_t* mb, proc_t** 
     if (mb->version != AYKEN_SCHED_MB_VERSION) return reject(mb, AYKEN_SCHED_REJECT_BAD_VERSION);
     if (mb->kind != AYKEN_SCHED_HINT_CANDIDATE) return reject(mb, AYKEN_SCHED_REJECT_BAD_KIND);
 
+    uint32_t cap_reject = AYKEN_SCHED_REJECT_NONE;
+    if (sched_mailbox_validate_capability_envelope(mb, &cap_reject) != 0) {
+        return reject(mb, (ayken_sched_reject_reason_t)cap_reject);
+    }
+
     // Epoch must advance deterministically
     if (mb->epoch <= g_selftest_last_epoch) return reject(mb, AYKEN_SCHED_REJECT_STALE_EPOCH);
 
     proc_t* p = proc_find_by_pid((int)mb->candidate_pid);
-    if (!p) return reject(mb, AYKEN_SCHED_REJECT_BAD_PID);
+    if (!p) return reject(mb, REJ_INVALID_PID);
 
     // Minimal runnable definition for MVP
     if (!(p->state == PROC_READY || p->state == PROC_RUNNING)) {
@@ -343,6 +394,10 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
     }
 #endif
 
+    if (sched_mailbox_validate_capability_envelope(mb, &reject_reason) != 0) {
+        goto reject;
+    }
+
     // Check 1: Torn read detection
     if (e1 != e2) {
         reject_reason = MB_VALIDATE_REJECT_TORN_READ;
@@ -364,13 +419,13 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 
     // Check 3: PID validity (basic sanity check)
     if (pid == 0 || pid > 1000) {
-        reject_reason = AYKEN_SCHED_REJECT_BAD_PID;
+        reject_reason = REJ_INVALID_PID;
         goto reject;
     }
 
     proc_t *cand = proc_find_by_pid((int)pid);
     if (!cand) {
-        reject_reason = AYKEN_SCHED_REJECT_BAD_PID;
+        reject_reason = REJ_INVALID_PID;
         goto reject;
     }
     if (!(cand->state == PROC_READY || cand->state == PROC_RUNNING)) {

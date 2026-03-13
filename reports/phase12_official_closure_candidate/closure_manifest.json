@@ -1,0 +1,68 @@
+{
+  "boundary_invariants": [
+    "proofd != authority_surface",
+    "parity != consensus",
+    "system computes truth; it does not choose truth"
+  ],
+  "closure_attestation": {
+    "attestation_state": "UNSIGNED",
+    "reason": "attestor_key_material_not_provided"
+  },
+  "closure_class": "official_closure_candidate",
+  "closure_state": "LOCAL_CLOSURE_READY",
+  "current_phase_pointer": "10",
+  "evidence_index_path": "reports/phase12_official_closure_candidate/evidence_index.json",
+  "evidence_index_sha256": "a7eb24faf83a8b4b688761115c716b3ecca32cf6047b065194a4ef8c3b0eb530",
+  "evidence_root_algorithm": "sha256_path_digest_tree_v1",
+  "evidence_root_hash": "667e7af77fb2bd74135078cf82ebcf40c13a0eb6020102714bde0ce26b1fe184",
+  "gate_policy": {
+    "all_required_gates_passed": true,
+    "required_gate_count": 20,
+    "required_gates": [
+      "proof-producer-schema",
+      "proof-signature-envelope",
+      "proof-bundle-v2-schema",
+      "proof-bundle-v2-compat",
+      "proof-signature-verify",
+      "proof-registry-resolution",
+      "proof-key-rotation",
+      "proof-verifier-core",
+      "proof-trust-policy",
+      "proof-verdict-binding",
+      "proof-verifier-cli",
+      "proof-receipt",
+      "proof-audit-ledger",
+      "proof-exchange",
+      "verifier-authority-resolution",
+      "cross-node-parity",
+      "proofd-service",
+      "proof-multisig-quorum",
+      "proof-replay-admission-boundary",
+      "proof-replicated-verification-boundary"
+    ]
+  },
+  "generated_at_utc": "2026-03-13T18:22:29Z",
+  "manifest_digest_algorithm": "sha256",
+  "manifest_hash_excluded_fields": [
+    "manifest_sha256",
+    "closure_attestation"
+  ],
+  "manifest_sha256": "f798f7c2f17e5045b8b649d426c00cd77cf53eabddbb46df82df491dd0c75a13",
+  "manifest_version": 1,
+  "official_closure_prerequisites_remaining": [
+    "mint_dedicated_closure_tag",
+    "obtain_remote_official_confirmation",
+    "execute_formal_phase_transition"
+  ],
+  "phase": "12",
+  "recommended_tag": "phase12-official-closure",
+  "run": {
+    "evidence_run_dir": "evidence/run-run-local-phase12c-closure-2026-03-11",
+    "git_sha": "01d1cb5c99d5eec476eeeee0413e15cedc380e00",
+    "reported_run_id": "run-local-phase12c-closure-2026-03-11",
+    "run_dir_name": "run-run-local-phase12c-closure-2026-03-11",
+    "summary_path": "evidence/run-run-local-phase12c-closure-2026-03-11/reports/summary.json",
+    "time_utc": "2026-03-11T16:59:40Z"
+  },
+  "summary_note_path": "reports/phase12_official_closure_candidate/README.md"
+}
