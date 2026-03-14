@@ -376,8 +376,33 @@ fn parse_fractional_nanos(fraction: &str) -> Result<u64, String> {
         .map_err(|error| format!("invalid_fractional_timestamp_component:{fraction}:{error}"))
 }
 
+fn is_leap_year(year: i64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
+fn days_in_month(year: i64, month: u32) -> u32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if is_leap_year(year) {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 0,
+    }
+}
+
 fn days_from_civil(year: i64, month: u32, day: u32) -> Result<i64, String> {
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    if !(1..=12).contains(&month) {
+        return Err(format!(
+            "invalid_calendar_date:{year:04}-{month:02}-{day:02}"
+        ));
+    }
+    let max_day = days_in_month(year, month);
+    if day < 1 || day > max_day {
         return Err(format!(
             "invalid_calendar_date:{year:04}-{month:02}-{day:02}"
         ));

@@ -199,15 +199,23 @@ def collect_gate_reports(run_dir: Path, repo_root: Path, summary: dict[str, Any]
         report_path = run_dir / "gates" / gate_name / "report.json"
         if not report_path.is_file():
             raise SystemExit(f"Missing gate report: {report_path}")
-        gate_summary = summary["gates"][gate_name]
+        # P1 fix: read verdict directly from gate report.json, not from summary["gates"].
+        # summary["gates"] is derived from these files, but a stale summary could diverge.
+        gate_report = load_json(report_path)
+        gate_verdict = str((gate_report or {}).get("verdict", "UNKNOWN"))
+        gate_violations = 0
+        try:
+            gate_violations = int((gate_report or {}).get("violations_count", 0))
+        except (TypeError, ValueError):
+            pass
         gate_entries.append(
             build_file_entry(
                 report_path,
                 repo_root,
                 {
                     "gate": gate_name,
-                    "verdict": gate_summary.get("verdict"),
-                    "violations_count": gate_summary.get("violations_count", 0),
+                    "verdict": gate_verdict,
+                    "violations_count": gate_violations,
                 },
             )
         )

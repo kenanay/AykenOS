@@ -1661,7 +1661,9 @@ ci-produce-authority-sinkhole-companion-flows: ci-evidence-dir
 	@echo "run_id: $(RUN_ID)"
 	@bash scripts/ci/produce_authority_sinkhole_companion_flows.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows" \
-		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts" \
+		--replay-source "$(EVIDENCE_RUN_DIR)/gates/proofd-service/replay_boundary_flow_source.json" \
+		--trust-source "$(EVIDENCE_RUN_DIR)/gates/proofd-service/trust_reuse_flow_source.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-companion-flow-producer.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/authority_sinkhole_companion_flow_materialization_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-companion-flow-producer-details.json"
 	@if [ -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/replay_boundary_flow_report.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/replay_boundary_flow_report.json" "$(EVIDENCE_RUN_DIR)/reports/replay-boundary-flow-report.json"; fi
