@@ -10,9 +10,9 @@
   },
   "closure_class": "official_closure_candidate",
   "closure_state": "LOCAL_CLOSURE_READY",
-  "current_phase_pointer": "10",
+  "current_phase_pointer": "12",
   "evidence_index_path": "reports/phase12_official_closure_candidate/evidence_index.json",
-  "evidence_index_sha256": "a7eb24faf83a8b4b688761115c716b3ecca32cf6047b065194a4ef8c3b0eb530",
+  "evidence_index_sha256": "c970a0843ed45ca5da37708eedb54f289c9092b685af6e3a148eb26b1a3bf023",
   "evidence_root_algorithm": "sha256_path_digest_tree_v1",
   "evidence_root_hash": "667e7af77fb2bd74135078cf82ebcf40c13a0eb6020102714bde0ce26b1fe184",
   "gate_policy": {
@@ -41,13 +41,13 @@
       "proof-replicated-verification-boundary"
     ]
   },
-  "generated_at_utc": "2026-03-13T18:22:29Z",
+  "generated_at_utc": "2026-03-14T23:48:57Z",
   "manifest_digest_algorithm": "sha256",
   "manifest_hash_excluded_fields": [
     "manifest_sha256",
     "closure_attestation"
   ],
-  "manifest_sha256": "f798f7c2f17e5045b8b649d426c00cd77cf53eabddbb46df82df491dd0c75a13",
+  "manifest_sha256": "8bf9bc403d9b840eaeb5a7be4ff9047caa2192053e0e0c9962160d3c038eda69",
   "manifest_version": 1,
   "official_closure_prerequisites_remaining": [
     "mint_dedicated_closure_tag",

@@ -43,7 +43,9 @@ const VERIFICATION_DIVERSITY_BINDING_FILE: &str = "verification_diversity_ledger
 const VERIFICATION_DIVERSITY_LEDGER_FILE: &str = "verification_diversity_ledger.json";
 const VERIFICATION_DIVERSITY_APPEND_REPORT_FILE: &str =
     "verification_diversity_ledger_append_report.json";
+const REPORTS_DIR: &str = "reports";
 const REPLAY_BOUNDARY_FLOW_SOURCE_FILE: &str = "replay_boundary_flow_source.json";
+const REPLAY_REPORT_FILE: &str = "replay_report.json";
 const TRUST_REUSE_FLOW_SOURCE_FILE: &str = "trust_reuse_flow_source.json";
 const TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH: &str = "reports/trust_reuse_runtime_surface.json";
 const PROOFD_RUN_MANIFEST_FILE: &str = "proofd_run_manifest.json";
@@ -219,6 +221,14 @@ pub fn parse_target(raw: &str) -> RequestTarget {
             query: None,
         },
     }
+}
+
+fn replay_report_relative_path() -> PathBuf {
+    Path::new(REPORTS_DIR).join(REPLAY_REPORT_FILE)
+}
+
+fn replay_report_surface_path_id() -> String {
+    format!("{REPORTS_DIR}/{REPLAY_REPORT_FILE}")
 }
 
 pub fn route_request(method: &str, raw_target: &str, evidence_dir: &Path) -> DiagnosticsResponse {
@@ -1113,7 +1123,7 @@ fn build_runtime_replay_boundary_flow_source_document(
             Some(
                 binding
                     .and_then(|value| value.surface_local_path_id.clone())
-                    .unwrap_or_else(|| "reports/replay_report.json".to_string()),
+                    .unwrap_or_else(replay_report_surface_path_id),
             ),
         )?],
     })
@@ -1308,7 +1318,7 @@ fn build_trust_reuse_runtime_companion_source_event(
 }
 
 fn load_replay_runtime_surface(bundle_path: &Path) -> Result<ReplayRuntimeSurface, ServiceError> {
-    let replay_report_path = bundle_path.join("reports/replay_report.json");
+    let replay_report_path = bundle_path.join(replay_report_relative_path());
     let meta_run_path = bundle_path.join("meta/run.json");
     let replay_report = load_json_from_path::<ProofBundleReplayReport>(
         &replay_report_path,
