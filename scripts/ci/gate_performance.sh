@@ -378,7 +378,13 @@ payload = {
         "preempt_expected_qemu_exit_set": os.environ["PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV"],
     },
 }
-canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+hash_payload = dict(payload)
+if str(payload.get("baseline_authority", "")).startswith("github-hosted-"):
+    # GitHub-hosted ubuntu labels can rotate between image build digests even
+    # when the effective toolchain surface stays identical. Keep the digest for
+    # audit, but hash the stable authority + explicit tool versions instead.
+    hash_payload.pop("ci_image_digest", None)
+canonical = json.dumps(hash_payload, sort_keys=True, separators=(",", ":"))
 payload["env_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 with open(out, "w", encoding="utf-8") as fh:
     json.dump(payload, fh, indent=2, sort_keys=True)
@@ -701,7 +707,13 @@ if b_authority != a_authority:
 
 b_ci_image = baseline.get("env", {}).get("ci_image_digest")
 a_ci_image = actual.get("env", {}).get("ci_image_digest")
-if b_ci_image != a_ci_image:
+digest_is_blocking = not (
+    isinstance(b_authority, str)
+    and isinstance(a_authority, str)
+    and b_authority.startswith("github-hosted-")
+    and a_authority.startswith("github-hosted-")
+)
+if b_ci_image != a_ci_image and digest_is_blocking:
     diffs.append(f"ci_image_digest_mismatch: baseline={b_ci_image} actual={a_ci_image}")
 
 def check_metric(key):
