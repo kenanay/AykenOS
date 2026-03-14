@@ -354,7 +354,7 @@ fn build_fixture_trust_reuse_runtime_surface() -> TrustReuseRuntimeSurfaceReport
         run_id: "fixture-run".to_string(),
         timestamp_unix_ns: 1_710_000_000_000_000_000,
         subject_bundle_id: "fixture-bundle-subject".to_string(),
-        verification_context_id: "sha256:fixture-proofd-context".to_string(),
+        verification_context_id: "proofd-policy-hash-a".to_string(),
         authority_chain_id: "sha256:proofd-authority-chain-node-b".to_string(),
         trust_reuse_outcome: TrustReuseOutcome::Accepted,
         terminal: true,

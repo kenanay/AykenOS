@@ -4,7 +4,12 @@
 # Purpose: Comprehensive QEMU environment validation for Phase 1.5
 # Task: 1.5.1.3 - QEMU environment validation
 
-set -e
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
 
 # Default parameters
 VERBOSE=false
@@ -22,9 +27,13 @@ NC='\033[0m'
 
 # Test configuration
 QEMU_EXECUTABLE="qemu-system-x86_64"
-REQUIRED_FILES=("kernel.elf" "bootloader/efi/BOOTX64.EFI")
-EFI_IMAGE="EFI.img"
+REQUIRED_FILES=("${AYKEN_KERNEL_ELF}" "${AYKEN_BOOT_EFI}")
+EFI_IMAGE="${EFI_IMG:-${AYKEN_EFI_IMG}}"
 TEST_TIMEOUT=$TIMEOUT
+MAKE_RUN_OUTPUT_LOG="${AYKEN_LOG_DIR}/make_run_output.log"
+MAKE_RUN_ERROR_LOG="${AYKEN_LOG_DIR}/make_run_error.log"
+BOOT_TEST_OUTPUT_LOG="${AYKEN_LOG_DIR}/boot_test_output.log"
+BOOT_TEST_ERROR_LOG="${AYKEN_LOG_DIR}/boot_test_error.log"
 
 # Success patterns
 SUCCESS_PATTERNS=(
@@ -277,8 +286,8 @@ test_make_run_automation() {
     write_validation_log "Testing make run command (timeout: ${TEST_TIMEOUT}s)..." "INFO"
     
     # Start make run process in background
-    local output_log="make_run_output.log"
-    local error_log="make_run_error.log"
+    local output_log="${MAKE_RUN_OUTPUT_LOG}"
+    local error_log="${MAKE_RUN_ERROR_LOG}"
     
     # Clean old logs
     rm -f "$output_log" "$error_log"
@@ -387,8 +396,8 @@ test_boot_capability() {
         return 1
     fi
     
-    local output_log="boot_test_output.log"
-    local error_log="boot_test_error.log"
+    local output_log="${BOOT_TEST_OUTPUT_LOG}"
+    local error_log="${BOOT_TEST_ERROR_LOG}"
     
     # Clean old logs
     rm -f "$output_log" "$error_log"

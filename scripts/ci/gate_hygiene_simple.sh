@@ -36,15 +36,36 @@ while IFS= read -r path; do
   [[ "${path}" =~ ^(evidence/|binutils-2\.42/|gcc-14\.2\.0/) ]] && continue
   
   case "${path}" in
-    ayken/target/*|ayken-core/target/*|userspace/target/*|target/*|build/*|obj/*|*.o|*.elf|*.a|*.so|*.tmp|*.dSYM|*.dSYM/*)
+    ayken/target/*|ayken-core/target/*|userspace/target/*|target/*|build/*|out/*|obj/*|*.o|*.elf|*.a|*.so|*.tmp|*.dSYM|*.dSYM/*)
       echo "forbidden_tracked:${path}" >> "${VIOLATIONS_TXT}"
       ((FORBIDDEN_COUNT++)) || true
       ;;
   esac
 done < <(git -C "${ROOT}" ls-files)
 
+STRUCTURE_COUNT=0
+if command -v rg >/dev/null 2>&1; then
+  while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "structure_contract:kernel_private_include:${hit}" >> "${VIOLATIONS_TXT}"
+    ((STRUCTURE_COUNT++)) || true
+  done < <(cd "${ROOT}" && rg -n '\.\./\.\./kernel/' bootloader userspace || true)
+
+  while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "structure_contract:c_include:${hit}" >> "${VIOLATIONS_TXT}"
+    ((STRUCTURE_COUNT++)) || true
+  done < <(cd "${ROOT}" && rg -n '#include ".*\.c"' kernel bootloader userspace || true)
+
+  while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "structure_contract:production_test_header:${hit}" >> "${VIOLATIONS_TXT}"
+    ((STRUCTURE_COUNT++)) || true
+  done < <(cd "${ROOT}" && rg -n '#include ".*_test\.h"' kernel bootloader userspace -g '!**/*_test.c' -g '!**/*_test.h' || true)
+fi
+
 # Generate report
-TOTAL_VIOLATIONS=$((DIRTY_COUNT + FORBIDDEN_COUNT))
+TOTAL_VIOLATIONS=$((DIRTY_COUNT + FORBIDDEN_COUNT + STRUCTURE_COUNT))
 if [[ ${TOTAL_VIOLATIONS} -eq 0 ]]; then
   VERDICT="PASS"
 else
@@ -58,7 +79,8 @@ cat > "${REPORT_JSON}" <<EOF
   "violations_count": ${TOTAL_VIOLATIONS},
   "checks": {
     "dirty_tracked": ${DIRTY_COUNT},
-    "forbidden_tracked": ${FORBIDDEN_COUNT}
+    "forbidden_tracked": ${FORBIDDEN_COUNT},
+    "structure_contract": ${STRUCTURE_COUNT}
   },
   "note": "Simplified hygiene gate for MVP-1 (source deny scan disabled for performance)"
 }

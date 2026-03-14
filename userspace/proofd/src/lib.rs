@@ -601,6 +601,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         if let Some(document) = build_runtime_trust_reuse_flow_source_document(
             &bundle_path,
             &request,
+            &outcome,
             request.trust_reuse_binding.as_ref(),
         )? {
             write_json_file_if_absent_or_same(
@@ -1145,6 +1146,7 @@ fn build_request_bound_trust_reuse_flow_source_document(
 fn build_runtime_trust_reuse_flow_source_document(
     bundle_path: &Path,
     request: &VerifyBundleRequestBody,
+    outcome: &proof_verifier::types::VerificationOutcome,
     binding: Option<&VerifyBundleTrustReuseBinding>,
 ) -> Result<Option<AuthoritySinkholeCompanionSourceDocument>, ServiceError> {
     let runtime_surface_path = trust_reuse_runtime_surface_path(bundle_path);
@@ -1170,7 +1172,12 @@ fn build_runtime_trust_reuse_flow_source_document(
         .iter()
         .filter(|event| event.trust_reuse_outcome != TrustReuseOutcome::Rejected)
         .map(|event| {
-            build_trust_reuse_runtime_companion_source_event(event, &runtime_surface, binding)
+            build_trust_reuse_runtime_companion_source_event(
+                event,
+                &runtime_surface,
+                outcome,
+                binding,
+            )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1253,16 +1260,25 @@ fn resolve_trust_reuse_runtime_source_run_id(
 fn build_trust_reuse_runtime_companion_source_event(
     event: &TrustReuseRuntimeEvent,
     report: &TrustReuseRuntimeSurfaceReport,
+    outcome: &proof_verifier::types::VerificationOutcome,
     binding: Option<&VerifyBundleTrustReuseBinding>,
 ) -> Result<AuthoritySinkholeCompanionSourceEvent, ServiceError> {
     if !event.terminal || !event.reused {
         return Err(ServiceError::Runtime("trust_reuse_runtime_surface_invalid"));
     }
+    let receipt = outcome
+        .receipt
+        .as_ref()
+        .ok_or(ServiceError::Runtime(
+            "signed_receipt_missing_for_companion_source",
+        ))?;
+    let timestamp_unix_ns = parse_event_time_to_unix_ns(&receipt.payload.verified_at_utc)
+        .map_err(|_| ServiceError::Runtime("companion_source_timestamp_invalid"))?;
     Ok(AuthoritySinkholeCompanionSourceEvent {
-        run_id: Some(event.run_id.clone()),
-        timestamp_unix_ns: event.timestamp_unix_ns,
-        subject_bundle_id: event.subject_bundle_id.clone(),
-        verification_context_id: event.verification_context_id.clone(),
+        run_id: None,
+        timestamp_unix_ns,
+        subject_bundle_id: outcome.subject.bundle_id.clone(),
+        verification_context_id: outcome.subject.policy_hash.clone(),
         authority_chain_id: event.authority_chain_id.clone(),
         terminal: event.terminal,
         reused: event.reused,
@@ -2782,7 +2798,7 @@ mod tests {
             run_id: "fixture-run".to_string(),
             timestamp_unix_ns: 1_710_000_000_000_000_000,
             subject_bundle_id: "fixture-bundle-subject".to_string(),
-            verification_context_id: "sha256:fixture-proofd-context".to_string(),
+            verification_context_id: "proofd-policy-hash-a".to_string(),
             authority_chain_id: "sha256:proofd-authority-chain-node-b".to_string(),
             trust_reuse_outcome: TrustReuseOutcome::Rejected,
             terminal: true,

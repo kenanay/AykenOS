@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-IMG=EFI.img
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
+
+IMG="${EFI_IMG:-${AYKEN_EFI_IMG}}"
+BOOT_EFI_PATH="${BOOT_EFI:-${AYKEN_BOOT_EFI}}"
+KERNEL_ELF_PATH="${KERNEL_ELF:-${AYKEN_KERNEL_ELF}}"
+IMG_DMG="${IMG}.dmg"
 
 # DEBUG MODE: Always rebuild to ensure fresh image
 # TODO: Re-enable deterministic mode after debugging is complete
@@ -11,7 +19,8 @@ IMG=EFI.img
 # fi
 
 # Force clean rebuild
-rm -f "$IMG" "$IMG.dmg"
+rm -f "$IMG" "$IMG_DMG"
+mkdir -p "$(dirname "$IMG")"
 
 
 if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
@@ -19,7 +28,7 @@ if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command 
 
     echo "[*] FAT32 EFI image oluşturuluyor (hdiutil GPTSPUD)..."
 
-    TMP_DMG="${IMG}.dmg"
+    TMP_DMG="${IMG_DMG}"
     DEV=""
 
     if hdiutil create -size 200m -layout GPTSPUD -partitionType EFI -fs "MS-DOS FAT32" -volname EFI "$TMP_DMG" >/dev/null 2>&1; then
@@ -27,9 +36,9 @@ if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command 
         if [[ -n "$DEV" ]] && diskutil mount "${DEV}s1" >/dev/null 2>&1; then
             mkdir -p "$MOUNT_VOL/EFI/BOOT"
             echo "[BOOTX64.EFI kopyalanıyor]"
-            cp bootloader/efi/BOOTX64.EFI "$MOUNT_VOL/EFI/BOOT/"
+            cp "$BOOT_EFI_PATH" "$MOUNT_VOL/EFI/BOOT/"
             echo "[kernel.elf kopyalanıyor]"
-            cp kernel.elf "$MOUNT_VOL/"
+            cp "$KERNEL_ELF_PATH" "$MOUNT_VOL/"
             
             # CRITICAL FIX: Generate startup.nsh with correct content (no stray %)
             echo "[startup.nsh oluşturuluyor]"
@@ -55,23 +64,23 @@ EOF
 fi
 
 echo "[*] FAT32 EFI image oluşturuluyor..."
-dd if=/dev/zero of=$IMG bs=1M count=64  >/dev/null 2>&1
+dd if=/dev/zero of="$IMG" bs=1M count=64 >/dev/null 2>&1
 
 echo "[mformat]"
-mformat -i $IMG -F ::
+mformat -i "$IMG" -F ::
 
 echo "[mkdir EFI/BOOT]"
-mmd -i $IMG ::EFI
-mmd -i $IMG ::EFI/BOOT
+mmd -i "$IMG" ::EFI
+mmd -i "$IMG" ::EFI/BOOT
 
 echo "[BOOTX64.EFI kopyalanıyor]"
-mcopy -i $IMG bootloader/efi/BOOTX64.EFI ::EFI/BOOT/
+mcopy -i "$IMG" "$BOOT_EFI_PATH" ::EFI/BOOT/
 
 echo "[kernel.elf kopyalanıyor]"
-mcopy -i $IMG kernel.elf ::
+mcopy -i "$IMG" "$KERNEL_ELF_PATH" ::
 
 echo "[startup.nsh kopyalanıyor]"
 # CRITICAL FIX: Generate startup.nsh with correct content (no stray %)
-printf "fs0:\n\\\\EFI\\\\BOOT\\\\BOOTX64.EFI\n" | mcopy -i $IMG - ::startup.nsh
+printf "fs0:\n\\\\EFI\\\\BOOT\\\\BOOTX64.EFI\n" | mcopy -i "$IMG" - ::startup.nsh
 
 echo "[*] EFI.img hazır!"

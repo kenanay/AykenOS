@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../kernel/include/capability.h"
+#include "../../shared/abi/capability.h"
 
 // Define missing types for VFS interface
 typedef int64_t ssize_t;
@@ -363,6 +363,8 @@ typedef struct userspace_vfs {
     int (*get_filesystem_stats)(const char *path, vfs_mount_info_t *stats);
     
 } userspace_vfs_t;
+
+extern userspace_vfs_t *g_userspace_vfs;
 
 // ============================================================================
 // VFS CONTEXT MANAGEMENT

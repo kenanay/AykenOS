@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
+
 TIMEOUT=50
 MARKER="[U][SYSCALL_OK]"
 FALLBACK_MARKER="[[AYKEN_SYSCALL_V2_OK]]"
@@ -59,7 +64,7 @@ Usage: $0 [OPTIONS]
 Options:
   --timeout N       Set timeout in seconds (default: 50)
   --marker TEXT     Canonical marker (default: ${MARKER})
-  --out-dir PATH    Output directory for logs (default: reports/phase_4_4_closure_YYYY-MM-DD)
+  --out-dir PATH    Output directory for logs (default: out/reports/phase_4_4_closure_YYYY-MM-DD)
   --help            Show this help
 EOF
 }
@@ -92,7 +97,7 @@ done
 
 DATE_STAMP="$(date +%Y-%m-%d)"
 if [[ -z "$OUT_DIR" ]]; then
-    OUT_DIR="reports/phase_4_4_closure_${DATE_STAMP}"
+    OUT_DIR="${AYKEN_LOCAL_REPORT_DIR}/phase_4_4_closure_${DATE_STAMP}"
 fi
 mkdir -p "$OUT_DIR"
 

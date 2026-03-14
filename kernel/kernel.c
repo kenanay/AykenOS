@@ -36,9 +36,6 @@
 #include "fs/devfs.h"
 #include "include/syscall.h"
 #include "include/capability.h"
-#include "sys/phase2_validation_test.h"
-#include "sys/syscall_count_test.h"
-#include "sys/scheduler_policy_test.h"
 
 #include "drivers/console/fb_console.h"
 #include "serial.h"

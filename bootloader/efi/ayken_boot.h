@@ -4,9 +4,8 @@
 #include <efi.h>
 #include <efilib.h>
 
-// Kernel tarafındaki struct’ı BURADAN çekiyoruz
-#include "../../kernel/include/boot_info.h"
-#include "../../kernel/include/boot_flags.h"
+#include "../../shared/abi/boot_info.h"
+#include "../../shared/abi/boot_flags.h"
 
 typedef void (*ayken_kernel_entry_t)(ayken_boot_info_t *boot);
 

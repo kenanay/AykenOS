@@ -15,8 +15,6 @@
 
 #include "ring3_vfs_integration.h"
 #include "vfs.h"
-#include "vfs_lib.c"
-#include "vfs_ring0_proxy.c"
 
 // ============================================================================
 // RING3 VFS INTEGRATION IMPLEMENTATION

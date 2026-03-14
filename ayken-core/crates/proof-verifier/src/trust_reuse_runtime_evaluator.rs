@@ -242,7 +242,9 @@ fn build_runtime_event(
         run_id: config.run_id.clone(),
         timestamp_unix_ns: config.timestamp_unix_ns,
         subject_bundle_id: expected_subject.bundle_id.clone(),
-        verification_context_id: verification_context.verification_context_id.clone(),
+        // Stage-2 sinkhole comparison keys must align with VDL and replay surfaces.
+        // The canonical context object identity remains available via verification_context_ref.
+        verification_context_id: verification_context.policy_hash.clone(),
         authority_chain_id: authority_chain_id.to_string(),
         trust_reuse_outcome,
         terminal: true,

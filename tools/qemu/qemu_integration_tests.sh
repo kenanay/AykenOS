@@ -3,10 +3,14 @@
 # Author: Kenan AY
 # Purpose: Comprehensive QEMU-based testing for Phase 1 critical functionality
 
-set -e
+set -euo pipefail
 
 # Test configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
 TEST_TIMEOUT=45
 VERBOSE=false
 SAVE_LOGS=false
@@ -31,13 +35,16 @@ PASSED_TESTS=0
 FAILED_TESTS=0
 
 # QEMU configuration
+EFI_IMAGE="${EFI_IMG:-${AYKEN_EFI_IMG}}"
+KERNEL_IMAGE="${KERNEL_ELF:-${AYKEN_KERNEL_ELF}}"
+MONITOR_SOCKET="${AYKEN_LOG_DIR}/qemu-monitor.sock"
 QEMU_ARGS=(
-    "-drive" "format=raw,file=EFI.img"
+    "-drive" "format=raw,file=${EFI_IMAGE}"
     "-serial" "stdio"
     "-m" "256M"
     "-no-reboot"
     "-no-shutdown"
-    "-monitor" "unix:qemu-monitor.sock,server,nowait"
+    "-monitor" "unix:${MONITOR_SOCKET},server,nowait"
 )
 
 # Test patterns for different validation types
@@ -154,11 +161,9 @@ check_prerequisites() {
     fi
     
     # Check EFI image
-    if [[ ! -f "EFI.img" ]]; then
-        write_log "EFI.img not found, attempting to create..." "WARNING"
-        if [[ -x "./make_efi_img.sh" ]]; then
-            ./make_efi_img.sh
-        elif command -v make >/dev/null 2>&1; then
+    if [[ ! -f "${EFI_IMAGE}" ]]; then
+        write_log "${EFI_IMAGE} not found, attempting to create..." "WARNING"
+        if command -v make >/dev/null 2>&1; then
             make efi-img
         else
             write_log "Failed to create EFI.img: no creation method available" "ERROR"
@@ -167,8 +172,8 @@ check_prerequisites() {
     fi
     
     # Check kernel.elf
-    if [[ ! -f "kernel.elf" ]]; then
-        write_log "kernel.elf not found, attempting to build..." "WARNING"
+    if [[ ! -f "${KERNEL_IMAGE}" ]]; then
+        write_log "${KERNEL_IMAGE} not found, attempting to build..." "WARNING"
         if command -v make >/dev/null 2>&1; then
             make all
         else
@@ -184,13 +189,14 @@ check_prerequisites() {
 start_qemu_test() {
     local test_name="$1"
     local timeout="${2:-$TEST_TIMEOUT}"
-    local output_log="${test_name}_output.log"
-    local error_log="${test_name}_error.log"
+    mkdir -p "${AYKEN_LOG_DIR}"
+    local output_log="${AYKEN_LOG_DIR}/${test_name}_output.log"
+    local error_log="${AYKEN_LOG_DIR}/${test_name}_error.log"
     
     write_log "Starting QEMU test: $test_name (timeout: ${timeout}s)" "INFO"
     
     # Clean old logs
-    rm -f "$output_log" "$error_log" qemu-monitor.sock
+    rm -f "$output_log" "$error_log" "${MONITOR_SOCKET}"
     
     # Configure QEMU arguments
     local qemu_args=("${QEMU_ARGS[@]}")
@@ -353,12 +359,12 @@ test_syscall_roundtrip() {
 test_qemu_debugging() {
     write_log "=== QEMU DEBUGGING INTERFACE TEST ===" "INFO"
     
-    local output_log="debug_test_output.log"
-    local error_log="debug_test_error.log"
-    local monitor_log="debug_monitor.log"
+    local output_log="${AYKEN_LOG_DIR}/debug_test_output.log"
+    local error_log="${AYKEN_LOG_DIR}/debug_test_error.log"
+    local monitor_log="${AYKEN_LOG_DIR}/debug_monitor.log"
     
     # Clean old logs
-    rm -f "$output_log" "$error_log" "$monitor_log" qemu-monitor.sock
+    rm -f "$output_log" "$error_log" "$monitor_log" "${MONITOR_SOCKET}"
     
     # Start QEMU with monitor
     local qemu_args=("${QEMU_ARGS[@]}")
@@ -371,13 +377,13 @@ test_qemu_debugging() {
     
     # Wait for monitor socket
     local wait_count=0
-    while [[ ! -S "qemu-monitor.sock" ]] && (( wait_count < 10 )); do
+    while [[ ! -S "${MONITOR_SOCKET}" ]] && (( wait_count < 10 )); do
         sleep 1
         ((wait_count++))
     done
     
     local debug_success=false
-    if [[ -S "qemu-monitor.sock" ]]; then
+    if [[ -S "${MONITOR_SOCKET}" ]]; then
         # Test monitor commands
         {
             echo "info registers"
@@ -385,7 +391,7 @@ test_qemu_debugging() {
             echo "info memory"
             sleep 2
             echo "quit"
-        } | socat - UNIX-CONNECT:qemu-monitor.sock > "$monitor_log" 2>&1 &
+        } | socat - UNIX-CONNECT:"${MONITOR_SOCKET}" > "$monitor_log" 2>&1 &
         
         # Monitor for a short time
         sleep 5
@@ -406,7 +412,7 @@ test_qemu_debugging() {
         wait "$qemu_pid" 2>/dev/null || true
     fi
     
-    rm -f qemu-monitor.sock
+    rm -f "${MONITOR_SOCKET}"
     
     # Store results
     TEST_RESULTS["qemu_debugging"]=$([ "$debug_success" == "true" ] && echo "true" || echo "false")

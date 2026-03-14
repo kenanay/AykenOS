@@ -65,6 +65,7 @@ test_baseline_init.sh
 **/syscall_efi_run.*
 qemu_*.log
 evidence/
+out/
 
 # userspace artifacts (generated; not tracked)
 userspace/minimal/user.bin

@@ -18,8 +18,8 @@
 
 #include "vfs.h"
 #include "vfs_kernel_interface.h"
-#include "../../kernel/sys/syscall_v2.h"
-#include "../../kernel/include/capability.h"
+#include "../../shared/abi/syscall_v2.h"
+#include "../../shared/abi/capability.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>

@@ -3,7 +3,12 @@
 # Author: Kenan AY
 # Purpose: Advanced QEMU boot testing with log analysis and automation
 
-set -e
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
 
 # Default parameters
 TIMEOUT=30
@@ -21,8 +26,9 @@ GRAY='\033[0;37m'
 NC='\033[0m'
 
 # Test configuration
+EFI_IMAGE="${EFI_IMG:-${AYKEN_EFI_IMG}}"
 QEMU_ARGS=(
-    "-drive" "format=raw,file=EFI.img"
+    "-drive" "format=raw,file=${EFI_IMAGE}"
     "-serial" "stdio"
     "-m" "256M"
     "-no-reboot"
@@ -264,23 +270,22 @@ start_qemu_test() {
     write_test_log "Starting QEMU test: $test_name" "INFO"
     
     # Ensure EFI image exists
-    if [[ ! -f "EFI.img" ]]; then
-        write_test_log "EFI.img not found, creating..." "WARNING"
-        if [[ -x "./make_efi_img.sh" ]]; then
-            ./make_efi_img.sh
-        elif command -v make >/dev/null 2>&1; then
+    if [[ ! -f "${EFI_IMAGE}" ]]; then
+        write_test_log "${EFI_IMAGE} not found, creating..." "WARNING"
+        if command -v make >/dev/null 2>&1; then
             make efi-img
         else
             write_test_log "Failed to create EFI.img: no creation method available" "ERROR"
             return 1
         fi
-        write_test_log "EFI.img created successfully" "SUCCESS"
+        write_test_log "${EFI_IMAGE} created successfully" "SUCCESS"
     fi
     
     # Prepare log files
-    local output_log="${test_name}_output.log"
-    local error_log="${test_name}_error.log"
-    local analysis_log="${test_name}_analysis.log"
+    mkdir -p "${AYKEN_LOG_DIR}"
+    local output_log="${AYKEN_LOG_DIR}/${test_name}_output.log"
+    local error_log="${AYKEN_LOG_DIR}/${test_name}_error.log"
+    local analysis_log="${AYKEN_LOG_DIR}/${test_name}_analysis.log"
     
     # Clean old logs
     rm -f "$output_log" "$error_log" "$analysis_log"

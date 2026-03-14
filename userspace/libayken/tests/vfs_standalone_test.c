@@ -13,8 +13,8 @@
  * @task 2.2.1.3 - Implement Ring3 VFS using new syscalls (Step C)
  */
 
-#include "ring3_vfs_integration.h"
-#include "vfs_kernel_interface.h"
+#include "../ring3_vfs_integration.h"
+#include "../vfs_kernel_interface.h"
 #include <stdint.h>
 
 /**

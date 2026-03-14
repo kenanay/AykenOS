@@ -5,6 +5,8 @@
 #  - EFI.img + QEMU run
 # ============================================================
 
+include mk/paths.mk
+
 # ------------------------------------------------------------
 # 1) Kernel toolchain
 # ------------------------------------------------------------
@@ -139,10 +141,8 @@ KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kern
 KERNEL_LDFLAGS = -nostdlib -z max-page-size=0x1000
 KERNEL_MAP ?=
 
-KERNEL_ELF = kernel.elf
 CTX_SWITCH_ASM = kernel/arch/x86_64/context_switch.asm
-PROFILE_STAMP = .build_profile.stamp
-ABI_H = kernel/include/ayken_abi.h
+ABI_H = shared/abi/ayken_abi.h
 ABI_INC = kernel/include/generated/ayken_abi.inc
 RING0_SYMBOL_WHITELIST = scripts/ci/constitutional-ring0-symbol-whitelist.regex
 RING0_EXPORT_MAP = kernel/include/generated/ring0.exports.map
@@ -199,10 +199,9 @@ endif
 
 # Rust workspace (userspace runtime/dispatcher)
 USERSPACE_RUST_DIR = userspace
-USERSPACE_RUNTIME_BIN = $(USERSPACE_RUST_DIR)/target/debug/dispatcher.exe
+USERSPACE_RUNTIME_BIN = $(CARGO_TARGET_DIR)/debug/dispatcher
 
 # CI evidence and boundary gate defaults
-EVIDENCE_ROOT ?= evidence
 # Include per-process entropy to avoid evidence path collisions when multiple
 # local make invocations start within the same second.
 RUN_ID_NONCE := $(shell /bin/sh -c 'printf "%s" "$$$$"')
@@ -224,7 +223,7 @@ PHASE12_CLOSURE_ATTESTOR_PUBLIC_KEY ?=
 PHASE12_CLOSURE_PREFLIGHT_OUTPUT_DIR ?= reports/phase12_official_closure_preflight
 PHASE12_CLOSURE_REMOTE_CI_WORKFLOW ?= ci-freeze
 PHASE12_CLOSURE_REMOTE_CI_RUN_ID ?=
-CI_TARGETS ?= kernel.elf
+CI_TARGETS ?= $(KERNEL_ELF)
 ABI_INIT_BASELINE ?= 0
 ABI_DIFF_RANGE ?=
 CONSTITUTIONAL_STRICT ?= 1
@@ -369,17 +368,14 @@ EFI_ASM_OBJS = $(EFI_ASM_SRC:.S=.efi.o)
 
 EFI_OBJS = $(EFI_SRC:.c=.efi.o) $(EFI_ASM_OBJS)
 
-BOOT_EFI = $(BOOTLOADER_DIR)/BOOTX64.EFI
-
-
 # ------------------------------------------------------------
 # 3) Top-level hedefler
 # ------------------------------------------------------------
 
-all: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF) $(BOOT_EFI)
+all: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF) $(BOOT_EFI) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI)
 
-kernel: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF)
-bootloader: check-deps $(BOOT_EFI)
+kernel: check-deps guard-context-offsets $(USER_MINIMAL_BIN) $(EMBEDDED_ELF_HEADER) $(KERNEL_ELF) $(LEGACY_KERNEL_ELF)
+bootloader: check-deps $(BOOT_EFI) $(LEGACY_BOOT_EFI)
 user-minimal: $(USER_MINIMAL_BIN)
 userspace-runtime:
 	@cd $(USERSPACE_RUST_DIR) && cargo build -p bcib-runtime --bin dispatcher
@@ -396,6 +392,7 @@ validation-strict:
 # ------------------------------------------------------------
 
 $(PROFILE_STAMP): FORCE
+	@mkdir -p $(dir $@)
 	@if [ ! -f $(PROFILE_STAMP) ] || [ "$$(cat $(PROFILE_STAMP) 2>/dev/null)" != "$(KERNEL_PROFILE)" ]; then \
 		echo "$(KERNEL_PROFILE)" > $(PROFILE_STAMP); \
 	fi
@@ -403,7 +400,11 @@ $(PROFILE_STAMP): FORCE
 $(KERNEL_OBJS): $(PROFILE_STAMP) $(EMBEDDED_ELF_HEADER)
 
 $(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP) $(KERNEL_LINK_EXTRA_DEPS)
+	@mkdir -p $(dir $@)
 	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(KERNEL_LINK_EXTRA_FLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
+
+kernel.elf: $(KERNEL_ELF)
+	cp -f "$<" "$@"
 
 # Generate NASM ABI include from single C ABI source.
 .PHONY: generate-abi
@@ -473,7 +474,11 @@ $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL)
 # ------------------------------------------------------------
 
 $(BOOT_EFI): $(EFI_OBJS)
+	@mkdir -p $(dir $@)
 	$(EFI_LD) $(EFI_LDFLAGS) /out:$@ $(EFI_OBJS)
+
+bootloader/efi/BOOTX64.EFI: $(BOOT_EFI)
+	cp -f "$<" "$@"
 
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.c
 	$(EFI_CC) $(EFI_CFLAGS) -c $< -o $@
@@ -483,20 +488,22 @@ $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.c
 # 6) EFI disk image + QEMU
 # ------------------------------------------------------------
 
-EFI_IMG = EFI.img
-OVMF_CODE = firmware/ovmf/OVMF_CODE.fd
-OVMF_VARS_CLEAN = OVMF_VARS.clean.fd
-OVMF_VARS_RUN = ovmf_vars.fd
-
-efi-img: $(KERNEL_ELF) $(BOOT_EFI)
+$(EFI_IMG): $(KERNEL_ELF) $(BOOT_EFI)
+	@mkdir -p $(dir $@) "$(AYKEN_LOG_DIR)"
 	@if [ "$(OS)" = "Windows_NT" ]; then \
 		powershell -ExecutionPolicy Bypass -File tools/build/make_efi_img.ps1; \
 	else \
-		bash ./tools/build/make_efi_img.sh; \
+		EFI_IMG="$(EFI_IMG)" BOOT_EFI="$(BOOT_EFI)" KERNEL_ELF="$(KERNEL_ELF)" bash ./tools/build/make_efi_img.sh; \
 	fi
+
+EFI.img: $(EFI_IMG)
+	cp -f "$<" "$@"
+
+efi-img: $(EFI_IMG) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI) $(LEGACY_EFI_IMG)
 
 run: efi-img
 	@# CRITICAL: Use clean NVRAM to avoid BootOrder corruption
+	mkdir -p "$(AYKEN_LOG_DIR)" "$(dir $(OVMF_VARS_RUN))"
 	cp -f $(OVMF_VARS_CLEAN) $(OVMF_VARS_RUN)
 	qemu-system-x86_64 \
 		-machine q35 \
@@ -504,7 +511,7 @@ run: efi-img
 		-drive if=pflash,format=raw,file=$(OVMF_VARS_RUN) \
 		-drive format=raw,file=$(EFI_IMG) \
 		-boot order=c \
-		-debugcon file:debug_run.log \
+		-debugcon file:$(AYKEN_LOG_DIR)/debug_run.log \
 		-global isa-debugcon.iobase=0xe9 \
 		-nographic
 
@@ -519,10 +526,12 @@ run-preempt-strict:
 	QEMU_TIMEOUT=12 STRICT_MARKERS=1 FORCE_EFI_REBUILD=1 ./run_preempt_test.sh
 
 clean:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) $(EFI_IMG) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.*
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(EFI_OBJS) $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.* kernel.elf EFI.img bootloader/efi/BOOTX64.EFI
+	rm -rf $(AYKEN_BUILD_DIR) $(AYKEN_LOG_DIR)
 
 clean-noimg:
-	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(KERNEL_ELF) $(EFI_OBJS) $(BOOT_EFI) .build_profile.stamp $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.*
+	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(EFI_OBJS) $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.* kernel.elf bootloader/efi/BOOTX64.EFI
+	rm -f $(KERNEL_ELF) $(BOOT_EFI) $(PROFILE_STAMP)
 
 .PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:

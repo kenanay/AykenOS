@@ -12,8 +12,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../../kernel/include/capability.h"
-#include "../../kernel/sys/syscall_v2.h"
+#include "vfs.h"
+#include "vfs_kernel_interface.h"
+#include "../../shared/abi/syscall_v2.h"
 
 // Simple string functions
 static size_t strlen(const char *s) {
@@ -28,24 +29,25 @@ static char *strcpy(char *dest, const char *src) {
     return dest;
 }
 
+static void *memcpy_local(void *dest, const void *src, size_t n) {
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
+    while (n--) {
+        *d++ = *s++;
+    }
+    return dest;
+}
+
 // Define missing types for VFS interface
 typedef int64_t ssize_t;
 typedef int64_t off_t;
 
-// Forward declarations to avoid header conflicts
 typedef struct vfs_file vfs_file_t;
 typedef enum {
     VFS_MODE_READ = 1,
     VFS_MODE_WRITE = 2,
     VFS_MODE_READ_WRITE = 3
 } vfs_mode_t;
-
-// ============================================================================
-// RING3 VFS KERNEL INTERFACE IMPLEMENTATION
-// ============================================================================
-
-// Global VFS interface for kernel registration
-static userspace_vfs_t *g_userspace_vfs = NULL;
 
 /**
  * ring3_vfs_init - Initialize Ring3 VFS for kernel integration
@@ -152,7 +154,7 @@ static int ring3_vfs_stat(const char *path, void *info)
     if (result == VFS_SUCCESS && info) {
         // Copy relevant fields to kernel structure
         // Note: This assumes compatible structures
-        memcpy(info, &userspace_info, sizeof(vfs_file_info_t));
+        memcpy_local(info, &userspace_info, sizeof(vfs_file_info_t));
     }
     
     return result;

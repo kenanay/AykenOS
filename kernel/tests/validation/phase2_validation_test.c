@@ -9,12 +9,12 @@
 //
 // Requirements: Task 2.5.3.1 - Execute complete Phase 2 validation
 
-#include "syscall_v2.h"
-#include "../drivers/console/fb_console.h"
-#include "../include/capability.h"
-#include "../include/proc.h"
-#include "../sched/sched.h"
-#include "../fs/devfs.h"
+#include "../../sys/syscall_v2.h"
+#include "../../drivers/console/fb_console.h"
+#include "../../include/capability.h"
+#include "../../include/proc.h"
+#include "../../sched/sched.h"
+#include "../../fs/devfs.h"
 #include <stddef.h>
 
 // Test result tracking

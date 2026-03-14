@@ -72,18 +72,6 @@ pub mod loop_engine;
 // Context manager (data loading, caching)
 pub mod context;
 
-// Memory optimization (object pooling, allocation patterns) - Phase 4.3
-pub mod memory;
-
-// Performance Management (intelligent resource allocation, scheduling) - Phase 4.4
-pub mod performance_management;
-
-// Constitutional Integration (unified governance, evidence-based decisions) - Phase CI
-pub mod constitutional;
-
-// Orchestration (multi-agent coordination) - Phase 3.4
-pub mod orchestration;
-
 // Operations (query, mutation, pipeline, etc.)
 pub mod operations;
 

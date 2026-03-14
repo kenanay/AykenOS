@@ -18,7 +18,7 @@
  * License: ASAL v1.0 / ACL v1.0
  */
 
-#include "sched_hint.h"
+#include "../sched_hint.h"
 #include <stdio.h>
 
 /**

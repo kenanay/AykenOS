@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
 
 RUNS=5
 WARMUP=1
@@ -29,7 +32,7 @@ Options:
   --cv-runtime PCT            Max allowed CV% for run_time_ms (default: 20.0)
   --cv-context PCT            Max allowed CV% for context latency proxy (default: 15.0)
   --cv-syscall PCT            Max allowed CV% for syscall latency proxy (default: 15.0)
-  --out-dir PATH              Output directory (default: evidence/run-local-preempt-variance-<utc>)
+  --out-dir PATH              Output directory (default: out/evidence/run-local-preempt-variance-<utc>)
   -h, --help                  Show this help
 USAGE
 }
@@ -118,7 +121,7 @@ if ! is_binary_flag "${FORCE_EFI_REBUILD}"; then
 fi
 
 if [[ -z "${OUT_DIR}" ]]; then
-  OUT_DIR="${ROOT}/evidence/run-local-preempt-variance-$(date -u +%Y%m%dT%H%M%SZ)"
+  OUT_DIR="${AYKEN_LOCAL_EVIDENCE_DIR}/run-local-preempt-variance-$(date -u +%Y%m%dT%H%M%SZ)"
 fi
 
 RUNS_DIR="${OUT_DIR}/runs"

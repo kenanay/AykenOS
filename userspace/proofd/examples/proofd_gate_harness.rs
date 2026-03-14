@@ -702,6 +702,18 @@ fn build_service_contract_artifacts(
         out_dir.join("trust_reuse_flow_source.json"),
         &read_json_file(&run_dir.join("trust_reuse_flow_source.json"))?,
     );
+    let trust_reuse_runtime_surface_origin = verify_response
+        .get("trust_reuse_flow_source_origin")
+        .and_then(Value::as_str)
+        .filter(|value| *value == "runtime_bundle_trust_reuse")
+        .map(|value| value.to_string());
+    if trust_reuse_runtime_surface_origin.is_some() {
+        fs::copy(
+            fixture.root.join("reports/trust_reuse_runtime_surface.json"),
+            out_dir.join("trust_reuse_runtime_surface.json"),
+        )
+        .map_err(|error| format!("failed to copy trust reuse runtime surface: {error}"))?;
+    }
     fs::copy(
         run_dir.join("verification_audit_ledger.jsonl"),
         out_dir.join("verification_audit_ledger.jsonl"),
@@ -865,6 +877,7 @@ fn build_service_contract_artifacts(
         "trust_reuse_flow_source_origin": verify_response
             .get("trust_reuse_flow_source_origin")
             .and_then(Value::as_str),
+        "trust_reuse_runtime_surface_origin": trust_reuse_runtime_surface_origin,
         "root_passthrough_ok": root_passthrough_ok,
         "run_scoped_passthrough_ok": run_scoped_passthrough_ok,
         "deterministic_repeated_read_ok": deterministic_repeated_read_ok,

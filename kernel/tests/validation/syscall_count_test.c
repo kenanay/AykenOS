@@ -6,9 +6,9 @@
 //
 // Requirements: AC-6 - Ring0 contains exactly 10 syscalls
 
-#include "syscall_v2.h"
-#include "../include/syscall.h"
-#include "../drivers/console/fb_console.h"
+#include "../../sys/syscall_v2.h"
+#include "../../include/syscall.h"
+#include "../../drivers/console/fb_console.h"
 #include <stddef.h>
 
 static uint32_t fuzz_next(uint32_t *state)

@@ -16,9 +16,9 @@
  * @version 1.0
  */
 
-#include "../include/proc.h"
-#include "../sched/sched.h"
-#include "../../userspace/libayken/scheduler.h"
+#include "../../include/proc.h"
+#include "../../sched/sched.h"
+#include "../../../shared/abi/scheduler_policy.h"
 #include <stddef.h>
 
 // Test result tracking

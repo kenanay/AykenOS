@@ -8,8 +8,7 @@
 // Project: AykenOS - Advanced AI-Integrated Operating System
 // Created: January 10, 2026
 
-#include "vfs.h"
-#include "../../kernel/drivers/console/fb_console.h"
+#include "../vfs.h"
 
 // Forward declarations
 void fb_print(const char *s);

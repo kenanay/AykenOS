@@ -4,8 +4,8 @@
 #include <efi.h>
 #include <efiprot.h>
 // #include <efilib.h>
-#include "../../kernel/include/boot_info.h"
-#include "../../kernel/include/boot_flags.h"
+#include "../../shared/abi/boot_info.h"
+#include "../../shared/abi/boot_flags.h"
 
 // ELF64 tanımları
 #define EI_NIDENT 16

@@ -42,7 +42,7 @@ run_gate() {
         echo "Stopping execution (fail-closed)."
         echo ""
         echo "Inspect evidence under:"
-        echo "  evidence/run-<RUN_ID>/reports/"
+        echo "  ${EVIDENCE_ROOT:-out/evidence}/run-<RUN_ID>/reports/"
         echo ""
         exit 2
     fi
