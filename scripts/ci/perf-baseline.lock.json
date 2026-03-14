@@ -1,5 +1,5 @@
 {
-  "created_at_utc": "2026-03-05T20:11:56Z",
+  "created_at_utc": "2026-03-14T19:54:39Z",
   "env": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
     "ci_image_digest": "gha-ubuntu24-20260302.42.1-X64",
@@ -25,11 +25,11 @@
     "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.13)",
     "target_triple": "x86_64-elf"
   },
-  "git_sha": "ddb72712223a32c7a17648e4fa800cb50b8e05eb",
+  "git_sha": "27d441e6ef3bce21e788d8b387e54cd19829260b",
   "metrics": {
-    "boot_time_ms": 10165,
-    "context_switch_latency_ms_proxy": 161.887097,
-    "syscall_latency_ms_proxy": 161.887097
+    "boot_time_ms": 10731,
+    "context_switch_latency_ms_proxy": 167.806452,
+    "syscall_latency_ms_proxy": 167.806452
   },
   "policy": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
@@ -52,14 +52,14 @@
     }
   },
   "raw_metrics": {
-    "boot_time_ms": 10165,
-    "context_switch_latency_ms_proxy": 161.887097,
+    "boot_time_ms": 10731,
+    "context_switch_latency_ms_proxy": 167.806452,
     "preempt_iret_count": 62,
-    "preempt_qemu_run_time_ms": 10037,
-    "preempt_run_time_ms": 10037,
+    "preempt_qemu_run_time_ms": 10404,
+    "preempt_run_time_ms": 10404,
     "preempt_sw_count": 62,
-    "preempt_wall_time_ms": 11773,
-    "syscall_latency_ms_proxy": 161.887097
+    "preempt_wall_time_ms": 12754,
+    "syscall_latency_ms_proxy": 167.806452
   },
   "schema_version": 1
 }
