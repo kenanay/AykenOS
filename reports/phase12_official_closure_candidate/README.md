@@ -1,13 +1,13 @@
 # Phase-12 Official Closure Candidate
 
-- Generated at: `2026-03-13T18:22:29Z`
+- Generated at: `2026-03-14T23:48:57Z`
 - Closure state: `LOCAL_CLOSURE_READY`
-- Current phase pointer: `10`
+- Current phase pointer: `12`
 - Recommended dedicated tag: `phase12-official-closure`
 - Evidence run: `run-local-phase12c-closure-2026-03-11`
 - Evidence directory: `evidence/run-run-local-phase12c-closure-2026-03-11`
 - Evidence git SHA: `01d1cb5c99d5eec476eeeee0413e15cedc380e00`
-- Manifest digest: `f798f7c2f17e5045b8b649d426c00cd77cf53eabddbb46df82df491dd0c75a13`
+- Manifest digest: `8bf9bc403d9b840eaeb5a7be4ff9047caa2192053e0e0c9962160d3c038eda69`
 - Evidence root hash: `667e7af77fb2bd74135078cf82ebcf40c13a0eb6020102714bde0ce26b1fe184`
 - Attestation state: `UNSIGNED`
 
