@@ -43,6 +43,7 @@ const VERIFICATION_DIVERSITY_BINDING_FILE: &str = "verification_diversity_ledger
 const VERIFICATION_DIVERSITY_LEDGER_FILE: &str = "verification_diversity_ledger.json";
 const VERIFICATION_DIVERSITY_APPEND_REPORT_FILE: &str =
     "verification_diversity_ledger_append_report.json";
+const REPORTS_DIR: &str = "reports";
 const REPLAY_BOUNDARY_FLOW_SOURCE_FILE: &str = "replay_boundary_flow_source.json";
 const REPLAY_REPORT_FILE: &str = "replay_report.json";
 const TRUST_REUSE_FLOW_SOURCE_FILE: &str = "trust_reuse_flow_source.json";
@@ -223,7 +224,11 @@ pub fn parse_target(raw: &str) -> RequestTarget {
 }
 
 fn replay_report_relative_path() -> PathBuf {
-    Path::new("reports").join(REPLAY_REPORT_FILE)
+    Path::new(REPORTS_DIR).join(REPLAY_REPORT_FILE)
+}
+
+fn replay_report_surface_path_id() -> String {
+    format!("{REPORTS_DIR}/{REPLAY_REPORT_FILE}")
 }
 
 pub fn route_request(method: &str, raw_target: &str, evidence_dir: &Path) -> DiagnosticsResponse {
@@ -1118,7 +1123,7 @@ fn build_runtime_replay_boundary_flow_source_document(
             Some(
                 binding
                     .and_then(|value| value.surface_local_path_id.clone())
-                    .unwrap_or_else(|| replay_report_relative_path().display().to_string()),
+                    .unwrap_or_else(replay_report_surface_path_id),
             ),
         )?],
     })
