@@ -67,6 +67,15 @@ class ProofdServiceGateTest(unittest.TestCase):
         self.assertTrue(service.get("verification_execution_active") is True)
         self.assertTrue(service.get("explicit_policy_binding_active") is True)
         self.assertTrue(service.get("explicit_registry_binding_active") is True)
+        self.assertTrue(service.get("behavioral_observability_emitted") is True)
+        self.assertEqual(
+            service.get("replay_boundary_flow_source_origin"),
+            "runtime_bundle_replay",
+        )
+        self.assertEqual(
+            service.get("trust_reuse_flow_source_origin"),
+            "runtime_bundle_trust_reuse",
+        )
         self.assertTrue(service.get("receipt_emission_active") is True)
         self.assertTrue(service.get("signed_receipt_execution_active") is True)
         self.assertTrue(service.get("signed_receipt_verified") is True)
@@ -74,6 +83,18 @@ class ProofdServiceGateTest(unittest.TestCase):
         self.assertTrue(service.get("request_bound_timestamp_preserved") is True)
         self.assertTrue(service.get("repeated_receipt_bytes_equal") is True)
         self.assertTrue(service.get("repeated_run_manifest_equal") is True)
+        self.assertTrue(service.get("repeated_audit_ledger_equal") is True)
+        self.assertTrue(service.get("repeated_diversity_binding_equal") is True)
+        self.assertTrue(service.get("repeated_diversity_ledger_equal") is True)
+        self.assertTrue(
+            service.get("repeated_diversity_append_report_equal") is True
+        )
+        self.assertTrue(
+            service.get("repeated_replay_boundary_flow_source_equal") is True
+        )
+        self.assertTrue(
+            service.get("repeated_trust_reuse_flow_source_equal") is True
+        )
         self.assertTrue(service.get("diagnostics_artifacts_unchanged") is True)
         self.assertTrue(service.get("run_artifact_merge_detected") is False)
         self.assertTrue(service.get("closure_complete") is True)
@@ -119,6 +140,30 @@ class ProofdServiceGateTest(unittest.TestCase):
         )
         self.assertTrue(
             repeated_execution.get("repeated_run_manifest_equal") is True
+        )
+        self.assertTrue(repeated_execution.get("repeated_audit_ledger_equal") is True)
+        self.assertTrue(
+            repeated_execution.get("repeated_diversity_binding_equal") is True
+        )
+        self.assertTrue(
+            repeated_execution.get("repeated_diversity_ledger_equal") is True
+        )
+        self.assertTrue(
+            repeated_execution.get("repeated_diversity_append_report_equal") is True
+        )
+        self.assertTrue(
+            repeated_execution.get("repeated_replay_boundary_flow_source_equal") is True
+        )
+        self.assertTrue(
+            repeated_execution.get("repeated_trust_reuse_flow_source_equal") is True
+        )
+        self.assertEqual(
+            repeated_execution.get("replay_boundary_flow_source_origin"),
+            "runtime_bundle_replay",
+        )
+        self.assertEqual(
+            repeated_execution.get("trust_reuse_flow_source_origin"),
+            "runtime_bundle_trust_reuse",
         )
         self.assertTrue(
             repeated_execution.get("diagnostics_artifacts_unchanged") is True
@@ -168,6 +213,27 @@ class ProofdServiceGateTest(unittest.TestCase):
         self.assertTrue((self.evidence_dir / "proofd_verify_response.json").is_file())
         self.assertTrue((self.evidence_dir / "proofd_run_manifest.json").is_file())
         self.assertTrue(
+            (self.evidence_dir / "verification_audit_ledger.jsonl").is_file()
+        )
+        self.assertTrue(
+            (self.evidence_dir / "verification_diversity_ledger.json").is_file()
+        )
+        self.assertTrue(
+            (self.evidence_dir / "verification_diversity_ledger_binding.json").is_file()
+        )
+        self.assertTrue(
+            (
+                self.evidence_dir
+                / "verification_diversity_ledger_append_report.json"
+            ).is_file()
+        )
+        self.assertTrue(
+            (self.evidence_dir / "replay_boundary_flow_source.json").is_file()
+        )
+        self.assertTrue(
+            (self.evidence_dir / "trust_reuse_flow_source.json").is_file()
+        )
+        self.assertTrue(
             (self.evidence_dir / "proofd_receipt_verification_report.json").is_file()
         )
         self.assertTrue(
@@ -178,6 +244,105 @@ class ProofdServiceGateTest(unittest.TestCase):
         )
         self.assertEqual(verify_request.get("receipt_mode"), "emit_signed")
         self.assertTrue(isinstance(verify_request.get("receipt_signer"), dict))
+        self.assertTrue(isinstance(verify_request.get("diversity_binding"), dict))
+        self.assertEqual(
+            verify_request.get("diversity_binding", {}).get("verifier_id"),
+            "verifier-node-b",
+        )
+        self.assertEqual(
+            verify_request.get("replay_boundary_binding", {}).get("replay_contract_id"),
+            "replay-contract-proofd-local-a",
+        )
+        self.assertEqual(
+            verify_request.get("replay_boundary_binding", {}).get("source_run_id"),
+            "fixture-run",
+        )
+        self.assertNotIn("trust_reuse_binding", verify_request)
+
+        verify_response = json.loads(
+            (self.evidence_dir / "proofd_verify_response.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertTrue(
+            verify_response.get("behavioral_observability_emitted") is True
+        )
+        self.assertEqual(
+            verify_response.get("audit_ledger_path"),
+            "verification_audit_ledger.jsonl",
+        )
+        self.assertEqual(
+            verify_response.get("verification_diversity_ledger_path"),
+            "verification_diversity_ledger.json",
+        )
+        self.assertEqual(
+            verify_response.get("replay_boundary_flow_source_path"),
+            "replay_boundary_flow_source.json",
+        )
+        self.assertEqual(
+            verify_response.get("replay_boundary_flow_source_origin"),
+            "runtime_bundle_replay",
+        )
+        self.assertEqual(
+            verify_response.get("trust_reuse_flow_source_path"),
+            "trust_reuse_flow_source.json",
+        )
+        self.assertEqual(
+            verify_response.get("trust_reuse_flow_source_origin"),
+            "runtime_bundle_trust_reuse",
+        )
+
+        run_manifest = json.loads(
+            (self.evidence_dir / "proofd_run_manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertTrue(run_manifest.get("behavioral_observability_emitted") is True)
+        self.assertEqual(run_manifest.get("audit_mode"), "append")
+        self.assertEqual(
+            run_manifest.get("verification_diversity_ledger_binding_path"),
+            "verification_diversity_ledger_binding.json",
+        )
+        self.assertEqual(
+            run_manifest.get("replay_boundary_flow_source_path"),
+            "replay_boundary_flow_source.json",
+        )
+        self.assertEqual(
+            run_manifest.get("replay_boundary_flow_source_origin"),
+            "runtime_bundle_replay",
+        )
+        self.assertEqual(
+            run_manifest.get("trust_reuse_flow_source_path"),
+            "trust_reuse_flow_source.json",
+        )
+        self.assertEqual(
+            run_manifest.get("trust_reuse_flow_source_origin"),
+            "runtime_bundle_trust_reuse",
+        )
+        self.assertTrue(
+            isinstance(run_manifest.get("request_fingerprint"), str)
+            and run_manifest["request_fingerprint"].startswith("sha256:")
+        )
+        replay_source = json.loads(
+            (self.evidence_dir / "replay_boundary_flow_source.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(replay_source.get("flow_surface"), "replay_boundary")
+        self.assertEqual(
+            replay_source.get("events", [{}])[0].get("source_run_id"),
+            "fixture-run",
+        )
+        trust_reuse_source = json.loads(
+            (self.evidence_dir / "trust_reuse_flow_source.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(trust_reuse_source.get("flow_surface"), "trust_reuse")
+        self.assertEqual(
+            trust_reuse_source.get("events", [{}])[0].get("source_run_id"),
+            "source-run-proofd-bootstrap-a",
+        )
 
 
 if __name__ == "__main__":

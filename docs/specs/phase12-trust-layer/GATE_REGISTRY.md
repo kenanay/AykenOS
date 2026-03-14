@@ -92,6 +92,7 @@ The default registry stance is:
 | `ci-gate-observability-routing-separation` | consumer safety | `observability != scheduling` | `topology-feedback-drift` | consumer + routing boundary | harness + source-correlation | routing-blindness contract scan over verification-facing routing contexts | composite | `boundary_authoritative` | proof-verifier and proofd Rust sources with routing or verifier-selection contexts | observability artifacts have started influencing verification routing or scheduling behavior |
 | `ci-gate-verification-diversity-floor` | collapse-horizon harness | `distributed verification must remain behaviorally diverse` | `verification-gravity-drift` | behavioral ledger | harness | dual-window diversity, dominance, and entropy analysis over VDL evidence | composite | `research_boundary` | verification diversity ledger, diversity policy, dual-window VDL slice | verification activity has concentrated below an acceptable verifier-diversity floor |
 | `ci-gate-verifier-cartel-correlation` | collapse-horizon harness | `diversity != independence` | `cartel-formation-drift` | behavioral ledger | harness | pairwise and conditioned verifier-correlation analysis over bounded VDL windows | composite | `research_boundary` | verification diversity ledger, cartel correlation policy, bounded correlation windows | nominal verifier diversity is concealing correlated verifier-bloc behavior |
+| `ci-gate-authority-sinkhole-absorption` | collapse-horizon harness | `verification reuse != authority basin collapse` | `authority-sinkhole-drift` | behavioral ledger + temporal flow | harness | authority-basin share, repeated-capture, alternate-path decay, and basin-slope analysis over bounded VDL windows | composite | `research_boundary` | verification diversity ledger, authority sinkhole policy, basin window series | repeated verification reuse is being absorbed into one practical authority basin |
 | `ci-gate-verifier-reputation-prohibition` | invariant + artifact | `verification history != verifier reputation` | `reputation-drift` | artifact | validator | schema and pattern validation | composite | `boundary_authoritative` | graph, convergence, topology, incident artifacts | verification history has become scoring or implicit authority |
 | `ci-gate-verification-determinism-contract` | determinism | `verification != environment dependent` | `determinism-drift` | verifier-core | source-scan | verifier purity source scan | composite | `boundary_authoritative` | verifier-critical Rust source set | verifier semantics now depend on ambient environment state |
 | `ci-gate-proof-replay-admission-boundary` | invariant + boundary | `verified proof != replay admission` | `replay-boundary-drift` | artifact + policy boundary | harness | replay-boundary contract harness | composite | `closure_authoritative` | proof subject, receipt, replay boundary report | proof verification has started to imply replay admission authority |
@@ -110,10 +111,17 @@ CI should reduce the above gates into invariant summaries like this:
 | `descriptive diagnostics != execution input` | `ci-gate-diagnostics-consumer-non-authoritative-contract`, `ci-gate-diagnostics-callsite-correlation` |
 | `observability != scheduling` | `ci-gate-observability-routing-separation`; supported in part by `ci-gate-diagnostics-consumer-non-authoritative-contract` and `ci-gate-diagnostics-callsite-correlation` |
 | `diversity != independence` | `ci-gate-verifier-cartel-correlation`; supported by `ci-gate-verification-diversity-floor` |
+| `verification reuse != authority basin collapse` | `ci-gate-authority-sinkhole-absorption`; supported by `ci-gate-verification-diversity-floor` and `ci-gate-verifier-cartel-correlation` |
 | `verification != environment dependent` | `ci-gate-verification-determinism-contract` |
 | `verified proof != replay admission` | `ci-gate-proof-replay-admission-boundary` |
 
 This reduction layer should become the primary CI reading surface.
+
+The Stage-2 companion producer surface for `authority-sinkhole-drift` is:
+
+- `AUTHORITY_SINKHOLE_COMPANION_FLOW_SPEC.md`
+- `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
+- `CROSS_SURFACE_BASIN_ALIGNMENT_METRICS.md`
 
 ## 5A. Phase-13 Kill-Switch Profile
 
@@ -124,22 +132,9 @@ This reduction layer should become the primary CI reading surface.
 | `verification artifact integrity` | `ci-gate-proof-verdict-binding` | `ci-gate-proof-bundle`, `ci-gate-proof-receipt`, `ci-gate-proofd-service` | verification truth is no longer artifact-bound |
 | `verifier authority drift` | `ci-gate-verifier-authority-resolution` | `ci-gate-verifier-reputation-prohibition`, `ci-gate-observability-routing-separation`, `ci-gate-cross-node-parity` | valid receipt semantics are being confused with trusted verifier authority |
 
-## 5B. Reserved Collapse-Horizon Harnesses
+## 5B. Remaining Reserved Collapse-Horizon Harnesses
 
-The following future harnesses are not current authority surfaces.
-
-They exist as reserved responses to Phase-13 collapse scenarios that can emerge even when current gates pass.
-
-| Reserved Gate | Risk Class | Intended Meaning |
-|---|---|---|
-| `ci-gate-authority-sinkhole-absorption` | `authority-sinkhole-drift` | repeated verification or replay-boundary flows are being absorbed into one practical authority basin |
-
-Those future harnesses are expected to consume:
-
-- `VERIFICATION_DIVERSITY_LEDGER_SPEC.md`
-- `VERIFICATION_DIVERSITY_FLOOR_GATE.md`
-- `AUTHORITY_SINKHOLE_ABSORPTION_GATE.md`
-- authority-topology and lineage-distribution artifacts
+No additional reserved collapse-horizon harnesses are currently defined.
 
 ---
 

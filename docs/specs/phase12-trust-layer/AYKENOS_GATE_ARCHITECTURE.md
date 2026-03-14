@@ -316,6 +316,7 @@ The current boundary set can already be read as a layered model:
 | `ci-gate-observability-routing-separation` | consumer safety | `topology-feedback-drift` | `boundary_authoritative` |
 | `ci-gate-verification-diversity-floor` | collapse-horizon harness | `verification-gravity-drift` | `research_boundary` |
 | `ci-gate-verifier-cartel-correlation` | collapse-horizon harness | `cartel-formation-drift` | `research_boundary` |
+| `ci-gate-authority-sinkhole-absorption` | collapse-horizon harness | `authority-sinkhole-drift` | `research_boundary` |
 | `ci-gate-proof-replay-admission-boundary` | invariant + boundary | `replay-boundary-drift` | `closure_authoritative` |
 
 This is a coherent architecture.
@@ -343,6 +344,10 @@ The first collapse-horizon harnesses are now executable:
   - invariant: `diversity != independence`
   - risk class: `cartel-formation-drift`
   - enforcement shape: dual-window diversity-floor analysis over Verification Diversity Ledger evidence
+- `ci-gate-authority-sinkhole-absorption`
+  - invariant: `verification reuse != authority basin collapse`
+  - risk class: `authority-sinkhole-drift`
+  - enforcement shape: VDL-backed authority-basin share, repeated-capture, alternate-path decay, and basin-slope analysis
 
 The current routing-blindness boundary candidate is now executable:
 

@@ -8,7 +8,7 @@
 //! **Note:** These are example-based tests, not property-based tests.
 //! For true property-based testing, use proptest or quickcheck.
 
-use semantic_cli::lexer::{Token, TokenKind, Lexer};
+use semantic_cli::lexer::{Lexer, Token, TokenKind};
 
 /// Detokenize tokens back to exact original string
 ///
@@ -134,14 +134,7 @@ fn test_round_trip_booleans() {
 
 #[test]
 fn test_round_trip_simple_commands() {
-    let inputs = vec![
-        "query",
-        "list",
-        "show",
-        "status",
-        "agents",
-        "history",
-    ];
+    let inputs = vec!["query", "list", "show", "status", "agents", "history"];
 
     for input in inputs {
         let mut lexer = Lexer::new(input);
@@ -208,10 +201,10 @@ fn test_round_trip_arithmetic() {
 #[test]
 fn test_token_count_consistency() {
     let inputs = vec![
-        ("query", 2),    // query, EOF
-        ("list", 2),     // list, EOF
-        ("status", 2),   // status, EOF
-        ("a+b", 4),      // a, +, b, EOF
+        ("query", 2),  // query, EOF
+        ("list", 2),   // list, EOF
+        ("status", 2), // status, EOF
+        ("a+b", 4),    // a, +, b, EOF
     ];
 
     for (input, expected_count) in inputs {

@@ -3,6 +3,10 @@ use crate::canonical::digest::sha256_hex;
 use crate::canonical::jcs::{canonicalize_json, canonicalize_json_value};
 use crate::portable_core::identity::recompute_bundle_id;
 use crate::registry::snapshot::compute_registry_snapshot_hash;
+use crate::trust_reuse_runtime_surface::{
+    compute_trust_reuse_runtime_event_id, write_trust_reuse_runtime_surface, TrustReuseOutcome,
+    TrustReuseRuntimeEvent, TrustReuseRuntimeSurfaceReport,
+};
 use crate::types::DetachedSignature;
 use crate::types::{
     ChecksumsFile, Manifest, ProducerDeclaration, ReceiptSignerConfig, ReceiptVerifierKey,
@@ -112,6 +116,11 @@ pub fn create_fixture_bundle() -> FixtureBundle {
             "violations_count": 0u64
         }),
     );
+    write_trust_reuse_runtime_surface(
+        &reports_dir.join("trust_reuse_runtime_surface.json"),
+        &build_fixture_trust_reuse_runtime_surface(),
+    )
+    .expect("write trust reuse runtime surface");
     write_json(
         &reports_dir.join("proof_verify.json"),
         &json!({"status":"PASS"}),
@@ -155,6 +164,7 @@ pub fn create_fixture_bundle() -> FixtureBundle {
         "reports/replay_report.json".to_string(),
         "reports/report.json".to_string(),
         "reports/summary.json".to_string(),
+        "reports/trust_reuse_runtime_surface.json".to_string(),
         "meta/run.json".to_string(),
     ];
     let checksums = ChecksumsFile {
@@ -335,6 +345,47 @@ fn checksum_map(root: &Path, required_files: &[String]) -> BTreeMap<String, Stri
         files.insert(relative_path.clone(), digest);
     }
     files
+}
+
+fn build_fixture_trust_reuse_runtime_surface() -> TrustReuseRuntimeSurfaceReport {
+    let mut event = TrustReuseRuntimeEvent {
+        event_schema_version: 1,
+        event_id: String::new(),
+        run_id: "fixture-run".to_string(),
+        timestamp_unix_ns: 1_710_000_000_000_000_000,
+        subject_bundle_id: "fixture-bundle-subject".to_string(),
+        verification_context_id: "sha256:fixture-proofd-context".to_string(),
+        authority_chain_id: "sha256:proofd-authority-chain-node-b".to_string(),
+        trust_reuse_outcome: TrustReuseOutcome::Accepted,
+        terminal: true,
+        reused: true,
+        receipt_ref: "receipts/verification_receipt.json".to_string(),
+        verification_context_ref: "cas:sha256:fixture-verification-context".to_string(),
+        verifier_attestation_ref: "cas:sha256:fixture-verifier-attestation".to_string(),
+        verifier_registry_snapshot_hash: sha256_hex(b"fixture-verifier-registry").to_string(),
+        verification_node_id: Some("node-b".to_string()),
+        verifier_id: Some("verifier-node-b".to_string()),
+        lineage_id: Some("lineage-receipt-node-b".to_string()),
+        execution_cluster_id: Some("cluster-local-a".to_string()),
+        source_run_id: Some("source-run-proofd-bootstrap-a".to_string()),
+        reuse_group_id: Some("reuse-group-proofd-a".to_string()),
+        surface_local_path_id: Some("reports/trust_reuse_runtime_surface.json".to_string()),
+        trust_reuse_source: Some("native-runtime-trust-reuse".to_string()),
+    };
+    event.event_id =
+        compute_trust_reuse_runtime_event_id(&event).expect("compute fixture trust reuse event id");
+    TrustReuseRuntimeSurfaceReport {
+        surface_version: 1,
+        flow_surface: "trust_reuse_runtime".to_string(),
+        status: "PASS".to_string(),
+        run_id: "fixture-run".to_string(),
+        source_kind: "local_runtime_evidence".to_string(),
+        event_count: 1,
+        accepted_event_count: 1,
+        historical_only_event_count: 0,
+        rejected_event_count: 0,
+        events: vec![event],
+    }
 }
 
 fn write_json<T: serde::Serialize>(path: &Path, value: &T) {

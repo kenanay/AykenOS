@@ -2,7 +2,7 @@
 //!
 //! This test suite validates the integration between the D3 Loop Support system
 //! and the existing BCIB instruction system, ensuring:
-//! 
+//!
 //! 1. Loop instructions work with existing transformer
 //! 2. Serialization/deserialization of loop instructions
 //! 3. Capability requirements for loop operations
@@ -14,9 +14,9 @@
 //! - Requirements 13.1-13.6 (Break/continue control flow)
 
 use semantic_cli::bcib::{
-    BCIBInstruction, BCIBSequence, LoopInstruction, ControlFlowInstruction,
-    LoopID, LoopConfig, LoopRange, Value, ValueType, CollectionType, OperandRef,
-    BudgetMeasurement, ErrorRecoveryPolicy, Capability
+    BCIBInstruction, BCIBSequence, BudgetMeasurement, Capability, CollectionType,
+    ControlFlowInstruction, ErrorRecoveryPolicy, LoopConfig, LoopID, LoopInstruction, LoopRange,
+    OperandRef, Value, ValueType,
 };
 use semantic_cli::types::SourceLocation;
 
@@ -46,7 +46,10 @@ fn test_loop_instruction_bcib_integration() {
     assert!(bcib_instruction.is_phase_compatible());
 
     // Check capability requirements
-    assert_eq!(bcib_instruction.required_capability(), Some(Capability::Execute));
+    assert_eq!(
+        bcib_instruction.required_capability(),
+        Some(Capability::Execute)
+    );
 }
 
 /// Test For loop instruction integration
@@ -65,7 +68,10 @@ fn test_for_loop_bcib_integration() {
 
     assert!(bcib_instruction.validate().is_ok());
     assert!(bcib_instruction.is_phase_compatible());
-    assert_eq!(bcib_instruction.required_capability(), Some(Capability::Execute));
+    assert_eq!(
+        bcib_instruction.required_capability(),
+        Some(Capability::Execute)
+    );
 }
 
 /// Test ForEach loop instruction integration
@@ -89,7 +95,10 @@ fn test_foreach_loop_bcib_integration() {
 
     assert!(bcib_instruction.validate().is_ok());
     assert!(bcib_instruction.is_phase_compatible());
-    assert_eq!(bcib_instruction.required_capability(), Some(Capability::Execute));
+    assert_eq!(
+        bcib_instruction.required_capability(),
+        Some(Capability::Execute)
+    );
 }
 
 /// Test control flow instructions integration
@@ -113,7 +122,10 @@ fn test_control_flow_bcib_integration() {
 
     assert!(bcib_continue.validate().is_ok());
     assert!(bcib_continue.is_phase_compatible());
-    assert_eq!(bcib_continue.required_capability(), Some(Capability::Execute));
+    assert_eq!(
+        bcib_continue.required_capability(),
+        Some(Capability::Execute)
+    );
 }
 
 /// Test BCIB sequence with loop instructions
@@ -134,7 +146,7 @@ fn test_bcib_sequence_with_loops() {
     ];
 
     let sequence = BCIBSequence::new(instructions);
-    
+
     // Validate the entire sequence
     assert!(sequence.validate().is_ok());
 
@@ -166,12 +178,19 @@ fn test_loop_instruction_serialization() {
 
     // Test JSON serialization round-trip
     let json = sequence.to_json().expect("JSON serialization failed");
-    let deserialized_sequence = BCIBSequence::from_json(&json).expect("JSON deserialization failed");
+    let deserialized_sequence =
+        BCIBSequence::from_json(&json).expect("JSON deserialization failed");
 
     // Verify the loop instruction is preserved
-    assert_eq!(sequence.instructions.len(), deserialized_sequence.instructions.len());
-    
-    match (&sequence.instructions[0], &deserialized_sequence.instructions[0]) {
+    assert_eq!(
+        sequence.instructions.len(),
+        deserialized_sequence.instructions.len()
+    );
+
+    match (
+        &sequence.instructions[0],
+        &deserialized_sequence.instructions[0],
+    ) {
         (BCIBInstruction::Loop(original), BCIBInstruction::Loop(deserialized)) => {
             assert_eq!(original, deserialized);
         }
@@ -180,10 +199,14 @@ fn test_loop_instruction_serialization() {
 
     // Test binary serialization round-trip
     let binary = sequence.to_binary().expect("Binary serialization failed");
-    let deserialized_binary = BCIBSequence::from_binary(&binary).expect("Binary deserialization failed");
+    let deserialized_binary =
+        BCIBSequence::from_binary(&binary).expect("Binary deserialization failed");
 
     // Verify binary serialization preserves data
-    match (&sequence.instructions[0], &deserialized_binary.instructions[0]) {
+    match (
+        &sequence.instructions[0],
+        &deserialized_binary.instructions[0],
+    ) {
         (BCIBInstruction::Loop(original), BCIBInstruction::Loop(deserialized)) => {
             assert_eq!(original, deserialized);
         }
@@ -201,7 +224,9 @@ fn test_loop_config_validation() {
         budget_measurement: BudgetMeasurement::InstructionCount { weight: 10 },
         initial_accumulator: Value::String("initial".to_string()),
         accumulator_type: ValueType::String,
-        error_recovery: ErrorRecoveryPolicy::ReturnPartialResults { include_error_info: true },
+        error_recovery: ErrorRecoveryPolicy::ReturnPartialResults {
+            include_error_info: true,
+        },
     };
     assert!(valid_config.validate().is_ok());
 
@@ -273,24 +298,24 @@ fn test_collection_type_validation() {
     assert!(CollectionType::SortedMap.validate().is_ok());
 
     // Valid hash collections with canonical ordering
-    let ordered_hashmap = CollectionType::HashMap { 
-        canonical_ordering: Some("key_sort".to_string()) 
+    let ordered_hashmap = CollectionType::HashMap {
+        canonical_ordering: Some("key_sort".to_string()),
     };
     assert!(ordered_hashmap.validate().is_ok());
 
-    let ordered_hashset = CollectionType::HashSet { 
-        canonical_ordering: Some("value_sort".to_string()) 
+    let ordered_hashset = CollectionType::HashSet {
+        canonical_ordering: Some("value_sort".to_string()),
     };
     assert!(ordered_hashset.validate().is_ok());
 
     // Invalid hash collections without canonical ordering
-    let unordered_hashmap = CollectionType::HashMap { 
-        canonical_ordering: None 
+    let unordered_hashmap = CollectionType::HashMap {
+        canonical_ordering: None,
     };
     assert!(unordered_hashmap.validate().is_err());
 
-    let unordered_hashset = CollectionType::HashSet { 
-        canonical_ordering: None 
+    let unordered_hashset = CollectionType::HashSet {
+        canonical_ordering: None,
     };
     assert!(unordered_hashset.validate().is_err());
 }
@@ -300,7 +325,7 @@ fn test_collection_type_validation() {
 fn test_error_recovery_policy_validation() {
     // Valid policies
     assert!(ErrorRecoveryPolicy::Abort.validate().is_ok());
-    
+
     let valid_retry = ErrorRecoveryPolicy::RetryWithIncreasedLimit {
         new_limit: 5000,
         max_retries: 2,
@@ -371,12 +396,18 @@ fn test_control_flow_type_detection() {
     let break_instruction = ControlFlowInstruction::Break {
         location: test_location(),
     };
-    assert_eq!(break_instruction.control_flow_type(), ControlFlowType::Break);
+    assert_eq!(
+        break_instruction.control_flow_type(),
+        ControlFlowType::Break
+    );
 
     let continue_instruction = ControlFlowInstruction::Continue {
         location: test_location(),
     };
-    assert_eq!(continue_instruction.control_flow_type(), ControlFlowType::Continue);
+    assert_eq!(
+        continue_instruction.control_flow_type(),
+        ControlFlowType::Continue
+    );
 }
 
 /// Test Value collection iteration (Requirements 1.6, 1.8)
@@ -394,7 +425,7 @@ fn test_value_collection_iteration() {
     assert_eq!(array_value.collection_type(), Some(CollectionType::Array));
 
     let mut iterator = array_value.iter_collection().unwrap();
-    
+
     let first = iterator.next().unwrap();
     assert_eq!(first.index(), Some(0));
     assert_eq!(first.value(), &Value::String("first".to_string()));
@@ -420,7 +451,7 @@ fn test_value_collection_iteration() {
     assert_eq!(sorted_map_value.collection_size(), Some(3));
 
     let mut map_iterator = sorted_map_value.iter_collection().unwrap();
-    
+
     // Should iterate in key sort order: alpha, beta, zebra
     let first_entry = map_iterator.next().unwrap();
     assert_eq!(first_entry.key(), Some(&"alpha".to_string()));
@@ -480,13 +511,20 @@ fn test_complex_loop_instruction_integration() {
     assert!(sequence.validate().is_ok());
 
     // Test serialization of complex sequence
-    let json = sequence.to_json().expect("Complex sequence JSON serialization failed");
-    let deserialized = BCIBSequence::from_json(&json).expect("Complex sequence JSON deserialization failed");
-    
+    let json = sequence
+        .to_json()
+        .expect("Complex sequence JSON serialization failed");
+    let deserialized =
+        BCIBSequence::from_json(&json).expect("Complex sequence JSON deserialization failed");
+
     assert_eq!(sequence.instructions.len(), deserialized.instructions.len());
-    
+
     // Verify all instructions are preserved correctly
-    for (original, deserialized) in sequence.instructions.iter().zip(deserialized.instructions.iter()) {
+    for (original, deserialized) in sequence
+        .instructions
+        .iter()
+        .zip(deserialized.instructions.iter())
+    {
         assert_eq!(original, deserialized);
     }
 }

@@ -295,18 +295,24 @@ The newer operational reading is:
 
 `verification reuse != authority basin collapse`
 
-### 5.6 Required Future Gate or Harness
+### 5.6 Current Gate or Harness
 
-The correct next defense is an authority-absorption harness.
+The current defense is an authority-absorption harness.
 
-Suggested shape:
+Current shape:
 
-- reserved gate: `ci-gate-authority-sinkhole-absorption`
+- gate: `ci-gate-authority-sinkhole-absorption`
 - core check: repeated verification and replay-boundary flows must not converge toward one authority basin beyond declared tolerance
 - primary artifact: `VERIFICATION_DIVERSITY_LEDGER_SPEC.md`
 - gate contract: `AUTHORITY_SINKHOLE_ABSORPTION_GATE.md`
 
-This should be modeled as a multi-run system-dynamics harness, not as a schema validator.
+Stage-1 is VDL-only and models basin absorption as a multi-run system-dynamics harness rather than as a schema validator.
+
+The next companion producer contract for Stage-2 is:
+
+- `AUTHORITY_SINKHOLE_COMPANION_FLOW_SPEC.md`
+- `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
+- `CROSS_SURFACE_BASIN_ALIGNMENT_METRICS.md`
 
 The shortest reading is:
 

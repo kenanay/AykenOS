@@ -1,4 +1,6 @@
-use proof_verifier::diversity_floor::{run_diversity_floor_gate, DiversityFloorGateConfig, GateVerdict};
+use proof_verifier::diversity_floor::{
+    run_diversity_floor_gate, DiversityFloorGateConfig, GateVerdict,
+};
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -45,16 +47,16 @@ fn parse_cli(args: Vec<OsString>) -> Result<Option<DiversityFloorGateConfig>, St
     while let Some(arg) = args.next() {
         match arg.to_string_lossy().as_ref() {
             "--artifact-root" => {
-                artifact_root = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--artifact-root`".to_string())?,
-                ));
+                artifact_root =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--artifact-root`".to_string()
+                    })?));
             }
             "--output-dir" => {
-                output_dir = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--output-dir`".to_string())?,
-                ));
+                output_dir =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--output-dir`".to_string()
+                    })?));
             }
             "--ledger" => {
                 ledger_path = Some(PathBuf::from(

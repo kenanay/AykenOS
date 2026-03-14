@@ -1628,6 +1628,23 @@ ci-gate-verifier-cartel-correlation: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: verifier-cartel-correlation evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-authority-sinkhole-absorption: ci-evidence-dir
+	@echo "== CI GATE AUTHORITY SINKHOLE ABSORPTION =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_authority_sinkhole_absorption.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption" \
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/authority_sinkhole_absorption_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-details.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/vdl_window.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-vdl-window.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/dominance_analysis.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-dominance-analysis.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/authority_chain_flow_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-flow.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/basin_absorption_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-basin.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/basin_window_series.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-series.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/authority-sinkhole-absorption/cross_surface_basin_alignment_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-absorption-cross-surface.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: authority-sinkhole-absorption evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-produce-verification-diversity-ledger: ci-evidence-dir
 	@echo "== CI PRODUCE VERIFICATION DIVERSITY LEDGER =="
 	@echo "run_id: $(RUN_ID)"
@@ -1638,6 +1655,18 @@ ci-produce-verification-diversity-ledger: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger/verification_diversity_ledger_append_report.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-ledger-producer-details.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/producers/verification-diversity-ledger/verification_diversity_ledger.json" "$(EVIDENCE_RUN_DIR)/reports/verification-diversity-ledger-snapshot.json"
 	@echo "OK: verification-diversity-ledger producer evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-produce-authority-sinkhole-companion-flows: ci-evidence-dir
+	@echo "== CI PRODUCE AUTHORITY SINKHOLE COMPANION FLOWS =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/produce_authority_sinkhole_companion_flows.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows" \
+		--artifact-root "$(EVIDENCE_RUN_DIR)/artifacts"
+	@cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-companion-flow-producer.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/authority_sinkhole_companion_flow_materialization_report.json" "$(EVIDENCE_RUN_DIR)/reports/authority-sinkhole-companion-flow-producer-details.json"
+	@if [ -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/replay_boundary_flow_report.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/replay_boundary_flow_report.json" "$(EVIDENCE_RUN_DIR)/reports/replay-boundary-flow-report.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/trust_reuse_flow_report.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/producers/authority-sinkhole-companion-flows/trust_reuse_flow_report.json" "$(EVIDENCE_RUN_DIR)/reports/trust-reuse-flow-report.json"; fi
+	@echo "OK: authority-sinkhole companion flow producer evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-verification-determinism-contract: ci-evidence-dir
 	@echo "== CI GATE VERIFICATION DETERMINISM CONTRACT =="
@@ -2025,7 +2054,9 @@ help:
 	@echo "  ci-kill-switch-summary - Require full architectural kill-switch gate coverage for an existing run"
 	@echo "  ci-gate-verification-diversity-floor - Collapse-horizon harness over Verification Diversity Ledger evidence"
 	@echo "  ci-gate-verifier-cartel-correlation - Stage-1 collapse-horizon harness for verifier independence and cartel correlation"
+	@echo "  ci-gate-authority-sinkhole-absorption - Stage-1 collapse-horizon harness for authority basin absorption and sinkhole drift"
 	@echo "  ci-produce-verification-diversity-ledger - Produce / append canonical VDL entries from verifier audit evidence"
+	@echo "  ci-produce-authority-sinkhole-companion-flows - Materialize canonical replay-boundary and trust-reuse Stage-2 sinkhole companion flow reports"
 	@echo "  ci-gate-abi - ABI drift gate (use ABI_INIT_BASELINE=1 for explicit first baseline write)"
 	@echo "  ci-gate-performance - Performance baseline/env hash gate"
 	@echo "    (use PERF_INIT_BASELINE=1 for first baseline write)"
@@ -2037,7 +2068,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-produce-verification-diversity-ledger ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

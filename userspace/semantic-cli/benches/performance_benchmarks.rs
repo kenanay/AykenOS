@@ -15,9 +15,11 @@
 //! - No manual memory tracking
 //! - No performance requirement assertions in benchmarks
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use semantic_cli::bcib::{LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, OperandRef};
-use semantic_cli::loop_engine::{LoopEngine, LoopBodyFn, LoopBodyResult};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use semantic_cli::bcib::{
+    LoopConfig, LoopID, LoopInstruction, LoopRange, OperandRef, Value, ValueType,
+};
+use semantic_cli::loop_engine::{LoopBodyFn, LoopBodyResult, LoopEngine};
 use semantic_cli::types::SourceLocation;
 
 // ===== Benchmark Configuration =====
@@ -48,7 +50,7 @@ fn create_benchmark_foreach_loop(collection_size: u32, loop_id: &str) -> LoopIns
     let collection_values: Vec<Value> = (0..collection_size)
         .map(|i| Value::Number(i as f64))
         .collect();
-    
+
     LoopInstruction::ForEach {
         id: LoopID::new(format!("benchmark-foreach-{}", loop_id)),
         collection: OperandRef::Literal(Value::Array(collection_values)),
@@ -71,10 +73,10 @@ fn simple_computation_body() -> LoopBodyFn {
             Value::Number(n) => *n,
             _ => 0.0,
         };
-        
+
         // Simple arithmetic to simulate work
         let result = current_value + iteration as f64;
-        
+
         Ok(LoopBodyResult::Normal(Value::Number(result)))
     })
 }
@@ -88,13 +90,14 @@ fn cpu_intensive_body() -> LoopBodyFn {
             Value::Number(n) => *n,
             _ => 0.0,
         };
-        
+
         // More complex computation
         let mut result = current_value;
-        for i in 0..50 { // Reduced from 100 to avoid excessive benchmark time
+        for i in 0..50 {
+            // Reduced from 100 to avoid excessive benchmark time
             result += (i as f64 + iteration as f64).sin().cos();
         }
-        
+
         Ok(LoopBodyResult::Normal(Value::Number(result)))
     })
 }
@@ -104,17 +107,17 @@ fn cpu_intensive_body() -> LoopBodyFn {
 /// Benchmark sequential loop execution overhead
 fn benchmark_sequential_loop_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("sequential_loop_overhead");
-    
+
     for &size in SMALL_LOOP_SIZES {
         group.throughput(Throughput::Elements(size as u64));
-        
+
         group.bench_with_input(
             BenchmarkId::new("for_loop", size),
             &size,
             |b, &iterations| {
                 let mut loop_engine = LoopEngine::new();
                 let instruction = create_benchmark_for_loop(iterations, "overhead");
-                
+
                 b.iter(|| {
                     // Constitutional compliance: Create body function each iteration
                     let body_fn = simple_computation_body();
@@ -123,14 +126,14 @@ fn benchmark_sequential_loop_overhead(c: &mut Criterion) {
                 });
             },
         );
-        
+
         group.bench_with_input(
             BenchmarkId::new("foreach_loop", size),
             &size,
             |b, &iterations| {
                 let mut loop_engine = LoopEngine::new();
                 let instruction = create_benchmark_foreach_loop(iterations, "overhead");
-                
+
                 b.iter(|| {
                     // Constitutional compliance: Create body function each iteration
                     let body_fn = simple_computation_body();
@@ -140,17 +143,17 @@ fn benchmark_sequential_loop_overhead(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
 /// Benchmark loop execution scalability
 fn benchmark_loop_scalability(c: &mut Criterion) {
     let mut group = c.benchmark_group("loop_scalability");
-    
+
     for &size in LARGE_LOOP_SIZES {
         group.throughput(Throughput::Elements(size as u64));
-        
+
         // For loops with CPU-intensive work
         group.bench_with_input(
             BenchmarkId::new("for_cpu_intensive", size),
@@ -158,7 +161,7 @@ fn benchmark_loop_scalability(c: &mut Criterion) {
             |b, &iterations| {
                 let mut loop_engine = LoopEngine::new();
                 let instruction = create_benchmark_for_loop(iterations, "scalability");
-                
+
                 b.iter(|| {
                     // Constitutional compliance: Create body function each iteration
                     let body_fn = cpu_intensive_body();
@@ -167,7 +170,7 @@ fn benchmark_loop_scalability(c: &mut Criterion) {
                 });
             },
         );
-        
+
         // ForEach loops with CPU-intensive work
         group.bench_with_input(
             BenchmarkId::new("foreach_cpu_intensive", size),
@@ -175,7 +178,7 @@ fn benchmark_loop_scalability(c: &mut Criterion) {
             |b, &iterations| {
                 let mut loop_engine = LoopEngine::new();
                 let instruction = create_benchmark_foreach_loop(iterations, "scalability");
-                
+
                 b.iter(|| {
                     // Constitutional compliance: Create body function each iteration
                     let body_fn = cpu_intensive_body();
@@ -185,101 +188,101 @@ fn benchmark_loop_scalability(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
 /// Benchmark JIT compilation effects (observational, not forced)
 fn benchmark_jit_effects(c: &mut Criterion) {
     let mut group = c.benchmark_group("jit_effects");
-    
+
     // Test repeated execution to observe JIT effects
     // We don't force JIT thresholds - we just observe what happens
-    
+
     group.bench_function("cold_execution", |b| {
         b.iter(|| {
             // Fresh engine each time - no JIT warmup
             let mut loop_engine = LoopEngine::new();
             let instruction = create_benchmark_for_loop(1500, "cold");
             let body_fn = cpu_intensive_body();
-            
+
             let result = loop_engine.execute_loop(&instruction, body_fn);
             black_box(result.unwrap());
         });
     });
-    
+
     group.bench_function("warm_execution", |b| {
         // Shared engine - potential JIT warmup
         let mut loop_engine = LoopEngine::new();
-        
+
         b.iter(|| {
             let instruction = create_benchmark_for_loop(1500, "warm");
             let body_fn = cpu_intensive_body();
-            
+
             let result = loop_engine.execute_loop(&instruction, body_fn);
             black_box(result.unwrap());
         });
     });
-    
+
     group.bench_function("repeated_execution", |b| {
         b.iter_custom(|iters| {
             let mut loop_engine = LoopEngine::new();
             let instruction = create_benchmark_for_loop(1500, "repeated");
-            
+
             let start = std::time::Instant::now();
-            
+
             for _ in 0..iters {
                 let body_fn = cpu_intensive_body();
                 let result = loop_engine.execute_loop(&instruction, body_fn);
                 black_box(result.unwrap());
             }
-            
+
             start.elapsed()
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark loop type comparison
 fn benchmark_loop_type_comparison(c: &mut Criterion) {
     let mut group = c.benchmark_group("loop_type_comparison");
-    
+
     let test_size = 1000u32;
     group.throughput(Throughput::Elements(test_size as u64));
-    
+
     group.bench_function("for_loop_baseline", |b| {
         let mut loop_engine = LoopEngine::new();
         let instruction = create_benchmark_for_loop(test_size, "comparison");
-        
+
         b.iter(|| {
             let body_fn = simple_computation_body();
             let result = loop_engine.execute_loop(&instruction, body_fn);
             black_box(result.unwrap());
         });
     });
-    
+
     group.bench_function("foreach_loop_baseline", |b| {
         let mut loop_engine = LoopEngine::new();
         let instruction = create_benchmark_foreach_loop(test_size, "comparison");
-        
+
         b.iter(|| {
             let body_fn = simple_computation_body();
             let result = loop_engine.execute_loop(&instruction, body_fn);
             black_box(result.unwrap());
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark execution engine overhead
 fn benchmark_execution_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("execution_overhead");
-    
+
     // Measure the overhead of the loop execution system itself
     // by comparing very small loops
-    
+
     for &size in &[1u32, 5, 10] {
         group.bench_with_input(
             BenchmarkId::new("minimal_loop", size),
@@ -287,7 +290,7 @@ fn benchmark_execution_overhead(c: &mut Criterion) {
             |b, &iterations| {
                 let mut loop_engine = LoopEngine::new();
                 let instruction = create_benchmark_for_loop(iterations, "minimal");
-                
+
                 b.iter(|| {
                     let body_fn = simple_computation_body();
                     let result = loop_engine.execute_loop(&instruction, body_fn);
@@ -296,7 +299,7 @@ fn benchmark_execution_overhead(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
@@ -304,22 +307,22 @@ fn benchmark_execution_overhead(c: &mut Criterion) {
 /// This measures whether the engine chooses to parallelize and the effect on performance
 fn benchmark_parallelization_effects(c: &mut Criterion) {
     let mut group = c.benchmark_group("parallelization_effects");
-    
+
     let test_size = 5000u32;
     group.throughput(Throughput::Elements(test_size as u64));
-    
+
     // We don't force parallelization - we observe what the engine decides
     group.bench_function("engine_decision_baseline", |b| {
         let mut loop_engine = LoopEngine::new();
         let instruction = create_benchmark_for_loop(test_size, "parallel-candidate");
-        
+
         b.iter(|| {
             let body_fn = cpu_intensive_body();
             let result = loop_engine.execute_loop(&instruction, body_fn);
             black_box(result.unwrap());
         });
     });
-    
+
     group.finish();
 }
 

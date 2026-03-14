@@ -325,7 +325,7 @@ pub struct ReceiptSignerConfig {
     pub verified_at_utc: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceiptVerifierKey {
     pub verifier_node_id: String,
     pub verifier_key_id: String,

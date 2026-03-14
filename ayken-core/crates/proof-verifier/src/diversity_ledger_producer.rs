@@ -66,7 +66,12 @@ pub fn run_diversity_ledger_producer(
                 "missing_or_invalid_audit_ledger:{}",
                 config.audit_ledger_path.display()
             )];
-            write_loading_failure_outputs(config, &violations, &error.to_string(), "audit_ledger_load")?;
+            write_loading_failure_outputs(
+                config,
+                &violations,
+                &error.to_string(),
+                "audit_ledger_load",
+            )?;
             return Ok(VerificationDiversityLedgerProducerOutcome {
                 verdict: GateVerdict::Fail,
                 violations,
@@ -114,7 +119,10 @@ pub fn run_diversity_ledger_producer(
     let mut existing_by_id = BTreeMap::<String, VerificationDiversityLedgerEntry>::new();
     for entry in &existing_entries {
         if let Err(error) = validate_diversity_ledger_entry(entry) {
-            violations.push(format!("invalid_existing_ledger_entry:{}:{}", entry.entry_id, error));
+            violations.push(format!(
+                "invalid_existing_ledger_entry:{}:{}",
+                entry.entry_id, error
+            ));
         } else {
             existing_by_id.insert(entry.entry_id.clone(), entry.clone());
         }
@@ -124,7 +132,10 @@ pub fn run_diversity_ledger_producer(
     for event in &audit_events {
         match build_entry(event, &manifest, &bindings) {
             Ok(entry) => candidate_entries.push(entry),
-            Err(error) => violations.push(format!("entry_derivation_failure:{}:{error}", event.event_id)),
+            Err(error) => violations.push(format!(
+                "entry_derivation_failure:{}:{error}",
+                event.event_id
+            )),
         }
     }
 
@@ -221,7 +232,10 @@ fn build_binding_map(
     let mut bindings = BTreeMap::new();
     for binding in &manifest.node_bindings {
         for (label, value) in [
-            ("verification_node_id", binding.verification_node_id.as_str()),
+            (
+                "verification_node_id",
+                binding.verification_node_id.as_str(),
+            ),
             ("verifier_id", binding.verifier_id.as_str()),
             ("authority_chain_id", binding.authority_chain_id.as_str()),
             ("lineage_id", binding.lineage_id.as_str()),
@@ -254,9 +268,12 @@ fn build_entry(
     if event.event_type != "verification" {
         return Err(format!("unsupported_event_type:{}", event.event_type));
     }
-    let binding = bindings
-        .get(&event.verifier_node_id)
-        .ok_or_else(|| format!("missing_binding_for_verification_node_id:{}", event.verifier_node_id))?;
+    let binding = bindings.get(&event.verifier_node_id).ok_or_else(|| {
+        format!(
+            "missing_binding_for_verification_node_id:{}",
+            event.verifier_node_id
+        )
+    })?;
     if let Some(expected_key_id) = binding.verifier_key_id.as_deref() {
         let actual = event.verifier_key_id.as_deref().unwrap_or("");
         if actual != expected_key_id {
@@ -301,12 +318,15 @@ fn normalize_verdict(verdict: &VerificationVerdict) -> &'static str {
     }
 }
 
-fn parse_event_time_to_unix_ns(value: &str) -> Result<u64, String> {
+pub fn parse_event_time_to_unix_ns(value: &str) -> Result<u64, String> {
     let (datetime, fraction) = value
         .strip_suffix('Z')
         .ok_or_else(|| format!("unsupported_timestamp_format:{value}"))?
         .split_once('.')
-        .map_or((value.strip_suffix('Z').unwrap_or(value), ""), |(base, frac)| (base, frac));
+        .map_or(
+            (value.strip_suffix('Z').unwrap_or(value), ""),
+            |(base, frac)| (base, frac),
+        );
     let parts: Vec<&str> = datetime.split('T').collect();
     if parts.len() != 2 {
         return Err(format!("unsupported_timestamp_format:{value}"));
@@ -327,7 +347,9 @@ fn parse_event_time_to_unix_ns(value: &str) -> Result<u64, String> {
     let days = days_from_civil(date[0] as i64, date[1], date[2])?;
     let seconds = days
         .checked_mul(86_400)
-        .and_then(|base| base.checked_add((time[0] as i64) * 3_600 + (time[1] as i64) * 60 + time[2] as i64))
+        .and_then(|base| {
+            base.checked_add((time[0] as i64) * 3_600 + (time[1] as i64) * 60 + time[2] as i64)
+        })
         .ok_or_else(|| format!("timestamp_overflow:{value}"))?;
     if seconds < 0 {
         return Err(format!("timestamp_before_unix_epoch:{value}"));
@@ -356,7 +378,9 @@ fn parse_fractional_nanos(fraction: &str) -> Result<u64, String> {
 
 fn days_from_civil(year: i64, month: u32, day: u32) -> Result<i64, String> {
     if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
-        return Err(format!("invalid_calendar_date:{year:04}-{month:02}-{day:02}"));
+        return Err(format!(
+            "invalid_calendar_date:{year:04}-{month:02}-{day:02}"
+        ));
     }
     let adjusted_year = year - i64::from(month <= 2);
     let era = if adjusted_year >= 0 {
@@ -366,8 +390,7 @@ fn days_from_civil(year: i64, month: u32, day: u32) -> Result<i64, String> {
     };
     let year_of_era = adjusted_year - era * 400;
     let month = month as i64;
-    let day_of_year =
-        (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + day as i64 - 1;
+    let day_of_year = (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + day as i64 - 1;
     let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
     Ok(era * 146_097 + day_of_era - 719_468)
 }
@@ -379,8 +402,12 @@ fn write_outputs(
     final_entries: &[VerificationDiversityLedgerEntry],
     violations: &[String],
 ) -> Result<(), String> {
-    fs::create_dir_all(&config.output_dir)
-        .map_err(|error| format!("failed to create output dir {}: {error}", config.output_dir.display()))?;
+    fs::create_dir_all(&config.output_dir).map_err(|error| {
+        format!(
+            "failed to create output dir {}: {error}",
+            config.output_dir.display()
+        )
+    })?;
     let verdict = if violations.is_empty() {
         GateVerdict::Pass
     } else {
@@ -389,7 +416,9 @@ fn write_outputs(
     let output_ledger_path = config.output_dir.join("verification_diversity_ledger.json");
     write_diversity_ledger_entries(&output_ledger_path, final_entries)?;
     write_json(
-        &config.output_dir.join("verification_diversity_ledger_append_report.json"),
+        &config
+            .output_dir
+            .join("verification_diversity_ledger_append_report.json"),
         &serde_json::json!({
             "status": verdict.as_str(),
             "mode": "phase13_verification_diversity_ledger_producer",
@@ -425,10 +454,16 @@ fn write_failure_outputs(
     metrics: &ProducerMetrics,
     violations: &[String],
 ) -> Result<(), String> {
-    fs::create_dir_all(&config.output_dir)
-        .map_err(|error| format!("failed to create output dir {}: {error}", config.output_dir.display()))?;
+    fs::create_dir_all(&config.output_dir).map_err(|error| {
+        format!(
+            "failed to create output dir {}: {error}",
+            config.output_dir.display()
+        )
+    })?;
     write_json(
-        &config.output_dir.join("verification_diversity_ledger_append_report.json"),
+        &config
+            .output_dir
+            .join("verification_diversity_ledger_append_report.json"),
         &serde_json::json!({
             "status": "FAIL",
             "mode": "phase13_verification_diversity_ledger_producer",
@@ -464,8 +499,12 @@ fn write_loading_failure_outputs(
     load_error: &str,
     load_failure_stage: &str,
 ) -> Result<(), String> {
-    fs::create_dir_all(&config.output_dir)
-        .map_err(|error| format!("failed to create output dir {}: {error}", config.output_dir.display()))?;
+    fs::create_dir_all(&config.output_dir).map_err(|error| {
+        format!(
+            "failed to create output dir {}: {error}",
+            config.output_dir.display()
+        )
+    })?;
     let metrics = ProducerMetrics {
         source_event_count: 0,
         candidate_entry_count: 0,
@@ -475,7 +514,9 @@ fn write_loading_failure_outputs(
         final_entry_count: 0,
     };
     write_json(
-        &config.output_dir.join("verification_diversity_ledger_append_report.json"),
+        &config
+            .output_dir
+            .join("verification_diversity_ledger_append_report.json"),
         &serde_json::json!({
             "status": "FAIL",
             "mode": "phase13_verification_diversity_ledger_producer",

@@ -1,6 +1,4 @@
-use crate::diversity_ledger::{
-    load_diversity_ledger_entries, VerificationDiversityLedgerEntry,
-};
+use crate::diversity_ledger::{load_diversity_ledger_entries, VerificationDiversityLedgerEntry};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -101,11 +99,16 @@ struct OptionalDistributionSummary {
     missing_entry_count: usize,
 }
 
-pub fn run_diversity_floor_gate(config: &DiversityFloorGateConfig) -> Result<DiversityFloorGateOutcome, String> {
+pub fn run_diversity_floor_gate(
+    config: &DiversityFloorGateConfig,
+) -> Result<DiversityFloorGateOutcome, String> {
     let entries = match load_ledger_entries(&config.ledger_path) {
         Ok(entries) => entries,
         Err(error) => {
-            let violations = vec![format!("missing_or_invalid_ledger:{}", config.ledger_path.display())];
+            let violations = vec![format!(
+                "missing_or_invalid_ledger:{}",
+                config.ledger_path.display()
+            )];
             write_loading_failure_outputs(config, &violations, &error, "ledger_load")?;
             return Ok(DiversityFloorGateOutcome {
                 verdict: GateVerdict::Fail,
@@ -116,7 +119,10 @@ pub fn run_diversity_floor_gate(config: &DiversityFloorGateConfig) -> Result<Div
     let policy = match load_policy(&config.policy_path) {
         Ok(policy) => policy,
         Err(error) => {
-            let violations = vec![format!("missing_or_invalid_policy:{}", config.policy_path.display())];
+            let violations = vec![format!(
+                "missing_or_invalid_policy:{}",
+                config.policy_path.display()
+            )];
             write_loading_failure_outputs(config, &violations, &error, "policy_load")?;
             return Ok(DiversityFloorGateOutcome {
                 verdict: GateVerdict::Fail,
@@ -253,7 +259,11 @@ where
         .map(|(id, count)| DistributionEntry {
             id,
             count,
-            share: if total == 0.0 { 0.0 } else { count as f64 / total },
+            share: if total == 0.0 {
+                0.0
+            } else {
+                count as f64 / total
+            },
         })
         .collect();
     distribution.sort_by(|left, right| {
@@ -293,7 +303,11 @@ where
         .map(|(id, count)| DistributionEntry {
             id,
             count,
-            share: if total == 0.0 { 0.0 } else { count as f64 / total },
+            share: if total == 0.0 {
+                0.0
+            } else {
+                count as f64 / total
+            },
         })
         .collect();
     distribution.sort_by(|left, right| {
@@ -427,8 +441,12 @@ fn write_outputs(
     cluster_distribution: &OptionalDistributionSummary,
     violations: &[String],
 ) -> Result<(), String> {
-    fs::create_dir_all(output_dir)
-        .map_err(|error| format!("failed to create output dir {}: {error}", output_dir.display()))?;
+    fs::create_dir_all(output_dir).map_err(|error| {
+        format!(
+            "failed to create output dir {}: {error}",
+            output_dir.display()
+        )
+    })?;
 
     let verdict = if violations.is_empty() {
         GateVerdict::Pass
@@ -569,8 +587,12 @@ fn write_loading_failure_outputs(
     load_failure_stage: &str,
 ) -> Result<(), String> {
     let output_dir = &config.output_dir;
-    fs::create_dir_all(output_dir)
-        .map_err(|error| format!("failed to create output dir {}: {error}", output_dir.display()))?;
+    fs::create_dir_all(output_dir).map_err(|error| {
+        format!(
+            "failed to create output dir {}: {error}",
+            output_dir.display()
+        )
+    })?;
 
     write_json(
         &output_dir.join("verification_diversity_floor_report.json"),
@@ -784,7 +806,8 @@ mod tests {
         ];
 
         let verifier_distribution = build_distribution(&entries, |entry| entry.verifier_id.clone());
-        let node_distribution = build_distribution(&entries, |entry| entry.verification_node_id.clone());
+        let node_distribution =
+            build_distribution(&entries, |entry| entry.verification_node_id.clone());
         let authority_distribution =
             build_distribution(&entries, |entry| entry.authority_chain_id.clone());
         let lineage_distribution = build_distribution(&entries, |entry| entry.lineage_id.clone());
@@ -857,9 +880,15 @@ mod tests {
         let violations = evaluate_policy(&metrics, &policy, &selection);
 
         assert_eq!(violations.len(), 6);
-        assert!(violations.iter().any(|item| item.contains("unique_verifier_count")));
-        assert!(violations.iter().any(|item| item.contains("dominance_ratio")));
-        assert!(violations.iter().any(|item| item.contains("lineage_entropy")));
+        assert!(violations
+            .iter()
+            .any(|item| item.contains("unique_verifier_count")));
+        assert!(violations
+            .iter()
+            .any(|item| item.contains("dominance_ratio")));
+        assert!(violations
+            .iter()
+            .any(|item| item.contains("lineage_entropy")));
     }
 
     #[test]

@@ -48,28 +48,28 @@ fn parse_cli(
     while let Some(arg) = args.next() {
         match arg.to_string_lossy().as_ref() {
             "--artifact-root" => {
-                artifact_root = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--artifact-root`".to_string())?,
-                ));
+                artifact_root =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--artifact-root`".to_string()
+                    })?));
             }
             "--output-dir" => {
-                output_dir = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--output-dir`".to_string())?,
-                ));
+                output_dir =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--output-dir`".to_string()
+                    })?));
             }
             "--audit-ledger" => {
-                audit_ledger_path = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--audit-ledger`".to_string())?,
-                ));
+                audit_ledger_path =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--audit-ledger`".to_string()
+                    })?));
             }
             "--binding" => {
-                binding_path = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--binding`".to_string())?,
-                ));
+                binding_path =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--binding`".to_string()
+                    })?));
             }
             "--ledger" => {
                 ledger_path = Some(PathBuf::from(
@@ -86,9 +86,8 @@ fn parse_cli(
     let output_dir = output_dir.ok_or_else(|| "missing required `--output-dir`".to_string())?;
     let audit_ledger_path =
         audit_ledger_path.unwrap_or_else(|| artifact_root.join("verification_audit_ledger.jsonl"));
-    let binding_path = binding_path.unwrap_or_else(|| {
-        artifact_root.join("verification_diversity_ledger_binding.json")
-    });
+    let binding_path = binding_path
+        .unwrap_or_else(|| artifact_root.join("verification_diversity_ledger_binding.json"));
     let ledger_path =
         ledger_path.unwrap_or_else(|| artifact_root.join("verification_diversity_ledger.json"));
 

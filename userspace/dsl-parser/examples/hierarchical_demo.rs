@@ -1,9 +1,9 @@
 //! Hierarchical DSL Command Demonstration
-//! 
+//!
 //! This example demonstrates the complete hierarchical command functionality
 //! of the AykenOS DSL parser according to Phase 2 requirements.
 
-use dsl_parser::{DslParser, Command};
+use dsl_parser::{Command, DslParser};
 
 fn main() {
     println!("AykenOS DSL Parser - Hierarchical Commands Demonstration");
@@ -20,7 +20,7 @@ fn main() {
     // Demonstrate Level 1: Context Selection
     println!("📁 LEVEL 1: CONTEXT SELECTION (>)");
     println!("==================================");
-    
+
     let contexts = vec![
         ("> data.users", "Data container for user records"),
         ("> sys.hw", "System hardware information"),
@@ -46,15 +46,24 @@ fn main() {
     // Demonstrate Level 2: Context Operations
     println!("⚙️  LEVEL 2: CONTEXT OPERATIONS (>>)");
     println!("====================================");
-    
+
     // Select a data context first
     parser.parse_command("> data.users").unwrap();
     println!("Selected context: data.users\n");
 
     let operations = vec![
-        (">> create schema=[id:int,name:string,age:int]", "Create data schema"),
-        (">> add {\"id\":1,\"name\":\"Alice\",\"age\":30}", "Add data record"),
-        (">> add {\"id\":2,\"name\":\"Bob\",\"age\":25}", "Add another record"),
+        (
+            ">> create schema=[id:int,name:string,age:int]",
+            "Create data schema",
+        ),
+        (
+            ">> add {\"id\":1,\"name\":\"Alice\",\"age\":30}",
+            "Add data record",
+        ),
+        (
+            ">> add {\"id\":2,\"name\":\"Bob\",\"age\":25}",
+            "Add another record",
+        ),
         (">> query filter=\"age > 25\"", "Query with filter"),
         (">> list", "List container contents"),
         (">> help", "Get help information"),
@@ -83,10 +92,13 @@ fn main() {
     // Demonstrate Level 3: Batch Operations
     println!("🔄 LEVEL 3: BATCH OPERATIONS (>[ ])");
     println!("===================================");
-    
+
     let batch_operations = vec![
         (">[ ] query filter=\"age > 20\" | list", "Filter and list"),
-        (">[ ] add {\"id\":3,\"name\":\"Charlie\"} | query filter=\"name like 'C%'\" | list", "Add, filter, and list"),
+        (
+            ">[ ] add {\"id\":3,\"name\":\"Charlie\"} | query filter=\"name like 'C%'\" | list",
+            "Add, filter, and list",
+        ),
         (">[ ] help | info | list", "Multiple info commands"),
     ];
 
@@ -111,13 +123,19 @@ fn main() {
     // Demonstrate AI Context
     println!("🤖 AI CONTEXT DEMONSTRATION");
     println!("===========================");
-    
+
     parser.parse_command("> ai").unwrap();
     println!("Selected context: ai\n");
 
     let ai_commands = vec![
-        (">> ask \"What is the average age of users?\"", "Natural language query"),
-        (">> ask \"Show me users older than 25\"", "Data analysis request"),
+        (
+            ">> ask \"What is the average age of users?\"",
+            "Natural language query",
+        ),
+        (
+            ">> ask \"Show me users older than 25\"",
+            "Data analysis request",
+        ),
         (">> help ai", "AI-specific help"),
     ];
 
@@ -138,7 +156,7 @@ fn main() {
     // Demonstrate Error Handling
     println!("❌ ERROR HANDLING DEMONSTRATION");
     println!("===============================");
-    
+
     let error_cases = vec![
         ("invalid command", "Invalid syntax"),
         ("> invalid.context", "Unsupported context"),

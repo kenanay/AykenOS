@@ -23,7 +23,9 @@ fn unparse_ast(ast: &AstNode) -> String {
 /// Unparse command node to string
 fn unparse_command(cmd: &CommandNode) -> String {
     match cmd {
-        CommandNode::Query { context, filter, .. } => {
+        CommandNode::Query {
+            context, filter, ..
+        } => {
             let mut result = format!("query {}", context.join("."));
             if let Some(filter) = filter {
                 result.push_str(&format!(" {{{}}}", unparse_expr(filter)));
@@ -55,7 +57,9 @@ fn unparse_expr(expr: &Expr) -> String {
         Expr::Number { value, .. } => value.clone(),
         Expr::String { value, .. } => format!("\"{}\"", value),
         Expr::Boolean { value, .. } => value.to_string(),
-        Expr::Binary { left, op, right, .. } => {
+        Expr::Binary {
+            left, op, right, ..
+        } => {
             let op_str = match op {
                 BinaryOp::Eq => "==",
                 BinaryOp::Ne => "!=",
@@ -92,7 +96,7 @@ fn test_round_trip_simple_commands() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -113,7 +117,7 @@ fn test_round_trip_query_with_filters() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -131,7 +135,7 @@ fn test_round_trip_logical_expressions() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -151,7 +155,7 @@ fn test_round_trip_nested_commands() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -168,7 +172,7 @@ fn test_round_trip_complex_contexts() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -180,13 +184,17 @@ fn test_round_trip_preserves_semantics() {
     let ast1 = parse_command(input).unwrap();
     let unparsed = unparse_ast(&ast1);
     let ast2 = parse_command(&unparsed).unwrap();
-    
+
     assert_eq!(ast1, ast2);
-    
+
     // Verify the structure is correct (OR at top level)
     match ast1.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
-            Expr::Binary { op: BinaryOp::Or, .. } => {}
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
+            Expr::Binary {
+                op: BinaryOp::Or, ..
+            } => {}
             _ => panic!("Expected Or as top-level operator"),
         },
         _ => panic!("Expected Query with filter"),
@@ -199,10 +207,10 @@ fn test_round_trip_source_location_consistency() {
     let ast1 = parse_command(input).unwrap();
     let unparsed = unparse_ast(&ast1);
     let ast2 = parse_command(&unparsed).unwrap();
-    
+
     // AST structure should be identical
     assert_eq!(ast1, ast2);
-    
+
     // Both should have valid source locations
     assert!(ast1.location().line > 0);
     assert!(ast2.location().line > 0);
@@ -212,17 +220,17 @@ fn test_round_trip_source_location_consistency() {
 fn test_idempotent_parsing() {
     // Multiple parse cycles should produce identical results
     let input = "query data.users {age > 18 and name == \"Alice\"}";
-    
+
     let mut current = input.to_string();
     let mut asts = Vec::new();
-    
+
     // Parse → unparse → parse multiple times
     for _ in 0..5 {
         let ast = parse_command(&current).unwrap();
         asts.push(ast.clone());
         current = unparse_ast(&ast);
     }
-    
+
     // All ASTs should be identical
     for ast in &asts[1..] {
         assert_eq!(&asts[0], ast, "Parsing is not idempotent");
@@ -235,14 +243,13 @@ fn test_round_trip_all_token_types() {
     let test_cases = vec![
         // All commands
         "status",
-        "agents", 
+        "agents",
         "history",
         "list data.users",
         "show data.users 123",
         "query data.users",
         "explain status",
         "dry-run agents",
-        
         // All operators
         "query data.users {age == 18}",
         "query data.users {age != 18}",
@@ -253,7 +260,6 @@ fn test_round_trip_all_token_types() {
         "query data.users {active and premium}",
         "query data.users {active or premium}",
         "query data.users {not active}",
-        
         // All literal types
         "query data.users {name == \"Alice\"}",
         "query data.users {age == 25}",
@@ -266,7 +272,7 @@ fn test_round_trip_all_token_types() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -276,17 +282,13 @@ fn test_round_trip_edge_cases() {
     let test_cases = vec![
         // Empty string literals
         "query data.users {name == \"\"}",
-        
         // Single character identifiers
         "query a {b == c}",
-        
         // Numbers with decimals
         "query data.users {score == 0.0}",
         "query data.users {ratio == 1.5}",
-        
         // Complex nested contexts
         "query a.b.c.d.e.f",
-        
         // Deeply nested commands
         "explain dry-run query data.users {age > 18}",
     ];
@@ -295,7 +297,7 @@ fn test_round_trip_edge_cases() {
         let ast1 = parse_command(input).unwrap();
         let unparsed = unparse_ast(&ast1);
         let ast2 = parse_command(&unparsed).unwrap();
-        
+
         assert_eq!(ast1, ast2, "Round-trip failed for: {}", input);
     }
 }
@@ -303,9 +305,9 @@ fn test_round_trip_edge_cases() {
 #[test]
 fn test_round_trip_performance() {
     use std::time::Instant;
-    
+
     let input = "query data.users {age > 18 and name == \"Alice\" or not active}";
-    
+
     let start = Instant::now();
     for _ in 0..100 {
         let ast = parse_command(input).unwrap();
@@ -313,9 +315,13 @@ fn test_round_trip_performance() {
         let _ast2 = parse_command(&unparsed).unwrap();
     }
     let duration = start.elapsed();
-    
+
     // 100 round-trips should complete in reasonable time
-    assert!(duration.as_millis() < 100, "Round-trip performance too slow: {}ms", duration.as_millis());
+    assert!(
+        duration.as_millis() < 100,
+        "Round-trip performance too slow: {}ms",
+        duration.as_millis()
+    );
 }
 
 #[test]
@@ -330,19 +336,25 @@ fn test_extended_dsl_rejection_consistency() {
         "permissions data.users",
         "sandbox status",
     ];
-    
+
     let extended_operators = vec![
         "query data.users {age + 5 > 18}",
         "query data.users {score - penalty < 50}",
         "query data.users {count * 2 == 10}",
         "query data.users {total / count > 5}",
     ];
-    
+
     for input in extended_commands.iter().chain(extended_operators.iter()) {
         let result = parse_command(input);
-        assert!(result.is_err(), "Extended DSL should be rejected: {}", input);
-        
+        assert!(
+            result.is_err(),
+            "Extended DSL should be rejected: {}",
+            input
+        );
+
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("Extended DSL") || err.to_string().contains("Phase 3.5.1"));
+        assert!(
+            err.to_string().contains("Extended DSL") || err.to_string().contains("Phase 3.5.1")
+        );
     }
 }

@@ -94,10 +94,10 @@ fn parse_sign_json_command(args: Vec<OsString>) -> Result<ParsedCommand, String>
     while let Some(arg) = args.next() {
         match arg.to_string_lossy().as_ref() {
             "--payload" => {
-                payload_path = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--payload`".to_string())?,
-                ));
+                payload_path =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--payload`".to_string()
+                    })?));
             }
             "--output" => {
                 output_path = Some(PathBuf::from(
@@ -163,16 +163,16 @@ fn parse_verify_json_command(args: Vec<OsString>) -> Result<ParsedCommand, Strin
     while let Some(arg) = args.next() {
         match arg.to_string_lossy().as_ref() {
             "--payload" => {
-                payload_path = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--payload`".to_string())?,
-                ));
+                payload_path =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--payload`".to_string()
+                    })?));
             }
             "--attestation" => {
-                attestation_path = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "missing value for `--attestation`".to_string())?,
-                ));
+                attestation_path =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "missing value for `--attestation`".to_string()
+                    })?));
             }
             "--public-key" => {
                 public_key = Some(
@@ -209,8 +209,12 @@ fn run_sign_json(
     private_key: &str,
     attested_at_utc: &str,
 ) -> Result<(), String> {
-    let payload_bytes = fs::read(payload_path)
-        .map_err(|error| format!("failed to read payload at {}: {error}", payload_path.display()))?;
+    let payload_bytes = fs::read(payload_path).map_err(|error| {
+        format!(
+            "failed to read payload at {}: {error}",
+            payload_path.display()
+        )
+    })?;
     let canonical_payload = canonicalize_json_bytes(&payload_bytes)
         .map_err(|error| format!("failed to canonicalize payload: {error}"))?;
     let signature = sign_ed25519_bytes(private_key, &canonical_payload)
@@ -228,13 +232,18 @@ fn run_sign_json(
     };
 
     if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create output dir {}: {error}", parent.display()))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!("failed to create output dir {}: {error}", parent.display())
+        })?;
     }
     let bytes = serde_json::to_vec_pretty(&attestation)
         .map_err(|error| format!("failed to serialize attestation: {error}"))?;
-    fs::write(output_path, bytes)
-        .map_err(|error| format!("failed to write attestation {}: {error}", output_path.display()))?;
+    fs::write(output_path, bytes).map_err(|error| {
+        format!(
+            "failed to write attestation {}: {error}",
+            output_path.display()
+        )
+    })?;
     Ok(())
 }
 
@@ -243,8 +252,12 @@ fn run_verify_json(
     attestation_path: &PathBuf,
     public_key: &str,
 ) -> Result<(), String> {
-    let payload_bytes = fs::read(payload_path)
-        .map_err(|error| format!("failed to read payload at {}: {error}", payload_path.display()))?;
+    let payload_bytes = fs::read(payload_path).map_err(|error| {
+        format!(
+            "failed to read payload at {}: {error}",
+            payload_path.display()
+        )
+    })?;
     let canonical_payload = canonicalize_json_bytes(&payload_bytes)
         .map_err(|error| format!("failed to canonicalize payload: {error}"))?;
     let attestation_bytes = fs::read(attestation_path).map_err(|error| {
@@ -253,8 +266,8 @@ fn run_verify_json(
             attestation_path.display()
         )
     })?;
-    let attestation: ClosureManifestAttestation =
-        serde_json::from_slice(&attestation_bytes).map_err(|error| {
+    let attestation: ClosureManifestAttestation = serde_json::from_slice(&attestation_bytes)
+        .map_err(|error| {
             format!(
                 "failed to deserialize attestation {}: {error}",
                 attestation_path.display()

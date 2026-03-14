@@ -119,6 +119,8 @@ for artifact in \
   "${EVIDENCE_DIR}/proofd_verify_request.json" \
   "${EVIDENCE_DIR}/proofd_verify_response.json" \
   "${EVIDENCE_DIR}/proofd_run_manifest.json" \
+  "${EVIDENCE_DIR}/replay_boundary_flow_source.json" \
+  "${EVIDENCE_DIR}/trust_reuse_flow_source.json" \
   "${PROOFD_RECEIPT_VERIFICATION_REPORT_JSON}" \
   "${PROOFD_REPEATED_EXECUTION_REPORT_JSON}"
 do

@@ -55,13 +55,20 @@ fn build_bcib_from_dsl(commands: &[&str]) -> Result<Vec<u8>, ParseError> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example DSL script to drive BCIB encoding
-    let cmds = ["> data.users", ">> create schema=id:int,name:string", ">> add {\"id\":1}", ">> query filter=\"id>0\""];
+    let cmds = [
+        "> data.users",
+        ">> create schema=id:int,name:string",
+        ">> add {\"id\":1}",
+        ">> query filter=\"id>0\"",
+    ];
 
     let bcib_bytes = build_bcib_from_dsl(&cmds)?;
     println!("Built BCIB buffer ({} bytes)", bcib_bytes.len());
 
     // Only submit to kernel when explicitly requested (avoids int 0x80 on host dev boxes)
-    let should_submit = std::env::var("RUN_IN_QEMU").map(|v| v == "1").unwrap_or(false);
+    let should_submit = std::env::var("RUN_IN_QEMU")
+        .map(|v| v == "1")
+        .unwrap_or(false);
     if !should_submit {
         println!("RUN_IN_QEMU!=1; skipping syscall submission. Bytes ready for submit_execution.");
         return Ok(());

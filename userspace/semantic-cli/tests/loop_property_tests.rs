@@ -22,29 +22,28 @@
 
 use proptest::prelude::*;
 use semantic_cli::bcib::{
-    LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, 
-    CollectionType, OperandRef, BudgetMeasurement, ErrorRecoveryPolicy
+    BudgetMeasurement, CollectionType, ErrorRecoveryPolicy, LoopConfig, LoopID, LoopInstruction,
+    LoopRange, OperandRef, Value, ValueType,
 };
+use semantic_cli::error::{ErrorCode, SemanticCLIError};
 use semantic_cli::loop_engine::{
-    LoopEngine, LoopBodyFn, LoopBodyResult,
-    SafetyClass, LoopAnalysisContext,
-    RichLoopExecutionResult, LoopExecutionStatus
+    LoopAnalysisContext, LoopBodyFn, LoopBodyResult, LoopEngine, LoopExecutionStatus,
+    RichLoopExecutionResult, SafetyClass,
 };
 use semantic_cli::types::SourceLocation;
-use semantic_cli::error::{SemanticCLIError, ErrorCode};
 
 // =============================================================================
 // Property Test Generators
 // =============================================================================
 
 /// Generate valid loop ranges (CONSTITUTIONAL: tests all range semantics)
-/// 
+///
 /// This generator enforces constitutional correctness by testing:
 /// - Ascending ranges (positive step)
-/// - Descending ranges (negative step) 
+/// - Descending ranges (negative step)
 /// - Empty ranges (start == end)
 /// - Single iteration ranges (|end - start| == |step|)
-/// 
+///
 /// CRITICAL: This generator must cover ALL possible range semantics to validate
 /// the constitutional guarantee that range iteration is deterministic and exact.
 fn arb_loop_range() -> impl Strategy<Value = (i64, i64, i64)> {
@@ -92,8 +91,7 @@ fn arb_accumulator_value() -> impl Strategy<Value = Value> {
 
 /// Generate valid collections
 fn arb_collection() -> impl Strategy<Value = Value> {
-    prop::collection::vec(arb_accumulator_value(), 0..10)
-        .prop_map(Value::Array)
+    prop::collection::vec(arb_accumulator_value(), 0..10).prop_map(Value::Array)
 }
 
 /// Generate loop instructions
@@ -160,17 +158,17 @@ proptest! {
         }
 
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: Fn (not FnMut), no side effects, pure accumulator flow
         let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: iterations completed must never exceed limit
         prop_assert!(result.iterations_completed <= limit);
-        
+
         // Constitutional: Check execution status based on actual completion
         // If the loop completed all its natural iterations within the limit, it should be Success
         // If it hit the iteration limit before natural completion, it should be IterationLimitReached
@@ -231,19 +229,19 @@ proptest! {
 
         let mut engine1 = LoopEngine::new();
         let mut engine2 = LoopEngine::new();
-        
+
         // Constitutional: Pure functions, no external state
         let body_fn1: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
         });
-        
+
         let body_fn2: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
         });
 
         let result1 = engine1.execute_loop(&instruction, body_fn1).unwrap();
         let result2 = engine2.execute_loop(&instruction, body_fn2).unwrap();
-        
+
         // Property: Budget timeout must be deterministic
         prop_assert_eq!(result1.iterations_completed, result2.iterations_completed);
         prop_assert_eq!(result1.status, result2.status);
@@ -252,7 +250,7 @@ proptest! {
     /// Property 6: Sequential Iteration Order
     /// **CONSTITUTIONAL CLARIFICATION**: This property validates that when loops execute
     /// sequentially (not in parallel), iterations occur in deterministic order.
-    /// 
+    ///
     /// IMPORTANT: This does NOT define iteration semantics - it validates that the
     /// engine respects whatever iteration order is constitutionally defined for each loop type.
     /// - For loops: iterate in range order (start → end by step)
@@ -263,7 +261,7 @@ proptest! {
         instruction in arb_loop_instruction()
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: State flows through accumulator, not external mutation
         // Track iteration order in accumulator as array
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
@@ -281,7 +279,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: If execution succeeds, iterations were in constitutional order
         // CONSTITUTIONAL: We validate the order is consistent, not what the order should be
         if result.is_success() {
@@ -305,7 +303,7 @@ proptest! {
     ) {
         let mut engine = LoopEngine::new();
         let original_config = instruction.get_config().clone();
-        
+
         // Constitutional: Pure function preserves type
         let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
             // Always return the same type as input
@@ -313,7 +311,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: Accumulator type must be preserved
         prop_assert_eq!(
             std::mem::discriminant(&original_config.initial_accumulator),
@@ -368,9 +366,9 @@ proptest! {
             },
             _ => {} // For and ForEach loops are naturally bounded
         }
-        
+
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: Break flows through LoopBodyResult, not external state
         let body_fn: LoopBodyFn = Box::new(move |accumulator, iteration| {
             if iteration >= break_at {
@@ -381,7 +379,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: Break must terminate at the exact iteration
         // Constitutional: Check execution status, not LoopResult variants
         if matches!(result.status, LoopExecutionStatus::Break) {
@@ -403,9 +401,9 @@ proptest! {
             },
             _ => {} // For and ForEach loops are naturally bounded
         }
-        
+
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: Continue flows through LoopBodyResult
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if iteration % 2 == 0 {
@@ -418,7 +416,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: Continue must not affect total iteration count
         if result.is_success() {
             let expected_iterations = result.iterations_completed;
@@ -448,7 +446,7 @@ proptest! {
         }
 
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: Errors propagate through Result, accumulator preserved
         let body_fn: LoopBodyFn = Box::new(move |accumulator, iteration| {
             if iteration >= error_at {
@@ -464,7 +462,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: With ReturnPartialResults policy, accumulator should contain partial work
         if !result.is_success() {
             if let Value::Number(acc_value) = &result.accumulator {
@@ -483,7 +481,7 @@ proptest! {
         error_at in 1u32..5u32
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Constitutional: Errors propagate through Result, not side effects
         let body_fn: LoopBodyFn = Box::new(move |accumulator, iteration| {
             if iteration >= error_at {
@@ -494,7 +492,7 @@ proptest! {
         });
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
-        
+
         // Property: Error must terminate at the exact iteration
         if !result.is_success() {
             prop_assert!(result.iterations_completed <= error_at);
@@ -514,7 +512,7 @@ proptest! {
         instruction in arb_loop_instruction()
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Check if loop should be unrolled
         if let Ok(should_unroll) = engine.should_unroll_loop(&instruction) {
             if should_unroll {
@@ -525,7 +523,7 @@ proptest! {
                         Ok(LoopBodyResult::Normal(accumulator.clone()))
                     }
                 });
-                
+
                 let body_fn2: LoopBodyFn = Box::new(|accumulator, iteration| {
                     if let Value::Number(acc) = accumulator {
                         Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
@@ -536,10 +534,10 @@ proptest! {
 
                 // Execute normally
                 let normal_result = engine.execute_loop(&instruction, body_fn1).unwrap();
-                
+
                 // Execute with unrolling (conceptually - actual unrolling would be in compiler)
                 let unrolled_result = engine.execute_loop(&instruction, body_fn2).unwrap();
-                
+
                 // Property: Results must be identical
                 prop_assert_eq!(normal_result.iterations_completed, unrolled_result.iterations_completed);
                 prop_assert_eq!(normal_result.is_success(), unrolled_result.is_success());
@@ -556,11 +554,11 @@ proptest! {
         instruction in arb_loop_instruction()
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // CONSTITUTIONAL: Use API constant, not hardcoded values
         let threshold = semantic_cli::loop_engine::monitoring::HOT_LOOP_THRESHOLD;
         let iterations = threshold + 100; // Exceed threshold by a safe margin
-        
+
         // Create a loop that will exceed hot threshold
         let mut hot_instruction = instruction;
         match &mut hot_instruction {
@@ -571,18 +569,18 @@ proptest! {
             },
             _ => return Ok(()), // Skip non-For loops for this property
         }
-        
+
         let loop_id = match &hot_instruction {
             LoopInstruction::For { id, .. } => id.clone(),
             _ => return Ok(()),
         };
-        
+
         let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
         });
 
         let result = engine.execute_loop(&hot_instruction, body_fn).unwrap();
-        
+
         // Property: Hot loops must be detected when API threshold is exceeded
         if result.iterations_completed >= threshold {
             prop_assert!(engine.is_hot_loop(&loop_id));
@@ -656,11 +654,11 @@ proptest! {
         parallelism in 2usize..8usize
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Only test For loops for parallelization
         if let LoopInstruction::For { range, .. } = &instruction {
             let iteration_count = ((range.end - range.start) / range.step).abs() as u32;
-            
+
             if iteration_count > 0 && iteration_count <= 100 { // Limit to small loops for testing
                 // Constitutional: Pure functions, deterministic accumulator flow
                 let body_fn1: LoopBodyFn = Box::new(|accumulator, iteration| {
@@ -670,7 +668,7 @@ proptest! {
                         Ok(LoopBodyResult::Normal(accumulator.clone()))
                     }
                 });
-                
+
                 let body_fn2: LoopBodyFn = Box::new(|accumulator, iteration| {
                     if let Value::Number(acc) = accumulator {
                         Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
@@ -681,14 +679,14 @@ proptest! {
 
                 // Sequential execution
                 let sequential_result = engine.execute_loop(&instruction, body_fn1).unwrap();
-                
+
                 // Parallel execution (if supported) - skip if not implemented yet
                 match engine.execute_loop_parallel(&instruction, body_fn2, iteration_count, parallelism) {
                     Ok(parallel_result) => {
                         // Property: Results must be identical
                         prop_assert_eq!(sequential_result.iterations_completed, parallel_result.iterations_completed);
                         prop_assert_eq!(sequential_result.is_success(), parallel_result.is_success());
-                        
+
                         // Constitutional: Compare accumulator values directly
                         prop_assert_eq!(sequential_result.accumulator, parallel_result.accumulator);
                     },
@@ -710,27 +708,27 @@ proptest! {
         parallelism in 2usize..16usize
     ) {
         let engine = LoopEngine::new();
-        
+
         // Get partitions twice with same inputs
         let partitions1 = engine.partition_iterations_deterministic(total_iterations, parallelism);
         let partitions2 = engine.partition_iterations_deterministic(total_iterations, parallelism);
-        
+
         // Property: Partitions must be identical
         prop_assert_eq!(partitions1.len(), partitions2.len());
-        
+
         for (p1, p2) in partitions1.iter().zip(partitions2.iter()) {
             prop_assert_eq!(p1.start_iteration, p2.start_iteration);
             prop_assert_eq!(p1.end_iteration, p2.end_iteration);
             prop_assert_eq!(p1.iteration_count, p2.iteration_count);
         }
-        
+
         // Property: All iterations must be covered exactly once
         let covered1: u32 = partitions1.iter().map(|p| p.iteration_count).sum();
         let covered2: u32 = partitions2.iter().map(|p| p.iteration_count).sum();
-        
+
         prop_assert_eq!(covered1, total_iterations);
         prop_assert_eq!(covered2, total_iterations);
-        
+
         // Property: Partitions must be contiguous
         for i in 1..partitions1.len() {
             prop_assert_eq!(partitions1[i-1].end_iteration, partitions1[i].start_iteration);
@@ -753,7 +751,7 @@ proptest! {
             .map(|i| Value::Number(i as f64))
             .collect();
         let collection = Value::Array(collection_items.clone());
-        
+
         let instruction = LoopInstruction::ForEach {
             id: LoopID::new("prop-stable-mapping".to_string()),
             collection: OperandRef::Literal(collection),
@@ -763,9 +761,9 @@ proptest! {
             config: LoopConfig::new(Value::Array(vec![]), ValueType::Array),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let mut engine = LoopEngine::new();
-        
+
         if collection_items.len() > 0 && collection_items.len() <= 100 { // Limit for testing
             // Constitutional: Track index-to-data mapping through accumulator
             let items_clone = collection_items.clone();
@@ -788,7 +786,7 @@ proptest! {
                     }
                 }
             });
-            
+
             let items_clone2 = collection_items.clone();
             let body_fn2: LoopBodyFn = Box::new(move |accumulator, iteration| {
                 match accumulator.clone() {
@@ -811,7 +809,7 @@ proptest! {
 
             // Sequential execution
             let sequential_result = engine.execute_loop(&instruction, body_fn1).unwrap();
-            
+
             // Parallel execution (if supported)
             match engine.execute_loop_parallel(&instruction, body_fn2, collection_items.len() as u32, parallelism) {
                 Ok(parallel_result) => {
@@ -834,7 +832,7 @@ proptest! {
         hash_map_size in 1usize..10usize
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Create a hash map (unordered collection)
         let mut hash_items = vec![];
         for i in 0..hash_map_size {
@@ -843,7 +841,7 @@ proptest! {
                 Value::Number(i as f64)
             ]));
         }
-        
+
         let instruction = LoopInstruction::ForEach {
             id: LoopID::new("prop-unordered-rejection".to_string()),
             collection: OperandRef::Literal(Value::Array(hash_items)),
@@ -853,18 +851,18 @@ proptest! {
             config: LoopConfig::new(Value::Number(0.0), ValueType::Number),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
         });
 
         let result = engine.execute_loop(&instruction, body_fn);
-        
+
         // Property: Unordered collections should be rejected
         if result.is_err() {
             let error = result.unwrap_err();
             // Check if it's the expected validation error
-            prop_assert!(error.to_string().contains("unordered") || 
+            prop_assert!(error.to_string().contains("unordered") ||
                         error.to_string().contains("deterministic") ||
                         error.to_string().contains("canonical"));
         } else {
@@ -891,19 +889,19 @@ proptest! {
         let mut engine = LoopEngine::new();
         let mut context = LoopAnalysisContext::new();
         context.add_loop_variable(var_name.clone(), "number".to_string());
-        
+
         // Loop with dependency: current iteration reads previous iteration's write
         let dependent_body = format!("{0} = {0} + prev_{0}", var_name);
         let result = engine.analyze_loop_safety(&dependent_body, &context).unwrap();
-        
+
         // Property: Should detect loop-carried dependency
         prop_assert!(!result.dependencies.is_empty());
         prop_assert_eq!(result.classification, SafetyClass::Unsafe);
-        
+
         // Independent loop body - no dependencies
         let independent_body = format!("{} = {} + 1", var_name, var_name);
         let result2 = engine.analyze_loop_safety(&independent_body, &context).unwrap();
-        
+
         // Property: Should not detect dependencies in independent operations
         prop_assert!(result2.dependencies.is_empty());
     }
@@ -917,11 +915,11 @@ proptest! {
         parallelism in 2usize..8usize
     ) {
         let mut engine = LoopEngine::new();
-        
+
         // Only test For loops for parallelization
         if let LoopInstruction::For { range, .. } = &instruction {
             let iteration_count = ((range.end - range.start) / range.step).abs() as u32;
-            
+
             if iteration_count > 0 && iteration_count <= 50 { // Small loops for testing
                 // Safe body function - pure arithmetic, no side effects
                 let safe_body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
@@ -931,7 +929,7 @@ proptest! {
                         Ok(LoopBodyResult::Normal(Value::Number(iteration as f64)))
                     }
                 });
-                
+
                 // Attempt parallel execution
                 match engine.execute_loop_parallel(&instruction, safe_body_fn, iteration_count, parallelism) {
                     Ok(_) => {
@@ -943,7 +941,7 @@ proptest! {
                         // not safety concerns (since we're using a safe body)
                         let error_msg = error.to_string().to_lowercase();
                         prop_assert!(
-                            error_msg.contains("not implemented") || 
+                            error_msg.contains("not implemented") ||
                             error_msg.contains("unsupported") ||
                             !error_msg.contains("unsafe")
                         );
@@ -961,7 +959,7 @@ proptest! {
     ) {
         let mut engine = LoopEngine::new();
         let initial_stats = engine.get_global_monitoring_stats().clone();
-        
+
         // Constitutional: Pure function, no side effects
         let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
             Ok(LoopBodyResult::Normal(accumulator.clone()))
@@ -969,10 +967,10 @@ proptest! {
 
         let result = engine.execute_loop(&instruction, body_fn).unwrap();
         let final_stats = engine.get_global_monitoring_stats();
-        
+
         // Property: Execution count must increase
         prop_assert!(final_stats.total_loop_executions > initial_stats.total_loop_executions);
-        
+
         // Property: Iteration count must increase (unless empty loop)
         if result.iterations_completed > 0 {
             prop_assert!(final_stats.total_iterations >= initial_stats.total_iterations);
@@ -987,18 +985,18 @@ proptest! {
     ) {
         let mut engine = LoopEngine::new();
         let context = LoopAnalysisContext::new();
-        
+
         // First analysis
         let _result1 = engine.analyze_loop_safety(&loop_body, &context).unwrap();
         let stats_after_first = engine.get_safety_cache_stats();
-        
+
         // Second analysis (should hit cache)
         let _result2 = engine.analyze_loop_safety(&loop_body, &context).unwrap();
         let stats_after_second = engine.get_safety_cache_stats();
-        
+
         // Property: Cache hit count must increase
         prop_assert!(stats_after_second.hit_count > stats_after_first.hit_count);
-        
+
         // Property: Cache entries should not increase (same key)
         prop_assert_eq!(stats_after_first.entries, stats_after_second.entries);
     }
@@ -1086,14 +1084,14 @@ mod property_test_validation {
     fn test_extension_traits() {
         // Test RichLoopExecutionResult extension trait
         let success_result = RichLoopExecutionResult::success(
-            Value::Number(42.0), 
-            10, 
-            semantic_cli::loop_engine::ExecutionMode::Interpreted
+            Value::Number(42.0),
+            10,
+            semantic_cli::loop_engine::ExecutionMode::Interpreted,
         );
-        
+
         assert_eq!(success_result.get_iterations_completed(), 10);
         assert!(success_result.is_success());
-        
+
         if let Value::Number(val) = success_result.get_accumulator() {
             assert_eq!(*val, 42.0);
         } else {

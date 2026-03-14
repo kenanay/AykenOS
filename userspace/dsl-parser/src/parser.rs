@@ -1,45 +1,45 @@
 //! # AykenOS Hierarchical DSL Parser
-//! 
+//!
 //! This module implements the hierarchical Domain Specific Language (DSL) parser
 //! for AykenOS Phase 2 according to the data-centric architecture specification.
-//! 
+//!
 //! ## Grammar
-//! 
+//!
 //! The DSL supports three levels of command hierarchy:
-//! 
+//!
 //! - `>` : Context selection (e.g., `> data.users`, `> sys.hw`, `> ai`)
 //! - `>>` : Context-specific actions (e.g., `>> add {...}`, `>> query filter=...`)
 //! - `>[ ]` : Batch/parallel operations (e.g., `>[ ] cmd1 | cmd2 | cmd3`)
-//! 
+//!
 //! ## Examples
-//! 
+//!
 //! ```rust
 //! use dsl_parser::DslParser;
-//! 
+//!
 //! let mut parser = DslParser::new();
-//! 
+//!
 //! // Select a data context
 //! let result = parser.parse_command("> data.users").unwrap();
-//! 
+//!
 //! // Create a schema in the selected context
 //! let result = parser.parse_command(">> create schema=[id:int,name:string,age:int]").unwrap();
-//! 
+//!
 //! // Add data to the container
 //! let result = parser.parse_command(">> add {\"id\":1,\"name\":\"Ahmet\",\"age\":34}").unwrap();
-//! 
+//!
 //! // Query the data
 //! let result = parser.parse_command(">> query filter=\"age > 30\"").unwrap();
 //! ```
-//! 
+//!
 //! ## Supported Contexts
-//! 
+//!
 //! - `data.*` : Data container operations (tabular, text, etc.)
 //! - `sys.*` : System information and hardware operations
 //! - `ui.*` : User interface and rendering operations
 //! - `ai` : AI-powered operations and queries
-//! 
+//!
 //! ## Supported Actions
-//! 
+//!
 //! - `create` : Create new data containers with schema
 //! - `add` : Add data to containers (JSON format)
 //! - `query` : Query data with filters
@@ -56,22 +56,22 @@ use std::fmt;
 pub enum Command {
     // Context selection
     SelectContext { target: String },
-    
+
     // Data operations
     Create { schema: String },
     Add { payload: String },
     Query { filter: String },
-    
+
     // System operations
     Info,
     Render,
-    
+
     // AI operations
     AiAsk { prompt: String },
-    
+
     // Batch operations
     Batch(Vec<String>),
-    
+
     // Additional Phase 2 commands
     List { target: Option<String> },
     Help { topic: Option<String> },
@@ -124,7 +124,9 @@ pub struct DslParser {
 
 impl DslParser {
     pub fn new() -> Self {
-        Self { context: ExecutionContext::default() }
+        Self {
+            context: ExecutionContext::default(),
+        }
     }
 
     /// Parse a DSL command according to AykenOS Phase 2 hierarchical grammar:
@@ -142,7 +144,7 @@ impl DslParser {
             cmd if cmd.starts_with(">>") => self.parse_context_command(cmd),
             cmd if cmd.starts_with(">[ ]") => self.parse_batch_command(cmd),
             cmd if cmd.starts_with(">") => self.parse_simple_command(cmd),
-            _ => Err(ParseError::InvalidSyntax)
+            _ => Err(ParseError::InvalidSyntax),
         }
     }
 
@@ -167,24 +169,30 @@ impl DslParser {
         if target.is_empty() {
             return Err(ParseError::InvalidSyntax);
         }
-        
+
         // Validate context format (basic validation)
         if !self.is_valid_context(target) {
             return Err(ParseError::UnsupportedContext(target.to_string()));
         }
-        
+
         // Update current context
         self.context.current = Some(target.to_string());
-        
+
         Ok(DispatchRequest {
             ctx: self.context.current.clone(),
-            command: Command::SelectContext { target: target.to_string() },
+            command: Command::SelectContext {
+                target: target.to_string(),
+            },
         })
     }
 
     fn parse_context_command(&mut self, cmd: &str) -> Result<DispatchRequest, ParseError> {
         // Context-specific actions: ">> add {...}", ">> query filter=...", ">> info"
-        let ctx = self.context.current.clone().ok_or(ParseError::MissingContext)?;
+        let ctx = self
+            .context
+            .current
+            .clone()
+            .ok_or(ParseError::MissingContext)?;
         let body = cmd.trim_start_matches(">>").trim();
         if body.is_empty() {
             return Err(ParseError::InvalidSyntax);
@@ -205,12 +213,14 @@ impl DslParser {
                 if schema.is_empty() {
                     return Err(ParseError::MissingPayload("create"));
                 }
-                
+
                 // Basic schema validation
                 if !self.is_valid_schema(&schema) {
-                    return Err(ParseError::InvalidSchema(format!("expected format: [field:type,...]")));
+                    return Err(ParseError::InvalidSchema(format!(
+                        "expected format: [field:type,...]"
+                    )));
                 }
-                
+
                 Command::Create { schema }
             }
             "add" => {
@@ -218,18 +228,25 @@ impl DslParser {
                 if rest.is_empty() {
                     return Err(ParseError::MissingPayload("add"));
                 }
-                
+
                 // Basic JSON validation
                 if !self.is_valid_json_like(rest) {
-                    return Err(ParseError::InvalidJson("expected JSON object format".to_string()));
+                    return Err(ParseError::InvalidJson(
+                        "expected JSON object format".to_string(),
+                    ));
                 }
-                
-                Command::Add { payload: rest.to_string() }
+
+                Command::Add {
+                    payload: rest.to_string(),
+                }
             }
             "query" => {
                 // Parse query filter: ">> query filter="age > 30"" or ">> query "age>30""
                 let filter = if rest.starts_with("filter=") {
-                    rest.trim_start_matches("filter=").trim_matches('"').trim().to_string()
+                    rest.trim_start_matches("filter=")
+                        .trim_matches('"')
+                        .trim()
+                        .to_string()
                 } else {
                     rest.trim_matches('"').trim().to_string()
                 };
@@ -240,12 +257,20 @@ impl DslParser {
             }
             "list" => {
                 // Parse list command: ">> list" or ">> list data" or ">> list meta"
-                let target = if rest.is_empty() { None } else { Some(rest.to_string()) };
+                let target = if rest.is_empty() {
+                    None
+                } else {
+                    Some(rest.to_string())
+                };
                 Command::List { target }
             }
             "help" => {
                 // Parse help command: ">> help" or ">> help commands"
-                let topic = if rest.is_empty() { None } else { Some(rest.to_string()) };
+                let topic = if rest.is_empty() {
+                    None
+                } else {
+                    Some(rest.to_string())
+                };
                 Command::Help { topic }
             }
             "info" => Command::Info,
@@ -262,7 +287,10 @@ impl DslParser {
             other => return Err(ParseError::UnknownAction(other.to_string())),
         };
 
-        Ok(DispatchRequest { ctx: Some(ctx), command })
+        Ok(DispatchRequest {
+            ctx: Some(ctx),
+            command,
+        })
     }
 
     fn parse_batch_command(&mut self, cmd: &str) -> Result<DispatchRequest, ParseError> {
@@ -271,30 +299,30 @@ impl DslParser {
         if body.is_empty() {
             return Err(ParseError::MissingPayload("batch"));
         }
-        
+
         let items: Vec<String> = body
             .split('|')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
-            
+
         if items.is_empty() {
             return Err(ParseError::MissingPayload("batch"));
         }
-        
-        Ok(DispatchRequest { 
-            ctx: self.context.current.clone(), 
-            command: Command::Batch(items) 
+
+        Ok(DispatchRequest {
+            ctx: self.context.current.clone(),
+            command: Command::Batch(items),
         })
     }
 
     /// Basic validation for context names
     fn is_valid_context(&self, context: &str) -> bool {
         // Support Phase 2 documented contexts: data.*, sys.*, ui.*, ai
-        context.starts_with("data.") || 
-        context.starts_with("sys.") || 
-        context.starts_with("ui.") || 
-        context == "ai"
+        context.starts_with("data.")
+            || context.starts_with("sys.")
+            || context.starts_with("ui.")
+            || context == "ai"
     }
 
     /// Basic validation for schema format

@@ -12,7 +12,10 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 const OBSERVABILITY_ROOT_ENDPOINTS: &[(&str, &str)] = &[
-    ("/diagnostics/incidents", "parity_determinism_incidents.json"),
+    (
+        "/diagnostics/incidents",
+        "parity_determinism_incidents.json",
+    ),
     ("/diagnostics/parity", "parity_report.json"),
     ("/diagnostics/drift", "parity_drift_attribution_report.json"),
     ("/diagnostics/convergence", "parity_convergence_report.json"),
@@ -102,8 +105,7 @@ fn parse_args() -> Result<HarnessArgs, String> {
         Some(other) => return Err(format!("unknown mode: {other}")),
         None => {
             return Err(
-                "missing mode (expected service-contract or observability-boundary)"
-                    .to_string(),
+                "missing mode (expected service-contract or observability-boundary)".to_string(),
             )
         }
     };
@@ -473,6 +475,18 @@ fn build_service_contract_artifacts(
             "private_key": fixture.receipt_signer.private_key,
             "verified_at_utc": fixture.receipt_signer.verified_at_utc,
         },
+        "diversity_binding": {
+            "verifier_id": "verifier-node-b",
+            "authority_chain_id": "sha256:proofd-authority-chain-node-b",
+            "lineage_id": "lineage-receipt-node-b",
+            "execution_cluster_id": "cluster-local-a",
+        },
+        "replay_boundary_binding": {
+            "replay_contract_id": "replay-contract-proofd-local-a",
+            "source_run_id": "fixture-run",
+            "reuse_group_id": "reuse-group-proofd-a",
+            "surface_local_path_id": "replay-path-proofd-a"
+        }
     });
     write_json(out_dir.join("proofd_verify_request.json"), &verify_request);
 
@@ -503,7 +517,39 @@ fn build_service_contract_artifacts(
         && verify_response
             .get("receipt_path")
             .and_then(Value::as_str)
-            .is_some_and(|value| value == "receipts/verification_receipt.json");
+            .is_some_and(|value| value == "receipts/verification_receipt.json")
+        && verify_response
+            .get("behavioral_observability_emitted")
+            .and_then(Value::as_bool)
+            .is_some_and(|value| value)
+        && verify_response
+            .get("audit_ledger_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_audit_ledger.jsonl")
+        && verify_response
+            .get("verification_diversity_ledger_binding_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_diversity_ledger_binding.json")
+        && verify_response
+            .get("verification_diversity_ledger_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_diversity_ledger.json")
+        && verify_response
+            .get("replay_boundary_flow_source_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "replay_boundary_flow_source.json")
+        && verify_response
+            .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_bundle_replay")
+        && verify_response
+            .get("trust_reuse_flow_source_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "trust_reuse_flow_source.json")
+        && verify_response
+            .get("trust_reuse_flow_source_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_bundle_trust_reuse");
     if !verify_ok {
         violations.push("verify_endpoint_contract_mismatch".to_string());
     } else {
@@ -521,10 +567,35 @@ fn build_service_contract_artifacts(
 
     let run_manifest_path = run_dir.join("proofd_run_manifest.json");
     let receipt_path = run_dir.join("receipts/verification_receipt.json");
+    let audit_ledger_path = run_dir.join("verification_audit_ledger.jsonl");
+    let diversity_binding_path = run_dir.join("verification_diversity_ledger_binding.json");
+    let diversity_ledger_path = run_dir.join("verification_diversity_ledger.json");
+    let diversity_append_report_path =
+        run_dir.join("verification_diversity_ledger_append_report.json");
+    let replay_boundary_flow_source_path = run_dir.join("replay_boundary_flow_source.json");
+    let trust_reuse_flow_source_path = run_dir.join("trust_reuse_flow_source.json");
     let first_run_manifest_bytes = fs::read(&run_manifest_path)
         .map_err(|error| format!("failed to read first run manifest: {error}"))?;
     let first_receipt_bytes = fs::read(&receipt_path)
         .map_err(|error| format!("failed to read first receipt artifact: {error}"))?;
+    let first_audit_ledger_bytes = fs::read(&audit_ledger_path)
+        .map_err(|error| format!("failed to read first audit ledger artifact: {error}"))?;
+    let first_diversity_binding_bytes = fs::read(&diversity_binding_path)
+        .map_err(|error| format!("failed to read first diversity binding artifact: {error}"))?;
+    let first_diversity_ledger_bytes = fs::read(&diversity_ledger_path)
+        .map_err(|error| format!("failed to read first diversity ledger artifact: {error}"))?;
+    let first_diversity_append_report_bytes =
+        fs::read(&diversity_append_report_path).map_err(|error| {
+            format!("failed to read first diversity append report artifact: {error}")
+        })?;
+    let first_replay_boundary_flow_source_bytes = fs::read(&replay_boundary_flow_source_path)
+        .map_err(|error| {
+            format!("failed to read first replay boundary flow source artifact: {error}")
+        })?;
+    let first_trust_reuse_flow_source_bytes =
+        fs::read(&trust_reuse_flow_source_path).map_err(|error| {
+            format!("failed to read first trust reuse flow source artifact: {error}")
+        })?;
     let run_artifacts_after_first = list_json_artifacts(&run_dir)?;
 
     let (verify_repeat_status, verify_repeat_response) =
@@ -539,6 +610,24 @@ fn build_service_contract_artifacts(
         .map_err(|error| format!("failed to read second run manifest: {error}"))?;
     let second_receipt_bytes = fs::read(&receipt_path)
         .map_err(|error| format!("failed to read second receipt artifact: {error}"))?;
+    let second_audit_ledger_bytes = fs::read(&audit_ledger_path)
+        .map_err(|error| format!("failed to read second audit ledger artifact: {error}"))?;
+    let second_diversity_binding_bytes = fs::read(&diversity_binding_path)
+        .map_err(|error| format!("failed to read second diversity binding artifact: {error}"))?;
+    let second_diversity_ledger_bytes = fs::read(&diversity_ledger_path)
+        .map_err(|error| format!("failed to read second diversity ledger artifact: {error}"))?;
+    let second_diversity_append_report_bytes =
+        fs::read(&diversity_append_report_path).map_err(|error| {
+            format!("failed to read second diversity append report artifact: {error}")
+        })?;
+    let second_replay_boundary_flow_source_bytes = fs::read(&replay_boundary_flow_source_path)
+        .map_err(|error| {
+            format!("failed to read second replay boundary flow source artifact: {error}")
+        })?;
+    let second_trust_reuse_flow_source_bytes =
+        fs::read(&trust_reuse_flow_source_path).map_err(|error| {
+            format!("failed to read second trust reuse flow source artifact: {error}")
+        })?;
     let repeated_receipt_bytes_equal = first_receipt_bytes == second_receipt_bytes;
     if !repeated_receipt_bytes_equal {
         violations.push("repeated_execution_receipt_bytes_drift".to_string());
@@ -546,6 +635,35 @@ fn build_service_contract_artifacts(
     let repeated_run_manifest_equal = first_run_manifest_bytes == second_run_manifest_bytes;
     if !repeated_run_manifest_equal {
         violations.push("repeated_execution_run_manifest_drift".to_string());
+    }
+    let repeated_audit_ledger_equal = first_audit_ledger_bytes == second_audit_ledger_bytes;
+    if !repeated_audit_ledger_equal {
+        violations.push("repeated_execution_audit_ledger_drift".to_string());
+    }
+    let repeated_diversity_binding_equal =
+        first_diversity_binding_bytes == second_diversity_binding_bytes;
+    if !repeated_diversity_binding_equal {
+        violations.push("repeated_execution_diversity_binding_drift".to_string());
+    }
+    let repeated_diversity_ledger_equal =
+        first_diversity_ledger_bytes == second_diversity_ledger_bytes;
+    if !repeated_diversity_ledger_equal {
+        violations.push("repeated_execution_diversity_ledger_drift".to_string());
+    }
+    let repeated_diversity_append_report_equal =
+        first_diversity_append_report_bytes == second_diversity_append_report_bytes;
+    if !repeated_diversity_append_report_equal {
+        violations.push("repeated_execution_diversity_append_report_drift".to_string());
+    }
+    let repeated_replay_boundary_flow_source_equal =
+        first_replay_boundary_flow_source_bytes == second_replay_boundary_flow_source_bytes;
+    if !repeated_replay_boundary_flow_source_equal {
+        violations.push("repeated_execution_replay_boundary_flow_source_drift".to_string());
+    }
+    let repeated_trust_reuse_flow_source_equal =
+        first_trust_reuse_flow_source_bytes == second_trust_reuse_flow_source_bytes;
+    if !repeated_trust_reuse_flow_source_equal {
+        violations.push("repeated_execution_trust_reuse_flow_source_drift".to_string());
     }
     let run_artifacts_after_second = list_json_artifacts(&run_dir)?;
     let run_artifact_merge_detected = run_artifacts_after_first != run_artifacts_after_second;
@@ -564,6 +682,31 @@ fn build_service_contract_artifacts(
 
     let run_manifest = read_json_file(&run_manifest_path)?;
     write_json(out_dir.join("proofd_run_manifest.json"), &run_manifest);
+    write_json(
+        out_dir.join("verification_diversity_ledger.json"),
+        &read_json_file(&run_dir.join("verification_diversity_ledger.json"))?,
+    );
+    write_json(
+        out_dir.join("verification_diversity_ledger_binding.json"),
+        &read_json_file(&run_dir.join("verification_diversity_ledger_binding.json"))?,
+    );
+    write_json(
+        out_dir.join("verification_diversity_ledger_append_report.json"),
+        &read_json_file(&run_dir.join("verification_diversity_ledger_append_report.json"))?,
+    );
+    write_json(
+        out_dir.join("replay_boundary_flow_source.json"),
+        &read_json_file(&run_dir.join("replay_boundary_flow_source.json"))?,
+    );
+    write_json(
+        out_dir.join("trust_reuse_flow_source.json"),
+        &read_json_file(&run_dir.join("trust_reuse_flow_source.json"))?,
+    );
+    fs::copy(
+        run_dir.join("verification_audit_ledger.jsonl"),
+        out_dir.join("verification_audit_ledger.jsonl"),
+    )
+    .map_err(|error| format!("failed to copy verification audit ledger: {error}"))?;
     let run_manifest_ok = run_manifest
         .get("receipt_mode")
         .and_then(Value::as_str)
@@ -571,7 +714,51 @@ fn build_service_contract_artifacts(
         && run_manifest
             .get("receipt_emitted")
             .and_then(Value::as_bool)
-            .is_some_and(|value| value);
+            .is_some_and(|value| value)
+        && run_manifest
+            .get("behavioral_observability_emitted")
+            .and_then(Value::as_bool)
+            .is_some_and(|value| value)
+        && run_manifest
+            .get("audit_mode")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "append")
+        && run_manifest
+            .get("audit_ledger_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_audit_ledger.jsonl")
+        && run_manifest
+            .get("verification_diversity_ledger_binding_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_diversity_ledger_binding.json")
+        && run_manifest
+            .get("verification_diversity_ledger_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_diversity_ledger.json")
+        && run_manifest
+            .get("verification_diversity_ledger_append_report_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "verification_diversity_ledger_append_report.json")
+        && run_manifest
+            .get("replay_boundary_flow_source_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "replay_boundary_flow_source.json")
+        && run_manifest
+            .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_bundle_replay")
+        && run_manifest
+            .get("trust_reuse_flow_source_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "trust_reuse_flow_source.json")
+        && run_manifest
+            .get("trust_reuse_flow_source_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_bundle_trust_reuse")
+        && run_manifest
+            .get("request_fingerprint")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value.starts_with("sha256:"));
     if !run_manifest_ok {
         violations.push("run_manifest_receipt_mode_mismatch".to_string());
     }
@@ -636,6 +823,12 @@ fn build_service_contract_artifacts(
         && deterministic_repeated_execution_ok
         && repeated_receipt_bytes_equal
         && repeated_run_manifest_equal
+        && repeated_audit_ledger_equal
+        && repeated_diversity_binding_equal
+        && repeated_diversity_ledger_equal
+        && repeated_diversity_append_report_equal
+        && repeated_replay_boundary_flow_source_equal
+        && repeated_trust_reuse_flow_source_equal
         && diagnostics_artifacts_unchanged
         && !run_artifact_merge_detected
         && signed_receipt_verified
@@ -662,6 +855,16 @@ fn build_service_contract_artifacts(
         "receipt_mode": "emit_signed",
         "run_count": 1,
         "run_id": run_id,
+        "behavioral_observability_emitted": verify_response
+            .get("behavioral_observability_emitted")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        "replay_boundary_flow_source_origin": verify_response
+            .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str),
+        "trust_reuse_flow_source_origin": verify_response
+            .get("trust_reuse_flow_source_origin")
+            .and_then(Value::as_str),
         "root_passthrough_ok": root_passthrough_ok,
         "run_scoped_passthrough_ok": run_scoped_passthrough_ok,
         "deterministic_repeated_read_ok": deterministic_repeated_read_ok,
@@ -676,6 +879,18 @@ fn build_service_contract_artifacts(
         "request_bound_timestamp_preserved": request_bound_timestamp_preserved,
         "repeated_receipt_bytes_equal": repeated_receipt_bytes_equal,
         "repeated_run_manifest_equal": repeated_run_manifest_equal,
+        "repeated_audit_ledger_equal": repeated_audit_ledger_equal,
+        "repeated_diversity_binding_equal": repeated_diversity_binding_equal,
+        "repeated_diversity_ledger_equal": repeated_diversity_ledger_equal,
+        "repeated_diversity_append_report_equal": repeated_diversity_append_report_equal,
+        "repeated_replay_boundary_flow_source_equal": repeated_replay_boundary_flow_source_equal,
+        "repeated_trust_reuse_flow_source_equal": repeated_trust_reuse_flow_source_equal,
+        "replay_boundary_flow_source_origin": verify_response
+            .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str),
+        "trust_reuse_flow_source_origin": verify_response
+            .get("trust_reuse_flow_source_origin")
+            .and_then(Value::as_str),
         "diagnostics_artifacts_unchanged": diagnostics_artifacts_unchanged,
         "run_artifact_merge_detected": run_artifact_merge_detected,
         "closure_complete": closure_complete,
@@ -730,6 +945,12 @@ fn build_service_contract_artifacts(
             deterministic_repeated_execution_ok
                 && repeated_receipt_bytes_equal
                 && repeated_run_manifest_equal
+                && repeated_audit_ledger_equal
+                && repeated_diversity_binding_equal
+                && repeated_diversity_ledger_equal
+                && repeated_diversity_append_report_equal
+                && repeated_replay_boundary_flow_source_equal
+                && repeated_trust_reuse_flow_source_equal
                 && diagnostics_artifacts_unchanged
                 && !run_artifact_merge_detected,
         ),
@@ -738,6 +959,18 @@ fn build_service_contract_artifacts(
         "repeated_response_equal": deterministic_repeated_execution_ok,
         "repeated_receipt_bytes_equal": repeated_receipt_bytes_equal,
         "repeated_run_manifest_equal": repeated_run_manifest_equal,
+        "repeated_audit_ledger_equal": repeated_audit_ledger_equal,
+        "repeated_diversity_binding_equal": repeated_diversity_binding_equal,
+        "repeated_diversity_ledger_equal": repeated_diversity_ledger_equal,
+        "repeated_diversity_append_report_equal": repeated_diversity_append_report_equal,
+        "repeated_replay_boundary_flow_source_equal": repeated_replay_boundary_flow_source_equal,
+        "repeated_trust_reuse_flow_source_equal": repeated_trust_reuse_flow_source_equal,
+        "replay_boundary_flow_source_origin": verify_response
+            .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str),
+        "trust_reuse_flow_source_origin": verify_response
+            .get("trust_reuse_flow_source_origin")
+            .and_then(Value::as_str),
         "diagnostics_artifacts_unchanged": diagnostics_artifacts_unchanged,
         "run_artifact_merge_detected": run_artifact_merge_detected,
         "run_artifact_count_after_first": run_artifacts_after_first.len(),
@@ -879,9 +1112,9 @@ fn build_observability_boundary_artifacts(
             .get("incidents")
             .and_then(Value::as_array)
             .is_some_and(|items| {
-                items.iter().all(|item| {
-                    item.get("severity").and_then(Value::as_str) == Some(filter_value)
-                })
+                items
+                    .iter()
+                    .all(|item| item.get("severity").and_then(Value::as_str) == Some(filter_value))
             });
     if !allowed_incident_filter_ok {
         violations.push("allowed_incident_filter_contract_mismatch".to_string());
@@ -1151,14 +1384,8 @@ fn normalize_field_key(key: &str) -> String {
 
 fn observability_case_for_field(field: &str) -> Option<&'static str> {
     match field {
-        "selectedtruth"
-        | "winningverdict"
-        | "committedcluster"
-        | "acceptedauthority"
-        | "acceptauthority"
-        | "resolvetruth"
-        | "selectwinner"
-        | "elect" => Some("P13-NEG-13"),
+        "selectedtruth" | "winningverdict" | "committedcluster" | "acceptedauthority"
+        | "acceptauthority" | "resolvetruth" | "selectwinner" | "elect" => Some("P13-NEG-13"),
         "retry"
         | "override"
         | "promote"
@@ -1205,7 +1432,12 @@ fn list_json_artifacts(run_dir: &Path) -> Result<Vec<String>, String> {
         .map_err(|error| format!("failed to read {}: {error}", run_dir.display()))?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "json"))
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .is_some_and(|ext| ext == "json" || ext == "jsonl")
+        })
         .filter_map(|path| {
             path.file_name()
                 .map(|name| name.to_string_lossy().to_string())

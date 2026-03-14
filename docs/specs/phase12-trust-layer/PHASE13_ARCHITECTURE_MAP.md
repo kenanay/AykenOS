@@ -350,6 +350,14 @@ This must be resisted.
 
 Phase-13 must not allow operational reuse to become authority absorption.
 
+The Stage-1 sinkhole harness is VDL-backed.
+
+The Stage-2 extension requires companion replay-boundary and trust-reuse flow surfaces defined in:
+
+- `AUTHORITY_SINKHOLE_COMPANION_FLOW_SPEC.md`
+- `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
+- `CROSS_SURFACE_BASIN_ALIGNMENT_METRICS.md`
+
 ---
 
 ## 9. Governing Invariants

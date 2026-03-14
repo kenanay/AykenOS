@@ -96,7 +96,9 @@ impl<'a> BcibGraph<'a> {
 
     /// Validate BCIB header/opcode set before submitting to Ring0.
     pub fn validate(&self) -> Result<(), ExecutionError> {
-        BcibBuffer::decode(self.data).map(|_| ()).map_err(ExecutionError::from)
+        BcibBuffer::decode(self.data)
+            .map(|_| ())
+            .map_err(ExecutionError::from)
     }
 }
 
@@ -252,10 +254,10 @@ mod tests {
     fn test_submit_execution_empty_graph() {
         let mut executor = BcibExecutor::new();
         let empty_graph = BcibGraph::new(&[]);
-        
+
         let result = executor.submit_execution(&empty_graph);
         assert!(result.is_err());
-        
+
         if let Err(ExecutionError::InvalidGraph(msg)) = result {
             assert_eq!(msg, "BCIB graph is empty");
         } else {
@@ -266,10 +268,10 @@ mod tests {
     #[test]
     fn test_execution_id_allocation() {
         let mut executor = BcibExecutor::new();
-        
+
         let id1 = executor.allocate_execution_id();
         let id2 = executor.allocate_execution_id();
-        
+
         assert_eq!(id1, 1);
         assert_eq!(id2, 2);
         assert_ne!(id1, id2);
@@ -279,7 +281,7 @@ mod tests {
     fn test_bcib_graph_creation() {
         let test_data = b"test_bcib_data";
         let graph = BcibGraph::new(test_data);
-        
+
         assert_eq!(graph.len(), test_data.len());
         assert!(!graph.is_empty());
         assert_eq!(graph.as_ptr(), test_data.as_ptr());
@@ -297,7 +299,7 @@ mod tests {
 
         assert!(manager.bind(&token).is_ok());
         assert!(manager.active_tokens.contains(&123));
-        
+
         manager.revoke(123);
         assert!(!manager.active_tokens.contains(&123));
     }
@@ -305,7 +307,7 @@ mod tests {
     #[test]
     fn test_execution_context_creation() {
         let ctx = ExecutionContext::new(42);
-        
+
         assert_eq!(ctx.id, 42);
         assert!(ctx.active_container.is_none());
         assert!(ctx.string_pool.is_empty());

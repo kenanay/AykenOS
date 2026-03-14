@@ -63,11 +63,19 @@ pub fn write_diversity_ledger_entries(
     let document = VerificationDiversityLedgerDocument {
         entries: sorted_entries,
     };
-    let bytes = canonicalize_json(&document)
-        .map_err(|error| format!("failed to canonicalize ledger for {}: {error}", path.display()))?;
+    let bytes = canonicalize_json(&document).map_err(|error| {
+        format!(
+            "failed to canonicalize ledger for {}: {error}",
+            path.display()
+        )
+    })?;
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create ledger parent {}: {error}", parent.display()))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create ledger parent {}: {error}",
+                parent.display()
+            )
+        })?;
     }
     fs::write(path, bytes)
         .map_err(|error| format!("failed to write ledger {}: {error}", path.display()))
@@ -112,10 +120,7 @@ pub fn validate_diversity_ledger_entry(
             "verification_context_id",
             entry.verification_context_id.as_str(),
         ),
-        (
-            "verification_node_id",
-            entry.verification_node_id.as_str(),
-        ),
+        ("verification_node_id", entry.verification_node_id.as_str()),
         ("verifier_id", entry.verifier_id.as_str()),
         ("authority_chain_id", entry.authority_chain_id.as_str()),
         ("lineage_id", entry.lineage_id.as_str()),
@@ -123,7 +128,10 @@ pub fn validate_diversity_ledger_entry(
         ("receipt_hash", entry.receipt_hash.as_str()),
     ] {
         if value.trim().is_empty() {
-            return Err(format!("{label} must not be empty for entry {}", entry.entry_id));
+            return Err(format!(
+                "{label} must not be empty for entry {}",
+                entry.entry_id
+            ));
         }
     }
     if entry.timestamp_unix_ns == 0 {
@@ -149,7 +157,10 @@ pub fn validate_diversity_ledger_entry(
 }
 
 fn is_lower_hex_digest(value: &str) -> bool {
-    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
 fn deserialize_u64_like<'de, D>(deserializer: D) -> Result<u64, D::Error>

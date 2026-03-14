@@ -124,8 +124,10 @@ pub fn run_cartel_correlation_gate(
     let entries = match load_ledger_entries(&config.ledger_path) {
         Ok(entries) => entries,
         Err(error) => {
-            let violations =
-                vec![format!("missing_or_invalid_ledger:{}", config.ledger_path.display())];
+            let violations = vec![format!(
+                "missing_or_invalid_ledger:{}",
+                config.ledger_path.display()
+            )];
             write_loading_failure_outputs(config, &violations, &error, "ledger_load")?;
             return Ok(CartelCorrelationGateOutcome {
                 verdict: GateVerdict::Fail,
@@ -136,8 +138,10 @@ pub fn run_cartel_correlation_gate(
     let policy = match load_policy(&config.policy_path) {
         Ok(policy) => policy,
         Err(error) => {
-            let violations =
-                vec![format!("missing_or_invalid_policy:{}", config.policy_path.display())];
+            let violations = vec![format!(
+                "missing_or_invalid_policy:{}",
+                config.policy_path.display()
+            )];
             write_loading_failure_outputs(config, &violations, &error, "policy_load")?;
             return Ok(CartelCorrelationGateOutcome {
                 verdict: GateVerdict::Fail,
@@ -274,8 +278,9 @@ fn derive_verifier_metadata(
             let lineage_id = dominant_required_value(&verifier_entries, |entry| &entry.lineage_id);
             let authority_chain_id =
                 dominant_required_value(&verifier_entries, |entry| &entry.authority_chain_id);
-            let execution_cluster_id =
-                dominant_optional_value(&verifier_entries, |entry| entry.execution_cluster_id.as_deref());
+            let execution_cluster_id = dominant_optional_value(&verifier_entries, |entry| {
+                entry.execution_cluster_id.as_deref()
+            });
             (
                 verifier_id.clone(),
                 VerifierMetadata {
@@ -358,9 +363,7 @@ fn build_pairwise_correlation_records(
             }
             let mut agreement_count = 0usize;
             for key in &shared_keys {
-                if left_events
-                    .get(*key)
-                    .map(|value| value.verdict.as_str())
+                if left_events.get(*key).map(|value| value.verdict.as_str())
                     == right_events.get(*key).map(|value| value.verdict.as_str())
                 {
                     agreement_count += 1;
@@ -416,14 +419,12 @@ fn build_verifier_event_maps(
             subject_bundle_id: entry.subject_bundle_id.clone(),
             verification_context_id: entry.verification_context_id.clone(),
         };
-        maps.entry(entry.verifier_id.clone())
-            .or_default()
-            .insert(
-                key,
-                VerifierEvent {
-                    verdict: entry.verdict.clone(),
-                },
-            );
+        maps.entry(entry.verifier_id.clone()).or_default().insert(
+            key,
+            VerifierEvent {
+                verdict: entry.verdict.clone(),
+            },
+        );
     }
     maps
 }
@@ -554,7 +555,11 @@ fn compute_stability_records(
         right
             .high_window_count
             .cmp(&left.high_window_count)
-            .then_with(|| right.max_window_correlation.total_cmp(&left.max_window_correlation))
+            .then_with(|| {
+                right
+                    .max_window_correlation
+                    .total_cmp(&left.max_window_correlation)
+            })
             .then_with(|| left.verifier_a.cmp(&right.verifier_a))
             .then_with(|| left.verifier_b.cmp(&right.verifier_b))
     });
@@ -598,8 +603,7 @@ fn build_metrics(
         .iter()
         .filter(|record| record.sustained_high_correlation)
         .count();
-    let max_execution_cluster_overlap_ratio =
-        cluster_overlap.first().map(|record| record.share);
+    let max_execution_cluster_overlap_ratio = cluster_overlap.first().map(|record| record.share);
 
     CartelCorrelationMetrics {
         selected_entry_count,
@@ -652,7 +656,8 @@ fn evaluate_policy(
     }
     for record in lineage_records {
         if record.shared_event_count >= policy.min_shared_events
-            && record.pairwise_verdict_correlation >= policy.lineage_conditioned_correlation_threshold
+            && record.pairwise_verdict_correlation
+                >= policy.lineage_conditioned_correlation_threshold
         {
             violations.push(format!(
                 "cartel_correlation_violation:lineage:{}:{}:{}:actual={:.6}:threshold={:.6}:shared_events={}",
@@ -764,7 +769,9 @@ fn write_outputs(
         }),
     )?;
     write_json(
-        &config.output_dir.join("authority_chain_correlation_report.json"),
+        &config
+            .output_dir
+            .join("authority_chain_correlation_report.json"),
         &serde_json::json!({
             "status": verdict.as_str(),
             "threshold": policy.authority_chain_conditioned_correlation_threshold,
@@ -794,7 +801,9 @@ fn write_outputs(
         }),
     )?;
     write_json(
-        &config.output_dir.join("verifier_cartel_correlation_report.json"),
+        &config
+            .output_dir
+            .join("verifier_cartel_correlation_report.json"),
         &serde_json::json!({
             "status": verdict.as_str(),
             "mode": "phase13_verifier_cartel_correlation_gate",
@@ -846,7 +855,9 @@ fn write_loading_failure_outputs(
         )
     })?;
     write_json(
-        &config.output_dir.join("verifier_cartel_correlation_report.json"),
+        &config
+            .output_dir
+            .join("verifier_cartel_correlation_report.json"),
         &serde_json::json!({
             "status": "FAIL",
             "mode": "phase13_verifier_cartel_correlation_gate",
@@ -928,7 +939,9 @@ fn write_loading_failure_outputs(
         &serde_json::json!({"status": "FAIL", "pairs": []}),
     )?;
     write_json(
-        &config.output_dir.join("authority_chain_correlation_report.json"),
+        &config
+            .output_dir
+            .join("authority_chain_correlation_report.json"),
         &serde_json::json!({"status": "FAIL", "pairs": []}),
     )?;
     write_json(
@@ -993,12 +1006,60 @@ mod tests {
     #[test]
     fn pairwise_records_capture_shared_event_agreement() {
         let entries = vec![
-            sample_entry(1, "bundle-1", "verifier-a", "lineage-a", "chain-a", None, "PASS"),
-            sample_entry(2, "bundle-1", "verifier-b", "lineage-a", "chain-a", None, "PASS"),
-            sample_entry(3, "bundle-2", "verifier-a", "lineage-a", "chain-a", None, "FAIL"),
-            sample_entry(4, "bundle-2", "verifier-b", "lineage-a", "chain-a", None, "FAIL"),
-            sample_entry(5, "bundle-3", "verifier-a", "lineage-a", "chain-a", None, "PASS"),
-            sample_entry(6, "bundle-3", "verifier-b", "lineage-a", "chain-a", None, "FAIL"),
+            sample_entry(
+                1,
+                "bundle-1",
+                "verifier-a",
+                "lineage-a",
+                "chain-a",
+                None,
+                "PASS",
+            ),
+            sample_entry(
+                2,
+                "bundle-1",
+                "verifier-b",
+                "lineage-a",
+                "chain-a",
+                None,
+                "PASS",
+            ),
+            sample_entry(
+                3,
+                "bundle-2",
+                "verifier-a",
+                "lineage-a",
+                "chain-a",
+                None,
+                "FAIL",
+            ),
+            sample_entry(
+                4,
+                "bundle-2",
+                "verifier-b",
+                "lineage-a",
+                "chain-a",
+                None,
+                "FAIL",
+            ),
+            sample_entry(
+                5,
+                "bundle-3",
+                "verifier-a",
+                "lineage-a",
+                "chain-a",
+                None,
+                "PASS",
+            ),
+            sample_entry(
+                6,
+                "bundle-3",
+                "verifier-b",
+                "lineage-a",
+                "chain-a",
+                None,
+                "FAIL",
+            ),
         ];
         let metadata = derive_verifier_metadata(&entries);
 
@@ -1015,9 +1076,33 @@ mod tests {
     #[test]
     fn cluster_overlap_uses_unique_verifier_share() {
         let entries = vec![
-            sample_entry(1, "bundle-1", "verifier-a", "lineage-a", "chain-a", Some("cluster-1"), "PASS"),
-            sample_entry(2, "bundle-1", "verifier-b", "lineage-b", "chain-b", Some("cluster-1"), "PASS"),
-            sample_entry(3, "bundle-1", "verifier-c", "lineage-c", "chain-c", Some("cluster-2"), "PASS"),
+            sample_entry(
+                1,
+                "bundle-1",
+                "verifier-a",
+                "lineage-a",
+                "chain-a",
+                Some("cluster-1"),
+                "PASS",
+            ),
+            sample_entry(
+                2,
+                "bundle-1",
+                "verifier-b",
+                "lineage-b",
+                "chain-b",
+                Some("cluster-1"),
+                "PASS",
+            ),
+            sample_entry(
+                3,
+                "bundle-1",
+                "verifier-c",
+                "lineage-c",
+                "chain-c",
+                Some("cluster-2"),
+                "PASS",
+            ),
         ];
         let metadata = derive_verifier_metadata(&entries);
 

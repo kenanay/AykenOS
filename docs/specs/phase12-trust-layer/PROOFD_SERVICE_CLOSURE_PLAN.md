@@ -159,9 +159,31 @@ Minimum request shape:
     "signature_algorithm": "ed25519",
     "private_key": "base64:...",
     "verified_at_utc": "2026-03-08T12:00:00Z"
+  },
+  "diversity_binding": {
+    "verifier_id": "verifier-node-b",
+    "authority_chain_id": "sha256:proofd-authority-chain-node-b",
+    "lineage_id": "lineage-receipt-node-b",
+    "execution_cluster_id": "cluster-local-a"
+  },
+  "replay_boundary_binding": {
+    "replay_contract_id": "replay-contract-proofd-local-a",
+    "source_run_id": "fixture-run",
+    "reuse_group_id": "reuse-group-proofd-a",
+    "surface_local_path_id": "replay-path-proofd-a"
+  },
+  "trust_reuse_binding": {
+    "trust_reuse_source": "trust-overlay-cache",
+    "source_run_id": "source-run-proofd-bootstrap-a",
+    "reuse_group_id": "reuse-group-proofd-a",
+    "surface_local_path_id": "trust-path-proofd-a"
   }
 }
 ```
+
+`trust_reuse_binding` is now a fallback-only surface.
+
+When bundle-native trust-reuse runtime evidence exists, `proofd` must prefer that native surface instead of the request-bound fallback.
 
 Minimum response shape:
 
@@ -177,9 +199,30 @@ Minimum response shape:
     "registry_snapshot_hash": "..."
   },
   "receipt_emitted": true,
-  "receipt_path": "receipts/verification_receipt.json"
+  "receipt_path": "receipts/verification_receipt.json",
+  "behavioral_observability_emitted": true,
+  "audit_ledger_path": "verification_audit_ledger.jsonl",
+  "verification_diversity_ledger_binding_path": "verification_diversity_ledger_binding.json",
+  "verification_diversity_ledger_path": "verification_diversity_ledger.json",
+  "replay_boundary_flow_source_path": "replay_boundary_flow_source.json",
+  "replay_boundary_flow_source_origin": "runtime_bundle_replay",
+  "trust_reuse_flow_source_path": "trust_reuse_flow_source.json",
+  "trust_reuse_flow_source_origin": "runtime_bundle_trust_reuse"
 }
 ```
+
+Run reuse rule:
+
+- `proofd` MAY reuse an existing `run_id` only when the canonical request fingerprint matches the existing run manifest
+- a different request under the same `run_id` MUST fail closed
+- request bodies above the bounded local execution limit MUST fail closed before verification
+- when `diversity_binding` is present, `proofd` MUST emit a deterministic `replay_boundary_flow_source.json` artifact from the bundle's native replay runtime surface and bind it to the same signed-receipt timestamp and diversity authority context
+- when `reports/trust_reuse_runtime_surface.json` exists inside the bundle, `proofd` MUST prefer it and emit a deterministic `trust_reuse_flow_source.json` artifact with origin `runtime_bundle_trust_reuse`
+- when the preferred native trust-reuse surface contains only rejected outcomes, `proofd` MUST still keep native precedence and emit `trust_reuse_flow_source.json` as `NO_REUSABLE_EVENTS` rather than treating the surface as malformed or silently falling back
+- the current native trust-reuse surface may be materialized ahead of `proofd` by the `proof-verifier` `trust-reuse-runtime-evaluator` from explicit receipt, verification-context, verifier-attestation, and verifier-registry artifacts
+- when bundle-native trust-reuse runtime evidence is absent but `trust_reuse_binding` is present, `proofd` MUST emit a deterministic `trust_reuse_flow_source.json` artifact as an explicit request-bound fallback surface
+- if `replay_boundary_binding.source_run_id` is supplied alongside a native replay surface, it MUST match the bundle `meta/run.json` `run_id` or fail closed
+- the future native replacement for the trust-reuse fallback must satisfy `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
 
 ### 5.2 Diagnostics Remain Stable
 

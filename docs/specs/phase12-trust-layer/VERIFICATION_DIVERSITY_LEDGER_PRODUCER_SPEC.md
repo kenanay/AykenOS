@@ -28,6 +28,8 @@ The shortest rule is:
 
 `verification run -> audit evidence -> VDL append`
 
+For the current Phase-13 local service surface, `proofd` MAY materialize this chain automatically at run end when a signed verification request carries explicit diversity binding metadata.
+
 ---
 
 ## 2. Canonical Inputs
@@ -127,6 +129,13 @@ The producer exports:
 - `verification_diversity_ledger_append_report.json`
 - `report.json`
 - `violations.txt`
+
+When integrated into a `proofd` run directory, the canonical sibling artifacts are:
+
+- `verification_audit_ledger.jsonl`
+- `verification_diversity_ledger_binding.json`
+- `verification_diversity_ledger.json`
+- `verification_diversity_ledger_append_report.json`
 
 The append report MUST include at least:
 
