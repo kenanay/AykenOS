@@ -347,7 +347,7 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 - [x] ABI single-source + generator determinism
 - [x] Syscall register mapping invariant testi
 - [x] Scheduler fallback default-off guard (freeze guard aktif)
-- [ ] Phase 10-A2 strict marker closure (`P10_RING3_USER_CODE`)
+- [x] Phase 10-A2 strict marker closure (`P10_RING3_USER_CODE`) - local freeze evidence: `local-freeze-p10p11`
 - [ ] Repo hygiene: merge-oncesi clean tracked state disiplini
 - [ ] Syscall v2 placeholder mekanizmalarinin kademeli kapanisi (10-B)
 - [ ] Scheduler/process marker stabilizasyonu (10-C)

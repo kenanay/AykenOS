@@ -2,12 +2,12 @@
 #include <efilib.h>
 #include <stdint.h>
 #include "ayken_boot.h"
-#include "../../kernel/include/ayken.h"
+#include "../../shared/abi/kernel_limits.h"
 #include "elf_loader.h"
 
 #define PAGE_SIZE            0x1000ULL
 #define PAGE_ENTRIES         512ULL
-#define IDENTITY_MAP_SIZE    (1ULL << 30) // 1GB
+#define IDENTITY_MAP_SIZE    AYKEN_IDENTITY_MAP_SIZE
 
 #define PTE_PRESENT          (1ULL << 0)
 #define PTE_WRITABLE         (1ULL << 1)

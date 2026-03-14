@@ -37,7 +37,7 @@ fn test_source_location_equality() {
     let loc1 = SourceLocation::new(10, 5, 42);
     let loc2 = SourceLocation::new(10, 5, 42);
     let loc3 = SourceLocation::new(10, 6, 43);
-    
+
     assert_eq!(loc1, loc2);
     assert_ne!(loc1, loc3);
 }
@@ -54,10 +54,7 @@ fn test_determinism_level_display() {
         format!("{}", DeterminismLevel::Deterministic),
         "DETERMINISTIC"
     );
-    assert_eq!(
-        format!("{}", DeterminismLevel::BestEffort),
-        "BEST_EFFORT"
-    );
+    assert_eq!(format!("{}", DeterminismLevel::BestEffort), "BEST_EFFORT");
     assert_eq!(
         format!("{}", DeterminismLevel::NonDeterministic),
         "NON_DETERMINISTIC"
@@ -66,8 +63,14 @@ fn test_determinism_level_display() {
 
 #[test]
 fn test_determinism_level_equality() {
-    assert_eq!(DeterminismLevel::Deterministic, DeterminismLevel::Deterministic);
-    assert_ne!(DeterminismLevel::Deterministic, DeterminismLevel::BestEffort);
+    assert_eq!(
+        DeterminismLevel::Deterministic,
+        DeterminismLevel::Deterministic
+    );
+    assert_ne!(
+        DeterminismLevel::Deterministic,
+        DeterminismLevel::BestEffort
+    );
 }
 
 #[test]
@@ -118,7 +121,7 @@ fn test_bcib_metadata_builder_chain() {
     let meta = BCIBMetadata::new(42)
         .with_context_hash(vec![1, 2, 3])
         .allow_replay();
-    
+
     assert_eq!(meta.nonce, 42);
     assert_eq!(meta.execution_context_hash, vec![1, 2, 3]);
     assert!(meta.replay_allowed);
@@ -129,9 +132,9 @@ fn test_bcib_metadata_serialization() {
     let meta = BCIBMetadata::new(42)
         .with_context_hash(vec![1, 2, 3])
         .allow_replay();
-    
+
     let json = serde_json::to_string(&meta).unwrap();
     let deserialized: BCIBMetadata = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(meta, deserialized);
 }

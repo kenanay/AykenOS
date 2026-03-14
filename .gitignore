@@ -65,6 +65,7 @@ test_baseline_init.sh
 **/syscall_efi_run.*
 qemu_*.log
 evidence/
+out/
 
 # userspace artifacts (generated; not tracked)
 userspace/minimal/user.bin
@@ -79,3 +80,6 @@ userspace/minimal/.mode.*
 # Local agent/spec workspace artifacts
 .kiro/
 AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md
+
+# local experiments
+_wip_local/

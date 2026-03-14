@@ -1,19 +1,17 @@
-// kernel/include/ayken_abi.h
-#ifndef AYKEN_ABI_H
-#define AYKEN_ABI_H
+#ifndef AYKEN_ABI_WRAPPER_H
+#define AYKEN_ABI_WRAPPER_H
 
-#include <stdint.h>
+#include "../../shared/abi/ayken_abi.h"
 
 /*
- * AykenOS ABI v1.0 - Single Source of Truth
- *
- * Ring0/Ring3 execution contract constants shared by C code.
- * NASM include is auto-generated from this header:
- *   kernel/include/generated/ayken_abi.inc
+ * Keep the legacy macro surface visible in this wrapper so CI gates that
+ * parse kernel/include/ayken_abi.h directly do not need to resolve includes.
  */
+#ifndef AYKEN_ABI_VERSION
 #define AYKEN_ABI_VERSION 0x00010000u
+#endif
 
-/* cpu_context_t layout offsets (bytes) */
+#ifndef CTX_R15
 #define CTX_R15      0u
 #define CTX_R14      8u
 #define CTX_R13      16u
@@ -28,8 +26,9 @@
 #define CTX_SS       82u
 #define CTX_RSP0     88u
 #define CTX_SIZE     96u
+#endif
 
-/* timer IRQ frame layout offsets (irq_timer_frame_t, bytes) */
+#ifndef IRQF_R15
 #define IRQF_R15      0u
 #define IRQF_R14      8u
 #define IRQF_R13      16u
@@ -51,5 +50,6 @@
 #define IRQF_RSP      144u
 #define IRQF_SS       152u
 #define IRQF_SIZE     160u
+#endif
 
-#endif // AYKEN_ABI_H
+#endif

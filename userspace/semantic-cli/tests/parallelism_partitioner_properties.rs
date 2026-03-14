@@ -58,7 +58,7 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         // Collect all indices covered by partitions
         let mut covered_indices = Vec::new();
         for partition in &partitions {
@@ -66,16 +66,16 @@ proptest! {
                 covered_indices.push(i);
             }
         }
-        
+
         // Sort to check for completeness
         covered_indices.sort_unstable();
-        
+
         // Verify all indices from 0 to data.len()-1 are covered exactly once
-        prop_assert_eq!(covered_indices.len(), data.len(), 
+        prop_assert_eq!(covered_indices.len(), data.len(),
             "Number of covered indices must equal data size");
-        
+
         for (i, &idx) in covered_indices.iter().enumerate() {
-            prop_assert_eq!(idx, i, 
+            prop_assert_eq!(idx, i,
                 "Index {} should be covered, but index {} was found instead", i, idx);
         }
     }
@@ -95,22 +95,22 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         // Check that partitions are contiguous (each partition's start is the previous partition's end)
         for i in 1..partitions.len() {
             prop_assert_eq!(
-                partitions[i].start_index, 
+                partitions[i].start_index,
                 partitions[i - 1].end_index,
                 "Partition {} should start where partition {} ends", i, i - 1
             );
         }
-        
+
         // Check that no two partitions overlap
         for i in 0..partitions.len() {
             for j in (i + 1)..partitions.len() {
                 let p1 = &partitions[i];
                 let p2 = &partitions[j];
-                
+
                 // p1 should end before or at p2 starts
                 prop_assert!(
                     p1.end_index <= p2.start_index,
@@ -136,37 +136,37 @@ proptest! {
         num_workers in arbitrary_num_workers()
     ) {
         let partitioner = ContiguousPartitioner;
-        
+
         // Partition the same data multiple times
         let partitions1 = partitioner.partition(&data, num_workers);
         let partitions2 = partitioner.partition(&data, num_workers);
         let partitions3 = partitioner.partition(&data, num_workers);
-        
+
         // Verify all partitions are identical
-        prop_assert_eq!(partitions1.len(), partitions2.len(), 
+        prop_assert_eq!(partitions1.len(), partitions2.len(),
             "First and second partitioning produced different number of partitions");
         prop_assert_eq!(partitions1.len(), partitions3.len(),
             "First and third partitioning produced different number of partitions");
-        
+
         for i in 0..partitions1.len() {
             prop_assert_eq!(
-                partitions1[i].start_index, 
+                partitions1[i].start_index,
                 partitions2[i].start_index,
                 "Partition {} start index differs between first and second partitioning", i
             );
             prop_assert_eq!(
-                partitions1[i].end_index, 
+                partitions1[i].end_index,
                 partitions2[i].end_index,
                 "Partition {} end index differs between first and second partitioning", i
             );
-            
+
             prop_assert_eq!(
-                partitions1[i].start_index, 
+                partitions1[i].start_index,
                 partitions3[i].start_index,
                 "Partition {} start index differs between first and third partitioning", i
             );
             prop_assert_eq!(
-                partitions1[i].end_index, 
+                partitions1[i].end_index,
                 partitions3[i].end_index,
                 "Partition {} end index differs between first and third partitioning", i
             );
@@ -188,17 +188,17 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         if partitions.is_empty() {
             // Empty data produces no partitions, which is valid
             return Ok(());
         }
-        
+
         // Find min and max partition sizes
         let sizes: Vec<usize> = partitions.iter().map(|p| p.size()).collect();
         let min_size = *sizes.iter().min().unwrap();
         let max_size = *sizes.iter().max().unwrap();
-        
+
         // Verify sizes differ by at most 1
         prop_assert!(
             max_size - min_size <= 1,
@@ -222,7 +222,7 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         for (i, partition) in partitions.iter().enumerate() {
             prop_assert!(
                 partition.is_valid(),
@@ -246,10 +246,10 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         if !partitions.is_empty() {
             prop_assert_eq!(
-                partitions[0].start_index, 
+                partitions[0].start_index,
                 0,
                 "First partition must start at index 0"
             );
@@ -270,7 +270,7 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         if !partitions.is_empty() {
             prop_assert_eq!(
                 partitions.last().unwrap().end_index,
@@ -295,7 +295,7 @@ proptest! {
     ) {
         let partitioner = ContiguousPartitioner;
         let partitions = partitioner.partition(&data, num_workers);
-        
+
         let expected_count = num_workers.min(data.len());
         prop_assert_eq!(
             partitions.len(),
@@ -314,7 +314,7 @@ fn test_empty_data() {
     let partitioner = ContiguousPartitioner;
     let data: Vec<Value> = vec![];
     let partitions = partitioner.partition(&data, 4);
-    
+
     assert_eq!(partitions.len(), 0);
 }
 
@@ -323,7 +323,7 @@ fn test_zero_workers() {
     let partitioner = ContiguousPartitioner;
     let data = vec![Value::Number(1.0), Value::Number(2.0)];
     let partitions = partitioner.partition(&data, 0);
-    
+
     assert_eq!(partitions.len(), 0);
 }
 
@@ -332,7 +332,7 @@ fn test_single_element() {
     let partitioner = ContiguousPartitioner;
     let data = vec![Value::Number(42.0)];
     let partitions = partitioner.partition(&data, 1);
-    
+
     assert_eq!(partitions.len(), 1);
     assert_eq!(partitions[0].start_index, 0);
     assert_eq!(partitions[0].end_index, 1);
@@ -344,10 +344,10 @@ fn test_more_workers_than_elements() {
     let partitioner = ContiguousPartitioner;
     let data = vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)];
     let partitions = partitioner.partition(&data, 100);
-    
+
     // Should create only 3 partitions (one per element)
     assert_eq!(partitions.len(), 3);
-    
+
     for (i, partition) in partitions.iter().enumerate() {
         assert_eq!(partition.start_index, i);
         assert_eq!(partition.end_index, i + 1);

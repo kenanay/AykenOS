@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
+
 # Defaults
 QEMU_TIMEOUT=30
 MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
@@ -44,7 +49,7 @@ Usage: $0 [OPTIONS]
 Options:
   --timeout N       Set timeout in seconds (default: 30)
   --marker TEXT     Canonical boot marker (default: ${MARKER})
-  --out-dir PATH    Output directory for logs (default: reports/phase_4_4_closure_YYYY-MM-DD)
+  --out-dir PATH    Output directory for logs (default: out/reports/phase_4_4_closure_YYYY-MM-DD)
   --help            Show this help
 EOF
 }
@@ -77,9 +82,11 @@ done
 
 DATE_STAMP="$(date +%Y-%m-%d)"
 if [[ -z "$OUT_DIR" ]]; then
-    OUT_DIR="reports/phase_4_4_closure_${DATE_STAMP}"
+    OUT_DIR="${AYKEN_LOCAL_REPORT_DIR}/phase_4_4_closure_${DATE_STAMP}"
 fi
 mkdir -p "$OUT_DIR"
+
+EFI_IMAGE="${EFI_IMG:-${AYKEN_EFI_IMG}}"
 
 LOG_OUT="${OUT_DIR}/qemu_boot.log"
 LOG_ERR="${OUT_DIR}/qemu_boot.err"
@@ -98,11 +105,9 @@ if ! command_exists "qemu-system-x86_64"; then
     exit 2
 fi
 
-if [[ ! -f "EFI.img" ]]; then
+if [[ ! -f "${EFI_IMAGE}" ]]; then
     info "Creating EFI image..."
-    if [[ -x "./make_efi_img.sh" ]]; then
-        ./make_efi_img.sh
-    elif command_exists "make"; then
+    if command_exists "make"; then
         make efi-img
     else
         error "Cannot create EFI image - no creation method available."
@@ -147,7 +152,7 @@ if [[ -n "$ovmf_code" && -n "$ovmf_vars_copy" ]]; then
 fi
 # Always use EFI.img regardless of OVMF presence
 qemu_args+=(
-    -drive "format=raw,file=EFI.img"
+    -drive "format=raw,file=${EFI_IMAGE}"
 )
 qemu_args+=(
     -display none

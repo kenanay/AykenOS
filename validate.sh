@@ -1,3 +1,5 @@
-﻿#!/usr/bin/env pwsh
-# Convenience script - calls actual script in tools directory
-& "./tools/validation/validate_toolchain.sh" @args
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${ROOT}/tools/validation/validate_toolchain.sh" "$@"

@@ -8,6 +8,19 @@
 
 This runbook documents the operational procedure for transitioning between phases in AykenOS. Based on Phase 9 transition experience.
 
+For `Phase-12 -> Phase-13`, this runbook is not the first authority surface. The dedicated pre-transition governance flow lives in:
+
+- `docs/operations/PHASE12_OFFICIAL_CLOSURE_EXECUTION.md`
+
+That runbook must complete first:
+
+- signed closure candidate
+- clean SHA alignment
+- dedicated closure tag
+- remote `ci-freeze` confirmation
+
+Only after those are satisfied should the formal `CURRENT_PHASE` transition be executed here.
+
 ## Prerequisites
 
 ### 1. Infrastructure Complete

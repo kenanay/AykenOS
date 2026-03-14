@@ -90,6 +90,7 @@ TRACKED_BIN_TXT="${EVIDENCE_DIR}/tracked-binary.txt"
 OVERSIZED_TXT="${EVIDENCE_DIR}/oversized-tracked.txt"
 DIRTY_TRACKED_TXT="${EVIDENCE_DIR}/dirty-tracked.txt"
 SOURCE_HITS_TXT="${EVIDENCE_DIR}/source-deny-hits.txt"
+STRUCTURE_HITS_TXT="${EVIDENCE_DIR}/structure-contract-hits.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
@@ -102,6 +103,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${OVERSIZED_TXT}"
 : > "${DIRTY_TRACKED_TXT}"
 : > "${SOURCE_HITS_TXT}"
+: > "${STRUCTURE_HITS_TXT}"
 : > "${VIOLATIONS_TXT}"
 
 # Exclude evidence/ directory and vendored toolchains from hygiene checks
@@ -200,7 +202,7 @@ while IFS= read -r path; do
       ;;
   esac
   case "${path}" in
-    ayken/target/*|ayken-core/target/*|userspace/target/*|target/*|build/*|obj/*|*.o|*.elf|*.a|*.so|*.tmp|*.dSYM|*.dSYM/*)
+    ayken/target/*|ayken-core/target/*|userspace/target/*|target/*|build/*|out/*|obj/*|*.o|*.elf|*.a|*.so|*.tmp|*.dSYM|*.dSYM/*)
       echo "${path}" >> "${FORBIDDEN_TXT}"
       ;;
   esac
@@ -295,6 +297,33 @@ if false && [[ -f "${SOURCE_DENY}" ]]; then
   rm -f "${SOURCE_GREP_TMP}"
 fi
 
+# 4b) Architectural structure checks with path-aware scans.
+if command -v rg >/dev/null 2>&1; then
+  (
+    cd "${ROOT}"
+    rg -n '\.\./\.\./kernel/' bootloader userspace || true
+  ) | while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "kernel_private_include:${hit}" >> "${STRUCTURE_HITS_TXT}"
+  done
+
+  (
+    cd "${ROOT}"
+    rg -n '#include ".*\.c"' kernel bootloader userspace || true
+  ) | while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "c_include:${hit}" >> "${STRUCTURE_HITS_TXT}"
+  done
+
+  (
+    cd "${ROOT}"
+    rg -n '#include ".*_test\.h"' kernel bootloader userspace -g '!**/*_test.c' -g '!**/*_test.h' || true
+  ) | while IFS= read -r hit; do
+    [[ -z "${hit}" ]] && continue
+    echo "production_test_header:${hit}" >> "${STRUCTURE_HITS_TXT}"
+  done
+fi
+
 # 5) Consolidate all violations with reason prefixes.
 if [[ -s "${FORBIDDEN_TXT}" ]]; then
   while IFS= read -r line; do
@@ -331,6 +360,13 @@ if [[ -s "${SOURCE_HITS_TXT}" ]]; then
   done < "${SOURCE_HITS_TXT}"
 fi
 
+if [[ -s "${STRUCTURE_HITS_TXT}" ]]; then
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    echo "structure_contract:${line}" >> "${VIOLATIONS_TXT}"
+  done < "${STRUCTURE_HITS_TXT}"
+fi
+
 NOW="$(ci_now_utc)"
 GIT_SHA="$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo "NO_GIT")"
 TRACKED_COUNT="$(wc -l < "${TRACKED_TXT}" | tr -d ' ')"
@@ -339,6 +375,7 @@ TRACKED_BIN_COUNT="$(wc -l < "${TRACKED_BIN_TXT}" | tr -d ' ')"
 OVERSIZED_COUNT="$(wc -l < "${OVERSIZED_TXT}" | tr -d ' ')"
 DIRTY_TRACKED_COUNT="$(wc -l < "${DIRTY_TRACKED_TXT}" | tr -d ' ')"
 SOURCE_HITS_COUNT="$(wc -l < "${SOURCE_HITS_TXT}" | tr -d ' ')"
+STRUCTURE_HITS_COUNT="$(wc -l < "${STRUCTURE_HITS_TXT}" | tr -d ' ')"
 VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ')"
 
 {
@@ -349,6 +386,7 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ')"
   echo "largefile_allowlist=${LARGE_ALLOWLIST}"
   echo "source_deny=${SOURCE_DENY}"
   echo "source_allow=${SOURCE_ALLOW}"
+  echo "structure_hits=${STRUCTURE_HITS_COUNT}"
   echo "tracked_count=${TRACKED_COUNT}"
   echo "forbidden_tracked_count=${FORBIDDEN_COUNT}"
   echo "tracked_binary_count=${TRACKED_BIN_COUNT}"

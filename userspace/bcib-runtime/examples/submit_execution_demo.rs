@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     buf.add(BcibInstruction::data_create(1, 1));
     buf.add(BcibInstruction::data_add(1, 2));
     buf.add(BcibInstruction::end());
-    
+
     let bcib_bytes = buf.encode();
     println!("Created BCIB graph with {} bytes", bcib_bytes.len());
 
@@ -28,8 +28,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Check if we should actually submit to kernel
-    let should_submit = std::env::var("RUN_IN_QEMU").map(|v| v == "1").unwrap_or(false);
-    
+    let should_submit = std::env::var("RUN_IN_QEMU")
+        .map(|v| v == "1")
+        .unwrap_or(false);
+
     if !should_submit {
         println!("RUN_IN_QEMU!=1; skipping actual syscall submission");
         println!("Graph is ready for submit_execution() call");
@@ -40,8 +42,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Submitting execution to Ring0...");
     match executor.submit_execution(&graph) {
         Ok(execution_id) => {
-            println!("✓ Execution submitted successfully with ID: {}", execution_id);
-            
+            println!(
+                "✓ Execution submitted successfully with ID: {}",
+                execution_id
+            );
+
             // Wait for result
             match executor.wait_result(execution_id, 1000) {
                 Ok(status) => println!("✓ Execution completed with status: {}", status),

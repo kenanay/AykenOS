@@ -7,15 +7,12 @@
 //! These tests run by default with: cargo test -p semantic-cli
 
 use semantic_cli::bcib::{
-    LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, 
-    CollectionType, OperandRef, BudgetMeasurement
+    BudgetMeasurement, CollectionType, LoopConfig, LoopID, LoopInstruction, LoopRange, OperandRef,
+    Value, ValueType,
 };
-use semantic_cli::loop_engine::{
-    LoopExecutor, LoopBodyFn, LoopBodyResult, LoopResult,
-    LoopError
-};
+use semantic_cli::error::{ErrorCode, SemanticCLIError};
+use semantic_cli::loop_engine::{LoopBodyFn, LoopBodyResult, LoopError, LoopExecutor, LoopResult};
 use semantic_cli::types::SourceLocation;
-use semantic_cli::error::{SemanticCLIError, ErrorCode};
 use std::collections::BTreeMap;
 
 // Test helper functions
@@ -67,17 +64,22 @@ mod core_execution_tests {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 5);
-        
+
         // Sum should be 0+1+2+3+4 = 10
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 10.0);
@@ -90,7 +92,7 @@ mod core_execution_tests {
     fn test_while_loop_iteration_limit_enforced() {
         let mut executor = LoopExecutor::new();
         let mut instruction = create_test_while_loop(Value::Boolean(true));
-        
+
         // Set iteration limit to prevent infinite loop
         if let LoopInstruction::While { config, .. } = &mut instruction {
             config.iteration_limit = 3;
@@ -101,12 +103,15 @@ mod core_execution_tests {
             if let Value::Number(acc) = accumulator {
                 Ok(LoopBodyResult::Normal(Value::Number(acc + 1.0)))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_error());
         assert!(result.get_iterations_completed() <= 3);
     }
@@ -127,15 +132,18 @@ mod core_execution_tests {
                 // For this test, just increment by 5
                 Ok(LoopBodyResult::Normal(Value::Number(acc + 5.0)))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 3);
-        
+
         // Should be 0 + 5 + 5 + 5 = 15
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 15.0);
@@ -148,7 +156,7 @@ mod core_execution_tests {
     fn test_iteration_limit_enforcement() {
         let mut executor = LoopExecutor::new();
         let mut instruction = create_test_for_loop(0, 100, 1); // Would be 100 iterations
-        
+
         // Set very low iteration limit
         if let LoopInstruction::For { config, .. } = &mut instruction {
             config.iteration_limit = 5;
@@ -156,19 +164,24 @@ mod core_execution_tests {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_error());
         // The exact number of completed iterations may vary based on implementation
         // but should be less than the total range
         assert!(result.get_iterations_completed() <= 5);
-        
+
         // Verify it's an iteration limit error
         if let LoopResult::Error(LoopError::IterationLimitExceeded { limit, completed }) = result {
             assert_eq!(limit, 5);
@@ -182,7 +195,7 @@ mod core_execution_tests {
     fn test_budget_timeout_enforcement() {
         let mut executor = LoopExecutor::new();
         let mut instruction = create_test_for_loop(0, 100, 1);
-        
+
         // Set very low budget timeout
         if let LoopInstruction::For { config, .. } = &mut instruction {
             config.budget_timeout = 3; // Should timeout after 3 iterations
@@ -191,18 +204,28 @@ mod core_execution_tests {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_error());
-        
+
         // Verify it's a budget timeout error
-        if let LoopResult::Error(LoopError::BudgetTimeoutExceeded { budget, consumed, iterations_completed }) = result {
+        if let LoopResult::Error(LoopError::BudgetTimeoutExceeded {
+            budget,
+            consumed,
+            iterations_completed,
+        }) = result
+        {
             assert_eq!(budget, 3);
             assert!(consumed > 0); // Should have consumed some budget
             assert!(iterations_completed <= 3);
@@ -225,15 +248,18 @@ mod core_execution_tests {
                     Ok(LoopBodyResult::Normal(Value::Number(new_acc)))
                 }
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_break());
         assert_eq!(result.get_iterations_completed(), 4); // 0, 1, 2, 3 (break iteration counted)
-        
+
         // Sum should be 0+1+2+3 = 6
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 6.0);
@@ -254,18 +280,23 @@ mod core_execution_tests {
                     Ok(LoopBodyResult::Continue(Value::Number(*acc)))
                 } else {
                     // Normal execution on odd iterations
-                    Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                    Ok(LoopBodyResult::Normal(Value::Number(
+                        acc + iteration as f64,
+                    )))
                 }
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 5); // All iterations completed
-        
+
         // Accumulator should only include odd iterations: 0 + 1 + 3 = 4
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 4.0);
@@ -284,19 +315,23 @@ mod core_execution_tests {
             if iteration == 0 {
                 Ok(LoopBodyResult::Normal(Value::Number(42.0))) // Valid
             } else {
-                Ok(LoopBodyResult::Normal(Value::String("invalid".to_string()))) // Type change - should fail
+                Ok(LoopBodyResult::Normal(Value::String("invalid".to_string())))
+                // Type change - should fail
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_error());
-        
+
         // Should fail on type mismatch
         if let LoopResult::Error(LoopError::LoopBodyError { iteration, .. }) = result {
             assert_eq!(iteration, 1); // Should fail on second iteration
         } else {
-            panic!("Expected LoopBodyError for type mismatch, got: {:?}", result);
+            panic!(
+                "Expected LoopBodyError for type mismatch, got: {:?}",
+                result
+            );
         }
     }
 
@@ -308,20 +343,28 @@ mod core_execution_tests {
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if iteration == 2 {
                 // Throw error on third iteration
-                Err(SemanticCLIError::execution_error("Test error", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Test error",
+                    ErrorCode::E500,
+                ))
             } else if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_error());
         // Should complete some iterations before error
         assert!(result.get_iterations_completed() <= 2);
-        
+
         // Should propagate the loop body error
         if let LoopResult::Error(LoopError::LoopBodyError { iteration, .. }) = result {
             assert_eq!(iteration, 2);
@@ -339,15 +382,18 @@ mod core_execution_tests {
             if let Value::Number(acc) = accumulator {
                 Ok(LoopBodyResult::Normal(Value::Number(acc + 1.0)))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 0); // No iterations
-        
+
         // Accumulator should remain unchanged
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 0.0);
@@ -363,17 +409,22 @@ mod core_execution_tests {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 5);
-        
+
         // Sum should be 0+1+2+3+4 = 10 (iteration counter, not loop variable)
         if let Some(Value::Number(final_sum)) = result.get_accumulator() {
             assert_eq!(*final_sum, 10.0);
@@ -404,17 +455,22 @@ mod collection_determinism_tests {
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
                 // Accumulate iteration order to verify determinism
-                Ok(LoopBodyResult::Normal(Value::Number(acc * 10.0 + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc * 10.0 + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 3);
-        
+
         // Should iterate in index order: 0, 1, 2
         // Result: ((0*10+0)*10+1)*10+2 = 012
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
@@ -437,17 +493,22 @@ mod collection_determinism_tests {
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
                 // Accumulate iteration order to verify determinism
-                Ok(LoopBodyResult::Normal(Value::Number(acc * 10.0 + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc * 10.0 + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 3);
-        
+
         // Should iterate in insertion order: 0, 1, 2
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
             assert_eq!(*final_value, 12.0);
@@ -463,24 +524,29 @@ mod collection_determinism_tests {
         map.insert("zebra".to_string(), Value::Number(3.0));
         map.insert("alpha".to_string(), Value::Number(1.0));
         map.insert("beta".to_string(), Value::Number(2.0));
-        
+
         let collection = Value::SortedMap(map);
         let instruction = create_test_foreach_loop(collection, CollectionType::SortedMap);
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
                 // Accumulate iteration order to verify determinism
-                Ok(LoopBodyResult::Normal(Value::Number(acc * 10.0 + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc * 10.0 + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 3);
-        
+
         // Should iterate in key sort order: alpha, beta, zebra (0, 1, 2)
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
             assert_eq!(*final_value, 12.0);
@@ -497,17 +563,22 @@ mod collection_determinism_tests {
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
                 // Accumulate iteration order to verify determinism
-                Ok(LoopBodyResult::Normal(Value::Number(acc * 100.0 + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc * 100.0 + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 3);
-        
+
         // Should iterate in sequence: 0, 1, 2 (iteration counter)
         // Result: ((0*100+0)*100+1)*100+2 = 102
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
@@ -527,15 +598,18 @@ mod collection_determinism_tests {
             if let Value::Number(acc) = accumulator {
                 Ok(LoopBodyResult::Normal(Value::Number(acc + 1.0)))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 0);
-        
+
         // Accumulator should remain unchanged
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
             assert_eq!(*final_value, 0.0);
@@ -548,9 +622,14 @@ mod collection_determinism_tests {
     fn determinism_body() -> LoopBodyFn {
         Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc * 10.0 + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc * 10.0 + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         })
     }
@@ -570,11 +649,13 @@ mod collection_determinism_tests {
         let mut results = Vec::new();
         for _ in 0..3 {
             let instruction = create_test_foreach_loop(collection.clone(), CollectionType::Array);
-            let result = executor.execute_loop(&instruction, determinism_body()).unwrap();
-            
+            let result = executor
+                .execute_loop(&instruction, determinism_body())
+                .unwrap();
+
             assert!(result.is_success());
             assert_eq!(result.get_iterations_completed(), 4);
-            
+
             if let Some(Value::Number(final_value)) = result.get_accumulator() {
                 results.push(*final_value);
             } else {
@@ -591,22 +672,27 @@ mod collection_determinism_tests {
     #[test]
     fn test_range_edge_cases() {
         let mut executor = LoopExecutor::new();
-        
+
         // Test single iteration range
         let instruction = create_test_for_loop(5, 6, 1); // Just 5
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 1);
-        
+
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
             assert_eq!(*final_value, 0.0); // 0 + 0 (first iteration)
         } else {
@@ -621,17 +707,22 @@ mod collection_determinism_tests {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
-                Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+                Err(SemanticCLIError::execution_error(
+                    "Invalid accumulator type",
+                    ErrorCode::E500,
+                ))
             }
         });
 
         let result = executor.execute_loop(&instruction, body_fn).unwrap();
-        
+
         assert!(result.is_success());
         assert_eq!(result.get_iterations_completed(), 2);
-        
+
         // Sum should be 0+1 = 1 (iteration counter)
         if let Some(Value::Number(final_value)) = result.get_accumulator() {
             assert_eq!(*final_value, 1.0);
@@ -661,24 +752,24 @@ mod test_utilities {
             }
             _ => panic!("Expected For loop"),
         }
-        
+
         let while_loop = create_test_while_loop(Value::Boolean(true));
         match while_loop {
-            LoopInstruction::While { condition, .. } => {
-                match condition {
-                    OperandRef::Literal(Value::Boolean(true)) => {},
-                    _ => panic!("Expected boolean true condition"),
-                }
-            }
+            LoopInstruction::While { condition, .. } => match condition {
+                OperandRef::Literal(Value::Boolean(true)) => {}
+                _ => panic!("Expected boolean true condition"),
+            },
             _ => panic!("Expected While loop"),
         }
-        
+
         let foreach_loop = create_test_foreach_loop(
-            Value::Array(vec![Value::Number(1.0)]), 
-            CollectionType::Array
+            Value::Array(vec![Value::Number(1.0)]),
+            CollectionType::Array,
         );
         match foreach_loop {
-            LoopInstruction::ForEach { collection_type, .. } => {
+            LoopInstruction::ForEach {
+                collection_type, ..
+            } => {
                 assert_eq!(collection_type, CollectionType::Array);
             }
             _ => panic!("Expected ForEach loop"),

@@ -13,3 +13,4 @@
 ^kernel/ring3_jump\.c$
 ^kernel/sched(/|$)
 ^kernel/sys(/|$)
+^kernel/tests/validation(/|$)

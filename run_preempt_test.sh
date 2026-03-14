@@ -1,14 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
+
 QEMU_TIMEOUT="${QEMU_TIMEOUT:-12}"
 KERNEL_PROFILE="${KERNEL_PROFILE:-validation}"
-EFI_IMG="${EFI_IMG:-EFI.img}"
-OVMF_CODE="${OVMF_CODE:-firmware/ovmf/OVMF_CODE.fd}"
-OVMF_VARS_RUN="${OVMF_VARS_RUN:-ovmf_vars.fd}"
-OVMF_VARS_CLEAN="${OVMF_VARS_CLEAN:-OVMF_VARS.clean.fd}"
-DEBUG_LOG="${DEBUG_LOG:-PHASE_4_5_OUTPUT.log}"
-SERIAL_LOG="${SERIAL_LOG:-PHASE_4_5_SERIAL.log}"
+KERNEL_ELF="${KERNEL_ELF:-${AYKEN_KERNEL_ELF}}"
+EFI_IMG="${EFI_IMG:-${AYKEN_EFI_IMG}}"
+OVMF_CODE="${OVMF_CODE:-${AYKEN_OVMF_CODE}}"
+OVMF_VARS_RUN="${OVMF_VARS_RUN:-${AYKEN_OVMF_VARS_RUN}}"
+OVMF_VARS_CLEAN="${OVMF_VARS_CLEAN:-${AYKEN_OVMF_VARS_CLEAN}}"
+DEBUG_LOG="${DEBUG_LOG:-${AYKEN_LOG_DIR}/preempt_debug.log}"
+SERIAL_LOG="${SERIAL_LOG:-${AYKEN_LOG_DIR}/preempt_serial.log}"
 
 # Validation thresholds (tuneable in CI)
 PREEMPT_MIN_ALT="${PREEMPT_MIN_ALT:-6}"
@@ -170,15 +176,16 @@ if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
     make "${MAKE_BUILD_ARGS[@]}" clean
   fi
   make "${MAKE_BUILD_ARGS[@]}" efi-img
-elif [[ -f kernel.elf && kernel.elf -nt "$EFI_IMG" ]]; then
-  echo "WARN: kernel.elf is newer than $EFI_IMG (stale image risk)."
+elif [[ -f "$KERNEL_ELF" && "$KERNEL_ELF" -nt "$EFI_IMG" ]]; then
+  echo "WARN: $KERNEL_ELF is newer than $EFI_IMG (stale image risk)."
   echo "      Run 'make efi-img' or set FORCE_EFI_REBUILD=1."
 fi
 
+mkdir -p "$(dirname "$OVMF_VARS_RUN")" "$(dirname "$DEBUG_LOG")" "$(dirname "$SERIAL_LOG")"
 if [[ -f "$OVMF_VARS_CLEAN" ]]; then
   cp -f "$OVMF_VARS_CLEAN" "$OVMF_VARS_RUN"
 elif [[ ! -f "$OVMF_VARS_RUN" ]]; then
-  cp -f firmware/ovmf/OVMF_VARS.fd "$OVMF_VARS_RUN"
+  cp -f "${ROOT}/firmware/ovmf/OVMF_VARS.fd" "$OVMF_VARS_RUN"
 fi
 
 : > "$DEBUG_LOG"

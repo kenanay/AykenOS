@@ -178,7 +178,7 @@ proptest! {
     }
 
     /// Property 5: BCIB Instruction Graph Flatness (AR-1)
-    /// For any BCIB sequence with Compare/LogicalOp instructions, 
+    /// For any BCIB sequence with Compare/LogicalOp instructions,
     /// the sequence should be a flat list without nested expression trees
     /// **Validates: Requirements AR-1.2**
     #[test]
@@ -244,7 +244,12 @@ mod unit_tests {
 
         // Verify it uses OperandRef, not embedded Value
         match compare {
-            QueryInstruction::Compare { left, right, target_register, .. } => {
+            QueryInstruction::Compare {
+                left,
+                right,
+                target_register,
+                ..
+            } => {
                 assert!(matches!(left, OperandRef::Field(_)));
                 assert!(matches!(right, OperandRef::Literal(_)));
                 assert_eq!(target_register, 0);
@@ -270,7 +275,11 @@ mod unit_tests {
 
         // Verify it uses Vec<OperandRef>, not Vec<Value>
         match logical_op {
-            QueryInstruction::LogicalOp { operands, target_register, .. } => {
+            QueryInstruction::LogicalOp {
+                operands,
+                target_register,
+                ..
+            } => {
                 assert_eq!(operands.len(), 2);
                 assert!(matches!(operands[0], OperandRef::Field(_)));
                 assert!(matches!(operands[1], OperandRef::Literal(_)));
@@ -294,7 +303,13 @@ mod unit_tests {
         assert!(compare_with_temp.validate().is_ok());
 
         // Verify temp registers are valid operands
-        assert_eq!(OperandRef::TempRegister(0).operand_type(), OperandType::TempRegister);
-        assert_eq!(OperandRef::TempRegister(1).operand_type(), OperandType::TempRegister);
+        assert_eq!(
+            OperandRef::TempRegister(0).operand_type(),
+            OperandType::TempRegister
+        );
+        assert_eq!(
+            OperandRef::TempRegister(1).operand_type(),
+            OperandType::TempRegister
+        );
     }
 }

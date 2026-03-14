@@ -2,7 +2,7 @@
 //!
 //! This test suite validates the integration between the D3 Loop Support system
 //! and the D1 JIT compilation system, ensuring:
-//! 
+//!
 //! 1. Hot loop compilation pipeline works correctly
 //! 2. Native code execution with loop constraints
 //! 3. JIT cache behavior is correct
@@ -15,11 +15,11 @@
 //! - Requirements 6.5 (Iteration limits in native code)
 
 use semantic_cli::bcib::{
-    LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, OperandRef
+    LoopConfig, LoopID, LoopInstruction, LoopRange, OperandRef, Value, ValueType,
 };
 use semantic_cli::loop_engine::{
-    LoopEngine, LoopBodyFn, LoopBodyResult, JITConfig, JITStats, 
-    JITCompilationResult, LoopMonitor, MonitoringConfig, HOT_LOOP_THRESHOLD
+    JITCompilationResult, JITConfig, JITStats, LoopBodyFn, LoopBodyResult, LoopEngine, LoopMonitor,
+    MonitoringConfig, HOT_LOOP_THRESHOLD,
 };
 use semantic_cli::types::SourceLocation;
 
@@ -31,7 +31,7 @@ fn test_location() -> SourceLocation {
 #[test]
 fn test_hot_loop_detection_threshold() {
     let mut loop_engine = LoopEngine::new();
-    
+
     // Create a simple For loop
     let for_loop = LoopInstruction::For {
         id: LoopID::new("hot-detection-test".to_string()),
@@ -45,7 +45,9 @@ fn test_hot_loop_detection_threshold() {
     // Create a simple loop body that accumulates
     let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -71,7 +73,7 @@ fn test_hot_loop_detection_threshold() {
     // Verify hot loop info
     let hot_loop_info = loop_engine.get_hot_loop_info(loop_id);
     assert!(hot_loop_info.is_some());
-    
+
     let info = hot_loop_info.unwrap();
     assert!(info.detection_iteration_count >= HOT_LOOP_THRESHOLD as u64);
     assert!(info.jit_triggered);
@@ -174,7 +176,9 @@ fn test_jit_compilation_statistics() {
 
     let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -189,10 +193,10 @@ fn test_jit_compilation_statistics() {
 
     // Check updated statistics
     let updated_stats = loop_engine.get_jit_stats();
-    
+
     // Compilation attempts should have increased (or at least stayed the same)
     assert!(updated_stats.compilation_attempts >= initial_attempts);
-    
+
     // Verify other statistics are tracked
     assert!(updated_stats.cache_hits >= 0);
     assert!(updated_stats.cache_misses >= 0);
@@ -227,7 +231,9 @@ fn test_jit_cache_behavior() {
     // Execute first loop to populate cache
     let body_fn1: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -243,7 +249,9 @@ fn test_jit_cache_behavior() {
     // Execute second loop (should hit cache if JIT was triggered)
     let body_fn2: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -259,7 +267,7 @@ fn test_jit_cache_behavior() {
     // If JIT compilation was triggered for the first loop,
     // the second execution should potentially hit the cache
     // (This depends on whether the loops became hot and triggered JIT)
-    
+
     // At minimum, verify that cache statistics are being tracked
     assert!(stats_after_second.cache_hits >= stats_after_first.cache_hits);
     assert!(stats_after_second.cache_misses >= stats_after_first.cache_misses);
@@ -282,7 +290,9 @@ fn test_jit_cache_clearing() {
 
     let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -354,7 +364,7 @@ fn test_integrated_jit_compilation_workflow() {
 
     let info = hot_info.unwrap();
     assert!(info.jit_triggered);
-    
+
     // JIT status should be one of the valid states
     use semantic_cli::loop_engine::JITCompilationStatus;
     match info.jit_status {
@@ -405,7 +415,7 @@ fn test_jit_bounds_checking_enforcement() {
         iterator_var: "i".to_string(),
         body: "bounds-body".to_string(),
         config: LoopConfig {
-            iteration_limit: 1000,  // Exact match with range
+            iteration_limit: 1000, // Exact match with range
             budget_timeout: 50000,
             budget_measurement: semantic_cli::bcib::BudgetMeasurement::IterationCount,
             initial_accumulator: Value::Number(0.0),
@@ -499,7 +509,9 @@ fn test_monitoring_configuration_jit_impact() {
 
     let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -542,7 +554,9 @@ fn test_jit_integration_different_loop_types() {
 
     let for_body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
         if let Value::Number(acc) = accumulator {
-            Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+            Ok(LoopBodyResult::Normal(Value::Number(
+                acc + iteration as f64,
+            )))
         } else {
             Err(semantic_cli::error::SemanticCLIError::execution_error(
                 "Invalid accumulator type",
@@ -563,7 +577,7 @@ fn test_jit_integration_different_loop_types() {
     let foreach_loop = LoopInstruction::ForEach {
         id: LoopID::new("jit-foreach-test".to_string()),
         collection: OperandRef::Literal(Value::Array(
-            (0..1200).map(|i| Value::Number(i as f64)).collect()
+            (0..1200).map(|i| Value::Number(i as f64)).collect(),
         )),
         collection_type: semantic_cli::bcib::CollectionType::Array,
         iterator_var: "item".to_string(),

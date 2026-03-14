@@ -24,7 +24,9 @@ fn test_valid_commands_parse_correctly() {
     // Query commands
     let ast = parse_command("query data.users").unwrap();
     match ast.command {
-        CommandNode::Query { context, filter, .. } => {
+        CommandNode::Query {
+            context, filter, ..
+        } => {
             assert_eq!(context, vec!["data", "users"]);
             assert!(filter.is_none());
         }
@@ -33,7 +35,9 @@ fn test_valid_commands_parse_correctly() {
 
     let ast = parse_command("query data.users {age > 18}").unwrap();
     match ast.command {
-        CommandNode::Query { context, filter, .. } => {
+        CommandNode::Query {
+            context, filter, ..
+        } => {
             assert_eq!(context, vec!["data", "users"]);
             assert!(filter.is_some());
         }
@@ -153,12 +157,17 @@ fn test_error_messages_helpful() {
 
 #[test]
 fn test_complex_expressions() {
-    let ast = parse_command("query data.users {age > 18 and name == \"Alice\" or not active}").unwrap();
+    let ast =
+        parse_command("query data.users {age > 18 and name == \"Alice\" or not active}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => {
             // Should parse as: ((age > 18) and (name == "Alice")) or (not active)
             match expr {
-                Expr::Binary { op: BinaryOp::Or, .. } => {}
+                Expr::Binary {
+                    op: BinaryOp::Or, ..
+                } => {}
                 _ => panic!("Expected Or as top-level operator"),
             }
         }
@@ -224,8 +233,12 @@ fn test_context_paths() {
 fn test_expression_types() {
     let ast = parse_command("query data.users {age > 18}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
-            Expr::Binary { left, op, right, .. } => {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
+            Expr::Binary {
+                left, op, right, ..
+            } => {
                 assert_eq!(op, BinaryOp::Gt);
                 match left.as_ref() {
                     Expr::Identifier { name, .. } => assert_eq!(name, "age"),
@@ -243,7 +256,9 @@ fn test_expression_types() {
 
     let ast = parse_command("query data.users {name == \"Alice\"}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
             Expr::Binary { right, .. } => match right.as_ref() {
                 Expr::String { value, .. } => assert_eq!(value, "Alice"),
                 _ => panic!("Expected string"),
@@ -255,7 +270,9 @@ fn test_expression_types() {
 
     let ast = parse_command("query data.users {active == true}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
             Expr::Binary { right, .. } => match right.as_ref() {
                 Expr::Boolean { value, .. } => assert!(*value),
                 _ => panic!("Expected boolean"),
@@ -271,16 +288,27 @@ fn test_operator_precedence() {
     // Test that comparison has higher precedence than logical operators
     let ast = parse_command("query data.users {age > 18 and active == true}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
-            Expr::Binary { op: BinaryOp::And, left, right, .. } => {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
+            Expr::Binary {
+                op: BinaryOp::And,
+                left,
+                right,
+                ..
+            } => {
                 // Left should be (age > 18)
                 match left.as_ref() {
-                    Expr::Binary { op: BinaryOp::Gt, .. } => {}
+                    Expr::Binary {
+                        op: BinaryOp::Gt, ..
+                    } => {}
                     _ => panic!("Expected Gt as left operand of And"),
                 }
                 // Right should be (active == true)
                 match right.as_ref() {
-                    Expr::Binary { op: BinaryOp::Eq, .. } => {}
+                    Expr::Binary {
+                        op: BinaryOp::Eq, ..
+                    } => {}
                     _ => panic!("Expected Eq as right operand of And"),
                 }
             }
@@ -294,7 +322,9 @@ fn test_operator_precedence() {
 fn test_unary_operators() {
     let ast = parse_command("query data.users {not active}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
             Expr::Unary { operand, .. } => match operand.as_ref() {
                 Expr::Identifier { name, .. } => assert_eq!(name, "active"),
                 _ => panic!("Expected identifier"),
@@ -309,8 +339,12 @@ fn test_unary_operators() {
 fn test_parentheses() {
     let ast = parse_command("query data.users {(age > 18) and (name == \"Alice\")}").unwrap();
     match ast.command {
-        CommandNode::Query { filter: Some(expr), .. } => match expr {
-            Expr::Binary { op: BinaryOp::And, .. } => {}
+        CommandNode::Query {
+            filter: Some(expr), ..
+        } => match expr {
+            Expr::Binary {
+                op: BinaryOp::And, ..
+            } => {}
             _ => panic!("Expected And expression"),
         },
         _ => panic!("Expected Query with filter"),
@@ -347,7 +381,16 @@ fn test_performance_benchmark() {
         let result = parse_command(command);
         let duration = start.elapsed();
 
-        assert!(result.is_ok(), "Command '{}' should parse successfully", command);
-        assert!(duration.as_millis() < 5, "Parse time should be < 5ms, got {}ms for '{}'", duration.as_millis(), command);
+        assert!(
+            result.is_ok(),
+            "Command '{}' should parse successfully",
+            command
+        );
+        assert!(
+            duration.as_millis() < 5,
+            "Parse time should be < 5ms, got {}ms for '{}'",
+            duration.as_millis(),
+            command
+        );
     }
 }

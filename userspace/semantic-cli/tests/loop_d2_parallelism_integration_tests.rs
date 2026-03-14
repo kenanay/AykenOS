@@ -32,12 +32,12 @@
 //! - D2 system integration points validation
 //! - Constitutional compliance in parallel execution
 
+use semantic_cli::bcib::{
+    BudgetMeasurement, CollectionType, ErrorRecoveryPolicy, LoopConfig, LoopID, LoopInstruction,
+    LoopRange, OperandRef, Value, ValueType,
+};
 use semantic_cli::loop_engine::d2_integration::D2LoopIntegration;
 use semantic_cli::loop_engine::{SafetyAnalysisResult, SafetyClass};
-use semantic_cli::bcib::{
-    LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, 
-    BudgetMeasurement, ErrorRecoveryPolicy, OperandRef, CollectionType
-};
 use semantic_cli::types::SourceLocation;
 
 fn create_test_loop_config() -> LoopConfig {
@@ -150,18 +150,21 @@ fn test_parallel_loop_execution_workflow_foreach_loop() {
 fn test_deterministic_result_collection_from_parallel_partitions() {
     // Test that parallel execution produces deterministic results
     let integration = D2LoopIntegration::new();
-    
+
     // Test multiple executions with same inputs
     for total_iterations in [100, 500, 1000] {
         for available_parallelism in [2, 4, 8] {
-            let partitions1 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            let partitions2 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            let partitions3 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            
+            let partitions1 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+            let partitions2 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+            let partitions3 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+
             // Same inputs should produce identical partitions
             assert_eq!(partitions1, partitions2);
             assert_eq!(partitions2, partitions3);
-            
+
             // Verify deterministic ordering (partition 0, 1, 2, ...)
             for (i, partition) in partitions1.iter().enumerate() {
                 assert_eq!(partition.partition_id, i);
@@ -175,15 +178,15 @@ fn test_deterministic_result_collection_ordering() {
     // Test that results are collected in deterministic order (partition 0, 1, 2, ...)
     let integration = D2LoopIntegration::new();
     let partitions = integration.partition_iterations_deterministic(1000, 4);
-    
+
     // Verify partitions are ordered by ID
     for (i, partition) in partitions.iter().enumerate() {
         assert_eq!(partition.partition_id, i);
         if i > 0 {
-            assert_eq!(partition.start_iteration, partitions[i-1].end_iteration);
+            assert_eq!(partition.start_iteration, partitions[i - 1].end_iteration);
         }
     }
-    
+
     // Verify no gaps or overlaps
     let mut last_end = 0;
     for partition in &partitions {
@@ -210,7 +213,10 @@ fn test_fallback_to_sequential_execution_unsafe_loops() {
     // Verify fallback to sequential execution
     let decision = integration.should_parallelize_loop(&unsafe_for_loop, &unsafe_safety_result);
     assert!(decision.is_sequential());
-    assert!(decision.sequential_reason().unwrap().contains("Unsafe for parallelization"));
+    assert!(decision
+        .sequential_reason()
+        .unwrap()
+        .contains("Unsafe for parallelization"));
 }
 
 #[test]
@@ -229,7 +235,10 @@ fn test_fallback_to_sequential_execution_while_loops() {
     // Verify While loops are never parallelized (constitutional rule)
     let decision = integration.should_parallelize_loop(&while_loop, &safe_safety_result);
     assert!(decision.is_sequential());
-    assert!(decision.sequential_reason().unwrap().contains("While loops are excluded"));
+    assert!(decision
+        .sequential_reason()
+        .unwrap()
+        .contains("While loops are excluded"));
 }
 
 #[test]
@@ -249,21 +258,24 @@ fn test_fallback_to_sequential_execution_small_loops() {
     // Verify small loops fall back to sequential execution
     let decision = integration.should_parallelize_loop(&small_for_loop, &safe_safety_result);
     assert!(decision.is_sequential());
-    assert!(decision.sequential_reason().unwrap().contains("below minimum threshold"));
+    assert!(decision
+        .sequential_reason()
+        .unwrap()
+        .contains("below minimum threshold"));
 }
 
 #[test]
 fn test_d2_system_integration_points_partitioning() {
     // Test D2 system integration points - partitioning
     let integration = D2LoopIntegration::new();
-    
+
     // Test that partitioning integrates correctly with D2 system
     let partitions = integration.partition_iterations_deterministic(1000, 4);
-    
+
     // Verify D2 partitioning requirements
     assert!(!partitions.is_empty());
     assert!(partitions.len() <= 4); // Respects available parallelism
-    
+
     // Verify each partition is valid for D2 execution
     for partition in &partitions {
         assert!(partition.is_valid());
@@ -298,7 +310,7 @@ fn test_d2_system_integration_points_stable_mapping() {
 fn test_d2_system_integration_points_mapping_strategy() {
     // Test D2 system integration points - mapping strategy analysis
     let integration = D2LoopIntegration::new();
-    
+
     // Test For loop mapping strategy
     let for_loop = LoopInstruction::For {
         id: LoopID::new("test-strategy-for".to_string()),
@@ -308,7 +320,7 @@ fn test_d2_system_integration_points_mapping_strategy() {
         config: create_test_loop_config(),
         location: SourceLocation::new(1, 1, 0),
     };
-    
+
     let for_strategy = integration.analyze_mapping_strategy(&for_loop);
     match for_strategy {
         semantic_cli::loop_engine::IndexMappingStrategy::Range { start, step } => {
@@ -317,7 +329,7 @@ fn test_d2_system_integration_points_mapping_strategy() {
         }
         _ => panic!("Expected Range strategy for For loop"),
     }
-    
+
     // Test ForEach loop mapping strategy
     let foreach_loop = LoopInstruction::ForEach {
         id: LoopID::new("test-strategy-foreach".to_string()),
@@ -333,10 +345,13 @@ fn test_d2_system_integration_points_mapping_strategy() {
         config: create_test_loop_config(),
         location: SourceLocation::new(1, 1, 0),
     };
-    
+
     let foreach_strategy = integration.analyze_mapping_strategy(&foreach_loop);
     match foreach_strategy {
-        semantic_cli::loop_engine::IndexMappingStrategy::Collection { collection_size, collection_type } => {
+        semantic_cli::loop_engine::IndexMappingStrategy::Collection {
+            collection_size,
+            collection_type,
+        } => {
             assert_eq!(collection_size, 4);
             assert_eq!(collection_type, "Array");
         }
@@ -360,13 +375,13 @@ fn test_d2_system_integration_points_mapping_cache() {
     // Test mapping cache creation and usage
     let cache = integration.create_mapping_cache(&for_loop, 100).unwrap();
     assert_eq!(cache.max_iterations(), 100);
-    
+
     // Test cache lookups
     for i in 0..100 {
         let cached_data = cache.get_input_data(i).unwrap();
         assert_eq!(*cached_data, Value::Number(i as f64));
     }
-    
+
     // Verify cache statistics
     let stats = cache.cache_stats();
     assert_eq!(stats.cached_entries, 100);
@@ -378,7 +393,7 @@ fn test_d2_system_integration_points_mapping_cache() {
 fn test_constitutional_compliance_parallel_execution() {
     // Test constitutional compliance in parallel execution
     let integration = D2LoopIntegration::new();
-    
+
     // Test iteration limit exactness in parallel context
     let for_loop = LoopInstruction::For {
         id: LoopID::new("test-constitutional-for".to_string()),
@@ -395,11 +410,11 @@ fn test_constitutional_compliance_parallel_execution() {
         },
         location: SourceLocation::new(1, 1, 0),
     };
-    
+
     // Verify iteration limit is respected in parallel context
     let static_count = integration.get_static_iteration_count(&for_loop);
     assert_eq!(static_count, Some(500)); // Should be limited to 500
-    
+
     // Verify partitioning respects the limit
     let partitions = integration.partition_iterations_deterministic(500, 4);
     let mut total_iterations = 0;
@@ -413,15 +428,18 @@ fn test_constitutional_compliance_parallel_execution() {
 fn test_constitutional_compliance_deterministic_execution() {
     // Test constitutional compliance - deterministic execution
     let integration = D2LoopIntegration::new();
-    
+
     // Test that same inputs always produce same outputs (determinism)
     for total_iterations in [100, 500, 1000] {
         for available_parallelism in [2, 4, 8] {
             // Multiple executions with same inputs
-            let partitions1 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            let partitions2 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            let partitions3 = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            
+            let partitions1 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+            let partitions2 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+            let partitions3 = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+
             // Must produce identical results
             assert_eq!(partitions1, partitions2);
             assert_eq!(partitions2, partitions3);
@@ -433,17 +451,14 @@ fn test_constitutional_compliance_deterministic_execution() {
 fn test_constitutional_compliance_bounded_iteration() {
     // Test constitutional compliance - bounded iteration only
     let integration = D2LoopIntegration::new();
-    
+
     // Test that all loop types respect iteration bounds
-    let test_cases = [
-        (100, 4),
-        (1000, 8),
-        (5000, 16),
-    ];
-    
+    let test_cases = [(100, 4), (1000, 8), (5000, 16)];
+
     for (total_iterations, available_parallelism) in test_cases {
-        let partitions = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-        
+        let partitions =
+            integration.partition_iterations_deterministic(total_iterations, available_parallelism);
+
         // Verify bounded iteration - no partition exceeds total
         let mut covered_iterations = 0;
         for partition in &partitions {
@@ -451,7 +466,7 @@ fn test_constitutional_compliance_bounded_iteration() {
             assert!(partition.end_iteration <= total_iterations);
             covered_iterations += partition.iteration_count;
         }
-        
+
         // Verify exact coverage (no more, no less)
         assert_eq!(covered_iterations, total_iterations);
     }
@@ -461,7 +476,7 @@ fn test_constitutional_compliance_bounded_iteration() {
 fn test_end_to_end_parallel_execution_workflow() {
     // Test complete end-to-end parallel execution workflow (BLACK-BOX D2 INTEGRATION)
     let integration = D2LoopIntegration::new();
-    
+
     // Create a large safe For loop suitable for parallelization
     let parallel_for_loop = LoopInstruction::For {
         id: LoopID::new("test-end-to-end-for".to_string()),
@@ -472,57 +487,80 @@ fn test_end_to_end_parallel_execution_workflow() {
         location: SourceLocation::new(1, 1, 0),
     };
     let safety_result = create_safe_safety_result();
-    
+
     // Step 1: Test DECISION LEVEL - did it choose parallel?
     let decision = integration.should_parallelize_loop(&parallel_for_loop, &safety_result);
-    assert!(decision.is_parallel(), "Large safe For loop should be parallelized");
-    
+    assert!(
+        decision.is_parallel(),
+        "Large safe For loop should be parallelized"
+    );
+
     // Step 2: Test CORRECTNESS - can it determine iteration count?
     let static_count = integration.get_static_iteration_count(&parallel_for_loop);
-    assert_eq!(static_count, Some(2000), "Static iteration count should be deterministic");
-    
+    assert_eq!(
+        static_count,
+        Some(2000),
+        "Static iteration count should be deterministic"
+    );
+
     // Step 3: Test DETERMINISM - same inputs produce same partitions
     let partitions1 = integration.partition_iterations_deterministic(2000, 8);
     let partitions2 = integration.partition_iterations_deterministic(2000, 8);
-    assert_eq!(partitions1, partitions2, "Deterministic partitioning must be consistent");
-    
+    assert_eq!(
+        partitions1, partitions2,
+        "Deterministic partitioning must be consistent"
+    );
+
     // Step 4: Test COMPLETENESS - all iterations covered exactly once
     let mut total_iterations = 0;
     let mut last_end = 0;
     for partition in &partitions1 {
-        assert_eq!(partition.start_iteration, last_end, "Partitions must be contiguous");
+        assert_eq!(
+            partition.start_iteration, last_end,
+            "Partitions must be contiguous"
+        );
         assert!(partition.is_valid(), "Each partition must be valid");
         total_iterations += partition.iteration_count;
         last_end = partition.end_iteration;
     }
-    assert_eq!(total_iterations, 2000, "All iterations must be covered exactly once");
-    assert_eq!(last_end, 2000, "Final partition must end at total iterations");
-    
+    assert_eq!(
+        total_iterations, 2000,
+        "All iterations must be covered exactly once"
+    );
+    assert_eq!(
+        last_end, 2000,
+        "Final partition must end at total iterations"
+    );
+
     // Step 5: Test STABILITY - mapping is consistent
-    let verification = integration.verify_stable_mapping(&parallel_for_loop, 100).unwrap();
+    let verification = integration
+        .verify_stable_mapping(&parallel_for_loop, 100)
+        .unwrap();
     assert!(verification.is_stable(), "Index mapping must be stable");
-    assert_eq!(verification.stability_ratio(), 1.0, "All mappings must be stable");
+    assert_eq!(
+        verification.stability_ratio(),
+        1.0,
+        "All mappings must be stable"
+    );
 }
 
 #[test]
 fn test_property_parallel_determinism_consistency() {
     // Property test: Parallel execution determinism consistency
     let integration = D2LoopIntegration::new();
-    
+
     // Test that deterministic partitioning is consistent across multiple calls
-    let test_cases = [
-        (100, 2),
-        (500, 4),
-        (1000, 8),
-        (2000, 16),
-    ];
-    
+    let test_cases = [(100, 2), (500, 4), (1000, 8), (2000, 16)];
+
     for (total_iterations, available_parallelism) in test_cases {
         // Execute multiple times
         let results: Vec<_> = (0..10)
-            .map(|_| integration.partition_iterations_deterministic(total_iterations, available_parallelism))
+            .map(|_| {
+                integration
+                    .partition_iterations_deterministic(total_iterations, available_parallelism)
+            })
             .collect();
-        
+
         // All results should be identical
         for i in 1..results.len() {
             assert_eq!(results[0], results[i]);
@@ -534,23 +572,28 @@ fn test_property_parallel_determinism_consistency() {
 fn test_property_parallel_completeness_guarantee() {
     // Property test: Parallel execution completeness guarantee
     let integration = D2LoopIntegration::new();
-    
+
     // Test that all iterations are covered exactly once across different configurations
     for total_iterations in [1, 10, 100, 1000, 5000] {
         for available_parallelism in [1, 2, 4, 8, 16] {
-            let partitions = integration.partition_iterations_deterministic(total_iterations, available_parallelism);
-            
+            let partitions = integration
+                .partition_iterations_deterministic(total_iterations, available_parallelism);
+
             // Verify completeness
             let mut covered_iterations = 0;
             let mut iteration_set = std::collections::HashSet::new();
-            
+
             for partition in &partitions {
                 for iter in partition.start_iteration..partition.end_iteration {
-                    assert!(iteration_set.insert(iter), "Iteration {} covered multiple times", iter);
+                    assert!(
+                        iteration_set.insert(iter),
+                        "Iteration {} covered multiple times",
+                        iter
+                    );
                     covered_iterations += 1;
                 }
             }
-            
+
             assert_eq!(covered_iterations, total_iterations);
             assert_eq!(iteration_set.len(), total_iterations as usize);
         }

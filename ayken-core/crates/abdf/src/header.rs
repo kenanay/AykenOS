@@ -17,7 +17,7 @@
 //! ```
 
 /// ABDF header yapısı.
-/// 
+///
 /// `#[repr(C)]` kullanarak C ile uyumlu, tahmin edilebilir bir layout elde ediyoruz.
 /// Bu sayede:
 /// - Farklı dillere/ortamlara (C, C++, Rust, Zig, vb.) köprü kurmak kolaylaşır

@@ -18,7 +18,6 @@
  */
 
 #include "scheduler.h"
-#include "../../kernel/include/proc.h"
 #include <stddef.h>
 
 // Ring3 scheduler policy state

@@ -1,5 +1,7 @@
 # Phase 10: Deterministic Baseline - IN PROGRESS
 
+> Historical snapshot note (2026-03-07): This document predates official Phase-10 closure. Current official closure truth is carried by `evidence/run-local-freeze-p10p11/`, `AYKENOS_SON_DURUM_RAPORU_2026_03_07.md`, and `reports/phase10_phase11_closure_2026-03-07.md`; remote `ci-freeze` confirmation: `22797401328`.
+
 **Date:** 2026-03-01  
 **Status:** BASELINE VALIDATED LOCALLY, NOT YET VALIDATED IN CI  
 **Tag:** `phase10-deterministic-baseline-2026-03-01` (PREMATURE - to be removed)  

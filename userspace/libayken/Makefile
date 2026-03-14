@@ -15,7 +15,7 @@ CFLAGS += -I.
 SCHED_HINT_SRC = sched_hint.c
 SCHED_HINT_OBJ = sched_hint.o
 
-TEST_SRC = sched_hint_test.c
+TEST_SRC = tests/sched_hint_test.c
 TEST_BIN = sched_hint_test
 
 # Build targets

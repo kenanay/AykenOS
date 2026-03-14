@@ -4,9 +4,9 @@
 //! passed to the loop body during execution. This is a critical enhancement to verify
 //! that the iterator variable contains the correct values from the range sequence.
 
-use semantic_cli::bcib::{LoopInstruction, LoopID, LoopConfig, Value, ValueType, LoopRange};
-use semantic_cli::loop_engine::{LoopExecutor, LoopBodyFn, LoopBodyResult};
-use semantic_cli::error::{SemanticCLIError, ErrorCode};
+use semantic_cli::bcib::{LoopConfig, LoopID, LoopInstruction, LoopRange, Value, ValueType};
+use semantic_cli::error::{ErrorCode, SemanticCLIError};
+use semantic_cli::loop_engine::{LoopBodyFn, LoopBodyResult, LoopExecutor};
 use semantic_cli::types::SourceLocation;
 
 fn create_test_for_loop_with_range(range: LoopRange) -> LoopInstruction {
@@ -38,24 +38,30 @@ fn test_range_iterator_values_positive_step() {
             acc.push(Value::Number(expected_iterator_value as f64));
             Ok(LoopBodyResult::Normal(Value::Array(acc)))
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_success());
     assert_eq!(result.get_iterations_completed(), 4); // 4 iterations: 2, 4, 6, 8
-    
+
     // Verify the expected iterator values were captured
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 4);
-        assert_eq!(*final_array, vec![
-            Value::Number(2.0),  // First iteration: start=2
-            Value::Number(4.0),  // Second iteration: 2+2=4
-            Value::Number(6.0),  // Third iteration: 4+2=6
-            Value::Number(8.0),  // Fourth iteration: 6+2=8
-        ]);
+        assert_eq!(
+            *final_array,
+            vec![
+                Value::Number(2.0), // First iteration: start=2
+                Value::Number(4.0), // Second iteration: 2+2=4
+                Value::Number(6.0), // Third iteration: 4+2=6
+                Value::Number(8.0), // Fourth iteration: 6+2=8
+            ]
+        );
     } else {
         panic!("Expected array accumulator");
     }
@@ -75,25 +81,31 @@ fn test_range_iterator_values_negative_step() {
             acc.push(Value::Number(expected_iterator_value as f64));
             Ok(LoopBodyResult::Normal(Value::Array(acc)))
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_success());
     assert_eq!(result.get_iterations_completed(), 5); // 5 iterations: 10, 8, 6, 4, 2
-    
+
     // Verify the expected reverse iterator values were captured
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 5);
-        assert_eq!(*final_array, vec![
-            Value::Number(10.0), // First iteration: start=10
-            Value::Number(8.0),  // Second iteration: 10-2=8
-            Value::Number(6.0),  // Third iteration: 8-2=6
-            Value::Number(4.0),  // Fourth iteration: 6-2=4
-            Value::Number(2.0),  // Fifth iteration: 4-2=2
-        ]);
+        assert_eq!(
+            *final_array,
+            vec![
+                Value::Number(10.0), // First iteration: start=10
+                Value::Number(8.0),  // Second iteration: 10-2=8
+                Value::Number(6.0),  // Third iteration: 8-2=6
+                Value::Number(4.0),  // Fourth iteration: 6-2=4
+                Value::Number(2.0),  // Fifth iteration: 4-2=2
+            ]
+        );
     } else {
         panic!("Expected array accumulator");
     }
@@ -113,25 +125,31 @@ fn test_range_iterator_values_step_1() {
             acc.push(Value::Number(expected_iterator_value as f64));
             Ok(LoopBodyResult::Normal(Value::Array(acc)))
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_success());
     assert_eq!(result.get_iterations_completed(), 5); // 5 iterations: 0, 1, 2, 3, 4
-    
+
     // Verify the expected iterator values
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 5);
-        assert_eq!(*final_array, vec![
-            Value::Number(0.0),
-            Value::Number(1.0),
-            Value::Number(2.0),
-            Value::Number(3.0),
-            Value::Number(4.0),
-        ]);
+        assert_eq!(
+            *final_array,
+            vec![
+                Value::Number(0.0),
+                Value::Number(1.0),
+                Value::Number(2.0),
+                Value::Number(3.0),
+                Value::Number(4.0),
+            ]
+        );
     } else {
         panic!("Expected array accumulator");
     }
@@ -150,24 +168,30 @@ fn test_range_iterator_values_large_step() {
             acc.push(Value::Number(expected_iterator_value as f64));
             Ok(LoopBodyResult::Normal(Value::Array(acc)))
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_success());
     assert_eq!(result.get_iterations_completed(), 4); // 4 iterations: 0, 25, 50, 75
-    
+
     // Verify the expected iterator values
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 4);
-        assert_eq!(*final_array, vec![
-            Value::Number(0.0),
-            Value::Number(25.0),
-            Value::Number(50.0),
-            Value::Number(75.0),
-        ]);
+        assert_eq!(
+            *final_array,
+            vec![
+                Value::Number(0.0),
+                Value::Number(25.0),
+                Value::Number(50.0),
+                Value::Number(75.0),
+            ]
+        );
     } else {
         panic!("Expected array accumulator");
     }
@@ -186,15 +210,18 @@ fn test_range_iterator_values_single_iteration() {
             acc.push(Value::Number(expected_iterator_value as f64));
             Ok(LoopBodyResult::Normal(Value::Array(acc)))
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_success());
     assert_eq!(result.get_iterations_completed(), 1); // Single iteration
-    
+
     // Verify the single iterator value
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 1);
@@ -215,7 +242,7 @@ fn test_range_iterator_values_with_break() {
         if let Value::Array(mut acc) = accumulator.clone() {
             let expected_iterator_value = 1 + iteration as i64;
             acc.push(Value::Number(expected_iterator_value as f64));
-            
+
             // Break after capturing 3 values
             if iteration >= 2 {
                 Ok(LoopBodyResult::Break(Value::Array(acc)))
@@ -223,23 +250,29 @@ fn test_range_iterator_values_with_break() {
                 Ok(LoopBodyResult::Normal(Value::Array(acc)))
             }
         } else {
-            Err(SemanticCLIError::execution_error("Invalid accumulator type", ErrorCode::E500))
+            Err(SemanticCLIError::execution_error(
+                "Invalid accumulator type",
+                ErrorCode::E500,
+            ))
         }
     });
 
     let result = executor.execute_loop(&instruction, body_fn).unwrap();
-    
+
     assert!(result.is_break());
     assert_eq!(result.get_iterations_completed(), 3); // 3 iterations before break
-    
+
     // Verify the iterator values before break
     if let Some(Value::Array(final_array)) = result.get_accumulator() {
         assert_eq!(final_array.len(), 3);
-        assert_eq!(*final_array, vec![
-            Value::Number(1.0), // First iteration: 1
-            Value::Number(2.0), // Second iteration: 2
-            Value::Number(3.0), // Third iteration: 3 (break)
-        ]);
+        assert_eq!(
+            *final_array,
+            vec![
+                Value::Number(1.0), // First iteration: 1
+                Value::Number(2.0), // Second iteration: 2
+                Value::Number(3.0), // Third iteration: 3 (break)
+            ]
+        );
     } else {
         panic!("Expected array accumulator");
     }

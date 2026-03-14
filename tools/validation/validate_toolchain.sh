@@ -3,7 +3,12 @@
 # Author: Kenan AY
 # Purpose: Automated toolchain detection and QEMU boot validation for Linux/WSL
 
-set -e
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/tools/lib/ayken_path_contract.sh"
+cd "${ROOT}"
+ayken_prepare_out_dirs
 
 # Default parameters
 SKIP_QEMU=false
@@ -183,7 +188,7 @@ test_build_system() {
         success "make all successful"
         
         # Check output files
-        if [[ -f "kernel.elf" && -f "bootloader/efi/BOOTX64.EFI" ]]; then
+        if [[ -f "${AYKEN_KERNEL_ELF}" && -f "${AYKEN_BOOT_EFI}" ]]; then
             success "Build artifacts created successfully"
             BUILD_VALID=true
             return 0
@@ -218,7 +223,7 @@ test_qemu_boot() {
     info "Testing QEMU boot validation..."
     
     # Create EFI image if needed (deterministic via Makefile guard)
-    if [[ ! -f "EFI.img" ]]; then
+    if [[ ! -f "${AYKEN_EFI_IMG}" ]]; then
         info "Creating EFI image..."
         if command_exists "make"; then
             make efi-img
@@ -231,10 +236,11 @@ test_qemu_boot() {
     # Run QEMU with timeout
     info "Starting QEMU boot test (timeout: ${QEMU_TIMEOUT}s)..."
     
-    local qemu_output="qemu_output.log"
-    local qemu_error="qemu_error.log"
-    local dbgcon_log="qemu_debugcon.log"
-    local qemu_trace="qemu_trace.log"
+    mkdir -p "${AYKEN_LOG_DIR}"
+    local qemu_output="${AYKEN_LOG_DIR}/validate_qemu_output.log"
+    local qemu_error="${AYKEN_LOG_DIR}/validate_qemu_error.log"
+    local dbgcon_log="${AYKEN_LOG_DIR}/validate_qemu_debugcon.log"
+    local qemu_trace="${AYKEN_LOG_DIR}/validate_qemu_trace.log"
     rm -f "$qemu_output" "$qemu_error" "$dbgcon_log" "$qemu_trace"
     local timeout_cmd
     timeout_cmd="$(detect_timeout_cmd)"
@@ -260,7 +266,8 @@ test_qemu_boot() {
 
     local ovmf_args=()
     if [[ -n "$ovmf_code" && -n "$ovmf_vars" ]]; then
-        ovmf_vars_copy="ovmf_vars.fd"
+        ovmf_vars_copy="${AYKEN_OVMF_VARS_RUN}"
+        mkdir -p "$(dirname "${ovmf_vars_copy}")"
         cp -f "$ovmf_vars" "$ovmf_vars_copy"
         ovmf_args+=(
             -machine pc
@@ -273,7 +280,7 @@ test_qemu_boot() {
     if [[ -n "$timeout_cmd" ]]; then
         "$timeout_cmd" "$QEMU_TIMEOUT" qemu-system-x86_64 \
             "${ovmf_args[@]}" \
-            -drive format=raw,file=EFI.img \
+            -drive format=raw,file="${AYKEN_EFI_IMG}" \
             -serial file:"$qemu_output" \
             -chardev file,id=dbgcon,path="$dbgcon_log" \
             -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
@@ -285,7 +292,7 @@ test_qemu_boot() {
     else
         qemu-system-x86_64 \
             "${ovmf_args[@]}" \
-            -drive format=raw,file=EFI.img \
+            -drive format=raw,file="${AYKEN_EFI_IMG}" \
             -serial file:"$qemu_output" \
             -chardev file,id=dbgcon,path="$dbgcon_log" \
             -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
