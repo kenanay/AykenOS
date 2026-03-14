@@ -11,21 +11,26 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 [![Author: Kenan AY](https://img.shields.io/badge/Author-Kenan%20AY-blue.svg)](mailto:kenanay@example.com)
 [![Status: Protected](https://img.shields.io/badge/Status-Protected-orange.svg)](#-important-legal-notice)
 
-**Oluşturan:** Kenan AY  
-**Oluşturma Tarihi:** 01.01.2026  
-**Son Güncelleme:** 05.03.2026
-**Snapshot/Head:** `main@7af35acc`  
-**CURRENT_PHASE:** `10`  
-**Freeze Zinciri:** `make ci-freeze` = 21 gate  
-**Acil Blocker:** `missing_marker:P10_RING3_USER_CODE`  
-**Yakın Hedef:** `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` -> PASS  
-**Durum Notu:** Docs updated; gates not rerun in this commit.
+**Oluşturan:** Kenan AY
+**Oluşturma Tarihi:** 01.01.2026
+**Son Güncelleme:** 14.03.2026
+**Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11`
+**Evidence Git SHA:** `8029f8a5`
+**Closure Sync / Remote CI:** `fe9031d7` (`ci-freeze#22797401328 = success`)
+**CURRENT_PHASE:** `12` (`trust layer — local closure-ready, remote confirmation pending`)
+**Freeze Zinciri:** `make ci-freeze` = 21 gate | `make ci-freeze-local` = 20 gate
+**Acil Blocker:** `yok`
+**Yakın Hedef:** `PR #54 merge` + `official Phase-12 remote closure confirmation` + `formal phase transition to Phase-13`
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-A1 (Ring3 Process Preparation) TAMAMLANDI ✅ | Phase 10-A2 strict marker blocker aktif 🚧 | Constitutional Rule System Phases 1-12 tamamlandı ✅ | Architecture Freeze ACTIVE ✅  
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer LOCAL CLOSURE-READY ✅ | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
-**Phase 10 Status:** Baseline lock repoda ✅ | A2 strict gate blocker: `missing_marker:P10_RING3_USER_CODE` 🚧
+**Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
+**Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
+**Phase 12 Status:** `P12-01..P12-18 = COMPLETED_LOCAL` ✅ | authority sinkhole absorption ✅ | trust reuse runtime surface ✅ | verification diversity gates ✅ | normatif `Phase-12C` gate seti GREEN ✅ | PR #54 açık (remote CI bekliyor)
+**Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
+**Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
-⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); baseline-init akışında ve yerel denemelerde **PROVISIONAL** yol kullanılabilir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md).
+⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
 
 ---
 
@@ -36,11 +41,11 @@ This software is **proprietary and confidential**. All rights reserved by Kenan 
 ### ⚖️ Usage Restrictions:
 - ✅ **Educational viewing** permitted for learning purposes
 - ❌ **Commercial use** prohibited without license
-- ❌ **Modification** prohibited without written permission  
+- ❌ **Modification** prohibited without written permission
 - ❌ **Distribution** prohibited without authorization
 - ❌ **Reverse engineering** prohibited
 
-### 📧 Licensing Contact:
+### � Licensing Contact:
 For commercial licensing, partnerships, or permissions:
 - **Email**: kenanay@example.com
 - **Subject**: "AykenOS Licensing Inquiry"
@@ -53,178 +58,65 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 
 ### Mimari Dönüşüm
 
-AykenOS, POSIX-benzeri geleneksel işletim sistemi mimarisinden **execution-centric**, **Ring3-empowered** (kullanıcı modu güçlendirilmiş) ve **AI-native** bir mimariye başarıyla dönüştürülmüştür:
-
 - **Ring0 (Kernel Mode):** 11 execution-centric mekanizma syscall'ı (1000-1010 aralığı)
 - **Ring3 (User Mode):** Tüm politika kararları (VFS, DevFS, AI, scheduler) kullanıcı modunda
 - **Capability-Based Security:** Yetenek tabanlı güvenlik modeli ile erişim kontrolü
 - **BCIB Execution Engine:** Binary Compressed Instruction Bundle formatı ile veri-odaklı yürütme
 
-### Felsefe
-
-AykenOS, klasik işletim sistemi kavramlarını veri-odaklı ve AI-bütünleşik bir yaklaşımla yeniden ele alır. Geleneksel `mkdir`, `cd`, `ls` komutlarıyla sembolize edilen kabuk anlayışı yerine, "AI-native shell + veri işletim sistemi" konseptini hedefler. Dosya sistemi, klasörlerden ziyade anlamlı veri konteynerleri barındıran hibrit bir modelle tasarlanmıştır.
-
 ---
 
 ## 🚀 Temel Özellikler
 
-### Mimari Yenilikler
+### Execution-Centric Syscall Interface (1000-1010)
 
-- **Execution-Centric Syscall Interface:** Geleneksel POSIX syscall'lar yerine, 11 temel mekanizma syscall'ı
-  - `sys_v2_map_memory` (1000): Bellek haritalama
-  - `sys_v2_unmap_memory` (1001): Bellek haritalama kaldırma
-  - `sys_v2_switch_context` (1002): Bağlam değiştirme
-  - `sys_v2_submit_execution` (1003): BCIB yürütme gönderimi
-  - `sys_v2_wait_result` (1004): Yürütme sonucu bekleme
-  - `sys_v2_interrupt_return` (1005): Kesme dönüşü
-  - `sys_v2_time_query` (1006): Zaman sorgulama
-  - `sys_v2_capability_bind` (1007): Yetenek bağlama
-  - `sys_v2_capability_revoke` (1008): Yetenek iptal etme
-  - `sys_v2_exit` (1009): Süreç sonlandırma
-  - `sys_v2_debug_putchar` (1010): Ring3 debug heartbeat
-
-- **Ring3 Empowerment:** Tüm politika kararları kullanıcı modunda
-  - VFS (Virtual File System) operasyonları Ring3'te
-  - DevFS (Device File System) operasyonları Ring3'te
-  - AI servisleri Ring3'te
-  - Scheduler politika kararları Ring3'te
-
-- **Capability-Based Security:** Yetenek tabanlı güvenlik modeli
-  - Token tabanlı erişim kontrolü
-  - Granüler izin yönetimi
-  - Güvenli kaynak paylaşımı
+| ID | Syscall | Açıklama |
+|----|---------|----------|
+| 1000 | `sys_v2_map_memory` | Bellek haritalama |
+| 1001 | `sys_v2_unmap_memory` | Bellek haritalama kaldırma |
+| 1002 | `sys_v2_switch_context` | Bağlam değiştirme |
+| 1003 | `sys_v2_submit_execution` | BCIB yürütme gönderimi |
+| 1004 | `sys_v2_wait_result` | Yürütme sonucu bekleme |
+| 1005 | `sys_v2_interrupt_return` | Kesme dönüşü |
+| 1006 | `sys_v2_time_query` | Zaman sorgulama |
+| 1007 | `sys_v2_capability_bind` | Yetenek bağlama |
+| 1008 | `sys_v2_capability_revoke` | Yetenek iptal etme |
+| 1009 | `sys_v2_exit` | Süreç sonlandırma |
+| 1010 | `sys_v2_debug_putchar` | Ring3 debug heartbeat |
 
 ### Çoklu Mimari Desteği
 
 - **UEFI/x86_64:** Tam özellikli kernel ve bootloader ✅
-- **ARM64:** Bootloader implementasyonu (kernel portu devam ediyor) 🔄
-- **RISC-V:** Bootloader implementasyonu (kernel portu devam ediyor) 🔄
+- **ARM64:** Bootloader implementasyonu 🔄
+- **RISC-V:** Bootloader implementasyonu 🔄
 - **Raspberry Pi:** Özel bootloader desteği ✅
 - **MCU:** Mikrodenetleyici bootloader ✅
 
-### Bellek ve Süreç Yönetimi
-
-- **Gelişmiş Bellek Yönetimi:**
-  - Bitmap tabanlı fiziksel bellek yöneticisi
-  - 4-seviyeli paging (PML4)
-  - Kernel heap (kmalloc/kfree)
-  - Higher-half kernel mapping
-
-- **Ring3 Kullanıcı Süreçleri:**
-  - Tam izolasyon ile kullanıcı modu süreç yürütme
-  - Per-process virtual memory
-  - Güvenli kernel-user geçişleri
-
-- **Preemptive Multitasking:**
-  - Zamanlayıcı tabanlı çoklu görev desteği (100 Hz)
-  - Context switching
-  - Ready/blocked kuyrukları
-
-### AI ve Veri İşleme
-
-- **Ring3 AI Runtime:** Kullanıcı modunda çalışan AI servisleri
-- **ABDF Format:** Ayken Binary Data Format - AI/ML veri desteği
-- **BCIB Format:** Binary CLI Instruction Buffer - veri-odaklı komut yapısı
-- **Multi-Agent Orchestration:** Çok-ajanlı orkestrasyon sistemi
-  - **Planning Engine:** A* ve beam search algoritmaları ile gelişmiş planlama
-  - **Coordination Protocols:** Ajan koordinasyonu ve durum senkronizasyonu
-  - **Conflict Resolution:** Kaynak çakışma tespiti ve çözümü
-  - **Learning & Optimization:** Performans öğrenme ve adaptif optimizasyon
-
-### Kullanıcı Arayüzü
-
-- **Framebuffer Konsolu:**
-  - UTF-8/Türkçe desteği
-  - Renkli çıktı
-  - 8x16 bitmap font
-
-- **Boot UI:**
-  - Splash ekran
-  - Logo animasyonu (128x128 ve 256x256)
-  - Progres çubuğu
-
-- **Semantic CLI:** Doğal dil destekli komut satırı arayüzü (geliştirme aşamasında)
-
-### Dosya Sistemi
-
-- **Ring3 VFS:** Kullanıcı modunda Virtual File System
-- **Ring3 DevFS:** Kullanıcı modunda Device File System
-- **RAM-based TarFS:** Bellek tabanlı tar arşiv dosya sistemi
-
 ---
 
-## � Proje Yapısı
+## 📁 Proje Yapısı
 
 ```
 AykenOS/
-├── kernel/              # C tabanlı çekirdek (x86_64)
-│   ├── arch/           # Mimariye özel kod (x86_64)
-│   │   └── x86_64/    # x86_64 assembly ve C kodu
-│   ├── sys/            # Sistem çağrıları (v2 interface)
-│   ├── mm/             # Bellek yönetimi
-│   ├── sched/          # Zamanlayıcı
-│   ├── proc/           # Süreç yönetimi
-│   ├── fs/             # Dosya sistemi (minimal stubs)
-│   └── drivers/        # Sürücüler (konsol, UI)
-│
-├── bootloader/         # Çoklu mimari bootloader'lar
-│   ├── efi/           # UEFI x86_64 bootloader
-│   ├── arm64/         # ARM64 bootloader
-│   ├── riscv/         # RISC-V bootloader
-│   ├── rpi/           # Raspberry Pi bootloader
-│   └── mcu/           # Mikrodenetleyici bootloader
-│
-├── userspace/          # Ring3 kullanıcı modu bileşenleri
-│   ├── libayken/      # Ring3 VFS/DevFS/Scheduler implementasyonları
-│   ├── ai-runtime/    # AI runtime servisleri
-│   ├── bcib-runtime/  # BCIB execution engine
-│   ├── orchestration/ # Multi-agent orchestration
-│   ├── semantic-cli/  # Semantic command-line interface
-│   └── dsl-parser/    # Domain-specific language parser
-│
-├── ayken-core/         # Rust tabanlı AI core sistemi
-│   └── crates/        # Rust crate'leri
-│       ├── abdf/      # Ayken Binary Data Format
-│       ├── abdf-builder/ # ABDF builder araçları
-│       └── bcib/      # Binary CLI Instruction Buffer
-│
-├── ayken/              # Rust tabanlı constitutional rule system (AykenOS geliştirme aracı)
-│   ├── ahs/           # Architecture Health Score system
-│   ├── ahts/          # Architecture Health Trend Score system
-│   ├── allow/         # Allow attribute parsing and validation
-│   ├── audit/         # Immutable audit trail system
-│   ├── cli/           # Command-line interface (ayken check)
-│   ├── constitution/  # Constitutional policy constants & integration limits
-│   ├── decision/      # Constitutional decision tree
-│   ├── diagnostic/    # Diagnostic output (VS Code, CI, text)
-│   ├── escalation/    # Allow escalation detection
-│   ├── exception/     # Exception hierarchy (allow/waiver)
-│   ├── explain/       # Rule explanation engine
-│   ├── lifecycle/     # Waiver lifecycle management
-│   ├── mars/          # Module-level Architecture Risk Score system (risk, CI, VS Code, dashboard)
-│   ├── phase/         # Phase detection and matrix
-│   ├── rules/         # Constitutional rule definitions
-│   ├── scanner/       # Rule violation scanning
-│   ├── steering/      # Steering files management
-│   ├── vscode/        # VS Code integration
-│   └── waiver/        # Waiver system with expiry and renewal
-│
-├── docs/               # Dokümantasyon
-│   ├── phase1/        # Faz 1 raporları
-│   ├── phase2/        # Faz 2 raporları ve spesifikasyonlar
-│   ├── development/   # Geliştirme kılavuzları
-│   ├── setup/         # Kurulum kılavuzları
-│   ├── roadmap/       # Yol haritası + freeze workflow
-│   ├── rfc/           # RFC şablonları
-│   ├── waivers/       # Waiver registry + template
-│   └── architecture-board/ # Karar kayıtları
-│
-├── .github/            # PR template ve workflow metadata
-│   └── pull_request_template.md
-│
-└── tools/              # Geliştirme araçları
-
-Detaylı yapı için: docs/development/PROJECT_STRUCTURE.md
+├── kernel/              # C tabanlı çekirdek (Ring0, x86_64)
+├── bootloader/          # Çoklu mimari bootloader'lar
+├── userspace/           # Ring3 bileşenleri (Rust + C)
+│   ├── libayken/       # Ring3 VFS/DevFS/Scheduler (C)
+│   ├── bcib-runtime/   # BCIB execution engine
+│   ├── semantic-cli/   # Semantic CLI
+│   ├── dsl-parser/     # DSL parser
+│   └── proofd/         # Proof daemon service
+├── ayken-core/          # AI/data systems (Rust)
+│   └── crates/
+│       ├── abdf/       # Ayken Binary Data Format
+│       ├── bcib/       # Binary CLI Instruction Buffer
+│       └── proof-verifier/ # Trust layer verification
+├── ayken/               # Constitutional governance tool (Rust)
+├── docs/                # Dokümantasyon
+│   └── specs/phase12-trust-layer/  # Phase 12 spesifikasyonları
+├── scripts/ci/          # CI gate scriptleri
+├── tools/ci/            # CI test araçları
+├── evidence/            # CI gate evidence (auto-generated)
+└── constitution/        # Constitutional framework
 ```
 
 ---
@@ -233,150 +125,48 @@ Detaylı yapı için: docs/development/PROJECT_STRUCTURE.md
 
 ### Gereksinimler
 
-**C/Assembly Toolchain:**
-- `x86_64-elf-gcc` - Cross-compiler
-- `x86_64-elf-ld` - Linker
-- `nasm` - Assembler
+- `clang` + `ld.lld` — Kernel toolchain
+- `nasm` — Assembler
+- `qemu-system-x86_64` — Test/emülasyon
+- `cargo` / `rustc` — Rust bileşenleri (opsiyonel)
 
-**UEFI Bootloader:**
-- `clang` (veya `x86_64-w64-mingw32-gcc`)
-
-**Rust (Opsiyonel):**
-- `cargo` - Rust build tool
-- `rustc` - Rust compiler
-- Ayken-core AI bileşenleri için gerekli
-
-**Test ve Emülasyon:**
-- `qemu-system-x86_64` - QEMU emülatör
-
-### Temel Derleme Akışı
+### Temel Komutlar
 
 ```bash
-# Temizlik
-make clean
+# Temiz build
+make clean && make all
 
-# Kernel ve bootloader derle
-make all        # kernel.elf ve BOOTX64.EFI oluşturur
+# EFI disk imajı + QEMU
+make efi-img
+make run
 
-# EFI disk imajı oluştur
-make efi-img    # EFI.img oluşturur
-
-# QEMU ile test et
-make run        # QEMU ile EFI.img çalıştır
+# Profil bazlı build
+make release          # Optimized (default)
+make validation       # Debug + instrumentation
+make validation-strict # Validation + -Werror
 ```
 
-### Profil Bazlı Build ve Preempt Doğrulama
+### CI Gates
 
 ```bash
-# Release profil (default, temiz binary)
-make release
-
-# Validation profil (debug + instrumentation)
-make validation
-
-# Validation profil + -Werror
-make validation-strict
-
-# Deterministic preempt doğrulama (marker + fallback)
-make run-preempt
-
-# Strict marker-mode preempt doğrulama (fallback kapalı)
-make run-preempt-strict
-
-# Boundary CI gate (symbol deny/allow + evidence raporu)
+# Pre-CI discipline (local, ~30-60s)
+make ci-gate-abi
 make ci-gate-boundary
-
-# Hygiene CI gate (tracked artifact + dirty tracked kontrolü)
 make ci-gate-hygiene
+make ci-gate-constitutional
 
-# Drift activation gate (Phase-9 requirement: PASS/FAIL/SKIP)
-make ci-gate-drift-activation
-
-# Performance regression gate (baseline + drift persistence + allowlist)
-make ci-gate-performance
-
-# Summary gate (auto-discovery + PASS zorlaması)
-make ci-summarize
-
-# Tam CI akışı (boundary + hygiene + validate-full)
-make ci
-
-# Strict freeze suite (as-of 2026-03-05: 21 gate)
-make ci-freeze
+# Tam CI suite
+make ci-freeze        # 21 gate (strict, fail-closed)
+make ci-freeze-local  # 20 gate (local)
 ```
 
-Notlar:
-- `run-preempt-strict` otomatik olarak `STRICT_MARKERS=1` ve `FORCE_EFI_REBUILD=1` ile çalışır.
-- `run_preempt_test.sh` log analizinde `debugcon + serial` birleşik kaynağı kullanır.
-- Context ABI tek-kaynak modeli aktiftir: `kernel/include/ayken_abi.h` ana kaynaktır, NASM için `kernel/include/generated/ayken_abi.inc` otomatik üretilir.
-- `make guard-context-offsets` context_switch offset disiplinini build aşamasında zorunlu kılar.
-- `make ci-gate-boundary` çıktıları `evidence/run-<RUN_ID>/` altında saklanır (`reports/summary.json` dahil).
-- `make ci-gate-hygiene` tracked artifact ve tracked dirty-tree ihlallerini evidence ile fail eder.
-- `make ci-summarize` gate raporlarını auto-discovery ile birleştirir; `summary.json` PASS değilse fail eder.
-- Freeze workflow ve done kriterleri: `docs/roadmap/freeze-enforcement-workflow.md`.
-- Freeze PR şablonu: `docs/development/PR_FREEZE_TEMPLATE.md` ve `.github/pull_request_template.md`.
-
-### Rust AI Bileşenleri (Opsiyonel)
+### Rust Bileşenleri
 
 ```bash
-cd ayken-core
-
-# Tüm crate'leri derle
-cargo build
-
-# Testleri çalıştır
-cargo test
-
-# Belirli bir crate'i derle
-cargo build -p abdf
-cargo build -p bcib
-cargo build -p abdf-builder
+cd ayken-core && cargo build && cargo test
+cd userspace && cargo build && cargo test
+cd ayken && cargo build && ./target/debug/ayken check
 ```
-
-### Userspace Bileşenleri
-
-```bash
-cd userspace
-
-# Tüm Rust bileşenlerini derle
-cargo build
-
-# Testleri çalıştır
-cargo test
-
-# Orchestration testleri
-cargo test -p orchestration
-
-# GATE D validation
-cargo test -p orchestration gate_d_exit_criteria_validation
-```
-
----
-
-## 💾 USB'den Boot Etme
-
-AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
-
-### Otomatik Scriptler
-
-**Windows:**
-```powershell
-.\make_usb_boot.ps1
-```
-
-**Linux/macOS:**
-```bash
-./make_usb_boot.sh
-```
-
-### Detaylı Kılavuzlar
-
-- **Hızlı Başlangıç:** [docs/setup/QUICK_START_USB.md](docs/setup/QUICK_START_USB.md)
-- **Detaylı Kılavuz:** [docs/setup/USB_BOOT_GUIDE.md](docs/setup/USB_BOOT_GUIDE.md)
-- **Platform Kılavuzları:**
-  - [docs/setup/WINDOWS_WSL_SETUP_GUIDE.md](docs/setup/WINDOWS_WSL_SETUP_GUIDE.md)
-  - [docs/setup/LINUX_SETUP_GUIDE.md](docs/setup/LINUX_SETUP_GUIDE.md)
-  - [docs/setup/MACOS_SETUP_GUIDE.md](docs/setup/MACOS_SETUP_GUIDE.md)
 
 ---
 
@@ -384,339 +174,100 @@ AykenOS, fiziksel donanımda test edilmek üzere USB'den boot edilebilir.
 
 ### Tamamlanan Fazlar
 
-- ✅ **Faz 1:** Çekirdek temelinin tamamlanması (%100)
-  - Bootloader ve ELF loader
-  - Bellek yönetimi (physical, virtual, heap)
-  - CPU/GDT/IDT/ISR kurulumu
-  - Temel sürücüler (PIC, PIT, konsol)
+| Faz | Durum | Açıklama |
+|-----|-------|----------|
+| Phase 1 — Core Kernel | ✅ CLOSED | UEFI boot, bellek, GDT/IDT, sürücüler |
+| Phase 1.5 — Stabilization | ✅ CLOSED | Ring3 round-trip, toolchain doğrulama |
+| Phase 2 — Execution-Centric | ✅ CLOSED | 11 syscall, Ring3 VFS/DevFS, BCIB |
+| Phase 2.5 — Legacy Cleanup | ✅ CLOSED | POSIX kaldırma, Ring0 policy temizliği |
+| Phase 3.4 — Multi-Agent | ✅ CLOSED | Gate A-E tamamlandı |
+| Phase 4.3 — Performance | ✅ CLOSED | HashMap→Indexed (3-5x), 80%+ mem azalma |
+| Phase 4.4 — Ring3 Model | ✅ CLOSED | Ring3 execution, syscall roundtrip |
+| Phase 4.5 — Policy Accept | ✅ CLOSED | Gate-4 policy-accept proof operasyonel |
+| Phase 10 — Runtime | ✅ OFFICIALLY CLOSED | CPL3 entry, deterministic runtime |
+| Phase 11 — Verification | ✅ OFFICIALLY CLOSED | Ledger, ETI, replay, proof bundle |
+| Phase 12 — Trust Layer | 🟡 LOCAL CLOSURE-READY | PR #54 açık, remote CI bekliyor |
 
-- ✅ **Faz 1.5:** Stabilizasyon ve Ring3 doğrulaması (%100)
-  - Toolchain kurulumu ve doğrulaması
-  - Ring3 round-trip testleri
-  - QEMU entegrasyon testleri
-  - Kod temizliği ve tutarlılık
+### Phase 12 Detayı (Güncel)
 
-- ✅ **Faz 2:** Execution-centric mimari dönüşümü (%100)
-  - 11 syscall aralığı aktif (1000-1010)
-  - Ring3 VFS/DevFS implementasyonu
-  - BCIB execution engine
-  - Capability-based security
+Phase 12 trust layer kapsamında tamamlananlar:
 
-- ✅ **Faz 2.5:** Legacy kod temizliği (%100)
-  - POSIX syscall'ların kaldırılması
-  - Ring0 policy kod temizliği
-  - Stub fonksiyonların minimizasyonu
+- ✅ `P12-01..P12-18` — Tüm lokal gate'ler GREEN
+- ✅ Authority Sinkhole Absorption — `gate_authority_sinkhole_absorption.sh`
+- ✅ Authority Sinkhole Companion Flow/Producer
+- ✅ Trust Reuse Runtime Evaluator / Surface / Emitter
+- ✅ Verification Context Object + Verifier Attestation
+- ✅ Verification Diversity Floor / Ledger / Producer
+- ✅ Cartel Correlation gate
+- ✅ proofd service observability boundary
+- ✅ Cross-surface basin alignment metrics
+- 🟡 PR #54 — remote `ci-freeze` gate bekliyor
 
-- 🔄 **Faz 3.4:** Multi-Agent Orchestration (tamamlandı ✅)
-  - ✅ **GATE A:** Orchestration Core (tamamlandı)
-  - ✅ **GATE B:** Agent Pool Management (tamamlandı)
-  - ✅ **GATE C:** Hardware Intelligence (tamamlandı)
-  - ✅ **GATE D:** Advanced Planning & Coordination (tamamlandı)
-  - ✅ **GATE E:** Security & Integration (tamamlandı)
+### CI Gate Durumu (14 Mart 2026)
 
-- ✅ **Phase 4.3:** Performance Optimization (tamamlandı ✅)
-  - ✅ **Evidence-Based Optimization:** HashMap → Indexed structures (3-5x improvement)
-  - ✅ **Algorithmic Improvements:** O(n²) → O(n) complexity transformation
-  - ✅ **Memory Optimization:** 80%+ reduction in allocations (285KB → <50KB)
-  - ✅ **Single-Pass Processing:** 7 passes → 1 pass streaming architecture
-  - ✅ **Constitutional Compliance:** All optimizations preserve deterministic behavior
-  - ✅ **Performance Validation:** 3-10x improvements achieved, 97.9% test coverage
-  - ✅ **Integration Success:** Zero breaking changes, seamless codebase integration
-
-- ✅ **Phase 4.4:** Ring3 Execution Model (TAMAMLANDI ✅)
-  - ✅ **Ring3 User Process Execution:** Kullanıcı modu süreç yürütme başarılı
-  - ✅ **Syscall Interface Operational:** INT 0x80 syscall interface çalışıyor
-  - ✅ **Syscall Roundtrip Validated:** Kernel ↔ Ring3 geçişleri doğrulandı
-  - ✅ **11 Execution-Centric Syscalls:** 1000-1010 aralığı operasyonel
-  - ✅ **Capability-Based Security:** Yetenek tabanlı güvenlik aktif
-  - ✅ **Ring3 VFS/DevFS:** Kullanıcı modunda dosya sistemi operasyonları
-  - ✅ **BCIB Execution Engine:** Binary instruction execution çalışıyor
-
-- ✅ **Phase 10-A1:** Ring3 Process Preparation (TAMAMLANDI ✅)
-  - ✅ **ELF64 Parser:** Minimal ELF validation (STATIC functions, Ring0 export minimization)
-  - ✅ **User Address Space:** PML4 allocation, kernel half copy, USER bit clearing
-  - ✅ **PT_LOAD Segment Loading:** Full iteration, BSS zero-fill, page flag derivation
-  - ✅ **Stack Allocation:** User stack (2 pages) + kernel stack (RSP0) allocation
-  - ✅ **Mailbox Allocation:** Scheduler bridge mailbox at 0x700000
-  - ✅ **Process Registration:** PCB integration, scheduler queueing, PROC_READY state
-  - ✅ **Marker Sequence:** `KERNEL_BEFORE_RING3 → [[AYKEN_RING3_PREP_OK]] → P10_SCHED_ARMED`
-
-- 🚧 **Phase 10-A2:** Real CPL3 Entry Proof (STRICT BLOCKER AKTİF)
-  - ✅ **TSS/GDT/IDT Validation:** Implemented
-  - ✅ **ring3_enter() Assembly:** IRETQ path implemented
-  - ✅ **#BP Handler Update:** Ring3 detection path implemented
-  - ✅ **Scheduler Dispatch Integration:** Implemented
-  - ❌ **Strict Gate Blocker:** `missing_marker:P10_RING3_USER_CODE`
-  - 🎯 **Near Target:** `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` PASS
-
-- 🚀 **Constitutional Integration:** Constitutional Stabilization & Lock (başlamaya hazır)
-  - **Single Decision Authority:** All decisions flow through Gate C constitutional validation
-  - **Evidence-Based Governance:** 100% evidence-backed decisions with complete audit trail
-  - **Constitutional Lock Enforcement:** Violations result in system block/exit
-  - **Unified Compliance Framework:** All constitutional requirements enforced at single point
-
-### 🛠️ Ayken Constitutional Rule System (Geliştirme Aracı)
-
-AykenOS'un geliştirilmesi için oluşturulan constitutional rule system:
-
-- ✅ **Task 10.1:** MARS Module Detection (tamamlandı ✅)
-  - ✅ **ModuleDetector:** Automatic boundary detection with hierarchical structure
-  - ✅ **Module Configuration:** TOML-based custom boundary definitions
-  - ✅ **File-to-Module Mapping:** Complete coverage with conflict detection
-  - ✅ **Constitutional Compliance:** Deterministic assignment, identity preservation
-  - ✅ **Test Coverage:** 5/5 MARS tests passing with constitutional validation
-
-### Önemli Kilometre Taşları
-
-| Hedef | Durum | Açıklama |
-|-------|-------|----------|
-| 11 Syscall Aralığı | ✅ | 1000-1010 aralığında execution-centric syscall'lar |
-| Ring3 VFS/DevFS | ✅ | Kullanıcı modunda tam implementasyon |
-| BCIB Execution Engine | ✅ | Ring3'te operasyonel |
-| Capability Security | ✅ | Yetenek tabanlı güvenlik aktif |
-| Multi-Agent System | ✅ | Planlama, koordinasyon, çakışma çözümü ve öğrenme |
-| Planning Engine | ✅ | A* ve beam search algoritmaları |
-| Coordination Protocols | ✅ | Ajan senkronizasyonu ve mesajlaşma |
-| Conflict Resolution | ✅ | Kaynak çakışma tespiti ve çözümü |
-| Learning & Optimization | ✅ | Performans öğrenme ve adaptif optimizasyon |
-| Gate C Submission Bridge | ✅ | Submit-only interface, mutation intents, pipeline planning |
-| Gate C IR Planner | ✅ | Semantic analysis, ordering hints, parallelism analysis |
-| Gate C Security Operations | ✅ | Security inspection, capability-based redaction |
-| Gate C REPL Visibility | ✅ | Plan visualization, semantic explanation |
-| Constitutional Lock (B-MODE) | ✅ | Register invariants, integration, reports modules locked |
-| Phase 4.2 Performance Engineering | ✅ | Evidence-based measurement infrastructure operational |
-| Performance Constitution | ✅ | Measurable > Optimized principle established |
-| Complexity Budget Tests | ✅ | Evidence for Phase 4.3 optimization identified |
-| Evidence Schema Lock | ✅ | Immutable performance evidence format |
-| Phase 4.3 Performance Optimization | ✅ | Evidence-based algorithmic improvements completed |
-| HashMap → Indexed Optimization | ✅ | 3-5x performance improvement achieved |
-| Memory Allocation Optimization | ✅ | 80%+ reduction in allocations (285KB → <50KB) |
-| Single-Pass Processing | ✅ | O(n²) → O(n) complexity transformation |
-| Constitutional Compliance | ✅ | All optimizations preserve deterministic behavior |
-| Ring3 Execution Model | ✅ | Kullanıcı modu süreç yürütme operasyonel |
-| Syscall Roundtrip | ✅ | INT 0x80 kernel ↔ Ring3 geçişleri doğrulandı |
-| Phase 4.4 Ring3 Model | ✅ | Ring3 execution model tamamlandı |
-| Phase 10-A1 Process Prep | ✅ | ELF loader, address space, stack, mailbox, registration |
-| Phase 10-A2 CPL3 Entry | 🚧 | Strict marker blocker: `missing_marker:P10_RING3_USER_CODE` |
-| ELF Parser (STATIC) | ✅ | Ring0 export minimization, constitutional compliance |
-| PT_LOAD Segment Loading | ✅ | Full iteration, BSS zero-fill, flag derivation |
-| User/Kernel Stack Alloc | ✅ | 2-page user stack, RSP0 kernel stack |
-| Mailbox Allocation | ✅ | Scheduler bridge at 0x700000 |
-| Process Registration | ✅ | PCB integration, PROC_READY state |
-| Evidence-Based Management | ✅ | 100% evidence-backed decisions with audit trail |
-| Constitutional Integration Spec | 🚀 | Single decision authority framework ready to begin |
-| **Ayken Constitutional Rule System** | | **Development Tool for AykenOS** |
-| MARS System Implementation | ✅ | Module-level Architecture Risk Score system operational |
-| Task 10.1 Module Detection | ✅ | File-to-module mapping with constitutional compliance |
-| Module Boundary Validation | ✅ | Deterministic assignment with identity preservation |
-
-### Performans Metrikleri
-
-**Boot Süresi:**
-- UEFI → Kernel entry: ~100ms
-- Early init: ~50ms
-- Late init: ~50ms
-- İlk süreç yürütme: ~10ms
-- **Toplam:** ~200ms
-
-**Scheduling:**
-- Timer frekansı: 100 Hz (10ms tick)
-- Context switch: ~1-2μs
-- Syscall latency: ~500ns-1μs
-
-**Multi-Agent Orchestration:**
-- Plan oluşturma: < 1s
-- Durum senkronizasyonu (10x): < 100ms
-- Kaynak istekleri (100x): < 100ms
-
-**Gate C Submission Bridge:**
-- Plan submission: < 1ms (100x hedef aşımı)
-- Mutation conflict detection: < 1ms (50x hedef aşımı)
-- Pipeline dependency analysis: < 1ms (10x hedef aşımı)
-- Security inspection: < 2ms (5x hedef aşımı)
-- End-to-end submission: < 5ms
-
-**Phase 4.3 Performance Optimization:**
-- Evidence-based algorithmic improvements: HashMap → Indexed (3-5x improvement)
-- Memory allocation optimization: 285KB → <50KB (80%+ reduction)
-- Single-pass processing: 7 passes → 1 pass (O(n²) → O(n))
-- Constitutional compliance: All optimizations preserve deterministic behavior
-- Complexity budget compliance: All tests pass with optimized algorithms
-- Performance validation: 3-10x improvements achieved in critical paths
-- Test coverage: 97.9% maintained (exceeds >95% target)
-- Integration success: Zero breaking changes introduced
+| Gate | Durum |
+|------|-------|
+| ABI | ✅ PASS |
+| Boundary | ✅ PASS |
+| Hygiene | ✅ PASS |
+| Constitutional | ✅ PASS |
+| Ring0 Exports | ✅ PASS |
+| Syscall v2 Runtime | ✅ PASS |
+| Sched Bridge Runtime | ✅ PASS |
+| Policy Accept | ✅ PASS |
+| Performance | ✅ PASS |
+| proofd-service | ✅ PASS |
 
 ---
 
 ## 📚 Dokümantasyon
 
-### Proje Raporları
-
-- **Genel Durum:** [docs/phase1/PROJECT_STATUS_REPORT.md](docs/phase1/PROJECT_STATUS_REPORT.md)
-- **Faz 1 Tamamlanma:** [docs/phase1/FAZ_1_COMPLETION_REPORT.md](docs/phase1/FAZ_1_COMPLETION_REPORT.md)
-- **Faz 2.5 Tamamlanma:** [PHASE2_5_COMPLETION_REPORT.md](PHASE2_5_COMPLETION_REPORT.md)
-- **GATE D Validation:** [GATE_D_VALIDATION_COMPLETION_REPORT.md](GATE_D_VALIDATION_COMPLETION_REPORT.md)
-- **Gate C Submission Bridge:** [_ayken/specs/gate-c-submission-bridge/](_ayken/specs/gate-c-submission-bridge/)
-  - **Requirements:** [requirements.md](_ayken/specs/gate-c-submission-bridge/requirements.md)
-  - **Design:** [design.md](_ayken/specs/gate-c-submission-bridge/design.md)
-  - **Tasks:** [tasks.md](_ayken/specs/gate-c-submission-bridge/tasks.md)
-- **Constitutional Lock Analysis:** [CONSTITUTIONAL_LOCK_MANIFEST.md](CONSTITUTIONAL_LOCK_MANIFEST.md)
-- **Phase 4.2 Performance Engineering:** [PHASE_4_2_FINAL_RESOLUTION_SUMMARY.md](PHASE_4_2_FINAL_RESOLUTION_SUMMARY.md)
-- **Phase 4.3 Performance Optimization:** [_ayken/specs/phase-4-3-performance-optimization/](_ayken/specs/phase-4-3-performance-optimization/)
-  - **Requirements:** [requirements.md](_ayken/specs/phase-4-3-performance-optimization/requirements.md)
-  - **Design:** [design.md](_ayken/specs/phase-4-3-performance-optimization/design.md)
-  - **Tasks:** [tasks.md](_ayken/specs/phase-4-3-performance-optimization/tasks.md)
-- **Phase 4.3 Transition:** [PHASE_4_3_TRANSITION_REPORT.md](PHASE_4_3_TRANSITION_REPORT.md)
-
-### Teknik Dokümantasyon
-
-- **Proje Yapısı:** [docs/development/PROJECT_STRUCTURE.md](docs/development/PROJECT_STRUCTURE.md)
-- **Dokümantasyon İndeksi:** [docs/development/DOCUMENTATION_INDEX.md](docs/development/DOCUMENTATION_INDEX.md)
-- **Ring3 Implementasyon:** [docs/development/RING3_IMPLEMENTATION.md](docs/development/RING3_IMPLEMENTATION.md)
-- **Syscall Geçiş Kılavuzu:** [docs/development/SYSCALL_TRANSITION_GUIDE.md](docs/development/SYSCALL_TRANSITION_GUIDE.md)
-- **DevFS Implementasyon:** [docs/development/DEVFS_IMPLEMENTATION.md](docs/development/DEVFS_IMPLEMENTATION.md)
-
-### Sistem Spesifikasyonları
-
-- **Scheduler Arbitration Contract:** [docs/development/SCHEDULER_ARBITRATION_CONTRACT.md](docs/development/SCHEDULER_ARBITRATION_CONTRACT.md)
-- **Capability System Reference:** [docs/development/CAPABILITY_SYSTEM_REFERENCE.md](docs/development/CAPABILITY_SYSTEM_REFERENCE.md)
-- **BCIB Submission Protocol:** [docs/development/BCIB_SUBMISSION_PROTOCOL.md](docs/development/BCIB_SUBMISSION_PROTOCOL.md)
-
-### CI ve Operasyonlar
-
-- **Constitutional CI Mode:** [docs/operations/CONSTITUTIONAL_CI_MODE.md](docs/operations/CONSTITUTIONAL_CI_MODE.md)
-- **Provisional CI Mode:** [docs/operations/PROVISIONAL_CI_MODE.md](docs/operations/PROVISIONAL_CI_MODE.md)
-- **Performance Baseline Policy:** [docs/operations/PERF_BASELINE_POLICY.md](docs/operations/PERF_BASELINE_POLICY.md)
-
-### Yol Haritası
-
-- **Geliştirme Yol Haritası:** [AykenOS Geliştirme Yol Haritası.txt](AykenOS%20Geliştirme%20Yol%20Haritası.txt)
-- **Faz 2 Genel Bakış:** [docs/phase2/FAZ_2_OVERVIEW.md](docs/phase2/FAZ_2_OVERVIEW.md)
-
-### Kurulum Kılavuzları
-
-- **Windows WSL:** [docs/setup/WINDOWS_WSL_SETUP_GUIDE.md](docs/setup/WINDOWS_WSL_SETUP_GUIDE.md)
-- **Linux:** [docs/setup/LINUX_SETUP_GUIDE.md](docs/setup/LINUX_SETUP_GUIDE.md)
-- **macOS:** [docs/setup/MACOS_SETUP_GUIDE.md](docs/setup/MACOS_SETUP_GUIDE.md)
-- **Çoklu Platform:** [docs/setup/MULTI_PLATFORM_DEVELOPMENT_GUIDE.md](docs/setup/MULTI_PLATFORM_DEVELOPMENT_GUIDE.md)
+- **Architecture Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
+- **Phase 13 Hazırlık:** `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md`
+- **Verification Observability:** `docs/specs/phase12-trust-layer/VERIFICATION_OBSERVABILITY_MODEL.md`
+- **Trust Reuse Runtime:** `docs/specs/phase12-trust-layer/TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
+- **Authority Sinkhole:** `docs/specs/phase12-trust-layer/AUTHORITY_SINKHOLE_COMPANION_FLOW_SPEC.md`
+- **Constitutional CI Mode:** `docs/operations/CONSTITUTIONAL_CI_MODE.md`
+- **Freeze Workflow:** `docs/roadmap/freeze-enforcement-workflow.md`
+- **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 
 ---
 
-## 📜 Lisans
+## � Lisans
 
 AykenOS iki lisans modeli ile dağıtılır:
 
-### 1. AykenOS Source-Available License (ASAL v1.0)
+### ASAL v1.0 — AykenOS Source-Available License
+- ✅ Eğitim, araştırma, kişisel kullanım
+- ❌ Ticari kullanım yasak
 
-**Topluluk ve kişisel kullanım için ücretsizdir.**
-
-- ✅ Kod görülebilir, incelenebilir, değiştirilebilir
-- ✅ Eğitim ve araştırma amaçlı kullanım
-- ✅ Kişisel projeler ve deneyler
-- ❌ Ticari kullanım, entegrasyon, SaaS, ürün satışı **kesinlikle yasaktır**
-- ❌ Ticari kullanım için özel lisans alınması gerekir
-
-### 2. AykenOS Commercial License (ACL v1.0)
-
-**Ticari kullanım için ücretli lisans.**
-
-- ✅ Şirketler, üreticiler, OS geliştiricileri için
-- ✅ SaaS platformları ve ticari ürünler için
-- ✅ Kodun ticari ürüne entegre edilmesi
+### ACL v1.0 — AykenOS Commercial License
+- ✅ Ticari ürünler, SaaS, entegrasyon
 - ✅ Binary dağıtımı
-- ✅ Kod değişiklikleri kapalı tutulabilir
-
-**Hak Sahibi:** Kenan AY — AykenOS Project
+- Lisans için: kenanay@example.com
 
 ---
 
-## 🎯 Gelecek Hedefler
+## 🎯 Sonraki Hedefler
 
-### Kısa Vadeli (Constitutional Integration)
+**Kısa Vadeli:**
+- PR #54 merge → official Phase-12 remote closure
+- Formal phase transition: Phase-12 → Phase-13
+- Phase-13 observability architecture başlangıcı
 
-- 🚀 **Constitutional Integration:** AykenOS Constitutional Stabilization & Lock (başlamaya hazır)
-  - Single constitutional decision authority for all system decisions
-  - Evidence-based governance with 100% evidence backing requirement
-  - Constitutional lock enforcement with system block/exit on violations
-  - Complete audit trail for all decisions with constitutional compliance tracking
-  - Unified compliance framework ensuring system-wide constitutional adherence
+**Orta Vadeli:**
+- ARM64 + RISC-V kernel portları
+- Gerçek donanım testleri (Raspberry Pi)
+- Network stack (temel TCP/IP)
 
-### Orta Vadeli (Faz 4)
-
-- **Çoklu Mimari Kernel:** ARM64 ve RISC-V kernel portları
-- **Gerçek Donanım Testleri:** Raspberry Pi ve diğer platformlarda test
-- **Grafik Arayüzü:** OpenGL tabanlı dashboard ve UI
-- **Network Stack:** Temel TCP/IP implementasyonu
-
-### Uzun Vadeli (Faz 5+)
-
-- **Tam AI Entegrasyonu:** TinyLLM modelleri ve AI servisleri
-- **Veri-Odaklı Dosya Sistemi:** Tiplenmiş veri konteynerleri
-- **Hibrit Shell:** AI-native komut yorumlama
-- **Ekosistem Geliştirme:** Üçüncü parti uygulama desteği
+**Uzun Vadeli:**
+- Tam AI entegrasyonu (TinyLLM)
+- Veri-odaklı dosya sistemi
+- AI-native shell
+- Ekosistem geliştirme
 
 ---
 
-## 🤝 Katkıda Bulunma
+**Son Güncelleme:** 14 Mart 2026 — Phase-12 trust layer local closure-ready, PR #54 açıldı.
 
-AykenOS açık kaynak bir projedir ve katkılara açıktır. Ancak, ticari kullanım için lisans gereklidir.
-
-**Katkı Yapmak İçin:**
-1. Projeyi fork edin
-2. Feature branch oluşturun
-3. Değişikliklerinizi commit edin
-4. Pull request gönderin
-
-**İletişim:**
-- Proje Sahibi: Kenan AY
-- Proje: AykenOS
-
----
-
-## 🌟 Öne Çıkan Özellikler
-
-### Neden AykenOS?
-
-1. **Yenilikçi Mimari:** Execution-centric paradigma ile geleneksel OS tasarımından ayrılır
-2. **AI-Native Tasarım:** Yapay zeka, sistemin merkezinde, eklenti değil
-3. **Ring3 Empowerment:** Politika kararları kullanıcı modunda, güvenlik ve esneklik
-4. **Capability-Based Security:** Modern güvenlik modeli
-5. **Multi-Agent Orchestration:** Gelişmiş ajan koordinasyonu ve öğrenme
-6. **Çoklu Mimari:** x86_64, ARM64, RISC-V desteği
-7. **Veri-Odaklı:** Dosya sistemi yerine veri konteynerleri
-8. **Açık ve Şeffaf:** Kaynak kodu görülebilir ve incelenebilir
-
-### Teknik Mükemmellik
-
-- **Temiz Mimari:** Ring0/Ring3 ayrımı net ve tutarlı
-- **Minimal Kernel:** Sadece mekanizma, politika yok
-- **Modüler Tasarım:** Bileşenler bağımsız ve test edilebilir
-- **Performans Odaklı:** Düşük latency, yüksek throughput
-- **Test Edilmiş:** Kapsamlı test suite ve validation
-
----
-
-**Son Güncelleme:** 5 Mart 2026 - Snapshot truth senkronu yapıldı.
-
-**Güncel Raporlar:**
-- **📊 Kapsamlı Durum Raporu:** `AYKENOS_SON_DURUM_RAPORU_2026_03_05.md` (11 bölüm, detaylı analiz)
-- **⚡ Rapor Özeti:** `RAPOR_OZETI_2026_03_05.md` (hızlı bakış, kritik durum, eylem önerileri)
-- **📋 Detaylı Durum:** `PROJE_DURUM_RAPORU_2026_03_02.md` (2 Mart durumu)
-
-**Snapshot Truth (Tek Kaynak Özeti):**
-- `Snapshot/head`: `main@7af35acc`
-- `CURRENT_PHASE`: `10`
-- `make ci-freeze`: 21 gate
-- `Acil blocker`: `missing_marker:P10_RING3_USER_CODE`
-- `Yakın hedef`: `make PHASE10C_C2_STRICT=1 ci-gate-ring3-execution-phase10a2` PASS
-- `Durum notu`: Docs updated; gates not rerun in this commit
-
-**Güncelleyen:** Kiro AI Assistant
-
-AykenOS, geleneksel işletim sistemi paradigmalarını sorgulayan ve AI-native bir gelecek için temel oluşturan yenilikçi bir projedir. Execution-centric mimari, Ring3 empowerment, multi-agent orchestration, constitutional CI guards, evidence-based performance optimization ve deterministic execution özellikleriyle, modern işletim sistemlerine farklı bir bakış açısı sunmaktadır.
-
-**Phase 10 Milestone:** ELF64 parser (STATIC, Ring0 export minimization), user address space creation, PT_LOAD segment loading, user/kernel stack allocation, mailbox allocation ve process registration tamamlandı. Baseline lock repoda mevcut. A2 tarafında strict marker closure devam ediyor.
-
-**Ayken Constitutional Rule System**: AykenOS'un geliştirilmesi için oluşturulan constitutional rule system, Task 10.1 MARS Module Detection ile modül seviyesinde risk atıfı sağlar.
-
-**© 2026 Kenan AY - AykenOS Project**
+**© 2026 Kenan AY — AykenOS Project**
