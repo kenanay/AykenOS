@@ -9,10 +9,13 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Evidence git SHA (Phase-12C): `01d1cb5c`
 - Closure sync SHA (Phase-10/11): `fe9031d7`
 - Official CI (Phase-10/11): `ci-freeze` run `22797401328` (`success`)
+- Official CI (Phase-12): `ci-freeze` run `23099070483` (`success`) — PR #62
 - Official closure tag (Phase-10/11): `phase10-phase11-official-closure`
-- Official closure tag (Phase-12 candidate): `phase12-official-closure`
+- Official closure tag (Phase-12): `phase12-official-closure-confirmed` at `1d79d4b1`
+- Phase-13 kill-switch tag: `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 - Formal phase pointer: `CURRENT_PHASE=12`
-- Phase-12 closure state: `LOCAL_CLOSURE_READY` (remote CI confirmation pending)
+- Phase-12 closure state: `CLOSED (official closure confirmed)`
+- Phase-13 state: `KILL_SWITCH_GATES_PASS (boundary hardening active)`
 
 ## 1) Architectural Baseline
 
@@ -96,50 +99,55 @@ Interpretation:
 4. Portable proof bundle can reproduce the same local verdict offline
 
 ### 3.3 Phase-12
-`Phase-12 = LOCAL_CLOSURE_READY (normative gate set green locally, remote CI confirmation pending)`
+`Phase-12 = CLOSED (official closure confirmed)`
 
 Interpretation:
 1. All P12-01..P12-18 gates complete at local / worktree scope
 2. The normative `Phase-12C` gate set is green locally (20/20 PASS, run `run-run-local-phase12c-closure-2026-03-11`)
-3. Closure manifest refreshed: `current_phase_pointer=12`, `closure_state=LOCAL_CLOSURE_READY`
-4. Dedicated closure tag minted: `phase12-official-closure` at `b230a355`
-5. The parity / graph layer remains derived diagnostics, not consensus
-6. Remote `ci-freeze` confirmation required for official closure claim
+3. Closure manifest refreshed: `current_phase_pointer=12`, `closure_state=CLOSED`
+4. Official closure tag minted: `phase12-official-closure-confirmed` at `1d79d4b1`
+5. Remote `ci-freeze` run `23099070483` confirmed on PR #62 (`success`)
+6. The parity / graph layer remains derived diagnostics, not consensus
 
 ### 3.4 Phase-13
-`Phase-13 = PREPARATION_ACTIVE (architecture corpus and roadmap active, implementation not yet claimed)`
+`Phase-13 = KILL_SWITCH_GATES_PASS (boundary hardening active, implementation not yet claimed)`
 
 Interpretation:
 1. Observability, relationship graph, global graph, and topology models are now explicit
-2. GitHub tracker now separates `phase13`, `policy-track`, and `research-track`
-3. This is roadmap preparation, not a formal phase transition
+2. All 6 kill-switch gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`)
+3. 4 kill-switch invariants HOLD: observability→control plane, authority election, artifact integrity, verifier authority drift
+4. Gate fix committed via PR #63 (diagnostics-consumer allow-list producer correction)
+5. Implementation work not yet claimed — boundary hardening is the active workstream
 
 ### 3.5 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
 2. Phase-10/11 remote confirmation: `ci-freeze` run `22797401328` on `fe9031d7` (success).
 3. Phase-10/11 official closure tag: `phase10-phase11-official-closure` at `fe9031d7`.
 4. Phase-12 local closure evidence: `run-run-local-phase12c-closure-2026-03-11` at `01d1cb5c` (20/20 PASS).
-5. Phase-12 closure candidate tag: `phase12-official-closure` at `b230a355`.
-6. `CURRENT_PHASE=12` — formal transition executed at `0adb2a84`.
-7. Phase-12 official closure requires: remote `ci-freeze` confirmation on current branch state.
+5. Phase-12 remote confirmation: `ci-freeze` run `23099070483` on PR #62 (success).
+6. Phase-12 official closure tag: `phase12-official-closure-confirmed` at `1d79d4b1`.
+7. `CURRENT_PHASE=12` — formal transition executed at `0adb2a84`.
+8. Phase-13 kill-switch gates: all 6 PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`).
 
 ## 4) Current Risk Concentration
 1. Runtime A2 blocker kapanmistir; `missing_marker:P10_RING3_USER_CODE` current blocker degildir.
 2. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
-3. ✅ `CURRENT_PHASE=12` formal transition tamamlandi; Phase-12 official closure icin remote `ci-freeze` confirmation bekleniyor.
-4. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+3. ✅ `CURRENT_PHASE=12` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
+4. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
+5. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
 
 ## 5) Roadmap Decision
 
 ### 5.1 Immediate
-1. ✅ Dedicated official closure tag olusturuldu (`phase10-phase11-official-closure`, `phase12-official-closure`)
-2. ✅ Historical docs current-truth notlari `Phase-12` closure-ready durumuna hizalandi
+1. ✅ Dedicated official closure tag olusturuldu (`phase10-phase11-official-closure`, `phase12-official-closure-confirmed`)
+2. ✅ Historical docs current-truth notlari `Phase-12` CLOSED durumuna hizalandi
 3. ✅ `CURRENT_PHASE=12` formal transition tamamlandi
-4. Remote / official `Phase-12` confirmation icin `phase12-formal-transition` branch'i PR'a hazir
-5. `Phase-13` observability roadmap'ini derived-only diagnostics sinirinda uygula
+4. ✅ Phase-12 remote `ci-freeze` confirmation tamamlandi (PR #62, run `23099070483`)
+5. ✅ Phase-13 kill-switch gate suite 6/6 PASS (PR #63, tag `phase13-kill-switch-gates-pass`)
+6. Phase-13 boundary hardening devam ediyor — implementation workstream'leri Architecture Map §4'e gore
 
 ### 5.2 Near Term
-1. `phase12-formal-transition` branch'ini main'e merge et (remote `ci-freeze` confirmation sonrasi)
+1. Phase-13 Architecture Map §4 workstream'lerini sirayla uygula: service expansion → verifier federation → context propagation → trust registry propagation → replicated verification boundary
 2. Replay determinism stability hardening
 3. `proofd` icin query/service boundary'lerini authority semantics'ten ayri tut
 4. Cross-node verification observability graph'i derived diagnostics olarak koru; consensus topology olarak degil
@@ -157,14 +165,17 @@ Phase-10/11 official closure icin saglananlar:
 4. Official closure tag `phase10-phase11-official-closure` minted
 5. Closure index `reports/phase10_phase11_official_closure_index.json` committed
 
-Phase-12 local closure icin saglananlar:
+Phase-12 official closure icin saglananlar:
 1. All 20 normative gates `PASS` (`run-run-local-phase12c-closure-2026-03-11`)
 2. Closure manifest `current_phase_pointer=12` refreshed
-3. Closure candidate tag `phase12-official-closure` minted
+3. Official closure tag `phase12-official-closure-confirmed` minted at `1d79d4b1`
 4. `CURRENT_PHASE=12` formal transition executed
+5. Remote `ci-freeze` run `23099070483` confirmed (PR #62, success)
 
-Phase-12 official closure icin halen gerekenler:
-1. Remote `ci-freeze` confirmation on `phase12-formal-transition` branch
+Phase-13 kill-switch gates icin saglananlar:
+1. All 6 kill-switch gates `PASS` at `0ec4bb5e`
+2. Tag `phase13-kill-switch-gates-pass` minted
+3. Gate fix PR #63 merged (diagnostics-consumer allow-list producer correction)
 
 ## References
 - `README.md`
