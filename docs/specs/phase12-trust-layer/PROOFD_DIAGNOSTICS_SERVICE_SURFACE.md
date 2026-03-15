@@ -29,6 +29,10 @@ Current local status:
 - the native target contract for that future trust-reuse emitter is `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`
 - local execution reuse by `run_id` may only occur for an identical canonical request fingerprint; differing requests under the same `run_id` MUST fail closed
 - run-level diagnostics discovery, run summary, and run-scoped parity / incidents / drift / convergence / graph / authority endpoints may expose multi-run observability without changing parity semantics
+- run-scoped artifact discovery may now expose canonical relative artifact paths plus read-only retrieval under `GET /diagnostics/runs/{run_id}/artifacts` and `GET /diagnostics/runs/{run_id}/artifacts/{artifact_path...}` for manifest, receipt, and other allowed run artifacts
+- run-scoped verifier-federation diagnostics may now project `verification_diversity_ledger.json` into descriptive verifier / lineage / authority-chain / execution-cluster distributions without promoting them into authority or consensus semantics
+- `POST /verify/bundle` may now materialize a run-local context package under `context/policy_snapshot.json`, `context/registry_snapshot.json`, `context/context_rules.json`, and `context/verification_context_object.json`, and may copy bundle-native `reports/trust_reuse_runtime_surface.json` into the run when native trust-reuse evidence is used
+- run-scoped context-propagation diagnostics may now expose the declared packaged verification context plus observed legacy context-id and context-ref surfaces under `GET /diagnostics/runs/{run_id}/context` without promoting context carriage into authority or consensus semantics
 - local `P12-16` closure-ready evidence now proves repeated signed-receipt determinism, request-bound timestamp preservation, run-manifest stability, and diagnostics purity in `run-local-phase12c-closure-2026-03-11`
 
 ---
@@ -202,7 +206,64 @@ Returns:
 - run identifier
 - run-local known artifact list
 
-### 5.10 Run-Scoped Parity
+### 5.10 Run Artifact Index
+
+`GET /diagnostics/runs/{run_id}/artifacts`
+
+Returns:
+
+- run-local canonical relative artifact paths
+- content types for known artifact-backed queries
+
+### 5.11 Run Artifact Fetch
+
+`GET /diagnostics/runs/{run_id}/artifacts/{artifact_path...}`
+
+Returns:
+
+- a read-only run-local artifact body
+
+The artifact path MUST stay within the allowed canonical run artifact set.
+
+### 5.12 Run-Scoped Federation Diagnostics
+
+`GET /diagnostics/runs/{run_id}/federation`
+
+Returns:
+
+- a read-only projection over run-local `verification_diversity_ledger.json`
+- descriptive verifier, verification-node, authority-chain, lineage, and execution-cluster distributions
+- run-local observed federation entries without redefining canonical ledger semantics
+
+This endpoint MUST remain descriptive only.
+
+It MUST NOT:
+
+- select a preferred verifier
+- rank verifier trust
+- rewrite authority resolution
+- imply federation truth election
+
+### 5.13 Run-Scoped Context Diagnostics
+
+`GET /diagnostics/runs/{run_id}/context`
+
+Returns:
+
+- the run-local declared `verification_context_object`
+- packaged policy, registry, and context-rules material binding status
+- observed context-id sources from receipt, diversity ledger, and companion flow surfaces
+- observed context-ref sources from copied native trust-reuse runtime evidence when available
+
+This endpoint MUST remain descriptive only.
+
+It MUST NOT:
+
+- reinterpret context drift as authority drift
+- infer verifier trust from context portability
+- promote context packaging into federation truth election
+
+### 5.14 Run-Scoped Parity
 
 `GET /diagnostics/runs/{run_id}/parity`
 
@@ -210,7 +271,7 @@ Returns:
 
 - run-local `parity_report.json`
 
-### 5.11 Run-Scoped Drift Attribution
+### 5.15 Run-Scoped Drift Attribution
 
 `GET /diagnostics/runs/{run_id}/drift`
 
@@ -218,7 +279,7 @@ Returns:
 
 - run-local `parity_drift_attribution_report.json`
 
-### 5.12 Run-Scoped Convergence
+### 5.16 Run-Scoped Convergence
 
 `GET /diagnostics/runs/{run_id}/convergence`
 
@@ -226,7 +287,7 @@ Returns:
 
 - run-local `parity_convergence_report.json`
 
-### 5.13 Run-Scoped Failure Matrix
+### 5.17 Run-Scoped Failure Matrix
 
 `GET /diagnostics/runs/{run_id}/failure-matrix`
 
@@ -234,7 +295,7 @@ Returns:
 
 - run-local `failure_matrix.json`
 
-### 5.14 Graph Surface
+### 5.18 Graph Surface
 
 `GET /diagnostics/graph`
 
@@ -242,7 +303,7 @@ Returns:
 
 - `parity_incident_graph.json`
 
-### 5.15 Run-Scoped Graph
+### 5.19 Run-Scoped Graph
 
 `GET /diagnostics/runs/{run_id}/graph`
 
@@ -250,7 +311,7 @@ Returns:
 
 - run-local `parity_incident_graph.json`
 
-### 5.16 Authority Drift Topology
+### 5.20 Authority Drift Topology
 
 `GET /diagnostics/authority-topology`
 
@@ -258,7 +319,7 @@ Returns:
 
 - `parity_authority_drift_topology.json`
 
-### 5.17 Authority Suppression
+### 5.21 Authority Suppression
 
 `GET /diagnostics/authority-suppression`
 
@@ -266,7 +327,7 @@ Returns:
 
 - `parity_authority_suppression_report.json`
 
-### 5.18 Run-Scoped Authority Drift Topology
+### 5.22 Run-Scoped Authority Drift Topology
 
 `GET /diagnostics/runs/{run_id}/authority-topology`
 
@@ -274,7 +335,7 @@ Returns:
 
 - run-local `parity_authority_drift_topology.json`
 
-### 5.19 Run-Scoped Authority Suppression
+### 5.23 Run-Scoped Authority Suppression
 
 `GET /diagnostics/runs/{run_id}/authority-suppression`
 
@@ -282,7 +343,7 @@ Returns:
 
 - run-local `parity_authority_suppression_report.json`
 
-### 5.20 Verification Execute
+### 5.24 Verification Execute
 
 `POST /verify/bundle`
 
