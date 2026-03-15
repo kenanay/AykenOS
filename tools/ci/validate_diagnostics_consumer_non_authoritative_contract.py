@@ -18,6 +18,11 @@ DEFAULT_ALLOWED_PATHS = {
     "ayken-core/crates/proof-verifier/examples/phase12_gate_harness.rs",
     "ayken-core/crates/proof-verifier/src/authority/authority_drift_topology.rs",
     "ayken-core/crates/proof-verifier/src/authority/drift_attribution.rs",
+    # Producer modules: these files generate dominant_authority_chain_id as an
+    # observability output field — they do not consume it as an execution input.
+    # Gate intent is to block consumer-side use; producer-side is allowed.
+    "ayken-core/crates/proof-verifier/src/authority_sinkhole_absorption.rs",
+    "ayken-core/crates/proof-verifier/src/diversity_floor.rs",
     "userspace/proofd/src/lib.rs",
     "userspace/proofd/examples/proofd_gate_harness.rs",
 }
