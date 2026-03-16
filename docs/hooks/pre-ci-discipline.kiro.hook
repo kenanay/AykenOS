@@ -8,7 +8,8 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "bash scripts/ci/pre_ci_discipline.sh"
+    "command": "bash scripts/ci/pre_ci_discipline.sh",
+    "timeout": 300
   },
   "workspaceFolderName": "AykenOS",
   "shortName": "pre-ci-discipline"
