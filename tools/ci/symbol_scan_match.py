@@ -54,13 +54,15 @@ def main():
             fh.write(line + '\n')
 
     # Step 2b: deny matching
+    # Use fullmatch: deny patterns are anchored (^...$) and we want exact
+    # symbol matches, not substring hits inside longer symbol names.
     hits = []
     for line in filtered:
         colon = line.index(':')
         target = line[:colon]
         sym    = line[colon+1:]
         for file_re, sym_re, raw_pat in deny_pats:
-            if sym_re.search(sym):
+            if sym_re.fullmatch(sym):
                 hits.append((target, sym, raw_pat))
                 break
 
@@ -69,12 +71,13 @@ def main():
             fh.write(f'{t}:{s}:deny={p}\n')
 
     # Step 3: allowlist filter
+    # fullmatch mirrors deny matching semantics — anchored pattern, exact symbol.
     violations = []
     for target, sym, raw_pat in hits:
         allowed = False
         for file_re, sym_re, _ in allow_pats:
             if file_re is None or file_re.search(target):
-                if sym_re.search(sym):
+                if sym_re.fullmatch(sym):
                     allowed = True
                     break
         if not allowed:
