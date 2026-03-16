@@ -270,6 +270,81 @@ else
 fi
 
 # ==========================================
+# Feature: pre-ci-discipline, Property 1.2: Hook konfigürasyon doğrulama
+# ==========================================
+echo ""
+echo "=== Property 1.2: Hook Konfigürasyon Doğrulama ==="
+
+HOOK_FILE="${SCRIPT_DIR}/../../docs/hooks/pre-ci-discipline.kiro.hook"
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "  ⚠️  SKIP: jq bulunamadı, hook JSON doğrulaması atlandı"
+else
+    if [ ! -f "${HOOK_FILE}" ]; then
+        fail "Hook dosyası bulunamadı" "${HOOK_FILE}"
+    else
+        enabled="$(jq -r '.enabled' "${HOOK_FILE}")"
+        [ "${enabled}" = "true" ] \
+            && pass "Hook enabled: true" \
+            || fail "Hook enabled değil" "Beklenen: true, Alınan: ${enabled}"
+
+        when_type="$(jq -r '.when.type' "${HOOK_FILE}")"
+        [ "${when_type}" = "agentStop" ] \
+            && pass "Hook when.type: agentStop" \
+            || fail "Hook when.type yanlış" "Beklenen: agentStop, Alınan: ${when_type}"
+
+        then_type="$(jq -r '.then.type' "${HOOK_FILE}")"
+        [ "${then_type}" = "runCommand" ] \
+            && pass "Hook then.type: runCommand" \
+            || fail "Hook then.type yanlış" "Beklenen: runCommand, Alınan: ${then_type}"
+
+        short_name="$(jq -r '.shortName' "${HOOK_FILE}")"
+        [ "${short_name}" = "pre-ci-discipline" ] \
+            && pass "Hook shortName: pre-ci-discipline" \
+            || fail "Hook shortName yanlış" "Beklenen: pre-ci-discipline, Alınan: ${short_name}"
+
+        workspace="$(jq -r '.workspaceFolderName' "${HOOK_FILE}")"
+        [ "${workspace}" = "AykenOS" ] \
+            && pass "Hook workspaceFolderName: AykenOS" \
+            || fail "Hook workspaceFolderName yanlış" "Beklenen: AykenOS, Alınan: ${workspace}"
+
+        SIM_FILE="${SCRIPT_DIR}/../../docs/hooks/ci-gate-simulation.kiro.hook"
+        if [ -f "${SIM_FILE}" ]; then
+            sim_name="$(jq -r '.shortName' "${SIM_FILE}")"
+            [ "${sim_name}" != "${short_name}" ] \
+                && pass "ci-gate-simulation shortName farklı (${sim_name} ≠ ${short_name})" \
+                || fail "ci-gate-simulation ve pre-ci-discipline aynı shortName" "${sim_name}"
+        fi
+    fi
+fi
+
+# ==========================================
+# Feature: pre-ci-discipline, Property 2.1: RUN_ID format doğrulama
+# ==========================================
+echo ""
+echo "=== Property 2.1: RUN_ID Format Doğrulama ==="
+
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+run_id="$(echo "${DISCIPLINE_OUTPUT}" | grep "RUN_ID:" | head -1 | sed 's/.*RUN_ID: *//')"
+
+if echo "${run_id}" | grep -qE '^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,}(-[0-9]+)?$'; then
+    pass "RUN_ID formatı doğru: ${run_id}"
+else
+    fail "RUN_ID formatı yanlış" "Beklenen: YYYYMMDDTHHMMSSZ-<sha>, Alınan: '${run_id}'"
+fi
+
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+run_id2="$(echo "${DISCIPLINE_OUTPUT}" | grep "RUN_ID:" | head -1 | sed 's/.*RUN_ID: *//')"
+sha1="$(echo "${run_id}"  | sed 's/^[^-]*-//' | cut -d- -f1)"
+sha2="$(echo "${run_id2}" | sed 's/^[^-]*-//' | cut -d- -f1)"
+
+if [ "${sha1}" = "${sha2}" ] && [ -n "${sha1}" ]; then
+    pass "RUN_ID git SHA tutarlı: ${sha1}"
+else
+    fail "RUN_ID git SHA tutarsız" "İlk: ${sha1}, İkinci: ${sha2}"
+fi
+
+# ==========================================
 # Sonuç
 # ==========================================
 echo ""
