@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "name": "Ring0 Build Guard",
+  "description": "Strict build validation for Ring0 kernel and bootloader changes. Fail-closed enforcement.",
+  "version": "1.0",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "kernel/**/*.c",
+      "kernel/**/*.h",
+      "kernel/**/*.asm",
+      "kernel/**/*.S",
+      "bootloader/**/*.c",
+      "bootloader/**/*.h",
+      "bootloader/**/*.S",
+      "linker.ld"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Ring0 source file modified. Execute strict build validation.\n\nRun:\nmake clean\nmake validation-strict\n\nEnforcement rules:\n- Build MUST pass with -Werror (zero warnings)\n- No new global kernel symbols unless in ring0.exports.map\n- If ayken_abi.h modified: run make generate-abi and verify no drift\n- If context_switch.asm modified: run make guard-context-offsets\n- If syscall interface modified: flag ABI compatibility risk\n\nIf build fails:\n- STOP immediately\n- Report exact error location and message\n- Do NOT continue agent execution\n- Do NOT auto-fix architectural violations\n\nFail-closed. System integrity over convenience."
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "ring0-build-guard"
+}

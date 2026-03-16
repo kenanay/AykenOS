@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync Mandatory",
+  "description": "Enforces documentation updates for architectural changes. Fail-closed.",
+  "version": "1.0",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "kernel/include/ayken_abi.h",
+      "kernel/sys/syscall_v2.c",
+      "kernel/arch/x86_64/context_switch.asm",
+      "bootloader/efi/efi_main.c",
+      "ARCHITECTURE_FREEZE.md",
+      "Makefile"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Critical architectural file modified. Documentation update is MANDATORY.\n\nCheck if these docs need updates:\n\nFor ABI changes (ayken_abi.h, context_switch.asm):\n- docs/development/RING3_IMPLEMENTATION.md\n- docs/development/SYSCALL_TRANSITION_GUIDE.md\n- README.md (if syscall count or ABI version changed)\n\nFor syscall changes (syscall_v2.c):\n- docs/development/SYSCALL_TRANSITION_GUIDE.md\n- docs/development/CAPABILITY_SYSTEM_REFERENCE.md\n\nFor boot changes (efi_main.c, bootloader):\n- docs/setup/ guides\n- docs/phase1/ boot validation reports\n\nFor build changes (Makefile):\n- .kiro/steering/tech.md (if commands changed)\n- docs/development/BUILD_FIXES_COMPLETE.md\n\nFor freeze changes (ARCHITECTURE_FREEZE.md):\n- docs/roadmap/freeze-enforcement-workflow.md\n- .github/pull_request_template.md\n\nIf documentation is outdated or missing:\n- Mark as MANDATORY update required\n- List specific files that need updates\n- Do NOT allow silent continuation\n- Block until documentation is synchronized\n\nFail-closed. Undocumented architectural changes are violations."
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "doc-sync-mandatory"
+}
