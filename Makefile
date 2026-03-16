@@ -760,8 +760,28 @@ preflight-mode-guard:
 		exit 2; \
 	fi
 
+# Phase-13 kill-switch gate suite
+# Enforces distributed verification boundaries, proof integrity,
+# observability isolation, and reputation prohibition.
+# These gates are CI cluster workloads - not run in pre-ci discipline.
+ci-kill-switch-phase13: \
+	ci-gate-proof-bundle \
+	ci-gate-proof-receipt \
+	ci-gate-proof-verdict-binding \
+	ci-gate-verifier-authority-resolution \
+	ci-gate-cross-node-parity \
+	ci-gate-proofd-service \
+	ci-gate-proofd-observability-boundary \
+	ci-gate-graph-non-authoritative-contract \
+	ci-gate-convergence-non-election-boundary \
+	ci-gate-diagnostics-consumer-non-authoritative-contract \
+	ci-gate-diagnostics-callsite-correlation \
+	ci-gate-observability-routing-separation \
+	ci-gate-verifier-reputation-prohibition
+	@echo "Phase-13 kill-switch gates: ALL PASS"
+
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-kill-switch-phase13
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
@@ -828,10 +848,14 @@ ci-gate-boundary: ci-evidence-dir
 	@echo "== CI GATE BOUNDARY =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "targets: $(CI_TARGETS)"
-	@rm -f "$(KERNEL_ELF)" "$(EVIDENCE_RUN_DIR)/artifacts/kernel.map"
-	@if echo "$(MAKEFLAGS)" | grep -Eq '(^|[[:space:]])n($$|[[:space:]])|--just-print|--dry-run|--recon'; then \
+	@if [ "$(PRE_CI_MODE)" = "1" ] && [ -f "$(KERNEL_ELF)" ]; then \
+		echo "pre_ci_mode: SKIP rebuild (existing artifact: $(KERNEL_ELF))"; \
+		mkdir -p "$(EVIDENCE_RUN_DIR)/logs"; \
+		echo "PRE_CI_MODE=1: skipped kernel rebuild, using existing artifact" > "$(EVIDENCE_RUN_DIR)/logs/build.log"; \
+	elif echo "$(MAKEFLAGS)" | grep -Eq '(^|[[:space:]])n($$|[[:space:]])|--just-print|--dry-run|--recon'; then \
 		echo "DRY-RUN: skipping boundary kernel build invocation"; \
 	else \
+		rm -f "$(KERNEL_ELF)" "$(EVIDENCE_RUN_DIR)/artifacts/kernel.map"; \
 		mkdir -p "$(EVIDENCE_RUN_DIR)/logs"; \
 		$(MAKE) KERNEL_PROFILE=validation KERNEL_MAP="$(EVIDENCE_RUN_DIR)/artifacts/kernel.map" guard-context-offsets kernel > "$(EVIDENCE_RUN_DIR)/logs/build.log" 2>&1; \
 	fi
@@ -1795,7 +1819,7 @@ ci-gate-decision-switch-phase45: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: decision-switch-phase45 evidence at evidence/gate-4.5-decision-switch-proof/$(RUN_ID)"
 
-ci-gate-policy-proof-regression: ci-gate-policy-accept ci-gate-decision-switch-phase45
+ci-gate-policy-proof-regression: ci-kill-switch-phase13 ci-gate-policy-accept ci-gate-decision-switch-phase45
 	@echo "OK: policy-proof regression suite passed (Gate-4 + Gate-4.5)"
 
 ci-gate-performance: ci-evidence-dir

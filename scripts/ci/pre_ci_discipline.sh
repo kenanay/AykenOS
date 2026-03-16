@@ -59,8 +59,10 @@ run_gate() {
 }
 
 # Strict execution order
+# PRE_CI_MODE=1: boundary gate uses existing kernel.elf artifact (skip rebuild).
+# CI remains mandatory for merge — full rebuild happens there.
 run_gate "make ci-gate-abi" "ABI Gate"
-run_gate "make ci-gate-boundary" "Boundary Gate"
+run_gate "make PRE_CI_MODE=1 ci-gate-boundary" "Boundary Gate"
 run_gate "make ci-gate-hygiene" "Hygiene Gate"
 run_gate "make ci-gate-constitutional" "Constitutional Gate"
 
