@@ -72,11 +72,11 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Justification:** Mandatory for Allow/Waiver
 
 #### CI Enforcement Pipeline
-- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Governance Policy, Drift Activation, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Performance
+- **Gates:** ABI, Boundary, Ring0 Exports, Hygiene, Tooling Isolation, Constitutional, Governance Policy, Drift Activation, Structural ABI, Runtime Marker Contract, User Bin Lock, Embedded ELF Hash, Performance, Ring3 Execution Phase10a2, Syscall Semantics Phase10b, Phase10C Gate (conditional), Mailbox Capability Negative, Workspace, Syscall v2 Runtime, Sched Bridge Runtime, Behavioral Suite, Policy Accept, Kill-Switch Phase13
 - **Bypass:** Prohibited (no exceptions)
-- **Repo Truth (2026-02-25):**
-  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-governance-policy`, `ci-gate-drift-activation`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-performance`, `ci-summarize`
-  - Planned (hard-fail stubs): none
+- **Repo Truth (2026-03-16):**
+  - Implemented: `ci-gate-abi`, `ci-gate-boundary`, `ci-gate-ring0-exports`, `ci-gate-hygiene`, `ci-gate-tooling-isolation`, `ci-gate-constitutional`, `ci-gate-governance-policy`, `ci-gate-drift-activation`, `ci-gate-structural-abi`, `ci-gate-runtime-marker-contract`, `ci-gate-user-bin-lock`, `ci-gate-embedded-elf-hash`, `ci-gate-performance`, `ci-gate-ring3-execution-phase10a2`, `ci-gate-syscall-semantics-phase10b`, `ci-gate-mailbox-capability-negative`, `ci-gate-workspace`, `ci-gate-syscall-v2-runtime`, `ci-gate-sched-bridge-runtime`, `ci-gate-behavioral-suite`, `ci-gate-policy-accept`, `ci-kill-switch-phase13`
+  - Conditional: `ci-gate-scheduler-mailbox-phase10c` (PHASE10C_ENFORCE=1)
   - Strict suite entrypoint: `make ci-freeze`
 
 #### CI Mode: Constitutional Default + Provisional Compatibility
@@ -593,22 +593,15 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-02-25):**
-- ✅ Boundary gate implementation active (`make ci-gate-boundary`)
-- ✅ Hygiene gate implementation active (`make ci-gate-hygiene`)
-- ✅ Tooling isolation gate implementation active (`make ci-gate-tooling-isolation`)
-- ✅ ABI gate implementation active (`make ci-gate-abi`)
-- ✅ Constitutional gate implementation active (`make ci-gate-constitutional`)
-- ✅ Governance policy gate implementation active (`make ci-gate-governance-policy`)
-- ✅ Drift activation gate implementation active (`make ci-gate-drift-activation`)
-- ✅ Workspace gate implementation active (`make ci-gate-workspace`)
-- ✅ Syscall v2 runtime gate implementation active (`make ci-gate-syscall-v2-runtime`)
-- ✅ Sched bridge runtime gate implementation active (`make ci-gate-sched-bridge-runtime`)
-- ✅ Performance gate implementation active (`make ci-gate-performance`)
-- ✅ Summary gate active (`make ci-summarize`, auto-discovery)
-- ✅ Evidence schema active (`evidence/run-<RUN_ID>/reports/summary.json`)
-- 🔄 Performance baseline initialization/lock commit required (`PERF_INIT_BASELINE=1`)
-- 🔄 Remaining entry criteria tracked in roadmap and CI backlog
+**Current Status (2026-03-16):**
+- ✅ All CI gates active and passing (23-gate ci-freeze chain)
+- ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
+- ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
+- ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
+- ✅ Phase-13 kill-switch gates: 6/6 PASS (tag `phase13-kill-switch-gates-pass` at `0ec4bb5e`)
+- ✅ `CURRENT_PHASE=12` formal transition completed (`0adb2a84`)
+- ✅ Performance baseline lock committed and active
+- 🔄 Phase-13 boundary hardening: active workstream
 
 ---
 
@@ -813,18 +806,19 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.4  
+**Version:** 1.5  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-03-02  
-**Next Review:** 2026-03-16  
+**Last Review:** 2026-03-16  
+**Next Review:** 2026-03-30  
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.5 | 2026-03-16 | Kenan AY | CI gate list updated to 23-gate chain; Phase-10/11/12 closure status; Phase-13 kill-switch PASS |
 | 1.4 | 2026-03-02 | Kenan AY | Status update: Phase 10-A1 complete, Phase 10-A2 in progress |
 | 1.3 | 2026-02-25 | Kenan AY | Added ci-gate-drift-activation gate documentation |
 | 1.2 | 2026-02-22 | Kenan AY | Added ci-gate-sched-bridge-runtime gate documentation |

@@ -90,7 +90,8 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 ### 2.1 Mandatory Gate Targets
 
-`make ci-freeze` strict zinciri (as-of 2026-03-05):
+`make ci-freeze` strict zinciri — Makefile ile birebir eşleşen yürütme sırası (2026-03-16):
+
 1. `make ci-gate-abi`
 2. `make ci-gate-boundary`
 3. `make ci-gate-ring0-exports`
@@ -106,12 +107,33 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 13. `make ci-gate-performance`
 14. `make ci-gate-ring3-execution-phase10a2`
 15. `make ci-gate-syscall-semantics-phase10b`
-16. `make $(PHASE10C_FREEZE_GATE)`
-17. `make ci-gate-workspace`
-18. `make ci-gate-syscall-v2-runtime`
-19. `make ci-gate-sched-bridge-runtime`
-20. `make ci-gate-behavioral-suite`
-21. `make ci-gate-policy-accept`
+16. `make $(PHASE10C_FREEZE_GATE)` _(conditional: `PHASE10C_ENFORCE=1` ise `ci-gate-scheduler-mailbox-phase10c`)_
+17. `make ci-gate-mailbox-capability-negative`
+18. `make ci-gate-workspace`
+19. `make ci-gate-syscall-v2-runtime`
+20. `make ci-gate-sched-bridge-runtime`
+21. `make ci-gate-behavioral-suite`
+22. `make ci-gate-policy-accept`
+23. `make ci-kill-switch-phase13` _(Phase-13 distributed verification kill-switch gates)_
+
+#### Execution Order Rationale
+
+Yürütme sırası kasıtlıdır ve fail-fast ilkesini uygular:
+
+- **1-4 (Static checks):** ABI, boundary, export surface, hygiene — en hızlı, en temel kontroller önce çalışır. Bunlar başarısız olursa QEMU tabanlı testler çalıştırılmaz.
+- **5-12 (Structural checks):** Tooling isolation, constitutional, governance, drift, structural ABI, marker contract, binary locks — yapısal bütünlük doğrulaması.
+- **13 (Performance gate):** Performance gate, runtime gate'lerden **önce** kasıtlı olarak konumlandırılmıştır. Pahalı QEMU tabanlı doğrulama çalıştırılmadan önce performans regresyonları yakalanır.
+- **14-22 (Runtime gates):** Ring3 execution, syscall semantics, scheduler mailbox, workspace, syscall v2, sched bridge, behavioral suite, policy accept — QEMU tabanlı runtime doğrulama.
+- **23 (Kill-switch gates):** Phase-13 distributed verification kill-switch gate seti — authority boundary koruması.
+
+#### Gate Order Change Protocol
+
+CI gate sırası mimari güvenliği doğrudan etkiler. Sıra değişikliği için:
+
+1. RFC submission zorunludur
+2. Architecture Board onayı gerekir
+3. Makefile değişikliği ile aynı commit'te dokümantasyon güncellenmeli (Constitutional Rule 7)
+4. Evidence ile doğrulanmalıdır
 
 ### 2.2 Gate Implementation Status (Repo Truth)
 
@@ -123,11 +145,12 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 ### 2.3 CI Entry Point Contract
 
 1. `make ci` = mevcut minimum zorunlu zincir (`ci-gate-boundary` + `ci-gate-hygiene` + `validate-full`)
-2. `make ci-freeze` = strict freeze suite (tüm implemented gate'ler)
+2. `make ci-freeze` = strict freeze suite (tüm implemented gate'ler, yukarıdaki sırayla)
 3. `summary.json` verdict `PASS` değilse ilgili make hedefi fail eder.
 4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-24.04` + fail-closed baseline policy).
 5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
 6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
+7. **Gate order is locked.** Sıra değişikliği RFC + Architecture Board onayı + aynı commit'te dokümantasyon güncellemesi gerektirir (Constitutional Rule 7).
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
