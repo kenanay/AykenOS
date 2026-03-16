@@ -72,6 +72,14 @@ Crate içinde modül dosyası eklenebilir.
   dizin içerir.
 - **Phase13_Forbidden_Fields**: Tüm yeni endpoint'lerde yanıt gövdesinde bulunması yasak olan
   alan adları kümesi. Normatif liste Gereksinim 8'de tanımlanmıştır.
+- **Atomic_Manifest_Creation**: `proofd_run_manifest.json` dosyasının `O_CREAT | O_EXCL` semantiği
+  ile atomik olarak oluşturulması; aynı `run_id` için eşzamanlı iki isteğin birbirinin manifest'ini
+  ezememesini garanti eder.
+- **Spec_Projection_Layer**: `FederationDiagnosticsResponseBody` iç struct'ından bağımsız, spec
+  uyumlu yanıt şemasını temsil eden projeksiyon katmanı; iç veri modeli değişikliklerini API
+  yüzeyinden izole eder.
+- **Normalized_Artifact_Path**: Artifact yolunun `..` ve `.` segmentleri çözümlendikten sonra
+  Allowed_Artifact_Set ile karşılaştırılan kanonik formu.
 
 ## Gereksinimler
 
@@ -116,6 +124,10 @@ geçirebilmek istiyorum; böylece doğrulama çalıştırması bağlam bağlamas
     `{"error": "missing_required_field"}` döndürür.
 11. THE Verify_Bundle_Endpoint yanıt gövdesi Phase13_Forbidden_Fields kümesindeki alanların
     hiçbirini içermez.
+12. WHEN aynı `run_id` için iki eşzamanlı `POST /verify/bundle` isteği geldiğinde ve
+    `proofd_run_manifest.json` henüz yazılmamışsa, THE Verify_Bundle_Endpoint SHALL
+    Atomic_Manifest_Creation semantiğiyle yalnızca bir isteğin manifest'i yazmasına izin verir;
+    diğer istek HTTP 409 ile `{"error": "run_id_fingerprint_conflict"}` döndürür.
 
 ### Gereksinim 2: Context Package Materialization
 
@@ -209,6 +221,10 @@ failure_matrix.json
    dönüştürmez.
 9. THE Artifact_Discovery_Endpoint SHALL herhangi bir artifact'ı diske yazmaz.
 10. THE Artifact_Fetch_Endpoint SHALL herhangi bir artifact'ı diske yazmaz.
+11. WHEN `GET /diagnostics/runs/{run_id}/artifacts/{artifact_path...}` çağrıldığında, THE
+    Artifact_Fetch_Endpoint SHALL artifact yolunu Normalized_Artifact_Path'e dönüştürdükten sonra
+    Allowed_Artifact_Set ile karşılaştırır. `..` veya `.` segment içeren yollar normalize
+    edilmeden önce reddedilir ve HTTP 403 ile `{"error": "artifact_path_not_allowed"}` döndürür.
 
 ### Gereksinim 4: Run-Scoped Federation Diagnostics
 
@@ -337,6 +353,10 @@ recommended_action, routing_hint, execution_override,
 retry, override, promote, commit, mitigation,
 node_priority, verification_weight
 ```
+
+Bu yasak yalnızca runtime test ile değil, response struct'larının serde serialize çıktısı
+üzerinde de doğrulanmalıdır; böylece yeni bir alan yanlışlıkla struct'a eklendiğinde derleme
+veya test aşamasında yakalanır.
 
 #### Kabul Kriterleri
 

@@ -28,18 +28,22 @@
         yeni format için güncelle
   - Referans: Gereksinim 1.8, 6.4
 
-- [ ] 4. Artifact Fetch — 403 / 404 Ayrımı
+- [ ] 4. Artifact Fetch — 403 / 404 Ayrımı ve Path Normalization
   - [ ] 4.1 `resolve_run_artifact_path()` fonksiyonunu iki aşamalı kontrol yapacak biçimde
         güncelle:
         1. Yol Allowed_Artifact_Set içinde mi? → değilse `ServiceError::Forbidden("artifact_path_not_allowed")`
         2. Dosya diskte var mı? → yoksa `ServiceError::NotFound("artifact_not_found")`
   - [ ] 4.2 `ServiceError` enum'una `Forbidden(&'static str)` varyantı ekle; `error_response()`
         içinde HTTP 403 olarak map'le
-  - [ ] 4.3 `run_artifact_endpoint_rejects_invalid_relative_path` testini 403 beklentisiyle
+  - [ ] 4.3 `parse_run_artifact_path()` içinde `is_safe_path_segment()` kontrolünün `..` ve `.`
+        segmentlerini reddettiğini doğrula; reddetmiyorsa güncelle. Bu path normalization'ın
+        ilk katmanıdır: segment güvenliği sağlandıktan sonra `resolve_run_artifact_path()`
+        Allowed_Artifact_Set kontrolü yapar.
+  - [ ] 4.4 `run_artifact_endpoint_rejects_invalid_relative_path` testini 403 beklentisiyle
         güncelle
-  - [ ] 4.4 Allowed_Artifact_Set içinde olan ama diskte bulunmayan bir yol için 404 döndüğünü
+  - [ ] 4.5 Allowed_Artifact_Set içinde olan ama diskte bulunmayan bir yol için 404 döndüğünü
         doğrulayan test ekle
-  - Referans: Gereksinim 3.6, 3.7
+  - Referans: Gereksinim 3.6, 3.7, 3.11
 
 - [ ] 5. Artifact Discovery — `run_dir_not_found` Propagation
   - [ ] 5.1 `build_run_artifact_index()` içinde `list_run_artifact_descriptors()` çağrısından önce
@@ -49,23 +53,26 @@
         `run_dir_not_found` döndürdüğünü doğrulayan test ekle
   - Referans: Gereksinim 3.2
 
-- [ ] 6. Federation Diagnostics — Spec Uyumu
+- [ ] 6. Federation Diagnostics — Spec Uyumu ve Projeksiyon Katmanı
   - [ ] 6.1 `build_run_federation_diagnostics()` içinde run dizini yoksa önce
         `run_dir_not_found` döndür; ardından ledger yoksa `artifact_not_found` döndür
-  - [ ] 6.2 `FederationDiagnosticsResponseBody`'ye spec uyumlu alanlar ekle:
-        - `verifier_count: usize` (= `unique_verifier_count`)
-        - `observed_verifiers: Vec<SpecFederationVerifierEntry>` (`verifier_id` + opsiyonel
-          `lineage_id`)
+  - [ ] 6.2 `FederationDiagnosticsProjection` struct'ını tanımla:
+        `run_id`, `verifier_count`, `observed_verifiers`, `authority_chain_distribution`,
+        `execution_cluster_distribution`, `missing_execution_cluster_entry_count`
   - [ ] 6.3 `SpecFederationVerifierEntry` struct'ını tanımla:
         `verifier_id: String`, `lineage_id: Option<String>`
-  - [ ] 6.4 `observed_verifiers` dizisini `verifier_id`'ye göre leksikografik sırala
-  - [ ] 6.5 `authority_chain_distribution` ve `execution_cluster_distribution` içindeki `id`
-        alanını sırasıyla `authority_chain_id` ve `cluster_id` olarak serialize et
-        (`#[serde(rename)]` veya ayrı projeksiyon struct'ı)
-  - [ ] 6.6 Yanıt gövdesinin Phase13_Forbidden_Fields kümesindeki alanları içermediğini doğrulayan
-        test ekle
-  - [ ] 6.7 `run_scoped_federation_endpoint_summarizes_diversity_ledger` testini yeni alan adları
-        için güncelle
+  - [ ] 6.4 `SpecAuthorityChainEntry` struct'ını tanımla:
+        `authority_chain_id: String`, `entry_count: usize`
+  - [ ] 6.5 `SpecExecutionClusterEntry` struct'ını tanımla:
+        `cluster_id: String`, `entry_count: usize`
+  - [ ] 6.6 `build_run_federation_diagnostics()` içinde iç
+        `FederationDiagnosticsResponseBody`'yi hesapla, ardından
+        `FederationDiagnosticsProjection`'a dönüştür; projeksiyon serialize edilsin
+  - [ ] 6.7 `observed_verifiers` dizisini `verifier_id`'ye göre leksikografik sırala
+  - [ ] 6.8 Yanıt gövdesinin Phase13_Forbidden_Fields kümesindeki alanları içermediğini
+        doğrulayan serialize guard testi ekle (bkz. Görev 10)
+  - [ ] 6.9 `run_scoped_federation_endpoint_summarizes_diversity_ledger` testini yeni alan
+        adları için güncelle
   - Referans: Gereksinim 4, 5
 
 - [ ] 7. Property-Based Testler
@@ -75,6 +82,37 @@
   - [ ] 7.4 P6 — Federation Sıralama Değişmezi: tüm dağılım dizileri leksikografik sırada
   - [ ] 7.5 P7 — Artifact Fetch Passthrough: yanıt gövdesi = diskteki baytlar
   - [ ] 7.6 P8 — Method Not Allowed: tüm diagnostics path'lerine POST → 405
-  - [ ] 7.7 `cargo test --manifest-path userspace/proofd/Cargo.toml` ile tüm testlerin geçtiğini
+  - [ ] 7.7 P9 — Artifact Path Normalization: `..` veya `.` segment içeren yollar → HTTP 403;
+        Allowed_Artifact_Set dışındaki normalize edilmiş yollar → HTTP 403
+  - [ ] 7.8 `cargo test --manifest-path userspace/proofd/Cargo.toml` ile tüm testlerin geçtiğini
         doğrula
   - Referans: Gereksinim 9.2, 9.3, 9.4
+
+- [ ] 8. Atomic Manifest Creation
+  - [ ] 8.1 `verify_bundle_request()` içinde `proofd_run_manifest.json` yazımını
+        `OpenOptions::new().write(true).create_new(true)` ile atomik hale getir
+        (`O_CREAT | O_EXCL` semantiği)
+  - [ ] 8.2 `AlreadyExists` hatası durumunda mevcut manifest'i oku, fingerprint karşılaştır;
+        çakışma varsa HTTP 409 `run_id_fingerprint_conflict` döndür
+  - [ ] 8.3 Eşzamanlı iki isteğin aynı `run_id` için yarıştığı senaryoyu simüle eden test ekle:
+        yalnızca birinin manifest yazmasına izin verildiğini doğrula
+  - Referans: Gereksinim 1.12
+
+- [ ] 9. Spec Projection Layer — Federation Diagnostics
+  - [ ] 9.1 `FederationDiagnosticsProjection` struct'ının iç
+        `FederationDiagnosticsResponseBody`'den bağımsız olduğunu doğrula: iç struct'a yeni
+        alan eklendiğinde projeksiyon yanıtı değişmemeli
+  - [ ] 9.2 `build_run_federation_diagnostics()` dönüş tipini `FederationDiagnosticsProjection`
+        olarak güncelle; serialize edilen yanıtın yalnızca projeksiyon alanlarını içerdiğini
+        doğrulayan test ekle
+  - Referans: Gereksinim 4, 5; Design §4 Spec Projection Layer
+
+- [ ] 10. Forbidden Fields Serialize-Level Guard
+  - [ ] 10.1 `PHASE13_FORBIDDEN_FIELDS` sabit dizisini `lib.rs` içinde tanımla
+  - [ ] 10.2 `FederationDiagnosticsProjection` için serialize guard testi ekle:
+        `serde_json::to_value(&projection)` çıktısında forbidden field olmadığını doğrula
+  - [ ] 10.3 `VerifyBundleResponseBody` için serialize guard testi ekle:
+        yanıt gövdesinde forbidden field olmadığını doğrula
+  - [ ] 10.4 Tüm serialize guard testlerinin `PHASE13_FORBIDDEN_FIELDS` sabitine referans
+        verdiğini doğrula (liste kopyalanmamalı)
+  - Referans: Gereksinim 8; Design §6 Forbidden Fields Compile-Time Guard
