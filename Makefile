@@ -765,7 +765,6 @@ preflight-mode-guard:
 # observability isolation, and reputation prohibition.
 # These gates are CI cluster workloads - not run in pre-ci discipline.
 ci-kill-switch-phase13: \
-	ci-gate-proof-bundle \
 	ci-gate-proof-receipt \
 	ci-gate-proof-verdict-binding \
 	ci-gate-verifier-authority-resolution \

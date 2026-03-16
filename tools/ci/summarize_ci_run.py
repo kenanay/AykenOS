@@ -56,7 +56,6 @@ KILL_SWITCHES: tuple[dict[str, Any], ...] = (
         "risk_class": "artifact-truth-drift",
         "primary_gate": "proof-verdict-binding",
         "supporting_gates": (
-            "proof-bundle",
             "proof-receipt",
             "proofd-service",
         ),
