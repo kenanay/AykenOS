@@ -1,16 +1,16 @@
 // kernel/sys/phase2_validation_test.c
-// AykenOS Phase 2 Complete Validation Test Suite
+// AykenOS Phase 2 Validation Snapshot Test Suite
 //
-// This comprehensive test validates all Phase 2 components:
-// - All 10 execution-centric syscalls
-// - Ring3 VFS/DevFS/AI runtime functionality
-// - BCIB execution engine
-// - Capability system functionality
+// This suite captures current Phase 2 behavior using a mix of:
+// - semantic checks for the more mature syscall/runtime surfaces
+// - interface-shape checks for still-incomplete lifecycle surfaces
+// - Ring3 proxy/stub reachability checks
 //
 // Requirements: Task 2.5.3.1 - Execute complete Phase 2 validation
 
 #include "../../sys/syscall_v2.h"
 #include "../../drivers/console/fb_console.h"
+#include "../../include/execution_slot.h"
 #include "../../include/capability.h"
 #include "../../include/proc.h"
 #include "../../sched/sched.h"
@@ -48,7 +48,8 @@ static int total_tests = 0;
 // ============================================================================
 
 /**
- * Test all 10 execution-centric syscalls for basic functionality
+ * Test current execution-centric syscall behavior without overstating
+ * incomplete lifecycle surfaces as fully operational.
  */
 static void test_syscall_v2_interface(void)
 {
@@ -56,11 +57,13 @@ static void test_syscall_v2_interface(void)
     
     // Test 1: sys_v2_map_memory
     uint64_t result = sys_v2_map_memory(0x1000000, 0x2000000, 0x3);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_map_memory basic functionality");
+    TEST_ASSERT(result == ESYS_V2_SUCCESS,
+                "sys_v2_map_memory interface reachable (mapping semantics pending)");
     
     // Test 2: sys_v2_unmap_memory
     result = sys_v2_unmap_memory(0x1000000, 0x1000);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_unmap_memory basic functionality");
+    TEST_ASSERT(result == ESYS_V2_SUCCESS,
+                "sys_v2_unmap_memory interface reachable (unmap semantics pending)");
     
     // Test 3: sys_v2_switch_context (with invalid contexts - should fail gracefully)
     result = sys_v2_switch_context(999, 998);
@@ -68,21 +71,65 @@ static void test_syscall_v2_interface(void)
     
     // Test 4: sys_v2_submit_execution
     char dummy_bcib[] = {0x42, 0x43, 0x49, 0x42}; // "BCIB" magic
-    result = sys_v2_submit_execution(dummy_bcib, sizeof(dummy_bcib), 1001);
+    uint64_t submit_exec_id = sys_v2_submit_execution(dummy_bcib, sizeof(dummy_bcib), 1001);
+    result = submit_exec_id;
     TEST_ASSERT(result > 0, "sys_v2_submit_execution returns execution ID");
+    {
+        execution_slot_guard_t slot_guard = {0};
+        exec_slot_t *slot = NULL;
+        execution_context_queue_t *queue = NULL;
+        int slot_ready = 0;
+        int queue_has_entry = 0;
+
+        execution_slot_enter_critical(&slot_guard);
+        slot = execution_slot_find_locked(result);
+        queue = execution_slot_find_queue_locked(1001);
+        slot_ready = slot != NULL &&
+                     slot->state == EXEC_SLOT_READY &&
+                     slot->target_context_id == 1001 &&
+                     slot->bcib_size == sizeof(dummy_bcib);
+        queue_has_entry = queue != NULL && queue->depth > 0;
+        execution_slot_exit_critical(&slot_guard);
+
+        TEST_ASSERT(slot_ready, "sys_v2_submit_execution creates READY slot");
+        TEST_ASSERT(queue_has_entry, "sys_v2_submit_execution enqueues target context");
+    }
+    {
+        execution_slot_guard_t slot_guard = {0};
+        exec_slot_t *picked_up = NULL;
+        int slot_running = 0;
+
+        execution_slot_enter_critical(&slot_guard);
+        picked_up = execution_slot_pickup_locked(1001);
+        slot_running = picked_up != NULL &&
+                       picked_up->execution_id == submit_exec_id &&
+                       picked_up->state == EXEC_SLOT_RUNNING;
+        execution_slot_exit_critical(&slot_guard);
+
+        TEST_ASSERT(slot_running, "execution_slot pickup transitions READY slot to RUNNING");
+    }
     
     // Test 5: sys_v2_wait_result
-    result = sys_v2_wait_result(1, 1000);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_wait_result basic functionality");
+    result = sys_v2_wait_result(submit_exec_id, 1000);
+    TEST_ASSERT(result == ESYS_V2_RESOURCE_BUSY,
+                "sys_v2_wait_result reports nonterminal execution as busy");
     
     // Test 6: sys_v2_interrupt_return
     result = sys_v2_interrupt_return(1, 0);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_interrupt_return basic functionality");
+    TEST_ASSERT(result == ESYS_V2_SUCCESS,
+                "sys_v2_interrupt_return current placeholder path reachable");
     
     // Test 7: sys_v2_time_query
-    uint64_t time_buffer = 0;
-    result = sys_v2_time_query(1, &time_buffer);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS && time_buffer != 0, "sys_v2_time_query basic functionality");
+    uint64_t monotonic_tick0 = 0;
+    uint64_t monotonic_tick1 = 0;
+    uint64_t uptime_ms = 0;
+    result = sys_v2_time_query(TIME_QUERY_MONOTONIC, &monotonic_tick0);
+    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_time_query monotonic ticks");
+    result = sys_v2_time_query(TIME_QUERY_MONOTONIC, &monotonic_tick1);
+    TEST_ASSERT(result == ESYS_V2_SUCCESS && monotonic_tick1 >= monotonic_tick0,
+                "sys_v2_time_query monotonic nondecreasing");
+    result = sys_v2_time_query(TIME_QUERY_UPTIME, &uptime_ms);
+    TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_time_query uptime milliseconds");
     
     // Test 8: sys_v2_capability_bind
     capability_token_t test_token = {0, CAP_PERM_READ, CAP_RESOURCE_MEMORY};
@@ -93,9 +140,9 @@ static void test_syscall_v2_interface(void)
     result = sys_v2_capability_revoke(test_token.id);
     TEST_ASSERT(result == ESYS_V2_SUCCESS, "sys_v2_capability_revoke basic functionality");
     
-    // Test 10: sys_v2_exit (test parameter validation only)
+    // Test 10: sys_v2_exit (test coverage intentionally limited)
     // Note: We can't actually test exit as it would terminate the process
-    fb_print("[INFO] sys_v2_exit parameter validation: OK (cannot test actual exit)\n");
+    fb_print("[INFO] sys_v2_exit semantic teardown not exercised here\n");
     
     TEST_END("V2 Syscall Interface");
 }
@@ -126,8 +173,11 @@ static void test_syscall_v2_error_handling(void)
     result = sys_v2_interrupt_return(0, 0);
     TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "interrupt_return rejects null interrupt ID");
     
-    result = sys_v2_time_query(1, NULL);
+    result = sys_v2_time_query(TIME_QUERY_UPTIME, NULL);
     TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "time_query rejects null buffer");
+
+    result = sys_v2_time_query(99, &(uint64_t){0});
+    TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "time_query rejects unknown query type");
     
     result = sys_v2_capability_bind(0, NULL);
     TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "capability_bind rejects null parameters");
@@ -309,7 +359,7 @@ static void test_ring3_ai_runtime(void)
 // ============================================================================
 
 /**
- * Test BCIB execution engine functionality
+ * Test BCIB submission anchoring under current runtime reality.
  */
 static void test_bcib_execution_engine(void)
 {
@@ -330,16 +380,17 @@ static void test_bcib_execution_engine(void)
     
     // Test execution result waiting
     uint64_t result = sys_v2_wait_result(exec_id, 5000);
-    TEST_ASSERT(result == ESYS_V2_SUCCESS, "BCIB execution result waiting");
+    TEST_ASSERT(result == ESYS_V2_RESOURCE_BUSY,
+                "BCIB wait_result reports pending execution as busy");
     
     // Test BCIB capability binding
     capability_token_t bcib_cap = {0, CAP_PERM_EXECUTE, CAP_RESOURCE_EXECUTION};
     uint64_t cap_id = sys_v2_capability_bind(3001, &bcib_cap);
     TEST_ASSERT(cap_id > 0, "BCIB execution capability binding");
     
-    fb_print("[INFO] BCIB executor architecture implemented in Ring3\n");
-    fb_print("[INFO] BCIB graph validation and submission working\n");
-    fb_print("[INFO] BCIB capability manager functional\n");
+    fb_print("[INFO] BCIB submit path now anchors READY slots in kernel state\n");
+    fb_print("[INFO] Worker pickup and completion are still pending\n");
+    fb_print("[INFO] BCIB capability manager path remains functional\n");
     
     TEST_END("BCIB Execution Engine");
 }
@@ -356,8 +407,8 @@ static void test_phase2_integration(void)
     TEST_START("Phase 2 Integration");
     
     // Test syscall dispatcher routing
-    fb_print("[INFO] Dual syscall interface (v1 + v2) operational\n");
-    fb_print("[INFO] Syscall numbering plan (1000-1009) implemented\n");
+    fb_print("[INFO] V2 syscall interface is active; runtime maturity is mixed\n");
+    fb_print("[INFO] Syscall numbering plan (1000-1010) implemented\n");
     
     // Test Ring0 mechanism-only approach
     fb_print("[INFO] Ring0 provides mechanism only\n");
@@ -394,7 +445,7 @@ static void test_syscall_performance(void)
     
     for (int i = 0; i < rapid_test_count; i++) {
         uint64_t time_buffer = 0;
-        uint64_t result = sys_v2_time_query(1, &time_buffer);
+        uint64_t result = sys_v2_time_query(TIME_QUERY_UPTIME, &time_buffer);
         if (result == ESYS_V2_SUCCESS) {
             successful_calls++;
         }
@@ -425,16 +476,16 @@ static void test_syscall_performance(void)
 // ============================================================================
 
 /**
- * Execute complete Phase 2 validation test suite
+ * Execute the current Phase 2 validation snapshot.
  */
 void execute_phase2_validation(void)
 {
     fb_print("\n");
     fb_print("================================================================================\n");
-    fb_print("                    AYKENOS PHASE 2 COMPLETE VALIDATION\n");
+    fb_print("                    AYKENOS PHASE 2 VALIDATION SNAPSHOT\n");
     fb_print("================================================================================\n");
     fb_print("Task 2.5.3.1: Execute complete Phase 2 validation\n");
-    fb_print("Requirements: Validate all Phase 2 components and functionality\n");
+    fb_print("Scope: Mixed semantic and interface-shape checks for current runtime reality\n");
     fb_print("================================================================================\n");
     
     // Initialize test counters
@@ -457,7 +508,7 @@ void execute_phase2_validation(void)
     // Print final results
     fb_print("\n");
     fb_print("================================================================================\n");
-    fb_print("                         PHASE 2 VALIDATION RESULTS\n");
+    fb_print("                      PHASE 2 VALIDATION SNAPSHOT RESULTS\n");
     fb_print("================================================================================\n");
     
     fb_print("Total Tests: ");
@@ -473,27 +524,26 @@ void execute_phase2_validation(void)
     fb_print("\n");
     
     if (tests_failed == 0) {
-        fb_print("\n🎉 ALL PHASE 2 VALIDATION TESTS PASSED! 🎉\n");
+        fb_print("\nPHASE 2 VALIDATION CHECKS PASSED\n");
         fb_print("================================================================================\n");
-        fb_print("PHASE 2 VALIDATION STATUS: ✅ COMPLETE\n");
+        fb_print("PHASE 2 VALIDATION STATUS: CURRENT CHECKS PASS\n");
         fb_print("================================================================================\n");
-        fb_print("✅ All 10 execution-centric syscalls working correctly\n");
-        fb_print("✅ Ring3 VFS/DevFS/AI runtime implementations validated\n");
-        fb_print("✅ BCIB execution engine functional\n");
-        fb_print("✅ Capability system enforcing security\n");
-        fb_print("✅ Execution-centric paradigm operational\n");
-        fb_print("✅ Ring0 mechanism-only architecture achieved\n");
-        fb_print("✅ Performance and stress tests passed\n");
+        fb_print("[OK] ABI/range and interface-shape checks passed\n");
+        fb_print("[OK] time_query and capability surfaces have semantic coverage\n");
+        fb_print("[OK] submit_execution anchors READY slots into kernel state\n");
+        fb_print("[INFO] Ring3 proxy/stub reachability checks passed\n");
+        fb_print("[WARN] execution lifecycle is still incomplete\n");
+        fb_print("[WARN] worker pickup, blocking wait, timeout, and exit teardown remain pending\n");
+        fb_print("[WARN] this file is not proof of full execution lifecycle correctness\n");
         fb_print("================================================================================\n");
-        fb_print("READY FOR PHASE 2.5 LEGACY CLEANUP\n");
+        fb_print("Interpret result together with SYSCALL_RUNTIME_REALITY.md\n");
         fb_print("================================================================================\n");
     } else {
-        fb_print("\n❌ PHASE 2 VALIDATION INCOMPLETE ❌\n");
+        fb_print("\nPHASE 2 VALIDATION CHECKS FAILED\n");
         fb_print("================================================================================\n");
-        fb_print("PHASE 2 VALIDATION STATUS: ❌ FAILED\n");
+        fb_print("PHASE 2 VALIDATION STATUS: FAILED\n");
         fb_print("================================================================================\n");
-        fb_print("Some tests failed. Please review and fix issues before proceeding.\n");
-        fb_print("Phase 2.5 should not begin until all validation tests pass.\n");
+        fb_print("Some validation checks failed. Review whether they are semantic or interface-shape failures before interpreting runtime state.\n");
         fb_print("================================================================================\n");
     }
 }
@@ -503,11 +553,11 @@ void execute_phase2_validation(void)
  */
 void quick_phase2_validation(void)
 {
-    fb_print("\n[QUICK-CHECK] Phase 2 Validation Summary\n");
+    fb_print("\n[QUICK-CHECK] Phase 2 Validation Snapshot\n");
     
     // Quick syscall check
-    uint64_t result = sys_v2_time_query(1, &(uint64_t){0});
-    fb_print("✓ V2 syscalls: ");
+    uint64_t result = sys_v2_time_query(TIME_QUERY_UPTIME, &(uint64_t){0});
+    fb_print("✓ time_query surface: ");
     fb_print(result == ESYS_V2_SUCCESS ? "OK" : "FAIL");
     fb_print("\n");
     
@@ -521,9 +571,9 @@ void quick_phase2_validation(void)
     // Quick BCIB check
     char bcib[] = {0x42, 0x43, 0x49, 0x42, 0x00, 0x02};
     uint64_t exec_id = sys_v2_submit_execution(bcib, sizeof(bcib), 9998);
-    fb_print("✓ BCIB engine: ");
+    fb_print("✓ submit path anchoring: ");
     fb_print(exec_id > 0 ? "OK" : "FAIL");
     fb_print("\n");
     
-    fb_print("[QUICK-CHECK] Run execute_phase2_validation() for complete test\n");
+    fb_print("[QUICK-CHECK] Run execute_phase2_validation() for the full validation snapshot\n");
 }

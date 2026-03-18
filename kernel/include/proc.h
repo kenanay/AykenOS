@@ -69,6 +69,7 @@ typedef struct proc {
     proc_type_t type;
     const char *name;
     void *wait_obj;
+    uint64_t active_execution_id;
     struct proc *next;    // ready queue için
     
     // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)

@@ -10,9 +10,11 @@
 #include "syscall_v2.h"
 #include "../include/sys_v2_abi_lock.h"
 #include "../drivers/console/fb_console.h"
+#include "../include/execution_slot.h"
 #include "../include/proc.h"
 #include "../sched/sched.h"
 #include "../arch/x86_64/cpu.h"
+#include "../arch/x86_64/timer.h"
 #include "../arch/x86_64/port_io.h"
 #include "../include/gdt_idt.h"
 #include "../include/mm.h"
@@ -26,7 +28,6 @@
 // Ring0 maintains only the minimal state necessary for mechanism implementation.
 // All policy decisions and complex state management are delegated to Ring3.
 
-static uint64_t next_execution_id = 1;
 static uint8_t debug_putchar_marker_progress[MAX_PROCS];
 
 // Gate-3: Ring3 runtime validation marker tracking
@@ -394,16 +395,49 @@ uint64_t sys_v2_switch_context(uint64_t old_ctx_id, uint64_t new_ctx_id)
 
 uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t context_id)
 {
+    execution_slot_guard_t slot_guard = {0};
+    exec_slot_t *slot = NULL;
+    uint64_t owner_pid = 0;
+    uint64_t execution_id;
+
     // Validate parameters
     if (bcib_graph == NULL || graph_size == 0 || context_id == 0) {
         return ESYS_V2_INVALID_PARAM;
     }
-    
-    // Allocate execution ID
-    uint64_t execution_id = next_execution_id++;
-    
-    // TODO: Implement actual BCIB graph submission mechanism
-    // This should queue the execution for Ring3 processing
+
+    extern proc_t *current_proc;
+    if (current_proc != NULL && current_proc->pid > 0) {
+        owner_pid = (uint64_t)current_proc->pid;
+    }
+
+    execution_slot_enter_critical(&slot_guard);
+
+    slot = execution_slot_alloc_locked(owner_pid, context_id);
+    if (!slot) {
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_RESOURCE_BUSY;
+    }
+
+    slot->created_tick = timer_ticks();
+    slot->bcib_size = graph_size;
+
+    // Kernel-owned BCIB backing copy is a later slice. This first submit path
+    // activates slot lifecycle anchoring and READY queue visibility only.
+    if (execution_slot_transition_locked(slot, EXEC_SLOT_CREATED, EXEC_SLOT_READY) != 0) {
+        execution_slot_release_locked(slot);
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_RESOURCE_BUSY;
+    }
+
+    if (execution_slot_enqueue_locked(slot) != 0) {
+        execution_slot_release_locked(slot);
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_RESOURCE_BUSY;
+    }
+
+    execution_id = slot->execution_id;
+    execution_slot_exit_critical(&slot_guard);
+
     fb_print("[syscall_v2] submit_execution: graph=0x");
     fb_print_hex((uint64_t)bcib_graph);
     fb_print(" size=");
@@ -419,21 +453,57 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
 
 uint64_t sys_v2_wait_result(uint64_t execution_id, uint64_t timeout_ms)
 {
+    execution_slot_guard_t slot_guard = {0};
+    exec_slot_t *slot = NULL;
+    uint64_t owner_pid = 0;
+    uint64_t result = ESYS_V2_RESOURCE_BUSY;
+
     // Validate parameters
     if (execution_id == 0) {
         return ESYS_V2_INVALID_PARAM;
     }
-    
-    // TODO: Implement actual result waiting mechanism
-    // This should block until execution completes or timeout occurs
-    fb_print("[syscall_v2] wait_result: exec_id=");
-    fb_print_int(execution_id);
-    fb_print(" timeout=");
-    fb_print_int(timeout_ms);
-    fb_print("\n");
-    
-    // For now, return success immediately
-    return ESYS_V2_SUCCESS;
+
+    (void)timeout_ms;
+
+    extern proc_t *current_proc;
+    if (current_proc != NULL && current_proc->pid > 0) {
+        owner_pid = (uint64_t)current_proc->pid;
+    }
+
+    execution_slot_enter_critical(&slot_guard);
+    slot = execution_slot_find_locked(execution_id);
+    if (!slot) {
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_CONTEXT_ERROR;
+    }
+
+    if (owner_pid != 0 && slot->owner_pid != 0 && slot->owner_pid != owner_pid) {
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_NO_PERMISSION;
+    }
+
+    switch (slot->state) {
+    case EXEC_SLOT_COMPLETED:
+    case EXEC_SLOT_RESULT_MAPPED:
+        result = ESYS_V2_SUCCESS;
+        break;
+    case EXEC_SLOT_TIMEOUT:
+        result = ESYS_V2_TIMEOUT;
+        break;
+    case EXEC_SLOT_FAILED:
+    case EXEC_SLOT_ABORTED:
+        result = ESYS_V2_CONTEXT_ERROR;
+        break;
+    case EXEC_SLOT_CREATED:
+    case EXEC_SLOT_READY:
+    case EXEC_SLOT_RUNNING:
+    default:
+        result = ESYS_V2_RESOURCE_BUSY;
+        break;
+    }
+
+    execution_slot_exit_critical(&slot_guard);
+    return result;
 }
 
 // ============================================================================
@@ -467,22 +537,20 @@ uint64_t sys_v2_interrupt_return(uint64_t interrupt_id, uint64_t result_code)
 
 uint64_t sys_v2_time_query(uint64_t query_type, uint64_t *result_buffer)
 {
-    // Validate parameters
     if (result_buffer == NULL) {
         return ESYS_V2_INVALID_PARAM;
     }
-    
-    // TODO: Implement actual time query mechanism
-    // This should interface with the system timer
-    fb_print("[syscall_v2] time_query: type=");
-    fb_print_int(query_type);
-    fb_print(" buffer=0x");
-    fb_print_hex((uint64_t)result_buffer);
-    fb_print("\n");
-    
-    // For now, return a dummy timestamp
-    *result_buffer = 12345678; // Dummy timestamp
-    return ESYS_V2_SUCCESS;
+
+    switch (query_type) {
+    case TIME_QUERY_MONOTONIC:
+        *result_buffer = timer_ticks();
+        return ESYS_V2_SUCCESS;
+    case TIME_QUERY_UPTIME:
+        *result_buffer = timer_ticks_to_ms(timer_ticks());
+        return ESYS_V2_SUCCESS;
+    default:
+        return ESYS_V2_INVALID_PARAM;
+    }
 }
 
 // ============================================================================

@@ -29,6 +29,7 @@
 #include "include/boot_info.h"
 #include "include/boot_flags.h"
 #include "include/mm.h"
+#include "include/execution_slot.h"
 #include "sched/sched.h"
 #include "include/proc.h"
 // VFS/DevFS removed in Phase 2.5 - Step C completion
@@ -560,6 +561,11 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]4 PROC_INIT\n");
     proc_init();   // Ring0 mechanism only - policy in Ring3
     fb_print("[OK] Scheduler mechanism + Process mechanism (policy in Ring3).\n");
+
+    // Passive execution-slot state tables for execution lifecycle hardening.
+    debugcon_write("[K][LATE]4.5 EXEC_SLOT\n");
+    execution_slots_init();
+    fb_print("[OK] Execution-slot tables initialized (passive runtime state only).\n");
 
     // ---------------------------------------------------------
     // 3) File system mechanism only - no policy in Ring0

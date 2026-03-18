@@ -33,6 +33,14 @@
 #define CAP_RESOURCE_EXECUTION  3
 #define CAP_RESOURCE_TIME       4
 
+/*
+ * sys_v2_time_query(query_type, out)
+ *   TIME_QUERY_MONOTONIC -> raw monotonic PIT ticks
+ *   TIME_QUERY_UPTIME    -> uptime in milliseconds derived from PIT ticks
+ */
+#define TIME_QUERY_MONOTONIC    0
+#define TIME_QUERY_UPTIME       1
+
 typedef struct execution_context {
     uint64_t context_id;
     uint64_t process_id;

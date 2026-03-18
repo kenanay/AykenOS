@@ -35,6 +35,7 @@
 #endif
 
 static volatile uint64_t tick_count = 0;
+static volatile uint32_t timer_frequency_hz_value = 100;
 
 static void timer_debugcon_write(const char *s)
 {
@@ -265,6 +266,8 @@ void timer_isr_c(void *frame_ptr)
 
 void timer_init(uint32_t frequency_hz)
 {
+    uint32_t configured_frequency_hz = frequency_hz ? frequency_hz : 100;
+
     // DEBUG: Timer init entry
     TIMER_DBG_CHAR('[');
     TIMER_DBG_CHAR('T');
@@ -276,7 +279,9 @@ void timer_init(uint32_t frequency_hz)
     extern void timer_isr_asm(void);
     idt_set_gate_raw(32, timer_isr_asm, 0x8E); // present, ring0 interrupt gate
 
-    uint32_t divisor = 1193180 / (frequency_hz ? frequency_hz : 100);
+    timer_frequency_hz_value = configured_frequency_hz;
+
+    uint32_t divisor = 1193180 / configured_frequency_hz;
     outb(PIT_COMMAND, 0x36); // channel 0, lobyte/hibyte, mode 3
     outb(PIT_CHANNEL0, divisor & 0xFF);
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
@@ -306,4 +311,20 @@ void timer_init(uint32_t frequency_hz)
 uint64_t timer_ticks(void)
 {
     return tick_count;
+}
+
+uint32_t timer_frequency_hz(void)
+{
+    return timer_frequency_hz_value;
+}
+
+uint64_t timer_ticks_to_ms(uint64_t ticks)
+{
+    uint32_t hz = timer_frequency_hz_value;
+
+    if (hz == 0) {
+        return 0;
+    }
+
+    return (ticks * 1000ULL) / (uint64_t)hz;
 }

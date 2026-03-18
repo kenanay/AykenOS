@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "sched.h"
 #include "sched_mailbox.h"
+#include "../include/execution_slot.h"
 #include "../arch/x86_64/cpu.h"
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
@@ -650,6 +651,29 @@ static inline void sched_dbg_mark_iret(void) { }
 #endif
 
 proc_t *current_proc = NULL;
+
+static void sched_try_pickup_execution_work(void)
+{
+    execution_slot_guard_t slot_guard = {0};
+    exec_slot_t *slot = NULL;
+
+    if (!current_proc || current_proc->pid <= 0) {
+        return;
+    }
+    if (current_proc->type != PROC_TYPE_USER) {
+        return;
+    }
+    if (current_proc->active_execution_id != 0) {
+        return;
+    }
+
+    execution_slot_enter_critical(&slot_guard);
+    slot = execution_slot_pickup_locked((uint64_t)current_proc->pid);
+    if (slot) {
+        current_proc->active_execution_id = slot->execution_id;
+    }
+    execution_slot_exit_critical(&slot_guard);
+}
 static volatile uint32_t need_resched = 0;
 // One-shot by design: proves mailbox decision/apply path exists without per-tick log churn.
 // NOTE: current path is single-CPU validation; SMP enablement requires atomic/lock.
@@ -1137,6 +1161,7 @@ void sched_start(void)
     if (sched_is_owner(current_proc)) {
         sched_owner_cached = current_proc;
     }
+    sched_try_pickup_execution_work();
     
     // MVP-0: Scheduler bridge self-test (emits markers for gate validation)
     // Called here after current_proc is set but before switch_to_first
@@ -1390,6 +1415,7 @@ static void sched_yield_core(int reenable_if)
     current_proc = next;
     // Ring3 policy determines state transition behavior
     current_proc->state = PROC_RUNNING;
+    sched_try_pickup_execution_work();
 
     if (emit_phase10c_markers) {
         sched_emit_phase10c_decision(
@@ -1627,6 +1653,7 @@ void sched_block_current(void)
     current_proc = next;
     // Ring3 policy determines state transition behavior
     current_proc->state = PROC_RUNNING;
+    sched_try_pickup_execution_work();
     if (current_proc->context.cs == GDT_USER_CODE) {
         if (!current_proc->context.rsp0) {
             fb_print("[PANIC] Ring3 process has no rsp0 (TSS stack)\n");

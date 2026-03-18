@@ -199,7 +199,7 @@ void test_syscall_count(void)
     }
     
     // Test valid v2 syscall (should not return INVALID_SYSCALL)
-    result = syscall_v2_handler(SYS_V2_TIME_QUERY, (uint64_t)&result, 0, 0, 0);
+    result = syscall_v2_handler(SYS_V2_TIME_QUERY, TIME_QUERY_MONOTONIC, (uint64_t)&result, 0, 0);
     if (result != ESYS_V2_INVALID_SYSCALL) {
         fb_print("[TEST] ✓ Valid v2 syscalls accepted\n");
     } else {
@@ -222,7 +222,7 @@ void test_v2_syscall_dispatcher(void)
     
     // Test valid range (1000-1009) - should be routed to v2 handler
     // Note: We test the v2 handler directly since syscall_handler is internal
-    result = syscall_v2_handler(6, (uint64_t)&result, 0, 0, 0); // SYS_V2_TIME_QUERY
+    result = syscall_v2_handler(6, TIME_QUERY_MONOTONIC, (uint64_t)&result, 0, 0); // SYS_V2_TIME_QUERY
     if (result != (uint64_t)-38) { // Not -ENOSYS
         fb_print("[TEST] ✓ Valid syscall range (0-9) accepted by v2 handler\n");
     } else {
