@@ -29,6 +29,8 @@ This document does **not** authorize a new control plane.
   different fixed virtual addresses
 - the execution inbox mapping MUST be user-readable, non-executable, and
   non-writable from userspace
+- each worker MUST have exactly one `active_execution_id` latch in kernel space
+- inbox publication MUST NOT proceed while that worker latch is already set
 
 ## 3. Fixed VA Layout
 
@@ -50,6 +52,13 @@ Initial size rule:
 
 This keeps the first delivery slice bounded and deterministic.
 
+Payload mapping lifecycle:
+
+- the execution inbox page and payload window MUST be mapped during process
+  initialization
+- those mappings MUST remain stable for the worker lifetime
+- process exit MUST revoke both mappings
+
 ## 4. Authority Model
 
 The execution authority chain is:
@@ -67,6 +76,14 @@ The inbox is never the truth source.
 
 It is only a delivery snapshot for the currently active execution owned by the
 scheduled worker.
+
+Initial latch rule:
+
+- the kernel worker latch (`active_execution_id`) is the publication guard
+- if the latch is non-zero, Ring0 MUST NOT publish a new inbox snapshot for that
+  worker
+- one-deep inbox behavior is therefore enforced by kernel latch state, not by
+  userspace discipline
 
 ## 5. Inbox Descriptor
 
@@ -98,6 +115,7 @@ Notes:
 - the inbox is intentionally one-deep in the initial version
 - this matches the current single `active_execution_id` latch per worker
 - queue depth remains a kernel concern, not an inbox concern
+- overwrite is forbidden while the worker latch remains set
 
 ## 6. Kernel Write Contract
 
@@ -107,15 +125,22 @@ When a worker is scheduled and `READY -> RUNNING` pickup succeeds, Ring0 MUST:
 2. copy or map the kernel-owned BCIB backing into the fixed payload window
 3. write descriptor fields except `delivery_seq`
 4. set `state = AXIB_STATE_READY`
-5. publish the new `delivery_seq` last
+5. enforce a full publish barrier
+6. publish the new `delivery_seq` last
 
 The publish order matters:
 
 - payload window first
 - descriptor content second
+- publish barrier third
 - `delivery_seq` last
 
 This makes `delivery_seq` the userspace-visible commit point.
+
+Kernel MUST ensure full memory ordering before publishing `delivery_seq`.
+
+Kernel MUST NOT overwrite an inbox snapshot while the worker still has a
+non-zero `active_execution_id` latch.
 
 Ring0 MAY reuse the same physical payload frames across deliveries, but the
 worker-visible snapshot MUST be fully overwritten before `delivery_seq`
@@ -138,6 +163,9 @@ Userspace MUST NOT:
 - write BCIB payload bytes in the mapped window
 - treat the inbox as a completion or acknowledgment channel
 - make scheduling decisions from inbox content
+
+Userspace polling strategy is outside the kernel contract, but workers MUST NOT
+assume interrupt-driven delivery in v1.
 
 ## 8. Boundary Rules
 

@@ -188,6 +188,10 @@ Initial version:
 - execution descriptors are queued in a kernel-owned per-`context_id` queue
 - the target worker checks for queued execution work on schedule entry
 - userspace polling loops are not the authoritative dispatch mechanism
+- each worker has exactly one kernel-owned active execution latch guarding
+  delivery publication
+- a userspace-visible execution inbox, if present, MUST NOT be overwritten while
+  that latch remains set
 
 This means the kernel queue is authoritative and any userspace-visible inbox is
 only a delivery projection, not the source of truth.
