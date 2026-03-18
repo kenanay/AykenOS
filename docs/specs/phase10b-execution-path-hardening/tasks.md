@@ -46,8 +46,10 @@
 - [ ] 6. Implement worker pickup on schedule entry
   - [x] 6.1 Define the exact hook point where the target worker checks its authoritative execution queue
   - [x] 6.2 Transition `READY -> RUNNING` under execution-table serialization
-  - [ ] 6.3 If a userspace-visible inbox is used, make it a projection of the kernel queue only
-  - [ ] 6.4 Add tests for deterministic pickup order and no-mailbox reuse
+  - [x] 6.3 Freeze the minimal execution inbox projection contract before implementation
+  - [ ] 6.4 Map a kernel-written, user-read-only execution inbox at a fixed VA distinct from scheduler mailbox
+  - [ ] 6.5 Publish picked-up execution descriptors into the inbox commit-point contract
+  - [ ] 6.6 Add tests for deterministic pickup order and no-mailbox reuse
   - Reference: Requirements 6, 7
 
 - [ ] 7. Implement blocking `sys_v2_wait_result()`

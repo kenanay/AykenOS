@@ -291,3 +291,31 @@ Notes:
 - completion, result delivery, and repeated successful wait semantics are still not implemented.
 - the current timeout path can retire queued or running work, but there is still no authoritative success-completion handoff from userspace execution.
 - the current timeout deadline is slot-scoped; multi-waiter timeout semantics are not yet frozen.
+
+### 2026-03-19
+
+Completed Slice:
+- Added a standalone execution inbox minimal spec for the next delivery/completion slice
+- Froze the fixed-VA, kernel-write, user-read-only inbox contract as separate from scheduler mailbox
+- Updated tasks to make execution inbox projection the next concrete implementation target
+
+Touched Code Paths:
+- none (documentation-only)
+
+Touched Docs:
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-minimal-spec.md`
+- `docs/specs/phase10b-execution-path-hardening/requirements.md`
+- `docs/specs/phase10b-execution-path-hardening/design.md`
+- `docs/specs/phase10b-execution-path-hardening/tasks.md`
+- `docs/specs/phase10b-execution-path-hardening/progress.md`
+
+Validation:
+- no code validation run; documentation update only
+
+Impact:
+- removed ambiguity around how worker-visible execution delivery can land without violating the scheduler mailbox boundary
+- made the next runtime slice concrete enough to implement without inventing a second control plane
+
+Notes:
+- the inbox remains explicitly non-authoritative; kernel queue truth is unchanged.
+- completion handoff is still a later slice and is not implied by this spec.

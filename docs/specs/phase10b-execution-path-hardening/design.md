@@ -213,6 +213,10 @@ Chosen initial model:
 If a userspace-visible execution inbox page is later used, it is only a
 projection of the authoritative kernel queue.
 
+The current minimal projection contract is defined in:
+
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-minimal-spec.md`
+
 ### 5.5 Worker Pickup Model
 
 The worker execution model is explicit in the first version:
@@ -222,6 +226,8 @@ The worker execution model is explicit in the first version:
 - when the target worker is scheduled, Ring0 checks the queue on schedule entry
 - if work exists, Ring0 publishes the next descriptor to the worker delivery
   surface before returning to userspace
+- the worker delivery surface is kernel-written and user-read only; it does not
+  become a second authority plane
 
 This avoids undefined "worker somehow picks slot" behavior.
 

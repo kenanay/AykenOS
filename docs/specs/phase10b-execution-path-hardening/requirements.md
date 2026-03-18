@@ -168,10 +168,16 @@ This means:
 - scheduler mailbox remains dedicated to scheduling authority hints
 - execution submission MUST use a distinct kernel-owned queue surface keyed by
   `context_id`
+- if a userspace-visible execution inbox is added, it MUST be a kernel-written,
+  read-only projection of that queue rather than a peer authority surface
 - scheduler mailbox ABI MUST NOT be reused to carry BCIB payloads or execution result data
 
 This requirement exists to preserve the Ring0/Ring3 authority split and avoid
 reintroducing a mixed control-plane surface inside the kernel.
+
+The initial projection contract is further constrained by:
+
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-minimal-spec.md`
 
 ### Requirement 7: Worker Pickup Model
 
