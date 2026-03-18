@@ -724,7 +724,9 @@ fn build_service_contract_artifacts(
         .map(|value| value.to_string());
     if trust_reuse_runtime_surface_origin.is_some() {
         fs::copy(
-            fixture.root.join("reports/trust_reuse_runtime_surface.json"),
+            fixture
+                .root
+                .join("reports/trust_reuse_runtime_surface.json"),
             out_dir.join("trust_reuse_runtime_surface.json"),
         )
         .map_err(|error| format!("failed to copy trust reuse runtime surface: {error}"))?;

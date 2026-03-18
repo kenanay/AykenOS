@@ -21,8 +21,11 @@ use proof_verifier::{verify_bundle, RegistrySnapshot, TrustPolicy};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const RUN_LEVEL_ARTIFACTS: &[&str] = &[
     "report.json",
@@ -73,6 +76,7 @@ const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
     TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH,
 ];
 const MAX_VERIFY_BUNDLE_BODY_BYTES: usize = 64 * 1024;
+static GENERATED_RUN_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestTarget {
@@ -142,7 +146,8 @@ struct VerifyBundleRequestBody {
     registry_path: String,
     #[serde(default)]
     receipt_mode: Option<VerifyBundleReceiptMode>,
-    run_id: String,
+    #[serde(default)]
+    run_id: Option<String>,
     #[serde(default)]
     receipt_signer: Option<VerifyBundleReceiptSigner>,
     #[serde(default)]
@@ -161,6 +166,7 @@ struct VerifyBundleResponseBody {
     verdict_subject: Value,
     receipt_emitted: bool,
     receipt_path: Option<String>,
+    request_fingerprint: String,
     behavioral_observability_emitted: bool,
     audit_ledger_path: Option<String>,
     verification_diversity_ledger_binding_path: Option<String>,
@@ -599,12 +605,10 @@ fn handle_run_endpoint(path: &str, evidence_dir: &Path) -> DiagnosticsResponse {
             Ok(value) => json_response(200, value),
             Err(error) => error_response(error),
         },
-        "registry" if parts.len() == 4 => {
-            match build_run_registry_diagnostics(run_id, &run_dir) {
-                Ok(value) => json_response(200, value),
-                Err(error) => error_response(error),
-            }
-        }
+        "registry" if parts.len() == 4 => match build_run_registry_diagnostics(run_id, &run_dir) {
+            Ok(value) => json_response(200, value),
+            Err(error) => error_response(error),
+        },
         "boundary" if parts.len() == 4 => {
             match build_run_boundary_diagnostics(run_id, &run_dir, evidence_dir) {
                 Ok(value) => json_response(200, value),
@@ -1012,7 +1016,9 @@ fn build_run_boundary_diagnostics(
             ) else {
                 continue;
             };
-            let Some(peer_fp) = peer_manifest.get("request_fingerprint").and_then(Value::as_str)
+            let Some(peer_fp) = peer_manifest
+                .get("request_fingerprint")
+                .and_then(Value::as_str)
             else {
                 continue;
             };
@@ -1024,13 +1030,14 @@ fn build_run_boundary_diagnostics(
     peer_run_ids.sort();
 
     // Build all_run_ids = primary + peers, sorted by run_id
-    let mut all_run_ids: Vec<(String, PathBuf)> = std::iter::once((run_id.to_string(), run_dir.to_path_buf()))
-        .chain(
-            peer_run_ids
-                .iter()
-                .map(|id| (id.clone(), evidence_dir.join(id))),
-        )
-        .collect();
+    let mut all_run_ids: Vec<(String, PathBuf)> =
+        std::iter::once((run_id.to_string(), run_dir.to_path_buf()))
+            .chain(
+                peer_run_ids
+                    .iter()
+                    .map(|id| (id.clone(), evidence_dir.join(id))),
+            )
+            .collect();
     all_run_ids.sort_by(|a, b| a.0.cmp(&b.0));
 
     // Build observed_verdicts (primary verdict already known; peers read from manifest)
@@ -1151,13 +1158,17 @@ fn handle_verify_bundle(raw_body: &[u8], evidence_dir: &Path) -> DiagnosticsResp
 }
 
 fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, ServiceError> {
-    let request = parse_verify_bundle_request(raw_body)?;
+    let mut request = parse_verify_bundle_request(raw_body)?;
     validate_verify_bundle_request(&request)?;
 
+    let request_fingerprint = compute_verify_bundle_request_fingerprint(&request)?;
+    if request.run_id.is_none() {
+        request.run_id = Some(generate_run_id()?);
+    }
+    let run_id = resolved_request_run_id(&request)?.to_string();
     let bundle_path = PathBuf::from(&request.bundle_path);
     let policy_path = PathBuf::from(&request.policy_path);
     let registry_path = PathBuf::from(&request.registry_path);
-    let request_fingerprint = compute_verify_bundle_request_fingerprint(&request)?;
     let policy = load_json_from_path::<TrustPolicy>(&policy_path, "invalid_policy_json")?;
     let registry =
         load_json_from_path::<RegistrySnapshot>(&registry_path, "invalid_registry_json")?;
@@ -1166,7 +1177,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         .receipt_signer
         .as_ref()
         .map(map_receipt_signer_config);
-    let run_dir = evidence_dir.join(&request.run_id);
+    let run_dir = evidence_dir.join(&run_id);
     fs::create_dir_all(&run_dir).map_err(|_| ServiceError::Runtime("run_dir_create_failed"))?;
     let rerun_same_request = verify_existing_run_fingerprint(&run_dir, &request_fingerprint)?;
     let audit_ledger_path = run_dir.join(VERIFICATION_AUDIT_LEDGER_FILE);
@@ -1364,7 +1375,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
     };
 
     let run_manifest = json!({
-        "run_id": request.run_id,
+        "run_id": run_id.clone(),
         "service_mode": "verification_execution_and_read_only_diagnostics",
         "bundle_path": request.bundle_path,
         "policy_path": request.policy_path,
@@ -1387,16 +1398,16 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         "verdict_subject": outcome.subject,
         "findings_count": outcome.findings.len(),
     });
-    write_json_value_if_absent_or_same(
+    persist_run_manifest(
         &run_dir.join(PROOFD_RUN_MANIFEST_FILE),
         &run_manifest,
-        "run_manifest_write_failed",
-        "run_manifest_bytes_conflict",
+        &request_fingerprint,
+        rerun_same_request,
     )?;
 
     let response = VerifyBundleResponseBody {
         status: "ok",
-        run_id: request.run_id,
+        run_id,
         verdict: verdict_label(&outcome.verdict),
         verdict_subject: serde_json::to_value(&outcome.subject).unwrap_or_else(|_| json!({})),
         receipt_emitted: outcome.receipt.is_some(),
@@ -1404,6 +1415,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
             .get("receipt_path")
             .and_then(Value::as_str)
             .map(|value| value.to_string()),
+        request_fingerprint,
         behavioral_observability_emitted,
         audit_ledger_path: run_manifest
             .get("audit_ledger_path")
@@ -1554,8 +1566,10 @@ fn parse_verify_bundle_request(raw_body: &[u8]) -> Result<VerifyBundleRequestBod
 }
 
 fn validate_verify_bundle_request(request: &VerifyBundleRequestBody) -> Result<(), ServiceError> {
-    if request.run_id.is_empty() || !is_safe_path_segment(&request.run_id) {
-        return Err(ServiceError::BadRequest("invalid_run_id"));
+    if let Some(run_id) = request.run_id.as_deref() {
+        if run_id.is_empty() || !is_safe_path_segment(run_id) {
+            return Err(ServiceError::BadRequest("invalid_run_id"));
+        }
     }
 
     if request.diversity_binding.is_some()
@@ -1711,6 +1725,22 @@ fn compute_verify_bundle_request_fingerprint(
     Ok(format!("sha256:{}", encode_lower_hex(&hasher.finalize())))
 }
 
+fn generate_run_id() -> Result<String, ServiceError> {
+    let timestamp_nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| ServiceError::Runtime("run_id_generation_failed"))?
+        .as_nanos();
+    let counter = GENERATED_RUN_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+    Ok(format!("run-{timestamp_nanos:032x}-{counter:016x}"))
+}
+
+fn resolved_request_run_id(request: &VerifyBundleRequestBody) -> Result<&str, ServiceError> {
+    request
+        .run_id
+        .as_deref()
+        .ok_or(ServiceError::Runtime("run_id_not_resolved"))
+}
+
 fn verify_existing_run_fingerprint(
     run_dir: &Path,
     request_fingerprint: &str,
@@ -1728,9 +1758,7 @@ fn verify_existing_run_fingerprint(
             "existing_run_manifest_missing_request_fingerprint",
         ))?;
     if existing_fingerprint != request_fingerprint {
-        return Err(ServiceError::BadRequest(
-            "run_id_request_fingerprint_mismatch",
-        ));
+        return Err(ServiceError::Conflict("run_id_fingerprint_conflict"));
     }
     Ok(true)
 }
@@ -1763,7 +1791,7 @@ fn build_diversity_binding_manifest(
         .ok_or(ServiceError::BadRequest("receipt_signer_missing"))?;
     Ok(VerificationDiversityLedgerProducerManifest {
         binding_version: 1,
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         verification_context_id_source: "policy_hash".to_string(),
         node_bindings: vec![VerificationNodeBinding {
             verification_node_id: signer.verifier_node_id.clone(),
@@ -1786,7 +1814,7 @@ fn build_request_bound_replay_boundary_flow_source_document(
         source_version: 1,
         flow_surface: "replay_boundary".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1831,7 +1859,7 @@ fn build_runtime_replay_boundary_flow_source_document(
         source_version: 1,
         flow_surface: "replay_boundary".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1859,7 +1887,7 @@ fn build_request_bound_trust_reuse_flow_source_document(
         source_version: 1,
         flow_surface: "trust_reuse".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1919,7 +1947,7 @@ fn build_runtime_trust_reuse_flow_source_document(
         } else {
             "PASS".to_string()
         },
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events,
     }))
@@ -2121,6 +2149,58 @@ fn write_canonical_json_value_if_absent_or_same(
 ) -> Result<(), ServiceError> {
     let bytes = canonicalize_json_value(value).map_err(|_| ServiceError::Runtime(write_error))?;
     write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
+}
+
+fn persist_run_manifest(
+    path: &Path,
+    value: &Value,
+    request_fingerprint: &str,
+    rerun_same_request: bool,
+) -> Result<(), ServiceError> {
+    if rerun_same_request {
+        return write_json_value_if_absent_or_same(
+            path,
+            value,
+            "run_manifest_write_failed",
+            "run_manifest_bytes_conflict",
+        );
+    }
+    create_run_manifest_atomically(
+        path,
+        value,
+        request_fingerprint,
+        "run_manifest_write_failed",
+    )
+}
+
+fn create_run_manifest_atomically(
+    path: &Path,
+    value: &Value,
+    request_fingerprint: &str,
+    write_error: &'static str,
+) -> Result<(), ServiceError> {
+    let bytes = serde_json::to_vec_pretty(value).map_err(|_| ServiceError::Runtime(write_error))?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|_| ServiceError::Runtime(write_error))?;
+    }
+
+    match OpenOptions::new().write(true).create_new(true).open(path) {
+        Ok(mut file) => file
+            .write_all(&bytes)
+            .map_err(|_| ServiceError::Runtime(write_error)),
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+            if let Ok(manifest) = read_json_file(path) {
+                let _same_fingerprint = manifest
+                    .get("request_fingerprint")
+                    .and_then(Value::as_str)
+                    .is_some_and(|existing_fingerprint| {
+                        existing_fingerprint == request_fingerprint
+                    });
+            }
+            Err(ServiceError::Conflict("run_id_fingerprint_conflict"))
+        }
+        Err(_) => Err(ServiceError::Runtime(write_error)),
+    }
 }
 
 fn copy_file_if_absent_or_same(
@@ -2472,6 +2552,7 @@ fn json_response(status_code: u16, value: Value) -> DiagnosticsResponse {
 fn error_response(error: ServiceError) -> DiagnosticsResponse {
     match error {
         ServiceError::BadRequest(code) => json_response(400, json!({ "error": code })),
+        ServiceError::Conflict(code) => json_response(409, json!({ "error": code })),
         ServiceError::NotFound(code) => json_response(404, json!({ "error": code })),
         ServiceError::MalformedArtifact(code) => json_response(500, json!({ "error": code })),
         ServiceError::Runtime(code) => json_response(500, json!({ "error": code })),
@@ -2481,6 +2562,7 @@ fn error_response(error: ServiceError) -> DiagnosticsResponse {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ServiceError {
     BadRequest(&'static str),
+    Conflict(&'static str),
     NotFound(&'static str),
     MalformedArtifact(&'static str),
     Runtime(&'static str),
@@ -2489,7 +2571,8 @@ enum ServiceError {
 #[cfg(test)]
 mod tests {
     use super::{
-        route_request, route_request_with_body, DiagnosticsResponse, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        create_run_manifest_atomically, route_request, route_request_with_body,
+        DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
     };
     use proof_verifier::testing::fixtures::create_fixture_bundle;
     use proof_verifier::trust_reuse_runtime_surface::{
@@ -2500,6 +2583,8 @@ mod tests {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::{Arc, Barrier};
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
@@ -3583,6 +3668,10 @@ mod tests {
             body.get("receipt_path").and_then(|v| v.as_str()),
             Some("receipts/verification_receipt.json")
         );
+        assert!(body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .is_some_and(|value| value.starts_with("sha256:")));
 
         let run_dir = dir.join("run-proofd-execution-r1");
         assert!(run_dir.join("proofd_run_manifest.json").is_file());
@@ -3717,6 +3806,10 @@ mod tests {
                 .and_then(|v| v.as_str()),
             Some("verification_diversity_ledger.json")
         );
+        assert!(body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .is_some_and(|value| value.starts_with("sha256:")));
         assert_eq!(
             body.get("replay_boundary_flow_source_path")
                 .and_then(|v| v.as_str()),
@@ -4736,14 +4829,136 @@ mod tests {
             Some(second_bytes.as_slice()),
             &dir,
         );
-        assert_eq!(second_response.status_code, 400);
+        assert_eq!(second_response.status_code, 409);
         let body = body_json(second_response);
         assert_eq!(
             body.get("error").and_then(|v| v.as_str()),
-            Some("run_id_request_fingerprint_mismatch")
+            Some("run_id_fingerprint_conflict")
         );
 
         let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_bundle_endpoint_generates_run_id_when_missing() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+
+        let request_body = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+        });
+        let request_bytes = serde_json::to_vec(&request_body).expect("serialize request");
+        let response = route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let run_id = body
+            .get("run_id")
+            .and_then(|v| v.as_str())
+            .expect("generated run id")
+            .to_string();
+        assert!(!run_id.is_empty());
+        assert!(run_id.len() <= 128);
+        assert!(run_id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'));
+
+        let request_fingerprint = body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .expect("request fingerprint");
+        assert!(request_fingerprint.starts_with("sha256:"));
+
+        let run_manifest = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(dir.join(&run_id).join("proofd_run_manifest.json"))
+                .expect("read run manifest"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            run_manifest.get("run_id").and_then(|v| v.as_str()),
+            Some(run_id.as_str())
+        );
+        assert_eq!(
+            run_manifest
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str()),
+            Some(request_fingerprint)
+        );
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_manifest_creation_allows_only_one_writer() {
+        let dir = temp_dir();
+        let manifest_path = dir.join("proofd_run_manifest.json");
+        let manifest = json!({
+            "run_id": "run-proofd-atomic-manifest",
+            "request_fingerprint": "sha256:test-fingerprint",
+            "verdict": "TRUSTED"
+        });
+        let barrier = Arc::new(Barrier::new(3));
+
+        let spawn_writer = |barrier: Arc<Barrier>| {
+            let manifest_path = manifest_path.clone();
+            let manifest = manifest.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                create_run_manifest_atomically(
+                    &manifest_path,
+                    &manifest,
+                    "sha256:test-fingerprint",
+                    "run_manifest_write_failed",
+                )
+            })
+        };
+
+        let handle_a = spawn_writer(barrier.clone());
+        let handle_b = spawn_writer(barrier.clone());
+        barrier.wait();
+
+        let result_a = handle_a.join().expect("writer a");
+        let result_b = handle_b.join().expect("writer b");
+
+        let success_count = usize::from(result_a.is_ok()) + usize::from(result_b.is_ok());
+        assert_eq!(success_count, 1);
+        assert!(matches!(
+            (&result_a, &result_b),
+            (
+                Err(ServiceError::Conflict("run_id_fingerprint_conflict")),
+                Ok(())
+            ) | (
+                Ok(()),
+                Err(ServiceError::Conflict("run_id_fingerprint_conflict"))
+            )
+        ));
+
+        let manifest_body = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(&manifest_path).expect("read manifest"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            manifest_body
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str()),
+            Some("sha256:test-fingerprint")
+        );
+
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -4840,7 +5055,10 @@ mod tests {
         ctx.verification_context_id =
             proof_verifier::verification_context_object::compute_verification_context_id(&ctx)
                 .expect("context id");
-        write_json(&run_dir.join("context/verification_context_object.json"), &ctx);
+        write_json(
+            &run_dir.join("context/verification_context_object.json"),
+            &ctx,
+        );
         ctx
     }
 
@@ -4907,8 +5125,9 @@ mod tests {
             .get("observed_registry_hash_sources")
             .and_then(|v| v.as_array())
             .expect("sources array");
-        assert!(sources.iter().any(|s| s.get("source").and_then(|v| v.as_str())
-            == Some("verification_context_object")));
+        assert!(sources.iter().any(
+            |s| s.get("source").and_then(|v| v.as_str()) == Some("verification_context_object")
+        ));
         assert!(sources
             .iter()
             .any(|s| s.get("source").and_then(|v| v.as_str()) == Some("receipt")));
@@ -5008,7 +5227,11 @@ mod tests {
         let dir = temp_dir();
         let run_dir = dir.join("run-reg-5");
         fs::create_dir_all(&run_dir).expect("create run dir");
-        write_artifact(&run_dir, "context/registry_snapshot.json", "not valid json {{");
+        write_artifact(
+            &run_dir,
+            "context/registry_snapshot.json",
+            "not valid json {{",
+        );
 
         let response = route_request("GET", "/diagnostics/runs/run-reg-5/registry", &dir);
         assert_eq!(response.status_code, 500);
@@ -5069,12 +5292,8 @@ mod tests {
         let run_dir = dir.join("run-reg-8");
         fs::create_dir_all(&run_dir).expect("create run dir");
 
-        let response = route_request_with_body(
-            "POST",
-            "/diagnostics/runs/run-reg-8/registry",
-            None,
-            &dir,
-        );
+        let response =
+            route_request_with_body("POST", "/diagnostics/runs/run-reg-8/registry", None, &dir);
         assert_eq!(response.status_code, 405);
         let body = body_json(response);
         assert_eq!(
@@ -5177,8 +5396,7 @@ mod proptest_registry {
             registry_snapshot_ref: None,
             time_semantics_mode: None,
         };
-        ctx.verification_context_id =
-            compute_verification_context_id(&ctx).expect("context id");
+        ctx.verification_context_id = compute_verification_context_id(&ctx).expect("context id");
         let path = dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
         fs::create_dir_all(path.parent().unwrap()).expect("create context dir");
         fs::write(
@@ -5204,8 +5422,11 @@ mod proptest_registry {
         });
         let path = dir.join(RECEIPT_RELATIVE_PATH);
         fs::create_dir_all(path.parent().unwrap()).expect("create receipts dir");
-        fs::write(&path, serde_json::to_vec_pretty(&receipt).expect("serialize receipt"))
-            .expect("write receipt");
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&receipt).expect("serialize receipt"),
+        )
+        .expect("write receipt");
     }
 
     fn call_registry_endpoint(evidence_dir: &PathBuf, run_id: &str) -> Value {
@@ -5712,10 +5933,7 @@ mod tests_boundary {
             body.get("request_fingerprint").and_then(|v| v.as_str()),
             Some("sha256:fp1")
         );
-        assert_eq!(
-            body.get("peer_run_count").and_then(|v| v.as_u64()),
-            Some(0)
-        );
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
         assert_eq!(
             body.get("peer_run_ids")
                 .and_then(|v| v.as_array())
@@ -5752,14 +5970,8 @@ mod tests_boundary {
         }
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert_eq!(
-            body.get("peer_run_count").and_then(|v| v.as_u64()),
-            Some(2)
-        );
-        let peer_ids = body
-            .get("peer_run_ids")
-            .and_then(|v| v.as_array())
-            .unwrap();
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(2));
+        let peer_ids = body.get("peer_run_ids").and_then(|v| v.as_array()).unwrap();
         assert_eq!(peer_ids.len(), 2);
         let verdicts = body
             .get("verdict_consistency")
@@ -5788,10 +6000,7 @@ mod tests_boundary {
         write_manifest(&run_b, "sha256:fp-B", "TRUSTED");
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert_eq!(
-            body.get("peer_run_count").and_then(|v| v.as_u64()),
-            Some(0)
-        );
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -5876,11 +6085,10 @@ mod tests_boundary {
         write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert!(
-            body.get("context_hash_consistency")
-                .and_then(|v| v.get("all_context_hashes_match"))
-                .is_some_and(|v| v.is_null())
-        );
+        assert!(body
+            .get("context_hash_consistency")
+            .and_then(|v| v.get("all_context_hashes_match"))
+            .is_some_and(|v| v.is_null()));
         assert_eq!(
             body.get("context_hash_consistency")
                 .and_then(|v| v.get("observed_context_hashes"))
@@ -5950,11 +6158,10 @@ mod tests_boundary {
         write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert!(
-            body.get("registry_hash_consistency")
-                .and_then(|v| v.get("all_registry_hashes_match"))
-                .is_some_and(|v| v.is_null())
-        );
+        assert!(body
+            .get("registry_hash_consistency")
+            .and_then(|v| v.get("all_registry_hashes_match"))
+            .is_some_and(|v| v.is_null()));
         assert_eq!(
             body.get("registry_hash_consistency")
                 .and_then(|v| v.get("observed_registry_hashes"))
@@ -5976,10 +6183,7 @@ mod tests_boundary {
         write_manifest(&run_a, "sha256:fp1", "TRUSTED");
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert_eq!(
-            body.get("peer_run_count").and_then(|v| v.as_u64()),
-            Some(0)
-        );
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -5995,10 +6199,7 @@ mod tests_boundary {
         fs::write(run_b.join("proofd_run_manifest.json"), b"not-json").unwrap();
 
         let body = body_json(call_boundary(&dir, "run-a"));
-        assert_eq!(
-            body.get("peer_run_count").and_then(|v| v.as_u64()),
-            Some(0)
-        );
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -6779,7 +6980,10 @@ mod tests_kill_switch_gates {
         let r = route_request("POST", "/diagnostics/graph", &dir);
         assert_eq!(r.status_code, 405);
         let body = body_json(r);
-        assert_eq!(body.get("error").and_then(|v| v.as_str()), Some("method_not_allowed"));
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -6789,7 +6993,10 @@ mod tests_kill_switch_gates {
         let r = route_request("POST", "/diagnostics/authority-topology", &dir);
         assert_eq!(r.status_code, 405);
         let body = body_json(r);
-        assert_eq!(body.get("error").and_then(|v| v.as_str()), Some("method_not_allowed"));
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -6799,7 +7006,10 @@ mod tests_kill_switch_gates {
         let r = route_request("GET", "/diagnostics/graph?select_winner=true", &dir);
         assert_eq!(r.status_code, 400);
         let body = body_json(r);
-        assert_eq!(body.get("error").and_then(|v| v.as_str()), Some("unsupported_query_parameter"));
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -6809,7 +7019,10 @@ mod tests_kill_switch_gates {
         let r = route_request("GET", "/diagnostics/convergence?commit=true", &dir);
         assert_eq!(r.status_code, 400);
         let body = body_json(r);
-        assert_eq!(body.get("error").and_then(|v| v.as_str()), Some("unsupported_query_parameter"));
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -6849,8 +7062,8 @@ mod tests_kill_switch_gates {
     fn gate2_routing_functions_do_not_contain_forbidden_observability_fields() {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let source_path = std::path::Path::new(manifest_dir).join("src/lib.rs");
-        let source = fs::read_to_string(&source_path)
-            .expect("failed to read lib.rs for source scan");
+        let source =
+            fs::read_to_string(&source_path).expect("failed to read lib.rs for source scan");
 
         // Only scan production code — stop at the first #[cfg(test)] block.
         // All test modules appear after production code in this file.
@@ -6953,8 +7166,8 @@ mod tests_kill_switch_gates {
 // ─────────────────────────────────────────────────────────────────────────────
 #[cfg(test)]
 mod proptest_kill_switch_gates {
-    use super::{route_request, DiagnosticsResponse};
     use super::tests_kill_switch_gates::{json_contains_key, response_contains_forbidden_field};
+    use super::{route_request, DiagnosticsResponse};
     use proptest::prelude::*;
     use serde_json::Value;
     use std::fs;
@@ -6989,27 +7202,42 @@ mod proptest_kill_switch_gates {
     }
 
     fn safe_artifact_strategy() -> impl Strategy<Value = Value> {
-        prop::collection::vec(
-            (safe_key_strategy(), safe_val_strategy()),
-            0..8,
-        )
-        .prop_map(|pairs| {
+        prop::collection::vec((safe_key_strategy(), safe_val_strategy()), 0..8).prop_map(|pairs| {
             let mut map = serde_json::Map::new();
             for (k, v) in pairs {
                 // Exclude any key that matches a forbidden field
                 const ALL_FORBIDDEN: &[&str] = &[
-                    "dominant_authority_chain_id", "largest_outcome_cluster_size",
-                    "outcome_convergence_ratio", "global_status",
-                    "historical_authority_islands", "insufficient_evidence_islands",
-                    "retry", "override", "promote", "commit", "recommended_action",
-                    "mitigation", "routing_hint", "node_priority",
-                    "verification_weight", "execution_override",
-                    "winning_cluster", "selected_partition", "preferred_cluster",
-                    "cluster_policy_input", "partition_replay_admission",
-                    "execution_route", "committed_cluster",
-                    "verifier_score", "trust_score", "reliability_index",
-                    "weighted_authority", "correctness_rate", "agreement_ratio",
-                    "node_success_ratio", "verifier_reputation",
+                    "dominant_authority_chain_id",
+                    "largest_outcome_cluster_size",
+                    "outcome_convergence_ratio",
+                    "global_status",
+                    "historical_authority_islands",
+                    "insufficient_evidence_islands",
+                    "retry",
+                    "override",
+                    "promote",
+                    "commit",
+                    "recommended_action",
+                    "mitigation",
+                    "routing_hint",
+                    "node_priority",
+                    "verification_weight",
+                    "execution_override",
+                    "winning_cluster",
+                    "selected_partition",
+                    "preferred_cluster",
+                    "cluster_policy_input",
+                    "partition_replay_admission",
+                    "execution_route",
+                    "committed_cluster",
+                    "verifier_score",
+                    "trust_score",
+                    "reliability_index",
+                    "weighted_authority",
+                    "correctness_rate",
+                    "agreement_ratio",
+                    "node_success_ratio",
+                    "verifier_reputation",
                 ];
                 if !ALL_FORBIDDEN.contains(&k.as_str()) {
                     map.insert(k, Value::String(v));
