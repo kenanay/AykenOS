@@ -319,3 +319,30 @@ Impact:
 Notes:
 - the inbox remains explicitly non-authoritative; kernel queue truth is unchanged.
 - completion handoff is still a later slice and is not implied by this spec.
+
+### 2026-03-19
+
+Completed Slice:
+- Hardened the execution inbox spec with explicit worker latch, overwrite, and publish-order rules
+- Recorded payload-window mapping lifecycle and clarified that v1 delivery is polling-visible, not interrupt-driven
+- Mirrored the new latch/publication constraints back into the main requirements/design set
+
+Touched Code Paths:
+- none (documentation-only)
+
+Touched Docs:
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-minimal-spec.md`
+- `docs/specs/phase10b-execution-path-hardening/requirements.md`
+- `docs/specs/phase10b-execution-path-hardening/design.md`
+- `docs/specs/phase10b-execution-path-hardening/progress.md`
+
+Validation:
+- no code validation run; documentation update only
+
+Impact:
+- removed the silent-overwrite and implicit-latch ambiguity before kernel execution inbox implementation
+- made the delivery contract explicit enough to implement without inventing hidden queue or ownership semantics
+
+Notes:
+- the commit-point rule now depends on a full publish barrier before `delivery_seq` is advanced.
+- completion and result ownership remain separate follow-on slices.
