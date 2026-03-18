@@ -228,6 +228,9 @@ The worker execution model is explicit in the first version:
   surface before returning to userspace
 - the worker delivery surface is kernel-written and user-read only; it does not
   become a second authority plane
+- publication is guarded by one kernel-owned active execution latch per worker
+- Ring0 must finish payload/descriptor writes before publishing the commit field
+  visible to userspace
 
 This avoids undefined "worker somehow picks slot" behavior.
 
