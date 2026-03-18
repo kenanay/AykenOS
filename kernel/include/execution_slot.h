@@ -74,6 +74,7 @@ exec_slot_t *execution_slot_alloc_locked(uint64_t owner_pid, uint64_t target_con
 void execution_slot_release_locked(exec_slot_t *slot);
 exec_slot_t *execution_slot_find_locked(uint64_t execution_id);
 exec_slot_t *execution_slot_pickup_locked(uint64_t context_id);
+uint32_t execution_slot_process_timeouts_locked(uint64_t now_tick);
 int execution_slot_transition_locked(exec_slot_t *slot,
                                      exec_slot_state_t expected_from,
                                      exec_slot_state_t next_state);

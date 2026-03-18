@@ -96,8 +96,8 @@ maturity is mixed.
 |---|---|
 | `map_memory` | validates inputs/capability path but does not yet perform real page mapping |
 | `unmap_memory` | placeholder success path, no real unmap lifecycle |
-| `submit_execution` | allocates a kernel-owned execution ID, creates a `READY` slot, enqueues the target context, and can be picked up into `RUNNING` on schedule entry, but still lacks delivery/completion semantics and currently permits only one active execution per user process |
-| `wait_result` | validates ownership and current slot state, but does not yet block or enforce timeout/result ownership semantics |
+| `submit_execution` | allocates a kernel-owned execution ID, creates a `READY` slot, enqueues the target context, and can be picked up into `RUNNING` on schedule entry, but still lacks delivery/completion semantics and currently permits only one active execution per user process until a terminal path clears it |
+| `wait_result` | validates ownership and current slot state, and finite timeout waits now block until timer-driven timeout, but completion/result ownership semantics are still missing |
 | `interrupt_return` | placeholder success path |
 | `exit` | not real process teardown yet |
 
@@ -133,7 +133,7 @@ Do not assume the following are already true in current runtime:
 
 - `map_memory` performs real page-table mutation
 - `submit_execution` creates a fully connected execution lifecycle
-- `wait_result` blocks on completion or timeout
+- `wait_result` blocks until successful completion delivery or owns mapped results
 - `interrupt_return` closes a real interrupt ownership path
 - `exit` performs full teardown, revoke, and scheduler removal
 
@@ -165,6 +165,7 @@ Current syscall tests are not all equal in meaning.
 
 - ABI/range tests prove dispatcher and numbering truth
 - `time_query` now has real semantic checks
+- timeout-driven `wait_result` wakeup now has bounded kernel-state checks
 - several legacy validation checks still exercise interface shape more than full
   runtime semantics
 

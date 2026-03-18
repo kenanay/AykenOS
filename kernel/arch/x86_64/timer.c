@@ -7,6 +7,7 @@
 #include "gdt_idt.h"
 #include "../../sched/sched.h"
 #include "../../sched/sched_mailbox.h"
+#include "../../include/execution_slot.h"
 #include "../../include/ayken_abi.h"
 #include "../../include/ayken.h"
 
@@ -145,7 +146,12 @@ _Static_assert(sizeof(irq_timer_frame_t) == IRQF_SIZE, "irq frame: size");
 void timer_isr_c(void *frame_ptr)
 {
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
+    execution_slot_guard_t slot_guard = {0};
     tick_count++;
+
+    execution_slot_enter_critical(&slot_guard);
+    execution_slot_process_timeouts_locked(tick_count);
+    execution_slot_exit_critical(&slot_guard);
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     static uint8_t p10_tick_marker_emitted = 0;
@@ -327,4 +333,21 @@ uint64_t timer_ticks_to_ms(uint64_t ticks)
     }
 
     return (ticks * 1000ULL) / (uint64_t)hz;
+}
+
+uint64_t timer_ms_to_ticks_ceil(uint64_t ms)
+{
+    uint32_t hz = timer_frequency_hz_value;
+    uint64_t numerator;
+
+    if (hz == 0 || ms == 0) {
+        return 0;
+    }
+
+    if (ms > (UINT64_MAX - 999ULL) / (uint64_t)hz) {
+        return UINT64_MAX / 2ULL;
+    }
+
+    numerator = (ms * (uint64_t)hz) + 999ULL;
+    return numerator / 1000ULL;
 }

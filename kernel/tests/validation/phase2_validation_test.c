@@ -110,9 +110,31 @@ static void test_syscall_v2_interface(void)
     }
     
     // Test 5: sys_v2_wait_result
-    result = sys_v2_wait_result(submit_exec_id, 1000);
+    result = sys_v2_wait_result(submit_exec_id, 0);
     TEST_ASSERT(result == ESYS_V2_RESOURCE_BUSY,
-                "sys_v2_wait_result reports nonterminal execution as busy");
+                "sys_v2_wait_result reports nonterminal execution as busy without timeout wait");
+    {
+        execution_slot_guard_t slot_guard = {0};
+        exec_slot_t *slot = NULL;
+        uint32_t timed_out = 0;
+        int slot_timed_out = 0;
+
+        execution_slot_enter_critical(&slot_guard);
+        slot = execution_slot_find_locked(submit_exec_id);
+        if (slot != NULL) {
+            slot->deadline_tick = 1;
+        }
+        timed_out = execution_slot_process_timeouts_locked(1);
+        slot_timed_out = slot != NULL &&
+                         timed_out == 1 &&
+                         slot->state == EXEC_SLOT_TIMEOUT;
+        execution_slot_exit_critical(&slot_guard);
+
+        TEST_ASSERT(slot_timed_out, "timer timeout scan transitions overdue slot to TIMEOUT");
+    }
+    result = sys_v2_wait_result(submit_exec_id, 0);
+    TEST_ASSERT(result == ESYS_V2_TIMEOUT,
+                "sys_v2_wait_result reports timeout after IRQ-driven timeout state");
     
     // Test 6: sys_v2_interrupt_return
     result = sys_v2_interrupt_return(1, 0);
@@ -379,9 +401,9 @@ static void test_bcib_execution_engine(void)
     TEST_ASSERT(exec_id > 0, "BCIB graph submission returns execution ID");
     
     // Test execution result waiting
-    uint64_t result = sys_v2_wait_result(exec_id, 5000);
+    uint64_t result = sys_v2_wait_result(exec_id, 0);
     TEST_ASSERT(result == ESYS_V2_RESOURCE_BUSY,
-                "BCIB wait_result reports pending execution as busy");
+                "BCIB wait_result reports pending execution as busy without timeout wait");
     
     // Test BCIB capability binding
     capability_token_t bcib_cap = {0, CAP_PERM_EXECUTE, CAP_RESOURCE_EXECUTION};

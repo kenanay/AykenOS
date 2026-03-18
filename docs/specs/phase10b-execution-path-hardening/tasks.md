@@ -15,8 +15,8 @@
 - [ ] 2. Freeze the monotonic time contract
   - [x] 2.1 Define the exact `sys_v2_time_query()` unit and `query_type` behavior
   - [x] 2.2 Replace dummy time return values with PIT-backed monotonic data
-  - [ ] 2.3 Define timeout authority explicitly as timer IRQ path
-  - [ ] 2.4 Bound the initial IRQ-path timeout scan to the static slot table
+  - [x] 2.3 Define timeout authority explicitly as timer IRQ path
+  - [x] 2.4 Bound the initial IRQ-path timeout scan to the static slot table
   - [ ] 2.5 Add semantic tests for monotonicity and non-zero forward progress
   - Reference: Requirements 4, 5
 
@@ -52,7 +52,7 @@
 
 - [ ] 7. Implement blocking `sys_v2_wait_result()`
   - [x] 7.1 Resolve slot ownership and reject invalid or foreign execution IDs
-  - [ ] 7.2 Block using `proc_block_current(&slot->wait_key)` when slot is not terminal
+  - [x] 7.2 Block using `proc_block_current(&slot->wait_key)` when slot is not terminal
   - [ ] 7.3 Wake via `proc_wake_waiters(&slot->wait_key)` on completion, failure, timeout, or abort
   - [ ] 7.4 Map completed result into caller address space on first successful wait
   - [ ] 7.5 Make result mapping read-only and non-executable
@@ -61,9 +61,9 @@
   - Reference: Requirements 4, 8
 
 - [ ] 8. Add timeout progression in timer IRQ path
-  - [ ] 8.1 Scan active execution slots against monotonic deadline ticks
-  - [ ] 8.2 Transition overdue slots to `TIMEOUT`
-  - [ ] 8.3 Wake all waiters on timed-out slots
+  - [x] 8.1 Scan active execution slots against monotonic deadline ticks
+  - [x] 8.2 Transition overdue slots to `TIMEOUT`
+  - [x] 8.3 Wake all waiters on timed-out slots
   - [ ] 8.4 Add tests proving timeout is IRQ-driven rather than syscall-spin-driven
   - Reference: Requirement 5
 

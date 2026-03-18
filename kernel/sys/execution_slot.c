@@ -6,6 +6,7 @@
 
 #include "../arch/x86_64/cpu.h"
 #include "../include/execution_slot.h"
+#include "../include/proc.h"
 
 static exec_slot_t g_execution_slots[AYKEN_MAX_EXECUTION_SLOTS];
 static execution_context_queue_t g_execution_queues[AYKEN_MAX_EXECUTION_CONTEXT_QUEUES];
@@ -92,7 +93,9 @@ static int execution_slot_can_transition(exec_slot_state_t from, exec_slot_state
     case EXEC_SLOT_CREATED:
         return to == EXEC_SLOT_READY || to == EXEC_SLOT_FAILED;
     case EXEC_SLOT_READY:
-        return to == EXEC_SLOT_RUNNING || to == EXEC_SLOT_ABORTED;
+        return to == EXEC_SLOT_RUNNING ||
+               to == EXEC_SLOT_TIMEOUT ||
+               to == EXEC_SLOT_ABORTED;
     case EXEC_SLOT_RUNNING:
         return to == EXEC_SLOT_COMPLETED ||
                to == EXEC_SLOT_FAILED ||
@@ -108,6 +111,107 @@ static int execution_slot_can_transition(exec_slot_state_t from, exec_slot_state
     default:
         return 0;
     }
+}
+
+static void execution_slot_clear_target_latch_locked(const exec_slot_t *slot)
+{
+    proc_t *target_proc;
+
+    if (!slot || slot->target_context_id == 0) {
+        return;
+    }
+
+    target_proc = proc_find_by_pid((int)slot->target_context_id);
+    if (!target_proc) {
+        return;
+    }
+
+    if (target_proc->active_execution_id == slot->execution_id) {
+        target_proc->active_execution_id = 0;
+    }
+}
+
+static int execution_slot_remove_from_queue_locked(exec_slot_t *slot)
+{
+    execution_context_queue_t *queue;
+    uint32_t slot_index;
+    uint32_t iter_index;
+    uint32_t prev_index = AYKEN_EXECUTION_INVALID_INDEX;
+
+    if (!slot || !slot->in_use) {
+        return -1;
+    }
+
+    slot_index = execution_slot_index(slot);
+    if (slot_index == AYKEN_EXECUTION_INVALID_INDEX) {
+        return -1;
+    }
+
+    queue = execution_slot_find_queue_locked(slot->target_context_id);
+    if (!queue) {
+        slot->queue_next_index = AYKEN_EXECUTION_INVALID_INDEX;
+        return 0;
+    }
+
+    iter_index = queue->head_index;
+    while (iter_index != AYKEN_EXECUTION_INVALID_INDEX) {
+        exec_slot_t *iter = &g_execution_slots[iter_index];
+        uint32_t next_index = iter->queue_next_index;
+
+        if (iter_index == slot_index) {
+            if (prev_index == AYKEN_EXECUTION_INVALID_INDEX) {
+                queue->head_index = next_index;
+            } else {
+                g_execution_slots[prev_index].queue_next_index = next_index;
+            }
+            if (queue->tail_index == slot_index) {
+                queue->tail_index = prev_index;
+            }
+            if (queue->depth > 0) {
+                queue->depth--;
+            }
+            slot->queue_next_index = AYKEN_EXECUTION_INVALID_INDEX;
+            if (queue->depth == 0) {
+                execution_slot_zero_queue(queue);
+            }
+            return 0;
+        }
+
+        prev_index = iter_index;
+        iter_index = next_index;
+    }
+
+    slot->queue_next_index = AYKEN_EXECUTION_INVALID_INDEX;
+    return 0;
+}
+
+static int execution_slot_finish_locked(exec_slot_t *slot, exec_slot_state_t next_state)
+{
+    exec_slot_state_t prior_state;
+
+    if (!slot || !slot->in_use) {
+        return -1;
+    }
+
+    prior_state = slot->state;
+    if (execution_slot_state_is_terminal(prior_state)) {
+        return -1;
+    }
+
+    if (prior_state == EXEC_SLOT_READY) {
+        if (execution_slot_remove_from_queue_locked(slot) != 0) {
+            return -1;
+        }
+    }
+
+    if (execution_slot_transition_locked(slot, prior_state, next_state) != 0) {
+        return -1;
+    }
+
+    slot->deadline_tick = 0;
+    execution_slot_clear_target_latch_locked(slot);
+    proc_wake_waiters(&slot->wait_key);
+    return 0;
 }
 
 void execution_slots_init(void)
@@ -255,6 +359,36 @@ exec_slot_t *execution_slot_pickup_locked(uint64_t context_id)
     }
 
     return slot;
+}
+
+uint32_t execution_slot_process_timeouts_locked(uint64_t now_tick)
+{
+    uint32_t i;
+    uint32_t timed_out = 0;
+
+    for (i = 0; i < AYKEN_MAX_EXECUTION_SLOTS; ++i) {
+        exec_slot_t *slot = &g_execution_slots[i];
+
+        if (!slot->in_use ||
+            slot->deadline_tick == 0 ||
+            execution_slot_state_is_terminal(slot->state)) {
+            continue;
+        }
+
+        if (now_tick < slot->deadline_tick) {
+            continue;
+        }
+
+        if (slot->state != EXEC_SLOT_READY && slot->state != EXEC_SLOT_RUNNING) {
+            continue;
+        }
+
+        if (execution_slot_finish_locked(slot, EXEC_SLOT_TIMEOUT) == 0) {
+            timed_out++;
+        }
+    }
+
+    return timed_out;
 }
 
 int execution_slot_transition_locked(exec_slot_t *slot,

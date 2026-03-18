@@ -256,3 +256,38 @@ Notes:
 - worker pickup currently records `RUNNING` state only; userspace delivery/completion is still pending.
 - `wait_result` is still non-blocking until wake/timeout authority is implemented.
 - the current scheduler hookup permits one active execution per user process until a later slice clears `active_execution_id`.
+
+### 2026-03-19
+
+Completed Slice:
+- Wired finite-timeout `wait_result()` blocking to `proc_block_current(&slot->wait_key)`
+- Added bounded timer-IRQ timeout scanning that transitions overdue slots to `TIMEOUT` and wakes waiters
+- Cleared worker `active_execution_id` on timeout-driven terminalization
+
+Touched Code Paths:
+- `kernel/include/execution_slot.h`
+- `kernel/sys/execution_slot.c`
+- `kernel/arch/x86_64/timer.h`
+- `kernel/arch/x86_64/timer.c`
+- `kernel/sys/syscall_v2.c`
+- `kernel/tests/validation/phase2_validation_test.c`
+
+Touched Docs:
+- `docs/development/SYSCALL_TRANSITION_GUIDE.md`
+- `docs/development/SYSCALL_RUNTIME_REALITY.md`
+- `docs/specs/phase10b-execution-path-hardening/tasks.md`
+- `docs/specs/phase10b-execution-path-hardening/progress.md`
+
+Validation:
+- `make kernel` passed
+- `clang --target=x86_64-elf ... -c kernel/tests/validation/phase2_validation_test.c` passed
+- pre-existing sign-compare warnings remain in `kernel/tests/validation/phase2_validation_test.c`
+
+Impact:
+- moved `wait_result` from pure polling semantics to a real timeout-driven block/wake path without faking completion
+- added the first kernel terminalization path that releases worker execution latches
+
+Notes:
+- completion, result delivery, and repeated successful wait semantics are still not implemented.
+- the current timeout path can retire queued or running work, but there is still no authoritative success-completion handoff from userspace execution.
+- the current timeout deadline is slot-scoped; multi-waiter timeout semantics are not yet frozen.

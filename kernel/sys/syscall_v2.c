@@ -453,57 +453,77 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
 
 uint64_t sys_v2_wait_result(uint64_t execution_id, uint64_t timeout_ms)
 {
-    execution_slot_guard_t slot_guard = {0};
-    exec_slot_t *slot = NULL;
     uint64_t owner_pid = 0;
-    uint64_t result = ESYS_V2_RESOURCE_BUSY;
 
     // Validate parameters
     if (execution_id == 0) {
         return ESYS_V2_INVALID_PARAM;
     }
 
-    (void)timeout_ms;
-
     extern proc_t *current_proc;
     if (current_proc != NULL && current_proc->pid > 0) {
         owner_pid = (uint64_t)current_proc->pid;
     }
 
-    execution_slot_enter_critical(&slot_guard);
-    slot = execution_slot_find_locked(execution_id);
-    if (!slot) {
-        execution_slot_exit_critical(&slot_guard);
-        return ESYS_V2_CONTEXT_ERROR;
-    }
+    for (;;) {
+        execution_slot_guard_t slot_guard = {0};
+        exec_slot_t *slot = NULL;
+        uint64_t now_tick;
+        uint64_t deadline_delta;
+        void *wait_obj = NULL;
 
-    if (owner_pid != 0 && slot->owner_pid != 0 && slot->owner_pid != owner_pid) {
-        execution_slot_exit_critical(&slot_guard);
-        return ESYS_V2_NO_PERMISSION;
-    }
+        execution_slot_enter_critical(&slot_guard);
+        slot = execution_slot_find_locked(execution_id);
+        if (!slot) {
+            execution_slot_exit_critical(&slot_guard);
+            return ESYS_V2_CONTEXT_ERROR;
+        }
 
-    switch (slot->state) {
-    case EXEC_SLOT_COMPLETED:
-    case EXEC_SLOT_RESULT_MAPPED:
-        result = ESYS_V2_SUCCESS;
-        break;
-    case EXEC_SLOT_TIMEOUT:
-        result = ESYS_V2_TIMEOUT;
-        break;
-    case EXEC_SLOT_FAILED:
-    case EXEC_SLOT_ABORTED:
-        result = ESYS_V2_CONTEXT_ERROR;
-        break;
-    case EXEC_SLOT_CREATED:
-    case EXEC_SLOT_READY:
-    case EXEC_SLOT_RUNNING:
-    default:
-        result = ESYS_V2_RESOURCE_BUSY;
-        break;
-    }
+        if (owner_pid != 0 && slot->owner_pid != 0 && slot->owner_pid != owner_pid) {
+            execution_slot_exit_critical(&slot_guard);
+            return ESYS_V2_NO_PERMISSION;
+        }
 
-    execution_slot_exit_critical(&slot_guard);
-    return result;
+        switch (slot->state) {
+        case EXEC_SLOT_COMPLETED:
+        case EXEC_SLOT_RESULT_MAPPED:
+            execution_slot_exit_critical(&slot_guard);
+            return ESYS_V2_SUCCESS;
+        case EXEC_SLOT_TIMEOUT:
+            execution_slot_exit_critical(&slot_guard);
+            return ESYS_V2_TIMEOUT;
+        case EXEC_SLOT_FAILED:
+        case EXEC_SLOT_ABORTED:
+            execution_slot_exit_critical(&slot_guard);
+            return ESYS_V2_CONTEXT_ERROR;
+        case EXEC_SLOT_CREATED:
+        case EXEC_SLOT_READY:
+        case EXEC_SLOT_RUNNING:
+        default:
+            if (timeout_ms == 0 || owner_pid == 0 || current_proc == NULL) {
+                execution_slot_exit_critical(&slot_guard);
+                return ESYS_V2_RESOURCE_BUSY;
+            }
+
+            if (slot->deadline_tick == 0) {
+                now_tick = timer_ticks();
+                deadline_delta = timer_ms_to_ticks_ceil(timeout_ms);
+                if (deadline_delta == 0) {
+                    deadline_delta = 1;
+                }
+                if (now_tick > UINT64_MAX - deadline_delta) {
+                    slot->deadline_tick = UINT64_MAX;
+                } else {
+                    slot->deadline_tick = now_tick + deadline_delta;
+                }
+            }
+
+            wait_obj = &slot->wait_key;
+            execution_slot_exit_critical(&slot_guard);
+            proc_block_current(wait_obj);
+            break;
+        }
+    }
 }
 
 // ============================================================================
