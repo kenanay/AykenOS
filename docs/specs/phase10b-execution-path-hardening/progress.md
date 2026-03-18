@@ -346,3 +346,29 @@ Impact:
 Notes:
 - the commit-point rule now depends on a full publish barrier before `delivery_seq` is advanced.
 - completion and result ownership remain separate follow-on slices.
+
+### 2026-03-19
+
+Completed Slice:
+- Added a file/function-level implementation plan for execution inbox bring-up
+- Anchored the next mapping slice to the real `proc_create_user_process()` flow instead of an abstract init path
+- Linked worker-pickup tasks to the implementation plan so the next code slice has one canonical checklist
+
+Touched Code Paths:
+- none (documentation-only)
+
+Touched Docs:
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-implementation-plan.md`
+- `docs/specs/phase10b-execution-path-hardening/tasks.md`
+- `docs/specs/phase10b-execution-path-hardening/progress.md`
+
+Validation:
+- no code validation run; documentation update only
+
+Impact:
+- converted the execution inbox work from architecture intent into a local, code-anchored kernel plan
+- reduced the risk of drifting away from the actual `proc_create_user_process()` and page-flag surfaces while landing `6.4` and `6.5`
+
+Notes:
+- the plan is intentionally gated by kernel-owned BCIB backing and real target-context validation.
+- `kernel/include/mm.h` still lacks an explicit NX-style flag in the common mapping header path.

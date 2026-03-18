@@ -36,7 +36,7 @@
 
 - [ ] 5. Implement real `sys_v2_submit_execution()`
   - [ ] 5.1 Validate BCIB pointer, size, and target context
-  - [ ] 5.2 Copy BCIB into kernel-owned backing
+  - [ ] 5.2 Copy BCIB into kernel-owned backing with enough slot metadata to populate the bounded payload window
   - [x] 5.3 Allocate `execution_id` in kernel
   - [x] 5.4 Create slot state transitions `CREATED -> READY`
   - [x] 5.5 Enqueue target execution descriptor into the kernel-owned execution queue
@@ -48,9 +48,10 @@
   - [x] 6.2 Transition `READY -> RUNNING` under execution-table serialization
   - [x] 6.3 Freeze the minimal execution inbox projection contract before implementation
   - [ ] 6.4 Map a kernel-written, user-read-only execution inbox at a fixed VA distinct from scheduler mailbox
-  - [ ] 6.5 Publish picked-up execution descriptors into the inbox commit-point contract
+  - [ ] 6.5 Publish picked-up execution descriptors into the inbox commit-point contract after kernel-owned BCIB backing lands
   - [ ] 6.6 Add tests for deterministic pickup order and no-mailbox reuse
   - Reference: Requirements 6, 7
+  - Implementation plan: `docs/specs/phase10b-execution-path-hardening/execution-inbox-implementation-plan.md`
 
 - [ ] 7. Implement blocking `sys_v2_wait_result()`
   - [x] 7.1 Resolve slot ownership and reject invalid or foreign execution IDs

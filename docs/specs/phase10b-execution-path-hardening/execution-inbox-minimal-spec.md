@@ -19,6 +19,24 @@ The goal is narrow:
 
 This document does **not** authorize a new control plane.
 
+## 1.1 Publish Preconditions
+
+The first execution inbox implementation MUST NOT land before all of the
+following are true:
+
+- `submit_execution` has copied BCIB bytes into kernel-owned backing
+- slot metadata can describe enough backing frames to populate the bounded
+  payload window
+- `context_id` is validated against a live target user worker
+
+Current codebase note:
+
+- the current single `bcib_phys` field in `exec_slot_t` is not sufficient for
+  the 16 KiB payload window defined below
+- before inbox publish lands, slot backing metadata MUST widen to a bounded
+  frame list or an equivalent kernel-owned payload representation
+- oversize BCIB payloads MUST fail closed rather than partially publishing
+
 ## 2. Non-Negotiable Rules
 
 - the kernel execution queue remains authoritative
@@ -58,6 +76,9 @@ Payload mapping lifecycle:
   initialization
 - those mappings MUST remain stable for the worker lifetime
 - process exit MUST revoke both mappings
+- if the shared paging flag surface does not yet expose NX control for this
+  mapping path, that flag exposure MUST be added before landing execution inbox
+  publish; executable user mapping is not an acceptable fallback
 
 ## 4. Authority Model
 
