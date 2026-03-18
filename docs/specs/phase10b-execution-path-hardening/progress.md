@@ -255,3 +255,4 @@ Impact:
 Notes:
 - worker pickup currently records `RUNNING` state only; userspace delivery/completion is still pending.
 - `wait_result` is still non-blocking until wake/timeout authority is implemented.
+- the current scheduler hookup permits one active execution per user process until a later slice clears `active_execution_id`.

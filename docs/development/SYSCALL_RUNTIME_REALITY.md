@@ -38,7 +38,7 @@ Current high-level state:
 | `map_memory` | stable | incomplete | input and capability checks exist, real mapping does not |
 | `unmap_memory` | stable | incomplete | no real unmap lifecycle yet |
 | `switch_context` | stable | more mature | real process/context switch path exists |
-| `submit_execution` | stable | incomplete | creates a `READY` execution slot and queue entry; schedule-entry pickup can move queued work to `RUNNING`, but delivery/completion is not yet wired |
+| `submit_execution` | stable | incomplete | creates a `READY` execution slot and queue entry; schedule-entry pickup can move queued work to `RUNNING`, but delivery/completion is not yet wired and current workers latch a single active execution at a time |
 | `wait_result` | stable | incomplete | validates ownership/state and reports nonterminal work as busy, but still has no real block/wake/result ownership |
 | `interrupt_return` | stable | incomplete | placeholder handler |
 | `time_query` | stable | operational | PIT-backed monotonic ticks and uptime milliseconds |
@@ -66,6 +66,7 @@ These statements are currently safe:
 - there is now an `execution_slot` data model in kernel space
 - `submit_execution()` now anchors kernel-owned `READY` slots into that model
 - schedule-entry worker pickup can advance queued work to `RUNNING`
+- the current pickup path allows only one active execution per user process until completion or exit plumbing lands
 - `wait_result` now reflects slot state instead of returning unconditional success
 - blocking wait, timeout progression, completion, and `exit` are not yet a
   fully connected lifecycle
