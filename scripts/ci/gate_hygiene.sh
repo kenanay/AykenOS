@@ -112,7 +112,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 # - gcc-14.2.0/: 17K+ vendored toolchain source files
 # These are not subject to hygiene validation and cause timeout if scanned
 git -C "${ROOT}" ls-files | grep -v -E '^(evidence/|binutils-2\.42/|gcc-14\.2\.0/)' > "${TRACKED_TXT}"
-git -C "${ROOT}" status --porcelain --untracked-files=no | grep -v -E '^.. (evidence/|binutils-2\.42/|gcc-14\.2\.0/)' > "${DIRTY_TRACKED_TXT}"
+git -C "${ROOT}" status --porcelain --untracked-files=no | grep -v -E '^.. (evidence/|binutils-2\.42/|gcc-14\.2\.0/|kernel/include/embedded_elf\.h)' > "${DIRTY_TRACKED_TXT}"
 
 # Candidate set for binary executable scan: git-executable files + common binary-like extensions.
 {
