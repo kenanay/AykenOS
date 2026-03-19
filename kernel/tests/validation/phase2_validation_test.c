@@ -12,6 +12,7 @@
 #include "../../drivers/console/fb_console.h"
 #include "../../include/execution_slot.h"
 #include "../../include/capability.h"
+#include "../../include/mm.h"
 #include "../../include/proc.h"
 #include "../../sched/sched.h"
 #include "../../fs/devfs.h"
@@ -21,6 +22,10 @@
 static int tests_passed = 0;
 static int tests_failed = 0;
 static int total_tests = 0;
+
+static const uint8_t validation_worker_loop_code[] = {
+    0xEB, 0xFE, // jmp $
+};
 
 // Test helper macros
 #define TEST_START(name) \
@@ -43,6 +48,21 @@ static int total_tests = 0;
 #define TEST_END(name) \
     fb_print("[TEST] Completed: " name "\n")
 
+static proc_t *ensure_validation_worker_proc(void)
+{
+    static proc_t *worker = NULL;
+
+    if (worker && worker->state != PROC_ZOMBIE) {
+        return worker;
+    }
+
+    worker = proc_create_user_process("phase2-validation-worker",
+                                      validation_worker_loop_code,
+                                      sizeof(validation_worker_loop_code),
+                                      PROC_IMAGE_FLAT);
+    return worker;
+}
+
 // ============================================================================
 // SYSCALL V2 VALIDATION TESTS
 // ============================================================================
@@ -53,6 +73,8 @@ static int total_tests = 0;
  */
 static void test_syscall_v2_interface(void)
 {
+    proc_t *target_worker = NULL;
+
     TEST_START("V2 Syscall Interface");
     
     // Test 1: sys_v2_map_memory
@@ -69,29 +91,51 @@ static void test_syscall_v2_interface(void)
     result = sys_v2_switch_context(999, 998);
     TEST_ASSERT(result == ESYS_V2_CONTEXT_ERROR, "sys_v2_switch_context error handling");
     
+    target_worker = ensure_validation_worker_proc();
+    TEST_ASSERT(target_worker != NULL && target_worker->type == PROC_TYPE_USER,
+                "phase2 validation worker exists for live target-context submission");
+
+    if (target_worker == NULL) {
+        TEST_END("V2 Syscall Interface");
+        return;
+    }
+
     // Test 4: sys_v2_submit_execution
     char dummy_bcib[] = {0x42, 0x43, 0x49, 0x42}; // "BCIB" magic
-    uint64_t submit_exec_id = sys_v2_submit_execution(dummy_bcib, sizeof(dummy_bcib), 1001);
+    uint64_t submit_exec_id = sys_v2_submit_execution(dummy_bcib,
+                                                      sizeof(dummy_bcib),
+                                                      (uint64_t)target_worker->pid);
     result = submit_exec_id;
     TEST_ASSERT(result > 0, "sys_v2_submit_execution returns execution ID");
     {
         execution_slot_guard_t slot_guard = {0};
         exec_slot_t *slot = NULL;
         execution_context_queue_t *queue = NULL;
+        const uint8_t *copied_bcib = NULL;
         int slot_ready = 0;
         int queue_has_entry = 0;
+        int backing_copied = 0;
 
         execution_slot_enter_critical(&slot_guard);
         slot = execution_slot_find_locked(result);
-        queue = execution_slot_find_queue_locked(1001);
+        queue = execution_slot_find_queue_locked((uint64_t)target_worker->pid);
         slot_ready = slot != NULL &&
                      slot->state == EXEC_SLOT_READY &&
-                     slot->target_context_id == 1001 &&
+                     slot->target_context_id == (uint64_t)target_worker->pid &&
                      slot->bcib_size == sizeof(dummy_bcib);
+        if (slot != NULL && slot->bcib_frame_count == 1 && slot->bcib_frames[0] != 0) {
+            copied_bcib = (const uint8_t *)paging_phys_to_virt(slot->bcib_frames[0]);
+            backing_copied = copied_bcib != NULL &&
+                             copied_bcib[0] == (uint8_t)dummy_bcib[0] &&
+                             copied_bcib[1] == (uint8_t)dummy_bcib[1] &&
+                             copied_bcib[2] == (uint8_t)dummy_bcib[2] &&
+                             copied_bcib[3] == (uint8_t)dummy_bcib[3];
+        }
         queue_has_entry = queue != NULL && queue->depth > 0;
         execution_slot_exit_critical(&slot_guard);
 
         TEST_ASSERT(slot_ready, "sys_v2_submit_execution creates READY slot");
+        TEST_ASSERT(backing_copied, "sys_v2_submit_execution copies BCIB into kernel-owned backing");
         TEST_ASSERT(queue_has_entry, "sys_v2_submit_execution enqueues target context");
     }
     {
@@ -100,7 +144,7 @@ static void test_syscall_v2_interface(void)
         int slot_running = 0;
 
         execution_slot_enter_critical(&slot_guard);
-        picked_up = execution_slot_pickup_locked(1001);
+        picked_up = execution_slot_pickup_locked((uint64_t)target_worker->pid);
         slot_running = picked_up != NULL &&
                        picked_up->execution_id == submit_exec_id &&
                        picked_up->state == EXEC_SLOT_RUNNING;
@@ -188,6 +232,16 @@ static void test_syscall_v2_error_handling(void)
     
     result = sys_v2_submit_execution(NULL, 0, 0);
     TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "submit_execution rejects null parameters");
+
+    result = sys_v2_submit_execution(&(uint8_t){0xAA},
+                                     AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE + 1,
+                                     1);
+    TEST_ASSERT(result == ESYS_V2_INVALID_PARAM,
+                "submit_execution rejects oversize BCIB payloads");
+
+    result = sys_v2_submit_execution(&(uint8_t){0xAA}, 1, 999999);
+    TEST_ASSERT(result == ESYS_V2_CONTEXT_ERROR,
+                "submit_execution rejects non-live target user contexts");
     
     result = sys_v2_wait_result(0, 1000);
     TEST_ASSERT(result == ESYS_V2_INVALID_PARAM, "wait_result rejects null execution ID");
