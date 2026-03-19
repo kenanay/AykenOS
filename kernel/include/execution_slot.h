@@ -7,6 +7,8 @@
 #define AYKEN_MAX_EXECUTION_SLOTS 64u
 #define AYKEN_MAX_EXECUTION_CONTEXT_QUEUES 64u
 #define AYKEN_EXECUTION_INVALID_INDEX UINT32_MAX
+#define AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES 4u
+#define AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE 0x4000ULL
 
 typedef enum {
     EXEC_SLOT_CREATED = 0,
@@ -34,8 +36,9 @@ typedef struct exec_slot {
     uint64_t created_tick;
     uint64_t deadline_tick;
     exec_slot_state_t state;
+    uint32_t bcib_frame_count;
     uint32_t reserved1;
-    uint64_t bcib_phys;
+    uint64_t bcib_frames[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES];
     uint64_t bcib_size;
     uint64_t result_phys;
     uint64_t result_size;
@@ -75,6 +78,9 @@ void execution_slot_release_locked(exec_slot_t *slot);
 exec_slot_t *execution_slot_find_locked(uint64_t execution_id);
 exec_slot_t *execution_slot_pickup_locked(uint64_t context_id);
 uint32_t execution_slot_process_timeouts_locked(uint64_t now_tick);
+int execution_slot_store_bcib_locked(exec_slot_t *slot,
+                                     const void *bcib_graph,
+                                     uint64_t graph_size);
 int execution_slot_transition_locked(exec_slot_t *slot,
                                      exec_slot_state_t expected_from,
                                      exec_slot_state_t next_state);

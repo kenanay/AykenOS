@@ -209,6 +209,60 @@ static inline uint64_t sys_v2_finalize_result(uint64_t result)
     return result;
 }
 
+static int sys_v2_buffer_span_is_mapped(const void *buffer, uint64_t size)
+{
+    uint64_t start;
+    uint64_t end_inclusive;
+    uint64_t page;
+
+    if (!buffer || size == 0) {
+        return 0;
+    }
+
+    start = (uint64_t)buffer;
+    if (start > UINT64_MAX - (size - 1)) {
+        return 0;
+    }
+
+    end_inclusive = start + size - 1;
+    page = start & ~(AYKEN_FRAME_SIZE - 1);
+
+    for (;;) {
+        if (paging_get_phys(page) == 0) {
+            return 0;
+        }
+        if (page >= (end_inclusive & ~(AYKEN_FRAME_SIZE - 1))) {
+            break;
+        }
+        if (page > UINT64_MAX - AYKEN_FRAME_SIZE) {
+            return 0;
+        }
+        page += AYKEN_FRAME_SIZE;
+    }
+
+    return 1;
+}
+
+static proc_t *sys_v2_resolve_live_user_context(uint64_t context_id)
+{
+    proc_t *target_proc;
+
+    if (context_id == 0 || context_id > (uint64_t)INT32_MAX) {
+        return NULL;
+    }
+
+    target_proc = proc_find_by_pid((int)context_id);
+    if (!target_proc) {
+        return NULL;
+    }
+
+    if (target_proc->type != PROC_TYPE_USER || target_proc->state == PROC_ZOMBIE) {
+        return NULL;
+    }
+
+    return target_proc;
+}
+
 // ============================================================================
 // MEMORY MANAGEMENT SYSCALLS
 // ============================================================================
@@ -397,12 +451,26 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
 {
     execution_slot_guard_t slot_guard = {0};
     exec_slot_t *slot = NULL;
+    proc_t *target_proc = NULL;
     uint64_t owner_pid = 0;
     uint64_t execution_id;
 
     // Validate parameters
     if (bcib_graph == NULL || graph_size == 0 || context_id == 0) {
         return ESYS_V2_INVALID_PARAM;
+    }
+
+    if (graph_size > AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+
+    if (!sys_v2_buffer_span_is_mapped(bcib_graph, graph_size)) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+
+    target_proc = sys_v2_resolve_live_user_context(context_id);
+    if (!target_proc) {
+        return ESYS_V2_CONTEXT_ERROR;
     }
 
     extern proc_t *current_proc;
@@ -419,10 +487,12 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
     }
 
     slot->created_tick = timer_ticks();
-    slot->bcib_size = graph_size;
+    if (execution_slot_store_bcib_locked(slot, bcib_graph, graph_size) != 0) {
+        execution_slot_release_locked(slot);
+        execution_slot_exit_critical(&slot_guard);
+        return ESYS_V2_RESOURCE_BUSY;
+    }
 
-    // Kernel-owned BCIB backing copy is a later slice. This first submit path
-    // activates slot lifecycle anchoring and READY queue visibility only.
     if (execution_slot_transition_locked(slot, EXEC_SLOT_CREATED, EXEC_SLOT_READY) != 0) {
         execution_slot_release_locked(slot);
         execution_slot_exit_critical(&slot_guard);
@@ -444,6 +514,8 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
     fb_print_int(graph_size);
     fb_print(" ctx=");
     fb_print_int(context_id);
+    fb_print(" target_pid=");
+    fb_print_int(target_proc->pid);
     fb_print(" exec_id=");
     fb_print_int(execution_id);
     fb_print("\n");

@@ -6,7 +6,11 @@
 
 #include "../arch/x86_64/cpu.h"
 #include "../include/execution_slot.h"
+#include "../include/mm.h"
 #include "../include/proc.h"
+
+#define memset __builtin_memset
+#define memcpy __builtin_memcpy
 
 static exec_slot_t g_execution_slots[AYKEN_MAX_EXECUTION_SLOTS];
 static execution_context_queue_t g_execution_queues[AYKEN_MAX_EXECUTION_CONTEXT_QUEUES];
@@ -21,6 +25,8 @@ static uint64_t execution_slot_read_rflags(void)
 
 static void execution_slot_zero_slot(exec_slot_t *slot)
 {
+    uint32_t i;
+
     if (!slot) {
         return;
     }
@@ -32,7 +38,10 @@ static void execution_slot_zero_slot(exec_slot_t *slot)
     slot->created_tick = 0;
     slot->deadline_tick = 0;
     slot->state = EXEC_SLOT_CREATED;
-    slot->bcib_phys = 0;
+    slot->bcib_frame_count = 0;
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        slot->bcib_frames[i] = 0;
+    }
     slot->bcib_size = 0;
     slot->result_phys = 0;
     slot->result_size = 0;
@@ -67,6 +76,54 @@ static uint32_t execution_slot_index(const exec_slot_t *slot)
         return AYKEN_EXECUTION_INVALID_INDEX;
     }
     return (uint32_t)(slot - &g_execution_slots[0]);
+}
+
+static uint32_t execution_slot_bcib_frame_count_for_size(uint64_t graph_size)
+{
+    if (graph_size == 0) {
+        return 0;
+    }
+
+    return (uint32_t)((graph_size + (AYKEN_FRAME_SIZE - 1)) / AYKEN_FRAME_SIZE);
+}
+
+static void execution_slot_zero_phys_frame(uint64_t phys_addr)
+{
+    void *dst;
+
+    if (phys_addr == 0) {
+        return;
+    }
+
+    dst = paging_phys_to_virt(phys_addr);
+    if (!dst) {
+        return;
+    }
+
+    memset(dst, 0, AYKEN_FRAME_SIZE);
+}
+
+static void execution_slot_release_bcib_backing_locked(exec_slot_t *slot)
+{
+    uint32_t i;
+
+    if (!slot) {
+        return;
+    }
+
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        uint64_t phys_addr = slot->bcib_frames[i];
+        if (phys_addr == 0) {
+            continue;
+        }
+
+        execution_slot_zero_phys_frame(phys_addr);
+        phys_free_frame(phys_addr);
+        slot->bcib_frames[i] = 0;
+    }
+
+    slot->bcib_frame_count = 0;
+    slot->bcib_size = 0;
 }
 
 static execution_context_queue_t *execution_slot_alloc_queue_locked(uint64_t context_id)
@@ -208,6 +265,12 @@ static int execution_slot_finish_locked(exec_slot_t *slot, exec_slot_state_t nex
         return -1;
     }
 
+    if (next_state == EXEC_SLOT_FAILED ||
+        next_state == EXEC_SLOT_TIMEOUT ||
+        next_state == EXEC_SLOT_ABORTED) {
+        execution_slot_release_bcib_backing_locked(slot);
+    }
+
     slot->deadline_tick = 0;
     execution_slot_clear_target_latch_locked(slot);
     proc_wake_waiters(&slot->wait_key);
@@ -309,14 +372,13 @@ void execution_slot_release_locked(exec_slot_t *slot)
         return;
     }
 
+    execution_slot_release_bcib_backing_locked(slot);
     slot->execution_id = 0;
     slot->owner_pid = 0;
     slot->target_context_id = 0;
     slot->created_tick = 0;
     slot->deadline_tick = 0;
     slot->state = EXEC_SLOT_CREATED;
-    slot->bcib_phys = 0;
-    slot->bcib_size = 0;
     slot->result_phys = 0;
     slot->result_size = 0;
     slot->mapped_result_va = 0;
@@ -326,6 +388,60 @@ void execution_slot_release_locked(exec_slot_t *slot)
     slot->wait_key.execution_id = 0;
     slot->wait_key.generation = slot->generation;
     slot->in_use = 0;
+}
+
+int execution_slot_store_bcib_locked(exec_slot_t *slot,
+                                     const void *bcib_graph,
+                                     uint64_t graph_size)
+{
+    const uint8_t *src = (const uint8_t *)bcib_graph;
+    uint32_t frame_count;
+    uint32_t i;
+    uint64_t remaining;
+
+    if (!slot || !slot->in_use || !bcib_graph || graph_size == 0) {
+        return -1;
+    }
+
+    if (graph_size > AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE) {
+        return -1;
+    }
+
+    frame_count = execution_slot_bcib_frame_count_for_size(graph_size);
+    if (frame_count == 0 || frame_count > AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES) {
+        return -1;
+    }
+
+    execution_slot_release_bcib_backing_locked(slot);
+
+    remaining = graph_size;
+    for (i = 0; i < frame_count; ++i) {
+        uint64_t phys_addr = phys_alloc_frame();
+        uint64_t copy_size = remaining > AYKEN_FRAME_SIZE ? AYKEN_FRAME_SIZE : remaining;
+        void *dst;
+
+        if (phys_addr == 0) {
+            execution_slot_release_bcib_backing_locked(slot);
+            return -1;
+        }
+
+        dst = paging_phys_to_virt(phys_addr);
+        if (!dst) {
+            phys_free_frame(phys_addr);
+            execution_slot_release_bcib_backing_locked(slot);
+            return -1;
+        }
+
+        memset(dst, 0, AYKEN_FRAME_SIZE);
+        memcpy(dst, src + ((uint64_t)i * AYKEN_FRAME_SIZE), copy_size);
+
+        slot->bcib_frames[i] = phys_addr;
+        remaining -= copy_size;
+    }
+
+    slot->bcib_frame_count = frame_count;
+    slot->bcib_size = graph_size;
+    return 0;
 }
 
 exec_slot_t *execution_slot_find_locked(uint64_t execution_id)
