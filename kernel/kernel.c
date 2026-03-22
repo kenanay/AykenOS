@@ -534,10 +534,12 @@ static void kernel_late_init(void)
     outb(0xE9, 'E');
     outb(0xE9, '\n');
     
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-    // Phase 11: Alias-aware address space leak proof tests
-    // Unit tests: registry/verifier mechanics (no gate markers)
-    // Guard: alias_proof_test.c only compiled when AYKEN_VALIDATION=1
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
+    // Phase 11: Alias unit tests — only in selftest mode (not in general validation boot)
+    // Guard: alias_proof_test.c compiled when AYKEN_VALIDATION=1;
+    // called only when AYKEN_ALIAS_PROOF_SELFTEST=1 to avoid boot timeout
+    // in performance gate and other validation boots that don't need unit tests.
     {
         extern void execute_alias_proof_tests(void);
         debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
