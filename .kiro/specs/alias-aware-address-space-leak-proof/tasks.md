@@ -326,7 +326,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     - Makefile target'ını güncelle: runner profilini yeni değişkenlerle çağır
     - _Gereksinimler: 8.1, 8.2, 8.6, 11.1_
 
-- [ ] 12. Final checkpoint — Tüm testler ve CI gate
+- [x] 12. Final checkpoint — Tüm testler ve CI gate
   - `AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 KERNEL_PROFILE=validation make kernel` ile derleme doğrula
   - `ci-gate-alias-proof` hedefini çalıştır; `[[AYKEN_ALIAS_PROOF_OK]]` witness'ını doğrula
   - Tüm testlerin geçtiğini doğrula; sorular varsa kullanıcıya sor.
