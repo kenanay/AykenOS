@@ -226,7 +226,7 @@ pub fn run_trust_reuse_runtime_evaluator(
 fn build_runtime_event(
     config: &TrustReuseRuntimeEvaluatorConfig,
     expected_subject: &VerdictSubject,
-    _verification_context: &VerificationContextObject,
+    verification_context: &VerificationContextObject,
     verifier_attestation: &VerifierAttestation,
     verifier_registry: &VerifierTrustRegistrySnapshot,
     receipt: &VerificationReceipt,
