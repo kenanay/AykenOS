@@ -215,10 +215,11 @@ endif
 KERNEL_C_SOURCES_ALL = $(call find_files,$(KERNEL_DIR),*.c)
 KERNEL_C_TEST_SOURCES = $(filter %_test.c,$(KERNEL_C_SOURCES_ALL))
 # Ring0 topology enforces mechanism/policy separation; no default source exclusion hacks.
-KERNEL_C_EXCLUDE_SOURCES =
+# Phase 11: alias_proof_validation.c excluded from default build; included only under AYKEN_VALIDATION=1
+KERNEL_C_EXCLUDE_SOURCES = kernel/tests/validation/alias_proof_validation.c
 KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOURCES),$(KERNEL_C_SOURCES_ALL))
 
-# Phase 11: Include alias proof tests in validation builds
+# Phase 11: Include alias proof validation in validation builds
 ifeq ($(AYKEN_VALIDATION),1)
 KERNEL_C_SOURCES += kernel/tests/validation/alias_proof_validation.c
 endif
