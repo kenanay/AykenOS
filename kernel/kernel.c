@@ -534,6 +534,11 @@ static void kernel_late_init(void)
     outb(0xE9, 'E');
     outb(0xE9, '\n');
     
+    // Phase 11: Alias-aware address space leak proof tests
+    extern void execute_alias_proof_tests(void);
+    debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
+    execute_alias_proof_tests();
+    
     // Phase 10-A: User address space validation
     // Note: test_user_as() is in user_as_test.c which is excluded from build
     // Tests will be integrated in Phase 10-B when full validation is needed

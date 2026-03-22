@@ -11,6 +11,7 @@
 #include "../drivers/console/fb_console.h"
 #include "../arch/x86_64/port_io.h"
 #include "../sched/sched_mailbox.h"
+#include "../include/alias_registry.h"
 
 #ifndef AYKEN_GATE45_PROOF
 #define AYKEN_GATE45_PROOF 0
@@ -34,6 +35,10 @@
 
 #ifndef AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT
 #define AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT 2
+#endif
+
+#ifndef AYKEN_ALIAS_PROOF_SELFTEST
+#define AYKEN_ALIAS_PROOF_SELFTEST 0
 #endif
 
 _Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
@@ -1622,6 +1627,158 @@ void proc_teardown_exit_surfaces(proc_t *p,
     proc_restore_cr3(saved_active_cr3, saved_rflags, switched_to_kernel_cr3);
 }
 
+#if defined(AYKEN_VALIDATION)
+/* ============================================================================
+ * exit_teardown_alias_phase: Alias eşlemelerini temizler ve doğrulama yapar
+ * ============================================================================
+ * 
+ * Süreç çıkışı sırasında alias_registry'deki tüm alias eşlemelerini PML4'ten
+ * temizler, TLB flush yapar ve verifier ile doğrulama gerçekleştirir.
+ * 
+ * Önkoşullar:
+ * - proc != NULL
+ * - proc->state == PROC_ZOMBIE
+ * - proc->teardown_started == 1 (FREEZE INVARIANT)
+ * 
+ * FREEZE INVARIANT: teardown_started=1 iken sys_v2_map_memory() bu proc için
+ * -EINVAL döner. Yani teardown başladıktan sonra yeni alias kaydı gelmez;
+ * verifier penceresi temizdir.
+ * 
+ * Sonkoşullar:
+ * - Tüm alias VA'lar için paging_get_pte_in_pml4() == 0
+ * - debugcon'da [[AYKEN_ALIAS_PROOF_OK]] witness mevcut
+ * 
+ * Fail-closed: leaked_count > 0 ise halt_forever() çağrılır
+ * (MEMORY.LEAK.INTENTIONAL NON_OVERRIDABLE kuralı)
+ * 
+ * CANONICAL/ALIAS MEKANİK SINIR: Bu fonksiyon yalnızca proc->alias_reg üzerinde
+ * döngü kurar; proc->mapping_ledger'a hiçbir koşulda dokunmaz. Bu ayrım kod
+ * seviyesinde mekanik olmalı: alias_reg döngüsü ve mapping_ledger döngüsü aynı
+ * fonksiyonda birleştirilmemeli, ayrı scope'larda tutulmalı. Canonical VA
+ * yanlışlıkla silinirse test geçer ama veri modeli sessizce bozulur.
+ * 
+ * TLB FLUSH ZORUNLU: Her alias VA için invlpg(va) çağrısı zorunludur.
+ * proc_invalidate_local_page_if_active() gerçekten invlpg instruction'ı ürettiği
+ * kaynak koddan doğrulanmıştır (kernel/proc/proc.c:1427). pte == 0 kontrolü tek
+ * başına yeterli değil — TLB'de eski mapping kalabilir; bu olmadan tasarım
+ * "page-table-proof" olur, "leak-proof" olmaz.
+ * 
+ * Validates: Requirements 5.1, 6.6, 7.3, 4.1, 6.4, 6.5
+ */
+void exit_teardown_alias_phase(proc_t *proc)
+{
+    alias_proof_result_t result = {0};
+    int verdict;
+
+    if (proc == NULL) {
+        return;
+    }
+
+    /* Önkoşul kontrolü: proc->state == PROC_ZOMBIE */
+    if (proc->state != PROC_ZOMBIE) {
+        fb_print("[ALIAS_PROOF] ERROR: exit_teardown_alias_phase called on non-ZOMBIE process (pid=");
+        fb_print_int(proc->pid);
+        fb_print(")\n");
+        return;
+    }
+
+    /* CANONICAL/ALIAS MEKANİK SINIR: Yalnızca alias_reg üzerinde döngü kur.
+     * mapping_ledger'a dokunma — canonical lineage korunumu (Requirement 7).
+     * 
+     * Bu scope yalnızca alias VA'ları temizler. Canonical VA'lar
+     * user_as_destroy_lower_half() tarafından zaten temizlenmiştir.
+     */
+    {
+        alias_registry_t *reg = &proc->alias_reg;
+
+        /* Adım 1: Tüm alias VA'ları PML4'ten temizle ve TLB flush yap
+         * 
+         * İç içe döngü: entry_count × alias_count
+         * Her alias VA için:
+         * 1. paging_unmap_in_pml4() — PTE'yi sıfırla
+         * 2. proc_invalidate_local_page_if_active() — TLB entry'yi geçersiz kıl
+         * 
+         * TLB FLUSH ZORUNLU: proc_invalidate_local_page_if_active() gerçekten
+         * invlpg instruction'ı üretir (kaynak doğrulanmış: kernel/proc/proc.c:1427).
+         * 
+         * Memory ordering: teardown_started=1 set edildiğinde smp_wmb() + smp_mb()
+         * ile tüm alias_registry_record() yazmaları globally visible yapılmıştır
+         * (bkz. kernel/sys/syscall_v2.c:1335-1352). Bu noktada registry snapshot
+         * temizdir ve freeze invariant aktiftir.
+         */
+        for (uint32_t i = 0; i < reg->entry_count; i++) {
+            alias_entry_t *entry = &reg->entries[i];
+
+            /* Kullanılmayan entry'leri atla */
+            if (entry->in_use == 0) {
+                continue;
+            }
+
+            /* Her alias VA için PTE temizleme ve TLB flush */
+            for (uint32_t j = 0; j < entry->alias_count; j++) {
+                uint64_t va = entry->alias_vas[j];
+
+                /* PTE'yi PML4'ten temizle */
+                paging_unmap_in_pml4(proc->pml4_phys, va);
+
+                /* TLB entry'yi geçersiz kıl (ZORUNLU)
+                 * 
+                 * KAYNAK KOD DOĞRULAMA: proc_invalidate_local_page_if_active()
+                 * implementasyonu kernel/proc/proc.c:1422-1430 satırlarında
+                 * doğrulanmıştır. Fonksiyon gerçekten invlpg instruction'ı üretir:
+                 * 
+                 *   __asm__ volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
+                 * 
+                 * Bu olmadan pte == 0 kontrolü yeterli değildir — TLB'de eski
+                 * mapping kalabilir ve bu tasarım "leak-proof" sayılamaz.
+                 */
+                proc_invalidate_local_page_if_active(proc->pml4_phys, va);
+            }
+        }
+    }
+
+    /* Adım 2: Verifier çağrısı — tüm alias VA'ların temizlendiğini doğrula
+     * 
+     * alias_verifier_run() her alias VA için paging_get_pte_in_pml4() çağırır
+     * ve PTE == 0 kontrolü yapar. Yan etki yoktur — registry değişmez.
+     * 
+     * Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
+     */
+    verdict = alias_verifier_run(proc, &result);
+
+    /* Adım 3: Kanıt yayını — debugcon'a deterministik format ile yaz
+     * 
+     * Çıktı formatı:
+     * - leaked_count == 0: [[AYKEN_ALIAS_PROOF_OK]] pid=<N> total=<M> verified=<M> leaked=0 tlb_scope=local
+     * - leaked_count > 0: [[AYKEN_ALIAS_LEAK_DETECTED]] pid=<N> total=<M> verified=<V> leaked=<L> first_va=0x<VA> first_phys=0x<PA> tlb_scope=local
+     * 
+     * tlb_scope=local: v1'in yalnızca local-core TLB flush garantilediğini,
+     * remote-core TLB shootdown'ın kapsam dışı olduğunu proof report yüzeyinde
+     * açıkça taşır. CI gate bu alanı parse ederek kapsam sınırını evidence'a yansıtır.
+     * 
+     * Validates: Requirements 6.1, 6.2, 6.3, 6.4
+     */
+    alias_verifier_emit_proof(&result, proc->pid);
+
+    /* Adım 4: Fail-closed enforcement — sızıntı varsa halt_forever()
+     * 
+     * MEMORY.LEAK.INTENTIONAL NON_OVERRIDABLE kuralının doğrudan uygulaması.
+     * leaked_count > 0 ise sistem durur; sessiz başarısızlığa izin verilmez.
+     * 
+     * Validates: Requirements 6.5, 6.6
+     */
+    if (verdict != 0) {
+        fb_print("[[AYKEN_ALIAS_LEAK_DETECTED]]\n");
+        fb_print("[ALIAS_PROOF] FATAL: Alias leak detected in process (pid=");
+        fb_print_int(proc->pid);
+        fb_print("), halting system\n");
+        for (;;) {
+            __asm__ volatile("cli; hlt");
+        }
+    }
+}
+#endif /* AYKEN_VALIDATION */
+
 static void proc_cleanup_failed_user_process(proc_t *p)
 {
     user_as_t user_as;
@@ -2411,6 +2568,11 @@ void init_process_main(void)
                 }
             }
         }
+#elif defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_ALIAS_PROOF_SELFTEST == 1)
+        fb_print("[init] Running alias-aware address space leak proof selftest.\n");
+        proc_run_alias_proof_selftest(preloaded);
+        fb_print("[init] Alias proof selftest completed.\n");
 #endif
         fb_print("[init] Phase10 preloaded user process detected; yielding.\n");
         sched_block_current();

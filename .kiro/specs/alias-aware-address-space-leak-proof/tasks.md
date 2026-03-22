@@ -11,7 +11,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
 
 ## Görevler
 
-- [ ] 1. Temel veri yapıları ve başlık dosyası (`kernel/include/alias_registry.h`)
+- [x] 1. Temel veri yapıları ve başlık dosyası (`kernel/include/alias_registry.h`)
   - `alias_entry_t` ve `alias_registry_t` struct tanımlarını yaz
   - `alias_proof_result_t` struct tanımını yaz
   - `AYKEN_MAX_ALIAS_ENTRIES=32`, `AYKEN_MAX_ALIASES_PER_FRAME=8` makrolarını tanımla
@@ -25,8 +25,8 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     (örn: `/* alias_registry_t: ~2KB, proc_t delta: +2KB */`); sessiz şişme önlenir
   - _Gereksinimler: 1.1, 1.2, 1.3, 10.1, 10.2, 10.3_
 
-- [ ] 2. AliasRegistry çekirdek implementasyonu (`kernel/mm/alias_registry.c`)
-  - [ ] 2.1 `alias_registry_record()` fonksiyonunu yaz
+- [x] 2. AliasRegistry çekirdek implementasyonu (`kernel/mm/alias_registry.c`)
+  - [x] 2.1 `alias_registry_record()` fonksiyonunu yaz
     - NULL / sıfır / hizasız `phys_frame` kontrolü → `-EINVAL`
     - `alias_registry_find()` ile mevcut entry arama
     - Yeni entry oluşturma: `entry_count >= AYKEN_MAX_ALIAS_ENTRIES` → `-ENOMEM`
@@ -55,13 +55,13 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     - `phys_frame & 0xFFF != 0` olan her değer için → `-EINVAL`, registry değişmez
     - **Validates: Requirements 1.6, 10.1**
 
-  - [ ] 2.6 `alias_registry_remove()` fonksiyonunu yaz
+  - [x] 2.6 `alias_registry_remove()` fonksiyonunu yaz
     - `alias_registry_find()` ile entry bul; bulunamazsa `-EINVAL`
     - `alias_vas` dizisinde VA'yı bul ve sil (son elemanla yer değiştir)
     - `alias_count == 0` ise `in_use = 0` yap
     - _Gereksinimler: 1.8_
 
-  - [ ] 2.7 `alias_registry_find()` ve `alias_registry_count_for_frame()` fonksiyonlarını yaz
+  - [x] 2.7 `alias_registry_find()` ve `alias_registry_count_for_frame()` fonksiyonlarını yaz
     - `find`: `entry_count` üzerinde lineer tarama, `in_use && phys_frame == target` eşleşmesi
     - `count_for_frame`: `find` sonucundan `alias_count` döner, bulunamazsa 0
     - _Gereksinimler: 1.9, 1.10, 1.11_
@@ -77,7 +77,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       `phys_frame & 0xFFF == 0` ve `alias_count >= 1`
     - **Validates: Requirements 10.1, 10.3**
 
-- [ ] 3. Checkpoint — AliasRegistry birim testleri
+- [x] 3. Checkpoint — AliasRegistry birim testleri
   - `kernel/tests/validation/alias_proof_test.c` içinde şu senaryoları yaz:
     `test_alias_registry_single_frame_two_aliases()`,
     `test_alias_registry_idempotent_record()`,
@@ -85,14 +85,14 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
   - Tüm testlerin geçtiğini doğrula; sorular varsa kullanıcıya sor.
   - _Gereksinimler: 1.1–1.11, 2.1–2.5_
 
-- [ ] 4. `proc_t` genişletmesi (`kernel/include/proc.h`)
+- [x] 4. `proc_t` genişletmesi (`kernel/include/proc.h`)
   - `proc_t` struct'ına `alias_registry_t alias_reg;` alanını ekle
   - `teardown_started` bayrağının mevcut olduğunu doğrula; yoksa ekle
   - `alias_registry.h` include'unu ekle
   - _Gereksinimler: 1.1, 4.1_
 
-- [ ] 5. `sys_v2_map_memory()` entegrasyonu (`kernel/sys/syscall_v2.c`)
-  - [ ] 5.1 `alias_registry_record()` çağrısını PTE kurulumundan sonra ekle
+- [x] 5. `sys_v2_map_memory()` entegrasyonu (`kernel/sys/syscall_v2.c`)
+  - [x] 5.1 `alias_registry_record()` çağrısını PTE kurulumundan sonra ekle
     - PTE kurulumu başarılıysa `alias_registry_record(&proc->alias_reg, phys_frame, va)` çağır
     - `alias_registry_record()` `-ENOMEM` dönerse: PTE'yi geri al (unmap), `ESYS_V2_RESOURCE_BUSY` döndür
     - `alias_registry_record()` `-EINVAL` dönerse: hata kodunu yansıt
@@ -104,7 +104,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       yapmamaktan daha tehlikelidir — sistemi "temiz" sanmaya iter
     - _Gereksinimler: 3.1, 3.2, 2.3, 2.5_
 
-  - [ ] 5.2 Freeze Invariant kontrolünü ve memory barrier'ı ekle
+  - [x] 5.2 Freeze Invariant kontrolünü ve memory barrier'ı ekle
     - `sys_v2_map_memory()` başında `proc->teardown_started == 1` kontrolü
     - Teardown aktifse `-EINVAL` döndür, PTE kurma, registry'ye yazma
     - `alias_registry_record()` içinde `teardown_started` kontrolünden önce `smp_rmb()` ekle
@@ -125,7 +125,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       ve `alias_reg`'in değişmediği doğrulanmalı — bu test geçmeden 5.2 tamamlanmış sayılmaz
     - _Gereksinimler: 3.4, 4.2, 4.4, 4.5_
 
-  - [ ] 5.3 `AYKEN_VALIDATION` makro korumasını ekle
+  - [x] 5.3 `AYKEN_VALIDATION` makro korumasını ekle
     - `alias_registry_record()` çağrısını `#if defined(AYKEN_VALIDATION)` bloğuna al
     - _Gereksinimler: 3.3_
 
@@ -146,14 +146,14 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       PTE kurulmaz, `alias_reg` değişmez
     - **Validates: Requirements 3.4, 4.1, 4.2, 4.3, 4.4**
 
-- [ ] 6. Checkpoint — sys_v2_map_memory entegrasyon testleri
+- [x] 6. Checkpoint — sys_v2_map_memory entegrasyon testleri
   - Kapasite aşımı → PTE kurulmadığını doğrula
   - Freeze invariant → teardown sırasında mapping reddini doğrula
   - Tüm testlerin geçtiğini doğrula; sorular varsa kullanıcıya sor.
   - _Gereksinimler: 2.3–2.5, 3.1–3.4, 4.1–4.4_
 
-- [ ] 7. AliasVerifier implementasyonu (`kernel/mm/alias_verifier.c`)
-  - [ ] 7.1 `alias_verifier_run()` fonksiyonunu yaz
+- [x] 7. AliasVerifier implementasyonu (`kernel/mm/alias_verifier.c`)
+  - [x] 7.1 `alias_verifier_run()` fonksiyonunu yaz
     - `proc == NULL || proc->state != PROC_ZOMBIE` → `-EINVAL`
     - `out_result` sıfırla
     - İç içe döngü: `entry_count` × `alias_count` — her VA için `paging_get_pte_in_pml4()` çağır
@@ -178,7 +178,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     - `alias_verifier_run()` öncesi ve sonrası `proc->alias_reg` içeriği bit-for-bit aynı
     - **Validates: Requirements 5.7**
 
-  - [ ] 7.4 `alias_verifier_emit_proof()` fonksiyonunu yaz
+  - [x] 7.4 `alias_verifier_emit_proof()` fonksiyonunu yaz
     - `leaked_count == 0` → debugcon'a `[[AYKEN_ALIAS_PROOF_OK]] pid=<N> total=<M> verified=<M> leaked=0 tlb_scope=local` yaz
     - `leaked_count > 0` → debugcon'a `[[AYKEN_ALIAS_LEAK_DETECTED]] pid=<N> total=<M> verified=<V> leaked=<L> first_va=0x<VA> first_phys=0x<PA> tlb_scope=local` yaz
     - `tlb_scope=local` alanı her çıktıda zorunlu — v1 kapsam sınırını CI evidence yüzeyine taşır
@@ -196,8 +196,8 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       `leaked_count > 0` → `[[AYKEN_ALIAS_LEAK_DETECTED]]` token mevcut
     - **Validates: Requirements 6.1, 6.2**
 
-- [ ] 8. `exit_teardown_alias_phase()` implementasyonu (`kernel/proc/proc.c`)
-  - [ ] 8.1 Teardown alias temizleme döngüsünü yaz (TLB flush garantili)
+- [x] 8. `exit_teardown_alias_phase()` implementasyonu (`kernel/proc/proc.c`)
+  - [x] 8.1 Teardown alias temizleme döngüsünü yaz (TLB flush garantili)
     - `proc->alias_reg` üzerinde iç içe döngü: her alias VA için
       `paging_unmap_in_pml4(proc->pml4_phys, va)` çağır
     - Her VA için `invlpg(va)` çağır — TLB entry'yi geçersiz kıl (ZORUNLU)
@@ -211,13 +211,13 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       yapmıyorsa doğrudan `invlpg(va)` çağır, wrapper'a güvenme
     - _Gereksinimler: 5.1, 6.6, 7.3_
 
-  - [ ] 8.2 Verifier çağrısı ve fail-closed enforcement'ı ekle
+  - [x] 8.2 Verifier çağrısı ve fail-closed enforcement'ı ekle
     - `alias_verifier_run(proc, &result)` çağır
     - `alias_verifier_emit_proof(&result, proc->pid)` çağır
     - `verdict != 0` → `debugcon_write("[[AYKEN_ALIAS_LEAK_DETECTED]]\n")` + `halt_forever()`
     - _Gereksinimler: 6.4, 6.5, 6.6_
 
-  - [ ] 8.3 `sys_v2_exit()` içinde `exit_teardown_alias_phase()` çağrısını ekle
+  - [x] 8.3 `sys_v2_exit()` içinde `exit_teardown_alias_phase()` çağrısını ekle
     - Canonical teardown'dan sonra, `PROC_ZOMBIE` state set edildikten sonra çağır
     - `teardown_started = 1` set edildiğini doğrula (Freeze Invariant)
     - LLD NOTU: Aynı phys frame'i paylaşan canonical VA ile alias VA ayrıştırması
@@ -245,7 +245,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       tüm canonical kayıtlar değişmemiş
     - **Validates: Requirements 7.1, 7.2, 7.3**
 
-  - [ ] 8.6 Hard cap ABI-visible behavior contract'ını belgele ve doğrula
+  - [x] 8.6 Hard cap ABI-visible behavior contract'ını belgele ve doğrula
     - `AYKEN_MAX_ALIAS_ENTRIES=32` ve `AYKEN_MAX_ALIASES_PER_FRAME=8` sınırlarının
       validation profile'da ABI-visible behavior oluşturduğunu `alias_registry.h`'a yorum olarak ekle
     - Kapasite aşımında `sys_v2_map_memory()` `-ENOMEM` / `ESYS_V2_RESOURCE_BUSY` döner;
@@ -261,14 +261,14 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       Bu yorum olmadan biri limiti "internal" sanıp değiştirir, proof yüzeyi kayar
     - _Gereksinimler: 2.1, 2.2, 2.3, 11.3_
 
-- [ ] 9. Checkpoint — Verifier ve teardown birim testleri
+- [x] 9. Checkpoint — Verifier ve teardown birim testleri
   - `test_alias_verifier_clean_pass()`: teardown sonrası tüm PTE'ler sıfır → `leaked_count == 0`
   - `test_alias_verifier_leak_detection()`: kasıtlı sızdırılmış PTE → `leaked_count > 0`,
     `first_leaked_va` doğru
   - Tüm testlerin geçtiğini doğrula; sorular varsa kullanıcıya sor.
   - _Gereksinimler: 5.1–5.8, 6.1–6.6, 7.1–7.3_
 
-- [ ] 10. Validation selftest (`kernel/mm/alias_verifier.c` — makro korumalı blok)
+- [x] 10. Validation selftest (`kernel/mm/alias_verifier.c` — makro korumalı blok)
   - `#if defined(AYKEN_VALIDATION) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)` bloğu içinde
     `proc_run_alias_proof_selftest()` fonksiyonunu yaz
   - Selftest senaryoları: tek frame'e iki alias + temizleme, idempotent kayıt,
@@ -285,8 +285,8 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     tüm senaryolar ayrı ayrı geçtikten sonra yazılır.
   - _Gereksinimler: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 11. CI Gate: audit script ve Makefile hedefi
-  - [ ] 11.1 `tools/validation/alias_proof_audit.sh` scriptini yaz
+- [x] 11. CI Gate: audit script ve Makefile hedefi
+  - [x] 11.1 `tools/validation/alias_proof_audit.sh` scriptini yaz
     - `boot.log` argümanını al
     - `[[AYKEN_ALIAS_PROOF_OK]]` witness'ının tam olarak 1 kez geçtiğini doğrula
     - `[[AYKEN_ALIAS_LEAK_DETECTED]]` witness'ının 0 kez geçtiğini doğrula
@@ -305,14 +305,14 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       başarısız oldu `violations.txt`'te ayrı satırda görünmeli
     - _Gereksinimler: 8.2, 8.3, 8.4, 8.6, 8.7_
 
-  - [ ] 11.2 `Makefile`'a `ci-gate-alias-proof` hedefini ekle
+  - [x] 11.2 `Makefile`'a `ci-gate-alias-proof` hedefini ekle
     - `AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 KERNEL_PROFILE=validation` ile çalışır
     - `run-validation-boot` çıktısını `evidence/run-$(RUN_ID)/gates/alias-proof/boot.log`'a yönlendir
     - `tools/validation/alias_proof_audit.sh` ile analiz et
     - Evidence dizinlerini oluştur: `boot.log`, `report.json`, `violations.txt`
     - _Gereksinimler: 8.1, 8.6_
 
-  - [ ] 11.3 `ci-freeze` zincirinde `ci-gate-alias-proof`'u 24. gate olarak ekle
+  - [x] 11.3 `ci-freeze` zincirinde `ci-gate-alias-proof`'u 24. gate olarak ekle
     - `ci-kill-switch-phase13`'ten önce, mevcut 23. gate'ten sonra yerleştir
     - _Gereksinimler: 8.8_
 
