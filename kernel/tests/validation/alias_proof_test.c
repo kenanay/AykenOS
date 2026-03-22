@@ -685,6 +685,10 @@ static void test_alias_verifier_leak_detection(void)
 
 void execute_alias_proof_tests(void)
 {
+    // Armed marker: unit tests başladı
+    debugcon_write("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
+    fb_print("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
+    
     fb_print("\n");
     fb_print("========================================\n");
     fb_print("AykenOS Phase 11 Alias Proof Unit Tests\n");
@@ -726,8 +730,14 @@ void execute_alias_proof_tests(void)
     fb_print("\n");
 
     if (tests_failed == 0) {
-        fb_print("\n[[AYKEN_ALIAS_PROOF_TEST_OK]] All tests passed\n");
+        fb_print("\n[[AYKEN_ALIAS_PROOF_OK]] All tests passed\n");
+        debugcon_write("[[AYKEN_ALIAS_PROOF_OK]] total=");
+        debugcon_write_uint(total_tests);
+        debugcon_write(" verified=");
+        debugcon_write_uint(tests_passed);
+        debugcon_write(" leaked=0 tlb_scope=local\n");
     } else {
-        fb_print("\n[[AYKEN_ALIAS_PROOF_TEST_FAIL]] Some tests failed\n");
+        fb_print("\n[[AYKEN_ALIAS_PROOF_FAIL]] Some tests failed\n");
+        debugcon_write("[[AYKEN_ALIAS_PROOF_FAIL]]\n");
     }
 }
