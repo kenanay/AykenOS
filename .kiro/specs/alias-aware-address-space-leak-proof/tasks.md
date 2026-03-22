@@ -316,6 +316,16 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
     - `ci-kill-switch-phase13`'ten önce, mevcut 23. gate'ten sonra yerleştir
     - _Gereksinimler: 8.8_
 
+  - [x] 11.4 `gate_alias_proof.sh`'yi mevcut boot/runtime gate pattern'ine göre yeniden düzenle
+    - Çalışan gate'lerden (low-half-kheap, ring3-execution) runner profilini devral
+    - Boot witness kontrolü ekle: `[[AYKEN_BOOT_OK]]` önkoşulu sağlanmalı
+    - Runner profili genişlet: AYKEN_CR3_PCID=0, AYKEN_MB_SELFTEST=1, AYKEN_GATE4_POLICY_TEST=0, AYKEN_SCHED_BOOTSTRAP_POLICY=0
+    - Boot audit script kullan: `phase_4_4_qemu_boot_audit.sh` ile boot witness doğrula
+    - Marker log kontrolü ekle: boot witness yoksa alias audit'e geçme
+    - Sıra: boot witness → runtime canlılık (opsiyonel) → alias selftest witness → audit/report
+    - Makefile target'ını güncelle: runner profilini yeni değişkenlerle çağır
+    - _Gereksinimler: 8.1, 8.2, 8.6, 11.1_
+
 - [ ] 12. Final checkpoint — Tüm testler ve CI gate
   - `AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 KERNEL_PROFILE=validation make kernel` ile derleme doğrula
   - `ci-gate-alias-proof` hedefini çalıştır; `[[AYKEN_ALIAS_PROOF_OK]]` witness'ını doğrula

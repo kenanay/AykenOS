@@ -1265,10 +1265,14 @@ ci-gate-alias-proof: ci-evidence-dir
 	@echo "run_id: $(RUN_ID)"
 	@echo "qemu_timeout: 35"
 	@echo "kernel_profile: validation (enforced)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@echo "ayken_cr3_pcid: 0 (enforced)"
+	@echo "ayken_mb_selftest: 1 (enforced)"
+	@echo "ayken_gate4_policy_test: 0 (enforced)"
+	@echo "ayken_sched_bootstrap_policy: 0 (enforced)"
 	@echo "ayken_validation: 1 (enforced)"
 	@echo "ayken_alias_proof_selftest: 1 (enforced)"
-	@echo "user_minimal_mode: phase10a2 (enforced)"
-	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 bash scripts/ci/gate_alias_proof.sh \
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_CR3_PCID=0 AYKEN_MB_SELFTEST=1 AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY=0 AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 bash scripts/ci/gate_alias_proof.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/alias-proof" \
 		--qemu-timeout 35
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/alias-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/alias-proof.json" 2>/dev/null || true
