@@ -12,10 +12,44 @@
 #include "../../include/proc.h"
 #include "../../include/errno.h"
 #include "../../drivers/console/fb_console.h"
-#include "../../drivers/console/debugcon.h"
 #include <stddef.h>
 
 #define memset __builtin_memset
+
+// Debugcon helper functions for witness emission
+static void debugcon_write_char(char c)
+{
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)c), "Nd"((uint16_t)0xE9));
+}
+
+static void debugcon_write(const char *s)
+{
+    if (!s) return;
+    while (*s) {
+        debugcon_write_char(*s);
+        s++;
+    }
+}
+
+static void debugcon_write_uint(uint32_t val)
+{
+    char buf[16];
+    int i = 0;
+    
+    if (val == 0) {
+        debugcon_write_char('0');
+        return;
+    }
+    
+    while (val > 0) {
+        buf[i++] = '0' + (val % 10);
+        val /= 10;
+    }
+    
+    while (i > 0) {
+        debugcon_write_char(buf[--i]);
+    }
+}
 
 // Test result tracking
 static int tests_passed = 0;
