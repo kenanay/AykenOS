@@ -33,7 +33,7 @@ kernel/
 │   ├── *.asm           # NASM assembly (context switch, interrupts)
 │   ├── *.S             # GNU assembly
 │   └── *.c             # x86_64-specific C code
-├── sys/                 # System calls (v2 interface, 1000-1010)
+├── sys/                 # System calls (v2 interface, 1000-1011)
 ├── mm/                  # Memory management (physical, virtual, heap)
 ├── sched/               # Scheduler mechanism (wake/block/switch)
 ├── proc/                # Process management
@@ -49,7 +49,7 @@ kernel/
 ### Key Kernel Files
 - `ayken_abi.h`: ABI constants (context offsets, syscall IDs)
 - `context_switch.asm`: Context switching (uses CTX_* constants only)
-- `sys/syscall_v2.c`: Syscall dispatcher (1000-1010 range)
+- `sys/syscall_v2.c`: Syscall dispatcher (1000-1011 range)
 
 ## Bootloader Structure (`bootloader/`)
 
@@ -101,7 +101,7 @@ The `userspace/libayken/` directory contains a standalone Makefile for building 
 **Constitutional Design:**
 - Ring3 policy implementations only (VFS, DevFS, Scheduler)
 - No Ring0 dependencies (userspace-only)
-- Syscall interface 1000-1010 only
+- Syscall interface 1000-1011 only
 - Fail-closed design (no Ring0 exports)
 
 ## Ayken-Core Structure (`ayken-core/`)
@@ -232,7 +232,7 @@ evidence/                # CI gate evidence (run-based)
 - Application logic
 
 **Forbidden (PR Auto-Reject):**
-- Direct hardware access (MUST use syscalls 1000-1010)
+- Direct hardware access (MUST use syscalls 1000-1011)
 - Kernel function calls
 - Memory management bypass
 
@@ -244,7 +244,7 @@ evidence/                # CI gate evidence (run-based)
 
 Ring0 exports are constitutional surface. Changes require ADR.
 
-**Current Ceiling:** 165 symbols (enforced)  
+**Current Ceiling:** 191 symbols (enforced)  
 **Whitelist:** `scripts/ci/constitutional-ring0-symbol-whitelist.regex`  
 **Enforcement:** `make ci-gate-ring0-exports`
 

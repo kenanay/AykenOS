@@ -56,7 +56,7 @@ CLI_SMOKE_REPORT_JSON="${EVIDENCE_DIR}/cli_smoke_report.json"
 CLI_OUTPUT_CONTRACT_JSON="${EVIDENCE_DIR}/cli_output_contract.json"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
-CLI_BIN="${ROOT}/ayken-core/target/debug/proof-verifier"
+CLI_BIN="${ROOT}/out/cargo/debug/proof-verifier"
 
 cargo build --quiet --manifest-path "${ROOT}/ayken-core/Cargo.toml" -p proof-verifier --bin proof-verifier
 

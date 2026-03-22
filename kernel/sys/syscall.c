@@ -1,7 +1,7 @@
 // kernel/sys/syscall.c
 // AykenOS Phase 2.5 - Execution-Centric Syscall Interface Only
 //
-// This file implements the final syscall interface with only the 10 execution-centric
+// This file implements the final syscall interface with only the execution-centric
 // syscalls. All POSIX-like syscalls have been removed as part of the architectural
 // transformation to a data-centric, AI-native operating system.
 //
@@ -12,6 +12,7 @@
 #include "../arch/x86_64/interrupts.h"
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
+#include "../sched/sched.h"
 #include "syscall_v2.h"  // Include v2 syscall interface
 
 // Debug output via debugcon (port 0xE9)
@@ -66,34 +67,44 @@ void syscall_init(void)
 // EXECUTION-CENTRIC SYSCALL DISPATCHER (Phase 2.5 - Final Implementation)
 // ============================================================================
 //
-// This dispatcher implements the final syscall interface with only the 10
+// This dispatcher implements the final syscall interface with only the
 // execution-centric syscalls. All POSIX-like syscalls have been removed.
 // 
 // Syscall Numbering Plan (Final):
-// - 1000-1009 range: Execution-centric (v2) syscalls (user space numbers)
-// - 0-9 range: Internal kernel mapping for v2 syscalls
+// - 1000-1011 range: Execution-centric (v2) syscalls (user space numbers)
+// - 0-11 range: Internal kernel mapping for v2 syscalls
 // - All other ranges: Invalid (return -ENOSYS)
 //
-// Requirements: AC-6 - Only 10 execution-centric syscalls remain
+// Requirements: AC-6 - Only execution-centric syscalls remain
 
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     uint64_t result;
 
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    static uint8_t low_half_kheap_syscall_runtime_proof_emitted = 0;
+    if (!low_half_kheap_syscall_runtime_proof_emitted &&
+        current_proc != NULL &&
+        current_proc->type == PROC_TYPE_USER) {
+        low_half_kheap_syscall_runtime_proof_emitted = 1;
+        proc_emit_low_half_kheap_runtime_proof(current_proc, "syscall_entry");
+    }
+#endif
+
     // Marker: syscall entry/return for Phase 10-A2 Task 3 roundtrip evidence.
     debugcon_write("[[AYKEN_SYSCALL_ENTER]]\n");
     debugcon_write("P10_SYSCALL_ENTER\n");
     
     // Route based on Final Syscall Numbering Plan
-    if (syscall_num >= 1000 && syscall_num <= 1010) {
-        // Execution-centric syscalls (v2) - Convert to 0-10 range for v2 handler
+    if (syscall_num >= 1000 && syscall_num <= 1011) {
+        // Execution-centric syscalls (v2) - Convert to 0-11 range for v2 handler
         result = syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
     } else {
-        // Invalid syscall number - only 1000-1010 range is valid
+        // Invalid syscall number - only 1000-1011 range is valid
         fb_print("[syscall] ENOSYS: invalid syscall number ");
         fb_print_int(syscall_num);
-        fb_print(" (valid range: 1000-1010 only)\n");
+        fb_print(" (valid range: 1000-1011 only)\n");
         result = (uint64_t)-38; // -ENOSYS
     }
     

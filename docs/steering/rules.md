@@ -32,7 +32,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 
 ## Rule 2: ABI Stability
 
-**Statement:** Syscall ABI (1000-1010) is FROZEN. Changes require RFC + version bump.
+**Statement:** Syscall ABI (1000-1011) is FROZEN. Changes require RFC + version bump.
 
 **Rationale:** ABI stability is critical for Ring3 compatibility.
 
@@ -60,7 +60,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 **Enforcement:**
 - CI Gate: `make ci-gate-ring0-exports`
 - Whitelist: `scripts/ci/constitutional-ring0-symbol-whitelist.regex`
-- Ceiling: 165 symbols (hard limit)
+- Ceiling: 191 symbols (hard limit)
 
 **Requirements:**
 - New export → ADR required
@@ -175,7 +175,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 
 ## Rule 9: Syscall Interface Stability
 
-**Statement:** Syscall interface (1000-1010) is FROZEN.
+**Statement:** Syscall interface (1000-1011) is FROZEN.
 
 **Rationale:** Ring3 depends on stable syscall contract.
 
@@ -184,7 +184,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 - Runtime validation required
 
 **Requirements:**
-- Syscall count: 11 (fixed)
+- Syscall count: 12 (fixed)
 - Register mapping: RDI/RSI/RDX/R10 (fixed)
 - Return convention: RAX (fixed)
 - Error convention: negative errno (fixed)

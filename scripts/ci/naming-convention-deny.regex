@@ -1,0 +1,5 @@
+# Forbidden naming for new execution-path additions.
+\bworker\b
+\bthread\b
+\btask\b
+\bjob\b

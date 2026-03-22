@@ -12,6 +12,58 @@
 #include "ring3_jump.h"
 #include "gdt_idt.h"
 #include "include/proc.h"
+#include "include/mm.h"
+#include "sched/sched_mailbox.h"
+
+#ifndef AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST 0
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1))
+static const uint8_t ring3_exit_proof_owner_code[] = {
+    0xF3, 0x90, /* pause */
+    0xEB, 0xFC  /* jmp .-2 */
+};
+
+static int ring3_seed_mailbox_candidate(proc_t *publisher,
+                                        uint64_t epoch,
+                                        uint32_t candidate_pid)
+{
+    ayken_sched_mailbox_t *mb;
+
+    if (!publisher || publisher->mailbox_pa == 0 || publisher->pid <= 0) {
+        return 0;
+    }
+
+    mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(publisher->mailbox_pa);
+    if (!mb) {
+        return 0;
+    }
+
+    mb->magic = AYKEN_SCHED_MB_MAGIC;
+    mb->version = AYKEN_SCHED_MB_VERSION;
+    mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
+    mb->epoch = epoch;
+    mb->proposer_pid = (uint32_t)publisher->pid;
+    mb->candidate_pid = candidate_pid;
+    mb->flags = 0;
+    mb->status = AYKEN_SCHED_STATUS_EMPTY;
+    mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
+    mb->reserved = 0;
+    return 1;
+}
+#endif
 
 static uint32_t rotr32(uint32_t value, uint32_t count)
 {
@@ -273,6 +325,32 @@ void jump_to_ring3(void)
         ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] bad_magic",
                          "[PANIC] Phase10: Embedded ELF magic is invalid.");
     }
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1))
+    {
+        proc_t *owner_proc = proc_create_user_process(
+            "phase10-exit-proof-owner",
+            ring3_exit_proof_owner_code,
+            (uint64_t)sizeof(ring3_exit_proof_owner_code),
+            PROC_IMAGE_FLAT
+        );
+        if (!owner_proc) {
+            ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] exit_owner_create",
+                             "[PANIC] Phase10: Exit-proof owner process creation failed.");
+        }
+        if (!ring3_seed_mailbox_candidate(owner_proc, 2, 1)) {
+            ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] exit_owner_seed",
+                             "[PANIC] Phase10: Exit-proof owner mailbox seed failed.");
+        }
+        debugcon_write("[[AYKEN_RING3_PREP_OK]]\n");
+        debugcon_write("P10_SCHED_ARMED\n");
+        fb_print("[PHASE10] Exit-proof owner process prepared and queued.\n");
+        return;
+    }
+#endif
 
     proc_t *ring3_proc = proc_create_user_process(
         "phase10-minimal",

@@ -364,6 +364,7 @@ required_syscalls = [
     ("SYS_V2_CAPABILITY_REVOKE", 8),
     ("SYS_V2_EXIT", 9),
     ("SYS_V2_DEBUG_PUTCHAR", 10),
+    ("SYS_V2_COMPLETE_EXECUTION", 11),
 ]
 
 missing = [name for name in required if name not in macros]

@@ -99,26 +99,41 @@ make pre-ci                 # 4 gates: ABI, Boundary, Hygiene, Constitutional
 # Policy Accept) run in CI only, not local.
 ```
 
-**Mandatory Gates (Fail-Closed):**
+**Mandatory Gates (Fail-Closed) — ci-freeze execution order (intentional, matches Makefile exactly):**
 ```bash
-# Individual gates (order matters)
-make ci-gate-abi            # ABI stability check (MUST pass)
-make ci-gate-boundary       # Ring0/Ring3 boundary enforcement (MUST pass)
-make ci-gate-ring0-exports  # Ring0 export surface check (MUST pass)
-make ci-gate-hygiene        # Repository cleanliness (MUST pass)
-make ci-gate-constitutional # Constitutional compliance (MUST pass)
-make ci-gate-governance-policy  # Governance policy enforcement (MUST pass)
-make ci-gate-drift-activation   # Drift blocking activation requirement (MUST pass)
-make ci-gate-workspace      # Workspace integrity (MUST pass)
-make ci-gate-syscall-v2-runtime  # Syscall runtime validation (MUST pass)
-make ci-gate-sched-bridge-runtime  # Scheduler bridge runtime validation (MUST pass)
-make ci-gate-policy-accept  # Policy accept proof (MUST pass)
-make ci-gate-performance    # Performance regression check (MUST pass)
+# Execution order matters — fail-fast principle: static checks before runtime checks
+# performance gate runs before runtime gates to catch regressions early
+make ci-gate-abi                      # 1.  ABI stability check (MUST pass)
+make ci-gate-boundary                 # 2.  Ring0/Ring3 boundary enforcement (MUST pass)
+make ci-gate-ring0-exports            # 3.  Ring0 export surface check (MUST pass)
+make ci-gate-hygiene                  # 4.  Repository cleanliness (MUST pass)
+make ci-gate-tooling-isolation        # 5.  Tooling isolation guard (MUST pass)
+make ci-gate-constitutional           # 6.  Constitutional compliance (MUST pass)
+make ci-gate-governance-policy        # 7.  Governance policy enforcement (MUST pass)
+make ci-gate-drift-activation         # 8.  Drift blocking activation requirement (MUST pass)
+make ci-gate-structural-abi           # 9.  Structural ABI check (MUST pass)
+make ci-gate-runtime-marker-contract  # 10. Runtime marker contract (MUST pass)
+make ci-gate-user-bin-lock            # 11. User binary lock (MUST pass)
+make ci-gate-embedded-elf-hash        # 12. Embedded ELF hash integrity (MUST pass)
+make ci-gate-performance              # 13. Performance regression check (MUST pass)
+                                      #     NOTE: performance gate is intentionally placed
+                                      #     before runtime gates to catch regressions before
+                                      #     expensive QEMU-based validation runs
+make ci-gate-ring3-execution-phase10a2  # 14. Ring3 CPL3 entry proof (MUST pass)
+make ci-gate-syscall-semantics-phase10b # 15. Syscall semantics Phase 10-B (MUST pass)
+# ci-gate-scheduler-mailbox-phase10c  # 16. Phase 10-C gate (conditional: PHASE10C_ENFORCE=1)
+make ci-gate-mailbox-capability-negative # 17. Mailbox capability negative test (MUST pass)
+make ci-gate-workspace                # 18. Workspace integrity (MUST pass)
+make ci-gate-syscall-v2-runtime       # 19. Syscall v2 runtime validation (MUST pass)
+make ci-gate-sched-bridge-runtime     # 20. Scheduler bridge runtime validation (MUST pass)
+make ci-gate-behavioral-suite         # 21. Behavioral suite (MUST pass)
+make ci-gate-policy-accept            # 22. Policy accept proof (MUST pass)
+# ci-kill-switch-phase13              # 23. Phase-13 kill-switch gates (distributed verification)
 
 # Full CI suite
 make ci                     # Standard CI (enforced gates)
 make ci-freeze              # Strict freeze suite (all gates, fail-closed)
-make ci-freeze-local        # Local freeze (skip perf/tooling)
+make ci-freeze-local        # Local freeze (skip perf/tooling-isolation)
 ```
 
 **Gate Failure Policy:**

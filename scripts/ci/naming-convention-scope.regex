@@ -1,0 +1,10 @@
+# Scoped execution-path files for naming enforcement.
+^kernel/include/execution_.*\.h$
+^kernel/sys/execution_.*\.c$
+^kernel/sys/syscall_v2\.c$
+^kernel/include/proc\.h$
+^kernel/proc/proc\.c$
+^kernel/sched/sched\.c$
+^kernel/sched/sched\.h$
+^shared/abi/execution_.*\.h$
+^userspace/bcib-runtime/src/.*\.(c|h|rs)$

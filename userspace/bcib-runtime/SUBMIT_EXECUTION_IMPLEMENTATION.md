@@ -10,14 +10,14 @@ This document describes the implementation of the `submit_execution` method in t
 
 ```rust
 impl BcibExecutor {
-    pub fn submit_execution(&mut self, graph: &BcibGraph) -> Result<u64, ExecutionError>
+    pub fn submit_execution(&mut self, graph: &BcibGraph, context_id: u64) -> Result<u64, ExecutionError>
 }
 ```
 
 ### Key Features
 
 1. **BCIB Graph Validation**: Validates the graph structure before submission
-2. **Execution ID Management**: Allocates unique execution IDs for tracking
+2. **Explicit Context Routing**: Requires a real target `context_id`
 3. **Capability Management**: Binds capability tokens for secure execution
 4. **Syscall Interface**: Uses SYS_V2_SUBMIT_EXECUTION (syscall #1003) to communicate with Ring0
 5. **Error Handling**: Comprehensive error handling for various failure modes
@@ -26,11 +26,11 @@ impl BcibExecutor {
 
 1. **Input Validation**: Check if graph is empty
 2. **BCIB Validation**: Validate graph structure using `graph.validate()`
-3. **ID Allocation**: Generate unique execution ID via `allocate_execution_id()`
-4. **Capability Binding**: Create and bind execution capability token
-5. **Syscall Submission**: Submit to Ring0 using INT 0x80 mechanism
-6. **Result Processing**: Handle syscall return value and update context
-7. **Context Management**: Store execution context for future operations
+3. **Context Validation**: Reject null target `context_id`
+4. **Syscall Submission**: Submit to Ring0 using INT 0x80 mechanism
+5. **Result Processing**: Treat the kernel return value as the authoritative `execution_id`
+6. **Capability Binding**: Create and bind an execution capability token keyed by that kernel ID
+7. **Context Management**: Store/ensure execution context state for the target context
 
 ### Syscall Parameters
 
@@ -39,7 +39,7 @@ The method submits the following parameters to Ring0:
 - **syscall_num**: `SYS_V2_SUBMIT_EXECUTION` (1003)
 - **arg1**: Graph data pointer (`graph.as_ptr() as u64`)
 - **arg2**: Graph data length (`graph.len() as u64`)
-- **arg3**: Execution ID (`execution_id`)
+- **arg3**: Target context ID (`context_id`)
 - **arg4**: Reserved (0)
 
 ### Error Handling
@@ -66,7 +66,7 @@ let bcib_bytes = buf.encode();
 // Submit for execution
 let mut executor = BcibExecutor::new();
 let graph = BcibGraph::new(&bcib_bytes);
-let execution_id = executor.submit_execution(&graph)?;
+let execution_id = executor.submit_execution(&graph, 42)?;
 
 // Wait for result
 let status = executor.wait_result(execution_id, 1000)?;
@@ -77,7 +77,7 @@ let status = executor.wait_result(execution_id, 1000)?;
 The implementation includes comprehensive unit tests covering:
 
 - Empty graph validation
-- Execution ID allocation
+- Context ID routing
 - BCIB graph creation and validation
 - Capability manager functionality
 - Execution context management
@@ -101,9 +101,10 @@ The submit_execution method integrates with:
 This implementation fulfills the requirements specified in task **2.3.1.2**:
 
 - ✅ Implements exact method signature as specified
-- ✅ Allocates execution ID via `allocate_execution_id()`
+- ✅ Requires a real `context_id` argument
 - ✅ Submits to Ring0 using `SYS_V2_SUBMIT_EXECUTION`
-- ✅ Passes graph pointer, length, and execution ID as parameters
+- ✅ Passes graph pointer, length, and target `context_id` as parameters
+- ✅ Preserves kernel-owned `execution_id` as the returned value
 - ✅ Enables BCIB graph submission via syscalls
 
 ## Phase 2.3 Integration

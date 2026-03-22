@@ -67,7 +67,6 @@ This kill switch prevents:
 - Risk class: `artifact-truth-drift`
 - Primary gate: `ci-gate-proof-verdict-binding`
 - Supporting gates:
-  - `ci-gate-proof-bundle`
   - `ci-gate-proof-receipt`
   - `ci-gate-proofd-service`
 - Authoritative failure meaning:

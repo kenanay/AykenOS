@@ -445,10 +445,10 @@ else:
         if contract:
             expected = {
                 "SYS_V2_BASE": 1000,
-                "SYS_V2_MAX_INDEX": 10,
-                "SYS_V2_NR": 11,
-                "SYS_V2_LAST": 1010,
-                "SYS_V2_MAX_SYSCALL": 10,
+                "SYS_V2_MAX_INDEX": 11,
+                "SYS_V2_NR": 12,
+                "SYS_V2_LAST": 1011,
+                "SYS_V2_MAX_SYSCALL": 11,
             }
             for key, exp in expected.items():
                 got = contract.get(key)

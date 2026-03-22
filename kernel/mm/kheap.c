@@ -24,9 +24,6 @@
 //
 // Burada heap'i kernel sanal adres alanında biraz yukarıdan başlatıyoruz.
 
-#define KHEAP_START        (0x0000000002000000ULL)   // +16MB offset
-#define KHEAP_INITIAL_SIZE (4ULL * 1024ULL * 1024ULL)          // 16 MiB heap
-
 // Alignment (8 veya 16 byte yeterli)
 #define KHEAP_ALIGN        16ULL
 
@@ -73,11 +70,11 @@ void kheap_init(void)
     fb_print("[kheap] Initializing kernel heap...\n");
 
     // 1) Heap aralığını sayfalara böl
-    uint64_t heap_pages = KHEAP_INITIAL_SIZE / AYKEN_FRAME_SIZE;
-    if (KHEAP_INITIAL_SIZE % AYKEN_FRAME_SIZE)
+    uint64_t heap_pages = AYKEN_KHEAP_INITIAL_SIZE / AYKEN_FRAME_SIZE;
+    if (AYKEN_KHEAP_INITIAL_SIZE % AYKEN_FRAME_SIZE)
         heap_pages++;
 
-    uint64_t cur_virt = KHEAP_START;
+    uint64_t cur_virt = AYKEN_KHEAP_START;
 
     for (uint64_t i = 0; i < heap_pages; ++i) {
         if (i == 0)
@@ -97,12 +94,12 @@ void kheap_init(void)
     }
 
     kheap_dbg('m');
-    if (paging_get_phys(KHEAP_START) == 0) { kheap_dbg('X');
+    if (paging_get_phys(AYKEN_KHEAP_START) == 0) { kheap_dbg('X');
         for (;;) __asm__ volatile("hlt"); }
     paging_load_cr3(paging_get_kernel_pml4_phys());
     kheap_dbg('M');
     kheap_dbg('a');
-    volatile uint64_t *p = (volatile uint64_t *)KHEAP_START;
+    volatile uint64_t *p = (volatile uint64_t *)AYKEN_KHEAP_START;
     volatile uint64_t tmp = *p;
     (void)tmp;
     kheap_dbg('A');
@@ -110,14 +107,14 @@ void kheap_init(void)
     *p = 0x1122334455667788ULL;
     kheap_dbg('B');
     // 2) Tek büyük boş blok oluştur
-    kheap_head = (kheap_block_t *)KHEAP_START;
+    kheap_head = (kheap_block_t *)AYKEN_KHEAP_START;
     kheap_head->size = (heap_pages * AYKEN_FRAME_SIZE) - sizeof(kheap_block_t);
     kheap_head->free = 1;
     kheap_head->next = NULL;
 
     kheap_dbg('H');
     fb_print("[kheap] Heap initialized at ");
-    fb_print_hex64((uint64_t)KHEAP_START);
+    fb_print_hex64((uint64_t)AYKEN_KHEAP_START);
     fb_print(" size=");
     fb_print_hex64(kheap_head->size);
     fb_print("\n");

@@ -3,6 +3,7 @@
 #include "../include/proc.h"
 #include "../sched/sched.h"
 #include "../include/mm.h"
+#include "../include/mm/user_as.h"
 #include "../include/kheap.h"
 #include "../include/ayken.h"
 #include "../include/gdt_idt.h"
@@ -13,6 +14,26 @@
 
 #ifndef AYKEN_GATE45_PROOF
 #define AYKEN_GATE45_PROOF 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT
+#define AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT 2
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST
+#define AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST 0
+#endif
+
+#ifndef AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT
+#define AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT 2
 #endif
 
 _Static_assert(offsetof(cpu_context_t, rip) == 48, "ctx.rip offset");
@@ -34,10 +55,74 @@ _Static_assert(sizeof(cpu_context_t) == 96, "ctx size");
 
 static proc_t* proc_table[MAX_PROCS];
 static int next_pid = 1;
+static proc_t* g_deferred_reap_queue[MAX_PROCS];
+static uint32_t g_low_half_kheap_runtime_seq = 0;
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1)
+static uint8_t g_low_half_kheap_exit_selftest_armed = 0;
+static uint8_t g_low_half_kheap_exit_selftest_completed = 0;
+static uint32_t g_low_half_kheap_exit_selftest_exit_pid = 0;
+static uint32_t g_low_half_kheap_exit_selftest_return_pid = 0;
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1)
+#define LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT \
+    ((uint32_t)AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT)
+_Static_assert(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT > 0,
+               "multi-exit proof count must be positive");
+_Static_assert(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT < MAX_PROCS,
+               "multi-exit proof count must remain below MAX_PROCS");
+static uint8_t g_low_half_kheap_multi_exit_selftest_armed = 0;
+static uint8_t g_low_half_kheap_multi_exit_selftest_completed = 0;
+static uint32_t g_low_half_kheap_multi_exit_current_slot = 0;
+static uint32_t g_low_half_kheap_multi_exit_owner_pid = 0;
+static uint32_t g_low_half_kheap_multi_exit_return_pid = 0;
+static uint32_t g_low_half_kheap_multi_exit_exit_pids[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT] = {0};
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1)
+#define LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT \
+    ((uint32_t)AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)
+_Static_assert(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT > 1,
+               "interleaving proof count must be at least 2");
+_Static_assert(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT < MAX_PROCS,
+               "interleaving proof count must remain below MAX_PROCS");
+static uint8_t g_low_half_kheap_interleaving_selftest_prepared = 0;
+static uint8_t g_low_half_kheap_interleaving_selftest_armed = 0;
+static uint8_t g_low_half_kheap_interleaving_selftest_completed = 0;
+static uint32_t g_low_half_kheap_interleaving_current_slot = 0;
+static uint32_t g_low_half_kheap_interleaving_owner_pid = 0;
+static uint32_t g_low_half_kheap_interleaving_return_pid = 0;
+static uint32_t g_low_half_kheap_interleaving_exit_pids[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT] = {0};
+#endif
 
 void init_process_main(void);
 void kernel_first_entry(void);
 void kernel_iret_entry(void);  // IRET-safe kernel entry
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1))
+static const uint8_t low_half_kheap_exit_proof_code[] = {
+    0xB9, 0x00, 0x00, 0x20, 0x00, /* mov ecx, 0x00200000 */
+    0xF3, 0x90,                   /* pause */
+    0xE2, 0xFC,                   /* loop .-4 */
+    0xB8, 0xF0, 0x03, 0x00, 0x00, /* mov eax, 1008 */
+    0xBF, 0x01, 0x00, 0x00, 0x00, /* mov edi, 1 */
+    0x31, 0xF6,                   /* xor esi, esi */
+    0x31, 0xD2,                   /* xor edx, edx */
+    0x45, 0x31, 0xD2,             /* xor r10d, r10d */
+    0xCD, 0x80,                   /* int 0x80 */
+    0xB8, 0xF1, 0x03, 0x00, 0x00, /* mov eax, 1009 */
+    0xBF, 0x17, 0x0E, 0x00, 0x00, /* mov edi, 0xE17 */
+    0x31, 0xF6,                   /* xor esi, esi */
+    0x31, 0xD2,                   /* xor edx, edx */
+    0x45, 0x31, 0xD2,             /* xor r10d, r10d */
+    0xCD, 0x80,                   /* int 0x80 */
+    0xEB, 0xFE,                   /* jmp $ */
+};
+#endif
 
 static void debugcon_write(const char *s)
 {
@@ -80,6 +165,99 @@ static void debugcon_u32(uint32_t v)
     }
     while (i > 0) {
         outb(0xE9, (uint8_t)buf[--i]);
+    }
+}
+
+typedef struct low_half_mapping_stats {
+    uint32_t root_entries_present;
+    uint32_t leaf_entries_present;
+    uint32_t user_leaf_entries_present;
+} low_half_mapping_stats_t;
+
+static void collect_low_half_mapping_stats_recursive(uint64_t table_phys,
+                                                     uint32_t level,
+                                                     low_half_mapping_stats_t *stats)
+{
+    const uint64_t HUGE_MASK = (1ULL << 7);
+    uint64_t *table;
+    uint32_t i;
+
+    if (table_phys == 0 || level == 0 || !stats) {
+        return;
+    }
+
+    table = (uint64_t *)paging_phys_to_virt(table_phys);
+    if (!table) {
+        return;
+    }
+
+    for (i = 0; i < 512; ++i) {
+        uint64_t entry = table[i];
+        uint64_t child_phys;
+
+        if ((entry & AYKEN_PTE_PRESENT) == 0) {
+            continue;
+        }
+
+        if ((entry & HUGE_MASK) != 0 || level == 1) {
+            stats->leaf_entries_present += 1;
+            if (entry & AYKEN_PTE_USER) {
+                stats->user_leaf_entries_present += 1;
+            }
+            continue;
+        }
+
+        child_phys = entry & AYKEN_PTE_ADDR_MASK;
+        if (child_phys == 0) {
+            continue;
+        }
+
+        collect_low_half_mapping_stats_recursive(child_phys, level - 1, stats);
+    }
+}
+
+static void collect_low_half_mapping_stats(uint64_t pml4_phys, low_half_mapping_stats_t *stats)
+{
+    const uint64_t HUGE_MASK = (1ULL << 7);
+    uint64_t *pml4;
+    uint32_t i;
+
+    if (pml4_phys == 0 || !stats) {
+        return;
+    }
+
+    stats->root_entries_present = 0;
+    stats->leaf_entries_present = 0;
+    stats->user_leaf_entries_present = 0;
+
+    pml4 = (uint64_t *)paging_phys_to_virt(pml4_phys);
+    if (!pml4) {
+        return;
+    }
+
+    for (i = 0; i < 256; ++i) {
+        uint64_t entry = pml4[i];
+        uint64_t child_phys;
+
+        if ((entry & AYKEN_PTE_PRESENT) == 0) {
+            continue;
+        }
+
+        stats->root_entries_present += 1;
+        child_phys = entry & AYKEN_PTE_ADDR_MASK;
+        if (child_phys == 0) {
+            continue;
+        }
+
+        if (entry & HUGE_MASK) {
+            stats->leaf_entries_present += 1;
+            if (entry & AYKEN_PTE_USER) {
+                stats->user_leaf_entries_present += 1;
+            }
+            continue;
+        }
+
+        collect_low_half_mapping_stats_recursive(child_phys, 3, stats);
     }
 }
 
@@ -161,10 +339,782 @@ static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
     debugcon_write("\n");
 }
 
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+static void emit_low_half_kheap_runtime_proof_raw(uint64_t user_pml4_phys,
+                                                  uint32_t pid,
+                                                  const char *phase)
+{
+    const uint64_t NX_MASK = (1ULL << 63);
+    const uint64_t HIGHER_HALF_MIN = 0xFFFF800000000000ULL;
+    low_half_mapping_stats_t lower_half_stats = {0};
+    uint64_t pte;
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+    uint64_t saved_rflags = 0;
+    int switched_to_kernel_cr3 = 0;
+    uint32_t seq = ++g_low_half_kheap_runtime_seq;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if (kernel_cr3 &&
+        ((active_cr3 & AYKEN_PTE_ADDR_MASK) != (kernel_cr3 & AYKEN_PTE_ADDR_MASK))) {
+        __asm__ volatile("pushfq; popq %0" : "=r"(saved_rflags));
+        __asm__ volatile("cli");
+        __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+        switched_to_kernel_cr3 = 1;
+    }
+
+    pte = paging_get_pte_in_pml4(user_pml4_phys, AYKEN_KHEAP_START);
+    collect_low_half_mapping_stats(user_pml4_phys, &lower_half_stats);
+
+    if (switched_to_kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+        if (saved_rflags & (1ULL << 9)) {
+            __asm__ volatile("sti");
+        }
+    }
+
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_RUNTIME]]");
+    debugcon_write(" phase=");
+    debugcon_write(phase ? phase : "unknown");
+    debugcon_write(" seq=");
+    debugcon_u32(seq);
+    debugcon_write(" pid=");
+    debugcon_u32(pid);
+    debugcon_write(" pml4=0x");
+    debugcon_hex64(user_pml4_phys);
+    debugcon_write(" kheap_start=0x");
+    debugcon_hex64(AYKEN_KHEAP_START);
+    debugcon_write(" kernel_virt_base=0x");
+    debugcon_hex64(KERNEL_VIRT_BASE);
+    debugcon_write(" pte=0x");
+    debugcon_hex64(pte);
+    debugcon_write(" present=");
+    debugcon_write_char((pte & AYKEN_PTE_PRESENT) ? '1' : '0');
+    debugcon_write(" user=");
+    debugcon_write_char((pte & AYKEN_PTE_USER) ? '1' : '0');
+    debugcon_write(" writable=");
+    debugcon_write_char((pte & AYKEN_PTE_WRITABLE) ? '1' : '0');
+    debugcon_write(" nx=");
+    debugcon_write_char((pte & NX_MASK) ? '1' : '0');
+    debugcon_write(" kheap_low_half=");
+    debugcon_write_char((AYKEN_KHEAP_START < HIGHER_HALF_MIN) ? '1' : '0');
+    debugcon_write(" kernel_higher_half=");
+    debugcon_write_char((KERNEL_VIRT_BASE >= HIGHER_HALF_MIN) ? '1' : '0');
+    debugcon_write(" scaffold=");
+#if AYKEN_LOW_HALF_KHEAP_SCAFFOLD_ACTIVE
+    debugcon_write_char('1');
+#else
+    debugcon_write_char('0');
+#endif
+    debugcon_write(" lower_half_roots=");
+    debugcon_u32(lower_half_stats.root_entries_present);
+    debugcon_write(" lower_half_leaves=");
+    debugcon_u32(lower_half_stats.leaf_entries_present);
+    debugcon_write(" lower_half_user_leaves=");
+    debugcon_u32(lower_half_stats.user_leaf_entries_present);
+    debugcon_write("\n");
+}
+#endif
+
+static int proc_switch_to_kernel_cr3(uint64_t *saved_active_cr3, uint64_t *saved_rflags)
+{
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+
+    if (!saved_active_cr3 || !saved_rflags || kernel_cr3 == 0) {
+        return 0;
+    }
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    *saved_active_cr3 = active_cr3;
+    *saved_rflags = 0;
+
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (kernel_cr3 & AYKEN_PTE_ADDR_MASK)) {
+        return 0;
+    }
+
+    __asm__ volatile("pushfq; popq %0" : "=r"(*saved_rflags));
+    __asm__ volatile("cli");
+    __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+    return 1;
+}
+
+static void proc_restore_cr3(uint64_t active_cr3, uint64_t saved_rflags, int switched)
+{
+    if (!switched) {
+        return;
+    }
+
+    __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+    if (saved_rflags & (1ULL << 9)) {
+        __asm__ volatile("sti");
+    }
+}
+
+void proc_emit_low_half_kheap_runtime_proof(proc_t *p, const char *phase)
+{
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    uint64_t user_pml4_phys;
+
+    if (!p || p->type != PROC_TYPE_USER || p->pid <= 0 || !phase) {
+        return;
+    }
+
+    user_pml4_phys = p->pml4_phys != 0 ? p->pml4_phys : p->context.cr3;
+    if (user_pml4_phys == 0) {
+        return;
+    }
+
+    emit_low_half_kheap_runtime_proof_raw(user_pml4_phys, (uint32_t)p->pid, phase);
+#else
+    (void)p;
+    (void)phase;
+#endif
+}
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1) || \
+     (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1))
+static int proc_write_mailbox_candidate(proc_t *publisher,
+                                        uint64_t epoch,
+                                        uint32_t candidate_pid)
+{
+    ayken_sched_mailbox_t *mb;
+
+    if (!publisher || publisher->mailbox_pa == 0 || publisher->pid <= 0) {
+        return 0;
+    }
+
+    mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(publisher->mailbox_pa);
+    if (!mb) {
+        return 0;
+    }
+
+    mb->magic = AYKEN_SCHED_MB_MAGIC;
+    mb->version = AYKEN_SCHED_MB_VERSION;
+    mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
+    mb->epoch = epoch;
+    mb->proposer_pid = (uint32_t)publisher->pid;
+    mb->candidate_pid = candidate_pid;
+    mb->flags = 0;
+    mb->status = AYKEN_SCHED_STATUS_EMPTY;
+    mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
+    mb->reserved = 0;
+    return 1;
+}
+
+static int proc_seed_mailbox_candidate(proc_t *publisher, uint32_t candidate_pid)
+{
+    uint64_t next_epoch;
+
+    if (!publisher) {
+        return 0;
+    }
+
+    next_epoch = publisher->mailbox_last_epoch + 1;
+    if (next_epoch == 0) {
+        next_epoch = 1;
+    }
+
+    return proc_write_mailbox_candidate(publisher, next_epoch, candidate_pid);
+}
+
+static int proc_reset_mailbox_to_self(proc_t *publisher)
+{
+    if (!publisher || publisher->pid <= 0) {
+        return 0;
+    }
+
+    return proc_write_mailbox_candidate(publisher, 1, (uint32_t)publisher->pid);
+}
+
+static int proc_validate_low_half_kheap_exit_round(proc_t *owner_proc,
+                                                   proc_t *controller_proc,
+                                                   uint32_t exit_pid,
+                                                   uint32_t return_pid,
+                                                   int *switch_from_pid_out,
+                                                   int *switch_to_pid_out)
+{
+    proc_t *exit_proc = NULL;
+    int switch_seen = 0;
+    int switch_from_pid = 0;
+    int switch_to_pid = 0;
+
+    if (!owner_proc || !controller_proc || exit_pid == 0 || return_pid == 0) {
+        return 0;
+    }
+
+    switch_seen = sched_validation_take_exit_switch_event(&switch_from_pid, &switch_to_pid);
+    sched_validation_disarm_exit_successor();
+
+    if (switch_from_pid_out) {
+        *switch_from_pid_out = switch_from_pid;
+    }
+    if (switch_to_pid_out) {
+        *switch_to_pid_out = switch_to_pid;
+    }
+
+    if (!proc_reset_mailbox_to_self(owner_proc)) {
+        return 0;
+    }
+
+    exit_proc = proc_find_by_pid((int)exit_pid);
+    if (!switch_seen ||
+        controller_proc->pid != (int)return_pid ||
+        switch_from_pid != (int)exit_pid ||
+        switch_to_pid != (int)return_pid ||
+        current_proc != controller_proc ||
+        !exit_proc ||
+        exit_proc->state != PROC_ZOMBIE) {
+        return 0;
+    }
+
+    return 1;
+}
+
+#if AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1
+static int proc_finish_low_half_kheap_exit_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+
+    if (!g_low_half_kheap_exit_selftest_armed) {
+        return 1;
+    }
+
+    if (!controller_proc ||
+        !proc_validate_low_half_kheap_exit_round(owner_proc,
+                                                 controller_proc,
+                                                 g_low_half_kheap_exit_selftest_exit_pid,
+                                                 g_low_half_kheap_exit_selftest_return_pid,
+                                                 NULL,
+                                                 NULL)) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_FAIL]] switch_contract\n");
+        return 0;
+    }
+
+    g_low_half_kheap_exit_selftest_armed = 0;
+    g_low_half_kheap_exit_selftest_completed = 1;
+
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_OK]] exit_pid=");
+    debugcon_u32(g_low_half_kheap_exit_selftest_exit_pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32(g_low_half_kheap_exit_selftest_return_pid);
+    debugcon_write("\n");
+    return 1;
+}
+
+static int proc_run_low_half_kheap_exit_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+    proc_t *exit_proc = NULL;
+
+    if (!controller_proc || controller_proc->pid <= 0 || !owner_proc ||
+        owner_proc->type != PROC_TYPE_USER || owner_proc->pid <= 0) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_FAIL]] bad_context\n");
+        return 0;
+    }
+
+    exit_proc = proc_create_user_process("phase10-low-half-exit-proof",
+                                         low_half_kheap_exit_proof_code,
+                                         sizeof(low_half_kheap_exit_proof_code),
+                                         PROC_IMAGE_FLAT);
+    if (!exit_proc || exit_proc->type != PROC_TYPE_USER) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_FAIL]] create_exit_proc\n");
+        return 0;
+    }
+
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_ARMED]] owner_pid=");
+    debugcon_u32((uint32_t)owner_proc->pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32((uint32_t)exit_proc->pid);
+    debugcon_write("\n");
+
+    if (!proc_seed_mailbox_candidate(owner_proc, (uint32_t)exit_proc->pid)) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_FAIL]] seed_owner_mailbox\n");
+        return 0;
+    }
+
+    g_low_half_kheap_exit_selftest_armed = 1;
+    g_low_half_kheap_exit_selftest_exit_pid = (uint32_t)exit_proc->pid;
+    g_low_half_kheap_exit_selftest_return_pid = (uint32_t)controller_proc->pid;
+    sched_validation_arm_exit_successor(controller_proc);
+    sched_yield();
+    return proc_finish_low_half_kheap_exit_proof_selftest(owner_proc);
+}
+#endif
+
+#if AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1
+static void proc_emit_low_half_kheap_multi_exit_lineage(uint32_t slot,
+                                                        uint32_t total,
+                                                        uint32_t owner_pid,
+                                                        uint32_t exit_pid,
+                                                        uint32_t return_pid,
+                                                        int switch_from_pid,
+                                                        int switch_to_pid)
+{
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_LINEAGE]] slot=");
+    debugcon_u32(slot);
+    debugcon_write(" total=");
+    debugcon_u32(total);
+    debugcon_write(" owner_pid=");
+    debugcon_u32(owner_pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32(exit_pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32(return_pid);
+    debugcon_write(" switch_from_pid=");
+    debugcon_u32((uint32_t)switch_from_pid);
+    debugcon_write(" switch_to_pid=");
+    debugcon_u32((uint32_t)switch_to_pid);
+    debugcon_write("\n");
+}
+
+static void proc_emit_low_half_kheap_multi_exit_ok(void)
+{
+    uint32_t i;
+
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_OK]] owner_pid=");
+    debugcon_u32(g_low_half_kheap_multi_exit_owner_pid);
+    debugcon_write(" total=");
+    debugcon_u32(LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT);
+    debugcon_write(" return_pid=");
+    debugcon_u32(g_low_half_kheap_multi_exit_return_pid);
+    debugcon_write(" exit_pids=");
+    for (i = 0; i < LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT; ++i) {
+        if (i != 0) {
+            debugcon_write_char(',');
+        }
+        debugcon_u32(g_low_half_kheap_multi_exit_exit_pids[i]);
+    }
+    debugcon_write("\n");
+}
+
+static int proc_finish_low_half_kheap_multi_exit_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+    uint32_t slot = g_low_half_kheap_multi_exit_current_slot;
+    int switch_from_pid = 0;
+    int switch_to_pid = 0;
+
+    if (!g_low_half_kheap_multi_exit_selftest_armed) {
+        if (!g_low_half_kheap_multi_exit_selftest_completed &&
+            slot >= LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT) {
+            g_low_half_kheap_multi_exit_selftest_completed = 1;
+            proc_emit_low_half_kheap_multi_exit_ok();
+        }
+        return 1;
+    }
+
+    if (!controller_proc ||
+        slot >= LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT ||
+        !proc_validate_low_half_kheap_exit_round(
+            owner_proc,
+            controller_proc,
+            g_low_half_kheap_multi_exit_exit_pids[slot],
+            g_low_half_kheap_multi_exit_return_pid,
+            &switch_from_pid,
+            &switch_to_pid)) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=switch_contract\n");
+        return 0;
+    }
+
+    proc_emit_low_half_kheap_multi_exit_lineage(slot + 1u,
+                                                LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT,
+                                                g_low_half_kheap_multi_exit_owner_pid,
+                                                g_low_half_kheap_multi_exit_exit_pids[slot],
+                                                g_low_half_kheap_multi_exit_return_pid,
+                                                switch_from_pid,
+                                                switch_to_pid);
+
+    g_low_half_kheap_multi_exit_selftest_armed = 0;
+    g_low_half_kheap_multi_exit_current_slot = slot + 1u;
+    if (g_low_half_kheap_multi_exit_current_slot >= LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT) {
+        g_low_half_kheap_multi_exit_selftest_completed = 1;
+        proc_emit_low_half_kheap_multi_exit_ok();
+    }
+
+    return 1;
+}
+
+static int proc_run_low_half_kheap_multi_exit_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+    proc_t *exit_proc = NULL;
+    uint32_t slot = g_low_half_kheap_multi_exit_current_slot;
+
+    if (!controller_proc || controller_proc->pid <= 0 || !owner_proc ||
+        owner_proc->type != PROC_TYPE_USER || owner_proc->pid <= 0) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_FAIL]] slot=0 reason=bad_context\n");
+        return 0;
+    }
+
+    if (g_low_half_kheap_multi_exit_selftest_completed) {
+        return 1;
+    }
+
+    if (g_low_half_kheap_multi_exit_selftest_armed) {
+        return proc_finish_low_half_kheap_multi_exit_proof_selftest(owner_proc);
+    }
+
+    if (slot >= LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT) {
+        g_low_half_kheap_multi_exit_selftest_completed = 1;
+        proc_emit_low_half_kheap_multi_exit_ok();
+        return 1;
+    }
+
+    exit_proc = proc_create_user_process("phase10-low-half-exit-proof",
+                                         low_half_kheap_exit_proof_code,
+                                         sizeof(low_half_kheap_exit_proof_code),
+                                         PROC_IMAGE_FLAT);
+    if (!exit_proc || exit_proc->type != PROC_TYPE_USER) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=create_exit_proc\n");
+        return 0;
+    }
+
+    if (slot == 0) {
+        g_low_half_kheap_multi_exit_owner_pid = (uint32_t)owner_proc->pid;
+        g_low_half_kheap_multi_exit_return_pid = (uint32_t)controller_proc->pid;
+    } else if (g_low_half_kheap_multi_exit_owner_pid != (uint32_t)owner_proc->pid ||
+               g_low_half_kheap_multi_exit_return_pid != (uint32_t)controller_proc->pid) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=context_drift\n");
+        return 0;
+    }
+
+    g_low_half_kheap_multi_exit_exit_pids[slot] = (uint32_t)exit_proc->pid;
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_ARMED]] slot=");
+    debugcon_u32(slot + 1u);
+    debugcon_write(" total=");
+    debugcon_u32(LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT);
+    debugcon_write(" owner_pid=");
+    debugcon_u32((uint32_t)owner_proc->pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32((uint32_t)exit_proc->pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32((uint32_t)controller_proc->pid);
+    debugcon_write("\n");
+
+    if (!proc_seed_mailbox_candidate(owner_proc, (uint32_t)exit_proc->pid)) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=seed_owner_mailbox\n");
+        return 0;
+    }
+
+    g_low_half_kheap_multi_exit_selftest_armed = 1;
+    sched_validation_arm_exit_successor(controller_proc);
+    sched_yield();
+    return proc_finish_low_half_kheap_multi_exit_proof_selftest(owner_proc);
+}
+#endif
+
+#if AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1
+static void proc_emit_low_half_kheap_interleaving_prepared(uint32_t slot,
+                                                           uint32_t total,
+                                                           uint32_t owner_pid,
+                                                           uint32_t exit_pid,
+                                                           uint32_t return_pid)
+{
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_PREPARED]] slot=");
+    debugcon_u32(slot);
+    debugcon_write(" total=");
+    debugcon_u32(total);
+    debugcon_write(" owner_pid=");
+    debugcon_u32(owner_pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32(exit_pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32(return_pid);
+    debugcon_write("\n");
+}
+
+static void proc_emit_low_half_kheap_interleaving_armed(uint32_t slot,
+                                                        uint32_t total,
+                                                        uint32_t owner_pid,
+                                                        uint32_t exit_pid,
+                                                        uint32_t return_pid)
+{
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_ARMED]] slot=");
+    debugcon_u32(slot);
+    debugcon_write(" total=");
+    debugcon_u32(total);
+    debugcon_write(" owner_pid=");
+    debugcon_u32(owner_pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32(exit_pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32(return_pid);
+    debugcon_write("\n");
+}
+
+static void proc_emit_low_half_kheap_interleaving_lineage(uint32_t slot,
+                                                          uint32_t total,
+                                                          uint32_t owner_pid,
+                                                          uint32_t exit_pid,
+                                                          uint32_t return_pid,
+                                                          int switch_from_pid,
+                                                          int switch_to_pid)
+{
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_LINEAGE]] slot=");
+    debugcon_u32(slot);
+    debugcon_write(" total=");
+    debugcon_u32(total);
+    debugcon_write(" owner_pid=");
+    debugcon_u32(owner_pid);
+    debugcon_write(" exit_pid=");
+    debugcon_u32(exit_pid);
+    debugcon_write(" return_pid=");
+    debugcon_u32(return_pid);
+    debugcon_write(" switch_from_pid=");
+    debugcon_u32((uint32_t)switch_from_pid);
+    debugcon_write(" switch_to_pid=");
+    debugcon_u32((uint32_t)switch_to_pid);
+    debugcon_write("\n");
+}
+
+static void proc_emit_low_half_kheap_interleaving_ok(void)
+{
+    uint32_t i;
+
+    debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_OK]] owner_pid=");
+    debugcon_u32(g_low_half_kheap_interleaving_owner_pid);
+    debugcon_write(" total=");
+    debugcon_u32(LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT);
+    debugcon_write(" return_pid=");
+    debugcon_u32(g_low_half_kheap_interleaving_return_pid);
+    debugcon_write(" exit_pids=");
+    for (i = 0; i < LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT; ++i) {
+        if (i != 0) {
+            debugcon_write_char(',');
+        }
+        debugcon_u32(g_low_half_kheap_interleaving_exit_pids[i]);
+    }
+    debugcon_write(" prepared_upfront=1\n");
+}
+
+static int proc_prepare_low_half_kheap_interleaving_exit_set(proc_t *owner_proc,
+                                                             proc_t *controller_proc)
+{
+    uint32_t slot;
+
+    if (g_low_half_kheap_interleaving_selftest_prepared) {
+        return 1;
+    }
+
+    g_low_half_kheap_interleaving_owner_pid = (uint32_t)owner_proc->pid;
+    g_low_half_kheap_interleaving_return_pid = (uint32_t)controller_proc->pid;
+    for (slot = 0; slot < LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT; ++slot) {
+        proc_t *exit_proc = proc_create_user_process("phase10-low-half-interleave-exit-proof",
+                                                     low_half_kheap_exit_proof_code,
+                                                     sizeof(low_half_kheap_exit_proof_code),
+                                                     PROC_IMAGE_FLAT);
+        if (!exit_proc || exit_proc->type != PROC_TYPE_USER) {
+            debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_FAIL]] slot=");
+            debugcon_u32(slot + 1u);
+            debugcon_write(" reason=create_exit_proc\n");
+            return 0;
+        }
+
+        g_low_half_kheap_interleaving_exit_pids[slot] = (uint32_t)exit_proc->pid;
+        proc_emit_low_half_kheap_interleaving_prepared(slot + 1u,
+                                                       LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT,
+                                                       g_low_half_kheap_interleaving_owner_pid,
+                                                       (uint32_t)exit_proc->pid,
+                                                       g_low_half_kheap_interleaving_return_pid);
+    }
+
+    g_low_half_kheap_interleaving_selftest_prepared = 1;
+    return 1;
+}
+
+static int proc_finish_low_half_kheap_interleaving_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+    uint32_t slot = g_low_half_kheap_interleaving_current_slot;
+    int switch_from_pid = 0;
+    int switch_to_pid = 0;
+
+    if (!g_low_half_kheap_interleaving_selftest_armed) {
+        if (!g_low_half_kheap_interleaving_selftest_completed &&
+            slot >= LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT) {
+            g_low_half_kheap_interleaving_selftest_completed = 1;
+            proc_emit_low_half_kheap_interleaving_ok();
+        }
+        return 1;
+    }
+
+    if (!controller_proc ||
+        slot >= LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT ||
+        !proc_validate_low_half_kheap_exit_round(
+            owner_proc,
+            controller_proc,
+            g_low_half_kheap_interleaving_exit_pids[slot],
+            g_low_half_kheap_interleaving_return_pid,
+            &switch_from_pid,
+            &switch_to_pid)) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=switch_contract\n");
+        return 0;
+    }
+
+    proc_emit_low_half_kheap_interleaving_lineage(slot + 1u,
+                                                  LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT,
+                                                  g_low_half_kheap_interleaving_owner_pid,
+                                                  g_low_half_kheap_interleaving_exit_pids[slot],
+                                                  g_low_half_kheap_interleaving_return_pid,
+                                                  switch_from_pid,
+                                                  switch_to_pid);
+
+    g_low_half_kheap_interleaving_selftest_armed = 0;
+    g_low_half_kheap_interleaving_current_slot = slot + 1u;
+    if (g_low_half_kheap_interleaving_current_slot >= LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT) {
+        g_low_half_kheap_interleaving_selftest_completed = 1;
+        proc_emit_low_half_kheap_interleaving_ok();
+    }
+
+    return 1;
+}
+
+static int proc_run_low_half_kheap_interleaving_proof_selftest(proc_t *owner_proc)
+{
+    proc_t *controller_proc = current_proc;
+    uint32_t slot = g_low_half_kheap_interleaving_current_slot;
+
+    if (!controller_proc || controller_proc->pid <= 0 || !owner_proc ||
+        owner_proc->type != PROC_TYPE_USER || owner_proc->pid <= 0) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_FAIL]] slot=0 reason=bad_context\n");
+        return 0;
+    }
+
+    if (g_low_half_kheap_interleaving_selftest_completed) {
+        return 1;
+    }
+
+    if (!g_low_half_kheap_interleaving_selftest_prepared) {
+        if (!proc_prepare_low_half_kheap_interleaving_exit_set(owner_proc, controller_proc)) {
+            return 0;
+        }
+    } else if (g_low_half_kheap_interleaving_owner_pid != (uint32_t)owner_proc->pid ||
+               g_low_half_kheap_interleaving_return_pid != (uint32_t)controller_proc->pid) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=context_drift\n");
+        return 0;
+    }
+
+    if (g_low_half_kheap_interleaving_selftest_armed) {
+        return proc_finish_low_half_kheap_interleaving_proof_selftest(owner_proc);
+    }
+
+    if (slot >= LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT) {
+        g_low_half_kheap_interleaving_selftest_completed = 1;
+        proc_emit_low_half_kheap_interleaving_ok();
+        return 1;
+    }
+
+    proc_emit_low_half_kheap_interleaving_armed(slot + 1u,
+                                                LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT,
+                                                g_low_half_kheap_interleaving_owner_pid,
+                                                g_low_half_kheap_interleaving_exit_pids[slot],
+                                                g_low_half_kheap_interleaving_return_pid);
+
+    if (!proc_seed_mailbox_candidate(owner_proc, g_low_half_kheap_interleaving_exit_pids[slot])) {
+        debugcon_write("[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_FAIL]] slot=");
+        debugcon_u32(slot + 1u);
+        debugcon_write(" reason=seed_owner_mailbox\n");
+        return 0;
+    }
+
+    g_low_half_kheap_interleaving_selftest_armed = 1;
+    sched_validation_arm_exit_successor(controller_proc);
+    sched_yield();
+    return proc_finish_low_half_kheap_interleaving_proof_selftest(owner_proc);
+}
+#endif
+#endif
+
 static int proc_alloc_pid(void)
 {
     // A real implementation would reuse PIDs. For now, we just increment.
     return next_pid++;
+}
+
+static void proc_remove_from_table(proc_t *p)
+{
+    int i;
+
+    if (!p) {
+        return;
+    }
+
+    for (i = 0; i < MAX_PROCS; ++i) {
+        if (proc_table[i] == p) {
+            proc_table[i] = NULL;
+            break;
+        }
+    }
+}
+
+static void proc_enqueue_deferred_reap(proc_t *p)
+{
+    int i;
+
+    if (!p) {
+        return;
+    }
+
+    for (i = 0; i < MAX_PROCS; ++i) {
+        if (g_deferred_reap_queue[i] == p) {
+            return;
+        }
+    }
+
+    for (i = 0; i < MAX_PROCS; ++i) {
+        if (g_deferred_reap_queue[i] == NULL) {
+            g_deferred_reap_queue[i] = p;
+            return;
+        }
+    }
+}
+
+void proc_drain_deferred_reap(void)
+{
+    proc_t *active_proc = current_proc;
+    int i;
+
+    for (i = 0; i < MAX_PROCS; ++i) {
+        proc_t *p = g_deferred_reap_queue[i];
+        user_as_t as;
+
+        if (!p) {
+            continue;
+        }
+        if (p == active_proc) {
+            continue;
+        }
+
+        if (p->context.rsp0 != 0) {
+            kfree((void *)(uintptr_t)(p->context.rsp0 - AYKEN_FRAME_SIZE));
+            p->context.rsp0 = 0;
+        }
+
+        if (p->pml4_phys != 0) {
+            as.cr3_phys = p->pml4_phys;
+            as.pml4_virt = (uint64_t *)paging_phys_to_virt(p->pml4_phys);
+            user_as_destroy_root(&as);
+            p->pml4_phys = 0;
+            p->context.cr3 = 0;
+        }
+
+        g_deferred_reap_queue[i] = NULL;
+    }
 }
 
 proc_t* proc_find_by_pid(int pid)
@@ -244,6 +1194,7 @@ static proc_t *proc_alloc(proc_type_t type, const char *name)
     p->pml4_phys = 0;  // Initialize to 0, will be set by caller
     p->context.cr3 = 0;  // Initialize to 0, will be set by caller
     p->context.rflags = 0x202;  // IF=1, reserved bits
+    p->next_mapping_id = 1;
     
     // Add to process table
     int found_slot = 0;
@@ -274,6 +1225,569 @@ static proc_t *proc_alloc(proc_type_t type, const char *name)
     p->context.rsp0 = 0;
     
     return p;
+}
+
+proc_mapping_entry_t *proc_find_generic_mapping(proc_t *p, uint64_t user_va)
+{
+    uint32_t i;
+
+    if (!p || user_va == 0) {
+        return NULL;
+    }
+
+    for (i = 0; i < AYKEN_MAX_PROC_GENERIC_MAPPINGS; ++i) {
+        proc_mapping_entry_t *entry = &p->mapping_ledger[i];
+        if (!entry->in_use) {
+            continue;
+        }
+        if (entry->mapping_class != PROC_MAPPING_CLASS_GENERIC) {
+            continue;
+        }
+        if (entry->user_va == user_va) {
+            return entry;
+        }
+    }
+
+    return NULL;
+}
+
+int proc_record_generic_mapping(proc_t *p,
+                                uint64_t user_va,
+                                uint64_t phys_addr,
+                                uint64_t flags,
+                                uint64_t capability_id,
+                                uint64_t page_count,
+                                uint64_t *out_map_id)
+{
+    uint32_t i;
+    proc_mapping_entry_t *entry = NULL;
+
+    if (!p || user_va == 0 || phys_addr == 0 || page_count == 0) {
+        return -1;
+    }
+
+    if (proc_find_generic_mapping(p, user_va) != NULL) {
+        return -1;
+    }
+
+    if (p->next_mapping_id == 0) {
+        return -1;
+    }
+
+    for (i = 0; i < AYKEN_MAX_PROC_GENERIC_MAPPINGS; ++i) {
+        if (!p->mapping_ledger[i].in_use) {
+            entry = &p->mapping_ledger[i];
+            break;
+        }
+    }
+
+    if (!entry) {
+        return -1;
+    }
+
+    memset(entry, 0, sizeof(*entry));
+    entry->in_use = 1;
+    entry->map_id = p->next_mapping_id++;
+    if (entry->map_id == 0) {
+        memset(entry, 0, sizeof(*entry));
+        return -1;
+    }
+    entry->owner_pid = (uint64_t)p->pid;
+    entry->user_va = user_va;
+    entry->phys_addr = phys_addr;
+    entry->flags = flags;
+    entry->capability_id = capability_id;
+    entry->page_count = page_count;
+    entry->mapping_class = PROC_MAPPING_CLASS_GENERIC;
+
+    if (out_map_id) {
+        *out_map_id = entry->map_id;
+    }
+
+    return 0;
+}
+
+int proc_remove_generic_mapping(proc_t *p,
+                                uint64_t user_va,
+                                proc_mapping_entry_t *removed_entry)
+{
+    proc_mapping_entry_t *entry;
+
+    if (!p || user_va == 0) {
+        return -1;
+    }
+
+    entry = proc_find_generic_mapping(p, user_va);
+    if (!entry) {
+        return -1;
+    }
+
+    if (removed_entry) {
+        *removed_entry = *entry;
+    }
+    memset(entry, 0, sizeof(*entry));
+    return 0;
+}
+
+uint32_t proc_revoke_generic_mappings(proc_t *p)
+{
+    uint32_t i;
+    uint32_t revoked = 0;
+
+    if (!p || p->pml4_phys == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < AYKEN_MAX_PROC_GENERIC_MAPPINGS; ++i) {
+        proc_mapping_entry_t *entry = &p->mapping_ledger[i];
+        uint64_t page;
+
+        if (!entry->in_use || entry->mapping_class != PROC_MAPPING_CLASS_GENERIC) {
+            continue;
+        }
+
+        for (page = 0; page < entry->page_count; ++page) {
+            paging_unmap_in_pml4(p->pml4_phys,
+                                 entry->user_va + (page * AYKEN_FRAME_SIZE));
+        }
+
+        memset(entry, 0, sizeof(*entry));
+        revoked++;
+    }
+
+    return revoked;
+}
+
+static void proc_release_execution_delivery_surfaces(proc_t *p)
+{
+    uint32_t i;
+
+    if (!p) {
+        return;
+    }
+
+    if (p->execution_inbox_pa != 0) {
+        uint8_t *dst = (uint8_t *)paging_phys_to_virt(p->execution_inbox_pa);
+        if (dst) {
+            memset(dst, 0, AYKEN_FRAME_SIZE);
+        }
+        phys_free_frame(p->execution_inbox_pa);
+        p->execution_inbox_pa = 0;
+    }
+
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        if (p->execution_payload_pas[i] == 0) {
+            continue;
+        }
+        {
+            uint8_t *dst = (uint8_t *)paging_phys_to_virt(p->execution_payload_pas[i]);
+            if (dst) {
+                memset(dst, 0, AYKEN_FRAME_SIZE);
+            }
+        }
+        phys_free_frame(p->execution_payload_pas[i]);
+        p->execution_payload_pas[i] = 0;
+    }
+
+    p->execution_delivery_seq = 0;
+}
+
+static void proc_release_mailbox_surface(proc_t *p, int defer_owner_surface)
+{
+    if (!p || p->mailbox_pa == 0) {
+        return;
+    }
+
+    /*
+     * The scheduler owner mailbox remains authoritative during mailbox-first
+     * successor selection. Do not tear its backing down synchronously on the
+     * no-return exit path; a later reap slice can reclaim it once ownership is
+     * transferred safely.
+     */
+    if (defer_owner_surface && (uint32_t)p->pid == sched_active_owner_pid()) {
+        return;
+    }
+
+    {
+        uint8_t *dst = (uint8_t *)paging_phys_to_virt(p->mailbox_pa);
+        if (dst) {
+            memset(dst, 0, AYKEN_FRAME_SIZE);
+        }
+    }
+    phys_free_frame(p->mailbox_pa);
+    p->mailbox_pa = 0;
+    p->mailbox_last_epoch = 0;
+}
+
+static void proc_invalidate_local_page_if_active(uint64_t pml4_phys, uint64_t virt_addr)
+{
+    uint64_t active_cr3 = 0;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (pml4_phys & AYKEN_PTE_ADDR_MASK)) {
+        __asm__ volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
+    }
+}
+
+static int proc_verify_execution_output_mapping(uint64_t user_pml4,
+                                                uint64_t virt_addr,
+                                                uint64_t phys_addr)
+{
+    uint64_t pte = paging_get_pte_in_pml4(user_pml4, virt_addr);
+
+    if (pte == 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_ADDR_MASK) != phys_addr) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_USER) == 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_WRITABLE) == 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_NO_EXEC) == 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int proc_bind_execution_output_window(proc_t *p,
+                                      const uint64_t *output_pas,
+                                      uint32_t frame_count,
+                                      uint64_t execution_id)
+{
+    uint32_t i;
+    uint8_t mapped_pages[AYKEN_EXECUTION_OUTPUT_WINDOW_PAGES] = {0};
+
+    if (!p || !output_pas || p->pml4_phys == 0 || execution_id == 0) {
+        return -1;
+    }
+    if (frame_count != AYKEN_EXECUTION_OUTPUT_WINDOW_PAGES) {
+        return -1;
+    }
+    if (p->execution_output_mapped_id != 0) {
+        return -1;
+    }
+
+    for (i = 0; i < frame_count; ++i) {
+        uint64_t page_va = EXECUTION_OUTPUT_VA + ((uint64_t)i * AYKEN_FRAME_SIZE);
+        uint64_t page_phys = output_pas[i];
+
+        if (page_phys == 0) {
+            goto fail;
+        }
+
+        paging_map_page_in_pml4(p->pml4_phys,
+                                page_va,
+                                page_phys,
+                                AYKEN_PTE_USER | AYKEN_PTE_WRITABLE | AYKEN_PTE_NO_EXEC);
+        proc_invalidate_local_page_if_active(p->pml4_phys, page_va);
+        mapped_pages[i] = 1;
+
+        if (proc_verify_execution_output_mapping(p->pml4_phys, page_va, page_phys) != 0) {
+            goto fail;
+        }
+    }
+
+    p->execution_output_mapped_id = execution_id;
+    return 0;
+
+fail:
+    for (i = 0; i < frame_count; ++i) {
+        uint64_t page_va = EXECUTION_OUTPUT_VA + ((uint64_t)i * AYKEN_FRAME_SIZE);
+
+        if (!mapped_pages[i]) {
+            continue;
+        }
+
+        paging_unmap_in_pml4(p->pml4_phys, page_va);
+        proc_invalidate_local_page_if_active(p->pml4_phys, page_va);
+    }
+    p->execution_output_mapped_id = 0;
+    return -1;
+}
+
+void proc_unmap_execution_output_window(proc_t *p)
+{
+    uint32_t i;
+
+    if (!p || p->pml4_phys == 0) {
+        return;
+    }
+
+    for (i = 0; i < AYKEN_EXECUTION_OUTPUT_WINDOW_PAGES; ++i) {
+        uint64_t page_va = EXECUTION_OUTPUT_VA + ((uint64_t)i * AYKEN_FRAME_SIZE);
+
+        paging_unmap_in_pml4(p->pml4_phys, page_va);
+        proc_invalidate_local_page_if_active(p->pml4_phys, page_va);
+    }
+
+    p->execution_output_mapped_id = 0;
+}
+
+static void proc_unmap_execution_delivery_surfaces(proc_t *p)
+{
+    uint32_t i;
+
+    if (!p || p->pml4_phys == 0) {
+        return;
+    }
+
+    paging_unmap_in_pml4(p->pml4_phys, EXECUTION_INBOX_VA);
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        paging_unmap_in_pml4(p->pml4_phys,
+                             EXECUTION_PAYLOAD_VA + ((uint64_t)i * AYKEN_FRAME_SIZE));
+    }
+}
+
+void proc_teardown_exit_surfaces(proc_t *p,
+                                 const uint64_t *result_vas,
+                                 const uint64_t *hash_vas,
+                                 uint32_t result_count)
+{
+    uint32_t i;
+    proc_t *active_proc = current_proc;
+    user_as_t user_as;
+    uint64_t saved_active_cr3 = 0;
+    uint64_t saved_rflags = 0;
+    int switched_to_kernel_cr3 = 0;
+
+    if (!p) {
+        return;
+    }
+
+    switched_to_kernel_cr3 = proc_switch_to_kernel_cr3(&saved_active_cr3, &saved_rflags);
+
+    if (p->pml4_phys != 0) {
+        (void)proc_revoke_generic_mappings(p);
+
+        for (i = 0; i < result_count; ++i) {
+            uint32_t page;
+            if (result_vas == NULL || result_vas[i] == 0) {
+                continue;
+            }
+            for (page = 0; page < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++page) {
+                paging_unmap_in_pml4(p->pml4_phys,
+                                     result_vas[i] + ((uint64_t)page * AYKEN_FRAME_SIZE));
+            }
+            if (hash_vas != NULL && hash_vas[i] != 0) {
+                paging_unmap_in_pml4(p->pml4_phys, hash_vas[i]);
+            }
+        }
+
+        proc_unmap_execution_delivery_surfaces(p);
+        proc_unmap_execution_output_window(p);
+        if (p->mailbox_pa != 0) {
+            paging_unmap_in_pml4(p->pml4_phys, SCHED_MAILBOX_VA);
+        }
+    }
+
+    proc_release_execution_delivery_surfaces(p);
+    proc_release_mailbox_surface(p, 1);
+
+    user_as.cr3_phys = p->pml4_phys;
+    user_as.pml4_virt = p->pml4_phys != 0
+        ? (uint64_t *)paging_phys_to_virt(p->pml4_phys)
+        : NULL;
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    proc_emit_low_half_kheap_runtime_proof(p, "exit_teardown_pre");
+#endif
+    user_as_destroy_lower_half(&user_as);
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    proc_emit_low_half_kheap_runtime_proof(p, "exit_teardown_post");
+#endif
+
+    /*
+     * The exiting process may still be running on its current Ring0 stack until
+     * sched_exit_current() completes the final context switch. Leave current
+     * rsp0 backing for deferred reap in that path.
+     */
+    if (p->context.rsp0 != 0 && p != active_proc) {
+        kfree((void *)(uintptr_t)(p->context.rsp0 - 4096));
+        p->context.rsp0 = 0;
+    }
+
+    if (p->pml4_phys != 0 && p != active_proc) {
+        user_as_destroy_root(&user_as);
+        p->pml4_phys = 0;
+        p->context.cr3 = 0;
+    } else if (p == active_proc) {
+        proc_enqueue_deferred_reap(p);
+        switched_to_kernel_cr3 = 0;
+    }
+
+    proc_restore_cr3(saved_active_cr3, saved_rflags, switched_to_kernel_cr3);
+}
+
+static void proc_cleanup_failed_user_process(proc_t *p)
+{
+    user_as_t user_as;
+
+    if (!p) {
+        return;
+    }
+
+    if (p->pml4_phys != 0) {
+        proc_unmap_execution_delivery_surfaces(p);
+        if (p->mailbox_pa != 0) {
+            paging_unmap_in_pml4(p->pml4_phys, SCHED_MAILBOX_VA);
+        }
+    }
+
+    proc_release_execution_delivery_surfaces(p);
+    proc_release_mailbox_surface(p, 0);
+
+    if (p->context.rsp0 != 0) {
+        kfree((void *)(uintptr_t)(p->context.rsp0 - AYKEN_FRAME_SIZE));
+        p->context.rsp0 = 0;
+    }
+
+    user_as.cr3_phys = p->pml4_phys;
+    user_as.pml4_virt = p->pml4_phys != 0
+        ? (uint64_t *)paging_phys_to_virt(p->pml4_phys)
+        : NULL;
+    user_as_destroy(&user_as);
+    p->pml4_phys = 0;
+    p->context.cr3 = 0;
+
+    proc_remove_from_table(p);
+    kfree(p);
+}
+
+static int proc_verify_execution_delivery_mapping(uint64_t user_pml4,
+                                                  uint64_t virt_addr,
+                                                  uint64_t phys_addr)
+{
+    uint64_t pte = paging_get_pte_in_pml4(user_pml4, virt_addr);
+
+    if (pte == 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_ADDR_MASK) != phys_addr) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_USER) == 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_WRITABLE) != 0) {
+        return -1;
+    }
+    if ((pte & AYKEN_PTE_NO_EXEC) == 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int proc_map_execution_delivery_surfaces(proc_t *p, uint64_t user_pml4)
+{
+    uint64_t inbox_pa = 0;
+    uint64_t payload_pas[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES] = {0};
+    uint32_t i;
+    ayken_execution_inbox_v1_t *inbox;
+
+    if (!p || user_pml4 == 0) {
+        return -1;
+    }
+
+    inbox_pa = phys_alloc_frame();
+    if (!inbox_pa) {
+        return -1;
+    }
+
+    {
+        uint8_t *dst = (uint8_t *)paging_phys_to_virt(inbox_pa);
+        if (!dst) {
+            phys_free_frame(inbox_pa);
+            return -1;
+        }
+        memset(dst, 0, AYKEN_FRAME_SIZE);
+    }
+
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        uint8_t *dst;
+
+        payload_pas[i] = phys_alloc_frame();
+        if (!payload_pas[i]) {
+            goto fail;
+        }
+
+        dst = (uint8_t *)paging_phys_to_virt(payload_pas[i]);
+        if (!dst) {
+            goto fail;
+        }
+        memset(dst, 0, AYKEN_FRAME_SIZE);
+    }
+
+    paging_map_page_in_pml4(user_pml4, EXECUTION_INBOX_VA, inbox_pa,
+                            AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC);
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        paging_map_page_in_pml4(user_pml4,
+                                EXECUTION_PAYLOAD_VA + ((uint64_t)i * AYKEN_FRAME_SIZE),
+                                payload_pas[i],
+                                AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC);
+    }
+
+    if (proc_verify_execution_delivery_mapping(user_pml4, EXECUTION_INBOX_VA, inbox_pa) != 0) {
+        goto fail;
+    }
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        if (proc_verify_execution_delivery_mapping(user_pml4,
+                                                   EXECUTION_PAYLOAD_VA + ((uint64_t)i * AYKEN_FRAME_SIZE),
+                                                   payload_pas[i]) != 0) {
+            goto fail;
+        }
+    }
+
+    p->execution_inbox_pa = inbox_pa;
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        p->execution_payload_pas[i] = payload_pas[i];
+    }
+    p->execution_delivery_seq = 0;
+
+    inbox = (ayken_execution_inbox_v1_t *)paging_phys_to_virt(inbox_pa);
+    if (!inbox) {
+        proc_release_execution_delivery_surfaces(p);
+        return -1;
+    }
+
+    inbox->magic = AYKEN_EXECUTION_INBOX_MAGIC;
+    inbox->version = AYKEN_EXECUTION_INBOX_VERSION;
+    inbox->state = AXIB_STATE_EMPTY;
+    inbox->delivery_seq = 0;
+    inbox->execution_id = 0;
+    inbox->target_context_id = 0;
+    inbox->bcib_user_va = EXECUTION_PAYLOAD_VA;
+    inbox->bcib_size = 0;
+    inbox->bcib_window_size = AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE;
+    inbox->flags = 0;
+
+    return 0;
+
+fail:
+    if (inbox_pa != 0) {
+        uint8_t *dst = (uint8_t *)paging_phys_to_virt(inbox_pa);
+        if (dst) {
+            memset(dst, 0, AYKEN_FRAME_SIZE);
+        }
+        phys_free_frame(inbox_pa);
+    }
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        if (payload_pas[i] == 0) {
+            continue;
+        }
+        {
+            uint8_t *dst = (uint8_t *)paging_phys_to_virt(payload_pas[i]);
+            if (dst) {
+                memset(dst, 0, AYKEN_FRAME_SIZE);
+            }
+        }
+        phys_free_frame(payload_pas[i]);
+    }
+    return -1;
 }
 
 static uint64_t load_flat_image(uint64_t pml4_phys, const uint8_t *image, uint64_t size)
@@ -363,6 +1877,7 @@ void proc_init(void)
     fb_print("[proc] Process subsystem init.\n");
     for (int i = 0; i < MAX_PROCS; ++i) {
         proc_table[i] = NULL;
+        g_deferred_reap_queue[i] = NULL;
     }
     next_pid = 1;
 }
@@ -437,7 +1952,7 @@ proc_t *proc_create_user_process(const char *name,
     uint64_t user_pml4 = paging_create_user_pml4();
     if (!user_pml4) {
         outb(0xE9, (uint8_t)'2');
-        return NULL;
+        goto fail;
     }
 
     p->pml4_phys = user_pml4;
@@ -446,7 +1961,7 @@ proc_t *proc_create_user_process(const char *name,
     uint64_t entry = load_user_image(fmt, user_pml4, image, image_size);
     if (!entry) {
         outb(0xE9, (uint8_t)'3');
-        return NULL;
+        goto fail;
     }
     debug_dump_pte(user_pml4, USER_TEXT_BASE, "code");
 
@@ -455,7 +1970,7 @@ proc_t *proc_create_user_process(const char *name,
         uint64_t phys = phys_alloc_frame();
         if (!phys) {
             outb(0xE9, (uint8_t)'4');
-            return NULL;
+            goto fail;
         }
         uint64_t virt = USER_STACK_TOP - (i + 1) * AYKEN_FRAME_SIZE;
         uint8_t *dst = (uint8_t *)paging_phys_to_virt(phys);
@@ -468,7 +1983,7 @@ proc_t *proc_create_user_process(const char *name,
     uint64_t canary_phys = phys_alloc_frame();
     if (!canary_phys) {
         outb(0xE9, (uint8_t)'5');
-        return NULL;
+        goto fail;
     }
     uint8_t *canary_dst = (uint8_t *)paging_phys_to_virt(canary_phys);
     memset(canary_dst, 0, AYKEN_FRAME_SIZE);
@@ -480,8 +1995,7 @@ proc_t *proc_create_user_process(const char *name,
     uint64_t mb_pa = phys_alloc_frame();
     if (!mb_pa) {
         outb(0xE9, (uint8_t)'6');
-        phys_free_frame(canary_phys);  // cleanup on failure
-        return NULL;
+        goto fail;
     }
     // Zero-init mailbox frame (mandatory for security)
     uint8_t *mb_dst = (uint8_t *)paging_phys_to_virt(mb_pa);
@@ -510,6 +2024,11 @@ proc_t *proc_create_user_process(const char *name,
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     mb->reserved = 0;
 
+    if (proc_map_execution_delivery_surfaces(p, user_pml4) != 0) {
+        outb(0xE9, (uint8_t)'7');
+        goto fail;
+    }
+
     p->stack_top = USER_STACK_TOP;
     p->context.rip = entry;
     p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
@@ -517,6 +2036,10 @@ proc_t *proc_create_user_process(const char *name,
     
     // Allocate kernel stack for Ring0 during Ring3→Ring0 transitions (interrupts/syscalls)
     uint64_t kernel_stack = (uint64_t)kmalloc(4096);
+    if (kernel_stack == 0) {
+        fb_print("[proc] ERROR: kernel stack allocation failed.\n");
+        goto fail;
+    }
     p->context.rsp0 = kernel_stack + 4096;  // Top of kernel stack
 
     // Ensure kernel stack is mapped in user CR3 (supervisor-only) for safe iretq.
@@ -526,7 +2049,7 @@ proc_t *proc_create_user_process(const char *name,
         uint64_t phys = paging_get_phys(va);
         if (!phys) {
             fb_print("[proc] ERROR: kernel stack phys lookup failed.\n");
-            return NULL;
+            goto fail;
         }
         paging_map_page_in_pml4(user_pml4, va, phys, AYKEN_PTE_WRITABLE);
     }
@@ -535,6 +2058,9 @@ proc_t *proc_create_user_process(const char *name,
     debugcon_write("Kernel stack (RSP0) mapping:\n");
     debug_dump_pte(user_pml4, p->context.rsp0 - 8, "rsp0-8");
     debug_dump_pte(user_pml4, p->context.rsp0 - AYKEN_FRAME_SIZE, "rsp0_page");
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    proc_emit_low_half_kheap_runtime_proof(p, "create");
+#endif
 
     fb_print("[DBG] USER cr3=");
     fb_print_hex(p->context.cr3);
@@ -546,6 +2072,10 @@ proc_t *proc_create_user_process(const char *name,
 
     outb(0xE9, (uint8_t)'E');
     return p;
+
+fail:
+    proc_cleanup_failed_user_process(p);
+    return NULL;
 }
 
 // MVP-3: Minimal Ring3 scheduler hint test code
@@ -838,6 +2368,50 @@ void init_process_main(void)
     // skip legacy runtime launchers and hand control to that process.
     proc_t *preloaded = proc_find_by_pid(2);
     if (preloaded && preloaded->type == PROC_TYPE_USER) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST == 1)
+        while (!g_low_half_kheap_interleaving_selftest_completed) {
+            fb_print("[init] Running low-half kheap interleaving proof selftest.\n");
+            if (!proc_run_low_half_kheap_interleaving_proof_selftest(preloaded)) {
+                fb_print("[init] low-half kheap interleaving proof selftest failed.\n");
+                for (;;) {
+                    __asm__ volatile("cli; hlt");
+                }
+            }
+        }
+#elif defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1)
+        while (!g_low_half_kheap_multi_exit_selftest_completed) {
+            fb_print("[init] Running low-half kheap multi-exit proof selftest.\n");
+            if (!proc_run_low_half_kheap_multi_exit_proof_selftest(preloaded)) {
+                fb_print("[init] low-half kheap multi-exit proof selftest failed.\n");
+                for (;;) {
+                    __asm__ volatile("cli; hlt");
+                }
+            }
+        }
+#elif defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1)
+        if (!g_low_half_kheap_exit_selftest_completed) {
+            if (g_low_half_kheap_exit_selftest_armed) {
+                fb_print("[init] Completing low-half kheap exit proof selftest.\n");
+                if (!proc_finish_low_half_kheap_exit_proof_selftest(preloaded)) {
+                    fb_print("[init] low-half kheap exit proof selftest failed.\n");
+                    for (;;) {
+                        __asm__ volatile("cli; hlt");
+                    }
+                }
+            } else {
+                fb_print("[init] Running low-half kheap exit proof selftest.\n");
+                if (!proc_run_low_half_kheap_exit_proof_selftest(preloaded)) {
+                    fb_print("[init] low-half kheap exit proof selftest failed.\n");
+                    for (;;) {
+                        __asm__ volatile("cli; hlt");
+                    }
+                }
+            }
+        }
+#endif
         fb_print("[init] Phase10 preloaded user process detected; yielding.\n");
         sched_block_current();
         for (;;)

@@ -1,16 +1,16 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-03-13
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` (`evidence_sha=9cb2171b`, `closure_sync_sha=fe9031d7`, `ci_freeze_run=22797401328`)
+**Last Updated:** 2026-03-16
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` (`evidence_sha=9cb2171b`/`01d1cb5c`, `closure_sync_sha=fe9031d7`, `ci_freeze_run=22797401328`/`23099070483`)
 
 ## Current Status
-- **Runtime:** `Phase-10` officially closed via freeze evidence + remote `ci-freeze`
-- **Verification Substrate:** `Phase-11` officially closed via proof-chain evidence + remote `ci-freeze`
-- **Phase-12 Local Track:** normative `Phase-12C` gate set green in `run-local-phase12c-closure-2026-03-11`; task-local `P12-14..P12-18` work is now `COMPLETED_LOCAL`
-- **Phase-13 Preparation:** observability architecture corpus + GitHub milestone active; policy experiments are isolated into deferred `policy-track`
-- **Formal Governance Pointer:** `CURRENT_PHASE=10` (phase transition not yet executed)
-- **Next Focus:** official closure tag, remote / official `Phase-12` confirmation, formal phase transition workflow; `Phase-13` remains architecture-prep only
+- **Runtime:** `Phase-10` officially closed via freeze evidence + remote `ci-freeze` run `22797401328`
+- **Verification Substrate:** `Phase-11` officially closed via proof-chain evidence + remote `ci-freeze` run `22797401328`
+- **Trust Layer:** `Phase-12` officially closed via normative gate set + remote `ci-freeze` run `23099070483` (PR #62)
+- **Phase-13 Kill-Switch:** 6/6 gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`); boundary hardening active
+- **Formal Governance Pointer:** `CURRENT_PHASE=12` (formal transition executed at `0adb2a84`)
+- **Next Focus:** Phase-13 boundary hardening workstreams per Architecture Map §4
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:

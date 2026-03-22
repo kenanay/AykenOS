@@ -1,19 +1,31 @@
+use proof_verifier::canonical::jcs::{canonicalize_json, canonicalize_json_value};
+use proof_verifier::diversity_ledger::{
+    load_diversity_ledger_entries, VerificationDiversityLedgerEntry,
+};
 use proof_verifier::diversity_ledger_producer::{
     parse_event_time_to_unix_ns, run_diversity_ledger_producer,
     VerificationDiversityLedgerProducerConfig, VerificationDiversityLedgerProducerManifest,
     VerificationNodeBinding,
 };
+use proof_verifier::policy::policy_engine::compute_policy_hash;
+use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
 use proof_verifier::trust_reuse_runtime_surface::{
     load_trust_reuse_runtime_surface as load_native_trust_reuse_runtime_surface, TrustReuseOutcome,
     TrustReuseRuntimeEvent, TrustReuseRuntimeSurfaceReport,
 };
 use proof_verifier::types::{AuditMode, ReceiptMode, ReceiptSignerConfig, VerifyRequest};
+use proof_verifier::verification_context_object::{
+    compute_verification_context_id, load_verification_context_object, VerificationContextObject,
+};
 use proof_verifier::{verify_bundle, RegistrySnapshot, TrustPolicy};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const RUN_LEVEL_ARTIFACTS: &[&str] = &[
     "report.json",
@@ -48,8 +60,23 @@ const REPLAY_BOUNDARY_FLOW_SOURCE_FILE: &str = "replay_boundary_flow_source.json
 const REPLAY_REPORT_FILE: &str = "replay_report.json";
 const TRUST_REUSE_FLOW_SOURCE_FILE: &str = "trust_reuse_flow_source.json";
 const TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH: &str = "reports/trust_reuse_runtime_surface.json";
+const CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH: &str = "context/policy_snapshot.json";
+const CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH: &str = "context/registry_snapshot.json";
+const CONTEXT_RULES_RELATIVE_PATH: &str = "context/context_rules.json";
+const VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH: &str = "context/verification_context_object.json";
+const VERIFICATION_CONTEXT_VERIFIER_CONTRACT_VERSION: &str = "phase12-context-v1";
 const PROOFD_RUN_MANIFEST_FILE: &str = "proofd_run_manifest.json";
+const RECEIPT_RELATIVE_PATH: &str = "receipts/verification_receipt.json";
+const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
+    RECEIPT_RELATIVE_PATH,
+    CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH,
+    CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH,
+    CONTEXT_RULES_RELATIVE_PATH,
+    VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH,
+    TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH,
+];
 const MAX_VERIFY_BUNDLE_BODY_BYTES: usize = 64 * 1024;
+static GENERATED_RUN_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestTarget {
@@ -119,7 +146,8 @@ struct VerifyBundleRequestBody {
     registry_path: String,
     #[serde(default)]
     receipt_mode: Option<VerifyBundleReceiptMode>,
-    run_id: String,
+    #[serde(default)]
+    run_id: Option<String>,
     #[serde(default)]
     receipt_signer: Option<VerifyBundleReceiptSigner>,
     #[serde(default)]
@@ -138,6 +166,7 @@ struct VerifyBundleResponseBody {
     verdict_subject: Value,
     receipt_emitted: bool,
     receipt_path: Option<String>,
+    request_fingerprint: String,
     behavioral_observability_emitted: bool,
     audit_ledger_path: Option<String>,
     verification_diversity_ledger_binding_path: Option<String>,
@@ -150,6 +179,164 @@ struct VerifyBundleResponseBody {
 }
 
 #[derive(Debug, Clone, Serialize)]
+struct RunArtifactDescriptor {
+    path: String,
+    content_type: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct FederationDistributionEntry {
+    id: String,
+    entry_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct FederationObservedEntry {
+    entry_id: String,
+    verification_node_id: String,
+    verifier_id: String,
+    authority_chain_id: String,
+    lineage_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    execution_cluster_id: Option<String>,
+    receipt_hash: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct FederationDiagnosticsResponseBody {
+    run_id: String,
+    source_artifact_path: &'static str,
+    entry_count: usize,
+    unique_verification_node_count: usize,
+    unique_verifier_count: usize,
+    unique_authority_chain_count: usize,
+    unique_lineage_count: usize,
+    unique_execution_cluster_count: usize,
+    missing_execution_cluster_entry_count: usize,
+    verification_node_distribution: Vec<FederationDistributionEntry>,
+    verifier_distribution: Vec<FederationDistributionEntry>,
+    authority_chain_distribution: Vec<FederationDistributionEntry>,
+    lineage_distribution: Vec<FederationDistributionEntry>,
+    execution_cluster_distribution: Vec<FederationDistributionEntry>,
+    observed_entries: Vec<FederationObservedEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ContextArtifactPaths {
+    context_object: &'static str,
+    context_rules: &'static str,
+    policy_snapshot: &'static str,
+    registry_snapshot: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    receipt: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diversity_binding: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diversity_ledger: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replay_boundary_flow_source: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trust_reuse_flow_source: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trust_reuse_runtime_surface: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ContextMaterialBindingStatus {
+    policy_hash_matches_declared_context: bool,
+    registry_snapshot_hash_matches_declared_context: bool,
+    context_rules_hash_matches_declared_context: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    receipt_policy_hash_matches_declared_context: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    receipt_registry_snapshot_hash_matches_declared_context: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    legacy_verification_context_id_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ContextObservationSource {
+    source: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_artifact_path: Option<&'static str>,
+    values: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ContextDiagnosticsResponseBody {
+    run_id: String,
+    source_artifact_paths: ContextArtifactPaths,
+    declared_context: VerificationContextObject,
+    material_binding_status: ContextMaterialBindingStatus,
+    observed_context_id_sources: Vec<ContextObservationSource>,
+    observed_context_ref_sources: Vec<ContextObservationSource>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RegistryDiagnosticsResponseBody {
+    run_id: String,
+    source_artifact_path: &'static str,
+    declared_registry_snapshot_hash: String,
+    declared_registry_entry_count: usize,
+    context_binding_status: RegistryContextBindingStatus,
+    observed_registry_hash_sources: Vec<RegistryObservationSource>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RegistryContextBindingStatus {
+    registry_snapshot_hash_matches_declared_context: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RegistryObservationSource {
+    source: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_artifact_path: Option<&'static str>,
+    values: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BoundaryDiagnosticsResponseBody {
+    run_id: String,
+    request_fingerprint: String,
+    peer_run_count: usize,
+    peer_run_ids: Vec<String>,
+    verdict_consistency: VerdictConsistency,
+    context_hash_consistency: ContextHashConsistency,
+    registry_hash_consistency: RegistryHashConsistency,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct VerdictConsistency {
+    all_verdicts_match: bool,
+    observed_verdicts: Vec<RunVerdictEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RunVerdictEntry {
+    run_id: String,
+    verdict: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ContextHashConsistency {
+    all_context_hashes_match: Option<bool>,
+    observed_context_hashes: Vec<RunHashEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RegistryHashConsistency {
+    all_registry_hashes_match: Option<bool>,
+    observed_registry_hashes: Vec<RunHashEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RunHashEntry {
+    run_id: String,
+    hash: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct AuthoritySinkholeCompanionSourceDocument {
     source_version: u32,
     flow_surface: String,
@@ -159,7 +346,7 @@ struct AuthoritySinkholeCompanionSourceDocument {
     events: Vec<AuthoritySinkholeCompanionSourceEvent>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct AuthoritySinkholeCompanionSourceEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     run_id: Option<String>,
@@ -348,7 +535,7 @@ fn list_runs(evidence_dir: &Path) -> Result<Value, ServiceError> {
 
         let summary = build_run_summary(&run_id, &path)?;
         let has_artifacts = summary
-            .get("artifacts")
+            .get("artifact_paths")
             .and_then(Value::as_array)
             .map(|artifacts| !artifacts.is_empty())
             .unwrap_or(false);
@@ -394,6 +581,40 @@ fn handle_run_endpoint(path: &str, evidence_dir: &Path) -> DiagnosticsResponse {
     }
 
     let response = match parts[3] {
+        "artifacts" if parts.len() == 4 => match build_run_artifact_index(run_id, &run_dir) {
+            Ok(index) => json_response(200, index),
+            Err(error) => error_response(error),
+        },
+        "artifacts" if parts.len() > 4 => {
+            let artifact_path = match parse_run_artifact_path(&parts[4..]) {
+                Ok(path) => path,
+                Err(error) => return error_response(error),
+            };
+            match resolve_run_artifact_path(&run_dir, &artifact_path) {
+                Ok(path) => serve_artifact_file(path, artifact_content_type(&artifact_path)),
+                Err(error) => error_response(error),
+            }
+        }
+        "federation" if parts.len() == 4 => {
+            match build_run_federation_diagnostics(run_id, &run_dir) {
+                Ok(value) => json_response(200, value),
+                Err(error) => error_response(error),
+            }
+        }
+        "context" if parts.len() == 4 => match build_run_context_diagnostics(run_id, &run_dir) {
+            Ok(value) => json_response(200, value),
+            Err(error) => error_response(error),
+        },
+        "registry" if parts.len() == 4 => match build_run_registry_diagnostics(run_id, &run_dir) {
+            Ok(value) => json_response(200, value),
+            Err(error) => error_response(error),
+        },
+        "boundary" if parts.len() == 4 => {
+            match build_run_boundary_diagnostics(run_id, &run_dir, evidence_dir) {
+                Ok(value) => json_response(200, value),
+                Err(error) => error_response(error),
+            }
+        }
         "incidents" if parts.len() == 4 => {
             serve_json_file(run_dir.join("parity_determinism_incidents.json"))
         }
@@ -425,10 +646,508 @@ fn build_run_summary(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError
     }
 
     let artifacts = list_run_artifacts(run_dir)?;
+    let artifact_paths = list_run_artifact_paths(run_dir)?;
     Ok(json!({
         "run_id": run_id,
         "artifacts": artifacts,
+        "artifact_paths": artifact_paths,
     }))
+}
+
+fn build_run_artifact_index(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    let artifacts = list_run_artifact_descriptors(run_dir)?;
+    Ok(json!({
+        "run_id": run_id,
+        "artifact_count": artifacts.len(),
+        "artifacts": artifacts,
+    }))
+}
+
+fn build_run_federation_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    let ledger_path = run_dir.join(VERIFICATION_DIVERSITY_LEDGER_FILE);
+    let entries = load_diversity_ledger_entries(&ledger_path).map_err(|_| {
+        if ledger_path.is_file() {
+            ServiceError::MalformedArtifact("invalid_federation_ledger")
+        } else {
+            ServiceError::NotFound("artifact_not_found")
+        }
+    })?;
+
+    let verification_node_distribution =
+        build_federation_distribution(&entries, |entry| entry.verification_node_id.clone());
+    let verifier_distribution =
+        build_federation_distribution(&entries, |entry| entry.verifier_id.clone());
+    let authority_chain_distribution =
+        build_federation_distribution(&entries, |entry| entry.authority_chain_id.clone());
+    let lineage_distribution =
+        build_federation_distribution(&entries, |entry| entry.lineage_id.clone());
+    let (execution_cluster_distribution, missing_execution_cluster_entry_count) =
+        build_optional_federation_distribution(&entries, |entry| {
+            entry.execution_cluster_id.clone()
+        });
+    let observed_entries = entries
+        .iter()
+        .map(|entry| FederationObservedEntry {
+            entry_id: entry.entry_id.clone(),
+            verification_node_id: entry.verification_node_id.clone(),
+            verifier_id: entry.verifier_id.clone(),
+            authority_chain_id: entry.authority_chain_id.clone(),
+            lineage_id: entry.lineage_id.clone(),
+            execution_cluster_id: entry.execution_cluster_id.clone(),
+            receipt_hash: entry.receipt_hash.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::to_value(FederationDiagnosticsResponseBody {
+        run_id: run_id.to_string(),
+        source_artifact_path: VERIFICATION_DIVERSITY_LEDGER_FILE,
+        entry_count: entries.len(),
+        unique_verification_node_count: verification_node_distribution.len(),
+        unique_verifier_count: verifier_distribution.len(),
+        unique_authority_chain_count: authority_chain_distribution.len(),
+        unique_lineage_count: lineage_distribution.len(),
+        unique_execution_cluster_count: execution_cluster_distribution.len(),
+        missing_execution_cluster_entry_count,
+        verification_node_distribution,
+        verifier_distribution,
+        authority_chain_distribution,
+        lineage_distribution,
+        execution_cluster_distribution,
+        observed_entries,
+    })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_run_context_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
+
+    let context_object_path = run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+    if !context_object_path.is_file() {
+        return Err(ServiceError::NotFound("artifact_not_found"));
+    }
+
+    let declared_context = load_verification_context_object(&context_object_path)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_verification_context_object"))?;
+    let policy = load_required_run_json_artifact::<TrustPolicy>(
+        &run_dir.join(CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH),
+        "invalid_context_policy_snapshot",
+    )?;
+    let registry = load_required_run_json_artifact::<RegistrySnapshot>(
+        &run_dir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH),
+        "invalid_context_registry_snapshot",
+    )?;
+    let context_rules = read_required_run_json_artifact(
+        &run_dir.join(CONTEXT_RULES_RELATIVE_PATH),
+        "invalid_context_rules_object",
+    )?;
+    let recomputed_policy_hash = compute_policy_hash(&policy)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_context_policy_snapshot"))?;
+    let recomputed_registry_snapshot_hash = compute_registry_snapshot_hash(&registry)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_context_registry_snapshot"))?;
+    let recomputed_context_rules_hash = compute_context_rules_hash(&context_rules)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_context_rules_object"))?;
+
+    let receipt = load_optional_run_json_artifact::<proof_verifier::VerificationReceipt>(
+        &run_dir.join(RECEIPT_RELATIVE_PATH),
+        "invalid_receipt_artifact",
+    )?;
+    let diversity_binding =
+        load_optional_run_json_artifact::<VerificationDiversityLedgerProducerManifest>(
+            &run_dir.join(VERIFICATION_DIVERSITY_BINDING_FILE),
+            "invalid_diversity_binding_manifest",
+        )?;
+    let diversity_entries = load_optional_run_diversity_ledger_entries(
+        &run_dir.join(VERIFICATION_DIVERSITY_LEDGER_FILE),
+    )?;
+    let replay_boundary_flow_source =
+        load_optional_run_json_artifact::<AuthoritySinkholeCompanionSourceDocument>(
+            &run_dir.join(REPLAY_BOUNDARY_FLOW_SOURCE_FILE),
+            "invalid_context_flow_source",
+        )?;
+    let trust_reuse_flow_source =
+        load_optional_run_json_artifact::<AuthoritySinkholeCompanionSourceDocument>(
+            &run_dir.join(TRUST_REUSE_FLOW_SOURCE_FILE),
+            "invalid_context_flow_source",
+        )?;
+    let trust_reuse_runtime_surface_path = run_dir.join(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH);
+    let trust_reuse_runtime_surface = if trust_reuse_runtime_surface_path.is_file() {
+        Some(
+            load_native_trust_reuse_runtime_surface(&trust_reuse_runtime_surface_path).map_err(
+                |_| ServiceError::MalformedArtifact("invalid_trust_reuse_runtime_surface"),
+            )?,
+        )
+    } else {
+        None
+    };
+
+    let mut observed_context_id_sources = vec![ContextObservationSource {
+        source: "declared_context_object",
+        source_artifact_path: Some(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH),
+        values: vec![declared_context.verification_context_id.clone()],
+    }];
+    if let Some(receipt) = receipt.as_ref() {
+        observed_context_id_sources.push(ContextObservationSource {
+            source: "receipt_policy_hash",
+            source_artifact_path: Some(RECEIPT_RELATIVE_PATH),
+            values: vec![receipt.payload.policy_hash.clone()],
+        });
+    }
+    if !diversity_entries.is_empty() {
+        observed_context_id_sources.push(ContextObservationSource {
+            source: "verification_diversity_ledger",
+            source_artifact_path: Some(VERIFICATION_DIVERSITY_LEDGER_FILE),
+            values: unique_sorted_strings(
+                diversity_entries
+                    .iter()
+                    .map(|entry| entry.verification_context_id.clone()),
+            ),
+        });
+    }
+    if let Some(document) = replay_boundary_flow_source.as_ref() {
+        observed_context_id_sources.push(ContextObservationSource {
+            source: "replay_boundary_flow_source",
+            source_artifact_path: Some(REPLAY_BOUNDARY_FLOW_SOURCE_FILE),
+            values: unique_sorted_strings(
+                document
+                    .events
+                    .iter()
+                    .map(|event| event.verification_context_id.clone()),
+            ),
+        });
+    }
+    if let Some(document) = trust_reuse_flow_source.as_ref() {
+        observed_context_id_sources.push(ContextObservationSource {
+            source: "trust_reuse_flow_source",
+            source_artifact_path: Some(TRUST_REUSE_FLOW_SOURCE_FILE),
+            values: unique_sorted_strings(
+                document
+                    .events
+                    .iter()
+                    .map(|event| event.verification_context_id.clone()),
+            ),
+        });
+    }
+    if let Some(report) = trust_reuse_runtime_surface.as_ref() {
+        observed_context_id_sources.push(ContextObservationSource {
+            source: "trust_reuse_runtime_surface",
+            source_artifact_path: Some(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH),
+            values: unique_sorted_strings(
+                report
+                    .events
+                    .iter()
+                    .map(|event| event.verification_context_id.clone()),
+            ),
+        });
+    }
+    observed_context_id_sources.retain(|source| !source.values.is_empty());
+
+    let mut observed_context_ref_sources = Vec::new();
+    if let Some(report) = trust_reuse_runtime_surface.as_ref() {
+        observed_context_ref_sources.push(ContextObservationSource {
+            source: "trust_reuse_runtime_surface",
+            source_artifact_path: Some(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH),
+            values: unique_sorted_strings(
+                report
+                    .events
+                    .iter()
+                    .map(|event| event.verification_context_ref.clone()),
+            ),
+        });
+    }
+    observed_context_ref_sources.retain(|source| !source.values.is_empty());
+
+    let source_artifact_paths = ContextArtifactPaths {
+        context_object: VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH,
+        context_rules: CONTEXT_RULES_RELATIVE_PATH,
+        policy_snapshot: CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH,
+        registry_snapshot: CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH,
+        receipt: receipt.as_ref().map(|_| RECEIPT_RELATIVE_PATH),
+        diversity_binding: diversity_binding
+            .as_ref()
+            .map(|_| VERIFICATION_DIVERSITY_BINDING_FILE),
+        diversity_ledger: (!diversity_entries.is_empty())
+            .then_some(VERIFICATION_DIVERSITY_LEDGER_FILE),
+        replay_boundary_flow_source: replay_boundary_flow_source
+            .as_ref()
+            .map(|_| REPLAY_BOUNDARY_FLOW_SOURCE_FILE),
+        trust_reuse_flow_source: trust_reuse_flow_source
+            .as_ref()
+            .map(|_| TRUST_REUSE_FLOW_SOURCE_FILE),
+        trust_reuse_runtime_surface: trust_reuse_runtime_surface
+            .as_ref()
+            .map(|_| TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH),
+    };
+    let material_binding_status = ContextMaterialBindingStatus {
+        policy_hash_matches_declared_context: recomputed_policy_hash
+            == declared_context.policy_hash,
+        registry_snapshot_hash_matches_declared_context: recomputed_registry_snapshot_hash
+            == declared_context.registry_snapshot_hash,
+        context_rules_hash_matches_declared_context: recomputed_context_rules_hash
+            == declared_context.context_rules_hash,
+        receipt_policy_hash_matches_declared_context: receipt
+            .as_ref()
+            .map(|receipt| receipt.payload.policy_hash == declared_context.policy_hash),
+        receipt_registry_snapshot_hash_matches_declared_context: receipt.as_ref().map(|receipt| {
+            receipt.payload.registry_snapshot_hash == declared_context.registry_snapshot_hash
+        }),
+        legacy_verification_context_id_source: diversity_binding
+            .as_ref()
+            .map(|binding| binding.verification_context_id_source.clone()),
+    };
+
+    serde_json::to_value(ContextDiagnosticsResponseBody {
+        run_id: run_id.to_string(),
+        source_artifact_paths,
+        declared_context,
+        material_binding_status,
+        observed_context_id_sources,
+        observed_context_ref_sources,
+    })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_run_registry_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
+
+    let registry = load_required_run_json_artifact::<RegistrySnapshot>(
+        &run_dir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH),
+        "invalid_context_registry_snapshot",
+    )?;
+    let declared_registry_snapshot_hash = compute_registry_snapshot_hash(&registry)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_context_registry_snapshot"))?;
+    let declared_registry_entry_count = registry.producers.len();
+
+    let context_object = load_optional_run_json_artifact::<VerificationContextObject>(
+        &run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH),
+        "invalid_verification_context_object",
+    )?;
+    let receipt = load_optional_run_json_artifact::<proof_verifier::VerificationReceipt>(
+        &run_dir.join(RECEIPT_RELATIVE_PATH),
+        "invalid_receipt_artifact",
+    )?;
+
+    let context_binding_status = RegistryContextBindingStatus {
+        registry_snapshot_hash_matches_declared_context: context_object
+            .as_ref()
+            .map(|ctx| ctx.registry_snapshot_hash == declared_registry_snapshot_hash),
+    };
+
+    let mut observed_registry_hash_sources = Vec::new();
+
+    if let Some(ctx) = context_object.as_ref() {
+        let values = unique_sorted_strings(std::iter::once(ctx.registry_snapshot_hash.clone()));
+        if !values.is_empty() {
+            observed_registry_hash_sources.push(RegistryObservationSource {
+                source: "verification_context_object",
+                source_artifact_path: Some(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH),
+                values,
+            });
+        }
+    }
+
+    if let Some(r) = receipt.as_ref() {
+        let values =
+            unique_sorted_strings(std::iter::once(r.payload.registry_snapshot_hash.clone()));
+        if !values.is_empty() {
+            observed_registry_hash_sources.push(RegistryObservationSource {
+                source: "receipt",
+                source_artifact_path: Some(RECEIPT_RELATIVE_PATH),
+                values,
+            });
+        }
+    }
+
+    serde_json::to_value(RegistryDiagnosticsResponseBody {
+        run_id: run_id.to_string(),
+        source_artifact_path: CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH,
+        declared_registry_snapshot_hash,
+        declared_registry_entry_count,
+        context_binding_status,
+        observed_registry_hash_sources,
+    })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_run_boundary_diagnostics(
+    run_id: &str,
+    run_dir: &Path,
+    evidence_dir: &Path,
+) -> Result<Value, ServiceError> {
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
+
+    // Load primary run manifest (fail-closed)
+    let manifest = load_required_run_json_artifact::<Value>(
+        &run_dir.join(PROOFD_RUN_MANIFEST_FILE),
+        "invalid_run_manifest",
+    )?;
+    let request_fingerprint = manifest
+        .get("request_fingerprint")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_run_manifest"))?
+        .to_string();
+    let primary_verdict = manifest
+        .get("verdict")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_run_manifest"))?
+        .to_string();
+
+    // Discover peer runs (fail-open for each sibling)
+    let mut peer_run_ids: Vec<String> = Vec::new();
+    if let Ok(entries) = fs::read_dir(evidence_dir) {
+        for entry in entries.flatten() {
+            let candidate_path = entry.path();
+            if !candidate_path.is_dir() {
+                continue;
+            }
+            let candidate_id = entry.file_name().to_string_lossy().to_string();
+            if candidate_id == run_id || !is_safe_path_segment(&candidate_id) {
+                continue;
+            }
+            // Silently skip on any error
+            let Ok(peer_manifest) = load_required_run_json_artifact::<Value>(
+                &candidate_path.join(PROOFD_RUN_MANIFEST_FILE),
+                "invalid_run_manifest",
+            ) else {
+                continue;
+            };
+            let Some(peer_fp) = peer_manifest
+                .get("request_fingerprint")
+                .and_then(Value::as_str)
+            else {
+                continue;
+            };
+            if peer_fp == request_fingerprint {
+                peer_run_ids.push(candidate_id);
+            }
+        }
+    }
+    peer_run_ids.sort();
+
+    // Build all_run_ids = primary + peers, sorted by run_id
+    let mut all_run_ids: Vec<(String, PathBuf)> =
+        std::iter::once((run_id.to_string(), run_dir.to_path_buf()))
+            .chain(
+                peer_run_ids
+                    .iter()
+                    .map(|id| (id.clone(), evidence_dir.join(id))),
+            )
+            .collect();
+    all_run_ids.sort_by(|a, b| a.0.cmp(&b.0));
+
+    // Build observed_verdicts (primary verdict already known; peers read from manifest)
+    let mut observed_verdicts: Vec<RunVerdictEntry> = Vec::new();
+    for (rid, rdir) in &all_run_ids {
+        let verdict = if rid == run_id {
+            primary_verdict.clone()
+        } else {
+            // Peer manifest already validated above; re-read for verdict (fail-open)
+            let Ok(pm) = load_required_run_json_artifact::<Value>(
+                &rdir.join(PROOFD_RUN_MANIFEST_FILE),
+                "invalid_run_manifest",
+            ) else {
+                continue;
+            };
+            let Some(v) = pm.get("verdict").and_then(Value::as_str) else {
+                continue;
+            };
+            v.to_string()
+        };
+        observed_verdicts.push(RunVerdictEntry {
+            run_id: rid.clone(),
+            verdict,
+        });
+    }
+    // already sorted by run_id via all_run_ids sort
+
+    // Build observed_context_hashes (fail-open per run)
+    let mut observed_context_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in &all_run_ids {
+        let ctx_path = rdir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        if !ctx_path.is_file() {
+            continue;
+        }
+        let Ok(ctx) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
+            continue;
+        };
+        let Some(hash) = ctx.get("verification_context_id").and_then(Value::as_str) else {
+            continue;
+        };
+        observed_context_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash: hash.to_string(),
+        });
+    }
+
+    // Build observed_registry_hashes (recompute — never trust self-declared field)
+    let mut observed_registry_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in &all_run_ids {
+        let reg_path = rdir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
+        if !reg_path.is_file() {
+            continue;
+        }
+        let Ok(snapshot) = load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        else {
+            continue;
+        };
+        let Ok(hash) = compute_registry_snapshot_hash(&snapshot) else {
+            continue;
+        };
+        observed_registry_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash,
+        });
+    }
+
+    // Compute consistency booleans
+    let all_verdicts_match = observed_verdicts
+        .windows(2)
+        .all(|w| w[0].verdict == w[1].verdict);
+
+    let all_context_hashes_match = if observed_context_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_context_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    let all_registry_hashes_match = if observed_registry_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_registry_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    serde_json::to_value(BoundaryDiagnosticsResponseBody {
+        run_id: run_id.to_string(),
+        request_fingerprint,
+        peer_run_count: peer_run_ids.len(),
+        peer_run_ids,
+        verdict_consistency: VerdictConsistency {
+            all_verdicts_match,
+            observed_verdicts,
+        },
+        context_hash_consistency: ContextHashConsistency {
+            all_context_hashes_match,
+            observed_context_hashes,
+        },
+        registry_hash_consistency: RegistryHashConsistency {
+            all_registry_hashes_match,
+            observed_registry_hashes,
+        },
+    })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
 
 fn handle_verify_bundle(raw_body: &[u8], evidence_dir: &Path) -> DiagnosticsResponse {
@@ -439,13 +1158,17 @@ fn handle_verify_bundle(raw_body: &[u8], evidence_dir: &Path) -> DiagnosticsResp
 }
 
 fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, ServiceError> {
-    let request = parse_verify_bundle_request(raw_body)?;
+    let mut request = parse_verify_bundle_request(raw_body)?;
     validate_verify_bundle_request(&request)?;
 
+    let request_fingerprint = compute_verify_bundle_request_fingerprint(&request)?;
+    if request.run_id.is_none() {
+        request.run_id = Some(generate_run_id()?);
+    }
+    let run_id = resolved_request_run_id(&request)?.to_string();
     let bundle_path = PathBuf::from(&request.bundle_path);
     let policy_path = PathBuf::from(&request.policy_path);
     let registry_path = PathBuf::from(&request.registry_path);
-    let request_fingerprint = compute_verify_bundle_request_fingerprint(&request)?;
     let policy = load_json_from_path::<TrustPolicy>(&policy_path, "invalid_policy_json")?;
     let registry =
         load_json_from_path::<RegistrySnapshot>(&registry_path, "invalid_registry_json")?;
@@ -454,7 +1177,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         .receipt_signer
         .as_ref()
         .map(map_receipt_signer_config);
-    let run_dir = evidence_dir.join(&request.run_id);
+    let run_dir = evidence_dir.join(&run_id);
     fs::create_dir_all(&run_dir).map_err(|_| ServiceError::Runtime("run_dir_create_failed"))?;
     let rerun_same_request = verify_existing_run_fingerprint(&run_dir, &request_fingerprint)?;
     let audit_ledger_path = run_dir.join(VERIFICATION_AUDIT_LEDGER_FILE);
@@ -527,6 +1250,8 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
     } else {
         None
     };
+
+    write_verification_context_package(&run_dir, &policy, &registry, &outcome)?;
 
     let behavioral_observability_emitted = if let Some(manifest) = &diversity_manifest {
         let binding_path = run_dir.join(VERIFICATION_DIVERSITY_BINDING_FILE);
@@ -620,6 +1345,12 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                 "trust_reuse_flow_source_write_failed",
                 "trust_reuse_flow_source_bytes_conflict",
             )?;
+            copy_file_if_absent_or_same(
+                &trust_reuse_runtime_surface_path(&bundle_path),
+                &run_dir.join(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH),
+                "trust_reuse_runtime_surface_copy_failed",
+                "trust_reuse_runtime_surface_bytes_conflict",
+            )?;
             trust_reuse_source_relative_path = Some(TRUST_REUSE_FLOW_SOURCE_FILE.to_string());
             trust_reuse_source_origin = Some("runtime_bundle_trust_reuse".to_string());
         } else if let Some(binding) = request.trust_reuse_binding.as_ref() {
@@ -644,7 +1375,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
     };
 
     let run_manifest = json!({
-        "run_id": request.run_id,
+        "run_id": run_id.clone(),
         "service_mode": "verification_execution_and_read_only_diagnostics",
         "bundle_path": request.bundle_path,
         "policy_path": request.policy_path,
@@ -667,16 +1398,16 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         "verdict_subject": outcome.subject,
         "findings_count": outcome.findings.len(),
     });
-    write_json_value_if_absent_or_same(
+    persist_run_manifest(
         &run_dir.join(PROOFD_RUN_MANIFEST_FILE),
         &run_manifest,
-        "run_manifest_write_failed",
-        "run_manifest_bytes_conflict",
+        &request_fingerprint,
+        rerun_same_request,
     )?;
 
     let response = VerifyBundleResponseBody {
         status: "ok",
-        run_id: request.run_id,
+        run_id,
         verdict: verdict_label(&outcome.verdict),
         verdict_subject: serde_json::to_value(&outcome.subject).unwrap_or_else(|_| json!({})),
         receipt_emitted: outcome.receipt.is_some(),
@@ -684,6 +1415,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
             .get("receipt_path")
             .and_then(Value::as_str)
             .map(|value| value.to_string()),
+        request_fingerprint,
         behavioral_observability_emitted,
         audit_ledger_path: run_manifest
             .get("audit_ledger_path")
@@ -834,8 +1566,10 @@ fn parse_verify_bundle_request(raw_body: &[u8]) -> Result<VerifyBundleRequestBod
 }
 
 fn validate_verify_bundle_request(request: &VerifyBundleRequestBody) -> Result<(), ServiceError> {
-    if request.run_id.is_empty() || !is_safe_path_segment(&request.run_id) {
-        return Err(ServiceError::BadRequest("invalid_run_id"));
+    if let Some(run_id) = request.run_id.as_deref() {
+        if run_id.is_empty() || !is_safe_path_segment(run_id) {
+            return Err(ServiceError::BadRequest("invalid_run_id"));
+        }
     }
 
     if request.diversity_binding.is_some()
@@ -991,6 +1725,22 @@ fn compute_verify_bundle_request_fingerprint(
     Ok(format!("sha256:{}", encode_lower_hex(&hasher.finalize())))
 }
 
+fn generate_run_id() -> Result<String, ServiceError> {
+    let timestamp_nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| ServiceError::Runtime("run_id_generation_failed"))?
+        .as_nanos();
+    let counter = GENERATED_RUN_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+    Ok(format!("run-{timestamp_nanos:032x}-{counter:016x}"))
+}
+
+fn resolved_request_run_id(request: &VerifyBundleRequestBody) -> Result<&str, ServiceError> {
+    request
+        .run_id
+        .as_deref()
+        .ok_or(ServiceError::Runtime("run_id_not_resolved"))
+}
+
 fn verify_existing_run_fingerprint(
     run_dir: &Path,
     request_fingerprint: &str,
@@ -1008,9 +1758,7 @@ fn verify_existing_run_fingerprint(
             "existing_run_manifest_missing_request_fingerprint",
         ))?;
     if existing_fingerprint != request_fingerprint {
-        return Err(ServiceError::BadRequest(
-            "run_id_request_fingerprint_mismatch",
-        ));
+        return Err(ServiceError::Conflict("run_id_fingerprint_conflict"));
     }
     Ok(true)
 }
@@ -1043,7 +1791,7 @@ fn build_diversity_binding_manifest(
         .ok_or(ServiceError::BadRequest("receipt_signer_missing"))?;
     Ok(VerificationDiversityLedgerProducerManifest {
         binding_version: 1,
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         verification_context_id_source: "policy_hash".to_string(),
         node_bindings: vec![VerificationNodeBinding {
             verification_node_id: signer.verifier_node_id.clone(),
@@ -1066,7 +1814,7 @@ fn build_request_bound_replay_boundary_flow_source_document(
         source_version: 1,
         flow_surface: "replay_boundary".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1111,7 +1859,7 @@ fn build_runtime_replay_boundary_flow_source_document(
         source_version: 1,
         flow_surface: "replay_boundary".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1139,7 +1887,7 @@ fn build_request_bound_trust_reuse_flow_source_document(
         source_version: 1,
         flow_surface: "trust_reuse".to_string(),
         status: "PASS".to_string(),
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events: vec![build_companion_source_event(
             outcome,
@@ -1199,7 +1947,7 @@ fn build_runtime_trust_reuse_flow_source_document(
         } else {
             "PASS".to_string()
         },
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events,
     }))
@@ -1276,12 +2024,9 @@ fn build_trust_reuse_runtime_companion_source_event(
     if !event.terminal || !event.reused {
         return Err(ServiceError::Runtime("trust_reuse_runtime_surface_invalid"));
     }
-    let receipt = outcome
-        .receipt
-        .as_ref()
-        .ok_or(ServiceError::Runtime(
-            "signed_receipt_missing_for_companion_source",
-        ))?;
+    let receipt = outcome.receipt.as_ref().ok_or(ServiceError::Runtime(
+        "signed_receipt_missing_for_companion_source",
+    ))?;
     let timestamp_unix_ns = parse_event_time_to_unix_ns(&receipt.payload.verified_at_utc)
         .map_err(|_| ServiceError::Runtime("companion_source_timestamp_invalid"))?;
     Ok(AuthoritySinkholeCompanionSourceEvent {
@@ -1383,6 +2128,159 @@ fn write_json_value_if_absent_or_same(
     write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
 }
 
+fn write_canonical_json_file_if_absent_or_same<T>(
+    path: &Path,
+    value: &T,
+    write_error: &'static str,
+    conflict_error: &'static str,
+) -> Result<(), ServiceError>
+where
+    T: Serialize,
+{
+    let bytes = canonicalize_json(value).map_err(|_| ServiceError::Runtime(write_error))?;
+    write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
+}
+
+fn write_canonical_json_value_if_absent_or_same(
+    path: &Path,
+    value: &Value,
+    write_error: &'static str,
+    conflict_error: &'static str,
+) -> Result<(), ServiceError> {
+    let bytes = canonicalize_json_value(value).map_err(|_| ServiceError::Runtime(write_error))?;
+    write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
+}
+
+fn persist_run_manifest(
+    path: &Path,
+    value: &Value,
+    request_fingerprint: &str,
+    rerun_same_request: bool,
+) -> Result<(), ServiceError> {
+    if rerun_same_request {
+        return write_json_value_if_absent_or_same(
+            path,
+            value,
+            "run_manifest_write_failed",
+            "run_manifest_bytes_conflict",
+        );
+    }
+    create_run_manifest_atomically(
+        path,
+        value,
+        request_fingerprint,
+        "run_manifest_write_failed",
+    )
+}
+
+fn create_run_manifest_atomically(
+    path: &Path,
+    value: &Value,
+    request_fingerprint: &str,
+    write_error: &'static str,
+) -> Result<(), ServiceError> {
+    let bytes = serde_json::to_vec_pretty(value).map_err(|_| ServiceError::Runtime(write_error))?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|_| ServiceError::Runtime(write_error))?;
+    }
+
+    match OpenOptions::new().write(true).create_new(true).open(path) {
+        Ok(mut file) => file
+            .write_all(&bytes)
+            .map_err(|_| ServiceError::Runtime(write_error)),
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+            if let Ok(manifest) = read_json_file(path) {
+                let _same_fingerprint = manifest
+                    .get("request_fingerprint")
+                    .and_then(Value::as_str)
+                    .is_some_and(|existing_fingerprint| {
+                        existing_fingerprint == request_fingerprint
+                    });
+            }
+            Err(ServiceError::Conflict("run_id_fingerprint_conflict"))
+        }
+        Err(_) => Err(ServiceError::Runtime(write_error)),
+    }
+}
+
+fn copy_file_if_absent_or_same(
+    source: &Path,
+    target: &Path,
+    write_error: &'static str,
+    conflict_error: &'static str,
+) -> Result<(), ServiceError> {
+    let bytes = fs::read(source).map_err(|_| ServiceError::Runtime(write_error))?;
+    write_bytes_if_absent_or_same(target, &bytes, write_error, conflict_error)
+}
+
+fn build_default_context_rules_object() -> Value {
+    json!({
+        "rules_version": 1,
+        "policy_import_mode": "external-only",
+        "registry_import_mode": "external-only",
+        "context_mismatch_mode": "fail-closed",
+        "historical_receipt_mode": "historical-only",
+        "receipt_acceptance_mode": "context-bound-only",
+    })
+}
+
+fn compute_context_rules_hash(context_rules: &Value) -> Result<String, ServiceError> {
+    let bytes = canonicalize_json_value(context_rules)
+        .map_err(|_| ServiceError::Runtime("context_rules_hash_compute_failed"))?;
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    Ok(encode_lower_hex(&hasher.finalize()))
+}
+
+fn write_verification_context_package(
+    run_dir: &Path,
+    policy: &TrustPolicy,
+    registry: &RegistrySnapshot,
+    outcome: &proof_verifier::types::VerificationOutcome,
+) -> Result<(), ServiceError> {
+    let context_rules = build_default_context_rules_object();
+    let mut context = VerificationContextObject {
+        context_version: 1,
+        verification_context_id: String::new(),
+        policy_hash: outcome.subject.policy_hash.clone(),
+        registry_snapshot_hash: outcome.subject.registry_snapshot_hash.clone(),
+        verifier_contract_version: VERIFICATION_CONTEXT_VERIFIER_CONTRACT_VERSION.to_string(),
+        context_rules_hash: compute_context_rules_hash(&context_rules)?,
+        context_epoch: None,
+        historical_cutoff_utc: None,
+        policy_snapshot_ref: None,
+        registry_snapshot_ref: None,
+        time_semantics_mode: None,
+    };
+    context.verification_context_id = compute_verification_context_id(&context)
+        .map_err(|_| ServiceError::Runtime("verification_context_id_compute_failed"))?;
+
+    write_canonical_json_file_if_absent_or_same(
+        &run_dir.join(CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH),
+        policy,
+        "context_policy_snapshot_write_failed",
+        "context_policy_snapshot_bytes_conflict",
+    )?;
+    write_canonical_json_file_if_absent_or_same(
+        &run_dir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH),
+        registry,
+        "context_registry_snapshot_write_failed",
+        "context_registry_snapshot_bytes_conflict",
+    )?;
+    write_canonical_json_value_if_absent_or_same(
+        &run_dir.join(CONTEXT_RULES_RELATIVE_PATH),
+        &context_rules,
+        "context_rules_write_failed",
+        "context_rules_bytes_conflict",
+    )?;
+    write_canonical_json_file_if_absent_or_same(
+        &run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH),
+        &context,
+        "verification_context_object_write_failed",
+        "verification_context_object_bytes_conflict",
+    )
+}
+
 fn write_bytes_if_absent_or_same(
     path: &Path,
     bytes: &[u8],
@@ -1409,6 +2307,67 @@ fn encode_lower_hex(bytes: &[u8]) -> String {
         output.push(char::from(b"0123456789abcdef"[(byte & 0x0f) as usize]));
     }
     output
+}
+
+fn load_required_run_json_artifact<T>(
+    path: &Path,
+    invalid_error: &'static str,
+) -> Result<T, ServiceError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    if !path.is_file() {
+        return Err(ServiceError::NotFound("artifact_not_found"));
+    }
+    let bytes = fs::read(path).map_err(|_| ServiceError::MalformedArtifact(invalid_error))?;
+    serde_json::from_slice(&bytes).map_err(|_| ServiceError::MalformedArtifact(invalid_error))
+}
+
+fn load_optional_run_json_artifact<T>(
+    path: &Path,
+    invalid_error: &'static str,
+) -> Result<Option<T>, ServiceError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let bytes = fs::read(path).map_err(|_| ServiceError::MalformedArtifact(invalid_error))?;
+    let value = serde_json::from_slice(&bytes)
+        .map_err(|_| ServiceError::MalformedArtifact(invalid_error))?;
+    Ok(Some(value))
+}
+
+fn read_required_run_json_artifact(
+    path: &Path,
+    invalid_error: &'static str,
+) -> Result<Value, ServiceError> {
+    if !path.is_file() {
+        return Err(ServiceError::NotFound("artifact_not_found"));
+    }
+    let bytes = fs::read(path).map_err(|_| ServiceError::MalformedArtifact(invalid_error))?;
+    serde_json::from_slice(&bytes).map_err(|_| ServiceError::MalformedArtifact(invalid_error))
+}
+
+fn load_optional_run_diversity_ledger_entries(
+    path: &Path,
+) -> Result<Vec<VerificationDiversityLedgerEntry>, ServiceError> {
+    if !path.is_file() {
+        return Ok(Vec::new());
+    }
+    load_diversity_ledger_entries(path)
+        .map_err(|_| ServiceError::MalformedArtifact("invalid_federation_ledger"))
+}
+
+fn unique_sorted_strings<I>(values: I) -> Vec<String>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut values = values.into_iter().collect::<Vec<_>>();
+    values.sort();
+    values.dedup();
+    values
 }
 
 fn verdict_label(verdict: &proof_verifier::Verdict) -> &'static str {
@@ -1439,6 +2398,100 @@ fn list_run_artifacts(run_dir: &Path) -> Result<Vec<String>, ServiceError> {
     Ok(artifacts)
 }
 
+fn list_run_artifact_paths(run_dir: &Path) -> Result<Vec<String>, ServiceError> {
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
+
+    let mut artifact_paths = RUN_LEVEL_ARTIFACTS
+        .iter()
+        .chain(NESTED_RUN_LEVEL_ARTIFACTS.iter())
+        .filter_map(|relative_path| {
+            run_dir
+                .join(relative_path)
+                .is_file()
+                .then_some((*relative_path).to_string())
+        })
+        .collect::<Vec<_>>();
+    artifact_paths.sort();
+    artifact_paths.dedup();
+    Ok(artifact_paths)
+}
+
+fn list_run_artifact_descriptors(
+    run_dir: &Path,
+) -> Result<Vec<RunArtifactDescriptor>, ServiceError> {
+    Ok(list_run_artifact_paths(run_dir)?
+        .into_iter()
+        .map(|path| RunArtifactDescriptor {
+            content_type: artifact_content_type(&path),
+            path,
+        })
+        .collect())
+}
+
+fn parse_run_artifact_path(segments: &[&str]) -> Result<String, ServiceError> {
+    if segments.is_empty()
+        || segments
+            .iter()
+            .any(|segment| !is_safe_path_segment(segment))
+    {
+        return Err(ServiceError::NotFound("invalid_artifact_path"));
+    }
+    Ok(segments.join("/"))
+}
+
+fn resolve_run_artifact_path(run_dir: &Path, artifact_path: &str) -> Result<PathBuf, ServiceError> {
+    let discovered_paths = list_run_artifact_paths(run_dir)?;
+    if discovered_paths
+        .iter()
+        .any(|candidate| candidate == artifact_path)
+    {
+        return Ok(run_dir.join(artifact_path));
+    }
+    Err(ServiceError::NotFound("artifact_not_found"))
+}
+
+fn build_federation_distribution<F>(
+    entries: &[VerificationDiversityLedgerEntry],
+    key_fn: F,
+) -> Vec<FederationDistributionEntry>
+where
+    F: Fn(&VerificationDiversityLedgerEntry) -> String,
+{
+    let mut counts = std::collections::BTreeMap::<String, usize>::new();
+    for entry in entries {
+        let id = key_fn(entry);
+        *counts.entry(id).or_insert(0) += 1;
+    }
+    counts
+        .into_iter()
+        .map(|(id, entry_count)| FederationDistributionEntry { id, entry_count })
+        .collect()
+}
+
+fn build_optional_federation_distribution<F>(
+    entries: &[VerificationDiversityLedgerEntry],
+    key_fn: F,
+) -> (Vec<FederationDistributionEntry>, usize)
+where
+    F: Fn(&VerificationDiversityLedgerEntry) -> Option<String>,
+{
+    let mut counts = std::collections::BTreeMap::<String, usize>::new();
+    let mut missing_count = 0usize;
+    for entry in entries {
+        match key_fn(entry) {
+            Some(id) => *counts.entry(id).or_insert(0) += 1,
+            None => missing_count += 1,
+        }
+    }
+    let distribution = counts
+        .into_iter()
+        .map(|(id, entry_count)| FederationDistributionEntry { id, entry_count })
+        .collect::<Vec<_>>();
+    (distribution, missing_count)
+}
+
 fn is_safe_path_segment(segment: &str) -> bool {
     !segment.is_empty()
         && segment != "."
@@ -1449,6 +2502,30 @@ fn is_safe_path_segment(segment: &str) -> bool {
 
 fn is_observability_path(path: &str) -> bool {
     path == "/diagnostics" || path.starts_with("/diagnostics/")
+}
+
+fn artifact_content_type(path: &str) -> &'static str {
+    if path.ends_with(".jsonl") {
+        "application/x-ndjson; charset=utf-8"
+    } else if path.ends_with(".json") {
+        "application/json; charset=utf-8"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+fn serve_artifact_file(path: PathBuf, content_type: &'static str) -> DiagnosticsResponse {
+    match fs::read(path) {
+        Ok(body) => DiagnosticsResponse {
+            status_code: 200,
+            body,
+            content_type,
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            error_response(ServiceError::NotFound("artifact_not_found"))
+        }
+        Err(_) => error_response(ServiceError::Runtime("artifact_read_failed")),
+    }
 }
 
 fn serve_json_file(path: PathBuf) -> DiagnosticsResponse {
@@ -1475,6 +2552,7 @@ fn json_response(status_code: u16, value: Value) -> DiagnosticsResponse {
 fn error_response(error: ServiceError) -> DiagnosticsResponse {
     match error {
         ServiceError::BadRequest(code) => json_response(400, json!({ "error": code })),
+        ServiceError::Conflict(code) => json_response(409, json!({ "error": code })),
         ServiceError::NotFound(code) => json_response(404, json!({ "error": code })),
         ServiceError::MalformedArtifact(code) => json_response(500, json!({ "error": code })),
         ServiceError::Runtime(code) => json_response(500, json!({ "error": code })),
@@ -1484,6 +2562,7 @@ fn error_response(error: ServiceError) -> DiagnosticsResponse {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ServiceError {
     BadRequest(&'static str),
+    Conflict(&'static str),
     NotFound(&'static str),
     MalformedArtifact(&'static str),
     Runtime(&'static str),
@@ -1492,7 +2571,8 @@ enum ServiceError {
 #[cfg(test)]
 mod tests {
     use super::{
-        route_request, route_request_with_body, DiagnosticsResponse, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        create_run_manifest_atomically, route_request, route_request_with_body,
+        DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
     };
     use proof_verifier::testing::fixtures::create_fixture_bundle;
     use proof_verifier::trust_reuse_runtime_surface::{
@@ -1503,6 +2583,8 @@ mod tests {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::{Arc, Barrier};
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
@@ -1516,13 +2598,20 @@ mod tests {
     }
 
     fn write_artifact(dir: &PathBuf, name: &str, body: &str) {
-        fs::write(dir.join(name), body).expect("write artifact");
+        let path = dir.join(name);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create artifact parent");
+        }
+        fs::write(path, body).expect("write artifact");
     }
 
     fn write_json<T>(path: &std::path::Path, value: &T)
     where
         T: Serialize,
     {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create json parent");
+        }
         fs::write(
             path,
             serde_json::to_vec_pretty(value).expect("serialize json"),
@@ -1819,6 +2908,579 @@ mod tests {
     }
 
     #[test]
+    fn run_summary_endpoint_includes_nested_artifact_paths() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "proofd_run_manifest.json",
+            r#"{"run_id":"run-20260310-1"}"#,
+        );
+        write_artifact(
+            &run_dir,
+            "receipts/verification_receipt.json",
+            r#"{"status":"signed"}"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert!(body
+            .get("artifact_paths")
+            .and_then(|v| v.as_array())
+            .is_some_and(|paths| paths
+                .iter()
+                .any(|item| item.as_str() == Some("receipts/verification_receipt.json"))));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_artifacts_endpoint_lists_canonical_paths_with_content_types() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "proofd_run_manifest.json",
+            r#"{"run_id":"run-20260310-1"}"#,
+        );
+        write_artifact(
+            &run_dir,
+            "receipts/verification_receipt.json",
+            r#"{"status":"signed"}"#,
+        );
+        write_artifact(
+            &run_dir,
+            "verification_audit_ledger.jsonl",
+            "{\"event_id\":\"1\"}\n",
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/artifacts", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("run_id").and_then(|v| v.as_str()),
+            Some("run-20260310-1")
+        );
+        assert_eq!(body.get("artifact_count").and_then(|v| v.as_u64()), Some(3));
+        let artifacts = body
+            .get("artifacts")
+            .and_then(|v| v.as_array())
+            .expect("artifacts array");
+        assert!(artifacts.iter().any(|artifact| {
+            artifact.get("path").and_then(|v| v.as_str()) == Some("proofd_run_manifest.json")
+                && artifact.get("content_type").and_then(|v| v.as_str())
+                    == Some("application/json; charset=utf-8")
+        }));
+        assert!(artifacts.iter().any(|artifact| {
+            artifact.get("path").and_then(|v| v.as_str())
+                == Some("receipts/verification_receipt.json")
+                && artifact.get("content_type").and_then(|v| v.as_str())
+                    == Some("application/json; charset=utf-8")
+        }));
+        assert!(artifacts.iter().any(|artifact| {
+            artifact.get("path").and_then(|v| v.as_str()) == Some("verification_audit_ledger.jsonl")
+                && artifact.get("content_type").and_then(|v| v.as_str())
+                    == Some("application/x-ndjson; charset=utf-8")
+        }));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_artifact_endpoint_serves_selected_json_and_jsonl_artifacts() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "receipts/verification_receipt.json",
+            r#"{"status":"signed","verifier_key_id":"k1"}"#,
+        );
+        write_artifact(
+            &run_dir,
+            "verification_audit_ledger.jsonl",
+            "{\"event_id\":\"1\"}\n{\"event_id\":\"2\"}\n",
+        );
+
+        let receipt = route_request(
+            "GET",
+            "/diagnostics/runs/run-20260310-1/artifacts/receipts/verification_receipt.json",
+            &dir,
+        );
+        assert_eq!(receipt.status_code, 200);
+        assert_eq!(receipt.content_type, "application/json; charset=utf-8");
+        let receipt_body = body_json(receipt);
+        assert_eq!(
+            receipt_body.get("verifier_key_id").and_then(|v| v.as_str()),
+            Some("k1")
+        );
+
+        let ledger = route_request(
+            "GET",
+            "/diagnostics/runs/run-20260310-1/artifacts/verification_audit_ledger.jsonl",
+            &dir,
+        );
+        assert_eq!(ledger.status_code, 200);
+        assert_eq!(ledger.content_type, "application/x-ndjson; charset=utf-8");
+        let ledger_body = String::from_utf8(ledger.body).expect("utf8 ledger");
+        assert_eq!(ledger_body, "{\"event_id\":\"1\"}\n{\"event_id\":\"2\"}\n");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_artifact_endpoint_rejects_invalid_relative_path() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "proofd_run_manifest.json",
+            r#"{"run_id":"run-20260310-1"}"#,
+        );
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-20260310-1/artifacts/../proofd_run_manifest.json",
+            &dir,
+        );
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("invalid_artifact_path")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_federation_endpoint_summarizes_diversity_ledger() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "verification_diversity_ledger.json",
+            r#"{
+              "entries": [
+                {
+                  "ledger_version": 1,
+                  "entry_id": "entry-a",
+                  "run_id": "run-20260310-1",
+                  "timestamp_unix_ns": 10,
+                  "subject_bundle_id": "bundle-a",
+                  "verification_context_id": "ctx-a",
+                  "verification_node_id": "node-a",
+                  "verifier_id": "verifier-a",
+                  "authority_chain_id": "chain-a",
+                  "lineage_id": "lineage-a",
+                  "execution_cluster_id": "cluster-a",
+                  "verdict": "PASS",
+                  "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "ledger_version": 1,
+                  "entry_id": "entry-b",
+                  "run_id": "run-20260310-1",
+                  "timestamp_unix_ns": 20,
+                  "subject_bundle_id": "bundle-b",
+                  "verification_context_id": "ctx-b",
+                  "verification_node_id": "node-b",
+                  "verifier_id": "verifier-b",
+                  "authority_chain_id": "chain-a",
+                  "lineage_id": "lineage-b",
+                  "execution_cluster_id": "cluster-a",
+                  "verdict": "PASS",
+                  "receipt_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                },
+                {
+                  "ledger_version": 1,
+                  "entry_id": "entry-c",
+                  "run_id": "run-20260310-1",
+                  "timestamp_unix_ns": 30,
+                  "subject_bundle_id": "bundle-c",
+                  "verification_context_id": "ctx-c",
+                  "verification_node_id": "node-c",
+                  "verifier_id": "verifier-a",
+                  "authority_chain_id": "chain-b",
+                  "lineage_id": "lineage-a",
+                  "verdict": "FAIL",
+                  "receipt_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                }
+              ]
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("source_artifact_path").and_then(|v| v.as_str()),
+            Some("verification_diversity_ledger.json")
+        );
+        assert_eq!(body.get("entry_count").and_then(|v| v.as_u64()), Some(3));
+        assert_eq!(
+            body.get("unique_verifier_count").and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert_eq!(
+            body.get("unique_authority_chain_count")
+                .and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert_eq!(
+            body.get("unique_lineage_count").and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert_eq!(
+            body.get("unique_execution_cluster_count")
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            body.get("missing_execution_cluster_entry_count")
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert!(body
+            .get("verifier_distribution")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("id").and_then(|v| v.as_str()) == Some("verifier-a")
+                    && item.get("entry_count").and_then(|v| v.as_u64()) == Some(2)
+            })));
+        assert!(body
+            .get("authority_chain_distribution")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("id").and_then(|v| v.as_str()) == Some("chain-a")
+                    && item.get("entry_count").and_then(|v| v.as_u64()) == Some(2)
+            })));
+        assert!(body
+            .get("observed_entries")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("entry_id").and_then(|v| v.as_str()) == Some("entry-c")
+                    && item.get("execution_cluster_id").is_none()
+            })));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_federation_endpoint_requires_diversity_ledger() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/federation", &dir);
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_context_endpoint_summarizes_packaged_context_and_observed_bindings() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let policy = proof_verifier::TrustPolicy {
+            policy_version: 1,
+            policy_hash: None,
+            quorum_policy_ref: Some("policy://quorum/at-least-1-of-n".to_string()),
+            trusted_producers: vec!["ayken-ci".to_string()],
+            trusted_pubkey_ids: vec!["ed25519-key-a".to_string()],
+            required_signatures: Some(proof_verifier::SignatureRequirement {
+                kind: "at_least".to_string(),
+                count: 1,
+            }),
+            revoked_pubkey_ids: Vec::new(),
+        };
+        let policy_hash = proof_verifier::policy::policy_engine::compute_policy_hash(&policy)
+            .expect("policy hash");
+        let mut registry = proof_verifier::RegistrySnapshot {
+            registry_format_version: 1,
+            registry_version: 1,
+            registry_snapshot_hash: String::new(),
+            producers: std::collections::BTreeMap::from([(
+                "ayken-ci".to_string(),
+                proof_verifier::RegistryEntry {
+                    active_pubkey_ids: vec!["ed25519-key-a".to_string()],
+                    revoked_pubkey_ids: Vec::new(),
+                    superseded_pubkey_ids: Vec::new(),
+                    public_keys: std::collections::BTreeMap::from([(
+                        "ed25519-key-a".to_string(),
+                        proof_verifier::RegistryPublicKey {
+                            algorithm: "ed25519".to_string(),
+                            public_key: "11".repeat(32),
+                        },
+                    )]),
+                },
+            )]),
+        };
+        registry.registry_snapshot_hash =
+            proof_verifier::registry::snapshot::compute_registry_snapshot_hash(&registry)
+                .expect("registry hash");
+
+        let context_rules = super::build_default_context_rules_object();
+        let context_rules_hash =
+            super::compute_context_rules_hash(&context_rules).expect("context rules hash");
+        let mut context = proof_verifier::verification_context_object::VerificationContextObject {
+            context_version: 1,
+            verification_context_id: String::new(),
+            policy_hash: policy_hash.clone(),
+            registry_snapshot_hash: registry.registry_snapshot_hash.clone(),
+            verifier_contract_version: "phase12-context-v1".to_string(),
+            context_rules_hash,
+            context_epoch: None,
+            historical_cutoff_utc: None,
+            policy_snapshot_ref: None,
+            registry_snapshot_ref: None,
+            time_semantics_mode: None,
+        };
+        context.verification_context_id =
+            proof_verifier::verification_context_object::compute_verification_context_id(&context)
+                .expect("context id");
+        let expected_context_ref = format!("cas:{}", context.verification_context_id);
+
+        write_json(&run_dir.join("context/policy_snapshot.json"), &policy);
+        write_json(&run_dir.join("context/registry_snapshot.json"), &registry);
+        write_json(&run_dir.join("context/context_rules.json"), &context_rules);
+        write_json(
+            &run_dir.join("context/verification_context_object.json"),
+            &context,
+        );
+        write_artifact(
+            &run_dir,
+            "receipts/verification_receipt.json",
+            &format!(
+                r#"{{
+                  "receipt_version": 1,
+                  "bundle_id": "bundle-a",
+                  "trust_overlay_hash": "sha256:overlay-a",
+                  "policy_hash": "{policy_hash}",
+                  "registry_snapshot_hash": "{registry_hash}",
+                  "verifier_node_id": "node-a",
+                  "verifier_key_id": "key-a",
+                  "verdict": "Trusted",
+                  "verified_at_utc": "2026-03-15T12:00:00Z",
+                  "verifier_signature_algorithm": "ed25519",
+                  "verifier_signature": "abcd"
+                }}"#,
+                policy_hash = policy_hash,
+                registry_hash = registry.registry_snapshot_hash
+            ),
+        );
+        write_artifact(
+            &run_dir,
+            "verification_diversity_ledger_binding.json",
+            r#"{
+              "binding_version": 1,
+              "run_id": "run-20260310-1",
+              "verification_context_id_source": "policy_hash",
+              "node_bindings": [
+                {
+                  "verification_node_id": "node-a",
+                  "verifier_key_id": "key-a",
+                  "verifier_id": "verifier-a",
+                  "authority_chain_id": "chain-a",
+                  "lineage_id": "lineage-a"
+                }
+              ]
+            }"#,
+        );
+        write_artifact(
+            &run_dir,
+            "verification_diversity_ledger.json",
+            &format!(
+                r#"{{
+                  "entries": [
+                    {{
+                      "ledger_version": 1,
+                      "entry_id": "entry-a",
+                      "run_id": "run-20260310-1",
+                      "timestamp_unix_ns": 10,
+                      "subject_bundle_id": "bundle-a",
+                      "verification_context_id": "{policy_hash}",
+                      "verification_node_id": "node-a",
+                      "verifier_id": "verifier-a",
+                      "authority_chain_id": "chain-a",
+                      "lineage_id": "lineage-a",
+                      "verdict": "PASS",
+                      "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }}
+                  ]
+                }}"#,
+                policy_hash = policy_hash
+            ),
+        );
+        write_artifact(
+            &run_dir,
+            "replay_boundary_flow_source.json",
+            &format!(
+                r#"{{
+                  "source_version": 1,
+                  "flow_surface": "replay_boundary",
+                  "status": "PASS",
+                  "run_id": "run-20260310-1",
+                  "window_model": "append_only_event_stream",
+                  "events": [
+                    {{
+                      "timestamp_unix_ns": 10,
+                      "subject_bundle_id": "bundle-a",
+                      "verification_context_id": "{policy_hash}",
+                      "authority_chain_id": "chain-a",
+                      "terminal": true,
+                      "reused": true
+                    }}
+                  ]
+                }}"#,
+                policy_hash = policy_hash
+            ),
+        );
+        write_artifact(
+            &run_dir,
+            "trust_reuse_flow_source.json",
+            &format!(
+                r#"{{
+                  "source_version": 1,
+                  "flow_surface": "trust_reuse",
+                  "status": "PASS",
+                  "run_id": "run-20260310-1",
+                  "window_model": "append_only_event_stream",
+                  "events": [
+                    {{
+                      "timestamp_unix_ns": 20,
+                      "subject_bundle_id": "bundle-a",
+                      "verification_context_id": "{policy_hash}",
+                      "authority_chain_id": "chain-a",
+                      "terminal": true,
+                      "reused": true
+                    }}
+                  ]
+                }}"#,
+                policy_hash = policy_hash
+            ),
+        );
+
+        let mut runtime_event = TrustReuseRuntimeEvent {
+            event_schema_version: 1,
+            event_id: String::new(),
+            run_id: "runtime-run-a".to_string(),
+            timestamp_unix_ns: 30,
+            subject_bundle_id: "bundle-a".to_string(),
+            verification_context_id: policy_hash.clone(),
+            authority_chain_id: "chain-a".to_string(),
+            trust_reuse_outcome: TrustReuseOutcome::Accepted,
+            terminal: true,
+            reused: true,
+            receipt_ref: "receipts/verification_receipt.json".to_string(),
+            verification_context_ref: expected_context_ref.clone(),
+            verifier_attestation_ref: "cas:sha256:verifier-attestation-a".to_string(),
+            verifier_registry_snapshot_hash: "a".repeat(64),
+            verification_node_id: Some("node-a".to_string()),
+            verifier_id: Some("verifier-a".to_string()),
+            lineage_id: Some("lineage-a".to_string()),
+            execution_cluster_id: None,
+            source_run_id: Some("source-run-a".to_string()),
+            reuse_group_id: None,
+            surface_local_path_id: Some("reports/trust_reuse_runtime_surface.json".to_string()),
+            trust_reuse_source: Some("native-runtime-trust-reuse".to_string()),
+        };
+        runtime_event.event_id =
+            compute_trust_reuse_runtime_event_id(&runtime_event).expect("runtime event id");
+        write_json(
+            &run_dir.join("reports/trust_reuse_runtime_surface.json"),
+            &TrustReuseRuntimeSurfaceReport {
+                surface_version: 1,
+                flow_surface: "trust_reuse_runtime".to_string(),
+                status: "PASS".to_string(),
+                run_id: "runtime-run-a".to_string(),
+                source_kind: "local_runtime_evidence".to_string(),
+                event_count: 1,
+                accepted_event_count: 1,
+                historical_only_event_count: 0,
+                rejected_event_count: 0,
+                events: vec![runtime_event],
+            },
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("declared_context")
+                .and_then(|value| value.get("verifier_contract_version"))
+                .and_then(|value| value.as_str()),
+            Some("phase12-context-v1")
+        );
+        assert_eq!(
+            body.get("material_binding_status")
+                .and_then(|value| value.get("policy_hash_matches_declared_context"))
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            body.get("material_binding_status")
+                .and_then(|value| value.get("legacy_verification_context_id_source"))
+                .and_then(|value| value.as_str()),
+            Some("policy_hash")
+        );
+        assert!(body
+            .get("observed_context_id_sources")
+            .and_then(|value| value.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("source").and_then(|value| value.as_str())
+                    == Some("verification_diversity_ledger")
+                    && item
+                        .get("values")
+                        .and_then(|value| value.as_array())
+                        .is_some_and(|values| {
+                            values
+                                .iter()
+                                .any(|value| value.as_str() == Some(policy_hash.as_str()))
+                        })
+            })));
+        assert!(body
+            .get("observed_context_ref_sources")
+            .and_then(|value| value.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("source").and_then(|value| value.as_str())
+                    == Some("trust_reuse_runtime_surface")
+                    && item
+                        .get("values")
+                        .and_then(|value| value.as_array())
+                        .is_some_and(|values| {
+                            values
+                                .iter()
+                                .any(|value| value.as_str() == Some(expected_context_ref.as_str()))
+                        })
+            })));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_context_endpoint_requires_context_package() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/context", &dir);
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn run_scoped_graph_endpoint_serves_selected_run_artifact() {
         let dir = temp_dir();
         let run_dir = dir.join("run-20260310-1");
@@ -2006,6 +3668,10 @@ mod tests {
             body.get("receipt_path").and_then(|v| v.as_str()),
             Some("receipts/verification_receipt.json")
         );
+        assert!(body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .is_some_and(|value| value.starts_with("sha256:")));
 
         let run_dir = dir.join("run-proofd-execution-r1");
         assert!(run_dir.join("proofd_run_manifest.json").is_file());
@@ -2140,6 +3806,10 @@ mod tests {
                 .and_then(|v| v.as_str()),
             Some("verification_diversity_ledger.json")
         );
+        assert!(body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .is_some_and(|value| value.starts_with("sha256:")));
         assert_eq!(
             body.get("replay_boundary_flow_source_path")
                 .and_then(|v| v.as_str()),
@@ -2274,6 +3944,26 @@ mod tests {
             .join("run-proofd-execution-r2")
             .join("trust_reuse_flow_source.json")
             .is_file());
+        assert!(dir
+            .join("run-proofd-execution-r2")
+            .join("context/policy_snapshot.json")
+            .is_file());
+        assert!(dir
+            .join("run-proofd-execution-r2")
+            .join("context/registry_snapshot.json")
+            .is_file());
+        assert!(dir
+            .join("run-proofd-execution-r2")
+            .join("context/context_rules.json")
+            .is_file());
+        assert!(dir
+            .join("run-proofd-execution-r2")
+            .join("context/verification_context_object.json")
+            .is_file());
+        assert!(dir
+            .join("run-proofd-execution-r2")
+            .join("reports/trust_reuse_runtime_surface.json")
+            .is_file());
         let replay_source = body_json(DiagnosticsResponse {
             status_code: 200,
             body: fs::read(
@@ -2350,6 +4040,108 @@ mod tests {
             .is_some_and(|artifacts| artifacts
                 .iter()
                 .any(|item| item.as_str() == Some("trust_reuse_flow_source.json"))));
+        assert!(run_summary
+            .get("artifact_paths")
+            .and_then(|v| v.as_array())
+            .is_some_and(|artifacts| artifacts
+                .iter()
+                .any(|item| item.as_str() == Some("context/verification_context_object.json"))));
+        assert!(run_summary
+            .get("artifact_paths")
+            .and_then(|v| v.as_array())
+            .is_some_and(|artifacts| artifacts
+                .iter()
+                .any(|item| item.as_str() == Some("reports/trust_reuse_runtime_surface.json"))));
+
+        let federation = body_json(route_request(
+            "GET",
+            "/diagnostics/runs/run-proofd-execution-r2/federation",
+            &dir,
+        ));
+        assert_eq!(
+            federation.get("entry_count").and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            federation
+                .get("unique_verifier_count")
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            federation
+                .get("unique_authority_chain_count")
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert!(federation
+            .get("observed_entries")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("lineage_id").and_then(|v| v.as_str()) == Some("lineage-receipt-node-b")
+            })));
+
+        let context = body_json(route_request(
+            "GET",
+            "/diagnostics/runs/run-proofd-execution-r2/context",
+            &dir,
+        ));
+        let declared_context_id = context
+            .get("declared_context")
+            .and_then(|value| value.get("verification_context_id"))
+            .and_then(|value| value.as_str())
+            .expect("declared context id");
+        assert!(declared_context_id.starts_with("sha256:"));
+        assert_eq!(
+            context
+                .get("material_binding_status")
+                .and_then(|value| value.get("policy_hash_matches_declared_context"))
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            context
+                .get("material_binding_status")
+                .and_then(|value| value.get("legacy_verification_context_id_source"))
+                .and_then(|value| value.as_str()),
+            Some("policy_hash")
+        );
+        assert!(context
+            .get("observed_context_id_sources")
+            .and_then(|value| value.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("source").and_then(|value| value.as_str())
+                    == Some("verification_diversity_ledger")
+                    && item
+                        .get("values")
+                        .and_then(|value| value.as_array())
+                        .is_some_and(|values| {
+                            values.iter().any(|value| {
+                                value.as_str()
+                                    == body
+                                        .get("verdict_subject")
+                                        .and_then(|value| value.get("policy_hash"))
+                                        .and_then(|value| value.as_str())
+                            })
+                        })
+            })));
+        assert!(context
+            .get("observed_context_ref_sources")
+            .and_then(|value| value.as_array())
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("source").and_then(|value| value.as_str())
+                    == Some("trust_reuse_runtime_surface")
+                    && item
+                        .get("values")
+                        .and_then(|value| value.as_array())
+                        .is_some_and(|values| {
+                            values.iter().any(|value| {
+                                value
+                                    .as_str()
+                                    .is_some_and(|value| value.starts_with("cas:sha256:"))
+                            })
+                        })
+            })));
 
         let _ = fs::remove_dir_all(&fixture.root);
         let _ = fs::remove_dir_all(&dir);
@@ -3037,14 +4829,136 @@ mod tests {
             Some(second_bytes.as_slice()),
             &dir,
         );
-        assert_eq!(second_response.status_code, 400);
+        assert_eq!(second_response.status_code, 409);
         let body = body_json(second_response);
         assert_eq!(
             body.get("error").and_then(|v| v.as_str()),
-            Some("run_id_request_fingerprint_mismatch")
+            Some("run_id_fingerprint_conflict")
         );
 
         let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_bundle_endpoint_generates_run_id_when_missing() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+
+        let request_body = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+        });
+        let request_bytes = serde_json::to_vec(&request_body).expect("serialize request");
+        let response = route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let run_id = body
+            .get("run_id")
+            .and_then(|v| v.as_str())
+            .expect("generated run id")
+            .to_string();
+        assert!(!run_id.is_empty());
+        assert!(run_id.len() <= 128);
+        assert!(run_id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'));
+
+        let request_fingerprint = body
+            .get("request_fingerprint")
+            .and_then(|v| v.as_str())
+            .expect("request fingerprint");
+        assert!(request_fingerprint.starts_with("sha256:"));
+
+        let run_manifest = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(dir.join(&run_id).join("proofd_run_manifest.json"))
+                .expect("read run manifest"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            run_manifest.get("run_id").and_then(|v| v.as_str()),
+            Some(run_id.as_str())
+        );
+        assert_eq!(
+            run_manifest
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str()),
+            Some(request_fingerprint)
+        );
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_manifest_creation_allows_only_one_writer() {
+        let dir = temp_dir();
+        let manifest_path = dir.join("proofd_run_manifest.json");
+        let manifest = json!({
+            "run_id": "run-proofd-atomic-manifest",
+            "request_fingerprint": "sha256:test-fingerprint",
+            "verdict": "TRUSTED"
+        });
+        let barrier = Arc::new(Barrier::new(3));
+
+        let spawn_writer = |barrier: Arc<Barrier>| {
+            let manifest_path = manifest_path.clone();
+            let manifest = manifest.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                create_run_manifest_atomically(
+                    &manifest_path,
+                    &manifest,
+                    "sha256:test-fingerprint",
+                    "run_manifest_write_failed",
+                )
+            })
+        };
+
+        let handle_a = spawn_writer(barrier.clone());
+        let handle_b = spawn_writer(barrier.clone());
+        barrier.wait();
+
+        let result_a = handle_a.join().expect("writer a");
+        let result_b = handle_b.join().expect("writer b");
+
+        let success_count = usize::from(result_a.is_ok()) + usize::from(result_b.is_ok());
+        assert_eq!(success_count, 1);
+        assert!(matches!(
+            (&result_a, &result_b),
+            (
+                Err(ServiceError::Conflict("run_id_fingerprint_conflict")),
+                Ok(())
+            ) | (
+                Ok(()),
+                Err(ServiceError::Conflict("run_id_fingerprint_conflict"))
+            )
+        ));
+
+        let manifest_body = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(&manifest_path).expect("read manifest"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            manifest_body
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str()),
+            Some("sha256:test-fingerprint")
+        );
+
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -3072,5 +4986,2505 @@ mod tests {
             Some("policy_path_not_absolute")
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── registry diagnostics unit tests ──────────────────────────────────────
+
+    fn make_registry(producers: &[&str]) -> proof_verifier::RegistrySnapshot {
+        let mut snapshot = proof_verifier::RegistrySnapshot {
+            registry_format_version: 1,
+            registry_version: 1,
+            registry_snapshot_hash: String::new(),
+            producers: producers
+                .iter()
+                .map(|id| {
+                    (
+                        id.to_string(),
+                        proof_verifier::RegistryEntry {
+                            active_pubkey_ids: vec!["key-a".to_string()],
+                            revoked_pubkey_ids: Vec::new(),
+                            superseded_pubkey_ids: Vec::new(),
+                            public_keys: std::collections::BTreeMap::from([(
+                                "key-a".to_string(),
+                                proof_verifier::RegistryPublicKey {
+                                    algorithm: "ed25519".to_string(),
+                                    public_key: "11".repeat(32),
+                                },
+                            )]),
+                        },
+                    )
+                })
+                .collect(),
+        };
+        snapshot.registry_snapshot_hash =
+            proof_verifier::registry::snapshot::compute_registry_snapshot_hash(&snapshot)
+                .expect("registry hash");
+        snapshot
+    }
+
+    fn write_registry_snapshot(run_dir: &PathBuf, registry: &proof_verifier::RegistrySnapshot) {
+        let path = run_dir.join("context/registry_snapshot.json");
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create context dir");
+        }
+        let bytes = proof_verifier::canonical::jcs::canonicalize_json(registry)
+            .expect("canonicalize registry");
+        fs::write(path, bytes).expect("write registry snapshot");
+    }
+
+    fn write_context_object(
+        run_dir: &PathBuf,
+        registry_snapshot_hash: &str,
+    ) -> proof_verifier::verification_context_object::VerificationContextObject {
+        let context_rules = super::build_default_context_rules_object();
+        let context_rules_hash =
+            super::compute_context_rules_hash(&context_rules).expect("context rules hash");
+        let mut ctx = proof_verifier::verification_context_object::VerificationContextObject {
+            context_version: 1,
+            verification_context_id: String::new(),
+            policy_hash: "sha256:policy-placeholder".to_string(),
+            registry_snapshot_hash: registry_snapshot_hash.to_string(),
+            verifier_contract_version: "phase12-context-v1".to_string(),
+            context_rules_hash,
+            context_epoch: None,
+            historical_cutoff_utc: None,
+            policy_snapshot_ref: None,
+            registry_snapshot_ref: None,
+            time_semantics_mode: None,
+        };
+        ctx.verification_context_id =
+            proof_verifier::verification_context_object::compute_verification_context_id(&ctx)
+                .expect("context id");
+        write_json(
+            &run_dir.join("context/verification_context_object.json"),
+            &ctx,
+        );
+        ctx
+    }
+
+    fn write_receipt_with_registry_hash(run_dir: &PathBuf, registry_snapshot_hash: &str) {
+        let receipt_json = format!(
+            r#"{{
+              "receipt_version": 1,
+              "bundle_id": "bundle-reg-test",
+              "trust_overlay_hash": "sha256:overlay-reg",
+              "policy_hash": "sha256:policy-placeholder",
+              "registry_snapshot_hash": "{registry_snapshot_hash}",
+              "verifier_node_id": "node-reg",
+              "verifier_key_id": "key-reg",
+              "verdict": "Trusted",
+              "verified_at_utc": "2026-03-15T12:00:00Z",
+              "verifier_signature_algorithm": "ed25519",
+              "verifier_signature": "abcd"
+            }}"#
+        );
+        write_artifact(run_dir, "receipts/verification_receipt.json", &receipt_json);
+    }
+
+    #[test]
+    fn registry_endpoint_happy_path_all_artifacts_present_hashes_match() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let registry = make_registry(&["producer-a", "producer-b"]);
+        let hash = registry.registry_snapshot_hash.clone();
+        write_registry_snapshot(&run_dir, &registry);
+        write_context_object(&run_dir, &hash);
+        write_receipt_with_registry_hash(&run_dir, &hash);
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-1/registry", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(
+            body.get("run_id").and_then(|v| v.as_str()),
+            Some("run-reg-1")
+        );
+        assert_eq!(
+            body.get("source_artifact_path").and_then(|v| v.as_str()),
+            Some("context/registry_snapshot.json")
+        );
+        assert_eq!(
+            body.get("declared_registry_snapshot_hash")
+                .and_then(|v| v.as_str()),
+            Some(hash.as_str())
+        );
+        assert_eq!(
+            body.get("declared_registry_entry_count")
+                .and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert_eq!(
+            body.get("context_binding_status")
+                .and_then(|v| v.get("registry_snapshot_hash_matches_declared_context"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let sources = body
+            .get("observed_registry_hash_sources")
+            .and_then(|v| v.as_array())
+            .expect("sources array");
+        assert!(sources.iter().any(
+            |s| s.get("source").and_then(|v| v.as_str()) == Some("verification_context_object")
+        ));
+        assert!(sources
+            .iter()
+            .any(|s| s.get("source").and_then(|v| v.as_str()) == Some("receipt")));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_happy_path_registry_only_null_binding_empty_sources() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-2");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let registry = make_registry(&["producer-a"]);
+        write_registry_snapshot(&run_dir, &registry);
+        // no context object, no receipt
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-2/registry", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert!(
+            body.get("context_binding_status")
+                .and_then(|v| v.get("registry_snapshot_hash_matches_declared_context"))
+                .is_some_and(|v| v.is_null()),
+            "expected null binding status"
+        );
+        assert_eq!(
+            body.get("observed_registry_hash_sources")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(0)
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_hash_mismatch_returns_false_binding_status() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-3");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let registry = make_registry(&["producer-a"]);
+        write_registry_snapshot(&run_dir, &registry);
+        write_context_object(&run_dir, "sha256:completely-different-hash");
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-3/registry", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(
+            body.get("context_binding_status")
+                .and_then(|v| v.get("registry_snapshot_hash_matches_declared_context"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_missing_run_dir_returns_404_run_dir_not_found() {
+        let dir = temp_dir();
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-missing/registry", &dir);
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("run_dir_not_found")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_missing_registry_snapshot_returns_404_artifact_not_found() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-4");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        // no context/registry_snapshot.json
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-4/registry", &dir);
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_not_found")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_malformed_registry_snapshot_returns_500() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-5");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "context/registry_snapshot.json",
+            "not valid json {{",
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-5/registry", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("invalid_context_registry_snapshot")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_entry_count_matches_producers_len() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-6");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let registry = make_registry(&["p1", "p2", "p3", "p4", "p5"]);
+        write_registry_snapshot(&run_dir, &registry);
+
+        let response = route_request("GET", "/diagnostics/runs/run-reg-6/registry", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("declared_registry_entry_count")
+                .and_then(|v| v.as_u64()),
+            Some(5)
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_rejects_query_string() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-7");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-reg-7/registry?select_winner=true",
+            &dir,
+        );
+        assert_eq!(response.status_code, 400);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn registry_endpoint_rejects_post_method() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-reg-8");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+
+        let response =
+            route_request_with_body("POST", "/diagnostics/runs/run-reg-8/registry", None, &dir);
+        assert_eq!(response.status_code, 405);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod proptest_registry {
+    //! Property-based tests for Phase 13 trust registry propagation.
+    //! Feature: phase13-trust-registry-propagation
+
+    use super::{
+        build_default_context_rules_object, compute_context_rules_hash,
+        write_canonical_json_file_if_absent_or_same, CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH,
+        RECEIPT_RELATIVE_PATH, VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH,
+    };
+    use proof_verifier::canonical::jcs::canonicalize_json;
+    use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
+    use proof_verifier::verification_context_object::{
+        compute_verification_context_id, VerificationContextObject,
+    };
+    use proof_verifier::{RegistryEntry, RegistryPublicKey, RegistrySnapshot};
+    use proptest::prelude::*;
+    use serde_json::Value;
+    use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-pbt-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    /// Build a `RegistrySnapshot` from a list of producer ids.
+    fn make_snapshot(producer_ids: &[String]) -> RegistrySnapshot {
+        let mut snapshot = RegistrySnapshot {
+            registry_format_version: 1,
+            registry_version: 1,
+            registry_snapshot_hash: String::new(),
+            producers: producer_ids
+                .iter()
+                .map(|id| {
+                    (
+                        id.clone(),
+                        RegistryEntry {
+                            active_pubkey_ids: vec!["key-a".to_string()],
+                            revoked_pubkey_ids: Vec::new(),
+                            superseded_pubkey_ids: Vec::new(),
+                            public_keys: BTreeMap::from([(
+                                "key-a".to_string(),
+                                RegistryPublicKey {
+                                    algorithm: "ed25519".to_string(),
+                                    public_key: "11".repeat(32),
+                                },
+                            )]),
+                        },
+                    )
+                })
+                .collect(),
+        };
+        snapshot.registry_snapshot_hash =
+            compute_registry_snapshot_hash(&snapshot).expect("registry hash");
+        snapshot
+    }
+
+    fn write_snapshot_canonical(dir: &PathBuf, snapshot: &RegistrySnapshot) {
+        let path = dir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
+        fs::create_dir_all(path.parent().unwrap()).expect("create context dir");
+        let bytes = canonicalize_json(snapshot).expect("canonicalize");
+        fs::write(&path, bytes).expect("write snapshot");
+    }
+
+    fn write_context_object_with_hash(dir: &PathBuf, registry_snapshot_hash: &str) {
+        let context_rules = build_default_context_rules_object();
+        let context_rules_hash =
+            compute_context_rules_hash(&context_rules).expect("context rules hash");
+        let mut ctx = VerificationContextObject {
+            context_version: 1,
+            verification_context_id: String::new(),
+            policy_hash: "sha256:policy-placeholder".to_string(),
+            registry_snapshot_hash: registry_snapshot_hash.to_string(),
+            verifier_contract_version: "phase12-context-v1".to_string(),
+            context_rules_hash,
+            context_epoch: None,
+            historical_cutoff_utc: None,
+            policy_snapshot_ref: None,
+            registry_snapshot_ref: None,
+            time_semantics_mode: None,
+        };
+        ctx.verification_context_id = compute_verification_context_id(&ctx).expect("context id");
+        let path = dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        fs::create_dir_all(path.parent().unwrap()).expect("create context dir");
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&ctx).expect("serialize ctx"),
+        )
+        .expect("write ctx");
+    }
+
+    fn write_receipt_with_hash(dir: &PathBuf, registry_snapshot_hash: &str) {
+        let receipt = serde_json::json!({
+            "receipt_version": 1,
+            "bundle_id": "bundle-pbt",
+            "trust_overlay_hash": "sha256:overlay-pbt",
+            "policy_hash": "sha256:policy-placeholder",
+            "registry_snapshot_hash": registry_snapshot_hash,
+            "verifier_node_id": "node-pbt",
+            "verifier_key_id": "key-pbt",
+            "verdict": "Trusted",
+            "verified_at_utc": "2026-03-15T12:00:00Z",
+            "verifier_signature_algorithm": "ed25519",
+            "verifier_signature": "abcd"
+        });
+        let path = dir.join(RECEIPT_RELATIVE_PATH);
+        fs::create_dir_all(path.parent().unwrap()).expect("create receipts dir");
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&receipt).expect("serialize receipt"),
+        )
+        .expect("write receipt");
+    }
+
+    fn call_registry_endpoint(evidence_dir: &PathBuf, run_id: &str) -> Value {
+        let response = super::route_request(
+            "GET",
+            &format!("/diagnostics/runs/{run_id}/registry"),
+            evidence_dir,
+        );
+        serde_json::from_slice(&response.body).expect("valid json body")
+    }
+
+    fn collect_run_files(dir: &PathBuf) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        collect_files_recursive(dir, &mut files);
+        files.sort();
+        files
+    }
+
+    fn collect_files_recursive(dir: &PathBuf, out: &mut Vec<PathBuf>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    out.push(path);
+                } else if path.is_dir() {
+                    collect_files_recursive(&path, out);
+                }
+            }
+        }
+    }
+
+    // ── strategy helpers ──────────────────────────────────────────────────────
+
+    /// Generate 0–8 unique producer ids (safe ASCII identifiers).
+    fn producer_ids_strategy() -> impl Strategy<Value = Vec<String>> {
+        prop::collection::vec("[a-z][a-z0-9-]{0,15}", 0usize..=8usize).prop_map(|mut ids| {
+            ids.sort();
+            ids.dedup();
+            ids
+        })
+    }
+
+    // ── Property 1: Registry artifact write idempotence ──────────────────────
+    // Validates: Requirements 1.2
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 1: Registry artifact write idempotence**
+        /// Validates: Requirements 1.2
+        #[test]
+        fn prop1_registry_artifact_write_idempotence(
+            producer_ids in producer_ids_strategy()
+        ) {
+            let dir = temp_dir();
+            let snapshot = make_snapshot(&producer_ids);
+            let path = dir.join("context/registry_snapshot.json");
+            fs::create_dir_all(path.parent().unwrap()).expect("create dir");
+
+            // First write
+            let result1 = write_canonical_json_file_if_absent_or_same(
+                &path,
+                &snapshot,
+                "write_failed",
+                "conflict",
+            );
+            prop_assert!(result1.is_ok(), "first write failed: {:?}", result1);
+
+            let bytes_after_first = fs::read(&path).expect("read after first write");
+
+            // Second write — must succeed and produce identical bytes
+            let result2 = write_canonical_json_file_if_absent_or_same(
+                &path,
+                &snapshot,
+                "write_failed",
+                "conflict",
+            );
+            prop_assert!(result2.is_ok(), "second write failed: {:?}", result2);
+
+            let bytes_after_second = fs::read(&path).expect("read after second write");
+            prop_assert_eq!(bytes_after_first, bytes_after_second,
+                "file bytes changed between identical writes");
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 2: Registry diagnostics hash consistency ────────────────────
+    // Validates: Requirements 3.3, 5.3, 5.4
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 2: Registry diagnostics hash consistency**
+        /// Validates: Requirements 3.3, 5.3, 5.4
+        #[test]
+        fn prop2_registry_diagnostics_hash_consistency(
+            producer_ids in producer_ids_strategy()
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p2";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let expected_hash = compute_registry_snapshot_hash(&snapshot)
+                .expect("compute hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            let body = call_registry_endpoint(&dir, run_id);
+            prop_assert_eq!(
+                body.get("declared_registry_snapshot_hash")
+                    .and_then(|v| v.as_str()),
+                Some(expected_hash.as_str()),
+                "declared hash must equal compute_registry_snapshot_hash"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 3: Entry count matches producers map ─────────────────────────
+    // Validates: Requirements 3.4
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 6: Entry count matches producers map**
+        /// Validates: Requirements 3.4
+        #[test]
+        fn prop3_entry_count_matches_producers_len(
+            producer_ids in producer_ids_strategy()
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p3";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let expected_count = snapshot.producers.len();
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            let body = call_registry_endpoint(&dir, run_id);
+            prop_assert_eq!(
+                body.get("declared_registry_entry_count")
+                    .and_then(|v| v.as_u64()),
+                Some(expected_count as u64),
+                "declared_registry_entry_count must equal producers.len()"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 4: Context binding status correctness ────────────────────────
+    // Validates: Requirements 3.5, 3.6
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 3: Context binding status correctness**
+        /// Validates: Requirements 3.5, 3.6
+        #[test]
+        fn prop4_context_binding_status_correctness(
+            producer_ids in producer_ids_strategy(),
+            use_correct_hash in any::<bool>(),
+            include_context_object in any::<bool>(),
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p4";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let real_hash = compute_registry_snapshot_hash(&snapshot).expect("hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            if include_context_object {
+                let ctx_hash = if use_correct_hash {
+                    real_hash.clone()
+                } else {
+                    "sha256:deliberately-wrong-hash".to_string()
+                };
+                write_context_object_with_hash(&run_dir, &ctx_hash);
+
+                let body = call_registry_endpoint(&dir, run_id);
+                let matches = body
+                    .get("context_binding_status")
+                    .and_then(|v| v.get("registry_snapshot_hash_matches_declared_context"))
+                    .and_then(|v| v.as_bool());
+                prop_assert_eq!(
+                    matches,
+                    Some(use_correct_hash),
+                    "binding status must reflect actual hash equality"
+                );
+            } else {
+                // no context object → must be null
+                let body = call_registry_endpoint(&dir, run_id);
+                let field = body
+                    .get("context_binding_status")
+                    .and_then(|v| v.get("registry_snapshot_hash_matches_declared_context"));
+                prop_assert!(
+                    field.is_some_and(|v| v.is_null()),
+                    "absent context object must yield null binding status"
+                );
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 5: Source observation completeness ───────────────────────────
+    // Validates: Requirements 4.1, 4.2
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 5: Source observation completeness**
+        /// Validates: Requirements 4.1, 4.2
+        #[test]
+        fn prop5_source_observation_completeness(
+            producer_ids in producer_ids_strategy(),
+            include_context_object in any::<bool>(),
+            include_receipt in any::<bool>(),
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p5";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let hash = compute_registry_snapshot_hash(&snapshot).expect("hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            if include_context_object {
+                write_context_object_with_hash(&run_dir, &hash);
+            }
+            if include_receipt {
+                write_receipt_with_hash(&run_dir, &hash);
+            }
+
+            let body = call_registry_endpoint(&dir, run_id);
+            let sources = body
+                .get("observed_registry_hash_sources")
+                .and_then(|v| v.as_array())
+                .expect("observed_registry_hash_sources array");
+
+            let has_ctx_source = sources.iter().any(|s| {
+                s.get("source").and_then(|v| v.as_str()) == Some("verification_context_object")
+            });
+            let has_receipt_source = sources.iter().any(|s| {
+                s.get("source").and_then(|v| v.as_str()) == Some("receipt")
+            });
+
+            prop_assert_eq!(
+                has_ctx_source, include_context_object,
+                "context_object source presence must match artifact presence"
+            );
+            prop_assert_eq!(
+                has_receipt_source, include_receipt,
+                "receipt source presence must match artifact presence"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 6: Observed sources values are unique and sorted ─────────────
+    // Validates: Requirements 3.7
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 4: Observed sources values are unique and sorted**
+        /// Validates: Requirements 3.7
+        #[test]
+        fn prop6_observed_sources_values_unique_and_sorted(
+            producer_ids in producer_ids_strategy(),
+            include_context_object in any::<bool>(),
+            include_receipt in any::<bool>(),
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p6";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let hash = compute_registry_snapshot_hash(&snapshot).expect("hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            if include_context_object {
+                write_context_object_with_hash(&run_dir, &hash);
+            }
+            if include_receipt {
+                write_receipt_with_hash(&run_dir, &hash);
+            }
+
+            let body = call_registry_endpoint(&dir, run_id);
+            let sources = body
+                .get("observed_registry_hash_sources")
+                .and_then(|v| v.as_array())
+                .expect("observed_registry_hash_sources array");
+
+            for source in sources {
+                let values: Vec<&str> = source
+                    .get("values")
+                    .and_then(|v| v.as_array())
+                    .expect("values array")
+                    .iter()
+                    .map(|v| v.as_str().expect("string value"))
+                    .collect();
+
+                // no duplicates
+                let mut deduped = values.clone();
+                deduped.dedup();
+                prop_assert_eq!(values.len(), deduped.len(), "values must have no duplicates");
+
+                // lexicographically sorted
+                let mut sorted = values.clone();
+                sorted.sort();
+                prop_assert_eq!(values, sorted, "values must be in lexicographic order");
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 7: Empty sources are omitted ─────────────────────────────────
+    // Validates: Requirements 3.8, 4.3
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 5 (edge): Empty sources are omitted**
+        /// Validates: Requirements 3.8, 4.3
+        #[test]
+        fn prop7_empty_sources_are_omitted(
+            producer_ids in producer_ids_strategy(),
+            include_context_object in any::<bool>(),
+            include_receipt in any::<bool>(),
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p7";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let hash = compute_registry_snapshot_hash(&snapshot).expect("hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+
+            if include_context_object {
+                write_context_object_with_hash(&run_dir, &hash);
+            }
+            if include_receipt {
+                write_receipt_with_hash(&run_dir, &hash);
+            }
+
+            let body = call_registry_endpoint(&dir, run_id);
+            let sources = body
+                .get("observed_registry_hash_sources")
+                .and_then(|v| v.as_array())
+                .expect("observed_registry_hash_sources array");
+
+            for source in sources {
+                let values = source
+                    .get("values")
+                    .and_then(|v| v.as_array())
+                    .expect("values array");
+                prop_assert!(
+                    !values.is_empty(),
+                    "no source entry with empty values array should appear"
+                );
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 8: Endpoint is read-only ─────────────────────────────────────
+    // Validates: Requirements 5.1, 5.2
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 7: Endpoint is read-only**
+        /// Validates: Requirements 5.1, 5.2
+        #[test]
+        fn prop8_endpoint_is_read_only(
+            producer_ids in producer_ids_strategy(),
+            call_count in 1usize..=3usize,
+        ) {
+            let dir = temp_dir();
+            let run_id = "run-pbt-p8";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            let snapshot = make_snapshot(&producer_ids);
+            let hash = compute_registry_snapshot_hash(&snapshot).expect("hash");
+            write_snapshot_canonical(&run_dir, &snapshot);
+            write_context_object_with_hash(&run_dir, &hash);
+            write_receipt_with_hash(&run_dir, &hash);
+
+            let files_before = collect_run_files(&run_dir);
+
+            for _ in 0..call_count {
+                let _ = call_registry_endpoint(&dir, run_id);
+            }
+
+            let files_after = collect_run_files(&run_dir);
+            prop_assert_eq!(
+                files_before, files_after,
+                "GET registry endpoint must not modify any files on disk"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-13 Replicated Verification Boundary — Unit Tests
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod tests_boundary {
+    use super::{route_request, DiagnosticsResponse};
+    use serde_json::json;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-boundary-test-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn write_manifest(run_dir: &PathBuf, fingerprint: &str, verdict: &str) {
+        let path = run_dir.join("proofd_run_manifest.json");
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&json!({
+                "run_id": run_dir.file_name().unwrap().to_string_lossy(),
+                "request_fingerprint": fingerprint,
+                "verdict": verdict,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn write_context_object(run_dir: &PathBuf, ctx_id: &str) {
+        let ctx_dir = run_dir.join("context");
+        fs::create_dir_all(&ctx_dir).unwrap();
+        fs::write(
+            ctx_dir.join("verification_context_object.json"),
+            serde_json::to_vec_pretty(&json!({ "verification_context_id": ctx_id })).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn write_registry_snapshot(run_dir: &PathBuf, version: u32) {
+        let ctx_dir = run_dir.join("context");
+        fs::create_dir_all(&ctx_dir).unwrap();
+        fs::write(
+            ctx_dir.join("registry_snapshot.json"),
+            serde_json::to_vec_pretty(&json!({
+                "registry_format_version": 1,
+                "registry_version": version,
+                "registry_snapshot_hash": "",
+                "producers": {}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn body_json(response: DiagnosticsResponse) -> serde_json::Value {
+        serde_json::from_slice(&response.body).expect("valid json body")
+    }
+
+    fn call_boundary(evidence_dir: &PathBuf, run_id: &str) -> DiagnosticsResponse {
+        route_request(
+            "GET",
+            &format!("/diagnostics/runs/{run_id}/boundary"),
+            evidence_dir,
+        )
+    }
+
+    // ── Happy path: single run, no peers ─────────────────────────────────────
+    #[test]
+    fn boundary_single_run_no_peers() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(body.get("run_id").and_then(|v| v.as_str()), Some("run-a"));
+        assert_eq!(
+            body.get("request_fingerprint").and_then(|v| v.as_str()),
+            Some("sha256:fp1")
+        );
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
+        assert_eq!(
+            body.get("peer_run_ids")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(0)
+        );
+        let verdicts = body
+            .get("verdict_consistency")
+            .and_then(|v| v.get("observed_verdicts"))
+            .and_then(|v| v.as_array())
+            .unwrap();
+        assert_eq!(verdicts.len(), 1);
+        assert_eq!(
+            verdicts[0].get("verdict").and_then(|v| v.as_str()),
+            Some("TRUSTED")
+        );
+        assert_eq!(
+            body.get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Happy path: primary + 2 peers, same fingerprint ──────────────────────
+    #[test]
+    fn boundary_primary_plus_two_peers() {
+        let dir = temp_dir();
+        for id in ["run-a", "run-b", "run-c"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:same-fp", "TRUSTED");
+        }
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(2));
+        let peer_ids = body.get("peer_run_ids").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(peer_ids.len(), 2);
+        let verdicts = body
+            .get("verdict_consistency")
+            .and_then(|v| v.get("observed_verdicts"))
+            .and_then(|v| v.as_array())
+            .unwrap();
+        assert_eq!(verdicts.len(), 3);
+        assert_eq!(
+            body.get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Sibling with different fingerprint is not a peer ─────────────────────
+    #[test]
+    fn boundary_different_fingerprint_not_peer() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b");
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp-A", "TRUSTED");
+        write_manifest(&run_b, "sha256:fp-B", "TRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Verdict mismatch → all_verdicts_match = false ─────────────────────────
+    #[test]
+    fn boundary_verdict_mismatch() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b");
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp1", "TRUSTED");
+        write_manifest(&run_b, "sha256:fp1", "UNTRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(
+            body.get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Context hash consistency: all match ───────────────────────────────────
+    #[test]
+    fn boundary_context_hash_all_match() {
+        let dir = temp_dir();
+        for id in ["run-a", "run-b"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+            write_context_object(&run_dir, "ctx-hash-xyz");
+        }
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(
+            body.get("context_hash_consistency")
+                .and_then(|v| v.get("all_context_hashes_match"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            body.get("context_hash_consistency")
+                .and_then(|v| v.get("observed_context_hashes"))
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Context hash mismatch ─────────────────────────────────────────────────
+    #[test]
+    fn boundary_context_hash_mismatch() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b");
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp1", "TRUSTED");
+        write_manifest(&run_b, "sha256:fp1", "TRUSTED");
+        write_context_object(&run_a, "ctx-hash-AAA");
+        write_context_object(&run_b, "ctx-hash-BBB");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(
+            body.get("context_hash_consistency")
+                .and_then(|v| v.get("all_context_hashes_match"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── No context objects → null ─────────────────────────────────────────────
+    #[test]
+    fn boundary_no_context_objects_null() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert!(body
+            .get("context_hash_consistency")
+            .and_then(|v| v.get("all_context_hashes_match"))
+            .is_some_and(|v| v.is_null()));
+        assert_eq!(
+            body.get("context_hash_consistency")
+                .and_then(|v| v.get("observed_context_hashes"))
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(0)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Registry hash consistency: all match ──────────────────────────────────
+    #[test]
+    fn boundary_registry_hash_all_match() {
+        let dir = temp_dir();
+        for id in ["run-a", "run-b"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+            write_registry_snapshot(&run_dir, 1); // same version → same hash
+        }
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("all_registry_hashes_match"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("observed_registry_hashes"))
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Registry hash mismatch ────────────────────────────────────────────────
+    #[test]
+    fn boundary_registry_hash_mismatch() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b");
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp1", "TRUSTED");
+        write_manifest(&run_b, "sha256:fp1", "TRUSTED");
+        write_registry_snapshot(&run_a, 1);
+        write_registry_snapshot(&run_b, 2); // different version → different hash
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("all_registry_hashes_match"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── No registry snapshots → null ──────────────────────────────────────────
+    #[test]
+    fn boundary_no_registry_snapshots_null() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert!(body
+            .get("registry_hash_consistency")
+            .and_then(|v| v.get("all_registry_hashes_match"))
+            .is_some_and(|v| v.is_null()));
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("observed_registry_hashes"))
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(0)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Sibling with missing manifest is silently skipped ─────────────────────
+    #[test]
+    fn boundary_sibling_missing_manifest_skipped() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b"); // no manifest
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp1", "TRUSTED");
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Sibling with malformed manifest is silently skipped ───────────────────
+    #[test]
+    fn boundary_sibling_malformed_manifest_skipped() {
+        let dir = temp_dir();
+        let run_a = dir.join("run-a");
+        let run_b = dir.join("run-b");
+        fs::create_dir_all(&run_a).unwrap();
+        fs::create_dir_all(&run_b).unwrap();
+        write_manifest(&run_a, "sha256:fp1", "TRUSTED");
+        fs::write(run_b.join("proofd_run_manifest.json"), b"not-json").unwrap();
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        assert_eq!(body.get("peer_run_count").and_then(|v| v.as_u64()), Some(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Missing run directory → 404 run_dir_not_found ────────────────────────
+    #[test]
+    fn boundary_missing_run_dir_404() {
+        let dir = temp_dir();
+        let response = call_boundary(&dir, "run-nonexistent");
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("run_dir_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Missing manifest → 404 artifact_not_found ────────────────────────────
+    #[test]
+    fn boundary_missing_manifest_404() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        // no manifest written
+
+        let response = call_boundary(&dir, "run-a");
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Malformed manifest → 500 invalid_run_manifest ────────────────────────
+    #[test]
+    fn boundary_malformed_manifest_500() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        fs::write(run_dir.join("proofd_run_manifest.json"), b"not-json").unwrap();
+
+        let response = call_boundary(&dir, "run-a");
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("invalid_run_manifest")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Manifest missing request_fingerprint → 500 invalid_run_manifest ───────
+    #[test]
+    fn boundary_manifest_missing_fingerprint_500() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        fs::write(
+            run_dir.join("proofd_run_manifest.json"),
+            serde_json::to_vec_pretty(&json!({ "verdict": "TRUSTED" })).unwrap(),
+        )
+        .unwrap();
+
+        let response = call_boundary(&dir, "run-a");
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("invalid_run_manifest")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Query string → 400 unsupported_query_parameter ───────────────────────
+    #[test]
+    fn boundary_query_string_rejected() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-a/boundary?select_winner=true",
+            &dir,
+        );
+        assert_eq!(response.status_code, 400);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── POST → 405 method_not_allowed ─────────────────────────────────────────
+    #[test]
+    fn boundary_post_method_not_allowed() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+
+        let response = route_request("POST", "/diagnostics/runs/run-a/boundary", &dir);
+        assert_eq!(response.status_code, 405);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Observation arrays sorted by run_id ───────────────────────────────────
+    #[test]
+    fn boundary_observation_arrays_sorted_by_run_id() {
+        let dir = temp_dir();
+        // Write in reverse order to ensure sort is applied
+        for id in ["run-c", "run-a", "run-b"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+            write_context_object(&run_dir, &format!("ctx-{id}"));
+            write_registry_snapshot(&run_dir, 1);
+        }
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+
+        let verdict_ids: Vec<&str> = body
+            .get("verdict_consistency")
+            .and_then(|v| v.get("observed_verdicts"))
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()))
+            .collect();
+        assert_eq!(verdict_ids, vec!["run-a", "run-b", "run-c"]);
+
+        let ctx_ids: Vec<&str> = body
+            .get("context_hash_consistency")
+            .and_then(|v| v.get("observed_context_hashes"))
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()))
+            .collect();
+        assert_eq!(ctx_ids, vec!["run-a", "run-b", "run-c"]);
+
+        let reg_ids: Vec<&str> = body
+            .get("registry_hash_consistency")
+            .and_then(|v| v.get("observed_registry_hashes"))
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()))
+            .collect();
+        assert_eq!(reg_ids, vec!["run-a", "run-b", "run-c"]);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── peer_run_ids is sorted ────────────────────────────────────────────────
+    #[test]
+    fn boundary_peer_run_ids_sorted() {
+        let dir = temp_dir();
+        for id in ["run-z", "run-a", "run-m", "run-b"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "TRUSTED");
+        }
+
+        let body = body_json(call_boundary(&dir, "run-a"));
+        let peer_ids: Vec<&str> = body
+            .get("peer_run_ids")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        let mut sorted = peer_ids.clone();
+        sorted.sort();
+        assert_eq!(peer_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-13 Replicated Verification Boundary — Property-Based Tests
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod proptest_boundary {
+    use super::{route_request, DiagnosticsResponse};
+    use proptest::prelude::*;
+    use serde_json::json;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-boundary-pbt-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn write_manifest(run_dir: &PathBuf, fingerprint: &str, verdict: &str) {
+        fs::write(
+            run_dir.join("proofd_run_manifest.json"),
+            serde_json::to_vec_pretty(&json!({
+                "run_id": run_dir.file_name().unwrap().to_string_lossy(),
+                "request_fingerprint": fingerprint,
+                "verdict": verdict,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn write_context_object(run_dir: &PathBuf, ctx_id: &str) {
+        let ctx_dir = run_dir.join("context");
+        fs::create_dir_all(&ctx_dir).unwrap();
+        fs::write(
+            ctx_dir.join("verification_context_object.json"),
+            serde_json::to_vec_pretty(&json!({ "verification_context_id": ctx_id })).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn write_registry_snapshot(run_dir: &PathBuf, version: u32) {
+        let ctx_dir = run_dir.join("context");
+        fs::create_dir_all(&ctx_dir).unwrap();
+        fs::write(
+            ctx_dir.join("registry_snapshot.json"),
+            serde_json::to_vec_pretty(&json!({
+                "registry_format_version": 1,
+                "registry_version": version,
+                "registry_snapshot_hash": "",
+                "producers": {}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn collect_files(dir: &PathBuf) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        fn walk(dir: &PathBuf, out: &mut Vec<PathBuf>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        out.push(path);
+                    } else if path.is_dir() {
+                        walk(&path, out);
+                    }
+                }
+            }
+        }
+        walk(dir, &mut files);
+        files.sort();
+        files
+    }
+
+    fn body_json(response: DiagnosticsResponse) -> serde_json::Value {
+        serde_json::from_slice(&response.body).expect("valid json body")
+    }
+
+    fn call_boundary(evidence_dir: &PathBuf, run_id: &str) -> DiagnosticsResponse {
+        route_request(
+            "GET",
+            &format!("/diagnostics/runs/{run_id}/boundary"),
+            evidence_dir,
+        )
+    }
+
+    fn safe_run_id(suffix: &str) -> String {
+        format!("run-pbt-{suffix}")
+    }
+
+    // ── Property 1: Response structure completeness ───────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 1: Response structure completeness**
+        /// Validates: Requirements 1.1, 3.1, 4.1, 4.2, 4.3
+        #[test]
+        fn prop1_response_structure_completeness(
+            fp_suffix in "[a-f0-9]{8}",
+            verdict in prop::sample::select(vec!["TRUSTED", "UNTRUSTED", "INVALID"]),
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p1");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            let fingerprint = format!("sha256:{fp_suffix}");
+            write_manifest(&run_dir, &fingerprint, verdict);
+
+            let body = body_json(call_boundary(&dir, &run_id));
+            prop_assert_eq!(body.get("run_id").and_then(|v| v.as_str()), Some(run_id.as_str()));
+            prop_assert_eq!(
+                body.get("request_fingerprint").and_then(|v| v.as_str()),
+                Some(fingerprint.as_str())
+            );
+            prop_assert!(body.get("peer_run_count").and_then(|v| v.as_u64()).is_some());
+            prop_assert!(body.get("peer_run_ids").and_then(|v| v.as_array()).is_some());
+            prop_assert!(body.get("verdict_consistency").is_some());
+            prop_assert!(body.get("context_hash_consistency").is_some());
+            prop_assert!(body.get("registry_hash_consistency").is_some());
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 2: Peer discovery accuracy ──────────────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// **Property 2: Peer discovery accuracy**
+        /// Validates: Requirements 2.1, 2.4, 4.3, 4.4
+        #[test]
+        fn prop2_peer_discovery_accuracy(
+            n_peers in 0usize..=4usize,
+            m_other in 0usize..=3usize,
+        ) {
+            let dir = temp_dir();
+            let primary_id = safe_run_id("p2-primary");
+            let shared_fp = "sha256:shared-fingerprint";
+
+            // Primary + n_peers share the same fingerprint
+            let primary_dir = dir.join(&primary_id);
+            fs::create_dir_all(&primary_dir).unwrap();
+            write_manifest(&primary_dir, shared_fp, "TRUSTED");
+
+            for i in 0..n_peers {
+                let peer_id = format!("run-pbt-p2-peer-{i:02}");
+                let peer_dir = dir.join(&peer_id);
+                fs::create_dir_all(&peer_dir).unwrap();
+                write_manifest(&peer_dir, shared_fp, "TRUSTED");
+            }
+
+            // m_other runs with a different fingerprint
+            for i in 0..m_other {
+                let other_id = format!("run-pbt-p2-other-{i:02}");
+                let other_dir = dir.join(&other_id);
+                fs::create_dir_all(&other_dir).unwrap();
+                write_manifest(&other_dir, "sha256:different-fp", "TRUSTED");
+            }
+
+            let body = body_json(call_boundary(&dir, &primary_id));
+            prop_assert_eq!(
+                body.get("peer_run_count").and_then(|v| v.as_u64()),
+                Some(n_peers as u64),
+                "peer_run_count must equal n_peers"
+            );
+            let observed_len = body
+                .get("verdict_consistency")
+                .and_then(|v| v.get("observed_verdicts"))
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            prop_assert_eq!(
+                observed_len,
+                n_peers + 1,
+                "observed_verdicts must include primary + all peers"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 3: Verdict consistency semantics ─────────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 3: Verdict consistency semantics**
+        /// Validates: Requirements 4.4, 5.1
+        #[test]
+        fn prop3_verdict_consistency_semantics(
+            verdicts in prop::collection::vec(
+                prop::sample::select(vec!["TRUSTED", "UNTRUSTED", "INVALID"]),
+                1..=5,
+            ),
+        ) {
+            let dir = temp_dir();
+            let fp = "sha256:fp-prop3";
+            let primary_id = safe_run_id("p3-primary");
+
+            let primary_dir = dir.join(&primary_id);
+            fs::create_dir_all(&primary_dir).unwrap();
+            write_manifest(&primary_dir, fp, verdicts[0]);
+
+            for (i, v) in verdicts[1..].iter().enumerate() {
+                let peer_id = format!("run-pbt-p3-peer-{i:02}");
+                let peer_dir = dir.join(&peer_id);
+                fs::create_dir_all(&peer_dir).unwrap();
+                write_manifest(&peer_dir, fp, v);
+            }
+
+            let body = body_json(call_boundary(&dir, &primary_id));
+            let all_match = body
+                .get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool())
+                .unwrap();
+            let expected_all_match = verdicts.windows(2).all(|w| w[0] == w[1]);
+            prop_assert_eq!(
+                all_match, expected_all_match,
+                "all_verdicts_match must reflect actual verdict equality"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 4: Context hash consistency semantics ───────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 4: Context hash consistency semantics**
+        /// Validates: Requirements 4.5, 4.7, 5.2, 5.5
+        #[test]
+        fn prop4_context_hash_consistency_semantics(
+            // Each element: (has_context_object, ctx_id_suffix)
+            runs in prop::collection::vec(
+                (any::<bool>(), "[a-f0-9]{4}"),
+                1..=5usize,
+            ),
+        ) {
+            let dir = temp_dir();
+            let fp = "sha256:fp-prop4";
+            let primary_id = safe_run_id("p4-primary");
+
+            // Write primary (always has manifest; context object conditional)
+            let primary_dir = dir.join(&primary_id);
+            fs::create_dir_all(&primary_dir).unwrap();
+            let (primary_has_ctx, primary_ctx_suffix) = &runs[0];
+            let primary_ctx_id = format!("ctx-{primary_ctx_suffix}");
+            write_manifest(&primary_dir, fp, "TRUSTED");
+            if *primary_has_ctx {
+                write_context_object(&primary_dir, &primary_ctx_id);
+            }
+
+            // Write peers
+            let mut expected_ctx_entries: Vec<(String, String)> = Vec::new();
+            if *primary_has_ctx {
+                expected_ctx_entries.push((primary_id.clone(), primary_ctx_id.clone()));
+            }
+            for (i, (has_ctx, ctx_suffix)) in runs[1..].iter().enumerate() {
+                let peer_id = format!("run-pbt-p4-peer-{i:02}");
+                let peer_dir = dir.join(&peer_id);
+                fs::create_dir_all(&peer_dir).unwrap();
+                let ctx_id = format!("ctx-{ctx_suffix}");
+                write_manifest(&peer_dir, fp, "TRUSTED");
+                if *has_ctx {
+                    write_context_object(&peer_dir, &ctx_id);
+                    expected_ctx_entries.push((peer_id, ctx_id));
+                }
+            }
+            // Sort by run_id to match expected response order
+            expected_ctx_entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let body = body_json(call_boundary(&dir, &primary_id));
+            let observed = body
+                .get("context_hash_consistency")
+                .and_then(|v| v.get("observed_context_hashes"))
+                .and_then(|v| v.as_array())
+                .unwrap();
+
+            // Exactly one entry per run that has the artifact
+            prop_assert_eq!(
+                observed.len(),
+                expected_ctx_entries.len(),
+                "observed_context_hashes length must equal runs with context objects"
+            );
+
+            // Each entry's hash equals the verification_context_id
+            for (entry, (exp_run_id, exp_hash)) in observed.iter().zip(expected_ctx_entries.iter()) {
+                prop_assert_eq!(
+                    entry.get("run_id").and_then(|v| v.as_str()),
+                    Some(exp_run_id.as_str()),
+                    "run_id must match"
+                );
+                prop_assert_eq!(
+                    entry.get("hash").and_then(|v| v.as_str()),
+                    Some(exp_hash.as_str()),
+                    "hash must equal verification_context_id"
+                );
+            }
+
+            // all_context_hashes_match semantics
+            let all_match_val = body
+                .get("context_hash_consistency")
+                .and_then(|v| v.get("all_context_hashes_match"))
+                .unwrap();
+            if expected_ctx_entries.is_empty() {
+                prop_assert!(all_match_val.is_null(), "must be null when no context objects");
+            } else {
+                let all_same = expected_ctx_entries.windows(2).all(|w| w[0].1 == w[1].1);
+                prop_assert_eq!(
+                    all_match_val.as_bool(),
+                    Some(all_same),
+                    "all_context_hashes_match must reflect actual hash equality"
+                );
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 5: Registry hash consistency semantics ───────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 5: Registry hash consistency semantics**
+        /// Validates: Requirements 4.6, 4.8, 5.3, 5.4
+        #[test]
+        fn prop5_registry_hash_consistency_semantics(
+            // Each element: (has_registry_snapshot, registry_version)
+            runs in prop::collection::vec(
+                (any::<bool>(), 1u32..=8u32),
+                1..=5usize,
+            ),
+        ) {
+            use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
+            use proof_verifier::RegistrySnapshot;
+
+            let dir = temp_dir();
+            let fp = "sha256:fp-prop5";
+            let primary_id = safe_run_id("p5-primary");
+
+            // Write primary
+            let primary_dir = dir.join(&primary_id);
+            fs::create_dir_all(&primary_dir).unwrap();
+            let (primary_has_reg, primary_version) = &runs[0];
+            write_manifest(&primary_dir, fp, "TRUSTED");
+            if *primary_has_reg {
+                write_registry_snapshot(&primary_dir, *primary_version);
+            }
+
+            // Write peers
+            for (i, (has_reg, version)) in runs[1..].iter().enumerate() {
+                let peer_id = format!("run-pbt-p5-peer-{i:02}");
+                let peer_dir = dir.join(&peer_id);
+                fs::create_dir_all(&peer_dir).unwrap();
+                write_manifest(&peer_dir, fp, "TRUSTED");
+                if *has_reg {
+                    write_registry_snapshot(&peer_dir, *version);
+                }
+            }
+
+            let body = body_json(call_boundary(&dir, &primary_id));
+            let observed = body
+                .get("registry_hash_consistency")
+                .and_then(|v| v.get("observed_registry_hashes"))
+                .and_then(|v| v.as_array())
+                .unwrap();
+
+            // Build expected entries by recomputing hashes ourselves
+            let mut all_run_dirs: Vec<(String, PathBuf, bool, u32)> = Vec::new();
+            all_run_dirs.push((primary_id.clone(), primary_dir.clone(), *primary_has_reg, *primary_version));
+            for (i, (has_reg, version)) in runs[1..].iter().enumerate() {
+                let peer_id = format!("run-pbt-p5-peer-{i:02}");
+                let peer_dir = dir.join(&peer_id);
+                all_run_dirs.push((peer_id, peer_dir, *has_reg, *version));
+            }
+            all_run_dirs.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let mut expected_reg_entries: Vec<(String, String)> = Vec::new();
+            for (run_id, run_dir, has_reg, _version) in &all_run_dirs {
+                if !has_reg { continue; }
+                let reg_path = run_dir.join("context/registry_snapshot.json");
+                if !reg_path.is_file() { continue; }
+                let bytes = fs::read(&reg_path).unwrap();
+                let snapshot: RegistrySnapshot = serde_json::from_slice(&bytes).unwrap();
+                let hash = compute_registry_snapshot_hash(&snapshot).unwrap();
+                expected_reg_entries.push((run_id.clone(), hash));
+            }
+
+            prop_assert_eq!(
+                observed.len(),
+                expected_reg_entries.len(),
+                "observed_registry_hashes length must equal runs with registry snapshots"
+            );
+
+            for (entry, (exp_run_id, exp_hash)) in observed.iter().zip(expected_reg_entries.iter()) {
+                prop_assert_eq!(
+                    entry.get("run_id").and_then(|v| v.as_str()),
+                    Some(exp_run_id.as_str()),
+                    "run_id must match"
+                );
+                prop_assert_eq!(
+                    entry.get("hash").and_then(|v| v.as_str()),
+                    Some(exp_hash.as_str()),
+                    "hash must equal recomputed registry snapshot hash"
+                );
+            }
+
+            // all_registry_hashes_match semantics
+            let all_match_val = body
+                .get("registry_hash_consistency")
+                .and_then(|v| v.get("all_registry_hashes_match"))
+                .unwrap();
+            if expected_reg_entries.is_empty() {
+                prop_assert!(all_match_val.is_null(), "must be null when no registry snapshots");
+            } else {
+                let all_same = expected_reg_entries.windows(2).all(|w| w[0].1 == w[1].1);
+                prop_assert_eq!(
+                    all_match_val.as_bool(),
+                    Some(all_same),
+                    "all_registry_hashes_match must reflect actual hash equality"
+                );
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 6: Observation arrays sorted by run_id ──────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 6: Observation arrays are sorted by run_id**
+        /// Validates: Requirements 5.6
+        #[test]
+        fn prop6_observation_arrays_sorted_by_run_id(
+            n_runs in 1usize..=6usize,
+        ) {
+            let dir = temp_dir();
+            let fp = "sha256:fp-prop6";
+            let primary_id = safe_run_id("p6-primary");
+
+            let primary_dir = dir.join(&primary_id);
+            fs::create_dir_all(&primary_dir).unwrap();
+            write_manifest(&primary_dir, fp, "TRUSTED");
+            write_context_object(&primary_dir, "ctx-primary");
+            write_registry_snapshot(&primary_dir, 1);
+
+            for i in 0..n_runs.saturating_sub(1) {
+                let peer_id = format!("run-pbt-p6-peer-{i:04}");
+                let peer_dir = dir.join(&peer_id);
+                fs::create_dir_all(&peer_dir).unwrap();
+                write_manifest(&peer_dir, fp, "TRUSTED");
+                write_context_object(&peer_dir, &format!("ctx-peer-{i}"));
+                write_registry_snapshot(&peer_dir, 1);
+            }
+
+            let body = body_json(call_boundary(&dir, &primary_id));
+
+            let verdict_ids: Vec<String> = body
+                .get("verdict_consistency")
+                .and_then(|v| v.get("observed_verdicts"))
+                .and_then(|v| v.as_array())
+                .unwrap()
+                .iter()
+                .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_v = verdict_ids.clone();
+            sorted_v.sort();
+            prop_assert_eq!(&verdict_ids, &sorted_v, "observed_verdicts must be sorted by run_id");
+
+            let ctx_ids: Vec<String> = body
+                .get("context_hash_consistency")
+                .and_then(|v| v.get("observed_context_hashes"))
+                .and_then(|v| v.as_array())
+                .unwrap()
+                .iter()
+                .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_c = ctx_ids.clone();
+            sorted_c.sort();
+            prop_assert_eq!(&ctx_ids, &sorted_c, "observed_context_hashes must be sorted by run_id");
+
+            let reg_ids: Vec<String> = body
+                .get("registry_hash_consistency")
+                .and_then(|v| v.get("observed_registry_hashes"))
+                .and_then(|v| v.as_array())
+                .unwrap()
+                .iter()
+                .filter_map(|e| e.get("run_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_r = reg_ids.clone();
+            sorted_r.sort();
+            prop_assert_eq!(&reg_ids, &sorted_r, "observed_registry_hashes must be sorted by run_id");
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 7: Endpoint is read-only ─────────────────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Property 7: Endpoint is read-only**
+        /// Validates: Requirements 3.4
+        #[test]
+        fn prop7_endpoint_is_read_only(
+            call_count in 1usize..=3usize,
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p7");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp-p7", "TRUSTED");
+            write_context_object(&run_dir, "ctx-p7");
+            write_registry_snapshot(&run_dir, 1);
+
+            let files_before = collect_files(&run_dir);
+            for _ in 0..call_count {
+                let _ = call_boundary(&dir, &run_id);
+            }
+            let files_after = collect_files(&run_dir);
+
+            prop_assert_eq!(
+                files_before, files_after,
+                "GET boundary endpoint must not modify any files on disk"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-13 Kill-Switch Gates — unit tests
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod tests_kill_switch_gates {
+    use super::{route_request, DiagnosticsResponse};
+    use serde_json::Value;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // ── shared helpers ────────────────────────────────────────────────────────
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-ks-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn body_json(r: DiagnosticsResponse) -> Value {
+        serde_json::from_slice(&r.body).expect("valid json body")
+    }
+
+    pub(super) fn json_contains_key(value: &Value, key: &str) -> bool {
+        match value {
+            Value::Object(map) => {
+                map.contains_key(key) || map.values().any(|v| json_contains_key(v, key))
+            }
+            Value::Array(arr) => arr.iter().any(|v| json_contains_key(v, key)),
+            _ => false,
+        }
+    }
+
+    pub(super) fn response_contains_forbidden_field(body: &Value, fields: &[&str]) -> bool {
+        fields.iter().any(|f| json_contains_key(body, f))
+    }
+
+    fn write_json(dir: &PathBuf, name: &str, value: &Value) {
+        fs::write(dir.join(name), serde_json::to_vec_pretty(value).unwrap()).unwrap();
+    }
+
+    // ── Gate 1: ci-gate-proofd-observability-boundary ────────────────────────
+
+    #[test]
+    fn gate1_post_diagnostics_graph_returns_405() {
+        let dir = temp_dir();
+        let r = route_request("POST", "/diagnostics/graph", &dir);
+        assert_eq!(r.status_code, 405);
+        let body = body_json(r);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate1_post_diagnostics_authority_topology_returns_405() {
+        let dir = temp_dir();
+        let r = route_request("POST", "/diagnostics/authority-topology", &dir);
+        assert_eq!(r.status_code, 405);
+        let body = body_json(r);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("method_not_allowed")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate1_get_diagnostics_graph_with_query_returns_400() {
+        let dir = temp_dir();
+        let r = route_request("GET", "/diagnostics/graph?select_winner=true", &dir);
+        assert_eq!(r.status_code, 400);
+        let body = body_json(r);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate1_get_diagnostics_convergence_with_query_returns_400() {
+        let dir = temp_dir();
+        let r = route_request("GET", "/diagnostics/convergence?commit=true", &dir);
+        assert_eq!(r.status_code, 400);
+        let body = body_json(r);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate1_no_dominant_authority_chain_id_in_convergence_response() {
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "cluster_count": 3 });
+        write_json(&dir, "parity_convergence_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/convergence", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "dominant_authority_chain_id"),
+            "dominant_authority_chain_id must not appear in convergence response"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate1_no_verification_weight_in_convergence_response() {
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "cluster_count": 3 });
+        write_json(&dir, "parity_convergence_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/convergence", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "verification_weight"),
+            "verification_weight must not appear in convergence response"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Gate 2: ci-gate-observability-routing-separation (source scan) ────────
+
+    #[test]
+    fn gate2_routing_functions_do_not_contain_forbidden_observability_fields() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let source_path = std::path::Path::new(manifest_dir).join("src/lib.rs");
+        let source =
+            fs::read_to_string(&source_path).expect("failed to read lib.rs for source scan");
+
+        // Only scan production code — stop at the first #[cfg(test)] block.
+        // All test modules appear after production code in this file.
+        let production_source: String = source
+            .lines()
+            .take_while(|line| !line.trim_start().starts_with("#[cfg(test)]"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        const FORBIDDEN: &[&str] = &[
+            "dominant_authority_chain_id",
+            "largest_outcome_cluster_size",
+            "outcome_convergence_ratio",
+            "global_status",
+            "historical_authority_islands",
+            "insufficient_evidence_islands",
+        ];
+
+        for field in FORBIDDEN {
+            assert!(
+                !production_source.contains(field),
+                "Gate 2 FAIL: forbidden field '{}' found in production routing code (routing separation violation)",
+                field
+            );
+        }
+    }
+
+    // ── Gate 3: ci-gate-convergence-non-election-boundary ────────────────────
+
+    #[test]
+    fn gate3_winning_cluster_absent_from_convergence_response() {
+        // proofd must not inject winning_cluster into convergence responses.
+        // Artifact contains no such field; assert it is absent from the response.
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "cluster_count": 3 });
+        write_json(&dir, "parity_convergence_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/convergence", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "winning_cluster"),
+            "winning_cluster must not appear in convergence response (P13-NEG-07, P13-NEG-08)"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate3_selected_partition_absent_from_drift_response() {
+        // proofd must not inject selected_partition into drift responses.
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "partition_count": 2 });
+        write_json(&dir, "parity_drift_attribution_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/drift", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "selected_partition"),
+            "selected_partition must not appear in drift response (P13-NEG-09, P13-NEG-10)"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Gate 4: ci-gate-verifier-reputation-prohibition ──────────────────────
+
+    #[test]
+    fn gate4_verifier_score_absent_from_parity_response() {
+        // proofd must not inject verifier_score into parity responses.
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "incident_count": 0 });
+        write_json(&dir, "parity_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/parity", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "verifier_score"),
+            "verifier_score must not appear in parity response (P13-NEG-15)"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn gate4_trust_score_absent_from_convergence_response() {
+        // proofd must not inject trust_score into convergence responses.
+        let dir = temp_dir();
+        let artifact = serde_json::json!({ "status": "ok", "cluster_count": 1 });
+        write_json(&dir, "parity_convergence_report.json", &artifact);
+        let r = route_request("GET", "/diagnostics/convergence", &dir);
+        assert_eq!(r.status_code, 200);
+        let body = body_json(r);
+        assert!(
+            !json_contains_key(&body, "trust_score"),
+            "trust_score must not appear in convergence response (P13-NEG-16)"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-13 Kill-Switch Gates — property-based tests
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod proptest_kill_switch_gates {
+    use super::tests_kill_switch_gates::{json_contains_key, response_contains_forbidden_field};
+    use super::{route_request, DiagnosticsResponse};
+    use proptest::prelude::*;
+    use serde_json::Value;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-ks-pbt-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn body_json(r: DiagnosticsResponse) -> Value {
+        serde_json::from_slice(&r.body).expect("valid json body")
+    }
+
+    fn write_json(dir: &PathBuf, name: &str, value: &Value) {
+        fs::write(dir.join(name), serde_json::to_vec_pretty(value).unwrap()).unwrap();
+    }
+
+    // Safe JSON key strategy (no forbidden fields)
+    fn safe_key_strategy() -> impl Strategy<Value = String> {
+        prop::string::string_regex("[a-z][a-z0-9_]{0,15}").unwrap()
+    }
+
+    fn safe_val_strategy() -> impl Strategy<Value = String> {
+        prop::string::string_regex("[a-z0-9]{1,20}").unwrap()
+    }
+
+    fn safe_artifact_strategy() -> impl Strategy<Value = Value> {
+        prop::collection::vec((safe_key_strategy(), safe_val_strategy()), 0..8).prop_map(|pairs| {
+            let mut map = serde_json::Map::new();
+            for (k, v) in pairs {
+                // Exclude any key that matches a forbidden field
+                const ALL_FORBIDDEN: &[&str] = &[
+                    "dominant_authority_chain_id",
+                    "largest_outcome_cluster_size",
+                    "outcome_convergence_ratio",
+                    "global_status",
+                    "historical_authority_islands",
+                    "insufficient_evidence_islands",
+                    "retry",
+                    "override",
+                    "promote",
+                    "commit",
+                    "recommended_action",
+                    "mitigation",
+                    "routing_hint",
+                    "node_priority",
+                    "verification_weight",
+                    "execution_override",
+                    "winning_cluster",
+                    "selected_partition",
+                    "preferred_cluster",
+                    "cluster_policy_input",
+                    "partition_replay_admission",
+                    "execution_route",
+                    "committed_cluster",
+                    "verifier_score",
+                    "trust_score",
+                    "reliability_index",
+                    "weighted_authority",
+                    "correctness_rate",
+                    "agreement_ratio",
+                    "node_success_ratio",
+                    "verifier_reputation",
+                ];
+                if !ALL_FORBIDDEN.contains(&k.as_str()) {
+                    map.insert(k, Value::String(v));
+                }
+            }
+            Value::Object(map)
+        })
+    }
+
+    // ── Property 1: POST observability paths always return 405 ───────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 1: POST observability paths always return 405
+        /// Validates: Requirements 1.1
+        #[test]
+        fn prop1_post_observability_paths_always_405(
+            suffix in prop::string::string_regex("[a-z0-9-]{1,20}").unwrap(),
+        ) {
+            let dir = temp_dir();
+            let path = format!("/diagnostics/{suffix}");
+            let r = route_request("POST", &path, &dir);
+            prop_assert_eq!(r.status_code, 405, "POST to {} must return 405", path);
+            let body = body_json(r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("method_not_allowed")
+            );
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 2: Unsupported query always returns 400 ─────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 2: unsupported query parameter always returns 400
+        /// Validates: Requirements 1.2, 1.5
+        #[test]
+        fn prop2_unsupported_query_always_400(
+            suffix in prop::string::string_regex("[a-z]{2,15}").unwrap(),
+            qkey in prop::string::string_regex("[a-z]{2,10}").unwrap(),
+            qval in prop::string::string_regex("[a-z0-9]{1,10}").unwrap(),
+        ) {
+            // Exclude /diagnostics/incidents which allows query params
+            let path = format!("/diagnostics/{suffix}?{qkey}={qval}");
+            if path.starts_with("/diagnostics/incidents?") {
+                return Ok(());
+            }
+            let dir = temp_dir();
+            let r = route_request("GET", &path, &dir);
+            prop_assert_eq!(r.status_code, 400, "GET {} must return 400", path);
+            let body = body_json(r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("unsupported_query_parameter")
+            );
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 3: No forbidden fields in observability responses ────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 3: no forbidden fields in observability responses
+        /// Validates: Requirements 1.3, 1.4
+        #[test]
+        fn prop3_no_forbidden_fields_in_observability_responses(
+            artifact in safe_artifact_strategy(),
+        ) {
+            const FORBIDDEN: &[&str] = &[
+                "dominant_authority_chain_id", "largest_outcome_cluster_size",
+                "outcome_convergence_ratio", "global_status",
+                "historical_authority_islands", "insufficient_evidence_islands",
+                "retry", "override", "promote", "commit", "recommended_action",
+                "mitigation", "routing_hint", "node_priority",
+                "verification_weight", "execution_override",
+            ];
+
+            let dir = temp_dir();
+            write_json(&dir, "parity_convergence_report.json", &artifact);
+
+            let r = route_request("GET", "/diagnostics/convergence", &dir);
+            prop_assert_eq!(r.status_code, 200);
+            let body = body_json(r);
+
+            for field in FORBIDDEN {
+                prop_assert!(
+                    !json_contains_key(&body, field),
+                    "forbidden field '{}' found in convergence response",
+                    field
+                );
+            }
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 4: No forbidden election fields in convergence responses ─────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 4: no forbidden election fields in convergence artifact responses
+        /// Validates: Requirements 3.1, 3.2
+        #[test]
+        fn prop4_no_forbidden_election_fields_in_convergence_responses(
+            artifact in safe_artifact_strategy(),
+        ) {
+            const FORBIDDEN: &[&str] = &[
+                "winning_cluster", "selected_partition", "preferred_cluster",
+                "cluster_policy_input", "partition_replay_admission",
+                "verification_weight", "execution_route", "committed_cluster",
+            ];
+
+            let dir = temp_dir();
+            write_json(&dir, "parity_convergence_report.json", &artifact);
+            write_json(&dir, "parity_drift_attribution_report.json", &artifact);
+
+            for (endpoint, file) in &[
+                ("/diagnostics/convergence", "parity_convergence_report.json"),
+                ("/diagnostics/drift", "parity_drift_attribution_report.json"),
+            ] {
+                let r = route_request("GET", endpoint, &dir);
+                prop_assert_eq!(r.status_code, 200, "endpoint {} must return 200", endpoint);
+                let body = body_json(r);
+                prop_assert!(
+                    !response_contains_forbidden_field(&body, FORBIDDEN),
+                    "forbidden election field found in {} response (artifact: {})",
+                    endpoint, file
+                );
+            }
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 5: No forbidden reputation fields in parity responses ────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 5: no forbidden reputation fields in parity artifact responses
+        /// Validates: Requirements 4.1, 4.4
+        #[test]
+        fn prop5_no_forbidden_reputation_fields_in_parity_responses(
+            artifact in safe_artifact_strategy(),
+        ) {
+            const FORBIDDEN: &[&str] = &[
+                "verifier_score", "trust_score", "reliability_index",
+                "weighted_authority", "correctness_rate", "agreement_ratio",
+                "node_success_ratio", "verifier_reputation",
+            ];
+
+            let dir = temp_dir();
+            write_json(&dir, "parity_report.json", &artifact);
+            write_json(&dir, "parity_convergence_report.json", &artifact);
+            write_json(&dir, "parity_drift_attribution_report.json", &artifact);
+            write_json(&dir, "parity_authority_suppression_report.json", &artifact);
+            write_json(&dir, "parity_authority_drift_topology.json", &artifact);
+            write_json(&dir, "parity_incident_graph.json", &artifact);
+
+            for endpoint in &[
+                "/diagnostics/parity",
+                "/diagnostics/convergence",
+                "/diagnostics/drift",
+                "/diagnostics/authority-suppression",
+                "/diagnostics/authority-topology",
+                "/diagnostics/graph",
+            ] {
+                let r = route_request("GET", endpoint, &dir);
+                prop_assert_eq!(r.status_code, 200, "endpoint {} must return 200", endpoint);
+                let body = body_json(r);
+                prop_assert!(
+                    !response_contains_forbidden_field(&body, FORBIDDEN),
+                    "forbidden reputation field found in {} response",
+                    endpoint
+                );
+            }
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 6: Artifact passthrough integrity ───────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 6: artifact passthrough integrity
+        /// proofd must not modify, interpret, aggregate, vote, or rank artifact content.
+        /// The response body must deserialize to the same JSON value as the written artifact.
+        /// Validates: Requirements 1.3, 1.4, 3.1, 4.1
+        #[test]
+        fn prop6_artifact_passthrough_integrity(
+            artifact in safe_artifact_strategy(),
+        ) {
+            let artifact_reparsed: Value =
+                serde_json::from_str(&serde_json::to_string_pretty(&artifact).unwrap()).unwrap();
+
+            let dir = temp_dir();
+            write_json(&dir, "parity_convergence_report.json", &artifact);
+
+            let r = route_request("GET", "/diagnostics/convergence", &dir);
+            prop_assert_eq!(r.status_code, 200);
+
+            let response_value: Value = serde_json::from_slice(&r.body)
+                .expect("response must be valid JSON");
+
+            prop_assert_eq!(
+                &response_value, &artifact_reparsed,
+                "proofd must not modify artifact content: response differs from written artifact"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 7: Diagnostics read-only surface ─────────────────────────────
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: phase13-kill-switch-gates
+        /// Property 7: diagnostics read-only surface
+        /// HTTP methods other than GET must be rejected on all diagnostics paths.
+        /// proofd diagnostics cannot mutate state.
+        /// Validates: Requirements 1.1
+        #[test]
+        fn prop7_diagnostics_read_only_surface(
+            suffix in prop::string::string_regex("[a-z0-9-]{1,20}").unwrap(),
+            method in prop::sample::select(vec!["POST", "PUT", "PATCH", "DELETE"]),
+        ) {
+            let dir = temp_dir();
+            let path = format!("/diagnostics/{suffix}");
+            let r = route_request(method, &path, &dir);
+            prop_assert_eq!(
+                r.status_code, 405,
+                "{} to {} must return 405 (diagnostics surface is read-only)",
+                method, path
+            );
+            let body = body_json(r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("method_not_allowed")
+            );
+            let _ = fs::remove_dir_all(&dir);
+        }
     }
 }

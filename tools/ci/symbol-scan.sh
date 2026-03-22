@@ -144,35 +144,15 @@ for target in ${TARGETS}; do
   scan_one "${target}"
 done
 
-# 2) Match deny patterns.
-# Keep filtered symbol lines as evidence and avoid shell-specific process substitution.
-grep -E '^[^#].+:[A-Za-z_][A-Za-z0-9_.$@]*$' "${RAW_SYMS}" > "${FILTERED_SYMS}" || true
-while IFS= read -r line; do
-  target_file="${line%%:*}"
-  sym="${line#*:}"
-
-  while IFS= read -r pat; do
-    pat="${pat%%#*}"
-    pat="$(echo -n "${pat}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    [[ -z "${pat}" ]] && continue
-
-    if echo "${sym}" | grep -E -q -- "${pat}"; then
-      echo "${target_file}:${sym}:deny=${pat}" >> "${DENY_HITS}"
-      break
-    fi
-  done < "${DENY_FILE}"
-done < "${FILTERED_SYMS}"
-
-# 3) Apply allowlist.
-if [[ -s "${DENY_HITS}" ]]; then
-  while IFS= read -r hit; do
-    target_file="$(echo "${hit}" | cut -d: -f1)"
-    sym="$(echo "${hit}" | cut -d: -f2)"
-    if ! is_allowed "${target_file}" "${sym}"; then
-      echo "${hit}" >> "${FINAL_VIOLATIONS}"
-    fi
-  done < "${DENY_HITS}"
-fi
+# 2+3) Match deny patterns and apply allowlist.
+# Python replaces shell grep-per-symbol loops (O(n*m) forks -> single process).
+RAW_SYMS_ENV="${RAW_SYMS}" \
+FILTERED_SYMS_ENV="${FILTERED_SYMS}" \
+DENY_HITS_ENV="${DENY_HITS}" \
+FINAL_VIOLATIONS_ENV="${FINAL_VIOLATIONS}" \
+DENY_FILE_ENV="${DENY_FILE}" \
+ALLOW_FILE_ENV="${ALLOW_FILE}" \
+python3 "${CI_TOOLS}/symbol_scan_match.py"
 
 # 4) Emit metadata + JSON report.
 NOW="$(ci_now_utc)"

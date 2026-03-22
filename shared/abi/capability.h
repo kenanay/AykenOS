@@ -73,6 +73,7 @@ int capability_resume(uint64_t capability_id);
 int capability_bind_to_context(uint64_t execution_ctx, const capability_token_t *token);
 int capability_unbind_from_context(uint64_t execution_ctx, uint64_t capability_id);
 capability_token_t *capability_get_by_context(uint64_t execution_ctx, uint32_t resource_type);
+int capability_context_has_capability(uint64_t execution_ctx, uint64_t capability_id);
 int capability_check_permission(const capability_token_t *token, uint32_t required_permission);
 int capability_check_resource_access(const capability_token_t *token, uint64_t resource_address,
                                     uint64_t access_size, uint32_t access_type);

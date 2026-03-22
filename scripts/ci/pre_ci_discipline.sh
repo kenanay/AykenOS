@@ -26,7 +26,15 @@
 
 set -euo pipefail
 
+# RUN_ID: YYYYMMDDTHHMMSSZ-<git-short-sha>
+# Matches evidence/run-<RUN_ID>/ directory naming convention.
+_TS="$(date -u '+%Y%m%dT%H%M%SZ')"
+_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+RUN_ID="${_TS}-${_SHA}"
+EVIDENCE_DIR="${EVIDENCE_ROOT:-out/evidence}/run-${RUN_ID}/reports"
+
 echo "== PRE-CI DISCIPLINE: START =="
+echo "   RUN_ID: ${RUN_ID}"
 
 run_gate() {
     local gate_cmd="$1"
@@ -42,7 +50,7 @@ run_gate() {
         echo "Stopping execution (fail-closed)."
         echo ""
         echo "Inspect evidence under:"
-        echo "  ${EVIDENCE_ROOT:-out/evidence}/run-<RUN_ID>/reports/"
+        echo "  ${EVIDENCE_DIR}/"
         echo ""
         exit 2
     fi
@@ -51,8 +59,10 @@ run_gate() {
 }
 
 # Strict execution order
+# PRE_CI_MODE=1: boundary gate uses existing kernel.elf artifact (skip rebuild).
+# CI remains mandatory for merge — full rebuild happens there.
 run_gate "make ci-gate-abi" "ABI Gate"
-run_gate "make ci-gate-boundary" "Boundary Gate"
+run_gate "make PRE_CI_MODE=1 ci-gate-boundary" "Boundary Gate"
 run_gate "make ci-gate-hygiene" "Hygiene Gate"
 run_gate "make ci-gate-constitutional" "Constitutional Gate"
 

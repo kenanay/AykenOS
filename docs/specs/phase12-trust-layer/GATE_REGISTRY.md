@@ -129,7 +129,7 @@ The Stage-2 companion producer surface for `authority-sinkhole-drift` is:
 |---|---|---|---|
 | `observability -> control plane` | `ci-gate-observability-routing-separation` | `ci-gate-proofd-observability-boundary`, `ci-gate-diagnostics-consumer-non-authoritative-contract`, `ci-gate-diagnostics-callsite-correlation` | observability has started steering verification behavior |
 | `authority election` | `ci-gate-convergence-non-election-boundary` | `ci-gate-graph-non-authoritative-contract`, `ci-gate-cross-node-parity` | distributed agreement shape is being treated as truth selection |
-| `verification artifact integrity` | `ci-gate-proof-verdict-binding` | `ci-gate-proof-bundle`, `ci-gate-proof-receipt`, `ci-gate-proofd-service` | verification truth is no longer artifact-bound |
+| `verification artifact integrity` | `ci-gate-proof-verdict-binding` | `ci-gate-proof-receipt`, `ci-gate-proofd-service` | verification truth is no longer artifact-bound |
 | `verifier authority drift` | `ci-gate-verifier-authority-resolution` | `ci-gate-verifier-reputation-prohibition`, `ci-gate-observability-routing-separation`, `ci-gate-cross-node-parity` | valid receipt semantics are being confused with trusted verifier authority |
 
 ## 5B. Remaining Reserved Collapse-Horizon Harnesses

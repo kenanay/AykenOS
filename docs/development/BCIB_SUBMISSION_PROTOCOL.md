@@ -285,8 +285,8 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size,
     bcib_execution_t *exec = allocate_execution();
     if (!exec) return (uint64_t)-1;
     
-    // 2. Initialize execution
-    exec->execution_id = next_execution_id++;
+    // 2. Initialize execution with a kernel-owned execution ID
+    exec->execution_id = allocate_kernel_execution_id();
     exec->context_id = context_id;
     exec->graph = (bcib_graph_t *)bcib_graph;
     exec->status = BCIB_EXEC_CREATED;
@@ -510,6 +510,10 @@ if (result == (uint64_t)-1) {
     return handle_execution_error();
 }
 ```
+
+Userspace wrappers must pass a real target `context_id` as the third syscall
+argument and must treat the returned `exec_id` as the authoritative
+kernel-owned `execution_id`.
 
 ### 9.3 Resource Management
 

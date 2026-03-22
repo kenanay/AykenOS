@@ -20,7 +20,6 @@ class SummarizeCiRunTest(unittest.TestCase):
         "graph-non-authoritative-contract",
         "cross-node-parity",
         "proof-verdict-binding",
-        "proof-bundle",
         "proof-receipt",
         "proofd-service",
         "verifier-authority-resolution",

@@ -22,8 +22,10 @@ typedef struct {
 
 /**
  * Create new user address space
- * Allocates PML4, copies kernel half (entries 256-511)
- * Ensures kernel entries do NOT have USER bit set (explicit clear)
+ * Allocates a fresh PML4 root, copies the kernel half (entries 256-511),
+ * and seeds the temporary supervisor-only low-half heap compatibility
+ * window required by the current kmalloc/proc metadata placement.
+ * Ensures copied kernel-half entries do NOT have USER bit set.
  * 
  * @param out_as Output parameter for user address space descriptor
  * @return 0 on success, -ENOMEM on allocation failure
@@ -63,6 +65,21 @@ int cleanup_tracker_add_vaddr(cleanup_tracker_t *tracker, uint64_t vaddr);
  * @param tracker Cleanup tracker with allocations to clean up
  */
 void user_as_cleanup(user_as_t *as, cleanup_tracker_t *tracker);
+
+/**
+ * Destroy all user-half mappings, user-owned leaf frames, and page-table
+ * hierarchy below the root PML4. Kernel-half entries are preserved.
+ *
+ * @param as User address space descriptor
+ */
+void user_as_destroy_lower_half(user_as_t *as);
+
+/**
+ * Destroy only the root PML4 frame for a user address space.
+ *
+ * @param as User address space descriptor
+ */
+void user_as_destroy_root(user_as_t *as);
 
 /**
  * Destroy user address space

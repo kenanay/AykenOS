@@ -14,12 +14,10 @@ The main executor struct that manages execution contexts and capabilities:
 pub struct BcibExecutor {
     pub execution_contexts: HashMap<u64, ExecutionContext>,
     pub capability_manager: CapabilityManager,
-    next_execution_id: u64,
 }
 ```
 
 **Responsibilities:**
-- Allocate unique execution IDs
 - Validate BCIB graphs before submission
 - Manage execution contexts throughout their lifecycle
 - Interface with Ring0 via v2 syscalls (1000-1009 range)
@@ -81,17 +79,17 @@ pub struct BcibGraph<'a> {
 ### 1. Graph Submission
 
 ```rust
-pub fn submit_execution(&mut self, graph: &BcibGraph) -> Result<u64, ExecutionError>
+pub fn submit_execution(&mut self, graph: &BcibGraph, context_id: u64) -> Result<u64, ExecutionError>
 ```
 
 **Process:**
 1. Validate graph is non-empty
 2. Perform BCIB structure validation
-3. Allocate unique execution ID
-4. Create and bind capability token
-5. Submit to Ring0 via SYS_V2_SUBMIT_EXECUTION
-6. Create execution context
-7. Return execution ID or error
+3. Validate caller-supplied target `context_id`
+4. Submit to Ring0 via SYS_V2_SUBMIT_EXECUTION using that `context_id`
+5. Bind a capability token to the authoritative kernel-returned `execution_id`
+6. Ensure the userspace execution context entry exists for the target context
+7. Return the kernel-owned execution ID or error
 
 ### 2. Result Waiting
 
@@ -132,7 +130,7 @@ Comprehensive error types:
 
 ### Capability-Based Access Control
 
-1. **Token Generation**: Each execution gets a unique capability token
+1. **Token Generation**: Each kernel-returned execution gets a unique capability token
 2. **Permission Validation**: Tokens specify resource access permissions
 3. **Lifecycle Management**: Tokens are revoked on execution completion or failure
 4. **Ring0 Integration**: Capability system enforced at kernel level

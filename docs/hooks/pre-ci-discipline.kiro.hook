@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Pre-CI Discipline",
+  "description": "Fail-closed local discipline layer. Runs 4 core CI gates after agent execution. Does NOT replace CI — CI remains mandatory for merge.",
+  "version": "1.0",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "bash scripts/ci/pre_ci_discipline.sh",
+    "timeout": 300
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "pre-ci-discipline"
+}

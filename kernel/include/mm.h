@@ -12,6 +12,13 @@
 // 4KB frame standardı
 #define AYKEN_FRAME_SIZE            4096ULL
 
+// Current kernel heap window. This still lives in the low half and therefore
+// must be mirrored supervisor-only into user CR3 roots until the heap is
+// promoted into a higher-half-only virtual range.
+#define AYKEN_LOW_HALF_KHEAP_SCAFFOLD_ACTIVE 1
+#define AYKEN_KHEAP_START           0x0000000002000000ULL
+#define AYKEN_KHEAP_INITIAL_SIZE    (4ULL * 1024ULL * 1024ULL)
+
 // İleride 128GB RAM’e kadar çıkabilir; fakat şimdilik OS için 4GB sınır yeterli.
 #define AYKEN_MAX_PHYS_MEM          (4ULL * 1024ULL * 1024ULL * 1024ULL)
 #define AYKEN_MAX_FRAMES            (AYKEN_MAX_PHYS_MEM / AYKEN_FRAME_SIZE)
@@ -21,6 +28,8 @@
 #define AYKEN_PTE_WRITABLE        (1ULL << 1)
 #define AYKEN_PTE_USER            (1ULL << 2)
 #define AYKEN_PTE_GLOBAL          (1ULL << 8)
+#define AYKEN_PTE_READ_ONLY       (1ULL << 9)   /* mapping helper control bit */
+#define AYKEN_PTE_NO_EXEC         (1ULL << 63)
 #define AYKEN_PTE_ADDR_MASK       0x000FFFFFFFFFF000ULL
 
 
@@ -87,6 +96,9 @@ uint64_t paging_get_kernel_pml4_phys(void);
 /** Yeni bir kullanıcı alanı PML4'ü oluşturur ve kernel yarım alanını kopyalar. */
 uint64_t paging_create_user_pml4(void);
 
+/** Mirror the low-half kernel heap into a user PML4 as supervisor-only pages. */
+int paging_seed_user_kernel_heap_window(uint64_t pml4_phys);
+
 /**
  * Yeni bir 4KB page table (PML4/PDPT/PD/PT) ayırır ve sıfırlar.
  * @return fiziksel adres (başarısız olursa 0)
@@ -116,6 +128,7 @@ void     paging_map(uint64_t virt, uint64_t phys, uint64_t flags);
  * Bir sanal adresin map'ini kaldırır (PT entry = 0) ve TLB flush eder.
  */
 void     paging_unmap(uint64_t virt);
+void     paging_unmap_in_pml4(uint64_t pml4_phys, uint64_t virt);
 
 /**
  * Bir sanal adresin hangi fiziksel adresle eşleştiğini döndürür.
@@ -128,6 +141,7 @@ void    *paging_phys_to_virt(uint64_t phys);
 
 /** Bir sanal adresin PTE değerini döndürür (bulunamazsa 0). */
 uint64_t paging_get_pte(uint64_t virt);
+uint64_t paging_get_pte_in_pml4(uint64_t pml4_phys, uint64_t virt);
 
 // Kernel heap initialization
 void kheap_init(void);

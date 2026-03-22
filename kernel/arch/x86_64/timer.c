@@ -7,6 +7,7 @@
 #include "gdt_idt.h"
 #include "../../sched/sched.h"
 #include "../../sched/sched_mailbox.h"
+#include "../../include/execution_slot.h"
 #include "../../include/ayken_abi.h"
 #include "../../include/ayken.h"
 
@@ -35,6 +36,7 @@
 #endif
 
 static volatile uint64_t tick_count = 0;
+static volatile uint32_t timer_frequency_hz_value = 100;
 
 static void timer_debugcon_write(const char *s)
 {
@@ -144,7 +146,15 @@ _Static_assert(sizeof(irq_timer_frame_t) == IRQF_SIZE, "irq frame: size");
 void timer_isr_c(void *frame_ptr)
 {
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
+    execution_slot_guard_t slot_guard = {0};
+    execution_slot_trace_scope_t trace_scope = {0};
     tick_count++;
+
+    execution_slot_enter_critical(&slot_guard);
+    execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_TIMEOUT_IRQ);
+    execution_slot_process_timeouts_locked(tick_count);
+    execution_slot_trace_scope_exit(&trace_scope);
+    execution_slot_exit_critical(&slot_guard);
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     static uint8_t p10_tick_marker_emitted = 0;
@@ -179,6 +189,13 @@ void timer_isr_c(void *frame_ptr)
     extern proc_t *current_proc;
     if (current_proc && current_proc->type == PROC_TYPE_USER &&
         frame && ((frame->cs & 0x3) == 0x3)) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        static uint8_t low_half_kheap_timer_runtime_proof_emitted = 0;
+        if (!low_half_kheap_timer_runtime_proof_emitted) {
+            low_half_kheap_timer_runtime_proof_emitted = 1;
+            proc_emit_low_half_kheap_runtime_proof(current_proc, "timer_irq");
+        }
+#endif
         // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
         // user stub can publish epoch/syscall markers before strict IRQ arbitration.
         // Gate-4 isolated policy proof keeps its original timer behavior.
@@ -265,6 +282,8 @@ void timer_isr_c(void *frame_ptr)
 
 void timer_init(uint32_t frequency_hz)
 {
+    uint32_t configured_frequency_hz = frequency_hz ? frequency_hz : 100;
+
     // DEBUG: Timer init entry
     TIMER_DBG_CHAR('[');
     TIMER_DBG_CHAR('T');
@@ -276,7 +295,9 @@ void timer_init(uint32_t frequency_hz)
     extern void timer_isr_asm(void);
     idt_set_gate_raw(32, timer_isr_asm, 0x8E); // present, ring0 interrupt gate
 
-    uint32_t divisor = 1193180 / (frequency_hz ? frequency_hz : 100);
+    timer_frequency_hz_value = configured_frequency_hz;
+
+    uint32_t divisor = 1193180 / configured_frequency_hz;
     outb(PIT_COMMAND, 0x36); // channel 0, lobyte/hibyte, mode 3
     outb(PIT_CHANNEL0, divisor & 0xFF);
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
@@ -306,4 +327,37 @@ void timer_init(uint32_t frequency_hz)
 uint64_t timer_ticks(void)
 {
     return tick_count;
+}
+
+uint32_t timer_frequency_hz(void)
+{
+    return timer_frequency_hz_value;
+}
+
+uint64_t timer_ticks_to_ms(uint64_t ticks)
+{
+    uint32_t hz = timer_frequency_hz_value;
+
+    if (hz == 0) {
+        return 0;
+    }
+
+    return (ticks * 1000ULL) / (uint64_t)hz;
+}
+
+uint64_t timer_ms_to_ticks_ceil(uint64_t ms)
+{
+    uint32_t hz = timer_frequency_hz_value;
+    uint64_t numerator;
+
+    if (hz == 0 || ms == 0) {
+        return 0;
+    }
+
+    if (ms > (UINT64_MAX - 999ULL) / (uint64_t)hz) {
+        return UINT64_MAX / 2ULL;
+    }
+
+    numerator = (ms * (uint64_t)hz) + 999ULL;
+    return numerator / 1000ULL;
 }

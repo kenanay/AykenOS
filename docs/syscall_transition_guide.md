@@ -1,6 +1,14 @@
 # AykenOS Syscall Transition Guide
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
+**Historical Note:** This file is a Phase 2 migration-era guide and is not the
+current runtime truth surface.
+
+For current truth, use:
+
+- `docs/development/SYSCALL_TRANSITION_GUIDE.md` for ABI and migration intent
+- `docs/development/SYSCALL_RUNTIME_REALITY.md` for current runtime maturity
+
 **Author:** Kenan AY  
 **Project:** AykenOS - Advanced AI-Integrated Operating System  
 **Created:** January 10, 2026  

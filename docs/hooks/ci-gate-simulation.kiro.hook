@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "name": "CI Gate Simulation (Legacy)",
+  "description": "DEPRECATED: Replaced by pre-ci-discipline.kiro.hook. Kept for reference only. Set enabled=false.",
+  "version": "1.1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "bash scripts/ci/pre_ci_discipline.sh"
+  },
+  "workspaceFolderName": "AykenOS",
+  "shortName": "ci-gate-simulation"
+}

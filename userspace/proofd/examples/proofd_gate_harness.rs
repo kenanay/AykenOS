@@ -428,13 +428,28 @@ fn build_service_contract_artifacts(
         "status": pass_fail(runs_ok),
     }));
 
-    let expected_run_summary = json!({
-        "run_id": run_id,
-        "artifacts": list_json_artifacts(&run_dir)?,
-    });
+    let expected_artifacts = list_json_artifacts(&run_dir)?;
     let (run_summary_status, run_summary_body) =
         route_json(&format!("/diagnostics/runs/{run_id}"), evidence_root)?;
-    let run_summary_ok = run_summary_status == 200 && run_summary_body == expected_run_summary;
+    // Check run_id and artifacts fields; artifact_paths is an additive field introduced
+    // in phase13 (artifact passthrough invariant) and is not required for contract validation.
+    let run_summary_ok = run_summary_status == 200
+        && run_summary_body
+            .get("run_id")
+            .and_then(Value::as_str)
+            .is_some_and(|found| found == run_id)
+        && run_summary_body
+            .get("artifacts")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                let mut actual: Vec<String> = arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect();
+                actual.sort();
+                actual == expected_artifacts
+            })
+            .unwrap_or(false);
     if !run_summary_ok {
         violations.push("run_summary_contract_mismatch".to_string());
     }
@@ -709,7 +724,9 @@ fn build_service_contract_artifacts(
         .map(|value| value.to_string());
     if trust_reuse_runtime_surface_origin.is_some() {
         fs::copy(
-            fixture.root.join("reports/trust_reuse_runtime_surface.json"),
+            fixture
+                .root
+                .join("reports/trust_reuse_runtime_surface.json"),
             out_dir.join("trust_reuse_runtime_surface.json"),
         )
         .map_err(|error| format!("failed to copy trust reuse runtime surface: {error}"))?;

@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Draft  
-**Date:** 2026-03-06  
+**Date:** 2026-03-22
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  
 **Last Edited by:** Kenan AY  
@@ -380,6 +380,15 @@ This spec covers the **core verification substrate**. Individual components (P11
 10.31. WHEN proof manifest binding or self-hash invariants are violated, THE `ci-gate-kpl-proof-verify` SHALL fail
 10.32. THE System SHALL implement `ci-gate-proof-bundle` (alias: `ci-gate-proof-portability`)
 10.33. WHEN proof bundle schema, checksum integrity, or portability parity invariants are violated, THE `ci-gate-proof-bundle` SHALL fail
+10.34. THE System SHALL implement `ci-gate-no-low-half-kernel-dependency`
+10.35. WHEN the low-half kernel heap scaffold remains active, THE `ci-gate-no-low-half-kernel-dependency` SHALL fail
+10.36. THE low-half kernel heap scaffold MUST be removed before Phase 11 closure
+10.37. THE low-half kernel-heap dependency decision SHALL be backed by same-run multi-point runtime evidence from the user-root page-table proof markers (`create`, `timer_irq`, `syscall_entry`), and terminal teardown proof SHALL be available via `ci-gate-low-half-kheap-exit-proof` rather than by source/doc checks alone
+10.38. WHEN the terminal teardown proof is exercised, THE proof SHALL show `lower_half_roots=0`, `lower_half_leaves=0`, and `lower_half_user_leaves=0` at `exit_teardown_post`
+10.39. THE System SHALL implement `ci-gate-low-half-kheap-multi-exit-proof`
+10.40. WHEN the validation-only parametric `N`-exit workload is exercised, THE gate SHALL enumerate every authoritative `[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_LINEAGE]]` witness for the configured exit cardinality and require terminal global lower-half cleanup for each enumerated `exit_pid`
+10.41. THE System SHALL implement `ci-gate-low-half-kheap-interleaving-proof`
+10.42. WHEN the validation-only overlap-pressure lane is exercised, THE gate SHALL require every authoritative `[[AYKEN_LOW_HALF_KHEAP_INTERLEAVING_SELFTEST_PREPARED]]` witness to appear before the first armed/lineage witness and SHALL require terminal global lower-half cleanup for each enumerated `exit_pid`
 
 ---
 
