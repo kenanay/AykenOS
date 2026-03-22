@@ -543,13 +543,23 @@ static void kernel_late_init(void)
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
     // Selftest: gate witness source — armed/ok/fail markers emitted here only
+    // proc_run_alias_proof_selftest() gerçek proc-context selftest çalıştırır:
+    // paging_create_user_pml4() ile gerçek PML4 tahsis eder, gerçek PTE'ler
+    // kurar ve exit_teardown_alias_phase() üzerinden gerçek teardown akışını
+    // tetikler. owner_proc yalnızca selftest çerçevesi için kullanılır;
+    // clean_teardown ve leak_detection senaryoları kendi proc_t'lerini
+    // stack'te oluşturur.
     {
         extern void proc_run_alias_proof_selftest(proc_t *owner_proc);
         static proc_t alias_selftest_proc;
         __builtin_memset(&alias_selftest_proc, 0, sizeof(alias_selftest_proc));
         alias_selftest_proc.pid = 1;
         alias_selftest_proc.state = PROC_ZOMBIE;
+        alias_selftest_proc.teardown_started = 1;
         alias_selftest_proc.type = PROC_TYPE_USER;
+        /* pml4_phys = 0: owner_proc'un pml4_phys'i kullanılmaz.
+         * Gerçek PML4 tahsisi her senaryo içinde paging_create_user_pml4()
+         * ile yapılır — heap tahsisi yok, tüm veri yapıları stack'te. */
         debugcon_write("[K][LATE]0.2 ALIAS_PROOF_SELFTEST\n");
         proc_run_alias_proof_selftest(&alias_selftest_proc);
     }

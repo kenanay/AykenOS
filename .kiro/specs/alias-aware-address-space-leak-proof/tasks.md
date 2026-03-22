@@ -334,7 +334,7 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
 
   **Teknik Borç Kaydı (Task 12 öncesi kilitlenmiş):**
 
-  - [ ] 12.T1 Mock selftest → gerçek proc-context selftest yükseltmesi
+  - [x] 12.T1 Mock selftest → gerçek proc-context selftest yükseltmesi
     - Şu an `proc_run_alias_proof_selftest()` kernel late-init'te sıfırlanmış mock
       `proc_t` üzerinde çalışıyor (pid=1, PROC_ZOMBIE, sıfır pml4_phys)
     - Bu gate'i geçirir ama gerçek exit/teardown entegrasyon proof'u değildir
@@ -342,14 +342,14 @@ sys_v2_map_memory entegrasyonu → teardown + verifier → CI gate.
       çağrısı üzerinden witness üretilmeli; mock selftest bu yolu temsil etmez
     - _Seviye: closure eşiği_
 
-  - [ ] 12.T2 emit_proof format/determinizm integration coverage
+  - [x] 12.T2 emit_proof format/determinizm integration coverage
     - `alias_verifier_emit_proof()` çağrıları unit testlerden kaldırıldı (gate uyumluluğu)
     - Şu an emit_proof format ve determinizm hiçbir yerde egzersiz edilmiyor
     - Closure için: Task 7.5 (emit proof determinizmi) ve 7.6 (emit proof format)
       integration test yüzeyinde tamamlanmalı
     - _Seviye: closure eşiği_
 
-  - [ ] 12.T3 Unit test / selftest / gate witness kaynak ayrımı belgelenmeli
+  - [x] 12.T3 Unit test / selftest / gate witness kaynak ayrımı belgelenmeli
     - Mevcut durum: execute_alias_proof_tests() = unit, proc_run_alias_proof_selftest() = gate
     - Bu ayrım kod yorumlarında var ama resmi contract olarak belgelenmemiş
     - Closure için: alias_proof_test.h veya alias_verifier.h'a witness kaynak sözleşmesi

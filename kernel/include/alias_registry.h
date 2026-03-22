@@ -207,26 +207,67 @@ void exit_teardown_alias_phase(proc_t *proc);
 
 /* ============================================================================
  * Validation Selftest API
- * ============================================================================ */
+ * ============================================================================
+ *
+ * WITNESS SOURCE CONTRACT — alias proof verification
+ * ===================================================
+ *
+ * There are two distinct witness-producing surfaces in the alias proof system.
+ * Mixing them corrupts CI gate integrity. This contract is MANDATORY.
+ *
+ * UNIT TEST SURFACE: execute_alias_proof_tests()
+ *   - Location: kernel/tests/validation/alias_proof_test.c
+ *   - Witness format: internal pass/fail assertions only (fb_print / TEST_PASS / TEST_FAIL)
+ *   - MUST NOT emit: [[AYKEN_ALIAS_PROOF_OK]] or [[AYKEN_ALIAS_LEAK_DETECTED]]
+ *   - MUST NOT emit: [[AYKEN_ALIAS_SELFTEST_PASS/FAIL: ...]] gate markers
+ *   - Purpose: correctness validation of individual registry/verifier functions
+ *   - Called from: test harness, NOT from kernel boot path
+ *
+ * GATE SELFTEST SURFACE: proc_run_alias_proof_selftest()
+ *   - Location: kernel/mm/alias_verifier.c (AYKEN_ALIAS_PROOF_SELFTEST guard)
+ *   - Witness format: [[AYKEN_ALIAS_SELFTEST_PASS: <scenario>]] per scenario,
+ *                     [[AYKEN_ALIAS_PROOF_OK]] as final gate witness
+ *   - MUST emit: per-scenario witnesses before final [[AYKEN_ALIAS_PROOF_OK]]
+ *   - Purpose: CI gate evidence production — boot-time proof witness
+ *   - Called from: kernel late-init, guarded by AYKEN_ALIAS_PROOF_SELFTEST=1
+ *
+ * VIOLATION: Adding gate markers ([[AYKEN_ALIAS_PROOF_OK]] etc.) to unit tests
+ * will cause false CI PASS — the gate will pass even if the real selftest fails.
+ * This is a KERNEL.SAFETY.CRITICAL violation.
+ *
+ * WHY THIS SEPARATION EXISTS:
+ *   The CI gate (ci-gate-alias-proof) scans the QEMU boot log for exactly one
+ *   occurrence of [[AYKEN_ALIAS_PROOF_OK]]. If unit tests also emit this marker,
+ *   the gate count check becomes unreliable: a broken selftest can be masked by
+ *   a passing unit test run, producing a false PASS on the gate. The separation
+ *   ensures the gate witness is produced only by the boot-time selftest path,
+ *   which exercises the real kernel exit/teardown machinery.
+ */
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
 
 /* proc_run_alias_proof_selftest: Alias proof mekanizmasının kendi kendini test
  * eden selftest modunu çalıştırır
- * 
+ *
+ * WITNESS SOURCE: GATE SELFTEST — produces debugcon gate markers.
+ * This is the ONLY function permitted to emit [[AYKEN_ALIAS_PROOF_OK]],
+ * [[AYKEN_ALIAS_LEAK_DETECTED]], and [[AYKEN_ALIAS_SELFTEST_PASS/FAIL: ...]]
+ * markers. See WITNESS SOURCE CONTRACT above.
+ * MUST NOT be called from unit test context (execute_alias_proof_tests).
+ *
  * Selftest senaryoları:
  * - Tek frame'e iki alias kaydı ve temizlenmesi
  * - Idempotent kayıt
  * - Kapasite sınırı testi
  * - Temiz teardown (leaked_count == 0)
  * - Kasıtlı sızıntı tespiti (leaked_count > 0)
- * 
+ *
  * SELFTEST İZOLASYON NOTU: Her senaryo bağımsız witness üretmeli; monolitik akış yasak.
  * Her test case kendi [[AYKEN_ALIAS_SELFTEST_PASS: <senaryo_adı>]] veya
  * [[AYKEN_ALIAS_SELFTEST_FAIL: <senaryo_adı>]] satırını debugcon'a yazmalı.
- * 
+ *
  * Nihai [[AYKEN_ALIAS_PROOF_OK]] yalnızca tüm senaryolar ayrı ayrı geçtikten sonra yazılır.
- * 
+ *
  * Önkoşullar:
  * - owner_proc != NULL
  */

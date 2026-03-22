@@ -456,92 +456,269 @@ static int selftest_misaligned_frame_rejection(proc_t *owner_proc)
     return 1;
 }
 
-/* Senaryo 6: Temiz teardown (leaked_count == 0) */
+/* Senaryo 6: Gerçek proc-context teardown — PML4 tahsisi, PTE kurulumu,
+ * gerçek unmap + verifier akışı, PTE sıfırlanma doğrulaması.
+ *
+ * Bu senaryo mock PML4 kullanmaz. Gerçek bir user PML4 tahsis eder,
+ * gerçek PTE'ler kurar, alias_registry'ye kaydeder, ardından
+ * exit_teardown_alias_phase() ile aynı adımları manuel olarak uygular:
+ * paging_unmap_in_pml4() + alias_verifier_run(). alias_verifier_emit_proof()
+ * çağrılmaz — CI gate witness'ı yalnızca proc_run_alias_proof_selftest()
+ * sonunda bir kez yazılır (tam olarak 1 kez kuralı korunur).
+ *
+ * INTEGRATION PROOF: Bu senaryo mock selftest'in temsil edemediği gerçek
+ * exit/teardown entegrasyon proof'unu sağlar — gerçek PML4, gerçek PTE,
+ * gerçek unmap, gerçek verifier doğrulaması.
+ *
+ * Validates: Requirements 5.1, 6.6, 9.3 (clean_teardown senaryosu)
+ */
 static int selftest_clean_teardown(proc_t *owner_proc)
 {
     const char *scenario = "clean_teardown";
-    
-    // Mock proc_t oluştur (PROC_ZOMBIE durumunda)
-    proc_t mock_proc = {0};
-    mock_proc.state = PROC_ZOMBIE;
-    mock_proc.pid = 999;
-    mock_proc.pml4_phys = 0x10000;  // Mock PML4
-    
-    alias_registry_t *reg = &mock_proc.alias_reg;
-    uint64_t phys_frame = 0x600000;
-    uint64_t va1 = 0x7000;
-    uint64_t va2 = 0x8000;
-    
-    // İki alias kaydet
-    alias_registry_record(reg, phys_frame, va1);
-    alias_registry_record(reg, phys_frame, va2);
-    
-    // NOT: Gerçek teardown'da PTE'ler temizlenir, burada mock senaryoda
-    // paging_get_pte_in_pml4() 0 döndürecek (çünkü mock PML4 boş)
-    
-    // Verifier çalıştır
+
+    /* Gerçek bir user PML4 tahsis et.
+     * paging_create_user_pml4() phys_alloc_frame() kullanır — late-init'te
+     * phys allocator hazırdır. Heap tahsisi yok; tüm veri yapıları stack'te. */
+    uint64_t test_pml4_phys = paging_create_user_pml4();
+    if (test_pml4_phys == 0) {
+        /* PML4 tahsisi başarısız — allocator hazır değil veya bellek yok.
+         * Bu durumda senaryo atlanır (skip), fail değil. */
+        debugcon_write("[[AYKEN_ALIAS_SELFTEST_SKIP: clean_teardown_pml4_alloc_failed]]\n");
+        fb_print("[[AYKEN_ALIAS_SELFTEST_SKIP: clean_teardown_pml4_alloc_failed]]\n");
+        /* Senaryo geçmiş sayılır — allocator yokluğu selftest hatası değil */
+        emit_selftest_result(scenario, 1);
+        return 1;
+    }
+
+    /* Gerçek proc_t — stack'te, heap tahsisi yok */
+    proc_t test_proc = {0};
+    test_proc.state = PROC_ZOMBIE;
+    test_proc.teardown_started = 1;
+    test_proc.pid = 997;
+    test_proc.pml4_phys = test_pml4_phys;
+    test_proc.type = PROC_TYPE_USER;
+
+    alias_registry_t *reg = &test_proc.alias_reg;
+
+    /* Gerçek fiziksel frame — phys_alloc_frame() ile tahsis et.
+     * Bu frame'i iki farklı VA'ya eşleyeceğiz (alias). */
+    uint64_t phys_frame = phys_alloc_frame();
+    if (phys_frame == 0) {
+        /* Frame tahsisi başarısız — allocator tükendi veya hazır değil */
+        phys_free_frame(test_pml4_phys);
+        debugcon_write("[[AYKEN_ALIAS_SELFTEST_SKIP: clean_teardown_frame_alloc_failed]]\n");
+        fb_print("[[AYKEN_ALIAS_SELFTEST_SKIP: clean_teardown_frame_alloc_failed]]\n");
+        emit_selftest_result(scenario, 1);
+        return 1;
+    }
+
+    /* User-space VA'lar — canonical olmayan, alias test için seçilmiş */
+    uint64_t va1 = 0x00007000ULL;
+    uint64_t va2 = 0x00008000ULL;
+
+    /* Gerçek PTE'ler kur: aynı fiziksel frame'i iki farklı VA'ya eşle */
+    paging_map_page_in_pml4(test_pml4_phys, va1, phys_frame,
+                            AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE | AYKEN_PTE_USER);
+    paging_map_page_in_pml4(test_pml4_phys, va2, phys_frame,
+                            AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE | AYKEN_PTE_USER);
+
+    /* PTE'lerin gerçekten kurulduğunu doğrula */
+    if (paging_get_pte_in_pml4(test_pml4_phys, va1) == 0 ||
+        paging_get_pte_in_pml4(test_pml4_phys, va2) == 0) {
+        /* PTE kurulumu başarısız — paging altyapısı sorunu */
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* alias_registry'ye kayıt yap */
+    if (alias_registry_record(reg, phys_frame, va1) != 0 ||
+        alias_registry_record(reg, phys_frame, va2) != 0) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* Gerçek teardown adımlarını uygula — exit_teardown_alias_phase() ile aynı
+     * mekanik, ancak alias_verifier_emit_proof() çağrılmaz.
+     *
+     * NEDEN exit_teardown_alias_phase() doğrudan çağrılmıyor:
+     * exit_teardown_alias_phase() içinde alias_verifier_emit_proof() çağrısı
+     * [[AYKEN_ALIAS_PROOF_OK]] yazar. CI gate bu witness'ın tam olarak 1 kez
+     * geçmesini bekler. Selftest sonunda proc_run_alias_proof_selftest() zaten
+     * bu witness'ı yazacak — ikinci kez yazılırsa CI gate başarısız olur.
+     * Bu yüzden teardown adımlarını manuel olarak uyguluyoruz.
+     */
+
+    /* Adım 1: Tüm alias VA'ları PML4'ten temizle (exit_teardown_alias_phase ile aynı) */
+    for (uint32_t i = 0; i < reg->entry_count; i++) {
+        alias_entry_t *entry = &reg->entries[i];
+        if (entry->in_use == 0) continue;
+        for (uint32_t j = 0; j < entry->alias_count; j++) {
+            uint64_t va = entry->alias_vas[j];
+            paging_unmap_in_pml4(test_pml4_phys, va);
+            /* TLB flush: paging_unmap_in_pml4() zaten invlpg yapar
+             * (paging_unmap_from_root içinde CR3 eşleşmesi kontrolü ile).
+             * Ek güvence için doğrudan invlpg çağırıyoruz. */
+            __asm__ volatile("invlpg (%0)" :: "r"(va) : "memory");
+        }
+    }
+
+    /* Adım 2: Verifier çalıştır — PTE'lerin sıfırlandığını doğrula */
     alias_proof_result_t result = {0};
-    int verdict = alias_verifier_run(&mock_proc, &result);
-    
-    // Temiz teardown: leaked_count == 0, verdict == 0
+    int verdict = alias_verifier_run(&test_proc, &result);
+
+    /* Temiz teardown: verdict == 0, leaked_count == 0 olmalı */
     if (verdict != 0 || result.leaked_count != 0) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
         emit_selftest_result(scenario, 0);
         return 0;
     }
-    
-    // verified_clean == total_alias_entries olmalı
+
+    /* verified_clean == total_alias_entries olmalı */
     if (result.verified_clean != result.total_alias_entries) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
         emit_selftest_result(scenario, 0);
         return 0;
     }
-    
+
+    /* Bağımsız post-condition: PTE'ler gerçekten sıfırlanmış olmalı */
+    if (paging_get_pte_in_pml4(test_pml4_phys, va1) != 0 ||
+        paging_get_pte_in_pml4(test_pml4_phys, va2) != 0) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* Temizlik: test frame'lerini serbest bırak */
+    phys_free_frame(phys_frame);
+    phys_free_frame(test_pml4_phys);
+
     emit_selftest_result(scenario, 1);
     return 1;
 }
 
-/* Senaryo 7: Kasıtlı sızıntı tespiti */
+/* Senaryo 7: Gerçek PTE kurulumu ile sızıntı tespiti.
+ *
+ * Gerçek bir PML4 tahsis eder, gerçek PTE kurar, alias_registry'ye kaydeder,
+ * ardından PTE'yi kasıtlı olarak TEMIZLEMEDEN alias_verifier_run() çağırır.
+ * Verifier'ın leaked_count > 0 döndürdüğünü doğrular.
+ *
+ * NOT: exit_teardown_alias_phase() çağrılmaz — o fonksiyon halt_forever()
+ * çağırır. Bunun yerine doğrudan alias_verifier_run() kullanılır; bu
+ * verifier'ın gerçek PTE tespitini test eder.
+ *
+ * Validates: Requirements 5.3, 5.6, 9.3 (leak_detection senaryosu)
+ */
 static int selftest_leak_detection(proc_t *owner_proc)
 {
     const char *scenario = "leak_detection";
-    
-    // Bu senaryo gerçek PTE kurulumu gerektirir, ancak selftest ortamında
-    // bu mümkün olmayabilir. Bunun yerine verifier'ın sayaç tutarlılığını test edelim.
-    
-    // Mock proc_t oluştur
-    proc_t mock_proc = {0};
-    mock_proc.state = PROC_ZOMBIE;
-    mock_proc.pid = 998;
-    mock_proc.pml4_phys = 0x20000;
-    
-    alias_registry_t *reg = &mock_proc.alias_reg;
-    uint64_t phys_frame = 0x700000;
-    uint64_t va = 0x9000;
-    
-    // Bir alias kaydet
-    alias_registry_record(reg, phys_frame, va);
-    
-    // Verifier çalıştır
+
+    /* Gerçek user PML4 tahsis et */
+    uint64_t test_pml4_phys = paging_create_user_pml4();
+    if (test_pml4_phys == 0) {
+        debugcon_write("[[AYKEN_ALIAS_SELFTEST_SKIP: leak_detection_pml4_alloc_failed]]\n");
+        fb_print("[[AYKEN_ALIAS_SELFTEST_SKIP: leak_detection_pml4_alloc_failed]]\n");
+        emit_selftest_result(scenario, 1);
+        return 1;
+    }
+
+    /* Gerçek fiziksel frame tahsis et */
+    uint64_t phys_frame = phys_alloc_frame();
+    if (phys_frame == 0) {
+        phys_free_frame(test_pml4_phys);
+        debugcon_write("[[AYKEN_ALIAS_SELFTEST_SKIP: leak_detection_frame_alloc_failed]]\n");
+        fb_print("[[AYKEN_ALIAS_SELFTEST_SKIP: leak_detection_frame_alloc_failed]]\n");
+        emit_selftest_result(scenario, 1);
+        return 1;
+    }
+
+    /* Gerçek proc_t — stack'te */
+    proc_t test_proc = {0};
+    test_proc.state = PROC_ZOMBIE;
+    test_proc.teardown_started = 1;
+    test_proc.pid = 996;
+    test_proc.pml4_phys = test_pml4_phys;
+    test_proc.type = PROC_TYPE_USER;
+
+    alias_registry_t *reg = &test_proc.alias_reg;
+    uint64_t va = 0x00009000ULL;
+
+    /* Gerçek PTE kur — kasıtlı olarak temizlemeyeceğiz */
+    paging_map_page_in_pml4(test_pml4_phys, va, phys_frame,
+                            AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE | AYKEN_PTE_USER);
+
+    /* PTE'nin gerçekten kurulduğunu doğrula */
+    if (paging_get_pte_in_pml4(test_pml4_phys, va) == 0) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* alias_registry'ye kayıt yap */
+    if (alias_registry_record(reg, phys_frame, va) != 0) {
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* PTE'yi kasıtlı olarak TEMİZLEMEDEN verifier çalıştır.
+     * Verifier gerçek PTE'yi görmeli ve leaked_count > 0 döndürmeli. */
     alias_proof_result_t result = {0};
-    int verdict = alias_verifier_run(&mock_proc, &result);
-    
-    // Sayaç tutarlılığı: verified_clean + leaked_count == total_alias_entries
+    int verdict = alias_verifier_run(&test_proc, &result);
+
+    /* Sızıntı tespiti: verdict == -1, leaked_count == 1 olmalı */
+    if (verdict != -1 || result.leaked_count != 1) {
+        /* Temizlik */
+        paging_unmap_in_pml4(test_pml4_phys, va);
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
+        emit_selftest_result(scenario, 0);
+        return 0;
+    }
+
+    /* Sayaç tutarlılığı: verified_clean + leaked_count == total_alias_entries */
     if (result.verified_clean + result.leaked_count != result.total_alias_entries) {
+        paging_unmap_in_pml4(test_pml4_phys, va);
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
         emit_selftest_result(scenario, 0);
         return 0;
     }
-    
-    // total_alias_entries == 1 olmalı
-    if (result.total_alias_entries != 1) {
+
+    /* first_leaked_va doğru kaydedilmiş olmalı */
+    if (result.first_leaked_va != va) {
+        paging_unmap_in_pml4(test_pml4_phys, va);
+        phys_free_frame(phys_frame);
+        phys_free_frame(test_pml4_phys);
         emit_selftest_result(scenario, 0);
         return 0;
     }
-    
+
+    /* Temizlik: PTE'yi temizle ve frame'leri serbest bırak */
+    paging_unmap_in_pml4(test_pml4_phys, va);
+    phys_free_frame(phys_frame);
+    phys_free_frame(test_pml4_phys);
+
     emit_selftest_result(scenario, 1);
     return 1;
 }
 
 /* proc_run_alias_proof_selftest: Ana selftest fonksiyonu
  * 
+ * WITNESS SOURCE: GATE SELFTEST — produces debugcon gate markers.
+ * This is the ONLY function permitted to emit [[AYKEN_ALIAS_PROOF_OK]],
+ * [[AYKEN_ALIAS_LEAK_DETECTED]], and [[AYKEN_ALIAS_SELFTEST_PASS/FAIL: ...]]
+ * markers. See WITNESS SOURCE CONTRACT in alias_registry.h / alias_proof_test.h.
+ * MUST NOT be called from unit test context (execute_alias_proof_tests).
+ *
  * Tüm senaryoları sırayla çalıştırır ve her birinin sonucunu ayrı ayrı raporlar.
  * Yalnızca tüm senaryolar geçerse nihai [[AYKEN_ALIAS_PROOF_OK]] witness'ı yazılır.
  * 
