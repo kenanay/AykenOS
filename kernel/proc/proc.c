@@ -2568,7 +2568,8 @@ void init_process_main(void)
                 }
             }
         }
-#elif defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     (AYKEN_ALIAS_PROOF_SELFTEST == 1)
         fb_print("[init] Running alias-aware address space leak proof selftest.\n");
         proc_run_alias_proof_selftest(preloaded);
