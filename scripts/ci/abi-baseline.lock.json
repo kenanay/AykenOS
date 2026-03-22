@@ -2,15 +2,15 @@
   "contract": {
     "sys_v2_base": 1000,
     "sys_v2_debug_index": 10,
-    "sys_v2_last": 1010,
-    "sys_v2_max_index": 10,
-    "sys_v2_nr": 11
+    "sys_v2_last": 1011,
+    "sys_v2_max_index": 11,
+    "sys_v2_nr": 12
   },
   "hashes": {
     "abi_generated_sha256": "2371e1d8c68fa3d8bfb5787971804f3d0d9c12ca478b9d2a1919028261d69a1e",
-    "abi_header_sha256": "4f6f8b89b092e7f5d51c14b04f7ed941622c36111166be9641f67fcb039e8e24",
-    "abi_layout_sha256": "2ab2fe7f2ba9ac2506e869ee52d42224a03549c30b22ef51a3228d73a4d3f724",
-    "syscall_header_sha256": "434f94885724541a39982f082956ba0bba5fe71be45e7093b63c420702ebfae0"
+    "abi_header_sha256": "1d118887294b92b50aa34ad9ff464a6e6a9b779e3f425a0fbe18e05ee3bf13e6",
+    "abi_layout_sha256": "9dd847c7eb2c72c40b6620e5b96d5c10d34b62f9b4b2561c6f36a2f4ead55cf9",
+    "syscall_header_sha256": "eeead52e6030bfa89d2d3c1d23239cc1307a60a3b43002d4bdfd4f8d9a5f590e"
   },
   "schema_version": 1,
   "sources": {
@@ -73,6 +73,11 @@
       "index": 10,
       "name": "SYS_V2_DEBUG_PUTCHAR",
       "public": 1010
+    },
+    {
+      "index": 11,
+      "name": "SYS_V2_COMPLETE_EXECUTION",
+      "public": 1011
     }
   ]
 }
