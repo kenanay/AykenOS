@@ -8,7 +8,7 @@ AykenOS is an AI-native, execution-centric operating system that reimagines trad
 
 ## Core Philosophy (Non-Negotiable)
 
-- **Execution-Centric**: 11 mechanism syscalls (1000-1010) instead of traditional POSIX interface
+- **Execution-Centric**: 12 mechanism syscalls (1000-1011) instead of traditional POSIX interface
 - **Ring3 Empowerment**: All policy decisions (VFS, DevFS, scheduler, AI) MUST run in userspace
 - **Ring0 Minimalism**: Kernel SHALL provide only mechanisms (memory, context, interrupts)
 - **AI-Native Design**: AI is integrated at the core, not as an add-on
@@ -53,7 +53,7 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - Violation detection: `make ci-gate-boundary`
 
 ### 2. ABI Stability
-- Syscall range 1000-1010 is FROZEN
+- Syscall range 1000-1011 is FROZEN
 - ABI changes require version bump + RFC approval
 - `ayken_abi.h` is single source of truth
 - Violation detection: `make ci-gate-abi`

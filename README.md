@@ -60,7 +60,7 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 
 ### Mimari Dönüşüm
 
-- **Ring0 (Kernel Mode):** 11 execution-centric mekanizma syscall'ı (1000-1010 aralığı)
+- **Ring0 (Kernel Mode):** 12 execution-centric mekanizma syscall'ı (1000-1011 aralığı)
 - **Ring3 (User Mode):** Tüm politika kararları (VFS, DevFS, AI, scheduler) kullanıcı modunda
 - **Capability-Based Security:** Yetenek tabanlı güvenlik modeli ile erişim kontrolü
 - **BCIB Execution Engine:** Binary Compressed Instruction Bundle formatı ile veri-odaklı yürütme
@@ -69,7 +69,7 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 
 ## 🚀 Temel Özellikler
 
-### Execution-Centric Syscall Interface (1000-1010)
+### Execution-Centric Syscall Interface (1000-1011)
 
 | ID | Syscall | Açıklama |
 |----|---------|----------|
@@ -84,6 +84,7 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 | 1008 | `sys_v2_capability_revoke` | Yetenek iptal etme |
 | 1009 | `sys_v2_exit` | Süreç sonlandırma |
 | 1010 | `sys_v2_debug_putchar` | Ring3 debug heartbeat |
+| 1011 | `sys_v2_complete_execution` | Yürütme slot yaşam döngüsü tamamlama |
 
 ### Çoklu Mimari Desteği
 
