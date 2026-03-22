@@ -537,7 +537,7 @@ static void kernel_late_init(void)
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
     // Phase 11: Alias unit tests — only in selftest mode (not in general validation boot)
-    // Guard: alias_proof_test.c compiled when AYKEN_VALIDATION=1;
+    // Guard: alias_proof_validation.c compiled when AYKEN_VALIDATION=1;
     // called only when AYKEN_ALIAS_PROOF_SELFTEST=1 to avoid boot timeout
     // in performance gate and other validation boots that don't need unit tests.
     {

@@ -1,4 +1,4 @@
-// kernel/tests/validation/alias_proof_test.c
+// kernel/tests/validation/alias_proof_validation.c
 // AykenOS Phase 11 Alias-Aware Address Space Leak Proof Unit Tests
 //
 // This test suite validates the AliasRegistry component functionality:

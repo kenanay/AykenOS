@@ -96,7 +96,7 @@ The minimum canonical outer shape is:
       "run_id": "<run_id>",
       "timestamp_unix_ns": 1710000000000000000,
       "subject_bundle_id": "<bundle_id>",
-      "verification_context_id": "sha256:<context>",
+      "verification_context_id": "sha256:<policy_hash_projection>",
       "authority_chain_id": "sha256:<authority_chain>",
       "trust_reuse_outcome": "accepted",
       "terminal": true,
@@ -127,7 +127,7 @@ Every native trust-reuse event MUST contain at least:
   "run_id": "<run_id>",
   "timestamp_unix_ns": "<unix-ns>",
   "subject_bundle_id": "<bundle_id>",
-  "verification_context_id": "<verification_context_id>",
+  "verification_context_id": "<policy_hash_projection>",
   "authority_chain_id": "<authority_chain_id>",
   "trust_reuse_outcome": "accepted | historical_only | rejected",
   "terminal": true,
@@ -154,7 +154,7 @@ The event must prove that trust reuse was actually evaluated under explicit dist
 | `run_id` | local runtime run handle |
 | `timestamp_unix_ns` | event ordering for windowed analysis |
 | `subject_bundle_id` | verification subject whose trust reuse was evaluated |
-| `verification_context_id` | explicit distributed verification-context identity |
+| `verification_context_id` | cross-surface comparison key for the verification context; current code reality projects this to the policy-bound context identity used by VDL and replay companion flows |
 | `authority_chain_id` | practical verifier authority chain that backed the reuse decision |
 | `trust_reuse_outcome` | runtime result of the trust-reuse evaluation |
 | `terminal` | whether this event records the terminal trust-reuse path |
@@ -167,6 +167,11 @@ The event must prove that trust reuse was actually evaluated under explicit dist
 These fields are the minimum native trust-reuse contract.
 
 Anything weaker is still fallback, not native runtime evidence.
+
+Current code reality:
+
+- `verification_context_id` is the behavioral comparison key used by Stage-2 sinkhole alignment
+- `verification_context_ref` preserves the full canonical verification-context artifact identity
 
 ---
 

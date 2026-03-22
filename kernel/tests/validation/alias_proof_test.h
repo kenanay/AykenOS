@@ -21,7 +21,7 @@ extern "C" {
  * Mixing them corrupts CI gate integrity. This contract is MANDATORY.
  *
  * UNIT TEST SURFACE: execute_alias_proof_tests()
- *   - Location: kernel/tests/validation/alias_proof_test.c
+ *   - Location: kernel/tests/validation/alias_proof_validation.c
  *   - Witness format: internal pass/fail assertions only (fb_print / TEST_PASS / TEST_FAIL)
  *   - MUST NOT emit: [[AYKEN_ALIAS_PROOF_OK]] or [[AYKEN_ALIAS_LEAK_DETECTED]]
  *   - MUST NOT emit: [[AYKEN_ALIAS_SELFTEST_PASS/FAIL: ...]] gate markers

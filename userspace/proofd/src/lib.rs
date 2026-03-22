@@ -7,8 +7,14 @@ use proof_verifier::diversity_ledger_producer::{
     VerificationDiversityLedgerProducerConfig, VerificationDiversityLedgerProducerManifest,
     VerificationNodeBinding,
 };
+<<<<<<< Updated upstream
 use proof_verifier::policy::policy_engine::compute_policy_hash;
 use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
+=======
+use proof_verifier::trust_reuse_runtime_evaluator::{
+    run_trust_reuse_runtime_evaluator, TrustReuseRuntimeEvaluatorConfig,
+};
+>>>>>>> Stashed changes
 use proof_verifier::trust_reuse_runtime_surface::{
     load_trust_reuse_runtime_surface as load_native_trust_reuse_runtime_surface, TrustReuseOutcome,
     TrustReuseRuntimeEvent, TrustReuseRuntimeSurfaceReport,
@@ -36,6 +42,7 @@ const RUN_LEVEL_ARTIFACTS: &[&str] = &[
     "verification_diversity_ledger.json",
     "verification_diversity_ledger_append_report.json",
     "replay_boundary_flow_source.json",
+    "trust_reuse_runtime_surface.json",
     "trust_reuse_flow_source.json",
     "parity_authority_suppression_report.json",
     "parity_authority_drift_topology.json",
@@ -60,11 +67,17 @@ const REPLAY_BOUNDARY_FLOW_SOURCE_FILE: &str = "replay_boundary_flow_source.json
 const REPLAY_REPORT_FILE: &str = "replay_report.json";
 const TRUST_REUSE_FLOW_SOURCE_FILE: &str = "trust_reuse_flow_source.json";
 const TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH: &str = "reports/trust_reuse_runtime_surface.json";
+<<<<<<< Updated upstream
 const CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH: &str = "context/policy_snapshot.json";
 const CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH: &str = "context/registry_snapshot.json";
 const CONTEXT_RULES_RELATIVE_PATH: &str = "context/context_rules.json";
 const VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH: &str = "context/verification_context_object.json";
 const VERIFICATION_CONTEXT_VERIFIER_CONTRACT_VERSION: &str = "phase12-context-v1";
+=======
+const RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE: &str = "trust_reuse_runtime_surface.json";
+const TRUST_REUSE_RUNTIME_EVALUATOR_DIR: &str = "trust_reuse_runtime_evaluator";
+const TRUST_REUSE_RUNTIME_EXPECTED_SUBJECT_FILE: &str = "expected_verdict_subject.json";
+>>>>>>> Stashed changes
 const PROOFD_RUN_MANIFEST_FILE: &str = "proofd_run_manifest.json";
 const RECEIPT_RELATIVE_PATH: &str = "receipts/verification_receipt.json";
 const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
@@ -140,6 +153,22 @@ struct VerifyBundleTrustReuseBinding {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+struct VerifyBundleTrustReuseRuntimeBinding {
+    verification_context_path: String,
+    verifier_attestation_path: String,
+    verifier_registry_path: String,
+    verifier_key_path: String,
+    #[serde(default)]
+    source_run_id: Option<String>,
+    #[serde(default)]
+    reuse_group_id: Option<String>,
+    #[serde(default)]
+    surface_local_path_id: Option<String>,
+    #[serde(default)]
+    trust_reuse_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct VerifyBundleRequestBody {
     bundle_path: String,
     policy_path: String,
@@ -156,6 +185,8 @@ struct VerifyBundleRequestBody {
     replay_boundary_binding: Option<VerifyBundleReplayBoundaryBinding>,
     #[serde(default)]
     trust_reuse_binding: Option<VerifyBundleTrustReuseBinding>,
+    #[serde(default)]
+    trust_reuse_runtime_binding: Option<VerifyBundleTrustReuseRuntimeBinding>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -173,6 +204,8 @@ struct VerifyBundleResponseBody {
     verification_diversity_ledger_path: Option<String>,
     replay_boundary_flow_source_path: Option<String>,
     replay_boundary_flow_source_origin: Option<String>,
+    trust_reuse_runtime_surface_path: Option<String>,
+    trust_reuse_runtime_surface_origin: Option<String>,
     trust_reuse_flow_source_path: Option<String>,
     trust_reuse_flow_source_origin: Option<String>,
     findings_count: usize,
@@ -1211,8 +1244,10 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
     let replay_boundary_source_relative_path = diversity_manifest
         .as_ref()
         .map(|_| REPLAY_BOUNDARY_FLOW_SOURCE_FILE.to_string());
-    let native_trust_reuse_surface_present =
+    let bundle_native_trust_reuse_surface_present =
         trust_reuse_runtime_surface_path(&bundle_path).is_file();
+    let mut trust_reuse_runtime_surface_relative_path: Option<String> = None;
+    let mut trust_reuse_runtime_surface_origin: Option<String> = None;
     let mut trust_reuse_source_relative_path: Option<String> = None;
     let mut replay_boundary_source_origin: Option<String> = None;
     let mut trust_reuse_source_origin: Option<String> = None;
@@ -1269,10 +1304,17 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                 run_dir.join(VERIFICATION_DIVERSITY_LEDGER_FILE),
                 run_dir.join(VERIFICATION_DIVERSITY_APPEND_REPORT_FILE),
                 run_dir.join(REPLAY_BOUNDARY_FLOW_SOURCE_FILE),
+                run_dir.join(RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE),
                 run_dir.join(TRUST_REUSE_FLOW_SOURCE_FILE),
             ] {
+                if required_path.ends_with(RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE)
+                    && request.trust_reuse_runtime_binding.is_none()
+                {
+                    continue;
+                }
                 if required_path.ends_with(TRUST_REUSE_FLOW_SOURCE_FILE)
-                    && !native_trust_reuse_surface_present
+                    && !bundle_native_trust_reuse_surface_present
+                    && request.trust_reuse_runtime_binding.is_none()
                     && request.trust_reuse_binding.is_none()
                 {
                     continue;
@@ -1333,7 +1375,15 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                 "replay_boundary_flow_source_bytes_conflict",
             )?;
         }
-        if let Some(document) = build_runtime_trust_reuse_flow_source_document(
+        if let Some(runtime_origin) =
+            materialize_native_trust_reuse_runtime_surface(&run_dir, &request, &outcome)?
+        {
+            trust_reuse_runtime_surface_relative_path =
+                Some(RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE.to_string());
+            trust_reuse_runtime_surface_origin = Some(runtime_origin.to_string());
+        }
+        if let Some((document, origin)) = build_runtime_trust_reuse_flow_source_document(
+            &run_dir,
             &bundle_path,
             &request,
             &outcome,
@@ -1352,7 +1402,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                 "trust_reuse_runtime_surface_bytes_conflict",
             )?;
             trust_reuse_source_relative_path = Some(TRUST_REUSE_FLOW_SOURCE_FILE.to_string());
-            trust_reuse_source_origin = Some("runtime_bundle_trust_reuse".to_string());
+            trust_reuse_source_origin = Some(origin);
         } else if let Some(binding) = request.trust_reuse_binding.as_ref() {
             let document = build_request_bound_trust_reuse_flow_source_document(
                 &request,
@@ -1391,6 +1441,8 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         "verification_diversity_ledger_append_report_path": diversity_append_report_relative_path,
         "replay_boundary_flow_source_path": replay_boundary_source_relative_path,
         "replay_boundary_flow_source_origin": replay_boundary_source_origin,
+        "trust_reuse_runtime_surface_path": trust_reuse_runtime_surface_relative_path,
+        "trust_reuse_runtime_surface_origin": trust_reuse_runtime_surface_origin,
         "trust_reuse_flow_source_path": trust_reuse_source_relative_path,
         "trust_reuse_flow_source_origin": trust_reuse_source_origin,
         "request_fingerprint": request_fingerprint,
@@ -1435,6 +1487,14 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
             .map(|value| value.to_string()),
         replay_boundary_flow_source_origin: run_manifest
             .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str)
+            .map(|value| value.to_string()),
+        trust_reuse_runtime_surface_path: run_manifest
+            .get("trust_reuse_runtime_surface_path")
+            .and_then(Value::as_str)
+            .map(|value| value.to_string()),
+        trust_reuse_runtime_surface_origin: run_manifest
+            .get("trust_reuse_runtime_surface_origin")
             .and_then(Value::as_str)
             .map(|value| value.to_string()),
         trust_reuse_flow_source_path: run_manifest
@@ -1595,6 +1655,12 @@ fn validate_verify_bundle_request(request: &VerifyBundleRequestBody) -> Result<(
         ));
     }
 
+    if request.trust_reuse_runtime_binding.is_some() && request.diversity_binding.is_none() {
+        return Err(ServiceError::BadRequest(
+            "trust_reuse_runtime_binding_requires_diversity_binding",
+        ));
+    }
+
     if matches!(
         request.receipt_mode,
         Some(VerifyBundleReceiptMode::EmitSigned)
@@ -1699,6 +1765,81 @@ fn validate_verify_bundle_request(request: &VerifyBundleRequestBody) -> Result<(
                     "reuse_group_id" => "trust_reuse_binding_reuse_group_id_invalid",
                     "surface_local_path_id" => "trust_reuse_binding_surface_local_path_id_invalid",
                     _ => "trust_reuse_binding_field_invalid",
+                }));
+            }
+        }
+    }
+
+    if let Some(binding) = request.trust_reuse_runtime_binding.as_ref() {
+        for (label, value) in [
+            (
+                "verification_context_path",
+                binding.verification_context_path.as_str(),
+            ),
+            (
+                "verifier_attestation_path",
+                binding.verifier_attestation_path.as_str(),
+            ),
+            (
+                "verifier_registry_path",
+                binding.verifier_registry_path.as_str(),
+            ),
+            ("verifier_key_path", binding.verifier_key_path.as_str()),
+        ] {
+            if value.trim().is_empty() {
+                return Err(ServiceError::BadRequest(match label {
+                    "verification_context_path" => {
+                        "trust_reuse_runtime_binding_verification_context_path_missing"
+                    }
+                    "verifier_attestation_path" => {
+                        "trust_reuse_runtime_binding_verifier_attestation_path_missing"
+                    }
+                    "verifier_registry_path" => {
+                        "trust_reuse_runtime_binding_verifier_registry_path_missing"
+                    }
+                    "verifier_key_path" => "trust_reuse_runtime_binding_verifier_key_path_missing",
+                    _ => "trust_reuse_runtime_binding_path_missing",
+                }));
+            }
+            if !Path::new(value).is_absolute() {
+                return Err(ServiceError::BadRequest(match label {
+                    "verification_context_path" => {
+                        "trust_reuse_runtime_binding_verification_context_path_not_absolute"
+                    }
+                    "verifier_attestation_path" => {
+                        "trust_reuse_runtime_binding_verifier_attestation_path_not_absolute"
+                    }
+                    "verifier_registry_path" => {
+                        "trust_reuse_runtime_binding_verifier_registry_path_not_absolute"
+                    }
+                    "verifier_key_path" => {
+                        "trust_reuse_runtime_binding_verifier_key_path_not_absolute"
+                    }
+                    _ => "trust_reuse_runtime_binding_path_not_absolute",
+                }));
+            }
+        }
+
+        for (label, value) in [
+            ("source_run_id", binding.source_run_id.as_deref()),
+            ("reuse_group_id", binding.reuse_group_id.as_deref()),
+            (
+                "surface_local_path_id",
+                binding.surface_local_path_id.as_deref(),
+            ),
+            ("trust_reuse_source", binding.trust_reuse_source.as_deref()),
+        ] {
+            if value.is_some_and(|value| value.trim().is_empty()) {
+                return Err(ServiceError::BadRequest(match label {
+                    "source_run_id" => "trust_reuse_runtime_binding_source_run_id_invalid",
+                    "reuse_group_id" => "trust_reuse_runtime_binding_reuse_group_id_invalid",
+                    "surface_local_path_id" => {
+                        "trust_reuse_runtime_binding_surface_local_path_id_invalid"
+                    }
+                    "trust_reuse_source" => {
+                        "trust_reuse_runtime_binding_trust_reuse_source_invalid"
+                    }
+                    _ => "trust_reuse_runtime_binding_field_invalid",
                 }));
             }
         }
@@ -1902,15 +2043,17 @@ fn build_request_bound_trust_reuse_flow_source_document(
 }
 
 fn build_runtime_trust_reuse_flow_source_document(
+    run_dir: &Path,
     bundle_path: &Path,
     request: &VerifyBundleRequestBody,
     outcome: &proof_verifier::types::VerificationOutcome,
     binding: Option<&VerifyBundleTrustReuseBinding>,
-) -> Result<Option<AuthoritySinkholeCompanionSourceDocument>, ServiceError> {
-    let runtime_surface_path = trust_reuse_runtime_surface_path(bundle_path);
-    if !runtime_surface_path.is_file() {
+) -> Result<Option<(AuthoritySinkholeCompanionSourceDocument, String)>, ServiceError> {
+    let Some((runtime_surface_path, origin, default_surface_local_path)) =
+        resolve_native_trust_reuse_runtime_surface(run_dir, bundle_path)
+    else {
         return Ok(None);
-    }
+    };
 
     let runtime_surface = load_native_trust_reuse_runtime_surface(&runtime_surface_path)
         .map_err(|_| ServiceError::Runtime("trust_reuse_runtime_surface_invalid"))?;
@@ -1933,24 +2076,39 @@ fn build_runtime_trust_reuse_flow_source_document(
             build_trust_reuse_runtime_companion_source_event(
                 event,
                 &runtime_surface,
+<<<<<<< Updated upstream
                 outcome,
                 binding,
+=======
+                binding,
+                default_surface_local_path,
+>>>>>>> Stashed changes
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(Some(AuthoritySinkholeCompanionSourceDocument {
-        source_version: 1,
-        flow_surface: "trust_reuse".to_string(),
-        status: if events.is_empty() {
-            "NO_REUSABLE_EVENTS".to_string()
-        } else {
-            "PASS".to_string()
+    Ok(Some((
+        AuthoritySinkholeCompanionSourceDocument {
+            source_version: 1,
+            flow_surface: "trust_reuse".to_string(),
+            status: if events.is_empty() {
+                "NO_REUSABLE_EVENTS".to_string()
+            } else {
+                "PASS".to_string()
+            },
+            run_id: request.run_id.clone(),
+            window_model: default_companion_window_model(),
+            events,
         },
+<<<<<<< Updated upstream
         run_id: resolved_request_run_id(request)?.to_string(),
         window_model: default_companion_window_model(),
         events,
     }))
+=======
+        origin.to_string(),
+    )))
+>>>>>>> Stashed changes
 }
 
 fn build_companion_source_event(
@@ -1995,6 +2153,35 @@ fn trust_reuse_runtime_surface_path(bundle_path: &Path) -> PathBuf {
     bundle_path.join(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH)
 }
 
+fn run_trust_reuse_runtime_surface_path(run_dir: &Path) -> PathBuf {
+    run_dir.join(RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE)
+}
+
+fn resolve_native_trust_reuse_runtime_surface(
+    run_dir: &Path,
+    bundle_path: &Path,
+) -> Option<(PathBuf, &'static str, &'static str)> {
+    let run_local_path = run_trust_reuse_runtime_surface_path(run_dir);
+    if run_local_path.is_file() {
+        return Some((
+            run_local_path,
+            "runtime_proofd_trust_reuse",
+            RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE,
+        ));
+    }
+
+    let bundle_runtime_path = trust_reuse_runtime_surface_path(bundle_path);
+    if bundle_runtime_path.is_file() {
+        return Some((
+            bundle_runtime_path,
+            "runtime_bundle_trust_reuse",
+            TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH,
+        ));
+    }
+
+    None
+}
+
 fn resolve_trust_reuse_runtime_source_run_id(
     report: &TrustReuseRuntimeSurfaceReport,
 ) -> Result<&str, ServiceError> {
@@ -2020,6 +2207,7 @@ fn build_trust_reuse_runtime_companion_source_event(
     report: &TrustReuseRuntimeSurfaceReport,
     outcome: &proof_verifier::types::VerificationOutcome,
     binding: Option<&VerifyBundleTrustReuseBinding>,
+    default_surface_local_path: &str,
 ) -> Result<AuthoritySinkholeCompanionSourceEvent, ServiceError> {
     if !event.terminal || !event.reused {
         return Err(ServiceError::Runtime("trust_reuse_runtime_surface_invalid"));
@@ -2058,8 +2246,65 @@ fn build_trust_reuse_runtime_companion_source_event(
         surface_local_path_id: event
             .surface_local_path_id
             .clone()
-            .or_else(|| Some(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH.to_string())),
+            .or_else(|| Some(default_surface_local_path.to_string())),
     })
+}
+
+fn materialize_native_trust_reuse_runtime_surface(
+    run_dir: &Path,
+    request: &VerifyBundleRequestBody,
+    outcome: &proof_verifier::types::VerificationOutcome,
+) -> Result<Option<&'static str>, ServiceError> {
+    let Some(binding) = request.trust_reuse_runtime_binding.as_ref() else {
+        return Ok(None);
+    };
+
+    let receipt = outcome.receipt.as_ref().ok_or(ServiceError::Runtime(
+        "signed_receipt_missing_for_trust_reuse_runtime_surface",
+    ))?;
+    let timestamp_unix_ns = parse_event_time_to_unix_ns(&receipt.payload.verified_at_utc)
+        .map_err(|_| ServiceError::Runtime("trust_reuse_runtime_surface_timestamp_invalid"))?;
+    let evaluator_dir = run_dir.join(TRUST_REUSE_RUNTIME_EVALUATOR_DIR);
+    let expected_subject_path = evaluator_dir.join(TRUST_REUSE_RUNTIME_EXPECTED_SUBJECT_FILE);
+    write_json_file_if_absent_or_same(
+        &expected_subject_path,
+        &outcome.subject,
+        "trust_reuse_runtime_expected_subject_write_failed",
+        "trust_reuse_runtime_expected_subject_bytes_conflict",
+    )?;
+    let output_path = run_trust_reuse_runtime_surface_path(run_dir);
+    let config = TrustReuseRuntimeEvaluatorConfig {
+        receipt_path: run_dir.join("receipts").join("verification_receipt.json"),
+        verifier_key_path: PathBuf::from(&binding.verifier_key_path),
+        expected_subject_path,
+        verification_context_path: PathBuf::from(&binding.verification_context_path),
+        verifier_attestation_path: PathBuf::from(&binding.verifier_attestation_path),
+        verifier_registry_path: PathBuf::from(&binding.verifier_registry_path),
+        output_path,
+        output_dir: evaluator_dir,
+        run_id: request.run_id.clone(),
+        timestamp_unix_ns,
+        source_run_id: binding.source_run_id.clone(),
+        execution_cluster_id: request
+            .diversity_binding
+            .as_ref()
+            .and_then(|value| value.execution_cluster_id.clone()),
+        lineage_id: request
+            .diversity_binding
+            .as_ref()
+            .map(|value| value.lineage_id.clone()),
+        reuse_group_id: binding.reuse_group_id.clone(),
+        surface_local_path_id: Some(
+            binding
+                .surface_local_path_id
+                .clone()
+                .unwrap_or_else(|| RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE.to_string()),
+        ),
+        trust_reuse_source: binding.trust_reuse_source.clone(),
+    };
+    run_trust_reuse_runtime_evaluator(&config)
+        .map_err(|_| ServiceError::Runtime("trust_reuse_runtime_evaluator_runtime_failure"))?;
+    Ok(Some("runtime_proofd_trust_reuse"))
 }
 
 fn load_replay_runtime_surface(bundle_path: &Path) -> Result<ReplayRuntimeSurface, ServiceError> {
@@ -2574,11 +2819,22 @@ mod tests {
         create_run_manifest_atomically, route_request, route_request_with_body,
         DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
     };
+    use proof_verifier::canonical::jcs::canonicalize_json_value;
+    use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
     use proof_verifier::testing::fixtures::create_fixture_bundle;
     use proof_verifier::trust_reuse_runtime_surface::{
         compute_trust_reuse_runtime_event_id, TrustReuseOutcome, TrustReuseRuntimeEvent,
         TrustReuseRuntimeSurfaceReport,
     };
+    use proof_verifier::types::{
+        AuditMode, ReceiptMode, VerifierTrustRegistrySnapshot, VerifyRequest,
+    };
+    use proof_verifier::verification_context_object::{
+        compute_verification_context_id, write_verification_context_object,
+        VerificationContextObject,
+    };
+    use proof_verifier::verifier_attestation::{write_verifier_attestation, VerifierAttestation};
+    use proof_verifier::verify_bundle;
     use serde::Serialize;
     use serde_json::json;
     use std::fs;
@@ -2617,6 +2873,77 @@ mod tests {
             serde_json::to_vec_pretty(value).expect("serialize json"),
         )
         .expect("write json");
+    }
+
+    fn build_verification_context(
+        subject: &proof_verifier::VerdictSubject,
+    ) -> VerificationContextObject {
+        let mut context = VerificationContextObject {
+            context_version: 1,
+            verification_context_id: String::new(),
+            policy_hash: subject.policy_hash.clone(),
+            registry_snapshot_hash: subject.registry_snapshot_hash.clone(),
+            verifier_contract_version: "phase12-context-v1".to_string(),
+            context_rules_hash: "c".repeat(64),
+            context_epoch: Some(1),
+            historical_cutoff_utc: None,
+            policy_snapshot_ref: Some(format!("cas:sha256:{}", "d".repeat(64))),
+            registry_snapshot_ref: Some(format!("cas:sha256:{}", "e".repeat(64))),
+            time_semantics_mode: Some("historical-aware".to_string()),
+        };
+        context.verification_context_id =
+            compute_verification_context_id(&context).expect("compute verification context id");
+        context
+    }
+
+    fn build_verifier_attestation(
+        fixture: &proof_verifier::testing::fixtures::FixtureBundle,
+    ) -> VerifierAttestation {
+        let mut attestation = VerifierAttestation {
+            attestation_version: 1,
+            verifier_id: fixture.receipt_signer.verifier_node_id.clone(),
+            verifier_pubkey_id: fixture.receipt_signer.verifier_key_id.clone(),
+            verifier_registry_ref: fixture.verifier_registry.registry_scope.clone(),
+            verifier_key_epoch: u64::from(fixture.verifier_registry.verifier_registry_epoch),
+            verifier_contract_version: "phase12-context-v1".to_string(),
+            attestation_signature_algorithm: "ed25519".to_string(),
+            attestation_signature: String::new(),
+            attested_at_utc: Some("2026-03-14T00:00:00Z".to_string()),
+        };
+        let mut payload = serde_json::to_value(&attestation).expect("serialize attestation");
+        payload
+            .as_object_mut()
+            .expect("attestation object")
+            .remove("attestation_signature");
+        let payload_bytes =
+            canonicalize_json_value(&payload).expect("canonicalize attestation payload");
+        attestation.attestation_signature =
+            sign_ed25519_bytes(&fixture.receipt_signer.private_key, &payload_bytes)
+                .expect("sign attestation");
+        attestation
+    }
+
+    fn write_trust_reuse_runtime_inputs(
+        fixture: &proof_verifier::testing::fixtures::FixtureBundle,
+        subject: &proof_verifier::VerdictSubject,
+        dir: &std::path::Path,
+        verifier_registry: &VerifierTrustRegistrySnapshot,
+    ) -> (PathBuf, PathBuf, PathBuf) {
+        let verification_context_path = dir.join("verification_context_object.json");
+        let verifier_attestation_path = dir.join("verifier_attestation.json");
+        let verifier_registry_path = dir.join("verifier_registry.json");
+        let context = build_verification_context(subject);
+        write_verification_context_object(&verification_context_path, &context)
+            .expect("write verification context");
+        let attestation = build_verifier_attestation(fixture);
+        write_verifier_attestation(&verifier_attestation_path, &attestation)
+            .expect("write verifier attestation");
+        write_json(&verifier_registry_path, verifier_registry);
+        (
+            verification_context_path,
+            verifier_attestation_path,
+            verifier_registry_path,
+        )
     }
 
     fn body_json(response: DiagnosticsResponse) -> serde_json::Value {
@@ -4528,6 +4855,158 @@ mod tests {
                 .and_then(|event| event.get("trust_reuse_source"))
                 .and_then(|v| v.as_str()),
             Some("trust-overlay-cache")
+        );
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_bundle_endpoint_auto_materializes_native_trust_reuse_surface_from_runtime_binding() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+        fs::remove_file(
+            fixture
+                .root
+                .join("reports/trust_reuse_runtime_surface.json"),
+        )
+        .expect("remove bundle native trust reuse surface");
+
+        let verify_request = VerifyRequest {
+            bundle_path: &fixture.root,
+            policy: &fixture.policy,
+            registry_snapshot: &fixture.registry,
+            receipt_mode: ReceiptMode::EmitSigned,
+            receipt_signer: Some(&fixture.receipt_signer),
+            audit_mode: AuditMode::None,
+            audit_ledger_path: None,
+        };
+        let outcome = verify_bundle(&verify_request).expect("verify fixture bundle");
+        let runtime_input_dir = dir.join("trust-reuse-runtime-inputs");
+        fs::create_dir_all(&runtime_input_dir).expect("create trust reuse runtime input dir");
+        let (verification_context_path, verifier_attestation_path, verifier_registry_path) =
+            write_trust_reuse_runtime_inputs(
+                &fixture,
+                &outcome.subject,
+                &runtime_input_dir,
+                &fixture.verifier_registry,
+            );
+        let verifier_key_path = runtime_input_dir.join("receipt_verifier_key.json");
+        write_json(&verifier_key_path, &fixture.receipt_verifier_key);
+
+        let request_body = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_signed",
+            "run_id": "run-proofd-execution-r2h",
+            "receipt_signer": {
+                "verifier_node_id": fixture.receipt_signer.verifier_node_id,
+                "verifier_key_id": fixture.receipt_signer.verifier_key_id,
+                "signature_algorithm": fixture.receipt_signer.signature_algorithm,
+                "private_key": fixture.receipt_signer.private_key,
+                "verified_at_utc": fixture.receipt_signer.verified_at_utc,
+            },
+            "diversity_binding": {
+                "verifier_id": "verifier-node-b",
+                "authority_chain_id": "sha256:proofd-authority-chain-node-b",
+                "lineage_id": "lineage-receipt-node-b",
+                "execution_cluster_id": "cluster-local-a",
+            },
+            "trust_reuse_runtime_binding": {
+                "verification_context_path": verification_context_path,
+                "verifier_attestation_path": verifier_attestation_path,
+                "verifier_registry_path": verifier_registry_path,
+                "verifier_key_path": verifier_key_path,
+                "source_run_id": "source-run-proofd-bootstrap-b",
+                "reuse_group_id": "reuse-group-proofd-b",
+                "surface_local_path_id": "trust-reuse-runtime-surface-proofd-b",
+                "trust_reuse_source": "proofd-runtime-evaluator"
+            }
+        });
+        let request_bytes = serde_json::to_vec(&request_body).expect("serialize request");
+        let response = route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("trust_reuse_runtime_surface_path")
+                .and_then(|v| v.as_str()),
+            Some("trust_reuse_runtime_surface.json")
+        );
+        assert_eq!(
+            body.get("trust_reuse_runtime_surface_origin")
+                .and_then(|v| v.as_str()),
+            Some("runtime_proofd_trust_reuse")
+        );
+        assert_eq!(
+            body.get("trust_reuse_flow_source_origin")
+                .and_then(|v| v.as_str()),
+            Some("runtime_proofd_trust_reuse")
+        );
+
+        let native_surface = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(
+                dir.join("run-proofd-execution-r2h")
+                    .join("trust_reuse_runtime_surface.json"),
+            )
+            .expect("read run-local native trust reuse surface"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            native_surface
+                .get("events")
+                .and_then(|v| v.as_array())
+                .and_then(|events| events.first())
+                .and_then(|event| event.get("surface_local_path_id"))
+                .and_then(|v| v.as_str()),
+            Some("trust-reuse-runtime-surface-proofd-b")
+        );
+        assert_eq!(
+            native_surface
+                .get("events")
+                .and_then(|v| v.as_array())
+                .and_then(|events| events.first())
+                .and_then(|event| event.get("source_run_id"))
+                .and_then(|v| v.as_str()),
+            Some("source-run-proofd-bootstrap-b")
+        );
+
+        let trust_reuse_source = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(
+                dir.join("run-proofd-execution-r2h")
+                    .join("trust_reuse_flow_source.json"),
+            )
+            .expect("read trust reuse flow source"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            trust_reuse_source
+                .get("events")
+                .and_then(|v| v.as_array())
+                .and_then(|events| events.first())
+                .and_then(|event| event.get("surface_local_path_id"))
+                .and_then(|v| v.as_str()),
+            Some("trust-reuse-runtime-surface-proofd-b")
+        );
+        assert_eq!(
+            trust_reuse_source
+                .get("events")
+                .and_then(|v| v.as_array())
+                .and_then(|events| events.first())
+                .and_then(|event| event.get("trust_reuse_source"))
+                .and_then(|v| v.as_str()),
+            Some("proofd-runtime-evaluator")
         );
 
         let _ = fs::remove_dir_all(&fixture.root);

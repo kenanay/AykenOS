@@ -73,8 +73,12 @@ class ProofdServiceGateTest(unittest.TestCase):
             "runtime_bundle_replay",
         )
         self.assertEqual(
+            service.get("trust_reuse_runtime_surface_origin"),
+            "runtime_proofd_trust_reuse",
+        )
+        self.assertEqual(
             service.get("trust_reuse_flow_source_origin"),
-            "runtime_bundle_trust_reuse",
+            "runtime_proofd_trust_reuse",
         )
         self.assertTrue(service.get("receipt_emission_active") is True)
         self.assertTrue(service.get("signed_receipt_execution_active") is True)
@@ -91,6 +95,9 @@ class ProofdServiceGateTest(unittest.TestCase):
         )
         self.assertTrue(
             service.get("repeated_replay_boundary_flow_source_equal") is True
+        )
+        self.assertTrue(
+            service.get("repeated_trust_reuse_runtime_surface_equal") is True
         )
         self.assertTrue(
             service.get("repeated_trust_reuse_flow_source_equal") is True
@@ -155,6 +162,9 @@ class ProofdServiceGateTest(unittest.TestCase):
             repeated_execution.get("repeated_replay_boundary_flow_source_equal") is True
         )
         self.assertTrue(
+            repeated_execution.get("repeated_trust_reuse_runtime_surface_equal") is True
+        )
+        self.assertTrue(
             repeated_execution.get("repeated_trust_reuse_flow_source_equal") is True
         )
         self.assertEqual(
@@ -162,8 +172,12 @@ class ProofdServiceGateTest(unittest.TestCase):
             "runtime_bundle_replay",
         )
         self.assertEqual(
+            repeated_execution.get("trust_reuse_runtime_surface_origin"),
+            "runtime_proofd_trust_reuse",
+        )
+        self.assertEqual(
             repeated_execution.get("trust_reuse_flow_source_origin"),
-            "runtime_bundle_trust_reuse",
+            "runtime_proofd_trust_reuse",
         )
         self.assertTrue(
             repeated_execution.get("diagnostics_artifacts_unchanged") is True
@@ -231,6 +245,9 @@ class ProofdServiceGateTest(unittest.TestCase):
             (self.evidence_dir / "replay_boundary_flow_source.json").is_file()
         )
         self.assertTrue(
+            (self.evidence_dir / "trust_reuse_runtime_surface.json").is_file()
+        )
+        self.assertTrue(
             (self.evidence_dir / "trust_reuse_flow_source.json").is_file()
         )
         self.assertTrue(
@@ -258,6 +275,7 @@ class ProofdServiceGateTest(unittest.TestCase):
             "fixture-run",
         )
         self.assertNotIn("trust_reuse_binding", verify_request)
+        self.assertTrue(isinstance(verify_request.get("trust_reuse_runtime_binding"), dict))
 
         verify_response = json.loads(
             (self.evidence_dir / "proofd_verify_response.json").read_text(
@@ -284,12 +302,20 @@ class ProofdServiceGateTest(unittest.TestCase):
             "runtime_bundle_replay",
         )
         self.assertEqual(
+            verify_response.get("trust_reuse_runtime_surface_path"),
+            "trust_reuse_runtime_surface.json",
+        )
+        self.assertEqual(
+            verify_response.get("trust_reuse_runtime_surface_origin"),
+            "runtime_proofd_trust_reuse",
+        )
+        self.assertEqual(
             verify_response.get("trust_reuse_flow_source_path"),
             "trust_reuse_flow_source.json",
         )
         self.assertEqual(
             verify_response.get("trust_reuse_flow_source_origin"),
-            "runtime_bundle_trust_reuse",
+            "runtime_proofd_trust_reuse",
         )
 
         run_manifest = json.loads(
@@ -312,12 +338,20 @@ class ProofdServiceGateTest(unittest.TestCase):
             "runtime_bundle_replay",
         )
         self.assertEqual(
+            run_manifest.get("trust_reuse_runtime_surface_path"),
+            "trust_reuse_runtime_surface.json",
+        )
+        self.assertEqual(
+            run_manifest.get("trust_reuse_runtime_surface_origin"),
+            "runtime_proofd_trust_reuse",
+        )
+        self.assertEqual(
             run_manifest.get("trust_reuse_flow_source_path"),
             "trust_reuse_flow_source.json",
         )
         self.assertEqual(
             run_manifest.get("trust_reuse_flow_source_origin"),
-            "runtime_bundle_trust_reuse",
+            "runtime_proofd_trust_reuse",
         )
         self.assertTrue(
             isinstance(run_manifest.get("request_fingerprint"), str)
@@ -333,6 +367,18 @@ class ProofdServiceGateTest(unittest.TestCase):
             replay_source.get("events", [{}])[0].get("source_run_id"),
             "fixture-run",
         )
+        trust_reuse_runtime_surface = json.loads(
+            (self.evidence_dir / "trust_reuse_runtime_surface.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            trust_reuse_runtime_surface.get("flow_surface"), "trust_reuse_runtime"
+        )
+        self.assertEqual(
+            trust_reuse_runtime_surface.get("events", [{}])[0].get("source_run_id"),
+            "source-run-proofd-bootstrap-b",
+        )
         trust_reuse_source = json.loads(
             (self.evidence_dir / "trust_reuse_flow_source.json").read_text(
                 encoding="utf-8"
@@ -341,7 +387,7 @@ class ProofdServiceGateTest(unittest.TestCase):
         self.assertEqual(trust_reuse_source.get("flow_surface"), "trust_reuse")
         self.assertEqual(
             trust_reuse_source.get("events", [{}])[0].get("source_run_id"),
-            "source-run-proofd-bootstrap-a",
+            "source-run-proofd-bootstrap-b",
         )
 
 

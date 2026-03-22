@@ -220,7 +220,7 @@ KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOUR
 
 # Phase 11: Include alias proof tests in validation builds
 ifeq ($(AYKEN_VALIDATION),1)
-KERNEL_C_SOURCES += kernel/tests/validation/alias_proof_test.c
+KERNEL_C_SOURCES += kernel/tests/validation/alias_proof_validation.c
 endif
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
