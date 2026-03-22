@@ -13,15 +13,17 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 18.03.2026
+**Son Güncelleme:** 22.03.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
 **Remote CI (Phase-12):** `ci-freeze#23099070483 = success` (PR #62)
+**Remote CI (Phase-10B + Docs Sync):** `ci-freeze#23406688668 = success` (PR #65)
 **CURRENT_PHASE:** `12` (`Phase-12 OFFICIALLY CLOSED — Phase-13 boundary hardening active`)
 **Freeze Zinciri:** `make ci-freeze` = 21 gate | `make ci-freeze-local` = 20 gate
 **Acil Blocker:** `yok`
 **Yakın Hedef:** Phase-13 boundary hardening workstreams (Architecture Map §4)
+**Ring0 Export Ceiling:** `191 symbols` (Phase 10B meşru export'lar)
 
 **Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase-13 kill-switch gates 6/6 PASS ✅ | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
