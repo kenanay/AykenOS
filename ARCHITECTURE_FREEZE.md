@@ -293,7 +293,7 @@ make ci-gate-ring0-exports
 - Policy-on deterministic build (`KERNEL_EXPORT_POLICY=1`)
 - `nm -g --defined-only kernel.elf` global export evidence
 - Whitelist conformance (`constitutional-ring0-symbol-whitelist.regex`)
-- Export surface ceiling (`RING0_EXPORT_MAX`, default 165)
+- Export surface ceiling (`RING0_EXPORT_MAX`, default 191)
 
 **Failure → Merge REJECT**
 

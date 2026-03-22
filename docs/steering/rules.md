@@ -60,7 +60,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 **Enforcement:**
 - CI Gate: `make ci-gate-ring0-exports`
 - Whitelist: `scripts/ci/constitutional-ring0-symbol-whitelist.regex`
-- Ceiling: 165 symbols (hard limit)
+- Ceiling: 191 symbols (hard limit)
 
 **Requirements:**
 - New export → ADR required

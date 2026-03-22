@@ -244,7 +244,7 @@ evidence/                # CI gate evidence (run-based)
 
 Ring0 exports are constitutional surface. Changes require ADR.
 
-**Current Ceiling:** 165 symbols (enforced)  
+**Current Ceiling:** 191 symbols (enforced)  
 **Whitelist:** `scripts/ci/constitutional-ring0-symbol-whitelist.regex`  
 **Enforcement:** `make ci-gate-ring0-exports`
 
