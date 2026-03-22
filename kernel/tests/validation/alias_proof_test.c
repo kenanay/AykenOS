@@ -12,6 +12,7 @@
 #include "../../include/proc.h"
 #include "../../include/errno.h"
 #include "../../drivers/console/fb_console.h"
+#include "../../drivers/console/debugcon.h"
 #include <stddef.h>
 
 #define memset __builtin_memset
