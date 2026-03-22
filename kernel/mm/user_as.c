@@ -27,6 +27,7 @@
 // Page flag bits (from paging.c)
 #define PAGE_PRESENT   (1ULL << 0)
 #define PAGE_USER      (1ULL << 2)
+#define PAGE_HUGE      (1ULL << 7)
 
 // Maximum tracked allocations (Phase 10-A limit)
 #define MAX_TRACKED_FRAMES 256
@@ -43,11 +44,14 @@ static uint64_t g_tracked_vaddrs[MAX_TRACKED_VADDRS];
  * 1. Allocate new PML4 frame
  * 2. Zero entire PML4 (all 512 entries)
  * 3. Copy kernel half (entries 256-511) from kernel PML4
- * 4. For each copied entry (256-511):
+ * 4. Mirror the current low-half kernel heap window supervisor-only so
+ *    kernel-owned proc/stack metadata remains reachable under user CR3
+ *    until the heap is promoted out of the low half
+ * 5. For each copied kernel-half entry (256-511):
  *    - If entry is present: entry &= ~PAGE_USER (clear USER bit)
  *    - Preserve GLOBAL and NX bits as-is
- * 5. Store PML4 physical address in out_as->cr3_phys
- * 6. Store PML4 virtual address in out_as->pml4_virt
+ * 6. Store PML4 physical address in out_as->cr3_phys
+ * 7. Store PML4 virtual address in out_as->pml4_virt
  * 
  * This ensures "trust no upstream state" principle for security.
  */
@@ -94,6 +98,11 @@ int user_as_create(user_as_t *out_as)
         
         // Copy entry (with USER bit cleared if present)
         new_pml4_virt[i] = entry;
+    }
+
+    if (paging_seed_user_kernel_heap_window(new_pml4_phys) != 0) {
+        phys_free_frame(new_pml4_phys);
+        return -EINVAL;
     }
 
     // Store PML4 addresses in output structure
@@ -192,24 +201,115 @@ void user_as_cleanup(user_as_t *as, cleanup_tracker_t *tracker)
     tracker->vaddr_count = 0;
 }
 
-/**
- * Destroy user address space
- * 
- * Note: This does NOT deallocate page tables or frames.
- * Use user_as_cleanup() for full cleanup on error.
- * This function is for normal process termination (Phase 10-C).
- */
-void user_as_destroy(user_as_t *as)
+static void user_as_destroy_table_recursive(uint64_t table_phys, uint32_t level)
+{
+    uint64_t *table;
+    uint32_t i;
+
+    if (table_phys == 0 || level == 0) {
+        return;
+    }
+
+    table = (uint64_t *)paging_phys_to_virt(table_phys);
+    if (!table) {
+        return;
+    }
+
+    for (i = 0; i < PT_ENTRIES; ++i) {
+        uint64_t entry = table[i];
+        uint64_t child_phys;
+
+        if ((entry & PAGE_PRESENT) == 0) {
+            continue;
+        }
+
+        child_phys = entry & AYKEN_PTE_ADDR_MASK;
+        if (child_phys == 0) {
+            table[i] = 0;
+            continue;
+        }
+
+        if (level == 1) {
+            if (entry & PAGE_USER) {
+                uint8_t *leaf = (uint8_t *)paging_phys_to_virt(child_phys);
+                if (leaf) {
+                    __builtin_memset(leaf, 0, AYKEN_FRAME_SIZE);
+                }
+                phys_free_frame(child_phys);
+            }
+            table[i] = 0;
+            continue;
+        }
+
+        if (entry & PAGE_HUGE) {
+            table[i] = 0;
+            continue;
+        }
+
+        user_as_destroy_table_recursive(child_phys, level - 1);
+        phys_free_frame(child_phys);
+        table[i] = 0;
+    }
+}
+
+void user_as_destroy_lower_half(user_as_t *as)
+{
+    uint64_t *pml4;
+    uint32_t i;
+
+    if (!as || as->cr3_phys == 0) {
+        return;
+    }
+
+    pml4 = as->pml4_virt;
+    if (!pml4) {
+        pml4 = (uint64_t *)paging_phys_to_virt(as->cr3_phys);
+        as->pml4_virt = pml4;
+    }
+    if (!pml4) {
+        return;
+    }
+
+    for (i = 0; i < KERNEL_HALF_START; ++i) {
+        uint64_t entry = pml4[i];
+        uint64_t child_phys;
+
+        if ((entry & PAGE_PRESENT) == 0) {
+            continue;
+        }
+
+        child_phys = entry & AYKEN_PTE_ADDR_MASK;
+        if (child_phys == 0) {
+            pml4[i] = 0;
+            continue;
+        }
+
+        user_as_destroy_table_recursive(child_phys, 3);
+        phys_free_frame(child_phys);
+        pml4[i] = 0;
+    }
+}
+
+void user_as_destroy_root(user_as_t *as)
 {
     if (!as) {
         return;
     }
 
-    // For Phase 10-A: just deallocate the PML4
-    // Phase 10-C will add full page table traversal and deallocation
     if (as->cr3_phys) {
         phys_free_frame(as->cr3_phys);
         as->cr3_phys = 0;
         as->pml4_virt = NULL;
     }
+}
+
+/**
+ * Destroy user address space
+ *
+ * Destroy lower-half user mappings and page tables, then free the root PML4.
+ */
+void user_as_destroy(user_as_t *as)
+{
+    user_as_destroy_lower_half(as);
+    user_as_destroy_root(as);
 }

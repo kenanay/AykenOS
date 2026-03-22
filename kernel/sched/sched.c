@@ -20,6 +20,9 @@
 #include "../include/mm.h"
 #include "../include/gdt_idt.h"
 
+#define memset __builtin_memset
+#define memcpy __builtin_memcpy
+
 // Set by Ring3 #BP proof path once user instruction marker is emitted.
 extern volatile uint32_t phase10_ring3_user_code_seen;
 
@@ -74,6 +77,21 @@ static proc_t *ready_head = NULL;
 static proc_t *ready_tail = NULL;
 static proc_t *blocked_head = NULL;
 static proc_t *sched_owner_cached = NULL;
+static uint32_t g_sched_active_owner_pid = AYKEN_SCHED_OWNER_PID;
+static volatile uint8_t g_sched_owner_transfer_pending = 0;
+static volatile int g_sched_owner_transfer_from_pid = 0;
+static volatile int g_sched_owner_transfer_to_pid = 0;
+static volatile uint8_t g_sched_validation_owner_transfer_seen = 0;
+static volatile int g_sched_validation_owner_transfer_from_pid = 0;
+static volatile int g_sched_validation_owner_transfer_to_pid = 0;
+static volatile uint8_t g_sched_validation_mailbox_decision_seen = 0;
+static volatile int g_sched_validation_mailbox_decision_from_pid = 0;
+static volatile int g_sched_validation_mailbox_decision_to_pid = 0;
+static volatile int g_sched_validation_mailbox_decision_src_pid = 0;
+static volatile uint64_t g_sched_validation_mailbox_decision_id = 0;
+
+static void remove_from_blocked(proc_t *p);
+static int sched_is_owner(const proc_t *p);
 
 static int sched_list_contains(proc_t *head, const proc_t *target)
 {
@@ -335,11 +353,59 @@ static ayken_sched_mailbox_t *sched_mailbox_view_for_owner(proc_t *owner)
     return (ayken_sched_mailbox_t *)paging_phys_to_virt(owner->mailbox_pa);
 }
 
+static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out_mb)
+{
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+    uint64_t saved_rflags = 0;
+    int switched_to_kernel_cr3 = 0;
+    const ayken_sched_mailbox_t *src = NULL;
+
+    if (!owner || !owner->mailbox_pa || !out_mb) {
+        return 0;
+    }
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (owner->context.cr3 & AYKEN_PTE_ADDR_MASK)) {
+        src = (const ayken_sched_mailbox_t *)(uintptr_t)SCHED_MAILBOX_VA;
+    } else {
+        if (kernel_cr3 &&
+            ((active_cr3 & AYKEN_PTE_ADDR_MASK) != (kernel_cr3 & AYKEN_PTE_ADDR_MASK))) {
+            __asm__ volatile("pushfq; popq %0" : "=r"(saved_rflags));
+            __asm__ volatile("cli");
+            __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+            switched_to_kernel_cr3 = 1;
+        }
+        src = (const ayken_sched_mailbox_t *)paging_phys_to_virt(owner->mailbox_pa);
+    }
+
+    if (!src) {
+        if (switched_to_kernel_cr3) {
+            __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+            if (saved_rflags & (1ULL << 9)) {
+                __asm__ volatile("sti");
+            }
+        }
+        return 0;
+    }
+
+    *out_mb = *src;
+
+    if (switched_to_kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+        if (saved_rflags & (1ULL << 9)) {
+            __asm__ volatile("sti");
+        }
+    }
+
+    return 1;
+}
+
 #if AYKEN_GATE45_PROOF
 static void sched_gate45_arm_cross_target_once(proc_t *owner)
 {
     static uint8_t armed = 0;
-    if (armed || !owner || owner->pid != (int)AYKEN_SCHED_OWNER_PID) {
+    if (armed || !sched_is_owner(owner)) {
         return;
     }
     ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(owner);
@@ -353,13 +419,16 @@ static void sched_gate45_arm_cross_target_once(proc_t *owner)
 
 static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, uint32_t *out_pid)
 {
+    ayken_sched_mailbox_t mb_snapshot;
+    const ayken_sched_mailbox_t *mb = NULL;
+
     if (!owner || !out_epoch || !out_pid || !owner->mailbox_pa) {
         return 0;
     }
-    ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(owner);
-    if (!mb) {
+    if (!sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
         return 0;
     }
+    mb = &mb_snapshot;
     if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
         mb->version != AYKEN_SCHED_MB_VERSION ||
         mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
@@ -376,9 +445,14 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
     return 1;
 }
 
+uint32_t sched_active_owner_pid(void)
+{
+    return g_sched_active_owner_pid;
+}
+
 static int sched_is_owner(const proc_t *p)
 {
-    return p && p->pid == (int)AYKEN_SCHED_OWNER_PID;
+    return p && (uint32_t)p->pid == g_sched_active_owner_pid;
 }
 
 static proc_t *sched_owner_proc(proc_t *prev, sched_decision_site_t site)
@@ -393,7 +467,7 @@ static proc_t *sched_owner_proc(proc_t *prev, sched_decision_site_t site)
     }
 
     (void)site;
-    proc_t *owner = proc_find_by_pid((int)AYKEN_SCHED_OWNER_PID);
+    proc_t *owner = proc_find_by_pid((int)g_sched_active_owner_pid);
     if (owner && sched_is_owner(owner)) {
         sched_owner_cached = owner;
         return owner;
@@ -404,10 +478,13 @@ static proc_t *sched_owner_proc(proc_t *prev, sched_decision_site_t site)
 
 static int sched_mailbox_has_any_candidate(proc_t *p)
 {
-    ayken_sched_mailbox_t *mb = sched_mailbox_view_for_owner(p);
-    if (!mb) {
+    ayken_sched_mailbox_t mb_snapshot;
+    const ayken_sched_mailbox_t *mb = NULL;
+
+    if (!sched_mailbox_read_snapshot(p, &mb_snapshot)) {
         return 0;
     }
+    mb = &mb_snapshot;
     if (mb->magic != AYKEN_SCHED_MB_MAGIC || mb->version != AYKEN_SCHED_MB_VERSION) {
         return 0;
     }
@@ -652,27 +729,367 @@ static inline void sched_dbg_mark_iret(void) { }
 
 proc_t *current_proc = NULL;
 
-static void sched_try_pickup_execution_work(void)
+static proc_t *g_sched_validation_exit_forced_next = NULL;
+static volatile uint8_t g_sched_validation_exit_switch_seen = 0;
+static volatile int g_sched_validation_exit_from_pid = 0;
+static volatile int g_sched_validation_exit_to_pid = 0;
+
+static void sched_clear_owner_transfer_request(void)
+{
+    g_sched_owner_transfer_pending = 0;
+    g_sched_owner_transfer_from_pid = 0;
+    g_sched_owner_transfer_to_pid = 0;
+}
+
+static void sched_clear_validation_owner_transfer_event(void)
+{
+    g_sched_validation_owner_transfer_seen = 0;
+    g_sched_validation_owner_transfer_from_pid = 0;
+    g_sched_validation_owner_transfer_to_pid = 0;
+}
+
+static void sched_clear_validation_mailbox_decision_event(void)
+{
+    g_sched_validation_mailbox_decision_seen = 0;
+    g_sched_validation_mailbox_decision_from_pid = 0;
+    g_sched_validation_mailbox_decision_to_pid = 0;
+    g_sched_validation_mailbox_decision_src_pid = 0;
+    g_sched_validation_mailbox_decision_id = 0;
+}
+
+static void sched_record_mailbox_decision_event(proc_t *prev,
+                                                proc_t *next,
+                                                uint64_t decision_id,
+                                                uint32_t decision_src_pid,
+                                                int used_mailbox)
+{
+    if (!used_mailbox || !prev || !next || decision_src_pid == 0) {
+        return;
+    }
+
+    g_sched_validation_mailbox_decision_seen = 1;
+    g_sched_validation_mailbox_decision_from_pid = prev->pid;
+    g_sched_validation_mailbox_decision_to_pid = next->pid;
+    g_sched_validation_mailbox_decision_src_pid = (int)decision_src_pid;
+    g_sched_validation_mailbox_decision_id = decision_id;
+}
+
+static void sched_commit_owner_transfer_if_pending(proc_t *prev, proc_t *next)
+{
+    if (!g_sched_owner_transfer_pending || !prev || !next) {
+        return;
+    }
+    if (prev->pid != g_sched_owner_transfer_from_pid ||
+        next->pid != g_sched_owner_transfer_to_pid) {
+        return;
+    }
+
+    g_sched_active_owner_pid = (uint32_t)next->pid;
+    sched_owner_cached = next;
+    g_sched_validation_owner_transfer_seen = 1;
+    g_sched_validation_owner_transfer_from_pid = prev->pid;
+    g_sched_validation_owner_transfer_to_pid = next->pid;
+    sched_clear_owner_transfer_request();
+}
+
+int sched_request_owner_transfer(proc_t *caller_owner, proc_t *successor)
+{
+    int result = -1;
+
+    disable_interrupts();
+
+    if (!caller_owner || !successor) {
+        goto out;
+    }
+    if (!sched_is_owner(caller_owner) || caller_owner->state == PROC_ZOMBIE) {
+        goto out;
+    }
+    if (successor == caller_owner || successor->pid <= 0) {
+        goto out;
+    }
+    if (successor->type != PROC_TYPE_USER || successor->state == PROC_ZOMBIE) {
+        goto out;
+    }
+    if (!(successor->state == PROC_READY || successor->state == PROC_RUNNING)) {
+        goto out;
+    }
+    if (successor->mailbox_pa == 0 || sched_mailbox_validate_ring3(successor) != 0) {
+        goto out;
+    }
+    if (g_sched_owner_transfer_pending) {
+        goto out;
+    }
+
+    g_sched_owner_transfer_pending = 1;
+    g_sched_owner_transfer_from_pid = caller_owner->pid;
+    g_sched_owner_transfer_to_pid = successor->pid;
+    sched_clear_validation_owner_transfer_event();
+    sched_clear_validation_mailbox_decision_event();
+    result = 0;
+
+out:
+    enable_interrupts();
+    return result;
+}
+
+void sched_validation_set_active_owner(proc_t *owner)
+{
+    disable_interrupts();
+    g_sched_active_owner_pid =
+        owner && owner->pid > 0 ? (uint32_t)owner->pid : AYKEN_SCHED_OWNER_PID;
+    sched_owner_cached = owner && sched_is_owner(owner) ? owner : NULL;
+    sched_clear_owner_transfer_request();
+    sched_clear_validation_owner_transfer_event();
+    sched_clear_validation_mailbox_decision_event();
+    enable_interrupts();
+}
+
+int sched_validation_take_owner_transfer_event(int *from_pid, int *to_pid)
+{
+    if (!g_sched_validation_owner_transfer_seen) {
+        return 0;
+    }
+
+    if (from_pid) {
+        *from_pid = g_sched_validation_owner_transfer_from_pid;
+    }
+    if (to_pid) {
+        *to_pid = g_sched_validation_owner_transfer_to_pid;
+    }
+
+    sched_clear_validation_owner_transfer_event();
+    return 1;
+}
+
+int sched_validation_take_mailbox_decision_event(int *from_pid,
+                                                 int *to_pid,
+                                                 int *src_pid,
+                                                 uint64_t *decision_id)
+{
+    if (!g_sched_validation_mailbox_decision_seen) {
+        return 0;
+    }
+
+    if (from_pid) {
+        *from_pid = g_sched_validation_mailbox_decision_from_pid;
+    }
+    if (to_pid) {
+        *to_pid = g_sched_validation_mailbox_decision_to_pid;
+    }
+    if (src_pid) {
+        *src_pid = g_sched_validation_mailbox_decision_src_pid;
+    }
+    if (decision_id) {
+        *decision_id = g_sched_validation_mailbox_decision_id;
+    }
+
+    sched_clear_validation_mailbox_decision_event();
+    return 1;
+}
+
+int sched_validation_non_owner_publish_would_fail(proc_t *publisher)
+{
+    if (!publisher || publisher->type != PROC_TYPE_USER) {
+        return 0;
+    }
+
+    return !sched_is_owner(publisher) && sched_mailbox_has_any_candidate(publisher);
+}
+
+void sched_validation_arm_exit_successor(proc_t *forced_next)
+{
+    g_sched_validation_exit_forced_next = forced_next;
+    g_sched_validation_exit_switch_seen = 0;
+    g_sched_validation_exit_from_pid = 0;
+    g_sched_validation_exit_to_pid = 0;
+}
+
+void sched_validation_disarm_exit_successor(void)
+{
+    g_sched_validation_exit_forced_next = NULL;
+    g_sched_validation_exit_switch_seen = 0;
+    g_sched_validation_exit_from_pid = 0;
+    g_sched_validation_exit_to_pid = 0;
+}
+
+int sched_validation_take_exit_switch_event(int *from_pid, int *to_pid)
+{
+    if (!g_sched_validation_exit_switch_seen) {
+        return 0;
+    }
+
+    if (from_pid) {
+        *from_pid = g_sched_validation_exit_from_pid;
+    }
+    if (to_pid) {
+        *to_pid = g_sched_validation_exit_to_pid;
+    }
+
+    g_sched_validation_exit_switch_seen = 0;
+    g_sched_validation_exit_from_pid = 0;
+    g_sched_validation_exit_to_pid = 0;
+    return 1;
+}
+
+static void sched_zero_execution_payload_window(proc_t *worker)
+{
+    uint32_t i;
+
+    if (!worker) {
+        return;
+    }
+
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        if (worker->execution_payload_pas[i] == 0) {
+            continue;
+        }
+        {
+            void *dst = paging_phys_to_virt(worker->execution_payload_pas[i]);
+            if (dst) {
+                memset(dst, 0, AYKEN_FRAME_SIZE);
+            }
+        }
+    }
+}
+
+static void sched_reset_execution_delivery_surface(proc_t *worker)
+{
+    ayken_execution_inbox_v1_t *inbox;
+
+    if (!worker || worker->execution_inbox_pa == 0) {
+        return;
+    }
+
+    sched_zero_execution_payload_window(worker);
+
+    inbox = (ayken_execution_inbox_v1_t *)paging_phys_to_virt(worker->execution_inbox_pa);
+    if (!inbox) {
+        return;
+    }
+
+    inbox->magic = AYKEN_EXECUTION_INBOX_MAGIC;
+    inbox->version = AYKEN_EXECUTION_INBOX_VERSION;
+    inbox->state = AXIB_STATE_EMPTY;
+    inbox->execution_id = 0;
+    inbox->target_context_id = 0;
+    inbox->bcib_user_va = EXECUTION_PAYLOAD_VA;
+    inbox->bcib_size = 0;
+    inbox->bcib_window_size = AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE;
+    inbox->flags = 0;
+    memset(inbox->reserved, 0, sizeof(inbox->reserved));
+}
+
+static int sched_publish_execution_delivery(proc_t *worker, const exec_slot_t *slot)
+{
+    ayken_execution_inbox_v1_t *inbox;
+    uint64_t next_delivery_seq;
+    uint32_t i;
+    uint64_t remaining;
+
+    if (!worker || !slot) {
+        return -1;
+    }
+    if (worker->active_execution_id != slot->execution_id || worker->active_execution_id == 0) {
+        return -1;
+    }
+    if (!execution_slot_can_publish_locked(slot)) {
+        return -1;
+    }
+    if (worker->execution_inbox_pa == 0) {
+        return -1;
+    }
+    for (i = 0; i < AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES; ++i) {
+        if (worker->execution_payload_pas[i] == 0) {
+            return -1;
+        }
+    }
+
+    inbox = (ayken_execution_inbox_v1_t *)paging_phys_to_virt(worker->execution_inbox_pa);
+    if (!inbox) {
+        return -1;
+    }
+
+    sched_zero_execution_payload_window(worker);
+
+    remaining = slot->bcib_size;
+    for (i = 0; i < slot->bcib_frame_count; ++i) {
+        uint64_t copy_size = remaining > AYKEN_FRAME_SIZE ? AYKEN_FRAME_SIZE : remaining;
+        const void *src;
+        void *dst;
+
+        src = paging_phys_to_virt(slot->bcib_frames[i]);
+        dst = paging_phys_to_virt(worker->execution_payload_pas[i]);
+        if (!src || !dst) {
+            sched_reset_execution_delivery_surface(worker);
+            return -1;
+        }
+
+        memcpy(dst, src, copy_size);
+        remaining -= copy_size;
+    }
+
+    inbox->magic = AYKEN_EXECUTION_INBOX_MAGIC;
+    inbox->version = AYKEN_EXECUTION_INBOX_VERSION;
+    inbox->state = AXIB_STATE_READY;
+    inbox->execution_id = slot->execution_id;
+    inbox->target_context_id = slot->target_context_id;
+    inbox->bcib_user_va = EXECUTION_PAYLOAD_VA;
+    inbox->bcib_size = slot->bcib_size;
+    inbox->bcib_window_size = AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE;
+    inbox->flags = 0;
+    memset(inbox->reserved, 0, sizeof(inbox->reserved));
+
+    __sync_synchronize();
+
+    next_delivery_seq = worker->execution_delivery_seq + 1;
+    if (next_delivery_seq == 0) {
+        next_delivery_seq = 1;
+    }
+    worker->execution_delivery_seq = next_delivery_seq;
+    inbox->delivery_seq = next_delivery_seq;
+    return 0;
+}
+
+int sched_try_pickup_execution_work(void)
 {
     execution_slot_guard_t slot_guard = {0};
+    execution_slot_trace_scope_t trace_scope = {0};
     exec_slot_t *slot = NULL;
 
     if (!current_proc || current_proc->pid <= 0) {
-        return;
+        return 0;
     }
     if (current_proc->type != PROC_TYPE_USER) {
-        return;
+        return 0;
     }
     if (current_proc->active_execution_id != 0) {
-        return;
+        return 0;
     }
 
     execution_slot_enter_critical(&slot_guard);
+    execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_PICKUP);
     slot = execution_slot_pickup_locked((uint64_t)current_proc->pid);
     if (slot) {
         current_proc->active_execution_id = slot->execution_id;
+        if (execution_slot_prepare_output_locked(slot) != 0 ||
+            proc_bind_execution_output_window(current_proc,
+                                              slot->output_frames,
+                                              slot->output_frame_count,
+                                              slot->execution_id) != 0 ||
+            sched_publish_execution_delivery(current_proc, slot) != 0) {
+            sched_reset_execution_delivery_surface(current_proc);
+            proc_unmap_execution_output_window(current_proc);
+            current_proc->active_execution_id = 0;
+            execution_slot_require_finish_locked(slot,
+                                                 EXEC_SLOT_ABORTED,
+                                                 "sched_try_pickup_execution_work");
+            slot = NULL;
+        }
     }
+    execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
+
+    return slot != NULL ? 1 : 0;
 }
 static volatile uint32_t need_resched = 0;
 // One-shot by design: proves mailbox decision/apply path exists without per-tick log churn.
@@ -929,6 +1346,18 @@ void remove_from_ready_queue(proc_t *p) {
     }
 }
 
+void sched_remove_process_everywhere(proc_t *p)
+{
+    if (!p) {
+        return;
+    }
+
+    remove_from_ready_queue(p);
+    remove_from_blocked(p);
+    p->next = NULL;
+    p->wait_obj = NULL;
+}
+
 #if AYKEN_SCHED_BOOTSTRAP_POLICY || AYKEN_SCHED_FALLBACK
 // Transitional/internal helper: deterministic ready-head fallback selection.
 static proc_t *sched_select_next_ready_head_fallback(void)
@@ -1090,6 +1519,8 @@ void sched_init(void)
 
 void sched_start(void)
 {
+    proc_drain_deferred_reap();
+
     // Runtime-observed config marker for CI/gates (independent from shell env echo).
     sched_emit_marker("[K][CFG] user_minimal_mode=");
     sched_emit_marker(AYKEN_USER_MINIMAL_MODE_STRING);
@@ -1278,6 +1709,8 @@ void sched_start(void)
 
 static void sched_yield_core(int reenable_if)
 {
+    proc_drain_deferred_reap();
+
     SCHED_DBG_OUT((uint8_t)'[');
     SCHED_DBG_OUT((uint8_t)'S');
     SCHED_DBG_OUT((uint8_t)'C');
@@ -1354,6 +1787,9 @@ static void sched_yield_core(int reenable_if)
             enable_interrupts();
         return;
     }
+
+    sched_record_mailbox_decision_event(prev, next, decision_id, decision_src_pid, used_mailbox);
+    sched_commit_owner_transfer_if_pending(prev, next);
 
     // If policy returns the currently running Ring3 process, keep running in place.
     if (prev && next == prev) {
@@ -1511,7 +1947,7 @@ static void sched_yield_core(int reenable_if)
         
         #if AYKEN_GATE45_PROOF
         if (used_mailbox && decision_id == 1 &&
-            current_proc && current_proc->pid == (int)AYKEN_SCHED_OWNER_PID) {
+            sched_is_owner(current_proc)) {
             sched_gate45_arm_cross_target_once(current_proc);
         }
         #endif
@@ -1608,6 +2044,8 @@ void sched_yield_irq(void)
 
 void sched_block_current(void)
 {
+    proc_drain_deferred_reap();
+
     disable_interrupts();
 
     proc_t *prev = current_proc;
@@ -1640,6 +2078,9 @@ void sched_block_current(void)
         fb_print("[PANIC] blocked task without mailbox successor\n");
         for (;;) __asm__ volatile("cli; hlt");
     }
+
+    sched_record_mailbox_decision_event(prev, next, decision_id, decision_src_pid, used_mailbox);
+    sched_commit_owner_transfer_if_pending(prev, next);
 
     int emit_phase10c_markers = 0;
     if (used_mailbox && !phase10c_decision_markers_emitted) {
@@ -1680,6 +2121,76 @@ void sched_block_current(void)
     context_switch(&prev->context, &current_proc->context);
 
     enable_interrupts();
+}
+
+void sched_exit_current(void)
+{
+    uint64_t decision_id = 0;
+    uint32_t decision_pid = 0;
+    uint32_t decision_src_pid = 0;
+    int used_mailbox = 0;
+    proc_t *prev;
+    proc_t *next;
+
+    disable_interrupts();
+
+    prev = current_proc;
+    if (!prev) {
+        fb_print("[PANIC] exit path without current process\n");
+        for (;;) __asm__ volatile("cli; hlt");
+    }
+
+    sched_remove_process_everywhere(prev);
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    next = g_sched_validation_exit_forced_next;
+    if (next) {
+        if (next == prev || next->state == PROC_ZOMBIE) {
+            fb_print("[PANIC] invalid validation exit successor\n");
+            for (;;) __asm__ volatile("cli; hlt");
+        }
+        sched_remove_process_everywhere(next);
+        g_sched_validation_exit_switch_seen = 1;
+        g_sched_validation_exit_from_pid = prev->pid;
+        g_sched_validation_exit_to_pid = next->pid;
+        g_sched_validation_exit_forced_next = NULL;
+    } else
+#endif
+    next = sched_select_next_mailbox(prev,
+                                     &decision_id,
+                                     &decision_pid,
+                                     &decision_src_pid,
+                                     &used_mailbox,
+                                     0,
+                                     SCHED_DECISION_SITE_BLOCK);
+    if (!next) {
+        fb_print("[PANIC] exiting task without mailbox successor\n");
+        for (;;) __asm__ volatile("cli; hlt");
+    }
+
+    sched_record_mailbox_decision_event(prev, next, decision_id, decision_src_pid, used_mailbox);
+    sched_commit_owner_transfer_if_pending(prev, next);
+
+    current_proc = next;
+    current_proc->state = PROC_RUNNING;
+    sched_try_pickup_execution_work();
+
+    if (current_proc->context.cs == GDT_USER_CODE) {
+        if (!current_proc->context.rsp0) {
+            fb_print("[PANIC] Ring3 process has no rsp0 (TSS stack)\n");
+            for (;;) __asm__ volatile("cli; hlt");
+        }
+        gdt_set_kernel_stack(current_proc->context.rsp0);
+        __asm__ volatile("" ::: "memory");
+        map_kernel_stack_pages_into_pml4(current_proc->context.cr3, current_proc->context.rsp0);
+    } else if (current_proc->context.rsp0) {
+        gdt_set_kernel_stack(current_proc->context.rsp0);
+    }
+
+    context_switch(&prev->context, &current_proc->context);
+
+    fb_print("[PANIC] sched_exit_current returned unexpectedly\n");
+    for (;;) __asm__ volatile("cli; hlt");
 }
 
 void sched_wake(proc_t *proc)

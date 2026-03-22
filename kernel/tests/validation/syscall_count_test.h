@@ -3,7 +3,7 @@
 //
 // This header declares the syscall count validation test function.
 //
-// Requirements: AC-6 - Ring0 contains exactly 10 syscalls
+// Requirements: AC-6 - Ring0 contains only execution-centric syscalls
 
 #ifndef AYKEN_SYSCALL_COUNT_TEST_H
 #define AYKEN_SYSCALL_COUNT_TEST_H

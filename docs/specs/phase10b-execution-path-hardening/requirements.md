@@ -2,7 +2,7 @@
 
 **Status:** Draft (local execution-reality stabilization plan; does not override roadmap authority)
 **Phase:** Phase 10-B / Phase 10-C runtime stabilization
-**Last Updated:** 2026-03-18
+**Last Updated:** 2026-03-22
 
 ## 1. Purpose
 
@@ -48,6 +48,10 @@ The following repo truths constrain this plan:
 - Scheduler mailbox is a policy bridge and MUST remain separate from execution dispatch.
 - Timer ticks are the only current monotonic in-kernel time source.
 - `proc_block_current(wait_obj)` / `proc_wake_waiters(wait_obj)` already define the canonical block/wake mechanism.
+- Current user CR3 roots explicitly mirror the low-half kernel heap as a
+  temporary supervisor-only compatibility scaffold; this MUST remain bounded
+  and MUST be removed once kmalloc/proc metadata is promoted out of the low
+  half.
 
 ## 4. Requirements
 
@@ -133,6 +137,12 @@ address space.
 The minimum result contract is:
 
 - result backing is produced in kernel-owned memory
+- the first successful `wait_result` MUST materialize the full bounded
+  kernel-owned validated output header plus payload bytes currently attached to
+  the completed slot
+- the first materialization contract now uses the distinct executor-written
+  output plane validated during `complete_execution`; the mapped bytes are the
+  frozen slot-owned output backing rather than the original BCIB input
 - first successful `wait_result` maps result into caller address space
 - slot transitions from `COMPLETED` to `RESULT_MAPPED`
 - repeated `wait_result` behavior MUST be explicit and deterministic:
@@ -206,6 +216,9 @@ The implementation MUST:
 - wake through `proc_wake_waiters(wait_obj)` or equivalent canonical path
 - return immediately if slot is already terminal
 - fail closed on invalid or foreign execution IDs
+- preserve a single terminal outcome when timeout and explicit completion race;
+  the first successful terminal transition MUST win and any later attempt MUST
+  fail-closed without overwriting terminal state
 
 `wait_obj` identity MUST remain stable for the slot lifetime. Raw recyclable
 slot pointers are forbidden. The initial implementation MUST use an embedded
@@ -266,6 +279,33 @@ At minimum, exit MUST:
 - trigger an immediate context switch away from the exiting process
 - ensure the exiting task is not selected again as runnable
 
+Until an explicit scheduler-owner handoff protocol exists, the scheduler owner
+process MUST fail closed on `sys_v2_exit()` at syscall entry.
+
+That owner-exit deny path MUST:
+
+- return `ESYS_V2_PERMISSION_DENIED`
+- emit an explicit log/marker for diagnostics
+- avoid starting any slot abort, revoke, queue removal, or switch-away side
+  effects
+
+Future scheduler-owner handoff/reap work MUST remain a separate
+governance-controlled slice rather than a silent extension of the current exit
+path. The review context remains:
+
+- `docs/governance/SCHEDULER_OWNER_HANDOFF_REAP_CANDIDATE.md`
+
+The governing ratified surface for that work is the narrow mailbox-v1 transfer
+exception:
+
+- `docs/governance/MAILBOX_V1_OWNER_TRANSFER_EXCEPTION.md`
+
+Any future owner-transfer authority commit MUST occur only at the scheduler
+dispatch boundary while scheduling is paused for the current CPU.
+Runtime proof is now landed for dispatch-boundary owner commit,
+successor-authority mailbox application, and old-owner no-return exit/reap
+follow-through under successor authority via validation-safe scheduler seams.
+
 ### Requirement 11: ABI Consistency
 
 The v2 syscall ABI contract MUST remain internally consistent.
@@ -275,6 +315,19 @@ In particular:
 - `sys_v2_submit_execution(..., context_id)` third argument is `context_id`
 - userspace wrappers MUST NOT reinterpret that third argument as `execution_id`
 - kernel-owned `execution_id` allocation remains the syscall return value
+- `execution_id` MUST remain strictly monotonic and non-reused within a boot
+  session; allocation wrap-around MUST fail-closed rather than reusing an old ID
+- if authoritative completion requires a dedicated ABI entry point, that entry
+  point MUST be ratified explicitly before implementation rather than silently
+  repurposing an existing syscall
+- once that completion entry point is ratified, only the target executor
+  process that currently owns `active_execution_id` for the matching
+  `execution_id` MAY invoke it; foreign or stale completion attempts MUST
+  fail-closed
+- slot `generation` remains internal lifetime metadata for wait-key stability
+  and does not become part of the first completion ABI
+- the completion entry point MUST expose deterministic return codes for success,
+  invalid state, permission denial, and invalid/stale execution identity
 
 ### Requirement 12: Semantic Validation
 
@@ -306,6 +359,99 @@ The active execution-path progress log for this plan is:
 
 - `docs/specs/phase10b-execution-path-hardening/progress.md`
 
+### Requirement 14: Distinct Output Plane Upgrade
+
+The first distinct output-plane upgrade MUST use a bounded fixed-VA output
+window rather than a new per-write syscall.
+
+That first upgrade MUST:
+
+- preserve the existing `submit_execution`, `complete_execution`, and
+  `wait_result` syscall surface
+- give the executor a fixed writable/NX output window
+- keep the output backing kernel-owned and slot-owned
+- validate a versioned output header during `complete_execution()`
+- freeze the validated output backing before `wait_result()` publication
+- zero-seal any bytes past the declared logical result size inside the mapped
+  result frame span before publication
+- keep owner-visible result publication read-only/NX
+- keep repeated successful waits deterministic
+- if `COMPLETED` is requested with invalid output metadata, fail closed by
+  terminalizing as `FAILED`, clearing the latch, waking waiters, and returning
+  `ESYS_V2_INVALID_STATE`
+
+The frozen candidate for that first landing is:
+
+- `docs/specs/phase10b-execution-path-hardening/execution-output-minimal-spec.md`
+
+### Requirement 15: Structured Output Semantic Layer
+
+If the output plane widens from "safe bounded bytes" to "typed semantic
+results", the first structured-output landing MUST remain additive on top of
+the landed raw output contract.
+
+That first semantic layer MUST:
+
+- preserve the existing raw output/result publication path as a backward-
+  compatible fallback
+- introduce a distinct typed structured-output header rather than overloading
+  the existing raw header
+- keep `kind` as a closed, bounded set
+- validate only header structure, known version, known `kind`, and bounds
+- treat payload bytes as opaque regardless of the declared `kind`
+- explicitly delegate all payload parsing and semantic interpretation to
+  userland
+- fail closed on unknown `kind`, version mismatch, malformed header, or invalid
+  bounds
+
+That first semantic layer MUST NOT:
+
+- introduce kernel-side payload parsing
+- introduce schema negotiation or dynamic typing
+- mutate the landed raw output-plane contract in place
+
+The active minimal contract for that semantic layer is:
+
+- `docs/specs/phase10b-execution-path-hardening/structured-output-minimal-spec.md`
+
+The first landed structured layer now uses:
+
+- raw v1 output header as the backward-compatible fallback
+- additive structured v2 output header with a closed initial `kind` set
+  (`RAW`, `BLOB`)
+
+### Requirement 16: Result Hash Integrity Anchor
+
+If the result model widens from "frozen published bytes" to "frozen published
+bytes plus integrity anchor", the first result-hash landing MUST remain
+additive on top of the landed raw+structured result plane.
+
+That first integrity layer MUST:
+
+- preserve the existing `submit_execution`, `complete_execution`, and
+  `wait_result` syscall surface
+- compute one fixed digest over exactly the logical published result bytes
+  (`result_size`)
+- compute that digest during successful completion-time freeze instead of
+  lazily during `wait_result()`
+- exclude zero-sealed padding beyond `result_size` from the digest subject
+- keep the digest kernel-owned and slot-owned until explicitly mapped
+- preserve raw v1 and structured v2 result compatibility
+- keep the hash surface read-only/NX in user space
+- keep repeated successful waits deterministic for both result publication and
+  digest publication
+
+That first integrity layer MUST NOT:
+
+- introduce algorithm negotiation
+- parse payload semantics while hashing
+- reinterpret output `kind`
+- mutate the landed result bytes in place
+
+The active minimal contract for that integrity layer is:
+
+- `docs/specs/phase10b-execution-path-hardening/result-hash-minimal-spec.md`
+
 ## 5. Non-Goals
 
 This plan does not authorize:
@@ -313,4 +459,5 @@ This plan does not authorize:
 - policy migration back into Ring0
 - replacing scheduler mailbox with execution dispatch
 - introducing distributed verification semantics into kernel runtime work
-- changing the frozen syscall number range
+- changing the frozen syscall number range without an explicit completion-handoff
+  ratification

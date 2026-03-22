@@ -31,10 +31,10 @@ following are true:
 
 Current codebase note:
 
-- the current single `bcib_phys` field in `exec_slot_t` is not sufficient for
-  the 16 KiB payload window defined below
-- before inbox publish lands, slot backing metadata MUST widen to a bounded
-  frame list or an equivalent kernel-owned payload representation
+- `exec_slot_t` now carries bounded kernel-owned BCIB frame metadata sized for
+  the initial payload window
+- `submit_execution` now rejects oversize BCIB payloads fail-closed and copies
+  accepted payload bytes into kernel-owned backing
 - oversize BCIB payloads MUST fail closed rather than partially publishing
 
 ## 2. Non-Negotiable Rules
@@ -79,6 +79,15 @@ Payload mapping lifecycle:
 - if the shared paging flag surface does not yet expose NX control for this
   mapping path, that flag exposure MUST be added before landing execution inbox
   publish; executable user mapping is not an acceptable fallback
+
+Current codebase note:
+
+- process-init mapping for `EXECUTION_INBOX_VA` and `EXECUTION_PAYLOAD_VA` is
+  now landed
+- those mappings are initialized as empty read-only/NX delivery surfaces
+- schedule-entry pickup now publishes payload and descriptor data into that
+  surface and advances `delivery_seq` as the userspace-visible commit point
+- successful completion and result ownership remain later slices
 
 ## 4. Authority Model
 

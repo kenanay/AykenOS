@@ -1,0 +1,5 @@
+# Frozen legacy files that still carry historical terminology.
+^kernel/proc/proc\.c$
+^kernel/sched/sched\.c$
+^kernel/sched/sched\.h$
+^kernel/tests/validation/phase2_validation_test\.c$

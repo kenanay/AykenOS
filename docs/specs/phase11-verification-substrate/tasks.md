@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Draft  
-**Date:** 2026-03-06  
+**Date:** 2026-03-22
 **Related Spec:** `requirements.md`, `design.md`
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  
@@ -579,4 +579,5 @@ Phase-11 implementation is closure-ready when:
 - WS-A tasks are complete with gate PASS
 - Required artifacts are reproducible in CI
 - Core proof chain (#35/#36/#40/#43/#44/#45/#37/#41/P11-42) is green
+- `ci-gate-no-low-half-kernel-dependency` passes, the low-half heap scaffold is removed, and the same-run multi-point runtime proof no longer reports a low-half user-root kheap mapping or any low-half reversion across observed phases
 - Documentation and issue acceptance criteria remain aligned

@@ -387,6 +387,37 @@ capability_token_t *capability_get_by_context(uint64_t execution_ctx, uint32_t r
     return NULL;
 }
 
+int capability_context_has_capability(uint64_t execution_ctx, uint64_t capability_id)
+{
+    execution_context_capabilities_t *ctx_caps;
+    capability_extended_t *cap;
+    uint32_t i;
+
+    if (execution_ctx == 0 || capability_id == 0) {
+        return CAPABILITY_ERROR_INVALID_TOKEN;
+    }
+
+    ctx_caps = find_context_capabilities(execution_ctx);
+    if (ctx_caps == NULL) {
+        return CAPABILITY_ERROR_NOT_FOUND;
+    }
+
+    for (i = 0; i < ctx_caps->capability_count; ++i) {
+        if (ctx_caps->capability_ids[i] != capability_id) {
+            continue;
+        }
+
+        cap = find_capability_by_id(capability_id);
+        if (cap == NULL || cap->state != CAPABILITY_STATE_ACTIVE) {
+            return CAPABILITY_ERROR_NOT_FOUND;
+        }
+
+        return CAPABILITY_SUCCESS;
+    }
+
+    return CAPABILITY_ERROR_NOT_FOUND;
+}
+
 // ============================================================================
 // CAPABILITY BINDING OPERATIONS
 // ============================================================================

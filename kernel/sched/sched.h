@@ -61,6 +61,8 @@ void enqueue_ready(proc_t *p);
 
 // Ring0 mechanism: Ready queue bookkeeping
 void remove_from_ready_queue(proc_t *p);
+void sched_remove_process_everywhere(proc_t *p);
+void sched_exit_current(void) __attribute__((noreturn));
 
 // Ring0 mechanism: Add task to scheduler bookkeeping
 void sched_add_task(void *task);
@@ -68,5 +70,22 @@ void sched_add_task(void *task);
 // Ring0 mechanism state: Current running process
 extern proc_t *current_proc;
 extern volatile uint32_t sched_irq_user_ctx_saved;
+
+// Ring0 mechanism: schedule-entry execution delivery hook for current process
+int sched_try_pickup_execution_work(void);
+
+uint32_t sched_active_owner_pid(void);
+int sched_request_owner_transfer(proc_t *caller_owner, proc_t *successor);
+
+void sched_validation_set_active_owner(proc_t *owner);
+int sched_validation_take_owner_transfer_event(int *from_pid, int *to_pid);
+int sched_validation_take_mailbox_decision_event(int *from_pid,
+                                                 int *to_pid,
+                                                 int *src_pid,
+                                                 uint64_t *decision_id);
+int sched_validation_non_owner_publish_would_fail(proc_t *publisher);
+void sched_validation_arm_exit_successor(proc_t *forced_next);
+void sched_validation_disarm_exit_successor(void);
+int sched_validation_take_exit_switch_event(int *from_pid, int *to_pid);
 
 #endif // AYKEN_SCHED_H

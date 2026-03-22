@@ -97,6 +97,9 @@ done
 BOOT_AUDIT="${ROOT}/tools/validation/phase_4_4_qemu_boot_audit.sh"
 EXTRACTOR="${ROOT}/tools/ci/extract_phase10_markers.py"
 VALIDATOR="${ROOT}/tools/ci/validate_marker_order_phase10a2.py"
+# Stop only after the final canonical A2 marker; earlier boot markers can cut
+# the syscall/capability/user-return evidence and create false instability.
+BOOT_AUDIT_MARKER="P10_RING3_USER_CODE"
 
 if [[ ! -x "${BOOT_AUDIT}" ]]; then
   echo "ERROR: missing boot audit script: ${BOOT_AUDIT}" >&2
@@ -177,7 +180,7 @@ fi
 set +e
 "${BOOT_AUDIT}" \
   --timeout "${QEMU_TIMEOUT}" \
-  --marker "[K][BOOT_OK] Phase 4.4 minimal boot reached" \
+  --marker "${BOOT_AUDIT_MARKER}" \
   --out-dir "${BOOT_AUDIT_DIR}" > "${BOOT_AUDIT_LOG}" 2>&1
 BOOT_AUDIT_RC=$?
 set -e
@@ -231,6 +234,7 @@ with open(path, "r", encoding="utf-8") as fh:
     row = json.load(fh)
 row["boot_audit_exit_code"] = boot_audit_rc
 row["qemu_timeout_seconds"] = qemu_timeout
+row["boot_audit_marker"] = "P10_RING3_USER_CODE"
 row["enforced_ayken_cr3_pcid"] = enforced_ayken_cr3_pcid
 row["observed_ayken_cr3_pcid"] = observed_ayken_cr3_pcid
 row["ayken_c2_strict_markers"] = int(sys.argv[6])
@@ -278,6 +282,7 @@ PY
 
 {
   echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "boot_audit_marker=${BOOT_AUDIT_MARKER}"
   echo "kernel_profile=${KERNEL_PROFILE}"
   echo "enforced_ayken_cr3_pcid=${ENFORCED_AYKEN_CR3_PCID}"
   echo "observed_ayken_cr3_pcid=${AYKEN_CR3_PCID}"

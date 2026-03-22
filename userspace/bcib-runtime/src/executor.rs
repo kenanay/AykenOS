@@ -1,3 +1,4 @@
+#[cfg(all(target_arch = "x86_64", not(test)))]
 use core::arch::asm;
 use std::{
     collections::{HashMap, HashSet},
@@ -106,6 +107,7 @@ impl<'a> BcibGraph<'a> {
 #[derive(Debug)]
 pub enum ExecutionError {
     InvalidGraph(&'static str),
+    InvalidContext(&'static str),
     Decode(DecodeError),
     Syscall(i64),
     Capability(&'static str),
@@ -121,6 +123,7 @@ impl fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ExecutionError::InvalidGraph(msg) => write!(f, "invalid BCIB graph: {}", msg),
+            ExecutionError::InvalidContext(msg) => write!(f, "invalid execution context: {}", msg),
             ExecutionError::Decode(err) => write!(f, "BCIB decode failed: {}", err),
             ExecutionError::Syscall(code) => write!(f, "syscall returned error {}", code),
             ExecutionError::Capability(msg) => write!(f, "capability error: {}", msg),
@@ -141,7 +144,6 @@ impl std::error::Error for ExecutionError {
 pub struct BcibExecutor {
     pub execution_contexts: HashMap<u64, ExecutionContext>,
     pub capability_manager: CapabilityManager,
-    next_execution_id: u64,
 }
 
 impl BcibExecutor {
@@ -149,32 +151,53 @@ impl BcibExecutor {
         Self {
             execution_contexts: HashMap::new(),
             capability_manager: CapabilityManager::default(),
-            next_execution_id: 1,
         }
-    }
-
-    fn allocate_execution_id(&mut self) -> u64 {
-        let id = self.next_execution_id;
-        self.next_execution_id += 1;
-        id
     }
 
     /// Submit BCIB graph to Ring0 via SYS_V2_SUBMIT_EXECUTION.
     ///
-    /// Validates BCIB header/opcodes, allocates execution ID, binds a
-    /// capability token locally, and forwards the buffer to Ring0 using the
-    /// execution-centric syscall path (1000-1009 range).
-    pub fn submit_execution(&mut self, graph: &BcibGraph) -> Result<u64, ExecutionError> {
+    /// Validates BCIB header/opcodes, requires an explicit target `context_id`,
+    /// and forwards the buffer to Ring0 using the execution-centric syscall
+    /// path. The returned `execution_id` remains authoritative and kernel-owned.
+    pub fn submit_execution(
+        &mut self,
+        graph: &BcibGraph,
+        context_id: u64,
+    ) -> Result<u64, ExecutionError> {
         if graph.is_empty() {
             return Err(ExecutionError::InvalidGraph("BCIB graph is empty"));
+        }
+        if context_id == 0 {
+            return Err(ExecutionError::InvalidContext("context_id must be non-zero"));
         }
 
         // Validate BCIB structure (magic, version, opcode set)
         graph.validate()?;
 
-        let execution_id = self.allocate_execution_id();
+        self.execution_contexts
+            .entry(context_id)
+            .or_insert_with(|| ExecutionContext::new(context_id));
+
+        // Submit to Ring0 with a real target context ID.
+        let result = unsafe {
+            syscall_v2(
+                SYS_V2_SUBMIT_EXECUTION,
+                graph.as_ptr() as u64,
+                graph.len() as u64,
+                context_id,
+                0,
+            )
+        };
+
+        if (result as i64) < 0 {
+            return Err(ExecutionError::Syscall(result as i64));
+        }
+        if result == 0 {
+            return Err(ExecutionError::Syscall(0));
+        }
+
         let token = CapabilityToken {
-            id: execution_id,
+            id: result,
             resource_type: CapabilityResource::Execution,
             permissions: CapabilityPermission::EXECUTE,
             expires_at: None,
@@ -184,29 +207,7 @@ impl BcibExecutor {
             .bind(&token)
             .map_err(|_| ExecutionError::Capability("capability bind failed"))?;
 
-        // Submit to Ring0. Kernel may return its own execution ID; prefer that
-        // if it is positive, otherwise fall back to our allocated ID.
-        let result = unsafe {
-            syscall_v2(
-                SYS_V2_SUBMIT_EXECUTION,
-                graph.as_ptr() as u64,
-                graph.len() as u64,
-                execution_id,
-                0,
-            )
-        };
-
-        if (result as i64) < 0 {
-            self.capability_manager.revoke(token.id);
-            return Err(ExecutionError::Syscall(result as i64));
-        }
-
-        let final_id = if result != 0 { result } else { execution_id };
-        self.execution_contexts
-            .entry(final_id)
-            .or_insert_with(|| ExecutionContext::new(final_id));
-
-        Ok(final_id)
+        Ok(result)
     }
 
     /// Wait for execution result via SYS_V2_WAIT_RESULT (placeholder wiring).
@@ -220,7 +221,7 @@ impl BcibExecutor {
 }
 
 /// Low-level syscall shim using INT 0x80 (aligns with existing Ring3 callers).
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", not(test)))]
 #[inline(always)]
 unsafe fn syscall_v2(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64) -> u64 {
     let ret: u64;
@@ -238,7 +239,7 @@ unsafe fn syscall_v2(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64) -> u6
 }
 
 /// Fallback syscall implementation for non-x86_64 architectures
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(all(not(target_arch = "x86_64"), not(test)))]
 #[inline(always)]
 unsafe fn syscall_v2(_num: u64, _arg1: u64, _arg2: u64, _arg3: u64, _arg4: u64) -> u64 {
     // For ARM macOS and other architectures, return a mock success value
@@ -247,15 +248,85 @@ unsafe fn syscall_v2(_num: u64, _arg1: u64, _arg2: u64, _arg3: u64, _arg4: u64) 
 }
 
 #[cfg(test)]
+mod test_syscall {
+    use std::sync::{Mutex, OnceLock};
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct RecordedSyscall {
+        pub num: u64,
+        pub arg1: u64,
+        pub arg2: u64,
+        pub arg3: u64,
+        pub arg4: u64,
+    }
+
+    #[derive(Debug, Default)]
+    struct TestState {
+        enabled: bool,
+        return_value: u64,
+        last_call: Option<RecordedSyscall>,
+    }
+
+    fn state() -> &'static Mutex<TestState> {
+        static STATE: OnceLock<Mutex<TestState>> = OnceLock::new();
+        STATE.get_or_init(|| Mutex::new(TestState::default()))
+    }
+
+    pub fn install(return_value: u64) {
+        let mut guard = state().lock().expect("test syscall state");
+        guard.enabled = true;
+        guard.return_value = return_value;
+        guard.last_call = None;
+    }
+
+    pub fn take_last_call() -> Option<RecordedSyscall> {
+        let mut guard = state().lock().expect("test syscall state");
+        guard.last_call.take()
+    }
+
+    pub fn uninstall() {
+        let mut guard = state().lock().expect("test syscall state");
+        *guard = TestState::default();
+    }
+
+    pub fn invoke(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64) -> u64 {
+        let mut guard = state().lock().expect("test syscall state");
+        assert!(guard.enabled, "test syscall hook must be installed before submit_execution");
+        guard.last_call = Some(RecordedSyscall {
+            num,
+            arg1,
+            arg2,
+            arg3,
+            arg4,
+        });
+        guard.return_value
+    }
+}
+
+#[cfg(test)]
+#[inline(always)]
+unsafe fn syscall_v2(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64) -> u64 {
+    test_syscall::invoke(num, arg1, arg2, arg3, arg4)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
+    use bcib::BcibInstruction;
+
+    fn sample_graph_bytes() -> Vec<u8> {
+        let mut buf = BcibBuffer::new();
+        buf.add(BcibInstruction::nop());
+        buf.add(BcibInstruction::end());
+        buf.encode()
+    }
 
     #[test]
     fn test_submit_execution_empty_graph() {
         let mut executor = BcibExecutor::new();
         let empty_graph = BcibGraph::new(&[]);
 
-        let result = executor.submit_execution(&empty_graph);
+        let result = executor.submit_execution(&empty_graph, 42);
         assert!(result.is_err());
 
         if let Err(ExecutionError::InvalidGraph(msg)) = result {
@@ -266,15 +337,16 @@ mod tests {
     }
 
     #[test]
-    fn test_execution_id_allocation() {
+    fn test_submit_execution_rejects_zero_context_id() {
         let mut executor = BcibExecutor::new();
+        let graph_bytes = sample_graph_bytes();
+        let graph = BcibGraph::new(&graph_bytes);
 
-        let id1 = executor.allocate_execution_id();
-        let id2 = executor.allocate_execution_id();
-
-        assert_eq!(id1, 1);
-        assert_eq!(id2, 2);
-        assert_ne!(id1, id2);
+        let result = executor.submit_execution(&graph, 0);
+        assert!(matches!(
+            result,
+            Err(ExecutionError::InvalidContext("context_id must be non-zero"))
+        ));
     }
 
     #[test]
@@ -312,5 +384,32 @@ mod tests {
         assert!(ctx.active_container.is_none());
         assert!(ctx.string_pool.is_empty());
         assert!(ctx.logger_enabled);
+    }
+
+    #[test]
+    fn test_submit_execution_passes_context_id_and_uses_kernel_execution_id() {
+        let mut executor = BcibExecutor::new();
+        let graph_bytes = sample_graph_bytes();
+        let graph = BcibGraph::new(&graph_bytes);
+
+        test_syscall::install(77);
+        let result = executor.submit_execution(&graph, 42);
+        let call = test_syscall::take_last_call();
+        test_syscall::uninstall();
+
+        assert_eq!(result.unwrap(), 77);
+        assert_eq!(
+            call,
+            Some(test_syscall::RecordedSyscall {
+                num: SYS_V2_SUBMIT_EXECUTION,
+                arg1: graph.as_ptr() as u64,
+                arg2: graph.len() as u64,
+                arg3: 42,
+                arg4: 0,
+            })
+        );
+        assert!(executor.execution_contexts.contains_key(&42));
+        assert!(executor.capability_manager.active_tokens.contains(&77));
+        assert!(!executor.capability_manager.active_tokens.contains(&42));
     }
 }

@@ -147,10 +147,13 @@ void timer_isr_c(void *frame_ptr)
 {
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
     execution_slot_guard_t slot_guard = {0};
+    execution_slot_trace_scope_t trace_scope = {0};
     tick_count++;
 
     execution_slot_enter_critical(&slot_guard);
+    execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_TIMEOUT_IRQ);
     execution_slot_process_timeouts_locked(tick_count);
+    execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
@@ -186,6 +189,13 @@ void timer_isr_c(void *frame_ptr)
     extern proc_t *current_proc;
     if (current_proc && current_proc->type == PROC_TYPE_USER &&
         frame && ((frame->cs & 0x3) == 0x3)) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+        static uint8_t low_half_kheap_timer_runtime_proof_emitted = 0;
+        if (!low_half_kheap_timer_runtime_proof_emitted) {
+            low_half_kheap_timer_runtime_proof_emitted = 1;
+            proc_emit_low_half_kheap_runtime_proof(current_proc, "timer_irq");
+        }
+#endif
         // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
         // user stub can publish epoch/syscall markers before strict IRQ arbitration.
         // Gate-4 isolated policy proof keeps its original timer behavior.

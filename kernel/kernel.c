@@ -566,6 +566,10 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]4.5 EXEC_SLOT\n");
     execution_slots_init();
     fb_print("[OK] Execution-slot tables initialized (passive runtime state only).\n");
+#if defined(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST) && (AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST == 1)
+    debugcon_write("[K][LATE]4.6 EXEC_SLOT_FAIL_CLOSED_SELFTEST\n");
+#endif
+    execution_slot_run_fail_closed_selftest();
 
     // ---------------------------------------------------------
     // 3) File system mechanism only - no policy in Ring0
@@ -581,8 +585,8 @@ static void kernel_late_init(void)
     // 4) Syscall mechanism interface (execution-centric only)
     // ---------------------------------------------------------
     debugcon_write("[K][LATE]6 SYSCALL\n");
-    syscall_init();  // Ring0 mechanism only - 10 syscalls exactly
-    fb_print("[OK] Syscall mechanism ready (10 execution-centric syscalls only).\n");
+    syscall_init();  // Ring0 mechanism only - execution-centric syscalls only
+    fb_print("[OK] Syscall mechanism ready (12 execution-centric syscalls only).\n");
 
     // ---------------------------------------------------------
     // 4.1) Ring0 INT 0x80 smoke test - COMPLETELY DISABLED FOR RING3 DIAGNOSTICS
@@ -618,7 +622,7 @@ static void kernel_late_init(void)
     fb_print("[VALIDATION] Phase 2 validation completed.\n");
 
     // ---------------------------------------------------------
-    // 6.1) Syscall Count Validation (Task: Ring0 exactly 10 syscalls)
+    // 6.1) Syscall Count Validation (Task: Ring0 execution-centric syscall surface)
     // ---------------------------------------------------------
     // validate_syscall_count_requirement();
 

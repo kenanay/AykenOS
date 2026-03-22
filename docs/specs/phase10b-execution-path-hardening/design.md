@@ -1,6 +1,6 @@
 # Design Document
 
-**Status:** Draft (local execution-reality stabilization plan; not roadmap authority)
+**Status:** Active implementation reference (local execution-reality stabilization plan; not roadmap authority)
 **Phase:** Phase 10-B / Phase 10-C runtime stabilization
 
 ## 1. Overview
@@ -38,14 +38,56 @@ timer machinery instead of inventing a new runtime substrate.
 - `timer.c` already maintains a monotonic `tick_count`.
 - user processes already have dedicated `cr3`, user stack mapping, and a fixed
   scheduler mailbox VA.
+- user CR3 roots now also mirror the current low-half kernel heap as a
+  supervisor-only compatibility window so kmalloc-backed `proc_t` metadata and
+  kernel stacks remain reachable during IRQ/syscall entry; this is temporary
+  scaffolding, not the target memory model.
 
 ### 2.2 Incomplete Areas
 
-- `sys_v2_map_memory()` and `sys_v2_unmap_memory()` still return placeholder success.
-- `sys_v2_submit_execution()` allocates an ID but does not create an execution lifecycle.
-- `sys_v2_wait_result()` does not block.
-- `sys_v2_time_query()` returns a dummy value.
-- `sys_v2_exit()` never terminates the process.
+- `sys_v2_map_memory()` and `sys_v2_unmap_memory()` now perform real explicit
+  user mappings backed by a process-local capability ledger; they still do not
+  imply full process-memory teardown or allocator semantics.
+- `sys_v2_submit_execution()` now validates a live user target and copies BCIB
+  bytes into kernel-owned backing, while delivery, explicit completion, and
+  terminalization are wired; successful waits now materialize the full bounded
+  frozen output header plus payload bytes rather than a receipt-only
+  placeholder or BCIB input reuse.
+- `sys_v2_wait_result()` now blocks on finite timeout waits and maps a
+  read-only/NX full bounded kernel-owned result window on first successful
+  completion; that result window now publishes the frozen validated
+  executor-written output backing described in
+  `docs/specs/phase10b-execution-path-hardening/execution-output-minimal-spec.md`.
+- the current output/result plane remains payload-opaque even though the
+  runtime now accepts both raw v1 and structured v2 output headers; semantic
+  interpretation is still tracked separately in
+  `docs/specs/phase10b-execution-path-hardening/structured-output-minimal-spec.md`
+  and must preserve the "kernel enforces structure and bounds, userland owns
+  meaning" boundary.
+- the first result-hash layer is now tracked in
+  `docs/specs/phase10b-execution-path-hardening/result-hash-minimal-spec.md`
+  and remains an additive integrity anchor over frozen published bytes rather
+  than a semantic parser or verifier verdict surface.
+- `sys_v2_time_query()` is real.
+- `sys_v2_exit()` now transitions the process to `PROC_ZOMBIE`, aborts owned or
+  targeted non-terminal execution slots, revokes result/delivery/mailbox
+  surfaces, destroys remaining lower-half user memory, detaches scheduler
+  bookkeeping, and switches away without return; active root-PML4/current-`rsp0`
+  reap is deferred to a later safe scheduler path.
+- scheduler-owner exit is now fail-closed at syscall entry until a separate
+  owner handoff protocol is activated for production runtime.
+- the broader owner handoff/reap design context remains tracked separately in
+  `docs/governance/SCHEDULER_OWNER_HANDOFF_REAP_CANDIDATE.md`.
+- the ratified governance surface for that protocol is the narrow mailbox-v1
+  transfer exception in
+  `docs/governance/MAILBOX_V1_OWNER_TRANSFER_EXCEPTION.md`.
+- the actual authority commit belongs to the scheduler dispatch
+  boundary while scheduling is paused for the current CPU, not to an arbitrary
+  syscall-body mutation point.
+- a narrow runtime proof now exists for dispatch-boundary owner commit and
+  successor-authority mailbox application, plus old-owner no-return
+  exit/reap follow-through under successor authority via validation-safe
+  scheduler seams.
 
 ## 3. Architecture Rules
 
@@ -79,6 +121,24 @@ Initial locking plan:
 
 This is sufficient for the current single-core runtime bring-up. It is not an
 SMP-final design.
+
+### 3.2 Temporary Memory-Model Scaffold
+
+The current runtime still carries one explicit transitional compromise:
+
+- kmalloc/proc metadata remains in the low half
+- user PML4 roots mirror that low-half heap supervisor-only
+- mixed low-half trees therefore require parent table entries to tolerate user
+  descendants where user leaf mappings and supervisor-only kernel leaves share
+  a subtree
+
+This is acceptable only as bounded compatibility scaffolding while the runtime
+stabilizes. The target model remains:
+
+- higher-half-only kernel heap and kernel-owned metadata
+- no low-half kernel heap mirror in user CR3 roots
+- no dependency on mixed-permission low-half subtrees for core kernel
+  reachability
 
 ## 4. Execution Chain
 
@@ -160,9 +220,11 @@ typedef struct exec_slot {
     uint64_t created_tick;
     uint64_t deadline_tick;
     exec_slot_state_t state;
-    uint64_t bcib_phys;
+    uint32_t bcib_frame_count;
+    uint32_t result_frame_count;
+    uint64_t bcib_frames[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES];
     uint64_t bcib_size;
-    uint64_t result_phys;
+    uint64_t result_frames[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES];
     uint64_t result_size;
     uint64_t mapped_result_va;
     uint64_t result_map_flags;
@@ -267,6 +329,11 @@ Result memory stays kernel-owned until `wait_result` succeeds.
 Initial contract:
 
 - terminal `COMPLETED` slot maps result into caller address space
+- the first successful `wait_result` materializes the full bounded
+  kernel-owned validated output header plus payload bytes currently preserved
+  by the completed slot
+- this closes the receipt-page placeholder and the BCIB-reuse placeholder
+  without widening the syscall surface
 - slot transitions to `RESULT_MAPPED`
 - repeated `wait_result` returns the same `mapped_result_va`
 - mapped result is read-only and non-executable in user space
@@ -301,7 +368,7 @@ This avoids ambiguous multi-consumer semantics in the first real version.
 - copy BCIB into kernel-owned backing
 - allocate `execution_id`
 - create slot in `CREATED`, then `READY`
-- enqueue descriptor into execution inbox for `target_context_id`
+- enqueue descriptor into the authoritative kernel queue for `target_context_id`
 - return `execution_id`
 
 ### 6.5 Worker Schedule-Entry Pickup
@@ -311,20 +378,64 @@ This avoids ambiguous multi-consumer semantics in the first real version.
 - transition slot `READY -> RUNNING` under execution-table serialization
 - userspace worker begins BCIB execution only after this handoff
 
-### 6.6 `sys_v2_wait_result`
+### 6.6 Authoritative Completion Handoff
+
+Completion must use an explicit kernel entry point.
+
+It must not be:
+
+- inferred from scheduler return behavior
+- tunneled through `interrupt_return`
+- hidden behind a reverse shared-memory side channel
+
+Landed model:
+
+- userspace execution logic explicitly signals completion
+- kernel validates ownership and current `RUNNING` state
+- kernel requires the caller process to own the matching `active_execution_id`
+  latch for that `execution_id`
+- kernel relies on non-reused monotonic `execution_id` allocation; slot
+  `generation` remains internal wait-key metadata rather than an ABI-visible
+  completion handle
+- kernel performs `RUNNING -> COMPLETED/FAILED`
+- kernel clears `active_execution_id`
+- kernel wakes waiters
+- kernel returns deterministic status codes for success, invalid state,
+  permission denial, and invalid/stale execution identity
+- the ratified ABI exception has landed as
+  `SYS_V2_COMPLETE_EXECUTION = 1011`
+
+Arbitration rule:
+
+- timeout and explicit completion paths MUST serialize on the same
+  execution-slot lock discipline
+- the first successful terminal transition wins
+- later completion or timeout attempts MUST fail-closed and MUST NOT overwrite
+  an already terminal slot
+
+### 6.7 `sys_v2_wait_result`
 
 - resolve slot by `execution_id`
 - reject foreign or missing slot
-- if `COMPLETED` or `RESULT_MAPPED`, return mapped result VA
+- if `COMPLETED`, move the bounded frozen output backing into result backing,
+  map the full result window into the owner address space as read-only and
+  non-executable, and return the mapped base VA
+- if `RESULT_MAPPED`, return the same `mapped_result_va`
 - if `FAILED`, `TIMEOUT`, or `ABORTED`, return explicit error
 - otherwise set `wait_obj = &slot->wait_key` and block
 
-### 6.7 `sys_v2_exit`
+### 6.8 `sys_v2_exit`
 
+- if the caller is the scheduler owner, fail closed immediately with
+  `ESYS_V2_PERMISSION_DENIED` and perform no teardown side effects
 - transition current process to `PROC_ZOMBIE`
 - abort all non-terminal owned slots
-- revoke map ledger entries
+- abort foreign-owned non-terminal slots targeting the exiting executor
 - revoke result mappings
+- revoke execution inbox, payload-window, and scheduler-mailbox mappings for the
+  exiting process
+- release owned slot state after revoke work completes
+- revoke generic map ledger entries for explicit `map_memory()` mappings
 - wake blocked waiters
 - remove the process from ready and blocked scheduler queues
 - switch away immediately without requeueing the exiting process
@@ -336,8 +447,8 @@ CREATED       -> READY           on kernel-owned BCIB copy success
 CREATED       -> FAILED          on validation/copy failure
 READY         -> RUNNING         on schedule-entry worker pickup
 READY         -> ABORTED         on owner exit or target teardown
-RUNNING       -> COMPLETED       on result ready
-RUNNING       -> FAILED          on execution error
+RUNNING       -> COMPLETED       on explicit completion handoff (success)
+RUNNING       -> FAILED          on explicit completion handoff (failure)
 RUNNING       -> TIMEOUT         on deadline expiry
 RUNNING       -> ABORTED         on owner exit or target teardown
 COMPLETED     -> RESULT_MAPPED   on first successful wait_result
@@ -354,9 +465,10 @@ Code should land in this order:
 3. execution-slot data model
 4. submit + kernel queue creation
 5. worker schedule-entry pickup
-6. wait lifecycle
-7. exit cleanup
-8. map/unmap ledger
-9. userspace ABI correction for `context_id`
+6. authoritative completion handoff
+7. wait lifecycle
+8. exit cleanup
+9. map/unmap ledger
+10. userspace ABI correction for `context_id` (landed)
 
 This order intentionally prioritizes lifecycle authority before page-table work.

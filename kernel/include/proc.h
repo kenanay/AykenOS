@@ -5,8 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "ayken_abi.h"
+#include "execution_output_abi.h"
 
 #define MAX_PROCS 64
+#define AYKEN_MAX_PROC_GENERIC_MAPPINGS 64
 
 typedef struct cpu_context {
     // Callee-saved general registers
@@ -60,6 +62,25 @@ typedef enum {
     PROC_IMAGE_ELF
 } proc_image_format_t;
 
+typedef enum {
+    PROC_MAPPING_CLASS_NONE = 0,
+    PROC_MAPPING_CLASS_GENERIC = 1
+} proc_mapping_class_t;
+
+typedef struct proc_mapping_entry {
+    uint8_t in_use;
+    uint8_t reserved[7];
+    uint64_t map_id;
+    uint64_t owner_pid;
+    uint64_t user_va;
+    uint64_t phys_addr;
+    uint64_t flags;
+    uint64_t capability_id;
+    uint64_t page_count;
+    uint32_t mapping_class;
+    uint32_t reserved0;
+} proc_mapping_entry_t;
+
 typedef struct proc {
     int pid;
     cpu_context_t context;
@@ -75,6 +96,12 @@ typedef struct proc {
     // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)
     uint64_t mailbox_pa;        // Physical address of per-process mailbox
     uint64_t mailbox_last_epoch; // Last validated epoch (monotonicity check)
+    uint64_t execution_inbox_pa;
+    uint64_t execution_payload_pas[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES];
+    uint64_t execution_output_mapped_id;
+    uint64_t execution_delivery_seq;
+    uint64_t next_mapping_id;
+    proc_mapping_entry_t mapping_ledger[AYKEN_MAX_PROC_GENERIC_MAPPINGS];
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     // Gate-4 isolated proof: per-process publish marker one-shot latch.
     uint8_t gate4_publish_emitted;
@@ -99,5 +126,28 @@ proc_t *proc_create_user_process(const char *name,
 void proc_block_current(void *wait_obj);
 void proc_wake_waiters(void *wait_obj);
 proc_t* proc_find_by_pid(int pid);
+proc_mapping_entry_t *proc_find_generic_mapping(proc_t *p, uint64_t user_va);
+int proc_record_generic_mapping(proc_t *p,
+                                uint64_t user_va,
+                                uint64_t phys_addr,
+                                uint64_t flags,
+                                uint64_t capability_id,
+                                uint64_t page_count,
+                                uint64_t *out_map_id);
+int proc_remove_generic_mapping(proc_t *p,
+                                uint64_t user_va,
+                                proc_mapping_entry_t *removed_entry);
+uint32_t proc_revoke_generic_mappings(proc_t *p);
+void proc_drain_deferred_reap(void);
+int proc_bind_execution_output_window(proc_t *p,
+                                      const uint64_t *output_pas,
+                                      uint32_t frame_count,
+                                      uint64_t execution_id);
+void proc_unmap_execution_output_window(proc_t *p);
+void proc_teardown_exit_surfaces(proc_t *p,
+                                 const uint64_t *result_vas,
+                                 const uint64_t *hash_vas,
+                                 uint32_t result_count);
+void proc_emit_low_half_kheap_runtime_proof(proc_t *p, const char *phase);
 
 #endif

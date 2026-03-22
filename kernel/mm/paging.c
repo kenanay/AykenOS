@@ -48,6 +48,8 @@ typedef uint64_t ayken_pte_t;
 #define AYKEN_PTE_DIRTY           (1ULL << 6)
 #define AYKEN_PTE_HUGE            (1ULL << 7)
 #define AYKEN_PTE_GLOBAL          (1ULL << 8)
+#define AYKEN_PTE_READ_ONLY       (1ULL << 9)
+#define AYKEN_PTE_NO_EXEC         (1ULL << 63)
 
 // Tablo pointer'ları için kullanacağımız flags:
 // Present + Writable (kernel space tablolar için yeterli)
@@ -91,8 +93,18 @@ static ayken_pte_t *g_kernel_pml4    = NULL;
 // Bootloader bu mapping'i kurmuş olmalı.
 static inline void *phys_to_virt(uint64_t phys)
 {
-    if (phys < AYKEN_IDENTITY_MAP_SIZE)
-        return (void *)(uintptr_t)phys;
+    if (phys < AYKEN_IDENTITY_MAP_SIZE) {
+        uint64_t active_cr3 = 0;
+
+        if (g_kernel_pml4_phys == 0) {
+            return (void *)(uintptr_t)phys;
+        }
+
+        __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+        if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == (g_kernel_pml4_phys & AYKEN_PTE_ADDR_MASK)) {
+            return (void *)(uintptr_t)phys;
+        }
+    }
     return (void *)(phys + KERNEL_VIRT_BASE);
 }
 
@@ -164,6 +176,13 @@ static ayken_pte_t *get_or_create_table(ayken_pte_t *table,
 
         // Entry'ye yaz: adres + flags
         table[index] = (phys & AYKEN_PTE_ADDR_MASK) | table_flags;
+    } else if ((table_flags & AYKEN_PTE_USER) &&
+               !(table[index] & AYKEN_PTE_USER)) {
+        // Mixed low-half trees may hold both user leaves and supervisor-only
+        // kernel leaves. Parent entries must be user-visible when any child
+        // user mapping exists; leaf permissions still enforce supervisor-only
+        // access for kernel heap pages.
+        table[index] |= AYKEN_PTE_USER;
     }
 
     uint64_t next_phys = table[index] & AYKEN_PTE_ADDR_MASK;
@@ -209,13 +228,17 @@ static void paging_map_page_into_root(ayken_pte_t *root,
     ayken_pte_t *pt = get_or_create_table(pd, i_pd, table_flags);
     if (!pt) return;
 
-    uint64_t entry_flags = AYKEN_PTE_PRESENT | AYKEN_PTE_WRITABLE;
+    uint64_t entry_flags = AYKEN_PTE_PRESENT;
+    if (!(flags & AYKEN_PTE_READ_ONLY) &&
+        ((flags & AYKEN_PTE_WRITABLE) || !(flags & AYKEN_PTE_USER))) {
+        entry_flags |= AYKEN_PTE_WRITABLE;
+    }
     if (flags & AYKEN_PTE_USER)
         entry_flags |= AYKEN_PTE_USER;
     else
         entry_flags |= AYKEN_PTE_GLOBAL;
 
-    entry_flags |= (flags & ~(AYKEN_PTE_USER));
+    entry_flags |= (flags & ~(AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY));
 
     pt[i_pt] = (phys_addr & AYKEN_PTE_ADDR_MASK) | entry_flags;
 }
@@ -253,6 +276,51 @@ void paging_map(uint64_t virt, uint64_t phys, uint64_t flags)
     paging_map_page(virt, phys, flags);
 }
 
+static void paging_unmap_from_root(ayken_pte_t *root,
+                                   uint64_t virt,
+                                   uint64_t target_pml4_phys)
+{
+    uint16_t pml4_i;
+    uint16_t pdpt_i;
+    uint16_t pd_i;
+    uint16_t pt_i;
+    ayken_pte_t pml4e;
+    ayken_pte_t *pdpt;
+    ayken_pte_t pdpte;
+    ayken_pte_t *pd;
+    ayken_pte_t pde;
+    ayken_pte_t *pt;
+    uint64_t current_cr3 = 0;
+
+    if (!root) {
+        return;
+    }
+
+    pml4_i = PML4_INDEX(virt);
+    pdpt_i = PDPT_INDEX(virt);
+    pd_i = PD_INDEX(virt);
+    pt_i = PT_INDEX(virt);
+
+    pml4e = root[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) return;
+    pdpt = (ayken_pte_t *)phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+
+    pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT)) return;
+    pd = (ayken_pte_t *)phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+
+    pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT)) return;
+    pt = (ayken_pte_t *)phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+
+    pt[pt_i] = 0;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(current_cr3));
+    if ((current_cr3 & AYKEN_PTE_ADDR_MASK) == (target_pml4_phys & AYKEN_PTE_ADDR_MASK)) {
+        __asm__ volatile("invlpg (%0)" :: "r"(virt) : "memory");
+    }
+}
+
 
 // ============================================================================
 //  paging_unmap
@@ -264,30 +332,23 @@ void paging_map(uint64_t virt, uint64_t phys, uint64_t flags)
 
 void paging_unmap(uint64_t virt)
 {
-    if (!g_kernel_pml4)
+    if (!g_kernel_pml4) {
         return;
+    }
 
-    uint16_t pml4_i = PML4_INDEX(virt);
-    uint16_t pdpt_i = PDPT_INDEX(virt);
-    uint16_t pd_i   = PD_INDEX(virt);
-    uint16_t pt_i   = PT_INDEX(virt);
+    paging_unmap_from_root(g_kernel_pml4, virt, g_kernel_pml4_phys);
+}
 
-    ayken_pte_t pml4e = g_kernel_pml4[pml4_i];
-    if (!(pml4e & AYKEN_PTE_PRESENT)) return;
-    ayken_pte_t *pdpt = (ayken_pte_t *)phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+void paging_unmap_in_pml4(uint64_t pml4_phys, uint64_t virt)
+{
+    ayken_pte_t *root;
 
-    ayken_pte_t pdpte = pdpt[pdpt_i];
-    if (!(pdpte & AYKEN_PTE_PRESENT)) return;
-    ayken_pte_t *pd = (ayken_pte_t *)phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+    if (!pml4_phys) {
+        return;
+    }
 
-    ayken_pte_t pde = pd[pd_i];
-    if (!(pde & AYKEN_PTE_PRESENT)) return;
-    ayken_pte_t *pt = (ayken_pte_t *)phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
-
-    pt[pt_i] = 0;
-
-    // TLB flush
-    __asm__ volatile("invlpg (%0)" :: "r"(virt) : "memory");
+    root = (ayken_pte_t *)phys_to_virt(pml4_phys);
+    paging_unmap_from_root(root, virt, pml4_phys);
 }
 
 
@@ -354,9 +415,73 @@ uint64_t paging_get_pte(uint64_t virt)
     return pte;
 }
 
+uint64_t paging_get_pte_in_pml4(uint64_t pml4_phys, uint64_t virt)
+{
+    ayken_pte_t *root;
+    uint16_t pml4_i;
+    uint16_t pdpt_i;
+    uint16_t pd_i;
+    uint16_t pt_i;
+    ayken_pte_t pml4e;
+    ayken_pte_t *pdpt;
+    ayken_pte_t pdpte;
+    ayken_pte_t *pd;
+    ayken_pte_t pde;
+    ayken_pte_t *pt;
+    ayken_pte_t pte;
+
+    if (!pml4_phys) {
+        return 0;
+    }
+
+    root = (ayken_pte_t *)phys_to_virt(pml4_phys);
+    pml4_i = PML4_INDEX(virt);
+    pdpt_i = PDPT_INDEX(virt);
+    pd_i = PD_INDEX(virt);
+    pt_i = PT_INDEX(virt);
+
+    pml4e = root[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) return 0;
+    pdpt = (ayken_pte_t *)phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+
+    pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT)) return 0;
+    pd = (ayken_pte_t *)phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+
+    pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT)) return 0;
+    pt = (ayken_pte_t *)phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+
+    pte = pt[pt_i];
+    if (!(pte & AYKEN_PTE_PRESENT)) return 0;
+
+    return pte;
+}
+
 uint64_t paging_get_kernel_pml4_phys(void)
 {
     return g_kernel_pml4_phys;
+}
+
+int paging_seed_user_kernel_heap_window(uint64_t pml4_phys)
+{
+    uint64_t va;
+
+    if (!pml4_phys) {
+        return -1;
+    }
+
+    for (va = AYKEN_KHEAP_START;
+         va < (AYKEN_KHEAP_START + AYKEN_KHEAP_INITIAL_SIZE);
+         va += AYKEN_FRAME_SIZE) {
+        uint64_t phys = paging_get_phys(va);
+        if (!phys) {
+            return -1;
+        }
+        paging_map_page_in_pml4(pml4_phys, va, phys, AYKEN_PTE_WRITABLE);
+    }
+
+    return 0;
 }
 
 uint64_t paging_create_user_pml4(void)
@@ -369,6 +494,11 @@ uint64_t paging_create_user_pml4(void)
 
     for (int i = AYKEN_PT_ENTRIES / 2; i < AYKEN_PT_ENTRIES; ++i) {
         new_root[i] = g_kernel_pml4[i];
+    }
+
+    if (paging_seed_user_kernel_heap_window(new_pml4_phys) != 0) {
+        phys_free_frame(new_pml4_phys);
+        return 0;
     }
 
     return new_pml4_phys;

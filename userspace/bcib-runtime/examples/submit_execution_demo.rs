@@ -38,9 +38,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    let target_context_id = std::env::var("AYKEN_TARGET_CONTEXT_ID")
+        .map_err(|_| "AYKEN_TARGET_CONTEXT_ID is required when RUN_IN_QEMU=1")?
+        .parse::<u64>()
+        .map_err(|_| "AYKEN_TARGET_CONTEXT_ID must parse as u64")?;
+
     // Submit execution to Ring0
     println!("Submitting execution to Ring0...");
-    match executor.submit_execution(&graph) {
+    match executor.submit_execution(&graph, target_context_id) {
         Ok(execution_id) => {
             println!(
                 "✓ Execution submitted successfully with ID: {}",

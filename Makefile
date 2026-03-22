@@ -47,6 +47,12 @@ AYKEN_C2_STRICT_MARKERS ?= 0
 # Phase10-C1 default: strict mailbox-owner bootstrap (no transitional policy bridge).
 AYKEN_SCHED_BOOTSTRAP_POLICY ?= 0
 AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE ?= 0
+AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST ?= 0
+AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST ?= 0
+AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST ?= 0
+AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT ?= 2
+AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST ?= 0
+AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT ?= 2
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -86,6 +92,40 @@ endif
 
 ifneq ($(filter $(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE),0 1),$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE))
 $(error Invalid AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE='$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST),0 1),$(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST))
+$(error Invalid AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST='$(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST),0 1),$(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST))
+$(error Invalid AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST='$(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST),0 1),$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST))
+$(error Invalid AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST='$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST),0 1),$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST))
+$(error Invalid AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST='$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST)'. Use 0 or 1)
+endif
+
+ifeq ($(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST),1)
+ifeq ($(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST),1)
+$(error AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=1 and AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=1 are mutually exclusive)
+endif
+endif
+
+ifeq ($(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST),1)
+ifeq ($(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST),1)
+$(error AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=1 and AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=1 are mutually exclusive)
+endif
+endif
+
+ifeq ($(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST),1)
+ifeq ($(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST),1)
+$(error AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=1 and AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=1 are mutually exclusive)
+endif
 endif
 
 ifeq ($(AYKEN_SCHED_BOOTSTRAP_POLICY),0)
@@ -134,6 +174,12 @@ KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 KERNEL_CFLAGS += -DAYKEN_C2_STRICT_MARKERS=$(AYKEN_C2_STRICT_MARKERS)
 KERNEL_CFLAGS += -DAYKEN_SCHED_BOOTSTRAP_POLICY=$(AYKEN_SCHED_BOOTSTRAP_POLICY)
 KERNEL_CFLAGS += -DAYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE=$(AYKEN_PHASE11_MAILBOX_CAPABILITY_ENFORCE)
+KERNEL_CFLAGS += -DAYKEN_PHASE10B_FAIL_CLOSED_SELFTEST=$(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=$(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT=$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT)
+KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
@@ -263,6 +309,12 @@ PERF_VARIANCE_FORCE_EFI_REBUILD ?= 0
 RING3_QEMU_TIMEOUT ?= 35
 PHASE10B_MODE ?= negative
 PHASE10B_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+PHASE10B_PROOF_QEMU_TIMEOUT ?= 20
+PHASE10B_REQUIRE_COLOCATED_A2 ?= 1
+LOW_HALF_KHEAP_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
+LOW_HALF_KHEAP_EXIT_PROOF_QEMU_TIMEOUT ?= 35
+LOW_HALF_KHEAP_MULTI_EXIT_PROOF_QEMU_TIMEOUT ?= 35
+LOW_HALF_KHEAP_INTERLEAVING_PROOF_QEMU_TIMEOUT ?= 35
 PHASE10C_REQUIRE_METADATA ?= 1
 PHASE10C_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
 PHASE11_LEDGER_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
@@ -780,12 +832,12 @@ ci-kill-switch-phase13: \
 	@echo "Phase-13 kill-switch gates: ALL PASS"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-kill-switch-phase13
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-kill-switch-phase13
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
 	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
 
 # CI boundary gate with evidence collection
@@ -802,6 +854,7 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/governance-policy"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/naming-convention"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/drift-activation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/structural-abi"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/runtime-marker-contract"
@@ -970,6 +1023,15 @@ ci-gate-governance-policy: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: governance-policy evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-naming-convention: ci-evidence-dir
+	@echo "== CI GATE NAMING CONVENTION =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "naming_diff_range: $(if $(strip $(NAMING_DIFF_RANGE)),$(NAMING_DIFF_RANGE),auto)"
+	@NAMING_DIFF_RANGE="$(NAMING_DIFF_RANGE)" ./scripts/ci/check_naming_convention.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/naming-convention"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/naming-convention/report.json" "$(EVIDENCE_RUN_DIR)/reports/naming-convention.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: naming-convention evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-drift-activation: ci-evidence-dir
 	@echo "== CI GATE DRIFT ACTIVATION =="
 	@echo "run_id: $(RUN_ID)"
@@ -1103,11 +1165,16 @@ ci-gate-syscall-semantics-phase10b: ci-gate-ring3-execution-phase10a2
 	@echo "run_id: $(RUN_ID)"
 	@echo "phase10b_mode: $(PHASE10B_MODE)"
 	@echo "phase10b_a2_evidence: $(PHASE10B_A2_EVIDENCE_DIR)"
-	@RUN_ID=$(RUN_ID) PHASE10B_MODE="$(PHASE10B_MODE)" bash scripts/ci/gate_syscall_semantics_phase10b.sh \
+	@echo "phase10b_proof_qemu_timeout: $(PHASE10B_PROOF_QEMU_TIMEOUT)"
+	@echo "phase10b_require_colocated_a2: $(PHASE10B_REQUIRE_COLOCATED_A2)"
+	@RUN_ID=$(RUN_ID) PHASE10B_MODE="$(PHASE10B_MODE)" PHASE10B_PROOF_QEMU_TIMEOUT="$(PHASE10B_PROOF_QEMU_TIMEOUT)" PHASE10B_REQUIRE_COLOCATED_A2="$(PHASE10B_REQUIRE_COLOCATED_A2)" bash scripts/ci/gate_syscall_semantics_phase10b.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b" \
 		--phase10a2-evidence "$(PHASE10B_A2_EVIDENCE_DIR)" \
 		--mode "$(PHASE10B_MODE)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b/report.json" "$(EVIDENCE_RUN_DIR)/reports/syscall-semantics-phase10b.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b/fail-closed-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/phase10b-fail-closed-proof.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b/fail-closed-proof/replay_report.json" "$(EVIDENCE_RUN_DIR)/reports/phase10b-fail-closed-proof-replay.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/syscall-semantics-phase10b/fail-closed-proof/replay_manifest.json" "$(EVIDENCE_RUN_DIR)/reports/phase10b-fail-closed-proof-manifest.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: syscall-semantics-phase10b evidence at $(EVIDENCE_RUN_DIR)"
 
@@ -1129,6 +1196,76 @@ ci-gate-scheduler-mailbox-phase10c: ci-gate-ring3-execution-phase10a2
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/scheduler-mailbox-phase10c/report.json" "$(EVIDENCE_RUN_DIR)/reports/scheduler-mailbox-phase10c.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: scheduler-mailbox-phase10c evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-low-half-kheap-scaffold: ci-gate-ring3-execution-phase10a2
+	@echo "== CI GATE LOW-HALF KHEAP SCAFFOLD =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: allow"
+	@echo "phase10a2_evidence: $(LOW_HALF_KHEAP_A2_EVIDENCE_DIR)"
+	@bash scripts/ci/gate_low_half_kheap_scaffold.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-scaffold" \
+		--phase10a2-evidence "$(LOW_HALF_KHEAP_A2_EVIDENCE_DIR)" \
+		--mode allow
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-scaffold/report.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-scaffold.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-scaffold/runtime_proof.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-runtime-proof.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: low-half-kheap-scaffold evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-low-half-kheap-exit-proof: ci-evidence-dir
+	@echo "== CI GATE LOW-HALF KHEAP EXIT PROOF =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout: $(LOW_HALF_KHEAP_EXIT_PROOF_QEMU_TIMEOUT)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_MB_SELFTEST=1 AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=1 bash scripts/ci/gate_low_half_kheap_exit_proof.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-exit-proof" \
+		--qemu-timeout "$(LOW_HALF_KHEAP_EXIT_PROOF_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-exit-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-exit-proof.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-exit-proof/scaffold-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-exit-scaffold.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-exit-proof/scaffold-proof/runtime_proof.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-exit-runtime-proof.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: low-half-kheap-exit-proof evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-low-half-kheap-multi-exit-proof: ci-evidence-dir
+	@echo "== CI GATE LOW-HALF KHEAP MULTI-EXIT PROOF =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout: $(LOW_HALF_KHEAP_MULTI_EXIT_PROOF_QEMU_TIMEOUT)"
+	@echo "configured_exit_count: $(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_MB_SELFTEST=1 AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=0 AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=1 AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT="$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT)" bash scripts/ci/gate_low_half_kheap_multi_exit_proof.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-multi-exit-proof" \
+		--qemu-timeout "$(LOW_HALF_KHEAP_MULTI_EXIT_PROOF_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-multi-exit-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-multi-exit-proof.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-multi-exit-proof/lineage_contract.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-multi-exit-lineage-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: low-half-kheap-multi-exit-proof evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-low-half-kheap-interleaving-proof: ci-evidence-dir
+	@echo "== CI GATE LOW-HALF KHEAP INTERLEAVING PROOF =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout: $(LOW_HALF_KHEAP_INTERLEAVING_PROOF_QEMU_TIMEOUT)"
+	@echo "configured_exit_count: $(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_MB_SELFTEST=1 AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=0 AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=0 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=1 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT="$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)" bash scripts/ci/gate_low_half_kheap_interleaving_proof.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-interleaving-proof" \
+		--qemu-timeout "$(LOW_HALF_KHEAP_INTERLEAVING_PROOF_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-interleaving-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-interleaving-proof.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-interleaving-proof/interleaving_contract.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-interleaving-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: low-half-kheap-interleaving-proof evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-no-low-half-kernel-dependency: ci-gate-ring3-execution-phase10a2
+	@echo "== CI GATE NO LOW-HALF KERNEL DEPENDENCY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: forbid"
+	@echo "phase10a2_evidence: $(LOW_HALF_KHEAP_A2_EVIDENCE_DIR)"
+	@bash scripts/ci/gate_low_half_kheap_scaffold.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/no-low-half-kernel-dependency" \
+		--phase10a2-evidence "$(LOW_HALF_KHEAP_A2_EVIDENCE_DIR)" \
+		--mode forbid
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/no-low-half-kernel-dependency/report.json" "$(EVIDENCE_RUN_DIR)/reports/no-low-half-kernel-dependency.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/no-low-half-kernel-dependency/runtime_proof.json" "$(EVIDENCE_RUN_DIR)/reports/no-low-half-kheap-runtime-proof.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: no-low-half-kernel-dependency evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-mailbox-capability-negative: ci-evidence-dir
 	@echo "== CI GATE MAILBOX CAPABILITY NEGATIVE =="
@@ -1316,7 +1453,7 @@ ci-gate-replay-determinism: ci-gate-abdf-snapshot-identity ci-gate-execution-ide
 ci-gate-replay-v1: ci-gate-replay-determinism
 	@echo "OK: replay-v1 alias passed (replay-determinism bootstrap)"
 
-ci-gate-kpl-proof-verify: ci-gate-replay-determinism ci-gate-ledger-integrity ci-gate-eti-sequence
+ci-gate-kpl-proof-verify: ci-gate-replay-determinism ci-gate-ledger-integrity ci-gate-eti-sequence ci-gate-no-low-half-kernel-dependency
 	@echo "== CI GATE KPL PROOF VERIFY =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "phase11_kpl_abdf_evidence: $(PHASE11_KPL_ABDF_EVIDENCE_DIR)"
@@ -1943,6 +2080,8 @@ help:
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (ABI/boundary/export/contracts hard-lock)"
 	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + waiver audit)"
 	@echo "    (profile selector: GOVERNANCE_POLICY_KERNEL_PROFILE=validation)"
+	@echo "  ci-gate-naming-convention - Diff-scoped naming freeze gate for new execution-path additions"
+	@echo "    (diff selector: NAMING_DIFF_RANGE=<git-range>, skips when no scoped changes exist)"
 	@echo "  ci-gate-drift-activation - Phase-9 drift blocking activation requirement enforcement"
 	@echo "  ci-gate-structural-abi - Gate-5A permanent ABI constitution lock (layout + semver policy)"
 	@echo "  ci-gate-runtime-marker-contract - Gate-5B phase-scoped marker contract lock (format + anchors + semver)"
@@ -1960,10 +2099,27 @@ help:
 	@echo "    (controls: PHASE10B_MODE=negative|positive)"
 	@echo "    (A2 evidence override: PHASE10B_A2_EVIDENCE_DIR=<path>)"
 	@echo "    (note: positive mode requires a CAP-free runtime scenario)"
+	@echo "  ci-gate-low-half-kheap-scaffold - Phase10 visibility gate for the temporary low-half kernel-heap compatibility mirror"
+	@echo "    (PASS-while-active only if the scaffold remains explicit, bounded, documented, and proven by same-run multi-point A2 runtime evidence)"
+	@echo "    (override: LOW_HALF_KHEAP_A2_EVIDENCE_DIR=<path>)"
+	@echo "  ci-gate-low-half-kheap-exit-proof - Validation-only terminal exit proof for the low-half scaffold temporal runtime contract"
+	@echo "    (builds with AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=1 and requires exit_teardown_pre/post runtime evidence)"
+	@echo "    (timeout override: LOW_HALF_KHEAP_EXIT_PROOF_QEMU_TIMEOUT=<sec>)"
+	@echo "  ci-gate-low-half-kheap-multi-exit-proof - Validation-only multi-exit coverage proof for low-half scaffold teardown lineage"
+	@echo "    (builds with AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=1 and requires authoritative lineage witnesses for each exit_pid)"
+	@echo "    (override count: AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT=<n>; default 2)"
+	@echo "    (timeout override: LOW_HALF_KHEAP_MULTI_EXIT_PROOF_QEMU_TIMEOUT=<sec>)"
+	@echo "  ci-gate-low-half-kheap-interleaving-proof - Validation-only overlap-pressure proof for precreated low-half scaffold teardown lineage"
+	@echo "    (builds with AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=1 and requires every exit_pid to be prepared before first lineage)"
+	@echo "    (override count: AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT=<n>; default 2)"
+	@echo "    (timeout override: LOW_HALF_KHEAP_INTERLEAVING_PROOF_QEMU_TIMEOUT=<sec>)"
 	@echo "  ci-gate-scheduler-mailbox-phase10c - Phase10-C scheduler mailbox policy/mechanism gate (draft)"
 	@echo "    (controls: PHASE10C_REQUIRE_METADATA=0|1, PHASE10C_C2_STRICT=0|1, PHASE10C_C2_OWNER_SET=csv, PHASE10C_C2_REQUIRE_CURSOR_MARKER=0|1)"
 	@echo "    (A2 evidence override: PHASE10C_A2_EVIDENCE_DIR=<path>)"
 	@echo "    (ci-freeze default: PHASE10C_ENFORCE=1 + PHASE10C_C2_STRICT=1; local freeze default: PHASE10C_C2_STRICT=0)"
+	@echo "  ci-gate-no-low-half-kernel-dependency - Phase11 closure blocker for any active low-half kernel-heap scaffold"
+	@echo "    (hard-fails while the temporary scaffold remains active; consumes same-run A2 runtime evidence)"
+	@echo "    (override: LOW_HALF_KHEAP_A2_EVIDENCE_DIR=<path>)"
 	@echo "  ci-gate-mailbox-capability-negative - P11-01 mailbox capability fail-closed negative matrix gate"
 	@echo "    (artifacts: negative_matrix.json, report.json, violations.txt)"
 	@echo "  ci-gate-ledger-completeness - P11-02 decision ledger completeness/materialization gate"
@@ -2102,7 +2258,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
