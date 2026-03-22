@@ -535,9 +535,12 @@ static void kernel_late_init(void)
     outb(0xE9, '\n');
     
     // Phase 11: Alias-aware address space leak proof tests
+    // Only run when AYKEN_ALIAS_PROOF_SELFTEST is NOT set (proc.c handles it when set)
+#if !defined(AYKEN_ALIAS_PROOF_SELFTEST) || (AYKEN_ALIAS_PROOF_SELFTEST != 1)
     extern void execute_alias_proof_tests(void);
     debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
     execute_alias_proof_tests();
+#endif
     
     // Phase 10-A: User address space validation
     // Note: test_user_as() is in user_as_test.c which is excluded from build
