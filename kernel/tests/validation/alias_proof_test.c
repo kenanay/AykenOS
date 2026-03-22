@@ -707,10 +707,9 @@ static void test_alias_verifier_leak_detection(void)
 
 void execute_alias_proof_tests(void)
 {
-    // Armed marker: unit tests başladı
-    debugcon_write("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
-    fb_print("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
-    
+    /* Unit test entry point — no gate markers here.
+     * Gate witness is produced exclusively by proc_run_alias_proof_selftest().
+     * This function only validates registry/verifier mechanics. */
     fb_print("\n");
     fb_print("========================================\n");
     fb_print("AykenOS Phase 11 Alias Proof Unit Tests\n");
@@ -752,14 +751,9 @@ void execute_alias_proof_tests(void)
     fb_print("\n");
 
     if (tests_failed == 0) {
-        fb_print("\n[[AYKEN_ALIAS_PROOF_OK]] All tests passed\n");
-        debugcon_write("[[AYKEN_ALIAS_PROOF_OK]] total=");
-        debugcon_write_uint((uint32_t)(tests_passed + tests_failed));
-        debugcon_write(" verified=");
-        debugcon_write_uint((uint32_t)tests_passed);
-        debugcon_write(" leaked=0 tlb_scope=local\n");
+        fb_print("\n[ALIAS_UNIT_TESTS] All tests passed\n");
+        /* No gate markers here — gate witness is proc_run_alias_proof_selftest() only */
     } else {
-        fb_print("\n[[AYKEN_ALIAS_PROOF_FAIL]] Some tests failed\n");
-        debugcon_write("[[AYKEN_ALIAS_PROOF_FAIL]]\n");
+        fb_print("\n[ALIAS_UNIT_TESTS] Some tests failed\n");
     }
 }

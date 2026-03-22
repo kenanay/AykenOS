@@ -2571,8 +2571,8 @@ void init_process_main(void)
 #endif
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     (AYKEN_ALIAS_PROOF_SELFTEST == 1)
-        /* alias proof selftest runs via execute_alias_proof_tests() in kernel.c
-         * before scheduler init; no duplicate call needed here */
+        /* alias proof selftest runs via kernel.c late-init with a dedicated
+         * mock proc; no duplicate call needed here */
 #endif
         fb_print("[init] Phase10 preloaded user process detected; yielding.\n");
         sched_block_current();

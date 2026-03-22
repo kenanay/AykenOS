@@ -535,9 +535,25 @@ static void kernel_late_init(void)
     outb(0xE9, '\n');
     
     // Phase 11: Alias-aware address space leak proof tests
+    // Unit tests: registry/verifier mechanics (no gate markers)
     extern void execute_alias_proof_tests(void);
     debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
     execute_alias_proof_tests();
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
+    // Selftest: gate witness source — armed/ok/fail markers emitted here only
+    {
+        extern void proc_run_alias_proof_selftest(proc_t *owner_proc);
+        static proc_t alias_selftest_proc;
+        __builtin_memset(&alias_selftest_proc, 0, sizeof(alias_selftest_proc));
+        alias_selftest_proc.pid = 1;
+        alias_selftest_proc.state = PROC_ZOMBIE;
+        alias_selftest_proc.type = PROC_TYPE_USER;
+        debugcon_write("[K][LATE]0.2 ALIAS_PROOF_SELFTEST\n");
+        proc_run_alias_proof_selftest(&alias_selftest_proc);
+    }
+#endif
     
     // Phase 10-A: User address space validation
     // Note: test_user_as() is in user_as_test.c which is excluded from build
