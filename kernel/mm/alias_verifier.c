@@ -559,6 +559,10 @@ void proc_run_alias_proof_selftest(proc_t *owner_proc)
         return;
     }
     
+    // Armed marker: selftest başladı
+    debugcon_write("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
+    fb_print("[[AYKEN_ALIAS_PROOF_ARMED]]\n");
+    
     debugcon_write("[AYKEN_ALIAS_PROOF_SELFTEST] Starting validation selftest...\n");
     fb_print("[AYKEN_ALIAS_PROOF_SELFTEST] Starting validation selftest...\n");
     
@@ -610,6 +614,8 @@ void proc_run_alias_proof_selftest(proc_t *owner_proc)
         fb_print(" total=7 verified=7 leaked=0 tlb_scope=local\n");
         fb_print("[AYKEN_ALIAS_PROOF_SELFTEST] All scenarios passed.\n");
     } else {
+        debugcon_write("[[AYKEN_ALIAS_PROOF_FAIL]]\n");
+        fb_print("[[AYKEN_ALIAS_PROOF_FAIL]]\n");
         fb_print("[AYKEN_ALIAS_PROOF_SELFTEST] Some scenarios failed.\n");
     }
 }
