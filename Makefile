@@ -144,6 +144,7 @@ endif
 # Debug flags: set defaults based on profile, allow override via env
 ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
+AYKEN_VALIDATION := 1
 AYKEN_DEBUG_IRQ ?= 1
 AYKEN_DEBUG_SCHED ?= 1
 KERNEL_CFLAGS += -O0 -g3 -DAYKEN_VALIDATION=1

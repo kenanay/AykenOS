@@ -534,11 +534,16 @@ static void kernel_late_init(void)
     outb(0xE9, 'E');
     outb(0xE9, '\n');
     
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     // Phase 11: Alias-aware address space leak proof tests
     // Unit tests: registry/verifier mechanics (no gate markers)
-    extern void execute_alias_proof_tests(void);
-    debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
-    execute_alias_proof_tests();
+    // Guard: alias_proof_test.c only compiled when AYKEN_VALIDATION=1
+    {
+        extern void execute_alias_proof_tests(void);
+        debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
+        execute_alias_proof_tests();
+    }
+#endif
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
