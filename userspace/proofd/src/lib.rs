@@ -7,14 +7,11 @@ use proof_verifier::diversity_ledger_producer::{
     VerificationDiversityLedgerProducerConfig, VerificationDiversityLedgerProducerManifest,
     VerificationNodeBinding,
 };
-<<<<<<< Updated upstream
 use proof_verifier::policy::policy_engine::compute_policy_hash;
 use proof_verifier::registry::snapshot::compute_registry_snapshot_hash;
-=======
 use proof_verifier::trust_reuse_runtime_evaluator::{
     run_trust_reuse_runtime_evaluator, TrustReuseRuntimeEvaluatorConfig,
 };
->>>>>>> Stashed changes
 use proof_verifier::trust_reuse_runtime_surface::{
     load_trust_reuse_runtime_surface as load_native_trust_reuse_runtime_surface, TrustReuseOutcome,
     TrustReuseRuntimeEvent, TrustReuseRuntimeSurfaceReport,
@@ -67,17 +64,14 @@ const REPLAY_BOUNDARY_FLOW_SOURCE_FILE: &str = "replay_boundary_flow_source.json
 const REPLAY_REPORT_FILE: &str = "replay_report.json";
 const TRUST_REUSE_FLOW_SOURCE_FILE: &str = "trust_reuse_flow_source.json";
 const TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH: &str = "reports/trust_reuse_runtime_surface.json";
-<<<<<<< Updated upstream
 const CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH: &str = "context/policy_snapshot.json";
 const CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH: &str = "context/registry_snapshot.json";
 const CONTEXT_RULES_RELATIVE_PATH: &str = "context/context_rules.json";
 const VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH: &str = "context/verification_context_object.json";
 const VERIFICATION_CONTEXT_VERIFIER_CONTRACT_VERSION: &str = "phase12-context-v1";
-=======
 const RUN_LEVEL_TRUST_REUSE_RUNTIME_SURFACE_FILE: &str = "trust_reuse_runtime_surface.json";
 const TRUST_REUSE_RUNTIME_EVALUATOR_DIR: &str = "trust_reuse_runtime_evaluator";
 const TRUST_REUSE_RUNTIME_EXPECTED_SUBJECT_FILE: &str = "expected_verdict_subject.json";
->>>>>>> Stashed changes
 const PROOFD_RUN_MANIFEST_FILE: &str = "proofd_run_manifest.json";
 const RECEIPT_RELATIVE_PATH: &str = "receipts/verification_receipt.json";
 const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
@@ -2076,13 +2070,9 @@ fn build_runtime_trust_reuse_flow_source_document(
             build_trust_reuse_runtime_companion_source_event(
                 event,
                 &runtime_surface,
-<<<<<<< Updated upstream
                 outcome,
                 binding,
-=======
-                binding,
                 default_surface_local_path,
->>>>>>> Stashed changes
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -2096,19 +2086,12 @@ fn build_runtime_trust_reuse_flow_source_document(
             } else {
                 "PASS".to_string()
             },
-            run_id: request.run_id.clone(),
+            run_id: resolved_request_run_id(request)?.to_string(),
             window_model: default_companion_window_model(),
             events,
         },
-<<<<<<< Updated upstream
-        run_id: resolved_request_run_id(request)?.to_string(),
-        window_model: default_companion_window_model(),
-        events,
-    }))
-=======
         origin.to_string(),
     )))
->>>>>>> Stashed changes
 }
 
 fn build_companion_source_event(
@@ -2282,7 +2265,7 @@ fn materialize_native_trust_reuse_runtime_surface(
         verifier_registry_path: PathBuf::from(&binding.verifier_registry_path),
         output_path,
         output_dir: evaluator_dir,
-        run_id: request.run_id.clone(),
+        run_id: resolved_request_run_id(request)?.to_string(),
         timestamp_unix_ns,
         source_run_id: binding.source_run_id.clone(),
         execution_cluster_id: request

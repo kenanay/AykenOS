@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 use proof_verifier::canonical::jcs::canonicalize_json_value;
 use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
 use proof_verifier::receipt::verify::{
