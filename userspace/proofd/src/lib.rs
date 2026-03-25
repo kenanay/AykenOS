@@ -1389,12 +1389,23 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                 "trust_reuse_flow_source_write_failed",
                 "trust_reuse_flow_source_bytes_conflict",
             )?;
-            copy_file_if_absent_or_same(
-                &trust_reuse_runtime_surface_path(&bundle_path),
-                &run_dir.join(TRUST_REUSE_RUNTIME_SURFACE_RELATIVE_PATH),
-                "trust_reuse_runtime_surface_copy_failed",
-                "trust_reuse_runtime_surface_bytes_conflict",
-            )?;
+            if let Some((runtime_surface_source_path, runtime_surface_origin, relative_path)) =
+                resolve_native_trust_reuse_runtime_surface(&run_dir, &bundle_path)
+            {
+                copy_file_if_absent_or_same(
+                    &runtime_surface_source_path,
+                    &run_dir.join(relative_path),
+                    "trust_reuse_runtime_surface_copy_failed",
+                    "trust_reuse_runtime_surface_bytes_conflict",
+                )?;
+                if trust_reuse_runtime_surface_relative_path.is_none() {
+                    trust_reuse_runtime_surface_relative_path = Some(relative_path.to_string());
+                }
+                if trust_reuse_runtime_surface_origin.is_none() {
+                    trust_reuse_runtime_surface_origin =
+                        Some(runtime_surface_origin.to_string());
+                }
+            }
             trust_reuse_source_relative_path = Some(TRUST_REUSE_FLOW_SOURCE_FILE.to_string());
             trust_reuse_source_origin = Some(origin);
         } else if let Some(binding) = request.trust_reuse_binding.as_ref() {
