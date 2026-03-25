@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "ayken_abi.h"
 #include "execution_output_abi.h"
+#include "alias_registry.h"
 
 #define MAX_PROCS 64
 #define AYKEN_MAX_PROC_GENERIC_MAPPINGS 64
@@ -102,6 +103,12 @@ typedef struct proc {
     uint64_t execution_delivery_seq;
     uint64_t next_mapping_id;
     proc_mapping_entry_t mapping_ledger[AYKEN_MAX_PROC_GENERIC_MAPPINGS];
+    
+    // Phase 11: Alias-aware address space leak proof
+    alias_registry_t alias_reg;      /* alias eşleme kaydı */
+    uint8_t teardown_started;        /* 0=normal, 1=teardown aktif (Freeze Invariant) */
+    uint8_t reserved_phase11[7];     /* alignment padding */
+    
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     // Gate-4 isolated proof: per-process publish marker one-shot latch.
     uint8_t gate4_publish_emitted;

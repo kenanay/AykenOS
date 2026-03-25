@@ -1,9 +1,19 @@
+#![recursion_limit = "256"]
+use proof_verifier::canonical::jcs::canonicalize_json_value;
+use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
 use proof_verifier::receipt::verify::{
     verify_signed_receipt, verify_signed_receipt_with_authority,
 };
 use proof_verifier::testing::fixtures::create_fixture_bundle;
-use proof_verifier::types::FindingSeverity;
-use proof_verifier::{VerdictSubject, VerificationReceipt};
+use proof_verifier::types::{
+    AuditMode, FindingSeverity, ReceiptMode, VerificationReceipt, VerifierTrustRegistrySnapshot,
+    VerifyRequest,
+};
+use proof_verifier::verification_context_object::{
+    compute_verification_context_id, write_verification_context_object, VerificationContextObject,
+};
+use proof_verifier::verifier_attestation::{write_verifier_attestation, VerifierAttestation};
+use proof_verifier::{verify_bundle, VerdictSubject};
 use proofd::{route_request, route_request_with_body};
 use serde_json::{json, Value};
 use std::env;
@@ -477,6 +487,35 @@ fn build_service_contract_artifacts(
         registry_path.clone(),
         &serde_json::to_value(&fixture.registry).unwrap_or_else(|_| json!({})),
     );
+    fs::remove_file(
+        fixture
+            .root
+            .join("reports/trust_reuse_runtime_surface.json"),
+    )
+    .map_err(|error| format!("failed to remove bundle native trust reuse surface: {error}"))?;
+    let trust_reuse_verify_request = VerifyRequest {
+        bundle_path: &fixture.root,
+        policy: &fixture.policy,
+        registry_snapshot: &fixture.registry,
+        receipt_mode: ReceiptMode::EmitSigned,
+        receipt_signer: Some(&fixture.receipt_signer),
+        audit_mode: AuditMode::None,
+        audit_ledger_path: None,
+    };
+    let trust_reuse_outcome = verify_bundle(&trust_reuse_verify_request)
+        .map_err(|error| format!("failed to prepare trust reuse runtime inputs: {error}"))?;
+    let trust_reuse_input_dir = out_dir.join("trust_reuse_runtime_inputs");
+    let (
+        verification_context_path,
+        verifier_attestation_path,
+        verifier_registry_path,
+        verifier_key_path,
+    ) = write_trust_reuse_runtime_inputs(
+        &fixture,
+        &trust_reuse_outcome.subject,
+        &trust_reuse_input_dir,
+        &fixture.verifier_registry,
+    )?;
     let verify_request = json!({
         "bundle_path": fixture.root,
         "policy_path": policy_path,
@@ -501,6 +540,16 @@ fn build_service_contract_artifacts(
             "source_run_id": "fixture-run",
             "reuse_group_id": "reuse-group-proofd-a",
             "surface_local_path_id": "replay-path-proofd-a"
+        },
+        "trust_reuse_runtime_binding": {
+            "verification_context_path": verification_context_path,
+            "verifier_attestation_path": verifier_attestation_path,
+            "verifier_registry_path": verifier_registry_path,
+            "verifier_key_path": verifier_key_path,
+            "source_run_id": "source-run-proofd-bootstrap-b",
+            "reuse_group_id": "reuse-group-proofd-b",
+            "surface_local_path_id": "trust-reuse-runtime-surface-proofd-b",
+            "trust_reuse_source": "proofd-runtime-evaluator"
         }
     });
     write_json(out_dir.join("proofd_verify_request.json"), &verify_request);
@@ -558,13 +607,21 @@ fn build_service_contract_artifacts(
             .and_then(Value::as_str)
             .is_some_and(|value| value == "runtime_bundle_replay")
         && verify_response
+            .get("trust_reuse_runtime_surface_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "trust_reuse_runtime_surface.json")
+        && verify_response
+            .get("trust_reuse_runtime_surface_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_proofd_trust_reuse")
+        && verify_response
             .get("trust_reuse_flow_source_path")
             .and_then(Value::as_str)
             .is_some_and(|value| value == "trust_reuse_flow_source.json")
         && verify_response
             .get("trust_reuse_flow_source_origin")
             .and_then(Value::as_str)
-            .is_some_and(|value| value == "runtime_bundle_trust_reuse");
+            .is_some_and(|value| value == "runtime_proofd_trust_reuse");
     if !verify_ok {
         violations.push("verify_endpoint_contract_mismatch".to_string());
     } else {
@@ -588,6 +645,7 @@ fn build_service_contract_artifacts(
     let diversity_append_report_path =
         run_dir.join("verification_diversity_ledger_append_report.json");
     let replay_boundary_flow_source_path = run_dir.join("replay_boundary_flow_source.json");
+    let trust_reuse_runtime_surface_path = run_dir.join("trust_reuse_runtime_surface.json");
     let trust_reuse_flow_source_path = run_dir.join("trust_reuse_flow_source.json");
     let first_run_manifest_bytes = fs::read(&run_manifest_path)
         .map_err(|error| format!("failed to read first run manifest: {error}"))?;
@@ -606,6 +664,10 @@ fn build_service_contract_artifacts(
     let first_replay_boundary_flow_source_bytes = fs::read(&replay_boundary_flow_source_path)
         .map_err(|error| {
             format!("failed to read first replay boundary flow source artifact: {error}")
+        })?;
+    let first_trust_reuse_runtime_surface_bytes = fs::read(&trust_reuse_runtime_surface_path)
+        .map_err(|error| {
+            format!("failed to read first trust reuse runtime surface artifact: {error}")
         })?;
     let first_trust_reuse_flow_source_bytes =
         fs::read(&trust_reuse_flow_source_path).map_err(|error| {
@@ -638,6 +700,10 @@ fn build_service_contract_artifacts(
     let second_replay_boundary_flow_source_bytes = fs::read(&replay_boundary_flow_source_path)
         .map_err(|error| {
             format!("failed to read second replay boundary flow source artifact: {error}")
+        })?;
+    let second_trust_reuse_runtime_surface_bytes = fs::read(&trust_reuse_runtime_surface_path)
+        .map_err(|error| {
+            format!("failed to read second trust reuse runtime surface artifact: {error}")
         })?;
     let second_trust_reuse_flow_source_bytes =
         fs::read(&trust_reuse_flow_source_path).map_err(|error| {
@@ -674,6 +740,11 @@ fn build_service_contract_artifacts(
         first_replay_boundary_flow_source_bytes == second_replay_boundary_flow_source_bytes;
     if !repeated_replay_boundary_flow_source_equal {
         violations.push("repeated_execution_replay_boundary_flow_source_drift".to_string());
+    }
+    let repeated_trust_reuse_runtime_surface_equal =
+        first_trust_reuse_runtime_surface_bytes == second_trust_reuse_runtime_surface_bytes;
+    if !repeated_trust_reuse_runtime_surface_equal {
+        violations.push("repeated_execution_trust_reuse_runtime_surface_drift".to_string());
     }
     let repeated_trust_reuse_flow_source_equal =
         first_trust_reuse_flow_source_bytes == second_trust_reuse_flow_source_bytes;
@@ -712,6 +783,10 @@ fn build_service_contract_artifacts(
     write_json(
         out_dir.join("replay_boundary_flow_source.json"),
         &read_json_file(&run_dir.join("replay_boundary_flow_source.json"))?,
+    );
+    write_json(
+        out_dir.join("trust_reuse_runtime_surface.json"),
+        &read_json_file(&run_dir.join("trust_reuse_runtime_surface.json"))?,
     );
     write_json(
         out_dir.join("trust_reuse_flow_source.json"),
@@ -777,13 +852,21 @@ fn build_service_contract_artifacts(
             .and_then(Value::as_str)
             .is_some_and(|value| value == "runtime_bundle_replay")
         && run_manifest
+            .get("trust_reuse_runtime_surface_path")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "trust_reuse_runtime_surface.json")
+        && run_manifest
+            .get("trust_reuse_runtime_surface_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "runtime_proofd_trust_reuse")
+        && run_manifest
             .get("trust_reuse_flow_source_path")
             .and_then(Value::as_str)
             .is_some_and(|value| value == "trust_reuse_flow_source.json")
         && run_manifest
             .get("trust_reuse_flow_source_origin")
             .and_then(Value::as_str)
-            .is_some_and(|value| value == "runtime_bundle_trust_reuse")
+            .is_some_and(|value| value == "runtime_proofd_trust_reuse")
         && run_manifest
             .get("request_fingerprint")
             .and_then(Value::as_str)
@@ -857,6 +940,7 @@ fn build_service_contract_artifacts(
         && repeated_diversity_ledger_equal
         && repeated_diversity_append_report_equal
         && repeated_replay_boundary_flow_source_equal
+        && repeated_trust_reuse_runtime_surface_equal
         && repeated_trust_reuse_flow_source_equal
         && diagnostics_artifacts_unchanged
         && !run_artifact_merge_detected
@@ -891,6 +975,9 @@ fn build_service_contract_artifacts(
         "replay_boundary_flow_source_origin": verify_response
             .get("replay_boundary_flow_source_origin")
             .and_then(Value::as_str),
+        "trust_reuse_runtime_surface_origin": verify_response
+            .get("trust_reuse_runtime_surface_origin")
+            .and_then(Value::as_str),
         "trust_reuse_flow_source_origin": verify_response
             .get("trust_reuse_flow_source_origin")
             .and_then(Value::as_str),
@@ -914,9 +1001,13 @@ fn build_service_contract_artifacts(
         "repeated_diversity_ledger_equal": repeated_diversity_ledger_equal,
         "repeated_diversity_append_report_equal": repeated_diversity_append_report_equal,
         "repeated_replay_boundary_flow_source_equal": repeated_replay_boundary_flow_source_equal,
+        "repeated_trust_reuse_runtime_surface_equal": repeated_trust_reuse_runtime_surface_equal,
         "repeated_trust_reuse_flow_source_equal": repeated_trust_reuse_flow_source_equal,
         "replay_boundary_flow_source_origin": verify_response
             .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str),
+        "trust_reuse_runtime_surface_origin": verify_response
+            .get("trust_reuse_runtime_surface_origin")
             .and_then(Value::as_str),
         "trust_reuse_flow_source_origin": verify_response
             .get("trust_reuse_flow_source_origin")
@@ -980,6 +1071,7 @@ fn build_service_contract_artifacts(
                 && repeated_diversity_ledger_equal
                 && repeated_diversity_append_report_equal
                 && repeated_replay_boundary_flow_source_equal
+                && repeated_trust_reuse_runtime_surface_equal
                 && repeated_trust_reuse_flow_source_equal
                 && diagnostics_artifacts_unchanged
                 && !run_artifact_merge_detected,
@@ -994,9 +1086,13 @@ fn build_service_contract_artifacts(
         "repeated_diversity_ledger_equal": repeated_diversity_ledger_equal,
         "repeated_diversity_append_report_equal": repeated_diversity_append_report_equal,
         "repeated_replay_boundary_flow_source_equal": repeated_replay_boundary_flow_source_equal,
+        "repeated_trust_reuse_runtime_surface_equal": repeated_trust_reuse_runtime_surface_equal,
         "repeated_trust_reuse_flow_source_equal": repeated_trust_reuse_flow_source_equal,
         "replay_boundary_flow_source_origin": verify_response
             .get("replay_boundary_flow_source_origin")
+            .and_then(Value::as_str),
+        "trust_reuse_runtime_surface_origin": verify_response
+            .get("trust_reuse_runtime_surface_origin")
             .and_then(Value::as_str),
         "trust_reuse_flow_source_origin": verify_response
             .get("trust_reuse_flow_source_origin")
@@ -1482,6 +1578,106 @@ fn read_json_file(path: &Path) -> Result<Value, String> {
         .map_err(|error| format!("failed to read {}: {error}", path.display()))?;
     serde_json::from_str(&text)
         .map_err(|error| format!("failed to parse {}: {error}", path.display()))
+}
+
+fn build_verification_context(subject: &VerdictSubject) -> VerificationContextObject {
+    let mut context = VerificationContextObject {
+        context_version: 1,
+        verification_context_id: String::new(),
+        policy_hash: subject.policy_hash.clone(),
+        registry_snapshot_hash: subject.registry_snapshot_hash.clone(),
+        verifier_contract_version: "phase12-context-v1".to_string(),
+        context_rules_hash: "c".repeat(64),
+        context_epoch: Some(1),
+        historical_cutoff_utc: None,
+        policy_snapshot_ref: Some(format!("cas:sha256:{}", "d".repeat(64))),
+        registry_snapshot_ref: Some(format!("cas:sha256:{}", "e".repeat(64))),
+        time_semantics_mode: Some("historical-aware".to_string()),
+    };
+    context.verification_context_id =
+        compute_verification_context_id(&context).expect("compute verification context id");
+    context
+}
+
+fn build_verifier_attestation(
+    fixture: &proof_verifier::testing::fixtures::FixtureBundle,
+) -> VerifierAttestation {
+    let mut attestation = VerifierAttestation {
+        attestation_version: 1,
+        verifier_id: fixture.receipt_signer.verifier_node_id.clone(),
+        verifier_pubkey_id: fixture.receipt_signer.verifier_key_id.clone(),
+        verifier_registry_ref: fixture.verifier_registry.registry_scope.clone(),
+        verifier_key_epoch: u64::from(fixture.verifier_registry.verifier_registry_epoch),
+        verifier_contract_version: "phase12-context-v1".to_string(),
+        attestation_signature_algorithm: "ed25519".to_string(),
+        attestation_signature: String::new(),
+        attested_at_utc: Some("2026-03-14T00:00:00Z".to_string()),
+    };
+    let mut payload = serde_json::to_value(&attestation).expect("serialize attestation");
+    payload
+        .as_object_mut()
+        .expect("attestation object")
+        .remove("attestation_signature");
+    let payload_bytes =
+        canonicalize_json_value(&payload).expect("canonicalize attestation payload");
+    attestation.attestation_signature =
+        sign_ed25519_bytes(&fixture.receipt_signer.private_key, &payload_bytes)
+            .expect("sign verifier attestation");
+    attestation
+}
+
+fn write_trust_reuse_runtime_inputs(
+    fixture: &proof_verifier::testing::fixtures::FixtureBundle,
+    subject: &VerdictSubject,
+    dir: &Path,
+    verifier_registry: &VerifierTrustRegistrySnapshot,
+) -> Result<(PathBuf, PathBuf, PathBuf, PathBuf), String> {
+    fs::create_dir_all(dir)
+        .map_err(|error| format!("failed to create trust reuse runtime input dir: {error}"))?;
+    let verification_context_path = dir.join("verification_context_object.json");
+    let verifier_attestation_path = dir.join("verifier_attestation.json");
+    let verifier_registry_path = dir.join("verifier_registry.json");
+    let verifier_key_path = dir.join("receipt_verifier_key.json");
+    let context = build_verification_context(subject);
+    write_verification_context_object(&verification_context_path, &context)
+        .map_err(|error| format!("failed to write verification context object: {error}"))?;
+    let attestation = build_verifier_attestation(fixture);
+    write_verifier_attestation(&verifier_attestation_path, &attestation)
+        .map_err(|error| format!("failed to write verifier attestation: {error}"))?;
+    write_json(
+        verifier_registry_path.clone(),
+        &serde_json::to_value(verifier_registry).unwrap_or_else(|_| json!({})),
+    );
+    write_json(
+        verifier_key_path.clone(),
+        &serde_json::to_value(&fixture.receipt_verifier_key).unwrap_or_else(|_| json!({})),
+    );
+    Ok((
+        fs::canonicalize(&verification_context_path).map_err(|error| {
+            format!(
+                "failed to canonicalize verification context path {}: {error}",
+                verification_context_path.display()
+            )
+        })?,
+        fs::canonicalize(&verifier_attestation_path).map_err(|error| {
+            format!(
+                "failed to canonicalize verifier attestation path {}: {error}",
+                verifier_attestation_path.display()
+            )
+        })?,
+        fs::canonicalize(&verifier_registry_path).map_err(|error| {
+            format!(
+                "failed to canonicalize verifier registry path {}: {error}",
+                verifier_registry_path.display()
+            )
+        })?,
+        fs::canonicalize(&verifier_key_path).map_err(|error| {
+            format!(
+                "failed to canonicalize verifier key path {}: {error}",
+                verifier_key_path.display()
+            )
+        })?,
+    ))
 }
 
 fn write_json(path: PathBuf, value: &Value) {

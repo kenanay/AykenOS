@@ -206,8 +206,10 @@ Minimum response shape:
   "verification_diversity_ledger_path": "verification_diversity_ledger.json",
   "replay_boundary_flow_source_path": "replay_boundary_flow_source.json",
   "replay_boundary_flow_source_origin": "runtime_bundle_replay",
+  "trust_reuse_runtime_surface_path": "trust_reuse_runtime_surface.json",
+  "trust_reuse_runtime_surface_origin": "runtime_proofd_trust_reuse",
   "trust_reuse_flow_source_path": "trust_reuse_flow_source.json",
-  "trust_reuse_flow_source_origin": "runtime_bundle_trust_reuse"
+  "trust_reuse_flow_source_origin": "runtime_proofd_trust_reuse"
 }
 ```
 
@@ -217,9 +219,10 @@ Run reuse rule:
 - a different request under the same `run_id` MUST fail closed
 - request bodies above the bounded local execution limit MUST fail closed before verification
 - when `diversity_binding` is present, `proofd` MUST emit a deterministic `replay_boundary_flow_source.json` artifact from the bundle's native replay runtime surface and bind it to the same signed-receipt timestamp and diversity authority context
+- when `trust_reuse_runtime_binding` is present, `proofd` MUST materialize a run-local native `trust_reuse_runtime_surface.json` via the `proof-verifier` `trust-reuse-runtime-evaluator` and prefer that surface with origin `runtime_proofd_trust_reuse`
 - when `reports/trust_reuse_runtime_surface.json` exists inside the bundle, `proofd` MUST prefer it and emit a deterministic `trust_reuse_flow_source.json` artifact with origin `runtime_bundle_trust_reuse`
 - when the preferred native trust-reuse surface contains only rejected outcomes, `proofd` MUST still keep native precedence and emit `trust_reuse_flow_source.json` as `NO_REUSABLE_EVENTS` rather than treating the surface as malformed or silently falling back
-- the current native trust-reuse surface may be materialized ahead of `proofd` by the `proof-verifier` `trust-reuse-runtime-evaluator` from explicit receipt, verification-context, verifier-attestation, and verifier-registry artifacts
+- the current native trust-reuse surface may be materialized either ahead of `proofd` inside the bundle or during `proofd` run finalization by the `proof-verifier` `trust-reuse-runtime-evaluator` from explicit receipt, verification-context, verifier-attestation, and verifier-registry artifacts
 - when bundle-native trust-reuse runtime evidence is absent but `trust_reuse_binding` is present, `proofd` MUST emit a deterministic `trust_reuse_flow_source.json` artifact as an explicit request-bound fallback surface
 - if `replay_boundary_binding.source_run_id` is supplied alongside a native replay surface, it MUST match the bundle `meta/run.json` `run_id` or fail closed
 - the future native replacement for the trust-reuse fallback must satisfy `TRUST_REUSE_RUNTIME_SURFACE_SPEC.md`

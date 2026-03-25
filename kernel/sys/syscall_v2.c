@@ -19,6 +19,9 @@
 #include "../include/gdt_idt.h"
 #include "../include/mm.h"
 #include "../include/capability.h"
+#include "../include/barrier.h"
+#include "../include/alias_registry.h"
+#include "../include/errno.h"
 #include <stddef.h>
 
 // ============================================================================
@@ -574,6 +577,9 @@ uint64_t sys_v2_map_memory(uint64_t virt_addr, uint64_t phys_addr, uint64_t flag
     uint64_t map_id = 0;
     proc_t *current;
     int access_result;
+#if defined(AYKEN_VALIDATION)
+    int alias_record_result;
+#endif
 
     if (virt_addr == 0 || phys_addr == 0) {
         return ESYS_V2_INVALID_PARAM;
@@ -593,6 +599,17 @@ uint64_t sys_v2_map_memory(uint64_t virt_addr, uint64_t phys_addr, uint64_t flag
     if (current == NULL || current->type != PROC_TYPE_USER || current->pml4_phys == 0) {
         return ESYS_V2_NO_CAPABILITY;
     }
+
+    /* FREEZE INVARIANT: Reject mapping if teardown has started
+     * smp_rmb(): read teardown_started after all prior writes are visible
+     * This prevents TOCTOU where Core 1 starts teardown while Core 2 is still mapping.
+     */
+#if defined(AYKEN_VALIDATION)
+    smp_rmb();
+    if (current->teardown_started == 1) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+#endif
 
     execution_ctx = (uint64_t)current->pid;
     memory_cap = capability_get_by_context(execution_ctx, CAPABILITY_RESOURCE_MEMORY);
@@ -636,6 +653,46 @@ uint64_t sys_v2_map_memory(uint64_t virt_addr, uint64_t phys_addr, uint64_t flag
         paging_unmap_in_pml4(current->pml4_phys, virt_addr);
         return ESYS_V2_RESOURCE_BUSY;
     }
+
+#if defined(AYKEN_VALIDATION)
+    /* TRANSACTIONAL CONTRACT: Registry record must succeed for mapping to be committed.
+     * If alias_registry_record() fails, we MUST rollback the PTE to maintain
+     * registry-page-table consistency. Partial commit is forbidden.
+     * 
+     * ROLLBACK DOĞRULAMA: After rollback, we verify PTE is actually zero to ensure
+     * complete rollback. Partial rollback (PTE deleted but wrong error code) is more
+     * dangerous than no rollback — it makes the system appear "clean" when it's not.
+     */
+    alias_record_result = alias_registry_record(&current->alias_reg, phys_addr, virt_addr);
+    if (alias_record_result != 0) {
+        /* Rollback: unmap PTE and remove from mapping_ledger */
+        paging_unmap_in_pml4(current->pml4_phys, virt_addr);
+        sys_v2_invalidate_local_page_if_active(current->pml4_phys, virt_addr);
+        
+        /* Remove from mapping_ledger */
+        proc_mapping_entry_t removed_entry = {0};
+        proc_remove_generic_mapping(current, virt_addr, &removed_entry);
+        
+        /* ROLLBACK VERIFICATION: Ensure PTE is actually zero after rollback */
+        existing_pte = paging_get_pte_in_pml4(current->pml4_phys, virt_addr);
+        if (existing_pte != 0) {
+            /* KERNEL.SAFETY.CRITICAL: Rollback failed — system state is inconsistent */
+            fb_print("[CRITICAL] sys_v2_map_memory: PTE rollback failed! va=0x");
+            fb_print_hex(virt_addr);
+            fb_print(" pte=0x");
+            fb_print_hex(existing_pte);
+            fb_print("\n");
+        }
+        
+        /* Return appropriate error code based on alias_registry_record() result */
+        if (alias_record_result == -ENOMEM) {
+            return ESYS_V2_RESOURCE_BUSY;
+        } else {
+            /* -EINVAL or other error */
+            return ESYS_V2_INVALID_PARAM;
+        }
+    }
+#endif
 
     fb_print("[syscall_v2] map_memory: ctx=");
     fb_print_int(execution_ctx);
@@ -1270,6 +1327,30 @@ uint64_t sys_v2_exit(uint64_t exit_code)
     fb_print_int(exit_code);
     fb_print(")\n");
 
+#if defined(AYKEN_VALIDATION)
+    /* FREEZE INVARIANT: Set teardown_started flag with proper memory ordering
+     * 
+     * Memory ordering contract:
+     * 1. smp_wmb(): Ensure all prior alias_registry_record() writes are visible
+     *    before teardown_started is set. This prevents verifier from seeing
+     *    partial registry state.
+     * 2. teardown_started = 1: Set the freeze flag
+     * 3. smp_mb(): Full barrier to ensure teardown_started write is globally
+     *    visible before any subsequent operations. This prevents other cores
+     *    from continuing to map while teardown is in progress.
+     * 
+     * Happens-before relationship:
+     * - All alias_registry_record() writes happen-before teardown_started=1
+     * - teardown_started=1 happens-before verifier snapshot
+     * 
+     * Without these barriers: Core 1 starts teardown, Core 2 still writes to
+     * registry → verifier sees inconsistent snapshot → false negative.
+     */
+    smp_wmb();  /* alias_registry_record() writes happen-before teardown_started=1 */
+    exiting_proc->teardown_started = 1;
+    smp_mb();   /* teardown_started=1 globally visible before proceeding */
+#endif
+
     execution_slot_enter_critical(&slot_guard);
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_EXIT);
     result_count = execution_slot_prepare_process_exit_locked(exiting_pid,
@@ -1283,6 +1364,41 @@ uint64_t sys_v2_exit(uint64_t exit_code)
     execution_slot_exit_critical(&slot_guard);
 
     proc_teardown_exit_surfaces(exiting_proc, result_vas, hash_vas, result_count);
+
+#if defined(AYKEN_VALIDATION)
+    /* ALIAS TEARDOWN PHASE: Alias eşlemelerini temizle ve doğrula
+     * 
+     * Çağrı sırası (LLD contract):
+     * 1. Canonical teardown: proc_teardown_exit_surfaces() — canonical VA'ları temizler
+     *    (mapping_ledger üzerinden)
+     * 2. PROC_ZOMBIE state set edildi — teardown tamamlandı
+     * 3. teardown_started = 1 set edildi — FREEZE INVARIANT aktif
+     * 4. Alias teardown: exit_teardown_alias_phase() — alias VA'ları temizler
+     *    (alias_reg üzerinden)
+     * 
+     * CANONICAL/ALIAS MEKANİK SINIR: Aynı phys frame'i paylaşan canonical VA ile
+     * alias VA ayrıştırması veri-model düzeyinde mekanik olarak tanımlanmıştır:
+     * 
+     * - Canonical VA'lar: mapping_ledger'da kayıtlı, proc_teardown_exit_surfaces()
+     *   içinde user_as_destroy_lower_half() tarafından temizlenir
+     * - Alias VA'lar: alias_reg'de kayıtlı, exit_teardown_alias_phase() tarafından
+     *   temizlenir
+     * 
+     * Bu ayrım kod seviyesinde mekanik olmalı: alias_reg döngüsü ve mapping_ledger
+     * döngüsü aynı fonksiyonda birleştirilmemeli, ayrı scope'larda tutulmalı.
+     * Canonical VA yanlışlıkla silinirse test geçer ama veri modeli sessizce bozulur
+     * — bu sessiz veri kaybıdır.
+     * 
+     * FREEZE INVARIANT DOĞRULAMA: teardown_started = 1 set edildiği doğrulanmıştır
+     * (bkz. yukarıda smp_wmb() + teardown_started=1 + smp_mb() sırası). Bu noktada
+     * sys_v2_map_memory() bu proc için -EINVAL döner ve yeni alias kaydı gelmez;
+     * verifier penceresi temizdir.
+     * 
+     * Validates: Requirements 4.1, 6.6, 7.1, 7.2, 7.3
+     */
+    exit_teardown_alias_phase(exiting_proc);
+#endif
+
     sched_remove_process_everywhere(exiting_proc);
 
     execution_slot_enter_critical(&slot_guard);

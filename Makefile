@@ -53,6 +53,7 @@ AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST ?= 0
 AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT ?= 2
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST ?= 0
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT ?= 2
+AYKEN_ALIAS_PROOF_SELFTEST ?= 0
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -143,6 +144,7 @@ endif
 # Debug flags: set defaults based on profile, allow override via env
 ifeq ($(KERNEL_PROFILE),validation)
 PROFILE_VALIDATION_FLAGS := 1
+AYKEN_VALIDATION := 1
 AYKEN_DEBUG_IRQ ?= 1
 AYKEN_DEBUG_SCHED ?= 1
 KERNEL_CFLAGS += -O0 -g3 -DAYKEN_VALIDATION=1
@@ -180,6 +182,7 @@ KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=$(AYKEN_LOW_HA
 KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT=$(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT)
 KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST)
 KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)
+KERNEL_CFLAGS += -DAYKEN_ALIAS_PROOF_SELFTEST=$(AYKEN_ALIAS_PROOF_SELFTEST)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 # For gdt_idt.c force kernel code model to avoid 32-bit relocations in higher half
 KERNEL_CFLAGS_GDT := $(filter-out -mcmodel=large,$(KERNEL_CFLAGS)) -mcmodel=kernel
@@ -212,8 +215,14 @@ endif
 KERNEL_C_SOURCES_ALL = $(call find_files,$(KERNEL_DIR),*.c)
 KERNEL_C_TEST_SOURCES = $(filter %_test.c,$(KERNEL_C_SOURCES_ALL))
 # Ring0 topology enforces mechanism/policy separation; no default source exclusion hacks.
-KERNEL_C_EXCLUDE_SOURCES =
+# Phase 11: alias_proof_validation.c excluded from default build; included only under AYKEN_VALIDATION=1
+KERNEL_C_EXCLUDE_SOURCES = kernel/tests/validation/alias_proof_validation.c
 KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOURCES),$(KERNEL_C_SOURCES_ALL))
+
+# Phase 11: Include alias proof validation in validation builds
+ifeq ($(AYKEN_VALIDATION),1)
+KERNEL_C_SOURCES += kernel/tests/validation/alias_proof_validation.c
+endif
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 
@@ -832,7 +841,7 @@ ci-kill-switch-phase13: \
 	@echo "Phase-13 kill-switch gates: ALL PASS"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-kill-switch-phase13
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (skip performance and tooling-isolation gates for development)
@@ -1252,6 +1261,25 @@ ci-gate-low-half-kheap-interleaving-proof: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/low-half-kheap-interleaving-proof/interleaving_contract.json" "$(EVIDENCE_RUN_DIR)/reports/low-half-kheap-interleaving-contract.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: low-half-kheap-interleaving-proof evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-alias-proof: ci-evidence-dir
+	@echo "== CI GATE ALIAS PROOF (Phase 11 v1) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout: 35"
+	@echo "kernel_profile: validation (enforced)"
+	@echo "user_minimal_mode: phase10a2 (enforced)"
+	@echo "ayken_cr3_pcid: 0 (enforced)"
+	@echo "ayken_mb_selftest: 1 (enforced)"
+	@echo "ayken_gate4_policy_test: 0 (enforced)"
+	@echo "ayken_sched_bootstrap_policy: 0 (enforced)"
+	@echo "ayken_validation: 1 (enforced)"
+	@echo "ayken_alias_proof_selftest: 1 (enforced)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_CR3_PCID=0 AYKEN_MB_SELFTEST=1 AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY=0 AYKEN_VALIDATION=1 AYKEN_ALIAS_PROOF_SELFTEST=1 bash scripts/ci/gate_alias_proof.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/alias-proof" \
+		--qemu-timeout 35
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/alias-proof/report.json" "$(EVIDENCE_RUN_DIR)/reports/alias-proof.json" 2>/dev/null || true
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: alias-proof evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-no-low-half-kernel-dependency: ci-gate-ring3-execution-phase10a2
 	@echo "== CI GATE NO LOW-HALF KERNEL DEPENDENCY =="

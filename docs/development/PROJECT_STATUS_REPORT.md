@@ -1,29 +1,34 @@
 # AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-03-16
-**Status:** Phase-10 / Phase-11 / Phase-12 Official Closure Confirmed + Phase-13 Kill-Switch Gates PASS
+**Date:** 2026-03-22
+**Status:** Phase-10 / Phase-11 / Phase-12 Official Closure Confirmed + Phase-13 Kill-Switch Gates PASS + Phase-10B Execution Path Hardening Complete
 **Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b`
 **Evidence Git SHA (Phase-12C):** `01d1cb5c`
 **Closure Sync SHA:** `fe9031d7`
 **Official CI (Phase-10/11):** `ci-freeze` run `22797401328` (`pull_request`, `success`)
 **Official CI (Phase-12):** `ci-freeze` run `23099070483` (`success`) — PR #62
+**Official CI (Phase-10B + Docs Sync):** `ci-freeze` run `23406688668` (`success`) — PR #65
 **Official Closure Tag (Phase-10/11):** `phase10-phase11-official-closure`
 **Official Closure Tag (Phase-12):** `phase12-official-closure-confirmed` at `1d79d4b1`
 **Phase-13 Kill-Switch Tag:** `phase13-kill-switch-gates-pass` at `0ec4bb5e`
+**Phase-10B Merge SHA:** `bbe57747` (PR #65 - Docs/sync gate order and pr template)
 **CURRENT_PHASE:** `12` (formal transition at `0adb2a84`)
+**Ring0 Export Ceiling:** `191 symbols` (updated from 165)
 
 ## Executive Summary
 Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerinden guncel durumu ozetler.
 
 - `Phase-10` runtime zinciri local freeze ile dogrulandi ve remote `ci-freeze` ile official closure seviyesine tasindi
+- `Phase-10B` execution path hardening tamamlandi: execution slot, BCIB runtime, syscall v2 genişletmesi (SYS_V2_COMPLETE_EXECUTION), fail-closed proof validator
 - `Phase-11` verification substrate bootstrap/local gate seti remote `ci-freeze` ile official closure seviyesine tasindi
 - worktree-local `Phase-12` normatif `Phase-12C` gate seti `run-local-phase12c-closure-2026-03-11` ile yesil gecmistir
 - local `P12-14` parity hatti artik closure-audit artifact'i ile birlikte drift attribution, island analysis, stable `DeterminismIncident`, consistency/determinism raporlari ve convergence artifact'lari uretir
 - local `P12-15` multisig quorum, `P12-16` final `proofd` hardening, `P12-17` replay admission boundary, and `P12-18` replicated verification boundary artik `COMPLETED_LOCAL` seviyesindedir
 - Phase-13 observability architecture corpus artik `verification observability`, `relationship graph`, `global verification graph`, and `distributed topology` yuzeyleriyle repo icinde sabitlenmistir
 - GitHub tracker temizlenmis, `Phase-11` milestone kapanmis, `Phase-13: Distributed Verification Observability` milestone acilmistir
-- `CURRENT_PHASE=10` guardrail pointer'i korunuyor; formal phase transition ayri workflow olarak kalir
+- `CURRENT_PHASE=12` formal transition tamamlandi
+- PR #65 merge edildi: Ring0 export ceiling 165→191, expired waiver temizlendi, hook/steering dosyaları reorganize edildi
 - Dedicated official closure tag bir sonraki governance artefaktidir
 
 ## 1) Evidence Basis
@@ -111,6 +116,18 @@ Meaning:
 2. 4 kill-switch invariants HOLD: observability→control plane, authority election, artifact integrity, verifier authority drift
 3. Gate fix committed via PR #63 (diagnostics-consumer allow-list producer correction)
 4. Implementation work not yet claimed — boundary hardening is the active workstream
+
+### 2.5 Phase-10B (Execution Path Hardening)
+Current classification:
+`Phase-10B = COMPLETE (merged via PR #65)`
+
+Meaning:
+1. Execution slot mechanism implemented with kernel-owned BCIB backing
+2. SYS_V2_COMPLETE_EXECUTION (syscall 1011) added to syscall v2 interface
+3. Fail-closed execution proof validator operational
+4. Ring0 export ceiling updated: 165 → 191 symbols (26 new meşru exports)
+5. Remote `ci-freeze` run `23406688668` confirmed (`success`)
+6. Merge SHA: `bbe57747` (PR #65 - Docs/sync gate order and pr template)
 
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
