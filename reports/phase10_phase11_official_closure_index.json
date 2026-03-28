@@ -7,6 +7,7 @@
   "current_phase_after_closure": 12,
   "authority": "ARCHITECTURE_FREEZE.md",
   "closure_date_utc": "2026-03-07T10:35:49Z",
+  "status_surface": "historical_official_closure_snapshot",
 
   "evidence_chain": {
     "phase10": {
@@ -72,6 +73,62 @@
     "result": "success",
     "started_utc": "2026-03-07T10:32:28Z",
     "completed_utc": "2026-03-07T10:35:49Z"
+  },
+
+  "post_closure_verification": {
+    "note": "These later verification runs refresh local Phase-10 evidence and record later proof surfaces without changing the official closure_date_utc.",
+    "latest_phase10b_same_run_verification": {
+      "run_id": "20260321T214023Z-ecef31bc-19904",
+      "run_path": "out/evidence/run-20260321T214023Z-ecef31bc-19904",
+      "summary": "out/evidence/run-20260321T214023Z-ecef31bc-19904/reports/summary.json",
+      "phase10b_report": "out/evidence/run-20260321T214023Z-ecef31bc-19904/reports/syscall-semantics-phase10b.json",
+      "time_utc": "2026-03-21T21:40:24Z",
+      "verdict": "PASS",
+      "git_sha": "ecef31bcc1bd39bcd630a9ea987794fc3c098c53",
+      "phase10a2_evidence_mode": "co_located_same_run_candidate",
+      "gates": {
+        "ring3-execution-phase10a2": "PASS",
+        "syscall-semantics-phase10b": "PASS"
+      },
+      "notes": [
+        "co-located same-run Phase10-A2 evidence enforced",
+        "fail-closed replay v1 artifact bundle exported under the Phase10-B gate"
+      ]
+    },
+    "low_half_scaffold_proof_suite": {
+      "runtime_visibility": {
+        "run_id": "local-low-half-kheap-runtime-proof",
+        "summary": "out/evidence/run-local-low-half-kheap-runtime-proof/reports/summary.json",
+        "report": "out/evidence/run-local-low-half-kheap-runtime-proof/reports/low-half-kheap-scaffold.json",
+        "time_utc": "2026-03-21T22:15:48Z",
+        "verdict": "PASS",
+        "git_sha": "ecef31bcc1bd39bcd630a9ea987794fc3c098c53"
+      },
+      "terminal_exit": {
+        "run_id": "local-low-half-kheap-exit-proof",
+        "summary": "out/evidence/run-local-low-half-kheap-exit-proof/reports/summary.json",
+        "report": "out/evidence/run-local-low-half-kheap-exit-proof/reports/low-half-kheap-exit-proof.json",
+        "time_utc": "2026-03-21T23:20:27Z",
+        "verdict": "PASS",
+        "git_sha": "ecef31bcc1bd39bcd630a9ea987794fc3c098c53"
+      },
+      "multi_exit_lineage": {
+        "run_id": "local-low-half-kheap-multi-exit-proof-v7",
+        "summary": "out/evidence/run-local-low-half-kheap-multi-exit-proof-v7/reports/summary.json",
+        "time_utc": "2026-03-21T23:54:37Z",
+        "verdict": "PASS",
+        "git_sha": "ecef31bcc1bd39bcd630a9ea987794fc3c098c53"
+      },
+      "interleaving": {
+        "run_id": "local-low-half-kheap-interleaving-proof-n3",
+        "summary": "out/evidence/run-local-low-half-kheap-interleaving-proof-n3/reports/summary.json",
+        "time_utc": "2026-03-22T00:26:36Z",
+        "verdict": "PASS",
+        "git_sha": "ecef31bcc1bd39bcd630a9ea987794fc3c098c53"
+      },
+      "scaffold_state": "DEBT_PRESENT",
+      "phase11_closure_blocked_by_scaffold": true
+    }
   },
 
   "closure_document": "reports/phase10_phase11_closure_2026-03-07.md",

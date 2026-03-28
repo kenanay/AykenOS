@@ -3,6 +3,7 @@
 #include "gdt_idt.h"
 #include "port_io.h"
 #include "../../include/ayken.h"
+#include "../../include/mm.h"
 #include "../../sched/sched.h"
 
 struct idt_entry idt_table[256];
@@ -36,6 +37,285 @@ volatile uint32_t phase10_ring3_user_code_seen = 0;
 #define HALT_FOREVER() do { \
     for (;;) __asm__ volatile("cli; hlt"); \
 } while (0)
+
+#define ISR_SAFE_HELPER __attribute__((no_caller_saved_registers, target("general-regs-only")))
+
+typedef struct pf_walk_snapshot {
+    uint64_t root_phys;
+    uint64_t va;
+    uint64_t pml4_table_phys;
+    uint64_t pml4e_phys;
+    uint64_t pml4e;
+    uint64_t pdpt_table_phys;
+    uint64_t pdpte_phys;
+    uint64_t pdpte;
+    uint64_t pd_table_phys;
+    uint64_t pde_phys;
+    uint64_t pde;
+    uint64_t pt_table_phys;
+    uint64_t pte_phys;
+    uint64_t pte;
+    uint64_t final_phys;
+    uint8_t valid;
+} pf_walk_snapshot_t;
+
+static void ISR_SAFE_HELPER pf_walk_emit_text(const char *text)
+{
+    while (text && *text) {
+        OUTC(*text++);
+    }
+}
+
+static void ISR_SAFE_HELPER pf_walk_emit_bool(uint8_t value)
+{
+    OUTC(value ? '1' : '0');
+}
+
+static uint8_t ISR_SAFE_HELPER pf_walk_reserved_suspect(uint64_t entry)
+{
+    const uint64_t allowed =
+        AYKEN_PTE_ADDR_MASK |
+        AYKEN_PTE_PRESENT |
+        AYKEN_PTE_WRITABLE |
+        AYKEN_PTE_USER |
+        AYKEN_PTE_GLOBAL |
+        AYKEN_PTE_NO_EXEC |
+        (1ULL << 3) |
+        (1ULL << 4) |
+        (1ULL << 5) |
+        (1ULL << 6) |
+        (1ULL << 7);
+
+    return (uint8_t)((entry & ~allowed) != 0);
+}
+
+static uint8_t ISR_SAFE_HELPER pf_walk_exec_ok(uint64_t entry)
+{
+    if ((entry & AYKEN_PTE_PRESENT) == 0) {
+        return 0;
+    }
+    if ((entry & AYKEN_PTE_NO_EXEC) != 0) {
+        return 0;
+    }
+    return (uint8_t)(pf_walk_reserved_suspect(entry) == 0);
+}
+
+static int ISR_SAFE_HELPER pf_capture_walk_snapshot(uint64_t root_phys,
+                                                    uint64_t va,
+                                                    pf_walk_snapshot_t *out)
+{
+    uint64_t active_cr3;
+    uint64_t kernel_cr3;
+    uint64_t *pml4;
+    uint16_t pml4_i;
+    uint16_t pdpt_i;
+    uint16_t pd_i;
+    uint16_t pt_i;
+
+    if (!out || !root_phys) {
+        return 0;
+    }
+
+    *out = (pf_walk_snapshot_t){0};
+    out->root_phys = root_phys & AYKEN_PTE_ADDR_MASK;
+    out->va = va;
+    out->pml4_table_phys = out->root_phys;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    kernel_cr3 = paging_get_kernel_pml4_phys() & AYKEN_PTE_ADDR_MASK;
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) != kernel_cr3) {
+        return 0;
+    }
+
+    pml4 = (uint64_t *)paging_phys_to_virt(out->root_phys);
+    if (!pml4) {
+        return 0;
+    }
+
+    pml4_i = (uint16_t)((va >> 39) & 0x1FF);
+    pdpt_i = (uint16_t)((va >> 30) & 0x1FF);
+    pd_i = (uint16_t)((va >> 21) & 0x1FF);
+    pt_i = (uint16_t)((va >> 12) & 0x1FF);
+
+    out->pml4e_phys = out->pml4_table_phys + ((uint64_t)pml4_i * sizeof(uint64_t));
+    out->pml4e = pml4[pml4_i];
+    if ((out->pml4e & AYKEN_PTE_PRESENT) == 0) {
+        return 0;
+    }
+
+    out->pdpt_table_phys = out->pml4e & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(out->pdpt_table_phys);
+        if (!pdpt) {
+            return 0;
+        }
+        out->pdpte_phys = out->pdpt_table_phys + ((uint64_t)pdpt_i * sizeof(uint64_t));
+        out->pdpte = pdpt[pdpt_i];
+        if ((out->pdpte & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+        if (out->pdpte & (1ULL << 7)) {
+            out->final_phys = (out->pdpte & AYKEN_PTE_ADDR_MASK) | (va & ((1ULL << 30) - 1));
+            out->valid = 1;
+            return 1;
+        }
+    }
+
+    out->pd_table_phys = out->pdpte & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pd = (uint64_t *)paging_phys_to_virt(out->pd_table_phys);
+        if (!pd) {
+            return 0;
+        }
+        out->pde_phys = out->pd_table_phys + ((uint64_t)pd_i * sizeof(uint64_t));
+        out->pde = pd[pd_i];
+        if ((out->pde & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+        if (out->pde & (1ULL << 7)) {
+            out->final_phys = (out->pde & AYKEN_PTE_ADDR_MASK) | (va & ((1ULL << 21) - 1));
+            out->valid = 1;
+            return 1;
+        }
+    }
+
+    out->pt_table_phys = out->pde & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pt = (uint64_t *)paging_phys_to_virt(out->pt_table_phys);
+        if (!pt) {
+            return 0;
+        }
+        out->pte_phys = out->pt_table_phys + ((uint64_t)pt_i * sizeof(uint64_t));
+        out->pte = pt[pt_i];
+        if ((out->pte & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+    }
+
+    out->final_phys = (out->pte & AYKEN_PTE_ADDR_MASK) | (va & (AYKEN_FRAME_SIZE - 1));
+    out->valid = 1;
+    return 1;
+}
+
+static void ISR_SAFE_HELPER pf_emit_walk_snapshot_line(const char *tag, const pf_walk_snapshot_t *snap)
+{
+    if (!tag || !snap) {
+        return;
+    }
+
+    OUTC('W');
+    pf_walk_emit_text(tag);
+    pf_walk_emit_text(" OK=");
+    pf_walk_emit_bool(snap->valid);
+    pf_walk_emit_text(" R=");
+    DUMP_HEX64(snap->root_phys);
+    pf_walk_emit_text(" V=");
+    DUMP_HEX64(snap->va);
+    pf_walk_emit_text(" 4T=");
+    DUMP_HEX64(snap->pml4_table_phys);
+    pf_walk_emit_text(" 4A=");
+    DUMP_HEX64(snap->pml4e_phys);
+    pf_walk_emit_text(" 4E=");
+    DUMP_HEX64(snap->pml4e);
+    pf_walk_emit_text(" 3T=");
+    DUMP_HEX64(snap->pdpt_table_phys);
+    pf_walk_emit_text(" 3A=");
+    DUMP_HEX64(snap->pdpte_phys);
+    pf_walk_emit_text(" 3E=");
+    DUMP_HEX64(snap->pdpte);
+    pf_walk_emit_text(" 2T=");
+    DUMP_HEX64(snap->pd_table_phys);
+    pf_walk_emit_text(" 2A=");
+    DUMP_HEX64(snap->pde_phys);
+    pf_walk_emit_text(" 2E=");
+    DUMP_HEX64(snap->pde);
+    pf_walk_emit_text(" 1T=");
+    DUMP_HEX64(snap->pt_table_phys);
+    pf_walk_emit_text(" 1A=");
+    DUMP_HEX64(snap->pte_phys);
+    pf_walk_emit_text(" 1E=");
+    DUMP_HEX64(snap->pte);
+    pf_walk_emit_text(" FPA=");
+    DUMP_HEX64(snap->final_phys);
+    OUTC('\n');
+}
+
+static void ISR_SAFE_HELPER pf_emit_walk_level_semantics(char level_tag, uint64_t entry, uint8_t leaf)
+{
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("P=");
+    pf_walk_emit_bool((uint8_t)((entry & AYKEN_PTE_PRESENT) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("W=");
+    pf_walk_emit_bool((uint8_t)((entry & AYKEN_PTE_WRITABLE) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("U=");
+    pf_walk_emit_bool((uint8_t)((entry & AYKEN_PTE_USER) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("N=");
+    pf_walk_emit_bool((uint8_t)((entry & AYKEN_PTE_NO_EXEC) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("G=");
+    pf_walk_emit_bool((uint8_t)((entry & AYKEN_PTE_GLOBAL) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("H=");
+    pf_walk_emit_bool((uint8_t)((entry & (1ULL << 7)) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("A=");
+    pf_walk_emit_bool((uint8_t)((entry & (1ULL << 5)) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("D=");
+    pf_walk_emit_bool((uint8_t)((entry & (1ULL << 6)) != 0));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("R=");
+    pf_walk_emit_bool(pf_walk_reserved_suspect(entry));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("X=");
+    pf_walk_emit_bool(pf_walk_exec_ok(entry));
+    OUTC(' ');
+    OUTC(level_tag);
+    pf_walk_emit_text("L=");
+    pf_walk_emit_bool(leaf);
+}
+
+static void ISR_SAFE_HELPER pf_emit_walk_semantics_line(const char *tag, const pf_walk_snapshot_t *snap)
+{
+    uint8_t leaf_3;
+    uint8_t leaf_2;
+    uint8_t leaf_1;
+
+    if (!tag || !snap) {
+        return;
+    }
+
+    leaf_3 = (uint8_t)((snap->pdpte & AYKEN_PTE_PRESENT) && (snap->pdpte & (1ULL << 7)));
+    leaf_2 = (uint8_t)((snap->pde & AYKEN_PTE_PRESENT) && (snap->pde & (1ULL << 7)));
+    leaf_1 = (uint8_t)((snap->pte & AYKEN_PTE_PRESENT) != 0);
+
+    OUTC('W');
+    pf_walk_emit_text(tag);
+    pf_walk_emit_text(" OK=");
+    pf_walk_emit_bool(snap->valid);
+    pf_walk_emit_text(" V=");
+    DUMP_HEX64(snap->va);
+    pf_emit_walk_level_semantics('4', snap->pml4e, 0);
+    pf_emit_walk_level_semantics('3', snap->pdpte, leaf_3);
+    pf_emit_walk_level_semantics('2', snap->pde, leaf_2);
+    pf_emit_walk_level_semantics('1', snap->pte, leaf_1);
+    pf_walk_emit_text(" FPA=");
+    DUMP_HEX64(snap->final_phys);
+    OUTC('\n');
+}
 
 __attribute__((unused))
 static void dump_exc_common(uint8_t vec, uint64_t err, const struct interrupt_frame *frame, int has_cr2)
@@ -220,7 +500,11 @@ __attribute__((interrupt))
 static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
 {
     uint64_t cr2 = 0;
+    uint64_t cr3 = 0;
+    pf_walk_snapshot_t rip_walk = (pf_walk_snapshot_t){0};
+
     __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
 
     // CRITICAL: Page fault marker - keep ASM-safe emission.
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'P'), "Nd"(0xE9));
@@ -237,7 +521,27 @@ static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)' '), "Nd"(0xE9));
     OUTC('C'); OUTC('R'); OUTC('2'); OUTC('='); DUMP_HEX64(cr2);
     OUTC(' ');
+    OUTC('C'); OUTC('R'); OUTC('3'); OUTC('='); DUMP_HEX64(cr3);
+    OUTC(' ');
     OUTC('E'); OUTC('R'); OUTC('R'); OUTC('='); DUMP_HEX64(error_code);
+    OUTC(' ');
+    OUTC('P'); OUTC('=');
+    OUTC((error_code & (1ULL << 0)) ? '1' : '0');
+    OUTC(' ');
+    OUTC('W'); OUTC('=');
+    OUTC((error_code & (1ULL << 1)) ? '1' : '0');
+    OUTC(' ');
+    OUTC('U'); OUTC('=');
+    OUTC((error_code & (1ULL << 2)) ? '1' : '0');
+    OUTC(' ');
+    OUTC('R'); OUTC('=');
+    OUTC((error_code & (1ULL << 3)) ? '1' : '0');
+    OUTC(' ');
+    OUTC('I'); OUTC('=');
+    OUTC((error_code & (1ULL << 4)) ? '1' : '0');
+    OUTC(' ');
+    OUTC('C'); OUTC('P'); OUTC('L'); OUTC('=');
+    OUTC((uint8_t)('0' + (((uint16_t)frame->cs) & 0x3)));
     OUTC(' ');
     OUTC('C'); OUTC('S'); OUTC('='); DUMP_HEX16((uint16_t)frame->cs);
     OUTC(' ');
@@ -260,6 +564,10 @@ static void isr_pf(struct interrupt_frame *frame, uint64_t error_code)
         OUTC('N'); OUTC('U'); OUTC('L'); OUTC('L');
     }
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
+
+    pf_capture_walk_snapshot(cr3, frame->rip, &rip_walk);
+    pf_emit_walk_snapshot_line("PFH", &rip_walk);
+    pf_emit_walk_semantics_line("PFS", &rip_walk);
 
     // Halt forever - no recovery from early PF in validation path.
     __asm__ volatile("cli; 1: hlt; jmp 1b");
@@ -310,8 +618,9 @@ void interrupts_install(void)
     idt_set_gate(10, (interrupt_handler_t)isr_ts_stub, 0x8F);
     idt_set_gate(11, (interrupt_handler_t)isr_np_stub, 0x8F);
     idt_set_gate(12, (interrupt_handler_t)isr_ss_stub, 0x8F);
-/* Validation builds use verbose #GP/#PF handlers to surface fault RIP quickly. */
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+/* Validation and explicit IRQ-debug builds use verbose #GP/#PF handlers. */
+#if (defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)) || \
+    (defined(AYKEN_DEBUG_IRQ) && (AYKEN_DEBUG_IRQ == 1))
     idt_set_gate(13, (interrupt_handler_t)isr_gp, 0x8F);
     idt_set_gate(14, (interrupt_handler_t)isr_pf, 0x8F);
 #else
@@ -358,8 +667,9 @@ void interrupts_install_early(void)
     idt_set_gate_selector(10, (interrupt_handler_t)isr_ts_stub, 0x8F, cs);
     idt_set_gate_selector(11, (interrupt_handler_t)isr_np_stub, 0x8F, cs);
     idt_set_gate_selector(12, (interrupt_handler_t)isr_ss_stub, 0x8F, cs);
-/* Validation builds use verbose #GP/#PF handlers to surface fault RIP quickly. */
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+/* Validation and explicit IRQ-debug builds use verbose #GP/#PF handlers. */
+#if (defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)) || \
+    (defined(AYKEN_DEBUG_IRQ) && (AYKEN_DEBUG_IRQ == 1))
     idt_set_gate_selector(13, (interrupt_handler_t)isr_gp, 0x8F, cs);
     idt_set_gate_selector(14, (interrupt_handler_t)isr_pf, 0x8F, cs);
 #else

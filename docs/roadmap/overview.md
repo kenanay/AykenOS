@@ -1,4 +1,4 @@
-# AykenOS Roadmap - Code and Evidence Status (2026-03-15)
+# AykenOS Roadmap - Code and Evidence Status (2026-03-28)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## Scope
@@ -16,6 +16,7 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Formal phase pointer: `CURRENT_PHASE=12`
 - Phase-12 closure state: `CLOSED (official closure confirmed)`
 - Phase-13 state: `KILL_SWITCH_GATES_PASS (boundary hardening active)`
+- Worktree-local Ring3 executable user-leaf rule: dedicated deterministic gate active (`ci-gate-ring3-user-leaf-rule`)
 
 ## 1) Architectural Baseline
 
@@ -39,6 +40,17 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Phase-13 observability architecture corpus ve GitHub roadmap artik aktif hazirlik seviyesindedir; bu, implementation claim'i degil, sonraki mimari buyume hattidir.
 
 ## 2) Gate Reality
+
+### 2.0 Worktree-Local Ring3 User-Leaf Rule
+Current local deterministic rule lane:
+
+1. Gate: `ci-gate-ring3-user-leaf-rule`
+2. Mode: `USER_MINIMAL_MODE=phase10a2-text-witness-bp`
+3. Required knobs: `AYKEN_RING3_POST_CR3_TEXT_PROBE=1`, `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1`, `AYKEN_CR3_PCID=0`
+4. Authoritative runtime chain:
+   `P10_TEXT_FRAME_WITNESS -> P10_POST_CR3_TEXT_PROBE -> P10_RING3_USER_CODE`
+5. Authority level: local deterministic, fail-closed
+6. Non-claim: broader historical `Phase10-A2` strict/global authority remains separate and still depends on primary CI full-suite evidence
 
 ### 2.1 Runtime Freeze Evidence
 Run ID: `local-freeze-p10p11`
@@ -130,11 +142,12 @@ Interpretation:
 8. Phase-13 kill-switch gates: all 6 PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`).
 
 ## 4) Current Risk Concentration
-1. Runtime A2 blocker kapanmistir; `missing_marker:P10_RING3_USER_CODE` current blocker degildir.
-2. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
-3. ✅ `CURRENT_PHASE=12` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
-4. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
-5. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+1. Executable user-leaf rule current tree'de artik live local deterministic gate ile korunur; bu rule broader `Phase10-A2` strict/global authority ile ayni sey degildir.
+2. Broader `Phase10-A2` strict/global runtime authority halen primary CI full-suite evidence bekleyen ayrik bir truth surface'tir.
+3. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
+4. ✅ `CURRENT_PHASE=12` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
+5. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
+6. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
 
 ## 5) Roadmap Decision
 
@@ -190,5 +203,5 @@ Phase-13 kill-switch gates icin saglananlar:
 - `docs/specs/phase11-verification-substrate/tasks.md`
 
 ---
-**Son Guncelleme:** 2026-03-15
-**Guncelleme Yontemi:** Phase-10/11 official closure tag + Phase-12 closure manifest refresh + CURRENT_PHASE=12 sync + roadmap truth surface alignment
+**Son Guncelleme:** 2026-03-28
+**Guncelleme Yontemi:** official closure truth surfaces + worktree-local Ring3 executable user-leaf rule authority split + roadmap truth surface alignment

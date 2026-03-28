@@ -6,6 +6,8 @@
 _Static_assert(offsetof(tss_entry_t, rsp0) == 0x04, "tss.rsp0 offset must match x86_64 spec");
 _Static_assert(offsetof(tss_entry_t, ist1) == 0x24, "tss.ist1 offset must match x86_64 spec");
 _Static_assert(sizeof(tss_entry_t) == 0x68, "tss size must match x86_64 spec");
+_Static_assert(GDT_USER_DATA == ((3u << 3) | 3u), "user data selector must match GDT entry 3");
+_Static_assert(GDT_USER_CODE == ((4u << 3) | 3u), "user code selector must match GDT entry 4");
 
 // GDT Entry Structure (for 64-bit)
 struct gdt_entry {

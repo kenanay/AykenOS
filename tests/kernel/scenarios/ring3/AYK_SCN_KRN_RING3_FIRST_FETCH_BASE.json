@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "AYK_SCN_KRN_RING3_FIRST_FETCH_BASE",
+  "domain": "KRN",
+  "surface": "RING3",
+  "goal": "FIRST_FETCH_BASE",
+  "runner": {
+    "kind": "shell",
+    "command": [
+      "bash",
+      "scripts/ci/gate_ring3_user_leaf_rule.sh",
+      "--evidence-dir",
+      "{evidence_dir}/ring3-user-leaf-rule",
+      "--qemu-timeout",
+      "35"
+    ],
+    "env": {
+      "USER_MINIMAL_MODE": "phase10a2-text-witness-bp",
+      "KERNEL_PROFILE": "validation",
+      "AYKEN_CR3_PCID": "0",
+      "AYKEN_RING3_POST_CR3_TEXT_PROBE": "1",
+      "AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY": "1"
+    }
+  },
+  "normalizer": {
+    "kind": "ring3_user_leaf_gate",
+    "report_relpath": "ring3-user-leaf-rule/report.json"
+  },
+  "validators": [
+    "tests/kernel/validators/l0/validate_AYK_KRN_L0_RING3_WITNESS_EQ_PROBE.py",
+    "tests/kernel/validators/l0/validate_AYK_KRN_L0_RING3_USER_CODE_REACHED.py",
+    "tests/kernel/validators/l0/validate_AYK_KRN_L0_RING3_AUTHORITATIVE_CHAIN_INTACT.py",
+    "tests/kernel/validators/l0/validate_AYK_KRN_L0_MMU_EXEC_LEAF_SOURCE_GUARD.py"
+  ]
+}

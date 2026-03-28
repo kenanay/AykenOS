@@ -1,7 +1,7 @@
 # Completion Handoff Decision
 
-**Status:** Resolved (ratified and implemented on 2026-03-19)  
-**Scope:** Phase 10-B / 10-C execution-path hardening  
+**Status:** Resolved (ratified and implemented on 2026-03-19; synchronized with landed follow-on slices on 2026-03-25)
+**Scope:** Phase 10-B / 10-C execution-path hardening
 **Authority Level:** Local runtime decision surface, not roadmap authority
 
 ## 1. Purpose
@@ -14,9 +14,9 @@ Its job is to answer one question:
 How does a `RUNNING` execution become authoritatively `COMPLETED` or `FAILED`
 without violating the current Ring0/Ring3 boundary?
 
-## 2. Current Problem
+## 2. Historical Problem
 
-The kernel now supports:
+When this decision was opened, the kernel already supported:
 
 - kernel-owned execution slots
 - `READY -> RUNNING` pickup on schedule entry
@@ -24,7 +24,8 @@ The kernel now supports:
 - timer-driven timeout terminalization
 - worker-latch clearing on timeout
 
-What it still lacks is an authoritative success/failure completion path.
+What it lacked at that point was an authoritative success/failure completion
+path.
 
 Current gap:
 
@@ -38,7 +39,7 @@ Missing path:
 RUNNING -> COMPLETED / FAILED
 ```
 
-This means the current runtime can start work and time it out, but cannot yet
+At that point the runtime could start work and time it out, but could not yet
 close the lifecycle on successful or explicit failed execution.
 
 ## 3. Repo Constraints
@@ -46,8 +47,8 @@ close the lifecycle on successful or explicit failed execution.
 The completion design is constrained by existing repo truths:
 
 - Ring0 is mechanism-only; Ring3 is policy/execution logic.
-- `wait_result()` already expects terminal slot states but no completion entry
-  point exists yet.
+- `wait_result()` already expected terminal slot states, but no completion entry
+  point existed yet.
 - `sys_v2_interrupt_return()` is currently reserved for IRQ-exit semantics and
   must not be repurposed as execution completion.
 - the v2 syscall range was `1000-1010` and frozen before the ratified
@@ -73,24 +74,28 @@ In short:
 The preferred interface is a dedicated completion syscall surface:
 
 ```text
-sys_v2_complete_execution(execution_id, completion_code, ...)
+sys_v2_complete_execution(execution_id, completion_code)
 ```
 
-The exact syscall number is intentionally not assigned in this document.
+That interface has now landed as:
 
-Reason:
+- `SYS_V2_COMPLETE_EXECUTION = 1011`
+- explicit `RUNNING -> COMPLETED/FAILED` terminalization
+- latch-bound caller authority validation
+- first-terminal-state-wins arbitration against timeout
 
-- the current v2 range is already full
-- assigning a new number would be an ABI/governance action, not just a local
-  implementation detail
+The original open decision intentionally deferred number assignment until the
+separate ABI/governance record ratified the v2-range exception.
 
 The minimum first-landing contract is intentionally narrow:
 
 - identify the `execution_id`
 - identify terminal outcome (`COMPLETED` or `FAILED`)
-- perform no result-ownership transfer yet
+- keep completion handoff distinct from result publication and ownership
 
-Result ownership remains a later slice.
+Those follow-on result publication slices have since landed separately via
+`wait_result()`, the execution output plane, structured-output v2, and the
+result-hash sidecar. They remain outside the scope of this decision record.
 
 ## 6. Why A Dedicated Entry Point
 
@@ -167,17 +172,9 @@ Reason:
 
 ## 9. ABI and Governance Implication
 
-This decision does **not** itself widen the ABI.
-
-It does, however, conclude that a dedicated completion syscall is the correct
-technical answer. Therefore one explicit ABI/governance decision is required
-before implementation:
-
-- either ratify a one-surface exception to the frozen v2 range
-- or ratify a different explicit ABI entry point with equivalent semantics
-
-Until such ratification exists, completion handoff should not be implemented by
-repurposing an unrelated syscall.
+This decision originally concluded that a dedicated completion syscall was the
+correct technical answer and therefore required an explicit ABI/governance
+ratification before implementation.
 
 The ratified governance record is:
 
@@ -185,7 +182,7 @@ The ratified governance record is:
 
 ## 10. Implementation Order Consequence
 
-Once ratified, the correct runtime order is:
+The planned runtime order was:
 
 1. land the explicit completion entry point
 2. transition `RUNNING -> COMPLETED/FAILED`
@@ -193,7 +190,8 @@ Once ratified, the correct runtime order is:
 4. wake waiters on completion/failure
 5. land result ownership and repeated `wait_result()` semantics
 
-This keeps lifecycle closure ahead of result-delivery complexity.
+That ordering has now fully landed. This document remains the decision record
+for why completion required its own explicit entry point.
 
 ## 11. Resolution Outcome
 
@@ -203,5 +201,7 @@ The ratified implementation landed as:
 - explicit `RUNNING -> COMPLETED/FAILED` terminalization
 - latch-bound caller authority validation
 - first-terminal-state-wins arbitration against timeout
+- separate landed result publication through `wait_result()` using frozen
+  output bytes and a deterministic hash sidecar
 
-Result ownership remains follow-on work.
+This file is now an archival decision surface, not an open gap tracker.

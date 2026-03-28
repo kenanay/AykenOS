@@ -160,6 +160,7 @@ context_switch:
 
 .L_ring3_ret:
     ; Canonical Ring3 entry path: all CR3/RFLAGS/IRETQ semantics live in ring3_enter.S.
+    mov rsp, [rsi + CTX_RSP0]
     mov rdi, r11 ; rip
     mov rsi, rcx ; rsp
     mov rcx, r8  ; user cr3
@@ -193,6 +194,7 @@ switch_to_first:
 
 .L_first_ring3:
     ; Canonical Ring3 entry path shared with context_switch().
+    mov rsp, [rdi + CTX_RSP0]
     mov rdi, r11 ; rip
     mov rsi, rcx ; rsp
     mov rcx, r8  ; user cr3

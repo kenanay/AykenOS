@@ -8,11 +8,33 @@ This document defines governance rules for policy-sensitive build knobs.
 - Constitutional freeze discipline:
   - `ci-freeze-guard` must enforce `AYKEN_CR3_PCID=0`.
   - `ci-gate-ring3-execution-phase10a2` must pass `AYKEN_CR3_PCID=0` explicitly.
+  - `ci-gate-ring3-user-leaf-rule` must also pass `AYKEN_CR3_PCID=0` explicitly.
   - `scripts/ci/gate_ring3_execution_phase10a2.sh` must keep `ENFORCED_AYKEN_CR3_PCID="0"` and fail-closed guards.
+  - `scripts/ci/gate_ring3_user_leaf_rule.sh` must keep `AYKEN_CR3_PCID=0` and fail closed otherwise.
 - Build determinism:
   - `Makefile` must propagate `AYKEN_CR3_PCID` to both `KERNEL_CFLAGS` and `KERNEL_ASMFLAGS`.
 - Evidence contract:
   - Ring3 execution gate report must include both `enforced_ayken_cr3_pcid` and `observed_ayken_cr3_pcid`.
+
+## AYKEN_RING3_POST_CR3_TEXT_PROBE
+
+- Allowed values: `0` or `1`.
+- Dedicated executable user-leaf rule gate enforcement:
+  - `ci-gate-ring3-user-leaf-rule` must run with `AYKEN_RING3_POST_CR3_TEXT_PROBE=1`.
+  - `scripts/ci/gate_ring3_user_leaf_rule.sh` must fail closed if this knob is not `1`.
+- Authority note:
+  - this knob supports the local deterministic witness chain
+  - by itself it does not restate broader Phase10-A2 strict/global closure
+
+## AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY
+
+- Allowed values: `0` or `1`.
+- Dedicated executable user-leaf rule gate enforcement:
+  - `ci-gate-ring3-user-leaf-rule` must run with `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1`.
+  - `scripts/ci/gate_ring3_user_leaf_rule.sh` must fail closed if this knob is not `1`.
+- Authority note:
+  - this knob exists to stabilize the first-entry witness lane
+  - by itself it does not restate broader Phase10-A2 strict/global closure
 
 ## PHASE10C C2 Strict Knobs
 

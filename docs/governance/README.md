@@ -23,6 +23,26 @@ Authoritative references:
   marker-contract drift prevention.
 - `ABI_EXCEPTION_COMPLETION_HANDOFF.md`: ratified narrow ABI exception for the
   explicit execution completion surface.
+- `RING3_USER_LEAF_ALLOCATION_RULE.md`: runtime rule for user-authored
+  executable leaf allocation class across non-kernel CR3 transitions
+  (`local deterministic CI gate active; broader strict/global authority
+  remains separate`).
+- `RING3_RUNTIME_CLOSURE_NOTE.md`: closure scope and CI enforcement notes for
+  the Phase10-A2 Ring3 first-fetch/runtime boundary (`local closure scope,
+  not a blanket Phase10-A2 global closure claim`).
+- `TEST_NAMING_CONVENTION.md`: external test naming contract for domain/layer/surface/invariant identifiers.
+- `TEST_PIPELINE_CONTRACT.md`: external test pipeline contract
+  (scenario -> normalize -> validator -> error code -> CI verdict).
+- `error_codes.json`: single authority registry for external test error codes.
+
+Current authority transition note:
+
+- Ring3 executable user-leaf rule is live and locally enforced.
+- Broader Phase10-A2 strict/global closure remains a separate authority claim
+  until primary CI full-suite evidence exists.
+- External kernel test stack now follows the same authority split:
+  manual `ci-kernel-tests` and its sub-gates verify the narrow invariant set
+  without restating broader runtime/global closure.
 - `NAMING_CONVENTION_V1.md`: forward-only naming freeze for new execution-path
   additions with scoped CI enforcement.
 - `ci-gate-constitutional`: hard constitutional lock (contract surface only).

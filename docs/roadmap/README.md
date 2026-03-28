@@ -11,7 +11,7 @@ Bu dizin, AykenOS roadmap ve freeze durumunu current evidence ve remote `ci-free
 - `../../AYKENOS_SON_DURUM_RAPORU_2026_03_07.md`: kapsamli durum raporu (tarihsel)
 - `freeze-enforcement-workflow.md`: freeze cikis ve work queue kurallari
 
-## Kod + Evidence Ozeti (2026-03-16)
+## Kod + Evidence Ozeti (2026-03-28)
 - Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11`
 - Evidence git SHA (Phase-10/11): `9cb2171b`
 - Evidence git SHA (Phase-12C): `01d1cb5c`
@@ -26,25 +26,28 @@ Bu dizin, AykenOS roadmap ve freeze durumunu current evidence ve remote `ci-free
 - `Phase-12`: CLOSED (`official closure confirmed`)
 - `Phase-13`: KILL_SWITCH_GATES_PASS (boundary hardening active)
 - `CURRENT_PHASE=12`: formal transition tamamlandi (`0adb2a84`)
+- Worktree-local Ring3 executable user-leaf rule: `ci-gate-ring3-user-leaf-rule` ile active/local deterministic fail-closed enforcement
 
 ## Freeze / Gate Gercekligi
 - `make pre-ci`: local discipline zinciri
 - `make ci-freeze`: remote / strict official closure authority
 - `make ci-freeze-local`: local runtime freeze authority
+- `make ci-gate-ring3-user-leaf-rule`: executable user-leaf rule icin local deterministic authority
 - `make ci-gate-proof-bundle`: portable proof parity authority
 
 ## Su Anki Teknik Karar
-1. Runtime blocker `missing_marker:P10_RING3_USER_CODE` artik aktif blocker degildir.
-2. `Phase-12` official closure remote `ci-freeze` run `23099070483` ile confirmed (PR #62).
-3. `CURRENT_PHASE=12` formal transition `0adb2a84` ile tamamlandi.
-4. Phase-13 kill-switch gate suite 6/6 PASS — tag `phase13-kill-switch-gates-pass` at `0ec4bb5e`.
-5. `proofd` sonraki adimlarda query/service surface olabilir; authority surface veya control plane olarak yorumlanmamali.
-6. GitHub roadmap artik `phase13`, `policy-track`, and `research-track` ayrimini acikca yansitir.
-7. `Phase-13: Distributed Verification Observability` milestone'u active roadmap anchor olarak kullanilir.
+1. Executable user-leaf rule artik local deterministic olarak enforce edilir; authority gate'i `ci-gate-ring3-user-leaf-rule`'dur.
+2. Bu yeni rule gate'i tek basina broader `Phase10-A2` strict/global authority iddiasi yerine gecmez.
+3. `Phase-12` official closure remote `ci-freeze` run `23099070483` ile confirmed (PR #62).
+4. `CURRENT_PHASE=12` formal transition `0adb2a84` ile tamamlandi.
+5. Phase-13 kill-switch gate suite 6/6 PASS — tag `phase13-kill-switch-gates-pass` at `0ec4bb5e`.
+6. `proofd` sonraki adimlarda query/service surface olabilir; authority surface veya control plane olarak yorumlanmamali.
+7. GitHub roadmap artik `phase13`, `policy-track`, and `research-track` ayrimini acikca yansitir.
+8. `Phase-13: Distributed Verification Observability` milestone'u active roadmap anchor olarak kullanilir.
 
 ## Not
 Bu dizindeki tarihsel roadmap dosyalari (or. `ROADMAP_2026_02_23.md`) baglamsal referanstir. Current truth icin `overview.md` + root current reports kullanilmalidir.
 
 ---
-**Son Guncelleme:** 2026-03-13
-**Guncelleme Temeli:** local freeze evidence + phase11 closure evidence + remote ci-freeze confirmation + local Phase-12C gate pass + architecture corpus sync
+**Son Guncelleme:** 2026-03-28
+**Guncelleme Temeli:** official closure truth surfaces + worktree-local Ring3 executable user-leaf rule authority split + architecture corpus sync

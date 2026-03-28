@@ -10,10 +10,22 @@ MODE_STAMP := .build_mode.stamp
 
 ifeq ($(MINIMAL_MODE),phase10a2)
 MINIMAL_SRC := minimal.S
+else ifeq ($(MINIMAL_MODE),phase10a2-entry-bp)
+MINIMAL_SRC := minimal_phase10a2_entry_bp.S
+else ifeq ($(MINIMAL_MODE),phase10a2-entry-nobp)
+MINIMAL_SRC := minimal_phase10a2_entry_nobp.S
+else ifeq ($(MINIMAL_MODE),phase10a2-canary-witness)
+MINIMAL_SRC := minimal_phase10a2_canary_witness.S
+else ifeq ($(MINIMAL_MODE),phase10a2-text-witness)
+MINIMAL_SRC := minimal_phase10a2_text_witness.S
+else ifeq ($(MINIMAL_MODE),phase10a2-text-witness-bp)
+MINIMAL_SRC := minimal_phase10a2_text_witness_bp.S
+else ifeq ($(MINIMAL_MODE),phase10a2-mailbox-bp)
+MINIMAL_SRC := minimal_phase10a2_mailbox_bp.S
 else ifeq ($(MINIMAL_MODE),syscall-v2-runtime)
 MINIMAL_SRC := minimal_syscall_v2_runtime.S
 else
-$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2 or syscall-v2-runtime)
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, or syscall-v2-runtime)
 endif
 
 CFLAGS := -target x86_64-elf \

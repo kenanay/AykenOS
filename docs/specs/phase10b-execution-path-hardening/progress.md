@@ -1634,6 +1634,52 @@ Impact:
 Notes:
 - no runtime or ABI behavior changed in this slice
 
+### 2026-03-25
+
+Completed Slice:
+- synchronized stale Phase10-B decision/spec documents with the landed runtime
+  reality for explicit completion handoff and execution-inbox delivery
+- removed the remaining stale "future slice" wording from the historical
+  execution-inbox implementation plan
+- updated the archived Phase10/11 closure report surfaces to distinguish the
+  immutable 2026-03-07 closure date from the later same-run Phase10-B rerun and
+  low-half scaffold proof suite while keeping the scaffold debt explicit
+
+Touched Code Paths:
+- none (documentation/report synchronization only)
+
+Touched Docs:
+- `docs/specs/phase10b-execution-path-hardening/completion-handoff-decision.md`
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-minimal-spec.md`
+- `docs/specs/phase10b-execution-path-hardening/execution-inbox-implementation-plan.md`
+- `docs/specs/phase10b-execution-path-hardening/progress.md`
+- `reports/phase10_phase11_closure_2026-03-07.md`
+- `reports/phase10_phase11_official_closure_index.json`
+
+Validation:
+- `python3 -m json.tool reports/phase10_phase11_official_closure_index.json >/dev/null`
+- `git diff --check`
+
+Impact:
+- removed the remaining “still missing” wording from docs that now describe
+  landed runtime surfaces
+- made the report truth surface precise about what is closure authority versus
+  what is later post-closure verification evidence
+- made the still-active low-half scaffold debt visible inside the closure index
+  instead of leaving it implicit in later docs only
+
+Notes:
+- no QEMU rerun was performed in this documentation sync slice
+- official closure remains dated 2026-03-07
+- the post-closure verification addendum records later evidence without
+  redefining closure authority
+- post-closure evidence references existing runs:
+  `out/evidence/run-20260321T214023Z-ecef31bc-19904`,
+  `out/evidence/run-local-low-half-kheap-runtime-proof`,
+  `out/evidence/run-local-low-half-kheap-exit-proof`,
+  `out/evidence/run-local-low-half-kheap-multi-exit-proof-v7`, and
+  `out/evidence/run-local-low-half-kheap-interleaving-proof-n3`
+
 ### 2026-03-22
 
 Completed Slice:

@@ -85,7 +85,8 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - **Phase 13 Kill-Switch**: GATES PASS (6/6 kill-switch gates PASS, tag `phase13-kill-switch-gates-pass`)
 - **Constitutional System**: Phases 1-12 COMPLETE (governance framework active)
 - **Architecture Freeze**: ACTIVE (stabilization before AI integration)
-- **CI Enforcement**: 23 gates active (ci-freeze chain: ABI → Boundary → Ring0 Exports → Hygiene → Tooling Isolation → Constitutional → Governance Policy → Drift Activation → Structural ABI → Runtime Marker Contract → User Bin Lock → Embedded ELF Hash → Performance → Ring3 Execution Phase10a2 → Syscall Semantics Phase10b → Phase10C Gate → Mailbox Capability Negative → Workspace → Syscall v2 Runtime → Sched Bridge Runtime → Behavioral Suite → Policy Accept → Kill-Switch Phase13)
+- **Worktree-Local Ring3 Rule**: executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
+- **CI Enforcement**: strict freeze chain includes dedicated `Ring3 User Leaf Rule` before broader `Ring3 Execution Phase10a2`, followed by low-half scaffold, mailbox/runtime gates, alias proof, and Phase-13 kill-switch enforcement
 - **Pre-CI Discipline**: Local advisory (4 core gates, ~30-60s, fail-closed)
 - **CURRENT_PHASE**: `12` (formal transition completed at `0adb2a84`)
 

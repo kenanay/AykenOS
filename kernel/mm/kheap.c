@@ -37,6 +37,68 @@ static inline void kheap_dbg(char c)
     outb(0xE9, (uint8_t)c);
 }
 
+static void kheap_dump_mapping(const char *tag, uint64_t va)
+{
+    uint64_t pml4_phys = paging_get_kernel_pml4_phys();
+    uint64_t active_cr3 = 0;
+    uint64_t pml4e = 0;
+    uint64_t pdpte = 0;
+    uint64_t pde = 0;
+    uint64_t pte = 0;
+    uint64_t *pml4 = NULL;
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+
+    if (pml4_phys != 0) {
+        pml4 = (uint64_t *)paging_phys_to_virt(pml4_phys);
+    }
+
+    if (pml4 != NULL) {
+        uint16_t pml4_i = (uint16_t)((va >> 39) & 0x1FF);
+        uint16_t pdpt_i = (uint16_t)((va >> 30) & 0x1FF);
+        uint16_t pd_i = (uint16_t)((va >> 21) & 0x1FF);
+        uint16_t pt_i = (uint16_t)((va >> 12) & 0x1FF);
+
+        pml4e = pml4[pml4_i];
+        if (pml4e & AYKEN_PTE_PRESENT) {
+            uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+            if (pdpt != NULL) {
+                pdpte = pdpt[pdpt_i];
+                if ((pdpte & AYKEN_PTE_PRESENT) && ((pdpte & (1ULL << 7)) == 0)) {
+                    uint64_t *pd = (uint64_t *)paging_phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+                    if (pd != NULL) {
+                        pde = pd[pd_i];
+                        if ((pde & AYKEN_PTE_PRESENT) && ((pde & (1ULL << 7)) == 0)) {
+                            uint64_t *pt = (uint64_t *)paging_phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+                            if (pt != NULL) {
+                                pte = pt[pt_i];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fb_print("[kheap] ");
+    fb_print(tag ? tag : "mapping");
+    fb_print(" va=");
+    fb_print_hex64(va);
+    fb_print(" cr3=");
+    fb_print_hex64(active_cr3);
+    fb_print(" root=");
+    fb_print_hex64(pml4_phys);
+    fb_print(" pml4e=");
+    fb_print_hex64(pml4e);
+    fb_print(" pdpte=");
+    fb_print_hex64(pdpte);
+    fb_print(" pde=");
+    fb_print_hex64(pde);
+    fb_print(" pte=");
+    fb_print_hex64(pte);
+    fb_print("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Heap blok yapısı
 // ---------------------------------------------------------------------------
@@ -77,6 +139,10 @@ void kheap_init(void)
     uint64_t cur_virt = AYKEN_KHEAP_START;
 
     for (uint64_t i = 0; i < heap_pages; ++i) {
+        if (paging_get_phys(cur_virt) != 0) {
+            cur_virt += AYKEN_FRAME_SIZE;
+            continue;
+        }
         if (i == 0)
             kheap_dbg('1');
         uint64_t phys = phys_alloc_frame();
@@ -96,7 +162,9 @@ void kheap_init(void)
     kheap_dbg('m');
     if (paging_get_phys(AYKEN_KHEAP_START) == 0) { kheap_dbg('X');
         for (;;) __asm__ volatile("hlt"); }
+    kheap_dump_mapping("post-map", AYKEN_KHEAP_START);
     paging_load_cr3(paging_get_kernel_pml4_phys());
+    kheap_dump_mapping("post-cr3", AYKEN_KHEAP_START);
     kheap_dbg('M');
     kheap_dbg('a');
     volatile uint64_t *p = (volatile uint64_t *)AYKEN_KHEAP_START;

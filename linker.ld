@@ -26,6 +26,60 @@ SECTIONS
         _text_end = .;
     }
 
+    .ring3_transition ALIGN(0x1000) :
+        AT(ADDR(.ring3_transition) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_transition_start = .;
+        KEEP(*(.ring3_transition))
+        . = ALIGN(0x1000);
+        _ring3_transition_end = .;
+    }
+
+    .ring3_trampoline ALIGN(0x1000) :
+        AT(ADDR(.ring3_trampoline) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_trampoline_start = .;
+        KEEP(*(.ring3_trampoline))
+        . = ALIGN(0x1000);
+        _ring3_trampoline_end = .;
+    }
+
+    .ring3_iret_trampoline ALIGN(0x1000) :
+        AT(ADDR(.ring3_iret_trampoline) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_iret_trampoline_start = .;
+        KEEP(*(.ring3_iret_trampoline))
+        . = ALIGN(0x1000);
+        _ring3_iret_trampoline_end = .;
+    }
+
+    .ring3_alt_bridge_trampoline ALIGN(0x1000) :
+        AT(ADDR(.ring3_alt_bridge_trampoline) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_alt_bridge_trampoline_start = .;
+        KEEP(*(.ring3_alt_bridge_trampoline))
+        . = ALIGN(0x1000);
+        _ring3_alt_bridge_trampoline_end = .;
+    }
+
+    .ring3_final_iret_trampoline ALIGN(0x1000) :
+        AT(ADDR(.ring3_final_iret_trampoline) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_final_iret_trampoline_start = .;
+        KEEP(*(.ring3_final_iret_trampoline))
+        . = ALIGN(0x1000);
+        _ring3_final_iret_trampoline_end = .;
+    }
+
+    .ring3_transition_probe ALIGN(0x1000) :
+        AT(ADDR(.ring3_transition_probe) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
+    {
+        _ring3_transition_probe_start = .;
+        KEEP(*(.ring3_transition_probe))
+        . = ALIGN(0x1000);
+        _ring3_transition_probe_end = .;
+    }
+
     /* ------------------------ RODATA ------------------------- */
     .rodata ALIGN(0x1000) :
         AT(ADDR(.rodata) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
@@ -75,6 +129,19 @@ SECTIONS
 
     /* Kernel sonu */
     _kernel_end = .;
+
+    ASSERT(SIZEOF(.ring3_transition) <= 0x1000,
+           "ring3_transition exceeds one page")
+    ASSERT(SIZEOF(.ring3_trampoline) <= 0x1000,
+           "ring3_trampoline exceeds one page")
+    ASSERT(SIZEOF(.ring3_iret_trampoline) <= 0x1000,
+           "ring3_iret_trampoline exceeds one page")
+    ASSERT(SIZEOF(.ring3_alt_bridge_trampoline) <= 0x1000,
+           "ring3_alt_bridge_trampoline exceeds one page")
+    ASSERT(SIZEOF(.ring3_final_iret_trampoline) <= 0x1000,
+           "ring3_final_iret_trampoline exceeds one page")
+    ASSERT(SIZEOF(.ring3_transition_probe) <= 0x1000,
+           "ring3_transition_probe exceeds one page")
 }
 
 PROVIDE(kernel_phys_start = KERNEL_PHYS_BASE);

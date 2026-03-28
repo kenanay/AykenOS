@@ -1,6 +1,6 @@
 # Implementation Tasks
 
-**Status:** Checklist complete; runtime proof export and terminal exit proof landed; scaffold debt remains explicit; formal closure proof still in progress
+**Status:** Checklist complete; higher-half kheap and no-scaffold dependency removal landed; formal closure proof still in progress
 **Scope:** Phase 10-B / 10-C execution path hardening
 
 Current proof surfaces:
@@ -8,14 +8,20 @@ Current proof surfaces:
 - QEMU-backed fail-closed runtime proof export for invalid authoritative transitions
 - frozen minimal replay evidence format for the fail-closed proof slice (`replay_trace.jsonl`, `replay_trace_hash.txt`, `replay_report.json`, `replay_manifest.json`, `final_state_hash.txt`, `replay_result_hash.txt`)
 - adversarial multi-execution validation for replay floods, double finalize rejection, and pickup-vs-exit collision handling
-- `ci-gate-low-half-kheap-scaffold` keeps the temporary low-half kernel-heap mirror explicit, bounded, address-model anchored, and backed by same-run multi-point runtime page-table proof (`create`, `timer_irq`, `syscall_entry`, and terminal `exit_teardown_pre/post` when present) during Phase10 work
-- `ci-gate-low-half-kheap-exit-proof` now exercises a validation-only exit workload, binds nested proof selection to the authoritative `exit_pid` carried by the single `[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_OK]]` witness, proves the terminal teardown slice end-to-end under QEMU, and requires `lower_half_roots=0`, `lower_half_leaves=0`, and `lower_half_user_leaves=0` at `exit_teardown_post` without claiming that the low-half scaffold debt itself is removed
-- `ci-gate-low-half-kheap-multi-exit-proof` now exercises a validation-only parametric `N`-exit workload (default `N=2`, override via `AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT`), enumerates authoritative `[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_LINEAGE]]` witnesses for every `exit_pid`, and runs one nested scaffold proof per lineage with the `terminal_lineage` phase profile so global lower-half cleanup is proven for each enumerated exit rather than only for a single witness
-- `ci-gate-low-half-kheap-interleaving-proof` now exercises a validation-only overlap-pressure lane where every `exit_pid` is prepared before the first teardown begins, requires canonical `prepared -> armed -> lineage` ordering for every slot, and runs one nested scaffold proof per enumerated lineage so global lower-half cleanup is preserved even when future exits are already live
+- `ci-gate-no-low-half-kernel-dependency` now hard-fails any reintroduction of a low-half kernel-heap mirror and is backed by same-run runtime page-table proof for `AYKEN_KHEAP_START` across `create`, `timer_irq`, `syscall_entry`, and terminal `exit_teardown_pre/post` when present
+- `ci-gate-low-half-kheap-exit-proof` remains as a validation-only exit workload that binds nested proof selection to the authoritative `exit_pid` carried by the single `[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_OK]]` witness and proves terminal lower-half cleanup under QEMU without requiring a live low-half kheap scaffold
+- `ci-gate-low-half-kheap-multi-exit-proof` remains as a validation-only parametric `N`-exit workload (default `N=2`, override via `AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT`) that enumerates authoritative `[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_LINEAGE]]` witnesses for every `exit_pid` and proves global lower-half cleanup for each enumerated exit lineage
+- `ci-gate-low-half-kheap-interleaving-proof` remains as a validation-only overlap-pressure lane where every `exit_pid` is prepared before the first teardown begins, requires canonical `prepared -> armed -> lineage` ordering for every slot, and proves global lower-half cleanup even when future exits are already live
 - official `ci-gate-syscall-semantics-phase10b` now requires co-located same-run Phase10-A2 evidence; ad-hoc standalone gate use may still report external review-evidence mode explicitly
 
 Minimal replay spec:
 - `docs/specs/phase10b-execution-path-hardening/fail-closed-replay-minimal-spec.md`
+
+Current regression-specific closure checklist:
+- `docs/specs/phase10b-execution-path-hardening/closure-checklist-runtime-first-authority-second.md`
+
+Post-runtime-blocker hardening contract:
+- `docs/specs/phase10b-execution-path-hardening/ring3-transition-minimal-secure-paging-contract.md`
 
 ## Tasks
 

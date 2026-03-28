@@ -3,7 +3,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 
 **Status:** ACTIVE (Fail-Closed)  
 **Scope:** `kernel/`, `userspace/`, `ayken-core/`, `ayken/`, `userspace/semantic-cli`  
-**Last Updated:** 2026-03-07
+**Last Updated:** 2026-03-28
 
 ## 1) Purpose
 Bu belge, gelistirme sirasinda entegrasyon sirasinin gozden kacmasini engellemek icin zorunlu mimari guardrail setini tanimlar.
@@ -37,8 +37,9 @@ Asagidaki baglantilar fail-closed ihlal kabul edilir:
 ### Phase 10-A2 (Closure Baseline)
 1. Local closure evidence mevcuttur: `local-freeze-p10p11`.
 2. `ayken-core` ve `semantic-cli` gelistirilebilir, ancak kernel runtime yoluna baglanmaz.
-3. Runtime claim icin zorunlu kanit hala `ci-gate-ring3-execution-phase10a2` strict PASS'tir.
-4. Bu kontratin tekrar kirilmasi halinde `missing_marker:P10_RING3_USER_CODE` yeniden blocker kabul edilir.
+3. Broader historical `Phase10-A2` strict/global runtime claim icin zorunlu kanit hala `ci-gate-ring3-execution-phase10a2` strict PASS'tir.
+4. Ayrik olarak, executable user-leaf runtime rule artik `ci-gate-ring3-user-leaf-rule` ile local deterministic fail-closed enforce edilir.
+5. Bu kontratin tekrar kirilmasi halinde `missing_marker:P10_RING3_USER_CODE` broader strict A2 authority icin yeniden blocker kabul edilir.
 
 ### Phase 10-B
 1. `bcib-runtime` <-> `ayken-core/bcib` entegrasyonu acilabilir.
@@ -86,6 +87,8 @@ Her runtime/CLI/core PR'inda asagidaki maddeler acik olmalidir:
 3. `docs/development/PROJECT_STATUS_REPORT.md` (code + evidence status)
 4. `Makefile` + `scripts/ci/*` + `.github/workflows/ci-freeze.yml` (tek gercek otorite)
 5. `architecture.features.yaml` (feature-phase policy authority)
+6. `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
+7. `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
 
 ## 9) Phase10-A2 Mini Trace Contract (Scheduler <-> Mailbox <-> User)
 Phase10-A2 triage icin gate raporu su 6 state'i birlikte yayinlar:
@@ -97,7 +100,7 @@ Phase10-A2 triage icin gate raporu su 6 state'i birlikte yayinlar:
 6. `S6_RING3_USER_CODE` -> `P10_RING3_USER_CODE`
 
 Fail-closed yorum kurali:
-1. `missing_marker:P10_RING3_USER_CODE` tek basina yeterli blocker'dir.
+1. `missing_marker:P10_RING3_USER_CODE` tek basina broader strict A2 authority icin yeterli blocker'dir.
 2. `trace_cut_before_user:<MAILBOX_FATAL>` varsa sorun scheduler/mailbox karar yolunda user code'dan once kesilmistir.
 3. `mini_trace_summary.risk_signals` alaninda:
    - `mailbox_liveness_risk`: mailbox fatal marker user marker'dan once.
@@ -126,11 +129,21 @@ Bu bolum bilgilendirici amaclidir; fail/pass kararinin resmi otoritesi gate rapo
 1. Ring3 entry canonical zinciri:
    - `P10_RING3_ATTEMPT`
    - `P10_RFLAGS_IF_ON`
+   - `P10_RING3_COMMIT`
    - `P10_CR3_SWITCH`
    - `P10_RING3_ENTER`
+   - dedicated executable-leaf rule runtime authority:
+     `P10_TEXT_FRAME_WITNESS -> P10_POST_CR3_TEXT_PROBE -> P10_RING3_USER_CODE`
+   - post-`CR3` fetch penceresi sadece `mov %cr3; iretq` iceren dar transition trampoline sayfasina indirilir
+   - canonical runtime yolu yuksek yaridaki transition text sayfasinda dogrudan `mov %cr3; iretq` olarak kapanir; probe disinda ekstra post-`CR3` kernel instruction penceresi acilmaz
+   - `AYKEN_RING3_FETCH_PROBE` aciksa aktif tanisal probe ayni asm transition sayfasinda kalir; scheduler C helper'i ile post-`CR3` footprint buyutulmez
+   - explicit low-half alias yalnizca probe build'lerinde acilir; genel low-half kheap mirror geri donusu anlamina gelmez
 2. Ring3 proof yolu:
    - Ring3 minimal stub (`userspace/minimal/minimal.S`) `int 0x80` ve `int3` tetikler
    - Ring3 #BP path `P10_RING3_USER_CODE` marker'ini uretir
+   - `P10_RING3_ATTEMPT` / `P10_RING3_COMMIT` / `P10_CR3_SWITCH` / `P10_RING3_ENTER`
+     kernel-side gecis marker'laridir; tek basina "user code gercekten calisti"
+     kaniti degildir
 3. Scheduler/mailbox zinciri:
    - `P10_SCHED_EVENT_NOTIFY` (IRQ notify)
    - `P10_IRQ_SCHED_DECISION`
@@ -138,7 +151,7 @@ Bu bolum bilgilendirici amaclidir; fail/pass kararinin resmi otoritesi gate rapo
    - `P10_DECISION_APPLIED`
 4. Diagnostic sinyaller:
    - `scheduler_preemption_before_user` tek basina blocker degildir
-   - `missing_marker:P10_RING3_USER_CODE` blocker'dir
+   - `missing_marker:P10_RING3_USER_CODE` broader strict A2 authority icin blocker'dir
    - `trace_cut_before_user:*` blocker'dir
 5. Bootstrap bariyeri:
    - Pre-user-proof penceresinde `P10_MAILBOX_MISS_PRE_USER_BYPASS` gecici korunma marker'i gorulebilir

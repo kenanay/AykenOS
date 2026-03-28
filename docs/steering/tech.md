@@ -110,31 +110,39 @@ make ci-gate-hygiene                  # 4.  Repository cleanliness (MUST pass)
 make ci-gate-tooling-isolation        # 5.  Tooling isolation guard (MUST pass)
 make ci-gate-constitutional           # 6.  Constitutional compliance (MUST pass)
 make ci-gate-governance-policy        # 7.  Governance policy enforcement (MUST pass)
-make ci-gate-drift-activation         # 8.  Drift blocking activation requirement (MUST pass)
-make ci-gate-structural-abi           # 9.  Structural ABI check (MUST pass)
-make ci-gate-runtime-marker-contract  # 10. Runtime marker contract (MUST pass)
-make ci-gate-user-bin-lock            # 11. User binary lock (MUST pass)
-make ci-gate-embedded-elf-hash        # 12. Embedded ELF hash integrity (MUST pass)
-make ci-gate-performance              # 13. Performance regression check (MUST pass)
+make ci-gate-naming-convention        # 8.  Naming convention freeze (MUST pass)
+make ci-gate-drift-activation         # 9.  Drift blocking activation requirement (MUST pass)
+make ci-gate-structural-abi           # 10. Structural ABI check (MUST pass)
+make ci-gate-runtime-marker-contract  # 11. Runtime marker contract (MUST pass)
+make ci-gate-user-bin-lock            # 12. User binary lock (MUST pass)
+make ci-gate-embedded-elf-hash        # 13. Embedded ELF hash integrity (MUST pass)
+make ci-gate-performance              # 14. Performance regression check (MUST pass)
                                       #     NOTE: performance gate is intentionally placed
                                       #     before runtime gates to catch regressions before
                                       #     expensive QEMU-based validation runs
-make ci-gate-ring3-execution-phase10a2  # 14. Ring3 CPL3 entry proof (MUST pass)
-make ci-gate-syscall-semantics-phase10b # 15. Syscall semantics Phase 10-B (MUST pass)
-# ci-gate-scheduler-mailbox-phase10c  # 16. Phase 10-C gate (conditional: PHASE10C_ENFORCE=1)
-make ci-gate-mailbox-capability-negative # 17. Mailbox capability negative test (MUST pass)
-make ci-gate-workspace                # 18. Workspace integrity (MUST pass)
-make ci-gate-syscall-v2-runtime       # 19. Syscall v2 runtime validation (MUST pass)
-make ci-gate-sched-bridge-runtime     # 20. Scheduler bridge runtime validation (MUST pass)
-make ci-gate-behavioral-suite         # 21. Behavioral suite (MUST pass)
-make ci-gate-policy-accept            # 22. Policy accept proof (MUST pass)
-# ci-kill-switch-phase13              # 23. Phase-13 kill-switch gates (distributed verification)
+make ci-gate-ring3-user-leaf-rule     # 15. Ring3 executable user-leaf rule (local deterministic rule authority)
+make ci-gate-ring3-execution-phase10a2  # 16. Broader Ring3 Phase10-A2 strict/global authority surface
+make ci-gate-syscall-semantics-phase10b # 17. Syscall semantics Phase 10-B (MUST pass)
+make ci-gate-low-half-kheap-scaffold  # 18. Low-half kheap scaffold proof (MUST pass)
+# ci-gate-scheduler-mailbox-phase10c  # 19. Phase 10-C gate (conditional: PHASE10C_ENFORCE=1)
+make ci-gate-mailbox-capability-negative # 20. Mailbox capability negative test (MUST pass)
+make ci-gate-workspace                # 21. Workspace integrity (MUST pass)
+make ci-gate-syscall-v2-runtime       # 22. Syscall v2 runtime validation (MUST pass)
+make ci-gate-sched-bridge-runtime     # 23. Scheduler bridge runtime validation (MUST pass)
+make ci-gate-behavioral-suite         # 24. Behavioral suite (MUST pass)
+make ci-gate-policy-accept            # 25. Policy accept proof (MUST pass)
+make ci-gate-alias-proof              # 26. Alias proof runtime check (MUST pass)
+# ci-kill-switch-phase13              # 27. Phase-13 kill-switch gates (distributed verification)
 
 # Full CI suite
 make ci                     # Standard CI (enforced gates)
 make ci-freeze              # Strict freeze suite (all gates, fail-closed)
-make ci-freeze-local        # Local freeze (skip perf/tooling-isolation)
+make ci-freeze-local        # Local freeze (reduced topology: no perf/tooling-isolation/alias-proof/kill-switch)
 ```
+
+Authority note:
+- `ci-gate-ring3-user-leaf-rule` is the dedicated local deterministic authority for the executable user-leaf rule.
+- `ci-gate-ring3-execution-phase10a2` remains the broader historical Phase10-A2 strict/global authority surface.
 
 **Gate Failure Policy:**
 - Any gate failure → **PR BLOCKED**

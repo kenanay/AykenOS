@@ -38,10 +38,9 @@ timer machinery instead of inventing a new runtime substrate.
 - `timer.c` already maintains a monotonic `tick_count`.
 - user processes already have dedicated `cr3`, user stack mapping, and a fixed
   scheduler mailbox VA.
-- user CR3 roots now also mirror the current low-half kernel heap as a
-  supervisor-only compatibility window so kmalloc-backed `proc_t` metadata and
-  kernel stacks remain reachable during IRQ/syscall entry; this is temporary
-  scaffolding, not the target memory model.
+- user CR3 roots now consume kernel heap, `proc_t`, and kernel-stack reachability
+  through the copied higher-half kernel mappings rather than a dedicated low-half
+  mirror.
 
 ### 2.2 Incomplete Areas
 
@@ -122,23 +121,19 @@ Initial locking plan:
 This is sufficient for the current single-core runtime bring-up. It is not an
 SMP-final design.
 
-### 3.2 Temporary Memory-Model Scaffold
+### 3.2 Current Memory-Model Boundary
 
-The current runtime still carries one explicit transitional compromise:
+The active runtime memory model is now:
 
-- kmalloc/proc metadata remains in the low half
-- user PML4 roots mirror that low-half heap supervisor-only
-- mixed low-half trees therefore require parent table entries to tolerate user
-  descendants where user leaf mappings and supervisor-only kernel leaves share
-  a subtree
+- higher-half-only kernel heap and kmalloc-backed kernel metadata
+- copied kernel-half entries in user PML4 roots provide supervisor-only
+  reachability for kernel heap and kernel stacks
+- no dedicated low-half kernel heap mirror in user CR3 roots
 
-This is acceptable only as bounded compatibility scaffolding while the runtime
-stabilizes. The target model remains:
+The corresponding regression rule is:
 
-- higher-half-only kernel heap and kernel-owned metadata
-- no low-half kernel heap mirror in user CR3 roots
-- no dependency on mixed-permission low-half subtrees for core kernel
-  reachability
+- `ci-gate-no-low-half-kernel-dependency` MUST fail closed if a low-half kheap
+  mirror, scaffold helper, or stale current-truth statement is reintroduced
 
 ## 4. Execution Chain
 
