@@ -24,7 +24,20 @@ AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS:-0}"
 AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST:-1}"
 AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST:-0}"
 AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY:-0}"
+AYKEN_RING3_FETCH_PROBE="${AYKEN_RING3_FETCH_PROBE:-0}"
+AYKEN_RING3_SECOND_CANONICAL_PROBE="${AYKEN_RING3_SECOND_CANONICAL_PROBE:-0}"
+AYKEN_RING3_FRESH_FRAME_PROBE="${AYKEN_RING3_FRESH_FRAME_PROBE:-0}"
+AYKEN_RING3_IRETQ_DIAG_PROBE="${AYKEN_RING3_IRETQ_DIAG_PROBE:-0}"
+AYKEN_SHARE_KERNEL_UPPER_HALF="${AYKEN_SHARE_KERNEL_UPPER_HALF:-0}"
+AYKEN_RING3_LOW_FETCH_STUB="${AYKEN_RING3_LOW_FETCH_STUB:-0}"
+AYKEN_RING3_CANONICAL_FETCH_STUB="${AYKEN_RING3_CANONICAL_FETCH_STUB:-0}"
+AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY:-0}"
 ENFORCED_AYKEN_CR3_PCID="0"
+ENFORCED_AYKEN_RING3_FETCH_PROBE="0"
+ENFORCED_AYKEN_RING3_SECOND_CANONICAL_PROBE="0"
+ENFORCED_AYKEN_RING3_FRESH_FRAME_PROBE="0"
+ENFORCED_AYKEN_RING3_IRETQ_DIAG_PROBE="0"
+ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="1"
 EXPECTED_USER_MINIMAL_MODE="phase10a2"
 OBSERVED_USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
 
@@ -82,11 +95,41 @@ if ! [[ "${AYKEN_SCHED_BOOTSTRAP_POLICY}" =~ ^[01]$ ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires AYKEN_SCHED_BOOTSTRAP_POLICY in {0,1} (current=${AYKEN_SCHED_BOOTSTRAP_POLICY})" >&2
   exit 2
 fi
+if ! [[ "${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" =~ ^[01]$ ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY in {0,1} (current=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY})" >&2
+  exit 2
+fi
+for flag_name in AYKEN_RING3_FETCH_PROBE AYKEN_RING3_SECOND_CANONICAL_PROBE AYKEN_RING3_FRESH_FRAME_PROBE AYKEN_RING3_IRETQ_DIAG_PROBE AYKEN_SHARE_KERNEL_UPPER_HALF AYKEN_RING3_LOW_FETCH_STUB AYKEN_RING3_CANONICAL_FETCH_STUB AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY; do
+  flag_value="${!flag_name}"
+  if ! [[ "${flag_value}" =~ ^[01]$ ]]; then
+    echo "ERROR: ring3-execution-phase10a2 requires ${flag_name} in {0,1} (current=${flag_value})" >&2
+    exit 2
+  fi
+done
 if [[ "${AYKEN_CR3_PCID}" != "${ENFORCED_AYKEN_CR3_PCID}" ]]; then
   echo "ERROR: ring3-execution-phase10a2 requires AYKEN_CR3_PCID=${ENFORCED_AYKEN_CR3_PCID} (current=${AYKEN_CR3_PCID})" >&2
   exit 2
 fi
-
+if [[ "${AYKEN_RING3_FETCH_PROBE}" != "${ENFORCED_AYKEN_RING3_FETCH_PROBE}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_FETCH_PROBE=${ENFORCED_AYKEN_RING3_FETCH_PROBE} (current=${AYKEN_RING3_FETCH_PROBE})" >&2
+  exit 2
+fi
+if [[ "${AYKEN_RING3_SECOND_CANONICAL_PROBE}" != "${ENFORCED_AYKEN_RING3_SECOND_CANONICAL_PROBE}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_SECOND_CANONICAL_PROBE=${ENFORCED_AYKEN_RING3_SECOND_CANONICAL_PROBE} (current=${AYKEN_RING3_SECOND_CANONICAL_PROBE})" >&2
+  exit 2
+fi
+if [[ "${AYKEN_RING3_FRESH_FRAME_PROBE}" != "${ENFORCED_AYKEN_RING3_FRESH_FRAME_PROBE}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_FRESH_FRAME_PROBE=${ENFORCED_AYKEN_RING3_FRESH_FRAME_PROBE} (current=${AYKEN_RING3_FRESH_FRAME_PROBE})" >&2
+  exit 2
+fi
+if [[ "${AYKEN_RING3_IRETQ_DIAG_PROBE}" != "${ENFORCED_AYKEN_RING3_IRETQ_DIAG_PROBE}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_IRETQ_DIAG_PROBE=${ENFORCED_AYKEN_RING3_IRETQ_DIAG_PROBE} (current=${AYKEN_RING3_IRETQ_DIAG_PROBE})" >&2
+  exit 2
+fi
+if [[ "${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" != "${ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" ]]; then
+  echo "ERROR: ring3-execution-phase10a2 requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=${ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY} (current=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY})" >&2
+  exit 2
+fi
 for tool in python3 make; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "ERROR: missing required tool: ${tool}" >&2
@@ -125,6 +168,8 @@ EVENTS_JSONL="${EVIDENCE_DIR}/events.jsonl"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
+DEBUGCON_LOG="${BOOT_AUDIT_DIR}/qemu_debugcon.log"
+SERIAL_LOG="${BOOT_AUDIT_DIR}/qemu_serial.log"
 
 : > "${BUILD_LOG}"
 : > "${BOOT_AUDIT_LOG}"
@@ -135,11 +180,9 @@ META_TXT="${EVIDENCE_DIR}/meta.txt"
 : > "${META_TXT}"
 
 refresh_marker_log() {
-  cat "${BOOT_AUDIT_DIR}/qemu_serial.log" "${BOOT_AUDIT_DIR}/qemu_debugcon.log" 2>/dev/null > "${COMBINED_LOG}" || true
-  if [[ -s "${BOOT_AUDIT_DIR}/qemu_debugcon.log" ]]; then
-    cp -f "${BOOT_AUDIT_DIR}/qemu_debugcon.log" "${MARKER_LOG}"
-  else
-    cp -f "${COMBINED_LOG}" "${MARKER_LOG}"
+  cat "${SERIAL_LOG}" "${DEBUGCON_LOG}" 2>/dev/null > "${COMBINED_LOG}" || true
+  if [[ -s "${DEBUGCON_LOG}" ]]; then
+    cp -f "${DEBUGCON_LOG}" "${MARKER_LOG}"
   fi
 }
 
@@ -157,8 +200,8 @@ wait_for_marker_log() {
 }
 
 set +e
-make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" clean > "${BUILD_LOG}" 2>&1 || true
-make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" guard-context-offsets efi-img >> "${BUILD_LOG}" 2>&1
+make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" AYKEN_RING3_FETCH_PROBE="${AYKEN_RING3_FETCH_PROBE}" AYKEN_RING3_SECOND_CANONICAL_PROBE="${AYKEN_RING3_SECOND_CANONICAL_PROBE}" AYKEN_RING3_FRESH_FRAME_PROBE="${AYKEN_RING3_FRESH_FRAME_PROBE}" AYKEN_RING3_IRETQ_DIAG_PROBE="${AYKEN_RING3_IRETQ_DIAG_PROBE}" AYKEN_SHARE_KERNEL_UPPER_HALF="${AYKEN_SHARE_KERNEL_UPPER_HALF}" AYKEN_RING3_LOW_FETCH_STUB="${AYKEN_RING3_LOW_FETCH_STUB}" AYKEN_RING3_CANONICAL_FETCH_STUB="${AYKEN_RING3_CANONICAL_FETCH_STUB}" AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" clean > "${BUILD_LOG}" 2>&1 || true
+make -C "${ROOT}" KERNEL_PROFILE=validation AYKEN_CR3_PCID="${AYKEN_CR3_PCID}" AYKEN_C2_STRICT_MARKERS="${AYKEN_C2_STRICT_MARKERS}" AYKEN_MB_SELFTEST="${AYKEN_MB_SELFTEST}" AYKEN_GATE4_POLICY_TEST="${AYKEN_GATE4_POLICY_TEST}" AYKEN_SCHED_BOOTSTRAP_POLICY="${AYKEN_SCHED_BOOTSTRAP_POLICY}" AYKEN_RING3_FETCH_PROBE="${AYKEN_RING3_FETCH_PROBE}" AYKEN_RING3_SECOND_CANONICAL_PROBE="${AYKEN_RING3_SECOND_CANONICAL_PROBE}" AYKEN_RING3_FRESH_FRAME_PROBE="${AYKEN_RING3_FRESH_FRAME_PROBE}" AYKEN_RING3_IRETQ_DIAG_PROBE="${AYKEN_RING3_IRETQ_DIAG_PROBE}" AYKEN_SHARE_KERNEL_UPPER_HALF="${AYKEN_SHARE_KERNEL_UPPER_HALF}" AYKEN_RING3_LOW_FETCH_STUB="${AYKEN_RING3_LOW_FETCH_STUB}" AYKEN_RING3_CANONICAL_FETCH_STUB="${AYKEN_RING3_CANONICAL_FETCH_STUB}" AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" guard-context-offsets efi-img >> "${BUILD_LOG}" 2>&1
 BUILD_RC=$?
 set -e
 if [[ "${BUILD_RC}" -ne 0 ]]; then
@@ -193,11 +236,11 @@ if ! wait_for_marker_log; then
   "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
   "verdict": "FAIL",
   "violations_count": 1,
-  "violations": ["marker_log_empty"]
+  "violations": ["authoritative_debugcon_missing"]
 }
 EOF
-  echo "marker_log_empty" > "${VIOLATIONS_TXT}"
-  echo "ring3-execution-phase10a2: FAIL (marker_log_empty)"
+  echo "authoritative_debugcon_missing" > "${VIOLATIONS_TXT}"
+  echo "ring3-execution-phase10a2: FAIL (authoritative_debugcon_missing)"
   exit 2
 fi
 
@@ -222,9 +265,31 @@ python3 "${VALIDATOR}" --events "${EVENTS_JSONL}" --log "${MARKER_LOG}" --out "$
 VALIDATOR_RC=$?
 set -e
 
-python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" "${ENFORCED_AYKEN_CR3_PCID}" "${AYKEN_CR3_PCID}" "${AYKEN_C2_STRICT_MARKERS}" "${AYKEN_MB_SELFTEST}" "${AYKEN_GATE4_POLICY_TEST}" "${AYKEN_SCHED_BOOTSTRAP_POLICY}" <<'PY'
+python3 - "${REPORT_JSON}" "${BOOT_AUDIT_RC}" "${QEMU_TIMEOUT}" "${ENFORCED_AYKEN_CR3_PCID}" "${AYKEN_CR3_PCID}" "${AYKEN_C2_STRICT_MARKERS}" "${AYKEN_MB_SELFTEST}" "${AYKEN_GATE4_POLICY_TEST}" "${AYKEN_SCHED_BOOTSTRAP_POLICY}" "${AYKEN_RING3_FETCH_PROBE}" "${AYKEN_RING3_SECOND_CANONICAL_PROBE}" "${AYKEN_RING3_FRESH_FRAME_PROBE}" "${AYKEN_RING3_IRETQ_DIAG_PROBE}" "${AYKEN_SHARE_KERNEL_UPPER_HALF}" "${AYKEN_RING3_LOW_FETCH_STUB}" "${AYKEN_RING3_CANONICAL_FETCH_STUB}" "${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" "${BUILD_LOG}" "${BOOT_AUDIT_LOG}" "${DEBUGCON_LOG}" "${SERIAL_LOG}" "${MARKER_LOG}" "${EVENTS_JSONL}" <<'PY'
 import json
+import hashlib
+from pathlib import Path
 import sys
+
+
+def file_meta(path_str: str) -> dict:
+    path = Path(path_str)
+    if not path.is_file():
+        return {
+            "path": str(path),
+            "exists": False,
+            "bytes": 0,
+            "sha256": "",
+            "mtime_epoch": 0,
+        }
+    return {
+        "path": str(path),
+        "exists": True,
+        "bytes": path.stat().st_size,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "mtime_epoch": int(path.stat().st_mtime),
+    }
+
 path = sys.argv[1]
 boot_audit_rc = int(sys.argv[2])
 qemu_timeout = int(sys.argv[3])
@@ -241,6 +306,34 @@ row["ayken_c2_strict_markers"] = int(sys.argv[6])
 row["ayken_mb_selftest"] = int(sys.argv[7])
 row["ayken_gate4_policy_test"] = int(sys.argv[8])
 row["ayken_sched_bootstrap_policy"] = int(sys.argv[9])
+row["ayken_ring3_fetch_probe"] = int(sys.argv[10])
+row["ayken_ring3_second_canonical_probe"] = int(sys.argv[11])
+row["ayken_ring3_fresh_frame_probe"] = int(sys.argv[12])
+row["ayken_ring3_iretq_diag_probe"] = int(sys.argv[13])
+row["ayken_share_kernel_upper_half"] = int(sys.argv[14])
+row["ayken_ring3_low_fetch_stub"] = int(sys.argv[15])
+row["ayken_ring3_canonical_fetch_stub"] = int(sys.argv[16])
+row["ayken_ring3_mask_irq0_first_entry"] = int(sys.argv[17])
+row["canonical_probe_free"] = (
+    row["ayken_ring3_fetch_probe"] == 0
+    and row["ayken_ring3_second_canonical_probe"] == 0
+    and row["ayken_ring3_fresh_frame_probe"] == 0
+    and row["ayken_ring3_iretq_diag_probe"] == 0
+    and row["ayken_ring3_canonical_fetch_stub"] == 0
+)
+row["authoritative_marker_source"] = "qemu_debugcon.log"
+row["same_run_evidence"] = {
+    "cross_run_stitching_allowed": False,
+    "marker_log_source": "debugcon_only",
+}
+row["evidence_files"] = {
+    "build_log": file_meta(sys.argv[18]),
+    "boot_audit_log": file_meta(sys.argv[19]),
+    "qemu_debugcon_log": file_meta(sys.argv[20]),
+    "qemu_serial_log": file_meta(sys.argv[21]),
+    "marker_log": file_meta(sys.argv[22]),
+    "events_jsonl": file_meta(sys.argv[23]),
+}
 with open(path, "w", encoding="utf-8") as fh:
     json.dump(row, fh, indent=2, sort_keys=True)
     fh.write("\n")
@@ -291,6 +384,15 @@ PY
   echo "ayken_mb_selftest=${AYKEN_MB_SELFTEST}"
   echo "ayken_gate4_policy_test=${AYKEN_GATE4_POLICY_TEST}"
   echo "ayken_sched_bootstrap_policy=${AYKEN_SCHED_BOOTSTRAP_POLICY}"
+  echo "ayken_ring3_fetch_probe=${AYKEN_RING3_FETCH_PROBE}"
+  echo "ayken_ring3_second_canonical_probe=${AYKEN_RING3_SECOND_CANONICAL_PROBE}"
+  echo "ayken_ring3_fresh_frame_probe=${AYKEN_RING3_FRESH_FRAME_PROBE}"
+  echo "ayken_ring3_iretq_diag_probe=${AYKEN_RING3_IRETQ_DIAG_PROBE}"
+  echo "ayken_share_kernel_upper_half=${AYKEN_SHARE_KERNEL_UPPER_HALF}"
+  echo "ayken_ring3_low_fetch_stub=${AYKEN_RING3_LOW_FETCH_STUB}"
+  echo "ayken_ring3_canonical_fetch_stub=${AYKEN_RING3_CANONICAL_FETCH_STUB}"
+  echo "ayken_ring3_mask_irq0_first_entry=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}"
+  echo "authoritative_marker_source=qemu_debugcon.log"
   echo "user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE}"
   echo "build_rc=${BUILD_RC}"
   echo "boot_audit_rc=${BOOT_AUDIT_RC}"

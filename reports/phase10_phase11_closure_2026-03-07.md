@@ -1,5 +1,9 @@
 # Phase-10 / Phase-11 Closure Summary
 
+This document records the historical 2026-03-07 official closure snapshot.
+Later post-closure verification updates are appended below without changing the
+original official closure date.
+
 Date: 2026-03-07
 Branch: `feat/phase11-abdf-snapshot-identity`
 Evidence SHA: `9cb2171b`
@@ -13,6 +17,47 @@ Official CI: `ci-freeze` run `22797401328` (`success`)
 2. Architecture draft / evidence basis: `9cb2171b` `docs(phase11): add Phase12 distributed proof draft`
 3. Closure report: `bf6067d0` `docs: add Phase10/11 local closure report`
 4. Closure sync: `fe9031d7` `docs: sync closure status surfaces after Phase10/11 local closure`
+
+## Post-Closure Verification Addendum
+
+Later Phase10-B verification runs extended the runtime truth surface after the
+historical closure snapshot above:
+
+1. Same-run Phase10-A2 + Phase10-B rerun
+   - Run ID: `20260321T214023Z-ecef31bc-19904`
+   - Summary: `out/evidence/run-20260321T214023Z-ecef31bc-19904/reports/summary.json`
+   - Phase10-B report: `out/evidence/run-20260321T214023Z-ecef31bc-19904/reports/syscall-semantics-phase10b.json`
+   - Time: `2026-03-21T21:40:24Z`
+   - Verdict: `PASS`
+   - Note: co-located same-run Phase10-A2 evidence was enforced and the
+     fail-closed replay artifact bundle was exported under the Phase10-B gate
+2. Low-half scaffold runtime visibility proof
+   - Run ID: `local-low-half-kheap-runtime-proof`
+   - Summary: `out/evidence/run-local-low-half-kheap-runtime-proof/reports/summary.json`
+   - Gate report: `out/evidence/run-local-low-half-kheap-runtime-proof/reports/low-half-kheap-scaffold.json`
+   - Time: `2026-03-21T22:15:48Z`
+   - Verdict: `PASS`
+   - Note: confirms scaffold debt is explicit and still present
+3. Terminal exit proof for the low-half scaffold
+   - Run ID: `local-low-half-kheap-exit-proof`
+   - Summary: `out/evidence/run-local-low-half-kheap-exit-proof/reports/summary.json`
+   - Gate report: `out/evidence/run-local-low-half-kheap-exit-proof/reports/low-half-kheap-exit-proof.json`
+   - Time: `2026-03-21T23:20:27Z`
+   - Verdict: `PASS`
+4. Multi-exit lineage proof
+   - Run ID: `local-low-half-kheap-multi-exit-proof-v7`
+   - Summary: `out/evidence/run-local-low-half-kheap-multi-exit-proof-v7/reports/summary.json`
+   - Time: `2026-03-21T23:54:37Z`
+   - Verdict: `PASS`
+5. Interleaving proof under overlap pressure
+   - Run ID: `local-low-half-kheap-interleaving-proof-n3`
+   - Summary: `out/evidence/run-local-low-half-kheap-interleaving-proof-n3/reports/summary.json`
+   - Time: `2026-03-22T00:26:36Z`
+   - Verdict: `PASS`
+
+These runs extend the post-closure runtime evidence surface, but they do not
+rewrite the original `2026-03-07` official closure event recorded by this
+document.
 
 ## Phase-10 Runtime Evidence
 
@@ -74,11 +119,16 @@ Conclusion:
 ## Boundary
 
 1. Official closure is grounded in evidence runs materialized on `9cb2171b` and confirmed remotely on `fe9031d7`.
-2. `CURRENT_PHASE=10` remains unchanged until the formal phase transition workflow runs.
+2. At the time of this closure snapshot, `CURRENT_PHASE=10` remained unchanged
+   until the formal phase transition workflow ran.
 3. Phase-12 trust, producer identity, detached signatures, and distributed acceptance semantics remain out of scope for this closure statement.
 4. Worktree-local `Phase-12` verifier / CLI / receipt / audit / exchange progress may continue above this baseline without changing `CURRENT_PHASE=10`.
+5. Post-closure runtime verification after `2026-03-07` is additive evidence, not a replacement closure date.
+6. The low-half kernel-heap scaffold remained present in the post-closure 2026-03-21/22 validation runs and is therefore tracked as explicit debt rather than a removed dependency.
 
-## Next Step
+## Historical Next Step
 
 1. Mint the dedicated official closure tag
-2. Continue the local `Phase-12` track with theorem-driven `P12-14` parity diagnostics, island analysis, and `DeterminismIncident` hardening while preserving closure-scope discipline
+2. Continue the local `Phase-12` track with theorem-driven `P12-14` parity
+   diagnostics, island analysis, and `DeterminismIncident` hardening while
+   preserving closure-scope discipline

@@ -5,20 +5,86 @@
 // Authority: Phase 10-A2 Task 2
 // Constitutional: Ring0 mechanism only (no policy)
 
+#include "../../include/ring3_contract.h"
+
 .section .text
 .global ring3_enter
 .global ring3_enter_iretq
+.global ring3_enter_post_cr3
+.global ring3_enter_trampoline
+.global ring3_enter_iret_trampoline
+.global ring3_enter_alt_bridge_trampoline
+.global ring3_enter_final_iret_trampoline
 
-// Segment selectors (with RPL=3 baked in)
-.set SEG_USER_DATA,   0x1B
-.set SEG_USER_CODE,   0x23
+.extern sched_emit_ring3_frame_proof
 
-// RFLAGS policy
-.set RFLAGS_BASE,     0x202
-.set RFLAGS_CLEARMASK, ((3 << 12) | (1 << 14) | (1 << 16) | (1 << 17) | (1 << 8))
+// Frozen selector / RFLAGS contract shared with C.
+.set SEG_USER_DATA,   AYKEN_RING3_USER_DATA_SELECTOR
+.set SEG_USER_CODE,   AYKEN_RING3_USER_CODE_SELECTOR
+.set RFLAGS_BASE,     AYKEN_RING3_RFLAGS_BASE
+.set RFLAGS_CLEARMASK, AYKEN_RING3_RFLAGS_CLEARMASK
 
 #ifndef AYKEN_CR3_PCID
 #define AYKEN_CR3_PCID 0
+#endif
+
+#ifndef AYKEN_RING3_IRETQ_DIAG_PROBE
+#define AYKEN_RING3_IRETQ_DIAG_PROBE 0
+#endif
+
+#ifndef AYKEN_RING3_POST_CR3_TEXT_PROBE
+#define AYKEN_RING3_POST_CR3_TEXT_PROBE 0
+#endif
+
+#ifndef AYKEN_RING3_LOW_FETCH_STUB
+#define AYKEN_RING3_LOW_FETCH_STUB 0
+#endif
+
+#ifndef AYKEN_RING3_CANONICAL_FETCH_STUB
+#define AYKEN_RING3_CANONICAL_FETCH_STUB 0
+#endif
+
+#ifndef AYKEN_RING3_SKIP_CR3_PIVOT
+#define AYKEN_RING3_SKIP_CR3_PIVOT 0
+#endif
+
+#ifndef AYKEN_RING3_SELF_RELOAD_CR3
+#define AYKEN_RING3_SELF_RELOAD_CR3 0
+#endif
+
+#ifndef AYKEN_RING3_IRETQ_HEAD_PAD
+#define AYKEN_RING3_IRETQ_HEAD_PAD 0
+#endif
+
+#ifndef AYKEN_RING3_IRETQ_MARKER_PREFIX
+#define AYKEN_RING3_IRETQ_MARKER_PREFIX 0
+#endif
+
+#ifndef AYKEN_RING3_SPLIT_IRETQ_PAGE
+#define AYKEN_RING3_SPLIT_IRETQ_PAGE 0
+#endif
+
+#ifndef AYKEN_DEBUG_SCHED
+#define AYKEN_DEBUG_SCHED 0
+#endif
+
+#ifndef AYKEN_RING3_ALT_STAGEB_SOURCE
+#define AYKEN_RING3_ALT_STAGEB_SOURCE 0
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+.macro FAIL_CLOSED
+    ud2
+1:
+    hlt
+    jmp 1b
+.endm
+#else
+.macro FAIL_CLOSED
+1:
+    hlt
+    jmp 1b
+.endm
 #endif
 
 // Marker emission helper (debugcon, port 0xE9)
@@ -34,6 +100,40 @@
 2:
 .endm
 
+.macro EMIT_HEX64 reg
+    mov \reg, %r9
+    mov $16, %r8d
+1:
+    mov %r9, %rax
+    shr $60, %rax
+    and $0xF, %eax
+    cmp $10, %al
+    jb 2f
+    add $('A' - 10), %al
+    jmp 3f
+2:
+    add $'0', %al
+3:
+    outb %al, $0xE9
+    shl $4, %r9
+    decl %r8d
+    jne 1b
+.endm
+
+.macro EMIT_POST_CR3_TEXT_PROBE
+#if defined(AYKEN_RING3_POST_CR3_TEXT_PROBE) && (AYKEN_RING3_POST_CR3_TEXT_PROBE == 1)
+    EMIT_CSTR p10_post_cr3_text_probe
+    mov %cr3, %r10
+    EMIT_HEX64 %r10
+    EMIT_CSTR p10_post_cr3_text_probe_rip
+    EMIT_HEX64 %r11
+    EMIT_CSTR p10_post_cr3_text_probe_qword
+    mov (%r11), %r10
+    EMIT_HEX64 %r10
+    EMIT_CSTR p10_newline
+#endif
+.endm
+
 //
 // ring3_enter_iretq(rip, rsp, rflags, user_cr3) noreturn
 //
@@ -43,6 +143,8 @@
 // RCX = user CR3 (physical, page-aligned)
 //
 // This is the canonical Ring3 entry path used by scheduler ASM.
+// Scheduler-side code owns all RIP/RSP/selector/mapping precondition checks.
+// This helper narrows the post-CR3 window to the final privilege drop only.
 //
 ring3_enter_iretq:
     // Preserve transition inputs in caller-saved registers only.
@@ -80,14 +182,12 @@ ring3_enter_iretq:
     jmp .L_rflags_if_ok
 .L_rflags_if_off:
     EMIT_CSTR p10_rflags_if_off
-    ud2
+    FAIL_CLOSED
 .L_rflags_if_ok:
 
-    // Switch to user CR3 and emit marker.
-    mov %rcx, %cr3
-    EMIT_CSTR p10_cr3_switch
-
-    // Build IRETQ frame: SS, RSP, RFLAGS, CS, RIP (reverse push order).
+    // Build the final IRETQ frame before the CR3 pivot so the target root
+    // never sees extra kernel stack writes. The target rsp0 still must remain
+    // supervisor-readable for the final iretq pop sequence.
     movq $SEG_USER_DATA, %rax
     pushq %rax
     pushq %r10
@@ -96,13 +196,57 @@ ring3_enter_iretq:
     pushq %rax
     pushq %r11
 
-    EMIT_CSTR p10_ring3_commit
-    // Enter marker immediately before transition.
-    EMIT_CSTR p10_ring3_enter
-    iretq
+#if AYKEN_DEBUG_SCHED == 1
+    mov %rcx, %r12
+    mov %rsp, %rdi
+    call sched_emit_ring3_frame_proof
+    mov %r12, %rcx
+#endif
 
-    // Never returns.
-    ud2
+    EMIT_CSTR p10_ring3_commit
+    // These are last reliable kernel-side markers; actual user-code proof
+    // still comes from the Ring3 #BP path (`P10_RING3_USER_CODE`).
+    EMIT_CSTR p10_cr3_switch
+    EMIT_CSTR p10_ring3_enter
+#if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
+    // Diagnostic-only fetch probe stays on this transition page; scheduler-side
+    // C helpers must not extend the post-CR3 execution footprint.
+    call ring3_enter_post_cr3_kernel_probe
+#if defined(AYKEN_RING3_SECOND_CANONICAL_PROBE) && (AYKEN_RING3_SECOND_CANONICAL_PROBE == 1)
+    movabsq $AYKEN_RING3_SECOND_CANONICAL_PROBE_VA, %rax
+    invlpg (%rax)
+#else
+    movabsq $AYKEN_RING3_TRAMPOLINE_VA, %rax
+#endif
+    jmp *%rax
+#else
+#if defined(AYKEN_RING3_CANONICAL_FETCH_STUB) && (AYKEN_RING3_CANONICAL_FETCH_STUB == 1)
+    EMIT_CSTR p10_canonical_fetch_stub
+#if defined(AYKEN_RING3_SKIP_CR3_PIVOT) && (AYKEN_RING3_SKIP_CR3_PIVOT == 1)
+    EMIT_CSTR p10_skip_cr3_pivot
+#endif
+#if defined(AYKEN_RING3_SELF_RELOAD_CR3) && (AYKEN_RING3_SELF_RELOAD_CR3 == 1)
+    EMIT_CSTR p10_self_reload_cr3
+#endif
+    movabsq $AYKEN_RING3_CANONICAL_STAGE_A_VA, %rax
+    jmp *%rax
+#else
+#if defined(AYKEN_RING3_LOW_FETCH_STUB) && (AYKEN_RING3_LOW_FETCH_STUB == 1)
+    EMIT_CSTR p10_low_fetch_stub
+    movabsq $AYKEN_RING3_TRAMPOLINE_VA, %rax
+    jmp *%rax
+#else
+    jmp ring3_enter_post_cr3
+#endif
+#endif
+#endif
+
+#if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
+ring3_enter_post_cr3_kernel_probe:
+    movb $'K', %al
+    outb %al, $0xE9
+    ret
+#endif
 
 //
 // ring3_enter(rip, rsp, user_cr3) noreturn
@@ -115,7 +259,186 @@ ring3_enter:
     movq $RFLAGS_BASE, %rdx   // rdx = baseline user rflags
     jmp ring3_enter_iretq
 
-.section .rodata
+#if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
+    .section .ring3_transition_probe, "ax", @progbits
+    .p2align 12
+ring3_enter_post_cr3:
+    mov %rcx, %cr3
+    mov %cr3, %rax
+    cmp %rcx, %rax
+    jne .L_probe_cr3_mismatch
+    movb $'L', %al
+    outb %al, $0xE9
+    nop
+    movb $'F', %al
+    outb %al, $0xE9
+1:
+    jmp 1b
+.L_probe_cr3_mismatch:
+    movb $'M', %al
+    outb %al, $0xE9
+2:
+    jmp 2b
+    .section .text
+#else
+    .section .ring3_transition, "ax", @progbits
+    .p2align 12
+ring3_enter_post_cr3:
+    // Canonical post-CR3 window: dedicated page, no adjacent kernel text.
+    mov %rcx, %cr3
+    EMIT_POST_CR3_TEXT_PROBE
+#if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
+    jmp 1f
+1:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+2:
+    jmp 2b
+#else
+    iretq
+#endif
+    .section .text
+#endif
+
+    .section .ring3_trampoline, "ax", @progbits
+    .p2align 12
+ring3_enter_trampoline:
+    // Dedicated low-half trampoline page for fetch-stub validation lanes.
+#if defined(AYKEN_RING3_CANONICAL_FETCH_STUB) && (AYKEN_RING3_CANONICAL_FETCH_STUB == 1)
+    /*
+     * Canonical boundary-cross experiment:
+     * enter this page before the CR3 pivot, jump to the last 3 bytes, and let
+     * the first post-pivot fetch fall naturally onto the next page.
+     */
+    jmp .L_trampoline_pivot
+    .org 0xFFD, 0x90
+.L_trampoline_pivot:
+#if defined(AYKEN_RING3_SKIP_CR3_PIVOT) && (AYKEN_RING3_SKIP_CR3_PIVOT == 1)
+    nop
+    nop
+    nop
+#elif defined(AYKEN_RING3_SELF_RELOAD_CR3) && (AYKEN_RING3_SELF_RELOAD_CR3 == 1)
+    mov %cr3, %rcx
+#else
+    mov %rcx, %cr3
+#endif
+#else
+    mov %rcx, %cr3
+    EMIT_POST_CR3_TEXT_PROBE
+#if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
+    jmp 1f
+1:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+2:
+    jmp 2b
+#else
+    iretq
+#endif
+#endif
+    .section .text
+
+    .section .ring3_iret_trampoline, "ax", @progbits
+    .p2align 12
+ring3_enter_iret_trampoline:
+#if defined(AYKEN_RING3_CANONICAL_FETCH_STUB) && (AYKEN_RING3_CANONICAL_FETCH_STUB == 1)
+#if defined(AYKEN_RING3_SELF_RELOAD_CR3) && (AYKEN_RING3_SELF_RELOAD_CR3 == 1)
+    mov %rcx, %cr3
+#endif
+#if defined(AYKEN_RING3_SPLIT_IRETQ_PAGE) && (AYKEN_RING3_SPLIT_IRETQ_PAGE == 1)
+#if defined(AYKEN_RING3_ALT_STAGEB_SOURCE) && (AYKEN_RING3_ALT_STAGEB_SOURCE == 1)
+    jmp .L_alt_stageb_unmapped_should_not_execute
+.L_alt_stageb_unmapped_should_not_execute:
+    ud2
+#else
+    /*
+     * Split-page validation lane:
+     * prove whether this page itself can execute under the alternate root
+     * before jumping to a separate final-iretq page.
+     */
+    jmp 1f
+1:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+    movabsq $AYKEN_RING3_CANONICAL_STAGE_C_VA, %rax
+    jmp *%rax
+#endif
+#else
+    jmp .L_iret_resume
+    .p2align 4
+.L_iret_resume:
+#endif
+#endif
+#if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
+    jmp 1f
+1:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+2:
+    jmp 2b
+#else
+#if defined(AYKEN_RING3_IRETQ_HEAD_PAD) && (AYKEN_RING3_IRETQ_HEAD_PAD == 1)
+    /*
+     * Byte-bisection lane:
+     * keep the first three executed bytes aligned with the working diag page,
+     * then fall into the real iretq a few bytes later.
+     */
+    jmp 1f
+1:
+    nop
+#endif
+#if defined(AYKEN_RING3_IRETQ_MARKER_PREFIX) && (AYKEN_RING3_IRETQ_MARKER_PREFIX == 1)
+    /*
+     * Deeper byte-bisection lane:
+     * reuse the working diag prefix through the debugcon write, then keep the
+     * real iretq out of the first fetch/decode window.
+     */
+    jmp 2f
+2:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+    jmp .L_iret_far_resume
+    .org 0x40, 0x90
+.L_iret_far_resume:
+#endif
+    iretq
+#endif
+    .section .text
+
+#if defined(AYKEN_RING3_SPLIT_IRETQ_PAGE) && (AYKEN_RING3_SPLIT_IRETQ_PAGE == 1) && \
+    defined(AYKEN_RING3_ALT_STAGEB_SOURCE) && (AYKEN_RING3_ALT_STAGEB_SOURCE == 1)
+    .section .ring3_alt_bridge_trampoline, "ax", @progbits
+    .p2align 12
+ring3_enter_alt_bridge_trampoline:
+    /*
+     * Alternate source-frame lane:
+     * keep stage-B bytes identical while sourcing them from a different
+     * executable page/frame.
+     */
+    jmp 1f
+1:
+    nop
+    movb $'J', %al
+    outb %al, $0xE9
+    movabsq $AYKEN_RING3_CANONICAL_STAGE_C_VA, %rax
+    jmp *%rax
+    .section .text
+#endif
+
+#if defined(AYKEN_RING3_SPLIT_IRETQ_PAGE) && (AYKEN_RING3_SPLIT_IRETQ_PAGE == 1)
+    .section .ring3_final_iret_trampoline, "ax", @progbits
+    .p2align 12
+ring3_enter_final_iret_trampoline:
+    iretq
+    .section .text
+#endif
+
+	.section .rodata
 p10_cr3_switch:
     .asciz "P10_CR3_SWITCH\n"
 p10_ring3_attempt:
@@ -124,6 +447,22 @@ p10_ring3_commit:
     .asciz "P10_RING3_COMMIT\n"
 p10_ring3_enter:
     .asciz "P10_RING3_ENTER\n"
+p10_post_cr3_text_probe:
+    .asciz "P10_POST_CR3_TEXT_PROBE CR3="
+p10_post_cr3_text_probe_rip:
+    .asciz " RIP="
+p10_post_cr3_text_probe_qword:
+    .asciz " Q="
+p10_newline:
+    .asciz "\n"
+p10_canonical_fetch_stub:
+    .asciz "P10_CANONICAL_FETCH_STUB\n"
+p10_skip_cr3_pivot:
+    .asciz "P10_SKIP_CR3_PIVOT\n"
+p10_self_reload_cr3:
+    .asciz "P10_SELF_RELOAD_CR3\n"
+p10_low_fetch_stub:
+    .asciz "P10_LOW_FETCH_STUB\n"
 p10_rflags_if_on:
     .asciz "P10_RFLAGS_IF_ON\n"
 p10_rflags_if_off:

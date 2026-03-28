@@ -13,7 +13,9 @@ EXPECTED_SEQUENCE = [
     "P10_EMBED_HASH_OK",
     "AYKEN_RING3_PREP_OK",
     "P10_SCHED_DISPATCH",
+    "P10_RING3_ATTEMPT",
     "P10_RFLAGS_IF_ON",
+    "P10_RING3_COMMIT",
     "P10_CR3_SWITCH",
     "P10_RING3_ENTER",
     "AYKEN_SYSCALL_ENTER",
@@ -46,12 +48,21 @@ MAILBOX_FATAL_MARKERS = [
 FORBIDDEN_AFTER_ENTER = [
     "GP!",
     "PF!",
+    "KPF!",
     "DF!",
     "TRIPLE",
     "PANIC",
     "[[AYKEN_RING3_PREP_FAIL]]",
     "[[AYKEN_RING3_FAIL]]",
 ]
+
+REPEATABLE_MARKERS = {
+    "P10_RING3_ATTEMPT",
+    "P10_RFLAGS_IF_ON",
+    "P10_RING3_COMMIT",
+    "P10_CR3_SWITCH",
+    "P10_RING3_ENTER",
+}
 
 FATAL_ANYWHERE = [
     "TRIPLE",
@@ -118,7 +129,7 @@ def validate(events: list[dict], log_text: str) -> dict:
                 }
             )
             continue
-        if len(rows) != 1:
+        if len(rows) != 1 and marker_type not in REPEATABLE_MARKERS:
             violations.append(f"extra_marker:{marker_type}:count={len(rows)}")
 
         chosen = None

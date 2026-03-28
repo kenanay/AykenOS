@@ -20,6 +20,10 @@
 #include "../include/mm.h"
 #include "../include/errno.h"
 
+#ifndef AYKEN_SHARE_KERNEL_UPPER_HALF
+#define AYKEN_SHARE_KERNEL_UPPER_HALF 0
+#endif
+
 // Page table constants
 #define PT_ENTRIES 512
 #define KERNEL_HALF_START 256  // PML4 entries 256-511 are kernel half
@@ -44,14 +48,11 @@ static uint64_t g_tracked_vaddrs[MAX_TRACKED_VADDRS];
  * 1. Allocate new PML4 frame
  * 2. Zero entire PML4 (all 512 entries)
  * 3. Copy kernel half (entries 256-511) from kernel PML4
- * 4. Mirror the current low-half kernel heap window supervisor-only so
- *    kernel-owned proc/stack metadata remains reachable under user CR3
- *    until the heap is promoted out of the low half
- * 5. For each copied kernel-half entry (256-511):
+ * 4. For each copied kernel-half entry (256-511):
  *    - If entry is present: entry &= ~PAGE_USER (clear USER bit)
  *    - Preserve GLOBAL and NX bits as-is
- * 6. Store PML4 physical address in out_as->cr3_phys
- * 7. Store PML4 virtual address in out_as->pml4_virt
+ * 5. Store PML4 physical address in out_as->cr3_phys
+ * 6. Store PML4 virtual address in out_as->pml4_virt
  * 
  * This ensures "trust no upstream state" principle for security.
  */
@@ -62,7 +63,7 @@ int user_as_create(user_as_t *out_as)
     }
 
     // Allocate new PML4 frame
-    uint64_t new_pml4_phys = paging_alloc_page_table();
+    uint64_t new_pml4_phys = paging_alloc_page_table_high();
     if (!new_pml4_phys) {
         return -ENOMEM;
     }
@@ -98,11 +99,6 @@ int user_as_create(user_as_t *out_as)
         
         // Copy entry (with USER bit cleared if present)
         new_pml4_virt[i] = entry;
-    }
-
-    if (paging_seed_user_kernel_heap_window(new_pml4_phys) != 0) {
-        phys_free_frame(new_pml4_phys);
-        return -EINVAL;
     }
 
     // Store PML4 addresses in output structure
@@ -252,6 +248,61 @@ static void user_as_destroy_table_recursive(uint64_t table_phys, uint32_t level)
     }
 }
 
+static void user_as_destroy_kernel_tables_recursive(uint64_t table_phys, uint32_t level)
+{
+    uint64_t *table;
+    uint32_t i;
+
+    if (table_phys == 0 || level == 0) {
+        return;
+    }
+
+    table = (uint64_t *)paging_phys_to_virt(table_phys);
+    if (!table) {
+        return;
+    }
+
+    for (i = 0; i < PT_ENTRIES; ++i) {
+        uint64_t entry = table[i];
+        uint64_t child_phys;
+
+        if ((entry & PAGE_PRESENT) == 0) {
+            continue;
+        }
+
+        child_phys = entry & AYKEN_PTE_ADDR_MASK;
+        if (child_phys == 0) {
+            table[i] = 0;
+            continue;
+        }
+
+        if (level == 1 || (entry & PAGE_HUGE)) {
+            table[i] = 0;
+            continue;
+        }
+
+        user_as_destroy_kernel_tables_recursive(child_phys, level - 1);
+        phys_free_frame(child_phys);
+        table[i] = 0;
+    }
+}
+
+static int user_as_kernel_entry_is_shared(uint64_t entry, uint64_t kernel_entry)
+{
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_SHARE_KERNEL_UPPER_HALF == 1)
+    if ((entry & PAGE_PRESENT) == 0 || (kernel_entry & PAGE_PRESENT) == 0) {
+        return 0;
+    }
+
+    return (entry & AYKEN_PTE_ADDR_MASK) == (kernel_entry & AYKEN_PTE_ADDR_MASK);
+#else
+    (void)entry;
+    (void)kernel_entry;
+    return 0;
+#endif
+}
+
 void user_as_destroy_lower_half(user_as_t *as)
 {
     uint64_t *pml4;
@@ -292,11 +343,53 @@ void user_as_destroy_lower_half(user_as_t *as)
 
 void user_as_destroy_root(user_as_t *as)
 {
+    uint64_t kernel_pml4_phys;
+    uint64_t *pml4;
+    uint64_t *kernel_pml4;
+    uint32_t i;
+
     if (!as) {
         return;
     }
 
     if (as->cr3_phys) {
+        kernel_pml4_phys = paging_get_kernel_pml4_phys();
+        if ((as->cr3_phys & AYKEN_PTE_ADDR_MASK) != (kernel_pml4_phys & AYKEN_PTE_ADDR_MASK)) {
+            pml4 = as->pml4_virt;
+            kernel_pml4 = (uint64_t *)paging_phys_to_virt(kernel_pml4_phys);
+            if (!pml4) {
+                pml4 = (uint64_t *)paging_phys_to_virt(as->cr3_phys);
+                as->pml4_virt = pml4;
+            }
+            if (pml4) {
+                for (i = KERNEL_HALF_START; i < PT_ENTRIES; ++i) {
+                    uint64_t entry = pml4[i];
+                    uint64_t child_phys;
+
+                    if ((entry & PAGE_PRESENT) == 0) {
+                        continue;
+                    }
+
+                    child_phys = entry & AYKEN_PTE_ADDR_MASK;
+                    if (child_phys == 0) {
+                        pml4[i] = 0;
+                        continue;
+                    }
+
+                    if (kernel_pml4 &&
+                        user_as_kernel_entry_is_shared(entry, kernel_pml4[i])) {
+                        pml4[i] = 0;
+                        continue;
+                    }
+
+                    if ((entry & PAGE_HUGE) == 0) {
+                        user_as_destroy_kernel_tables_recursive(child_phys, 3);
+                        phys_free_frame(child_phys);
+                    }
+                    pml4[i] = 0;
+                }
+            }
+        }
         phys_free_frame(as->cr3_phys);
         as->cr3_phys = 0;
         as->pml4_virt = NULL;

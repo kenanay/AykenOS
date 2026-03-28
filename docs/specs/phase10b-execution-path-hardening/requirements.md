@@ -48,10 +48,10 @@ The following repo truths constrain this plan:
 - Scheduler mailbox is a policy bridge and MUST remain separate from execution dispatch.
 - Timer ticks are the only current monotonic in-kernel time source.
 - `proc_block_current(wait_obj)` / `proc_wake_waiters(wait_obj)` already define the canonical block/wake mechanism.
-- Current user CR3 roots explicitly mirror the low-half kernel heap as a
-  temporary supervisor-only compatibility scaffold; this MUST remain bounded
-  and MUST be removed once kmalloc/proc metadata is promoted out of the low
-  half.
+- Kernel heap and kmalloc-backed proc metadata now live in the higher half, and
+  user CR3 roots MUST consume them only through the copied kernel-half entries.
+- Any reintroduction of a dedicated low-half kernel-heap mirror into user CR3
+  roots MUST fail closed under `ci-gate-no-low-half-kernel-dependency`.
 
 ## 4. Requirements
 

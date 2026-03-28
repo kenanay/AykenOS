@@ -1,0 +1,72 @@
+{
+  "AYK-E101": {
+    "name": "witness_probe_mismatch",
+    "layer": "L0",
+    "description": "Pre-dispatch witness qword does not match post-CR3 probe qword"
+  },
+  "AYK-E102": {
+    "name": "user_code_not_reached",
+    "layer": "L0",
+    "description": "User code marker was not reached under the same CR3"
+  },
+  "AYK-E103": {
+    "name": "marker_chain_broken",
+    "layer": "L0",
+    "description": "Authoritative marker chain is incomplete or out of order"
+  },
+  "AYK-E104": {
+    "name": "source_guard_failed",
+    "layer": "L0",
+    "description": "Executable leaf source guard did not hold"
+  },
+  "AYK-E201": {
+    "name": "probe_count_drift",
+    "layer": "L1",
+    "description": "Post-CR3 probe count is not stable across repeated runs"
+  },
+  "AYK-E202": {
+    "name": "nondeterministic_hash",
+    "layer": "L1",
+    "description": "Normalized marker hash differs across identical runs"
+  },
+  "AYK-E301": {
+    "name": "irq_dependency_detected",
+    "layer": "L2",
+    "description": "Observed behavior changes with IRQ masking state"
+  },
+  "AYK-E302": {
+    "name": "timeout_sensitive_behavior",
+    "layer": "L2",
+    "description": "Observed behavior changes with timeout variation"
+  },
+  "AYK-E401": {
+    "name": "missing_marker_not_detected",
+    "layer": "L3",
+    "description": "Validator failed to detect a missing required marker"
+  },
+  "AYK-E402": {
+    "name": "invalid_allocator_not_blocked",
+    "layer": "L3",
+    "description": "Low-phys allocator path was not blocked by source guard"
+  },
+  "AYK-E901": {
+    "name": "scenario_execution_failed",
+    "layer": "SYS",
+    "description": "Scenario runner failed to execute the selected scenario"
+  },
+  "AYK-E902": {
+    "name": "qemu_timeout",
+    "layer": "SYS",
+    "description": "Scenario execution timed out in QEMU"
+  },
+  "AYK-E903": {
+    "name": "malformed_evidence",
+    "layer": "SYS",
+    "description": "Scenario evidence or normalized report is missing or malformed"
+  },
+  "AYK-E904": {
+    "name": "validator_execution_failed",
+    "layer": "SYS",
+    "description": "Validator import or execution failed before producing a structured result"
+  }
+}

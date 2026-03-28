@@ -61,7 +61,9 @@ _Static_assert(sizeof(cpu_context_t) == 96, "ctx size");
 static proc_t* proc_table[MAX_PROCS];
 static int next_pid = 1;
 static proc_t* g_deferred_reap_queue[MAX_PROCS];
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
 static uint32_t g_low_half_kheap_runtime_seq = 0;
+#endif
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     (AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1)
 static uint8_t g_low_half_kheap_exit_selftest_armed = 0;
@@ -104,6 +106,7 @@ static uint32_t g_low_half_kheap_interleaving_exit_pids[AYKEN_LOW_HALF_KHEAP_INT
 void init_process_main(void);
 void kernel_first_entry(void);
 void kernel_iret_entry(void);  // IRET-safe kernel entry
+extern char ring3_enter_post_cr3[];
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
@@ -156,7 +159,7 @@ static void debugcon_hex64(uint64_t v)
     }
 }
 
-static void debugcon_u32(uint32_t v)
+static void __attribute__((unused)) debugcon_u32(uint32_t v)
 {
     char buf[10];
     int i = 0;
@@ -173,6 +176,458 @@ static void debugcon_u32(uint32_t v)
     }
 }
 
+static uint64_t debugcon_read_u64_le(const uint8_t *ptr)
+{
+    uint64_t value = 0;
+
+    if (!ptr) {
+        return 0;
+    }
+
+    for (uint32_t i = 0; i < 8; ++i) {
+        value |= ((uint64_t)ptr[i]) << (i * 8);
+    }
+
+    return value;
+}
+
+static uint64_t debugcon_hash_page_bytes(const uint8_t *page)
+{
+    uint64_t hash = 1469598103934665603ULL;
+
+    if (!page) {
+        return 0;
+    }
+
+    for (uint64_t i = 0; i < AYKEN_FRAME_SIZE; ++i) {
+        hash ^= page[i];
+        hash *= 1099511628211ULL;
+    }
+
+    return hash;
+}
+
+static void proc_emit_phys_frame_witness(const char *tag,
+                                         const char *phase,
+                                         uint64_t root_phys,
+                                         uint64_t pte,
+                                         uint64_t phys_page)
+{
+    const uint8_t *page;
+    int used;
+
+    if (!tag || !phase) {
+        return;
+    }
+
+    phys_page &= AYKEN_PTE_ADDR_MASK;
+    page = phys_page ? (const uint8_t *)paging_phys_to_virt(phys_page) : NULL;
+    used = phys_page ? phys_frame_is_used(phys_page) : 0;
+
+    debugcon_write(tag);
+    debugcon_write(" phase=");
+    debugcon_write(phase);
+    debugcon_write(" root=");
+    debugcon_hex64(root_phys & AYKEN_PTE_ADDR_MASK);
+    debugcon_write(" pte=");
+    debugcon_hex64(pte);
+    debugcon_write(" phys=");
+    debugcon_hex64(phys_page);
+    debugcon_write(" used=");
+    debugcon_write_char((phys_page != 0 && used == 1) ? '1' : '0');
+    debugcon_write(" lo=");
+    debugcon_hex64(debugcon_read_u64_le(page));
+    debugcon_write(" hi=");
+    debugcon_hex64(debugcon_read_u64_le(page ? page + 8 : NULL));
+    debugcon_write(" hash=");
+    debugcon_hex64(debugcon_hash_page_bytes(page));
+    debugcon_write("\n");
+}
+
+static void proc_emit_user_text_root_witness(uint64_t root_phys, const char *phase)
+{
+    uint64_t text_pte;
+    uint64_t text_phys;
+
+    if (!root_phys || !phase) {
+        return;
+    }
+
+    text_pte = paging_get_pte_in_pml4(root_phys, USER_TEXT_BASE);
+    text_phys = text_pte & AYKEN_PTE_ADDR_MASK;
+
+    proc_emit_phys_frame_witness(
+        "P10_ROOT_FRAME_WITNESS",
+        phase,
+        root_phys,
+        0,
+        root_phys);
+    proc_emit_phys_frame_witness(
+        "P10_TEXT_FRAME_WITNESS",
+        phase,
+        root_phys,
+        text_pte,
+        text_phys);
+}
+
+static uint64_t proc_alloc_user_image_frame(void)
+{
+    /*
+     * Keep authored user image leaves out of the low-phys frame class. The
+     * page-table child-table fix already proved MMU-visible mismatch there.
+     */
+    return phys_alloc_frame_high();
+}
+
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+static void gate4_emit_pid_marker(uint32_t pid)
+{
+    debugcon_write("[[AYKEN_GATE4_PID]] pid=");
+    debugcon_u32(pid);
+    debugcon_write("\n");
+}
+#endif
+
+static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
+{
+    const uint64_t NX_MASK = (1ULL << 63);
+    if (!pml4_phys) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" PML4=0\n");
+        return;
+    }
+
+    uint64_t *pml4 = (uint64_t *)paging_phys_to_virt(pml4_phys);
+    uint16_t pml4_i = (va >> 39) & 0x1FF;
+    uint16_t pdpt_i = (va >> 30) & 0x1FF;
+    uint16_t pd_i   = (va >> 21) & 0x1FF;
+    uint16_t pt_i   = (va >> 12) & 0x1FF;
+
+    uint64_t pml4e = pml4[pml4_i];
+    if (!(pml4e & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PML4E !P\n");
+        return;
+    }
+    uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pdpte = pdpt[pdpt_i];
+    if (!(pdpte & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PDPTE !P\n");
+        return;
+    }
+    uint64_t *pd = (uint64_t *)paging_phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pde = pd[pd_i];
+    if (!(pde & AYKEN_PTE_PRESENT)) {
+        debugcon_write("[PTE] ");
+        debugcon_write(tag);
+        debugcon_write(" VA=");
+        debugcon_hex64(va);
+        debugcon_write(" PDE !P\n");
+        return;
+    }
+    uint64_t *pt = (uint64_t *)paging_phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
+
+    uint64_t pte = pt[pt_i];
+    debugcon_write("[PTE] ");
+    debugcon_write(tag);
+    debugcon_write(" VA=");
+    debugcon_hex64(va);
+    debugcon_write(" PTE=");
+    debugcon_hex64(pte);
+    debugcon_write(" P=");
+    debugcon_write_char((pte & AYKEN_PTE_PRESENT) ? '1' : '0');
+    debugcon_write(" U=");
+    debugcon_write_char((pte & AYKEN_PTE_USER) ? '1' : '0');
+    debugcon_write(" W=");
+    debugcon_write_char((pte & AYKEN_PTE_WRITABLE) ? '1' : '0');
+    debugcon_write(" NX=");
+    debugcon_write_char((pte & NX_MASK) ? '1' : '0');
+    debugcon_write(" PA=");
+    debugcon_hex64(pte & AYKEN_PTE_ADDR_MASK);
+    debugcon_write("\n");
+}
+
+typedef struct proc_walk_snapshot {
+    uint64_t root_phys;
+    uint64_t va;
+    uint64_t pml4_table_phys;
+    uint64_t pml4e_phys;
+    uint64_t pml4e;
+    uint64_t pdpt_table_phys;
+    uint64_t pdpte_phys;
+    uint64_t pdpte;
+    uint64_t pd_table_phys;
+    uint64_t pde_phys;
+    uint64_t pde;
+    uint64_t pt_table_phys;
+    uint64_t pte_phys;
+    uint64_t pte;
+    uint64_t final_phys;
+    uint8_t valid;
+} proc_walk_snapshot_t;
+
+static uint8_t proc_walk_reserved_suspect(uint64_t entry)
+{
+    const uint64_t allowed =
+        AYKEN_PTE_ADDR_MASK |
+        AYKEN_PTE_PRESENT |
+        AYKEN_PTE_WRITABLE |
+        AYKEN_PTE_USER |
+        AYKEN_PTE_GLOBAL |
+        AYKEN_PTE_NO_EXEC |
+        (1ULL << 3) |
+        (1ULL << 4) |
+        (1ULL << 5) |
+        (1ULL << 6) |
+        (1ULL << 7);
+
+    return (uint8_t)((entry & ~allowed) != 0);
+}
+
+static uint8_t proc_walk_exec_ok(uint64_t entry)
+{
+    if ((entry & AYKEN_PTE_PRESENT) == 0) {
+        return 0;
+    }
+    if ((entry & AYKEN_PTE_NO_EXEC) != 0) {
+        return 0;
+    }
+    return (uint8_t)(proc_walk_reserved_suspect(entry) == 0);
+}
+
+static int proc_capture_walk_snapshot(uint64_t root_phys,
+                                      uint64_t va,
+                                      proc_walk_snapshot_t *out)
+{
+    uint64_t *pml4;
+    uint16_t pml4_i;
+    uint16_t pdpt_i;
+    uint16_t pd_i;
+    uint16_t pt_i;
+
+    if (!out || !root_phys) {
+        return 0;
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->root_phys = root_phys & AYKEN_PTE_ADDR_MASK;
+    out->va = va;
+    out->pml4_table_phys = out->root_phys;
+
+    pml4 = (uint64_t *)paging_phys_to_virt(out->root_phys);
+    if (!pml4) {
+        return 0;
+    }
+
+    pml4_i = (uint16_t)((va >> 39) & 0x1FF);
+    pdpt_i = (uint16_t)((va >> 30) & 0x1FF);
+    pd_i = (uint16_t)((va >> 21) & 0x1FF);
+    pt_i = (uint16_t)((va >> 12) & 0x1FF);
+
+    out->pml4e_phys = out->pml4_table_phys + ((uint64_t)pml4_i * sizeof(uint64_t));
+    out->pml4e = pml4[pml4_i];
+    if ((out->pml4e & AYKEN_PTE_PRESENT) == 0) {
+        return 0;
+    }
+
+    out->pdpt_table_phys = out->pml4e & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(out->pdpt_table_phys);
+        if (!pdpt) {
+            return 0;
+        }
+        out->pdpte_phys = out->pdpt_table_phys + ((uint64_t)pdpt_i * sizeof(uint64_t));
+        out->pdpte = pdpt[pdpt_i];
+        if ((out->pdpte & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+        if (out->pdpte & (1ULL << 7)) {
+            out->final_phys = (out->pdpte & AYKEN_PTE_ADDR_MASK) | (va & ((1ULL << 30) - 1));
+            out->valid = 1;
+            return 1;
+        }
+    }
+
+    out->pd_table_phys = out->pdpte & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pd = (uint64_t *)paging_phys_to_virt(out->pd_table_phys);
+        if (!pd) {
+            return 0;
+        }
+        out->pde_phys = out->pd_table_phys + ((uint64_t)pd_i * sizeof(uint64_t));
+        out->pde = pd[pd_i];
+        if ((out->pde & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+        if (out->pde & (1ULL << 7)) {
+            out->final_phys = (out->pde & AYKEN_PTE_ADDR_MASK) | (va & ((1ULL << 21) - 1));
+            out->valid = 1;
+            return 1;
+        }
+    }
+
+    out->pt_table_phys = out->pde & AYKEN_PTE_ADDR_MASK;
+    {
+        uint64_t *pt = (uint64_t *)paging_phys_to_virt(out->pt_table_phys);
+        if (!pt) {
+            return 0;
+        }
+        out->pte_phys = out->pt_table_phys + ((uint64_t)pt_i * sizeof(uint64_t));
+        out->pte = pt[pt_i];
+        if ((out->pte & AYKEN_PTE_PRESENT) == 0) {
+            return 0;
+        }
+    }
+
+    out->final_phys = (out->pte & AYKEN_PTE_ADDR_MASK) | (va & (AYKEN_FRAME_SIZE - 1));
+    out->valid = 1;
+    return 1;
+}
+
+static void proc_emit_walk_snapshot_hex_line(const char *tag, const proc_walk_snapshot_t *snap)
+{
+    if (!tag || !snap) {
+        return;
+    }
+
+    debugcon_write(tag);
+    debugcon_write(" OK=");
+    debugcon_write_char(snap->valid ? '1' : '0');
+    debugcon_write(" R=");
+    debugcon_hex64(snap->root_phys);
+    debugcon_write(" V=");
+    debugcon_hex64(snap->va);
+    debugcon_write(" 4T=");
+    debugcon_hex64(snap->pml4_table_phys);
+    debugcon_write(" 4A=");
+    debugcon_hex64(snap->pml4e_phys);
+    debugcon_write(" 4E=");
+    debugcon_hex64(snap->pml4e);
+    debugcon_write(" 3T=");
+    debugcon_hex64(snap->pdpt_table_phys);
+    debugcon_write(" 3A=");
+    debugcon_hex64(snap->pdpte_phys);
+    debugcon_write(" 3E=");
+    debugcon_hex64(snap->pdpte);
+    debugcon_write(" 2T=");
+    debugcon_hex64(snap->pd_table_phys);
+    debugcon_write(" 2A=");
+    debugcon_hex64(snap->pde_phys);
+    debugcon_write(" 2E=");
+    debugcon_hex64(snap->pde);
+    debugcon_write(" 1T=");
+    debugcon_hex64(snap->pt_table_phys);
+    debugcon_write(" 1A=");
+    debugcon_hex64(snap->pte_phys);
+    debugcon_write(" 1E=");
+    debugcon_hex64(snap->pte);
+    debugcon_write(" FPA=");
+    debugcon_hex64(snap->final_phys);
+    debugcon_write("\n");
+}
+
+static void proc_emit_walk_level_semantics(char level_tag, uint64_t entry, uint8_t leaf)
+{
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("P=");
+    debugcon_write_char((entry & AYKEN_PTE_PRESENT) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("W=");
+    debugcon_write_char((entry & AYKEN_PTE_WRITABLE) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("U=");
+    debugcon_write_char((entry & AYKEN_PTE_USER) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("N=");
+    debugcon_write_char((entry & AYKEN_PTE_NO_EXEC) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("G=");
+    debugcon_write_char((entry & AYKEN_PTE_GLOBAL) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("H=");
+    debugcon_write_char((entry & (1ULL << 7)) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("A=");
+    debugcon_write_char((entry & (1ULL << 5)) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("D=");
+    debugcon_write_char((entry & (1ULL << 6)) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("R=");
+    debugcon_write_char(proc_walk_reserved_suspect(entry) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("X=");
+    debugcon_write_char(proc_walk_exec_ok(entry) ? '1' : '0');
+    debugcon_write_char(' ');
+    debugcon_write_char(level_tag);
+    debugcon_write("L=");
+    debugcon_write_char(leaf ? '1' : '0');
+}
+
+static void proc_emit_walk_snapshot_semantics_line(const char *tag, const proc_walk_snapshot_t *snap)
+{
+    uint8_t leaf_3;
+    uint8_t leaf_2;
+    uint8_t leaf_1;
+
+    if (!tag || !snap) {
+        return;
+    }
+
+    leaf_3 = (uint8_t)((snap->pdpte & AYKEN_PTE_PRESENT) && (snap->pdpte & (1ULL << 7)));
+    leaf_2 = (uint8_t)((snap->pde & AYKEN_PTE_PRESENT) && (snap->pde & (1ULL << 7)));
+    leaf_1 = (uint8_t)((snap->pte & AYKEN_PTE_PRESENT) != 0);
+
+    debugcon_write(tag);
+    debugcon_write(" OK=");
+    debugcon_write_char(snap->valid ? '1' : '0');
+    debugcon_write(" V=");
+    debugcon_hex64(snap->va);
+    proc_emit_walk_level_semantics('4', snap->pml4e, 0);
+    proc_emit_walk_level_semantics('3', snap->pdpte, leaf_3);
+    proc_emit_walk_level_semantics('2', snap->pde, leaf_2);
+    proc_emit_walk_level_semantics('1', snap->pte, leaf_1);
+    debugcon_write(" FPA=");
+    debugcon_hex64(snap->final_phys);
+    debugcon_write("\n");
+}
+
+static void proc_debug_emit_ring3_creation_snapshot(uint64_t root_phys)
+{
+    proc_walk_snapshot_t snap;
+    uint64_t canonical_fetch_va = ((uint64_t)(uintptr_t)ring3_enter_post_cr3) + 3;
+
+    if (!proc_capture_walk_snapshot(root_phys, canonical_fetch_va, &snap)) {
+        memset(&snap, 0, sizeof(snap));
+        snap.root_phys = root_phys & AYKEN_PTE_ADDR_MASK;
+        snap.va = canonical_fetch_va;
+    }
+
+    proc_emit_walk_snapshot_hex_line("CCH", &snap);
+    proc_emit_walk_snapshot_semantics_line("CCS", &snap);
+}
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
 typedef struct low_half_mapping_stats {
     uint32_t root_entries_present;
     uint32_t leaf_entries_present;
@@ -266,85 +721,6 @@ static void collect_low_half_mapping_stats(uint64_t pml4_phys, low_half_mapping_
     }
 }
 
-#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
-static void gate4_emit_pid_marker(uint32_t pid)
-{
-    debugcon_write("[[AYKEN_GATE4_PID]] pid=");
-    debugcon_u32(pid);
-    debugcon_write("\n");
-}
-#endif
-
-static void debug_dump_pte(uint64_t pml4_phys, uint64_t va, const char *tag)
-{
-    const uint64_t NX_MASK = (1ULL << 63);
-    if (!pml4_phys) {
-        debugcon_write("[PTE] ");
-        debugcon_write(tag);
-        debugcon_write(" PML4=0\n");
-        return;
-    }
-
-    uint64_t *pml4 = (uint64_t *)paging_phys_to_virt(pml4_phys);
-    uint16_t pml4_i = (va >> 39) & 0x1FF;
-    uint16_t pdpt_i = (va >> 30) & 0x1FF;
-    uint16_t pd_i   = (va >> 21) & 0x1FF;
-    uint16_t pt_i   = (va >> 12) & 0x1FF;
-
-    uint64_t pml4e = pml4[pml4_i];
-    if (!(pml4e & AYKEN_PTE_PRESENT)) {
-        debugcon_write("[PTE] ");
-        debugcon_write(tag);
-        debugcon_write(" VA=");
-        debugcon_hex64(va);
-        debugcon_write(" PML4E !P\n");
-        return;
-    }
-    uint64_t *pdpt = (uint64_t *)paging_phys_to_virt(pml4e & AYKEN_PTE_ADDR_MASK);
-
-    uint64_t pdpte = pdpt[pdpt_i];
-    if (!(pdpte & AYKEN_PTE_PRESENT)) {
-        debugcon_write("[PTE] ");
-        debugcon_write(tag);
-        debugcon_write(" VA=");
-        debugcon_hex64(va);
-        debugcon_write(" PDPTE !P\n");
-        return;
-    }
-    uint64_t *pd = (uint64_t *)paging_phys_to_virt(pdpte & AYKEN_PTE_ADDR_MASK);
-
-    uint64_t pde = pd[pd_i];
-    if (!(pde & AYKEN_PTE_PRESENT)) {
-        debugcon_write("[PTE] ");
-        debugcon_write(tag);
-        debugcon_write(" VA=");
-        debugcon_hex64(va);
-        debugcon_write(" PDE !P\n");
-        return;
-    }
-    uint64_t *pt = (uint64_t *)paging_phys_to_virt(pde & AYKEN_PTE_ADDR_MASK);
-
-    uint64_t pte = pt[pt_i];
-    debugcon_write("[PTE] ");
-    debugcon_write(tag);
-    debugcon_write(" VA=");
-    debugcon_hex64(va);
-    debugcon_write(" PTE=");
-    debugcon_hex64(pte);
-    debugcon_write(" P=");
-    debugcon_write_char((pte & AYKEN_PTE_PRESENT) ? '1' : '0');
-    debugcon_write(" U=");
-    debugcon_write_char((pte & AYKEN_PTE_USER) ? '1' : '0');
-    debugcon_write(" W=");
-    debugcon_write_char((pte & AYKEN_PTE_WRITABLE) ? '1' : '0');
-    debugcon_write(" NX=");
-    debugcon_write_char((pte & NX_MASK) ? '1' : '0');
-    debugcon_write(" PA=");
-    debugcon_hex64(pte & AYKEN_PTE_ADDR_MASK);
-    debugcon_write("\n");
-}
-
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
 static void emit_low_half_kheap_runtime_proof_raw(uint64_t user_pml4_phys,
                                                   uint32_t pid,
                                                   const char *phase)
@@ -1949,7 +2325,7 @@ fail:
 
 static uint64_t load_flat_image(uint64_t pml4_phys, const uint8_t *image, uint64_t size)
 {
-    uint64_t phys = phys_alloc_frame();
+    uint64_t phys = proc_alloc_user_image_frame();
     if (!phys)
         return 0;
 
@@ -1994,7 +2370,7 @@ static uint64_t load_elf_image(uint64_t pml4_phys, const uint8_t *image, uint64_
         uint64_t vaddr  = phdr[i].p_vaddr;
 
         for (uint64_t off = 0; off < memsz; off += AYKEN_FRAME_SIZE) {
-            uint64_t phys = phys_alloc_frame();
+            uint64_t phys = proc_alloc_user_image_frame();
             if (!phys)
                 return 0;
 
@@ -2114,6 +2490,7 @@ proc_t *proc_create_user_process(const char *name,
 
     p->pml4_phys = user_pml4;
     p->context.cr3 = user_pml4;
+    proc_debug_emit_ring3_creation_snapshot(user_pml4);
 
     uint64_t entry = load_user_image(fmt, user_pml4, image, image_size);
     if (!entry) {
@@ -2121,6 +2498,7 @@ proc_t *proc_create_user_process(const char *name,
         goto fail;
     }
     debug_dump_pte(user_pml4, USER_TEXT_BASE, "code");
+    proc_emit_user_text_root_witness(user_pml4, "load");
 
     // User stack: 2 pages in user space
     for (int i = 0; i < 2; ++i) {
@@ -2149,7 +2527,12 @@ proc_t *proc_create_user_process(const char *name,
 
     // MVP-1: Allocate and map per-process mailbox at fixed VA (0x700000)
     // This enables Ring3 → Ring0 scheduler bridge communication
-    uint64_t mb_pa = phys_alloc_frame();
+    /*
+     * Gate-4 publish/accept proof reads this surface back under a non-kernel
+     * CR3 after Ring3 has authored it. Keep the mailbox leaf out of the
+     * low-phys frame class for the same MMU-visible reason as user text.
+     */
+    uint64_t mb_pa = phys_alloc_frame_high();
     if (!mb_pa) {
         outb(0xE9, (uint8_t)'6');
         goto fail;
@@ -2199,25 +2582,14 @@ proc_t *proc_create_user_process(const char *name,
     }
     p->context.rsp0 = kernel_stack + 4096;  // Top of kernel stack
 
-    // Ensure kernel stack is mapped in user CR3 (supervisor-only) for safe iretq.
-    uint64_t kstack_base = kernel_stack & ~(AYKEN_FRAME_SIZE - 1);
-    uint64_t kstack_end = (kernel_stack + 4096 - 1) & ~(AYKEN_FRAME_SIZE - 1);
-    for (uint64_t va = kstack_base; va <= kstack_end; va += AYKEN_FRAME_SIZE) {
-        uint64_t phys = paging_get_phys(va);
-        if (!phys) {
-            fb_print("[proc] ERROR: kernel stack phys lookup failed.\n");
-            goto fail;
-        }
-        paging_map_page_in_pml4(user_pml4, va, phys, AYKEN_PTE_WRITABLE);
-    }
-    
-    // DEBUG: Verify RSP0 is mapped in user CR3
+    // DEBUG: Verify RSP0 is reachable through the copied kernel half in user CR3
     debugcon_write("Kernel stack (RSP0) mapping:\n");
     debug_dump_pte(user_pml4, p->context.rsp0 - 8, "rsp0-8");
     debug_dump_pte(user_pml4, p->context.rsp0 - AYKEN_FRAME_SIZE, "rsp0_page");
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     proc_emit_low_half_kheap_runtime_proof(p, "create");
 #endif
+    proc_emit_user_text_root_witness(user_pml4, "ready");
 
     fb_print("[DBG] USER cr3=");
     fb_print_hex(p->context.cr3);

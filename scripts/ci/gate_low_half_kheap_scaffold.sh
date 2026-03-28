@@ -362,7 +362,9 @@ helper_used_in_user_as = (
     f"if ({helper_token}(new_pml4_phys) != 0)" in texts["user_as_c"]
 )
 
-kheap_start = parse_define_int(texts["mm_h"], kheap_start_token)
+kheap_start = parse_define_int(texts["kernel_limits_h"], kheap_start_token)
+if kheap_start is None:
+    kheap_start = parse_define_int(texts["mm_h"], kheap_start_token)
 kernel_virt_base = parse_define_int(texts["kernel_limits_h"], kernel_virt_base_token)
 kheap_is_low_half = kheap_start is not None and kheap_start < HIGHER_HALF_MIN
 kheap_is_higher_half = kheap_start is not None and kheap_start >= HIGHER_HALF_MIN

@@ -309,7 +309,7 @@ AHS_CHECK_TXT.write_text(
     encoding="utf-8",
 )
 
-# 3) Policy-sensitive knob contracts (AYKEN_CR3_PCID).
+# 3) Policy-sensitive knob contracts (AYKEN_CR3_PCID, AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY).
 makefile_path = ROOT / "Makefile"
 ring3_gate_path = ROOT / "scripts/ci/gate_ring3_execution_phase10a2.sh"
 knob_doc_path = ROOT / "docs/governance/knobs.md"
@@ -325,7 +325,7 @@ else:
         "cflags_define": r"KERNEL_CFLAGS\s*\+=\s*-DAYKEN_CR3_PCID=\$\(AYKEN_CR3_PCID\)",
         "asmflags_define": r"KERNEL_ASMFLAGS\s*\+=\s*-DAYKEN_CR3_PCID=\$\(AYKEN_CR3_PCID\)",
         "freeze_guard_enforced": r"ci-freeze requires AYKEN_CR3_PCID=0",
-        "ring3_gate_enforced": r"AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2\.sh",
+        "ring3_gate_enforced": r"AYKEN_CR3_PCID=0 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 bash scripts/ci/gate_ring3_execution_phase10a2\.sh",
     }
     for name, patt in makefile_contracts.items():
         if not re.search(patt, makefile_text, flags=re.MULTILINE):
@@ -341,6 +341,9 @@ else:
         "enforced_constant": 'ENFORCED_AYKEN_CR3_PCID="0"',
         "numeric_guard": "requires AYKEN_CR3_PCID in {0,1}",
         "enforced_guard": "requires AYKEN_CR3_PCID=${ENFORCED_AYKEN_CR3_PCID}",
+        "mask_irq0_enforced_constant": 'ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="1"',
+        "mask_irq0_numeric_guard": "requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY in {0,1}",
+        "mask_irq0_enforced_guard": "requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=${ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}",
     }
     for name, token in gate_contract_tokens.items():
         if token not in ring3_gate_text:
@@ -354,6 +357,7 @@ else:
     knob_doc_text = knob_doc_path.read_text(encoding="utf-8", errors="replace")
     doc_required_tokens = [
         "AYKEN_CR3_PCID",
+        "AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY",
         "ci-freeze-guard",
         "ci-gate-ring3-execution-phase10a2",
         "ENFORCED_AYKEN_CR3_PCID",

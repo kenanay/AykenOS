@@ -229,40 +229,20 @@ These do **not** prove:
   frozen normalized replay artifact set (`replay_trace.jsonl`,
   `replay_trace_hash.txt`, `replay_report.json`, `replay_manifest.json`,
   `final_state_hash.txt`, `replay_result_hash.txt`)
-- user CR3 roots now explicitly mirror the current low-half kernel heap as a
-  supervisor-only compatibility window so kmalloc-backed `proc_t` metadata and
-  kernel stacks remain reachable during IRQ/syscall entry; this is temporary
-  scaffolding until the heap is promoted out of the low half, and
-  `ci-gate-low-half-kheap-scaffold` now keeps that fact explicit in Phase10 CI
-  with same-run Phase10-A2 runtime proof over the actual user-root PTE for
-  `AYKEN_KHEAP_START` across `create -> timer_irq -> syscall_entry`; the
-  dedicated validation-only `ci-gate-low-half-kheap-exit-proof` workload now
-  also observes the real `exit_teardown_pre -> exit_teardown_post` terminal
-  slice and proves that low-half kheap visibility collapses to `present=0,
-  writable=0` after teardown while `user=0` holds throughout; the same
-  terminal proof now also exports `lower_half_roots`, `lower_half_leaves`,
-  and `lower_half_user_leaves`, and the gate requires all three to collapse
-  to `0` at `exit_teardown_post` so teardown is proven as a global lower-half
-  cleanup event instead of only a single-address observation; this improves
-  debt observability and teardown proof quality, but it does not remove the
-  low-half scaffold debt itself; the dedicated gate also treats the single
-  `[[AYKEN_LOW_HALF_KHEAP_EXIT_SELFTEST_OK]]` witness as a strict determinism
-  contract and binds the nested runtime proof to that authoritative `exit_pid`;
-  Phase10 now also has a dedicated `ci-gate-low-half-kheap-multi-exit-proof`
-  lane that enumerates the authoritative `[[AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_LINEAGE]]`
-  witnesses for the validation-only `N`-exit workload (default `N=2`, override
-  via `AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT`), runs one nested scaffold proof
-  per `exit_pid` with the narrower `terminal_lineage` phase profile, and
-  requires global lower-half cleanup (`lower_half_roots=0`,
-  `lower_half_leaves=0`, `lower_half_user_leaves=0`) for every enumerated
-  exit lineage rather than only for a single witness; the emitted
-  `lineage_contract.json` now uses canonical `armed_rows` / `lineage_rows`
-  naming so inspection surfaces do not have to special-case mixed field names;
-  Phase10 also has a dedicated `ci-gate-low-half-kheap-interleaving-proof`
-  lane that pre-creates the full validation-only `N`-exit set before the first
-  teardown begins, proves canonical `prepared -> armed -> lineage` ordering for
-  every slot, and requires the same per-lineage global lower-half cleanup under
-  overlap pressure from still-live future exits
+- kernel heap now lives in the higher half, and user CR3 roots no longer carry
+  a dedicated low-half kernel-heap mirror; kmalloc-backed `proc_t` metadata and
+  kernel stacks are now reached only through the copied kernel-half mappings
+- `ci-gate-no-low-half-kernel-dependency` is now the hard fail-closed guard
+  against reintroducing any low-half kheap scaffold into user CR3 roots
+- same-run runtime proof for `AYKEN_KHEAP_START` still spans
+  `create -> timer_irq -> syscall_entry`, but now proves a higher-half,
+  supervisor-only mapping rather than a bounded low-half mirror
+- the validation-only `ci-gate-low-half-kheap-exit-proof`,
+  `ci-gate-low-half-kheap-multi-exit-proof`, and
+  `ci-gate-low-half-kheap-interleaving-proof` lanes remain as teardown and
+  lineage regression surfaces; they still require lower-half cleanup counts to
+  collapse at `exit_teardown_post`, but they no longer imply a live low-half
+  kheap dependency in the steady-state runtime
 - adversarial multi-execution validation covering replay floods, double
   finalize rejection, stale/unknown wait rejection, and pickup-vs-exit
   collision handling
@@ -285,7 +265,7 @@ The next follow-on work should remain:
 2. keep any future integrity widening additive: hash exact frozen published bytes, not semantic meaning
 3. keep the landed fail-closed replay v1 format frozen and widen proof coverage additively from `docs/specs/phase10b-execution-path-hardening/fail-closed-replay-minimal-spec.md` only when a new lifecycle surface appears
 4. treat proofd / zero-copy verification as follow-on work above the landed structured semantic boundary and the landed result-hash anchor
-5. promote kmalloc/proc metadata out of the low half so the temporary supervisor-only heap mirror is no longer required in user CR3 roots; `ci-gate-no-low-half-kernel-dependency` must pass before Phase 11 closure
+5. keep `ci-gate-no-low-half-kernel-dependency` green and do not reintroduce any low-half kheap mirror into user CR3 roots before Phase 11 closure
 
 The frozen minimal candidate for that first output-plane landing is:
 

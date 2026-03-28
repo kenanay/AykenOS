@@ -1,12 +1,18 @@
 # Execution Inbox Implementation Plan
 
-**Status:** Draft (file/function checklist for the next kernel slice)
+**Status:** Historical implementation plan (the delivery slice landed on 2026-03-19; retained for traceability)
 **Phase:** Phase 10-B / Phase 10-C execution path hardening
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-25
+
+This document is intentionally retained as the historical file/function plan
+for the already-landed execution inbox delivery slice. References below to the
+"next" slice or to missing completion/result ownership reflect pre-landing
+planning state and are not the current runtime truth surface.
 
 ## 1. Goal
 
-Land the first real execution delivery surface without:
+This plan captured how to land the first real execution delivery surface
+without:
 
 - reusing the scheduler mailbox
 - widening the syscall ABI

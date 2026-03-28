@@ -63,6 +63,8 @@ BUILD_AYKEN_DEBUG_IRQ="${SYSCALL_V2_RUNTIME_BUILD_DEBUG_IRQ:-}"
 RUNTIME_QEMU_SMP="${SYSCALL_QEMU_SMP:-}"
 RUNTIME_QEMU_ACCEL="${SYSCALL_QEMU_ACCEL:-}"
 RUNTIME_QEMU_INT_TRACE="${SYSCALL_QEMU_INT_TRACE:-}"
+AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY:-0}"
+SYSCALL_V2_RUNTIME_ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="1"
 DEBUG_MARKER_USER="[U][SYSCALL_OK]"
 DEBUG_MARKER_KERNEL="[[AYKEN_SYSCALL_V2_OK]]"
 
@@ -128,6 +130,14 @@ if [[ -z "${EVIDENCE_DIR}" ]]; then
 fi
 if [[ "${OBSERVED_USER_MINIMAL_MODE}" != "${EXPECTED_USER_MINIMAL_MODE}" ]]; then
   echo "FATAL: syscall-v2-runtime gate invoked with USER_MINIMAL_MODE=${OBSERVED_USER_MINIMAL_MODE:-unset} (expected=${EXPECTED_USER_MINIMAL_MODE})" >&2
+  exit 2
+fi
+if ! [[ "${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" =~ ^[01]$ ]]; then
+  echo "ERROR: syscall-v2-runtime gate requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY in {0,1} (current=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY})" >&2
+  exit 3
+fi
+if [[ "${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" != "${SYSCALL_V2_RUNTIME_ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}" ]]; then
+  echo "ERROR: syscall-v2-runtime gate requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=${SYSCALL_V2_RUNTIME_ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY} (current=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY})" >&2
   exit 2
 fi
 
@@ -540,7 +550,7 @@ PY
 # Build once for deterministic runtime runs.
 # Use a dedicated userspace payload mode for this gate so Phase10-A2 payload
 # semantics remain unchanged for ring3-execution validation.
-MAKE_BUILD_ARGS=(-C "${ROOT}" "KERNEL_PROFILE=${KERNEL_PROFILE}" "USER_MINIMAL_MODE=syscall-v2-runtime" "AYKEN_SCHED_BOOTSTRAP_POLICY=1")
+MAKE_BUILD_ARGS=(-C "${ROOT}" "KERNEL_PROFILE=${KERNEL_PROFILE}" "USER_MINIMAL_MODE=syscall-v2-runtime" "AYKEN_SCHED_BOOTSTRAP_POLICY=1" "AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}")
 if [[ -n "${BUILD_AYKEN_DEBUG_SCHED}" ]]; then
   MAKE_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${BUILD_AYKEN_DEBUG_SCHED}")
 fi
@@ -709,6 +719,7 @@ VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
   echo "git_sha=${GIT_SHA}"
   echo "kernel_profile=${KERNEL_PROFILE}"
   echo "user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE}"
+  echo "ayken_ring3_mask_irq0_first_entry=${AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY}"
   echo "ayken_sched_bootstrap_policy=1"
   echo "warmup_runs=${WARMUP_RUNS}"
   echo "measurement_runs=${MEASUREMENT_RUNS}"

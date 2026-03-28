@@ -46,7 +46,9 @@ Bu bolum bilgilendirici amaclidir; karar metninin kendisi degistirilmez.
 1. Ring3 entry canonical path:
    - `kernel/arch/x86_64/ring3_enter.S` icinde `ring3_enter_iretq`
    - IRETQ frame: `SS -> RSP -> RFLAGS -> CS -> RIP`
-   - Marker zinciri: `P10_RING3_ATTEMPT -> P10_RFLAGS_IF_ON -> P10_CR3_SWITCH -> P10_RING3_ENTER`
+   - Marker zinciri: `P10_RING3_ATTEMPT -> P10_RFLAGS_IF_ON -> P10_RING3_COMMIT -> P10_CR3_SWITCH -> P10_RING3_ENTER`
+   - Canonical runtime path, target CR3 altinda yalniz `mov %cr3; iretq` calistirir; low-half alias sadece fetch-probe build'inde kullanilir
+   - Bu marker'lar kernel-side gecis/commit kanitidir; gercek user-code proof'u ayrica `P10_RING3_USER_CODE` ile kapanir
 2. User proof path:
    - `userspace/minimal/minimal.S` mailbox epoch publish + `int 0x80` + `int3`
    - `kernel/arch/x86_64/interrupts.c` Ring3 #BP yolunda `P10_RING3_USER_CODE` emit eder.

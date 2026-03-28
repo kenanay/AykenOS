@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-03-16
+**Last Updated:** 2026-03-28
 **Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` (`evidence_sha=9cb2171b`/`01d1cb5c`, `closure_sync_sha=fe9031d7`, `ci_freeze_run=22797401328`/`23099070483`)
 
 ## Current Status
@@ -11,6 +11,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Phase-13 Kill-Switch:** 6/6 gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`); boundary hardening active
 - **Formal Governance Pointer:** `CURRENT_PHASE=12` (formal transition executed at `0adb2a84`)
 - **Next Focus:** Phase-13 boundary hardening workstreams per Architecture Map §4
+- **Worktree-Local Ring3 Rule:** executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -26,6 +27,11 @@ Current repo truth icin once su dosyalari referans alin:
 9. `.github/workflows/ci-freeze.yml`
 10. `docs/specs/phase12-trust-layer/tasks.md`
 11. `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
+12. `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
+13. `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
+14. `docs/governance/TEST_NAMING_CONVENTION.md`
+15. `docs/governance/TEST_PIPELINE_CONTRACT.md`
+16. `docs/governance/error_codes.json`
 
 ## Live Evidence References
 1. `evidence/run-local-freeze-p10p11/reports/summary.json`

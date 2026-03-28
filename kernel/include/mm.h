@@ -12,12 +12,10 @@
 // 4KB frame standardı
 #define AYKEN_FRAME_SIZE            4096ULL
 
-// Current kernel heap window. This still lives in the low half and therefore
-// must be mirrored supervisor-only into user CR3 roots until the heap is
-// promoted into a higher-half-only virtual range.
-#define AYKEN_LOW_HALF_KHEAP_SCAFFOLD_ACTIVE 1
-#define AYKEN_KHEAP_START           0x0000000002000000ULL
-#define AYKEN_KHEAP_INITIAL_SIZE    (4ULL * 1024ULL * 1024ULL)
+// Current kernel heap window. This now lives in the higher half, so user CR3
+// roots consume it only through the copied kernel half instead of a separate
+// low-half mirror.
+#define AYKEN_LOW_HALF_KHEAP_SCAFFOLD_ACTIVE 0
 
 // İleride 128GB RAM’e kadar çıkabilir; fakat şimdilik OS için 4GB sınır yeterli.
 #define AYKEN_MAX_PHYS_MEM          (4ULL * 1024ULL * 1024ULL * 1024ULL)
@@ -29,6 +27,7 @@
 #define AYKEN_PTE_USER            (1ULL << 2)
 #define AYKEN_PTE_GLOBAL          (1ULL << 8)
 #define AYKEN_PTE_READ_ONLY       (1ULL << 9)   /* mapping helper control bit */
+#define AYKEN_PTE_NO_GLOBAL       (1ULL << 10)  /* mapping helper control bit */
 #define AYKEN_PTE_NO_EXEC         (1ULL << 63)
 #define AYKEN_PTE_ADDR_MASK       0x000FFFFFFFFFF000ULL
 
@@ -65,6 +64,12 @@ void phys_mem_init(void *efi_mem_map,
 uint64_t phys_alloc_frame(void);
 
 /**
+ * Tek bir fiziksel frame'i yüksek adreslerden başlayarak ayırır.
+ * Validation/debug lane'lerinde PFN sınıfını ayırmak için kullanılır.
+ */
+uint64_t phys_alloc_frame_high(void);
+
+/**
  * Ayrılmış bir frame’i boşaltır.
  */
 void phys_free_frame(uint64_t phys_addr);
@@ -96,14 +101,17 @@ uint64_t paging_get_kernel_pml4_phys(void);
 /** Yeni bir kullanıcı alanı PML4'ü oluşturur ve kernel yarım alanını kopyalar. */
 uint64_t paging_create_user_pml4(void);
 
-/** Mirror the low-half kernel heap into a user PML4 as supervisor-only pages. */
-int paging_seed_user_kernel_heap_window(uint64_t pml4_phys);
-
 /**
  * Yeni bir 4KB page table (PML4/PDPT/PD/PT) ayırır ve sıfırlar.
  * @return fiziksel adres (başarısız olursa 0)
  */
 uint64_t paging_alloc_page_table(void);
+
+/**
+ * Yeni bir 4KB page table'ı yüksek fiziksel adreslerden ayırır ve sıfırlar.
+ * Özellikle CR3 kök PFN sınıfını kontrol etmek için kullanılır.
+ */
+uint64_t paging_alloc_page_table_high(void);
 
 /**
  * Belirtilen sanal adresi (virt_addr), fiziksel adres (phys_addr)

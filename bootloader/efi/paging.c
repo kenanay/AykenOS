@@ -176,6 +176,34 @@ static EFI_STATUS map_range(EFI_SYSTEM_TABLE *SystemTable,
     return EFI_SUCCESS;
 }
 
+static EFI_STATUS map_kernel_heap_window(EFI_SYSTEM_TABLE *SystemTable,
+                                         EFI_PHYSICAL_ADDRESS pml4_phys)
+{
+    EFI_BOOT_SERVICES *BS = SystemTable->BootServices;
+    uint64_t heap_pages = align_up(AYKEN_KHEAP_INITIAL_SIZE) / PAGE_SIZE;
+
+    for (uint64_t page = 0; page < heap_pages; ++page) {
+        EFI_PHYSICAL_ADDRESS heap_phys = 0xFFFFFFFFULL;
+        EFI_STATUS Status = uefi_call_wrapper(
+            BS->AllocatePages, 4, AllocateMaxAddress, EfiLoaderData, 1, &heap_phys);
+        if (EFI_ERROR(Status)) {
+            return Status;
+        }
+
+        SetMem((void *)(uintptr_t)heap_phys, PAGE_SIZE, 0);
+        Status = map_page(SystemTable,
+                          pml4_phys,
+                          AYKEN_KHEAP_START + (page * PAGE_SIZE),
+                          (uint64_t)heap_phys,
+                          PTE_PRESENT | PTE_WRITABLE);
+        if (EFI_ERROR(Status)) {
+            return Status;
+        }
+    }
+
+    return EFI_SUCCESS;
+}
+
 void ayken_load_cr3(uint64_t phys_addr)
 {
     __asm__ __volatile__("mov %0, %%cr3" :: "r"(phys_addr) : "memory");
@@ -280,6 +308,12 @@ EFI_STATUS ayken_setup_paging(EFI_SYSTEM_TABLE *SystemTable,
             boot_info->pml4_phys = 0;
             return Status;
         }
+    }
+
+    Status = map_kernel_heap_window(SystemTable, pml4_phys);
+    if (EFI_ERROR(Status)) {
+        boot_info->pml4_phys = 0;
+        return Status;
     }
 
     // 4) Expose PML4 to kernel (CR3 is loaded after ExitBootServices)

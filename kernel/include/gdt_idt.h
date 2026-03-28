@@ -3,12 +3,13 @@
 #define AYKEN_GDT_IDT_H
 
 #include <stdint.h>
+#include "ring3_contract.h"
 
 // GDT Segment Selectors
 #define GDT_KERNEL_CODE 0x08   // Selector 1 << 3
 #define GDT_KERNEL_DATA 0x10   // Selector 2 << 3
-#define GDT_USER_DATA   0x1b   // Selector 3 << 3 | RPL(3) - User data/stack segment
-#define GDT_USER_CODE   0x23   // Selector 4 << 3 | RPL(3) - User code segment
+#define GDT_USER_DATA   AYKEN_RING3_USER_DATA_SELECTOR
+#define GDT_USER_CODE   AYKEN_RING3_USER_CODE_SELECTOR
 #define GDT_TSS_SEL     0x28   // Selector 5 << 3
 
 // TSS Entry

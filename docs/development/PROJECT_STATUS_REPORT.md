@@ -1,6 +1,6 @@
 # AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-03-22
+**Date:** 2026-03-28
 **Status:** Phase-10 / Phase-11 / Phase-12 Official Closure Confirmed + Phase-13 Kill-Switch Gates PASS + Phase-10B Execution Path Hardening Complete
 **Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b`
@@ -14,7 +14,7 @@
 **Phase-13 Kill-Switch Tag:** `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 **Phase-10B Merge SHA:** `bbe57747` (PR #65 - Docs/sync gate order and pr template)
 **CURRENT_PHASE:** `12` (formal transition at `0adb2a84`)
-**Ring0 Export Ceiling:** `191 symbols` (updated from 165)
+**Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 
 ## Executive Summary
 Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerinden guncel durumu ozetler.
@@ -30,8 +30,17 @@ Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerin
 - `CURRENT_PHASE=12` formal transition tamamlandi
 - PR #65 merge edildi: Ring0 export ceiling 165→191, expired waiver temizlendi, hook/steering dosyaları reorganize edildi
 - Dedicated official closure tag bir sonraki governance artefaktidir
+- executable user-leaf rule artik dedicated local deterministic CI gate ile canli enforce edilir: `ci-gate-ring3-user-leaf-rule`
+- bu yeni gate, broader historical `Phase10-A2` strict/global authority iddiasini tek basina yeniden kurmaz; o katman hala full-suite / primary CI evidence bekler
 
 ## 1) Evidence Basis
+
+### 1.0 Worktree-Local Ring3 Executable Leaf Rule
+- Gate: `ci-gate-ring3-user-leaf-rule`
+- Authority level: active, local deterministic, fail-closed
+- Runtime success chain: `P10_TEXT_FRAME_WITNESS -> P10_POST_CR3_TEXT_PROBE -> P10_RING3_USER_CODE`
+- Meaning: executable user-leaf allocation class ve first-user-fetch runtime rule'u current tree'de canli olarak korunur
+- Non-claim: bu verdict tek basina broader `ci-gate-ring3-execution-phase10a2` strict/global closure yerine gecmez
 
 ### 1.1 Runtime Freeze
 - Run ID: `local-freeze-p10p11`
@@ -138,11 +147,12 @@ Meaning:
 6. Phase-13 graph / observability growth MUST remain derived-only and MUST NOT become authority arbitration or truth election.
 
 ## 4) Current Risk Surface
-1. Primary runtime blocker is no longer `P10_RING3_USER_CODE`; that contract is officially closed.
-2. Phase-12 remote closure is confirmed; next risk concentration is Phase-13 boundary hardening without widening diagnostics into consensus-like semantics.
-3. `proofd` is closed locally and remotely but MUST still not drift into authority, majority, or control-plane semantics.
-4. Phase-13 graph / observability growth MUST remain derived-only.
-5. Remaining work is Phase-13 implementation workstreams per Architecture Map §4.
+1. Executable user-leaf rule current worktree'de local deterministic authority ile canlidir; bu, `P10_TEXT_FRAME_WITNESS -> P10_POST_CR3_TEXT_PROBE -> P10_RING3_USER_CODE` zinciriyle dogrulanir.
+2. Broader historical `Phase10-A2` strict/global authority halen ayrik bir truth surface'tir; local rule gate'i bunu tek basina yeniden ilan etmez.
+3. Phase-12 remote closure is confirmed; next risk concentration is Phase-13 boundary hardening without widening diagnostics into consensus-like semantics.
+4. `proofd` is closed locally and remotely but MUST still not drift into authority, majority, or control-plane semantics.
+5. Phase-13 graph / observability growth MUST remain derived-only.
+6. Remaining work is Phase-13 implementation workstreams per Architecture Map §4.
 
 ## 5) Next Steps
 1. Phase-13 Architecture Map §4 workstream'lerini sirayla uygula: service expansion → verifier federation → context propagation → trust registry propagation → replicated verification boundary
@@ -157,3 +167,5 @@ Meaning:
 - `evidence/run-local-phase11-closure/reports/summary.json`
 - `.github/workflows/ci-freeze.yml`
 - `docs/specs/phase11-verification-substrate/tasks.md`
+- `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
+- `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`

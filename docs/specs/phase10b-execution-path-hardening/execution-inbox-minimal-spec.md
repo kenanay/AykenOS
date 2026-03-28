@@ -1,8 +1,8 @@
 # Execution Inbox Minimal Spec
 
-**Status:** Draft (implementation-targeted local runtime spec)
+**Status:** Implemented v1 delivery contract (synchronized with landed runtime on 2026-03-25)
 **Phase:** Phase 10-B / Phase 10-C execution path hardening
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-25
 
 ## 1. Purpose
 
@@ -15,7 +15,8 @@ The goal is narrow:
 - give the target worker a deterministic, kernel-written view of the current
   execution descriptor
 - preserve the kernel queue as the sole source of truth
-- make a later completion handoff possible without widening the syscall ABI
+- keep delivery separate from explicit completion handoff and result
+  publication without widening the syscall ABI
 
 This document does **not** authorize a new control plane.
 
@@ -87,7 +88,8 @@ Current codebase note:
 - those mappings are initialized as empty read-only/NX delivery surfaces
 - schedule-entry pickup now publishes payload and descriptor data into that
   surface and advances `delivery_seq` as the userspace-visible commit point
-- successful completion and result ownership remain later slices
+- explicit completion handoff and owner-visible result publication now land
+  through separate surfaces; the inbox remains delivery-only
 
 ## 4. Authority Model
 
@@ -98,8 +100,9 @@ kernel execution queue (truth)
   -> schedule-entry pickup
   -> execution inbox projection
   -> userspace worker reads snapshot
-  -> future completion handoff
+  -> explicit completion handoff
   -> execution_slot terminal transition
+  -> separate `wait_result()` publication
 ```
 
 The inbox is never the truth source.
@@ -211,20 +214,23 @@ Required separation:
 - scheduler mailbox = Ring3 policy -> Ring0 scheduling hints
 - execution inbox = Ring0 delivery -> Ring3 worker snapshot
 
-## 9. Completion Implication
+## 9. Completion Relation
 
 This spec does **not** define successful completion itself.
 
-It only defines the missing delivery half needed before a completion handoff can
-be authoritative.
+It defines the delivery half and keeps that surface separate from the explicit
+completion and result-publication paths.
 
-The next completion slice MUST add:
+Those adjacent surfaces are now implemented separately:
 
-- a kernel-recognized completion entry point tied to `active_execution_id`
-- `RUNNING -> COMPLETED` or `RUNNING -> FAILED` transitions under the
+- `sys_v2_complete_execution()` is the authoritative completion surface tied to
+  `active_execution_id`
+- terminal `RUNNING -> COMPLETED/FAILED` transitions occur under the
   execution-slot critical section
-- latch clearing on successful completion, not only timeout
-- waiter wake on completion/failure
+- latch clearing and waiter wake now happen on successful completion/failure as
+  well as timeout
+- `wait_result()` now publishes the separate frozen result plane and hash
+  sidecar without mutating the inbox into an ownership channel
 
 ## 10. Initial Validation Targets
 
@@ -239,10 +245,10 @@ The first execution inbox slice should prove:
 
 ## 11. Out of Scope
 
-This minimal spec does not yet define:
+This minimal spec does not define:
 
-- result ownership mapping
-- repeated successful `wait_result()` semantics
+- the completion syscall contract itself
+- result publication or hash publication semantics themselves
 - multi-worker shared execution queues
 - multi-waiter timeout semantics
 - SMP-safe locking beyond the current interrupt-disabled single-core model

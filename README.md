@@ -13,17 +13,17 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 22.03.2026
+**Son Güncelleme:** 28.03.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
 **Remote CI (Phase-12):** `ci-freeze#23099070483 = success` (PR #62)
 **Remote CI (Phase-10B + Docs Sync):** `ci-freeze#23406688668 = success` (PR #65)
 **CURRENT_PHASE:** `12` (`Phase-12 OFFICIALLY CLOSED — Phase-13 boundary hardening active`)
-**Freeze Zinciri:** `make ci-freeze` = 21 gate | `make ci-freeze-local` = 20 gate
+**Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite
 **Acil Blocker:** `yok`
 **Yakın Hedef:** Phase-13 boundary hardening workstreams (Architecture Map §4)
-**Ring0 Export Ceiling:** `191 symbols` (Phase 10B meşru export'lar)
+**Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 
 **Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase-13 kill-switch gates 6/6 PASS ✅ | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
@@ -31,6 +31,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
 **Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62) | `CURRENT_PHASE=12` formal transition at `0adb2a84`
 **Phase 13 Status:** KILL_SWITCH_GATES_PASS ✅ | tag `phase13-kill-switch-gates-pass` at `0ec4bb5e` | boundary hardening active
+**Worktree-Local Ring3 Note:** Executable user-leaf rule artık dedicated local deterministic gate ile enforce ediliyor ✅ | `make ci-gate-ring3-user-leaf-rule` PASS | broader Phase10-A2 strict/global authority ayrı truth surface olarak beklemede
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
@@ -119,6 +120,8 @@ AykenOS/
 ├── docs/                # Dokümantasyon
 │   └── specs/phase12-trust-layer/  # Phase 12 spesifikasyonları
 ├── scripts/ci/          # CI gate scriptleri
+├── tests/               # External invariant-based scenarios and validators
+├── tools/test_runner/   # External scenario runner + normalizer + validator pipeline
 ├── tools/ci/            # CI test araçları
 ├── evidence/            # CI gate evidence (auto-generated)
 └── constitution/        # Constitutional framework
@@ -159,10 +162,15 @@ make ci-gate-abi
 make ci-gate-boundary
 make ci-gate-hygiene
 make ci-gate-constitutional
+make ci-gate-ring3-user-leaf-rule
+make ci-gate-test-naming
+make ci-gate-error-codes
+make ci-gate-kernel-test-pipeline
+make ci-kernel-tests
 
 # Tam CI suite
-make ci-freeze        # 21 gate (strict, fail-closed)
-make ci-freeze-local  # 20 gate (local)
+make ci-freeze        # strict freeze suite (fail-closed)
+make ci-freeze-local  # local freeze suite
 ```
 
 ### Rust Bileşenleri
@@ -225,6 +233,12 @@ Phase 12 trust layer kapsamında tamamlananlar:
 | Performance | ✅ PASS |
 | proofd-service | ✅ PASS |
 
+### Worktree-Local Ring3 User-Leaf Rule
+
+- `ci-gate-ring3-user-leaf-rule` artik active, local deterministic, fail-closed enforcement olarak baglidir.
+- Runtime authority zinciri: `P10_TEXT_FRAME_WITNESS -> P10_POST_CR3_TEXT_PROBE -> P10_RING3_USER_CODE`
+- Bu gate executable user-leaf rule'unu korur; broader `ci-gate-ring3-execution-phase10a2` strict/global authority iddiasi yerine gecmez.
+
 ---
 
 ## 📚 Dokümantasyon
@@ -237,6 +251,10 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Constitutional CI Mode:** `docs/operations/CONSTITUTIONAL_CI_MODE.md`
 - **Freeze Workflow:** `docs/roadmap/freeze-enforcement-workflow.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
+- **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
+- **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
+- **Test Naming Convention:** `docs/governance/TEST_NAMING_CONVENTION.md`
+- **Test Pipeline Contract:** `docs/governance/TEST_PIPELINE_CONTRACT.md`
 
 ---
 
@@ -274,6 +292,6 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 18 Mart 2026 — Phase-12 officially closed (PR #62, run `23099070483`). Phase-13 boundary hardening active.
+**Son Güncelleme:** 28 Mart 2026 — Ring3 executable user-leaf rule local deterministic gate ile canli enforce ediliyor; broader Phase10-A2 strict/global authority icin primary CI full-suite evidence hala ayrik gereklilik.
 
 **© 2026 Kenan AY — AykenOS Project**

@@ -9,6 +9,7 @@
 #define RING3_JUMP_H
 
 #include <stdint.h>
+#include "ring3_contract.h"
 
 // Ring3 transition mechanism (assembly)
 // Transitions from Ring0 to Ring3 via IRETQ
@@ -18,8 +19,10 @@
 //   user_cr3: User page table physical address
 // Preconditions:
 //   - TSS.RSP0 set to valid kernel stack
-//   - User page tables mapped
-//   - User RIP/RSP canonical
+//   - User RIP/RSP are canonical, in-range, and mapped in the target CR3
+//   - Target CR3 can still reach the canonical post-CR3 transition text, IDT, and rsp0
+//   - Fetch-probe builds additionally require the diagnostic trampoline alias
+//   - Selector values come from the frozen ring3 contract header
 extern void ring3_enter(uint64_t rip, uint64_t rsp, uint64_t user_cr3);
 
 // Ring3 initialization (C wrapper)
