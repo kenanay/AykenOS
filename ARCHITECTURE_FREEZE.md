@@ -599,10 +599,10 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
 - ✅ Phase-13 kill-switch gates: 12/12 PASS (`coverage: COMPLETE`)
-- ✅ Phase-13 service-backed verification expansion: COMPLETE (local SHA `a44febed`)
-- ✅ `CURRENT_PHASE=12` formal transition completed (`0adb2a84`)
+- ✅ Phase-13 service-backed verification expansion: COMPLETE (SHA `a44febed`)
+- ✅ Phase-13 formal transition: COMPLETE (CI run `23694185775`, PR #68, tag: `phase13-formal-transition`)
+- ✅ `CURRENT_PHASE=13` formal transition completed (`7088fd71`)
 - ✅ Performance baseline lock committed and active
-- 🔄 Phase-12 official closure prep: pending (`make phase12-official-closure-prep`)
 
 ---
 
@@ -807,7 +807,7 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.6  
+**Version:** 1.7  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -819,6 +819,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.7 | 2026-03-28 | Kenan AY | Phase-13 formal transition COMPLETE (PR #68, CI run #23694185775); CURRENT_PHASE=13 |
 | 1.6 | 2026-03-28 | Kenan AY | Phase-13 kill-switch 12/12 PASS; service-backed verification expansion COMPLETE; closure prep pending |
 | 1.5 | 2026-03-16 | Kenan AY | CI gate list updated to 23-gate chain; Phase-10/11/12 closure status; Phase-13 kill-switch PASS |
 | 1.4 | 2026-03-02 | Kenan AY | Status update: Phase 10-A1 complete, Phase 10-A2 in progress |
