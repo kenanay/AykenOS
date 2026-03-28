@@ -1112,11 +1112,6 @@ fn build_run_boundary_diagnostics(
         .and_then(Value::as_str)
         .ok_or(ServiceError::MalformedArtifact("invalid_run_manifest"))?
         .to_string();
-    let primary_verdict = manifest
-        .get("verdict")
-        .and_then(Value::as_str)
-        .ok_or(ServiceError::MalformedArtifact("invalid_run_manifest"))?
-        .to_string();
 
     // Discover peer runs (fail-open for each sibling)
     let mut peer_run_ids: Vec<String> = Vec::new();
@@ -1161,113 +1156,17 @@ fn build_run_boundary_diagnostics(
             .collect();
     all_run_ids.sort_by(|a, b| a.0.cmp(&b.0));
 
-    // Build observed_verdicts (primary verdict already known; peers read from manifest)
-    let mut observed_verdicts: Vec<RunVerdictEntry> = Vec::new();
-    for (rid, rdir) in &all_run_ids {
-        let verdict = if rid == run_id {
-            primary_verdict.clone()
-        } else {
-            // Peer manifest already validated above; re-read for verdict (fail-open)
-            let Ok(pm) = load_required_run_json_artifact::<Value>(
-                &rdir.join(PROOFD_RUN_MANIFEST_FILE),
-                "invalid_run_manifest",
-            ) else {
-                continue;
-            };
-            let Some(v) = pm.get("verdict").and_then(Value::as_str) else {
-                continue;
-            };
-            v.to_string()
-        };
-        observed_verdicts.push(RunVerdictEntry {
-            run_id: rid.clone(),
-            verdict,
-        });
-    }
-    // already sorted by run_id via all_run_ids sort
+    let projection = collect_boundary_projection_for_runs(&request_fingerprint, &all_run_ids)?;
 
-    // Build observed_context_hashes (fail-open per run)
-    let mut observed_context_hashes: Vec<RunHashEntry> = Vec::new();
-    for (rid, rdir) in &all_run_ids {
-        let ctx_path = rdir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
-        if !ctx_path.is_file() {
-            continue;
-        }
-        let Ok(ctx) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
-            continue;
-        };
-        let Some(hash) = ctx.get("verification_context_id").and_then(Value::as_str) else {
-            continue;
-        };
-        observed_context_hashes.push(RunHashEntry {
-            run_id: rid.clone(),
-            hash: hash.to_string(),
-        });
-    }
-
-    // Build observed_registry_hashes (recompute — never trust self-declared field)
-    let mut observed_registry_hashes: Vec<RunHashEntry> = Vec::new();
-    for (rid, rdir) in &all_run_ids {
-        let reg_path = rdir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
-        if !reg_path.is_file() {
-            continue;
-        }
-        let Ok(snapshot) = load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
-        else {
-            continue;
-        };
-        let Ok(hash) = compute_registry_snapshot_hash(&snapshot) else {
-            continue;
-        };
-        observed_registry_hashes.push(RunHashEntry {
-            run_id: rid.clone(),
-            hash,
-        });
-    }
-
-    // Compute consistency booleans
-    let all_verdicts_match = observed_verdicts
-        .windows(2)
-        .all(|w| w[0].verdict == w[1].verdict);
-
-    let all_context_hashes_match = if observed_context_hashes.is_empty() {
-        None
-    } else {
-        Some(
-            observed_context_hashes
-                .windows(2)
-                .all(|w| w[0].hash == w[1].hash),
-        )
-    };
-
-    let all_registry_hashes_match = if observed_registry_hashes.is_empty() {
-        None
-    } else {
-        Some(
-            observed_registry_hashes
-                .windows(2)
-                .all(|w| w[0].hash == w[1].hash),
-        )
-    };
-
-    serde_json::to_value(BoundaryDiagnosticsResponseBody {
-        run_id: run_id.to_string(),
-        request_fingerprint,
-        peer_run_count: peer_run_ids.len(),
-        peer_run_ids,
-        verdict_consistency: VerdictConsistency {
-            all_verdicts_match,
-            observed_verdicts,
-        },
-        context_hash_consistency: ContextHashConsistency {
-            all_context_hashes_match,
-            observed_context_hashes,
-        },
-        registry_hash_consistency: RegistryHashConsistency {
-            all_registry_hashes_match,
-            observed_registry_hashes,
-        },
-    })
+    serde_json::to_value(json!({
+        "run_id": run_id,
+        "request_fingerprint": request_fingerprint,
+        "peer_run_count": peer_run_ids.len(),
+        "peer_run_ids": peer_run_ids,
+        "verdict_consistency": projection.verdict_consistency,
+        "context_hash_consistency": projection.context_hash_consistency,
+        "registry_hash_consistency": projection.registry_hash_consistency,
+    }))
     .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
 
@@ -1278,6 +1177,11 @@ fn build_fingerprint_boundary_diagnostics(
     request_fingerprint: &str,
     evidence_dir: &Path,
 ) -> Result<Value, ServiceError> {
+    // Validate fingerprint format: must be sha256:<64 hex chars>
+    if !is_valid_fingerprint_format(request_fingerprint) {
+        return Err(ServiceError::BadRequest("invalid_fingerprint_format"));
+    }
+
     // Discover all runs matching this fingerprint (fail-open per entry)
     let mut matched: Vec<(String, PathBuf)> = Vec::new();
     let entries = fs::read_dir(evidence_dir)
@@ -1311,108 +1215,17 @@ fn build_fingerprint_boundary_diagnostics(
     }
 
     matched.sort_by(|a, b| a.0.cmp(&b.0));
-
-    // Build observed_verdicts
-    let mut observed_verdicts: Vec<RunVerdictEntry> = Vec::new();
-    for (rid, rdir) in &matched {
-        let Ok(manifest) = load_required_run_json_artifact::<Value>(
-            &rdir.join(PROOFD_RUN_MANIFEST_FILE),
-            "invalid_run_manifest",
-        ) else {
-            continue;
-        };
-        let Some(verdict) = manifest.get("verdict").and_then(Value::as_str) else {
-            continue;
-        };
-        observed_verdicts.push(RunVerdictEntry {
-            run_id: rid.clone(),
-            verdict: verdict.to_string(),
-        });
-    }
-
-    // Build observed_context_hashes (fail-open per run)
-    let mut observed_context_hashes: Vec<RunHashEntry> = Vec::new();
-    for (rid, rdir) in &matched {
-        let ctx_path = rdir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
-        if !ctx_path.is_file() {
-            continue;
-        }
-        let Ok(ctx) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
-            continue;
-        };
-        let Some(hash) = ctx.get("verification_context_id").and_then(Value::as_str) else {
-            continue;
-        };
-        observed_context_hashes.push(RunHashEntry {
-            run_id: rid.clone(),
-            hash: hash.to_string(),
-        });
-    }
-
-    // Build observed_registry_hashes (recompute — never trust self-declared field)
-    let mut observed_registry_hashes: Vec<RunHashEntry> = Vec::new();
-    for (rid, rdir) in &matched {
-        let reg_path = rdir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
-        if !reg_path.is_file() {
-            continue;
-        }
-        let Ok(snapshot) =
-            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
-        else {
-            continue;
-        };
-        let Ok(hash) = compute_registry_snapshot_hash(&snapshot) else {
-            continue;
-        };
-        observed_registry_hashes.push(RunHashEntry {
-            run_id: rid.clone(),
-            hash,
-        });
-    }
-
-    // Consistency booleans
-    let all_verdicts_match = observed_verdicts
-        .windows(2)
-        .all(|w| w[0].verdict == w[1].verdict);
-
-    let all_context_hashes_match = if observed_context_hashes.is_empty() {
-        None
-    } else {
-        Some(
-            observed_context_hashes
-                .windows(2)
-                .all(|w| w[0].hash == w[1].hash),
-        )
-    };
-
-    let all_registry_hashes_match = if observed_registry_hashes.is_empty() {
-        None
-    } else {
-        Some(
-            observed_registry_hashes
-                .windows(2)
-                .all(|w| w[0].hash == w[1].hash),
-        )
-    };
-
     let run_ids: Vec<String> = matched.iter().map(|(id, _)| id.clone()).collect();
+
+    let projection = collect_boundary_projection_for_runs(request_fingerprint, &matched)?;
 
     serde_json::to_value(json!({
         "request_fingerprint": request_fingerprint,
         "run_count": run_ids.len(),
         "run_ids": run_ids,
-        "verdict_consistency": {
-            "all_verdicts_match": all_verdicts_match,
-            "observed_verdicts": observed_verdicts,
-        },
-        "context_hash_consistency": {
-            "all_context_hashes_match": all_context_hashes_match,
-            "observed_context_hashes": observed_context_hashes,
-        },
-        "registry_hash_consistency": {
-            "all_registry_hashes_match": all_registry_hashes_match,
-            "observed_registry_hashes": observed_registry_hashes,
-        },
+        "verdict_consistency": projection.verdict_consistency,
+        "context_hash_consistency": projection.context_hash_consistency,
+        "registry_hash_consistency": projection.registry_hash_consistency,
     }))
     .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
@@ -2986,6 +2799,124 @@ fn is_safe_path_segment(segment: &str) -> bool {
         && segment != ".."
         && !segment.contains('/')
         && !segment.contains('\\')
+}
+
+/// Validates fingerprint format: must be `sha256:` followed by exactly 64 lowercase hex chars.
+fn is_valid_fingerprint_format(fp: &str) -> bool {
+    fp.strip_prefix("sha256:")
+        .map(|hex| hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()))
+        .unwrap_or(false)
+}
+
+/// Shared boundary projection: given a sorted list of (run_id, run_dir) pairs,
+/// compute verdict/context/registry consistency observations.
+/// Discovery is the caller's responsibility — this function only projects.
+struct BoundaryProjection {
+    verdict_consistency: Value,
+    context_hash_consistency: Value,
+    registry_hash_consistency: Value,
+}
+
+fn collect_boundary_projection_for_runs(
+    _request_fingerprint: &str,
+    runs: &[(String, PathBuf)],
+) -> Result<BoundaryProjection, ServiceError> {
+    // observed_verdicts (fail-open per run)
+    let mut observed_verdicts: Vec<RunVerdictEntry> = Vec::new();
+    for (rid, rdir) in runs {
+        let Ok(manifest) = load_required_run_json_artifact::<Value>(
+            &rdir.join(PROOFD_RUN_MANIFEST_FILE),
+            "invalid_run_manifest",
+        ) else {
+            continue;
+        };
+        let Some(verdict) = manifest.get("verdict").and_then(Value::as_str) else {
+            continue;
+        };
+        observed_verdicts.push(RunVerdictEntry {
+            run_id: rid.clone(),
+            verdict: verdict.to_string(),
+        });
+    }
+
+    // observed_context_hashes (fail-open per run)
+    let mut observed_context_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in runs {
+        let ctx_path = rdir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        if !ctx_path.is_file() {
+            continue;
+        }
+        let Ok(ctx) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
+            continue;
+        };
+        let Some(hash) = ctx.get("verification_context_id").and_then(Value::as_str) else {
+            continue;
+        };
+        observed_context_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash: hash.to_string(),
+        });
+    }
+
+    // observed_registry_hashes (recompute — never trust self-declared field)
+    let mut observed_registry_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in runs {
+        let reg_path = rdir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
+        if !reg_path.is_file() {
+            continue;
+        }
+        let Ok(snapshot) =
+            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        else {
+            continue;
+        };
+        let Ok(hash) = compute_registry_snapshot_hash(&snapshot) else {
+            continue;
+        };
+        observed_registry_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash,
+        });
+    }
+
+    let all_verdicts_match = observed_verdicts
+        .windows(2)
+        .all(|w| w[0].verdict == w[1].verdict);
+
+    let all_context_hashes_match = if observed_context_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_context_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    let all_registry_hashes_match = if observed_registry_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_registry_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    Ok(BoundaryProjection {
+        verdict_consistency: json!({
+            "all_verdicts_match": all_verdicts_match,
+            "observed_verdicts": observed_verdicts,
+        }),
+        context_hash_consistency: json!({
+            "all_context_hashes_match": all_context_hashes_match,
+            "observed_context_hashes": observed_context_hashes,
+        }),
+        registry_hash_consistency: json!({
+            "all_registry_hashes_match": all_registry_hashes_match,
+            "observed_registry_hashes": observed_registry_hashes,
+        }),
+    })
 }
 
 fn is_observability_path(path: &str) -> bool {
@@ -7412,17 +7343,18 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_returns_matching_runs() {
         let dir = temp_dir();
-        // Two runs with same fingerprint, one with different
+        let fp_match = "sha256:".to_string() + &"a".repeat(64);
+        let fp_other = "sha256:".to_string() + &"b".repeat(64);
         for id in ["run-a", "run-b"] {
             let run_dir = dir.join(id);
             fs::create_dir_all(&run_dir).unwrap();
-            write_manifest(&run_dir, "sha256:fp-match", "PASS");
+            write_manifest(&run_dir, &fp_match, "PASS");
         }
         let other_dir = dir.join("run-c");
         fs::create_dir_all(&other_dir).unwrap();
-        write_manifest(&other_dir, "sha256:fp-other", "PASS");
+        write_manifest(&other_dir, &fp_other, "PASS");
 
-        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp-match", &dir);
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp_match}"), &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
 
@@ -7437,7 +7369,7 @@ mod tests_boundary {
         assert_eq!(body.get("run_count").and_then(|v| v.as_u64()), Some(2));
         assert_eq!(
             body.get("request_fingerprint").and_then(|v| v.as_str()),
-            Some("sha256:fp-match")
+            Some(fp_match.as_str())
         );
         let _ = fs::remove_dir_all(&dir);
     }
@@ -7446,12 +7378,13 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_404_when_no_match() {
         let dir = temp_dir();
+        let fp_other = "sha256:".to_string() + &"b".repeat(64);
+        let fp_missing = "sha256:".to_string() + &"c".repeat(64);
         let run_dir = dir.join("run-a");
         fs::create_dir_all(&run_dir).unwrap();
-        write_manifest(&run_dir, "sha256:fp-other", "PASS");
+        write_manifest(&run_dir, &fp_other, "PASS");
 
-        let response =
-            route_request("GET", "/diagnostics/fingerprints/sha256:fp-missing", &dir);
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp_missing}"), &dir);
         assert_eq!(response.status_code, 404);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -7460,13 +7393,14 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_run_ids_sorted() {
         let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"1".repeat(64);
         for id in ["run-z", "run-a", "run-m"] {
             let run_dir = dir.join(id);
             fs::create_dir_all(&run_dir).unwrap();
-            write_manifest(&run_dir, "sha256:fp1", "PASS");
+            write_manifest(&run_dir, &fp, "PASS");
         }
 
-        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp}"), &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
         let run_ids: Vec<&str> = body
@@ -7486,8 +7420,8 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_post_method_not_allowed() {
         let dir = temp_dir();
-        let response =
-            route_request("POST", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        let fp = "sha256:".to_string() + &"1".repeat(64);
+        let response = route_request("POST", &format!("/diagnostics/fingerprints/{fp}"), &dir);
         assert_eq!(response.status_code, 405);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -7496,13 +7430,14 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_verdict_consistency_true_when_all_match() {
         let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"2".repeat(64);
         for id in ["run-a", "run-b", "run-c"] {
             let run_dir = dir.join(id);
             fs::create_dir_all(&run_dir).unwrap();
-            write_manifest(&run_dir, "sha256:fp1", "PASS");
+            write_manifest(&run_dir, &fp, "PASS");
         }
 
-        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp}"), &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
         assert_eq!(
@@ -7518,14 +7453,15 @@ mod tests_boundary {
     #[test]
     fn fingerprints_endpoint_verdict_consistency_false_when_mismatch() {
         let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"3".repeat(64);
         let run_dir_a = dir.join("run-a");
         fs::create_dir_all(&run_dir_a).unwrap();
-        write_manifest(&run_dir_a, "sha256:fp1", "PASS");
+        write_manifest(&run_dir_a, &fp, "PASS");
         let run_dir_b = dir.join("run-b");
         fs::create_dir_all(&run_dir_b).unwrap();
-        write_manifest(&run_dir_b, "sha256:fp1", "FAIL");
+        write_manifest(&run_dir_b, &fp, "FAIL");
 
-        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp}"), &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
         assert_eq!(
@@ -7536,7 +7472,41 @@ mod tests_boundary {
         );
         let _ = fs::remove_dir_all(&dir);
     }
-}
+
+    // ── /diagnostics/fingerprints/{fp} — invalid format → 400 ───────────────
+    #[test]
+    fn fingerprints_endpoint_invalid_format_400() {
+        let dir = temp_dir();
+        // Not sha256: prefix
+        let response = route_request("GET", "/diagnostics/fingerprints/fp-abc123", &dir);
+        assert_eq!(response.status_code, 400);
+        // sha256: but wrong length
+        let response2 = route_request("GET", "/diagnostics/fingerprints/sha256:abc123", &dir);
+        assert_eq!(response2.status_code, 400);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — no forbidden fields in response ─────
+    #[test]
+    fn fingerprints_endpoint_no_forbidden_fields_in_response() {
+        let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"4".repeat(64);
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, &fp, "PASS");
+
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp}"), &dir);
+        assert_eq!(response.status_code, 200);
+        let body_str = String::from_utf8_lossy(&response.body);
+        for field in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body_str.contains(field),
+                "forbidden field '{field}' found in fingerprints response"
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+} // end mod tests_boundary
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase-13 Replicated Verification Boundary — Property-Based Tests
