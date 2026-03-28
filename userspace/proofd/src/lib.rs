@@ -562,6 +562,10 @@ pub fn route_request_with_body(
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
                 },
+                "/diagnostics/context" => match build_global_context_diagnostics(evidence_dir) {
+                    Ok(value) => json_response(200, value),
+                    Err(error) => error_response(error),
+                },
                 _ if target.path.starts_with("/diagnostics/incidents/") => {
                     let incident_id = target
                         .path
@@ -925,6 +929,109 @@ fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, Ser
             "total": fingerprint_count,
         },
         "total_ledger_entries": all_entries.len(),
+    }))
+}
+
+/// Global context diagnostics: aggregate verification_context_id distribution
+/// across all runs. Shows which contexts are active, how many runs share each
+/// context, and whether context IDs are consistent within fingerprint groups.
+/// Read-only, deterministic, non-authoritative.
+fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let entries_iter = fs::read_dir(evidence_dir)
+        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+
+    let mut run_dirs: Vec<PathBuf> = entries_iter
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    run_dirs.sort();
+
+    // context_id → set of run_ids that produced it
+    let mut context_runs: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    // fingerprint → set of context_ids observed
+    let mut fp_contexts: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+
+    let mut run_count = 0usize;
+    let mut runs_with_context = 0usize;
+
+    for run_dir in &run_dirs {
+        let run_id_os = run_dir.file_name().unwrap_or_default().to_string_lossy();
+        if !is_safe_path_segment(&run_id_os) {
+            continue;
+        }
+        let run_id = run_id_os.to_string();
+        run_count += 1;
+
+        // Load context object (fail-open) — read context_id directly from JSON
+        // to avoid strict validation requirements in test fixtures
+        let ctx_path = run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        if !ctx_path.is_file() {
+            continue;
+        }
+        let Ok(ctx_json) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
+            continue;
+        };
+        let Some(context_id) = ctx_json.get("verification_context_id").and_then(Value::as_str) else {
+            continue;
+        };
+        runs_with_context += 1;
+        context_runs
+            .entry(context_id.to_string())
+            .or_default()
+            .insert(run_id.clone());
+
+        // Associate fingerprint → context (via manifest, fail-open)
+        let manifest_path = run_dir.join(PROOFD_RUN_MANIFEST_FILE);
+        if let Ok(manifest) = load_required_run_json_artifact::<Value>(&manifest_path, "skip") {
+            if let Some(fp) = manifest.get("request_fingerprint").and_then(Value::as_str) {
+                fp_contexts
+                    .entry(fp.to_string())
+                    .or_default()
+                    .insert(context_id.to_string());
+            }
+        }
+    }
+
+    // Build context summary (sorted by context_id — BTreeMap guarantees this)
+    let contexts: Vec<Value> = context_runs
+        .iter()
+        .map(|(context_id, run_ids)| {
+            json!({
+                "context_id": context_id,
+                "run_count": run_ids.len(),
+            })
+        })
+        .collect();
+
+    // Fingerprints with multiple distinct contexts (potential context drift)
+    let fingerprints_with_context_drift: Vec<Value> = fp_contexts
+        .iter()
+        .filter(|(_, ctx_ids)| ctx_ids.len() > 1)
+        .map(|(fp, ctx_ids)| {
+            let mut sorted: Vec<&str> = ctx_ids.iter().map(String::as_str).collect();
+            sorted.sort();
+            json!({
+                "request_fingerprint": fp,
+                "distinct_context_count": ctx_ids.len(),
+                "context_ids": sorted,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "context_count": contexts.len(),
+        "contexts": contexts,
+        "runs": {
+            "total": run_count,
+            "with_context": runs_with_context,
+        },
+        "context_drift": {
+            "fingerprints_with_multiple_contexts": fingerprints_with_context_drift.len(),
+            "fingerprints": fingerprints_with_context_drift,
+        },
     }))
 }
 
@@ -3148,6 +3255,23 @@ mod tests {
             run_dir,
             "verification_diversity_ledger.json",
             &entry.to_string(),
+        );
+    }
+
+    fn write_context_object_simple(run_dir: &PathBuf, context_id: &str) {
+        // Minimal verification_context_object.json for context propagation tests
+        let obj = serde_json::json!({
+            "context_version": 1,
+            "verification_context_id": context_id,
+            "policy_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "registry_snapshot_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "context_rules_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "verifier_contract_version": "phase12-context-v1"
+        });
+        write_artifact(
+            run_dir,
+            "context/verification_context_object.json",
+            &obj.to_string(),
         );
     }
 
@@ -6465,6 +6589,136 @@ mod tests {
             assert!(
                 !body_str.contains(field),
                 "forbidden field '{field}' found in global federation response"
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — global context topology ────────────────────────
+    #[test]
+    fn global_context_endpoint_aggregates_all_runs() {
+        let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"a".repeat(64);
+        for (run_id, ctx_id) in [("run-a", "ctx-1"), ("run-b", "ctx-2")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_context_object_simple(&run_dir, ctx_id);
+            write_artifact(
+                &run_dir,
+                "proofd_run_manifest.json",
+                &serde_json::json!({"run_id": run_id, "request_fingerprint": fp, "verdict": "PASS"}).to_string(),
+            );
+        }
+        // One run without context (fail-open)
+        let run_dir_c = dir.join("run-c");
+        fs::create_dir_all(&run_dir_c).unwrap();
+
+        let response = route_request("GET", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(body.get("context_count").and_then(|v| v.as_u64()), Some(2));
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            Some(3)
+        );
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("with_context")).and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — empty dir ─────────────────────────────────────
+    #[test]
+    fn global_context_endpoint_empty_dir_returns_zero_counts() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(body.get("context_count").and_then(|v| v.as_u64()), Some(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — contexts sorted ────────────────────────────────
+    #[test]
+    fn global_context_endpoint_contexts_sorted() {
+        let dir = temp_dir();
+        for (run_id, ctx_id) in [("run-a", "ctx-z"), ("run-b", "ctx-a"), ("run-c", "ctx-m")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_context_object_simple(&run_dir, ctx_id);
+        }
+
+        let response = route_request("GET", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let ctx_ids: Vec<&str> = body
+            .get("contexts")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.get("context_id").and_then(|v| v.as_str()))
+            .collect();
+        let mut sorted = ctx_ids.clone();
+        sorted.sort();
+        assert_eq!(ctx_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — context drift detection ────────────────────────
+    #[test]
+    fn global_context_endpoint_detects_context_drift() {
+        let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"b".repeat(64);
+        // Same fingerprint, two different contexts → drift
+        for (run_id, ctx_id) in [("run-a", "ctx-1"), ("run-b", "ctx-2")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_context_object_simple(&run_dir, ctx_id);
+            write_artifact(
+                &run_dir,
+                "proofd_run_manifest.json",
+                &serde_json::json!({"run_id": run_id, "request_fingerprint": fp, "verdict": "PASS"}).to_string(),
+            );
+        }
+
+        let response = route_request("GET", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("context_drift")
+                .and_then(|v| v.get("fingerprints_with_multiple_contexts"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — POST → 405 ────────────────────────────────────
+    #[test]
+    fn global_context_endpoint_post_method_not_allowed() {
+        let dir = temp_dir();
+        let response = route_request("POST", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/context — no forbidden fields ────────────────────────────
+    #[test]
+    fn global_context_endpoint_no_forbidden_fields() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_context_object_simple(&run_dir, "ctx-test");
+
+        let response = route_request("GET", "/diagnostics/context", &dir);
+        assert_eq!(response.status_code, 200);
+        let body_str = String::from_utf8_lossy(&response.body);
+        for field in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body_str.contains(field),
+                "forbidden field '{field}' found in global context response"
             );
         }
         let _ = fs::remove_dir_all(&dir);
