@@ -593,15 +593,16 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-03-16):**
+**Current Status (2026-03-28):**
 - ✅ All CI gates active and passing (23-gate ci-freeze chain)
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
-- ✅ Phase-13 kill-switch gates: 6/6 PASS (tag `phase13-kill-switch-gates-pass` at `0ec4bb5e`)
+- ✅ Phase-13 kill-switch gates: 12/12 PASS (`coverage: COMPLETE`)
+- ✅ Phase-13 service-backed verification expansion: COMPLETE (local SHA `a44febed`)
 - ✅ `CURRENT_PHASE=12` formal transition completed (`0adb2a84`)
 - ✅ Performance baseline lock committed and active
-- 🔄 Phase-13 boundary hardening: active workstream
+- 🔄 Phase-12 official closure prep: pending (`make phase12-official-closure-prep`)
 
 ---
 
@@ -806,18 +807,19 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.5  
+**Version:** 1.6  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-03-16  
-**Next Review:** 2026-03-30  
+**Last Review:** 2026-03-28  
+**Next Review:** 2026-04-11  
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.6 | 2026-03-28 | Kenan AY | Phase-13 kill-switch 12/12 PASS; service-backed verification expansion COMPLETE; closure prep pending |
 | 1.5 | 2026-03-16 | Kenan AY | CI gate list updated to 23-gate chain; Phase-10/11/12 closure status; Phase-13 kill-switch PASS |
 | 1.4 | 2026-03-02 | Kenan AY | Status update: Phase 10-A1 complete, Phase 10-A2 in progress |
 | 1.3 | 2026-02-25 | Kenan AY | Added ci-gate-drift-activation gate documentation |

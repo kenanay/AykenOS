@@ -85,6 +85,32 @@ const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
 const MAX_VERIFY_BUNDLE_BODY_BYTES: usize = 64 * 1024;
 static GENERATED_RUN_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+// Task 10.1: Normatif Phase-13 forbidden fields — used by serialize guard tests
+#[allow(dead_code)]
+const PHASE13_FORBIDDEN_FIELDS: &[&str] = &[
+    "preferred_verifier",
+    "winning_verifier",
+    "trust_rank",
+    "verifier_score",
+    "trust_score",
+    "reliability_index",
+    "weighted_authority",
+    "correctness_rate",
+    "agreement_ratio",
+    "node_success_ratio",
+    "verifier_reputation",
+    "recommended_action",
+    "routing_hint",
+    "execution_override",
+    "retry",
+    "override",
+    "promote",
+    "commit",
+    "mitigation",
+    "node_priority",
+    "verification_weight",
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestTarget {
     pub path: String,
@@ -217,7 +243,38 @@ struct FederationDistributionEntry {
     entry_count: usize,
 }
 
+// Task 6: Spec-compliant projection structs for federation diagnostics API surface
 #[derive(Debug, Clone, Serialize)]
+struct FederationDiagnosticsProjection {
+    run_id: String,
+    verifier_count: usize,
+    observed_verifiers: Vec<SpecFederationVerifierEntry>,
+    authority_chain_distribution: Vec<SpecAuthorityChainEntry>,
+    execution_cluster_distribution: Vec<SpecExecutionClusterEntry>,
+    missing_execution_cluster_entry_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SpecFederationVerifierEntry {
+    verifier_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lineage_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SpecAuthorityChainEntry {
+    authority_chain_id: String,
+    entry_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SpecExecutionClusterEntry {
+    cluster_id: String,
+    entry_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 struct FederationObservedEntry {
     entry_id: String,
     verification_node_id: String,
@@ -230,6 +287,7 @@ struct FederationObservedEntry {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 struct FederationDiagnosticsResponseBody {
     run_id: String,
     source_artifact_path: &'static str,
@@ -682,6 +740,10 @@ fn build_run_summary(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError
 }
 
 fn build_run_artifact_index(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    // Task 5.1: propagate run_dir_not_found before listing descriptors
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
     let artifacts = list_run_artifact_descriptors(run_dir)?;
     Ok(json!({
         "run_id": run_id,
@@ -691,58 +753,77 @@ fn build_run_artifact_index(run_id: &str, run_dir: &Path) -> Result<Value, Servi
 }
 
 fn build_run_federation_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
+    // Task 6.1: run_dir_not_found check before artifact check
+    if !run_dir.is_dir() {
+        return Err(ServiceError::NotFound("run_dir_not_found"));
+    }
+
     let ledger_path = run_dir.join(VERIFICATION_DIVERSITY_LEDGER_FILE);
     let entries = load_diversity_ledger_entries(&ledger_path).map_err(|_| {
         if ledger_path.is_file() {
-            ServiceError::MalformedArtifact("invalid_federation_ledger")
+            ServiceError::MalformedArtifact("invalid_federation_artifact")
         } else {
             ServiceError::NotFound("artifact_not_found")
         }
     })?;
 
-    let verification_node_distribution =
-        build_federation_distribution(&entries, |entry| entry.verification_node_id.clone());
+    // Build internal rich model
     let verifier_distribution =
         build_federation_distribution(&entries, |entry| entry.verifier_id.clone());
     let authority_chain_distribution =
         build_federation_distribution(&entries, |entry| entry.authority_chain_id.clone());
-    let lineage_distribution =
-        build_federation_distribution(&entries, |entry| entry.lineage_id.clone());
-    let (execution_cluster_distribution, missing_execution_cluster_entry_count) =
+    let (execution_cluster_distribution_internal, missing_execution_cluster_entry_count) =
         build_optional_federation_distribution(&entries, |entry| {
             entry.execution_cluster_id.clone()
         });
-    let observed_entries = entries
-        .iter()
-        .map(|entry| FederationObservedEntry {
-            entry_id: entry.entry_id.clone(),
-            verification_node_id: entry.verification_node_id.clone(),
-            verifier_id: entry.verifier_id.clone(),
-            authority_chain_id: entry.authority_chain_id.clone(),
-            lineage_id: entry.lineage_id.clone(),
-            execution_cluster_id: entry.execution_cluster_id.clone(),
-            receipt_hash: entry.receipt_hash.clone(),
-        })
-        .collect::<Vec<_>>();
 
-    serde_json::to_value(FederationDiagnosticsResponseBody {
+    // Task 6.7: observed_verifiers sorted by verifier_id (BTreeMap already gives lex order,
+    // but we deduplicate by verifier_id keeping first lineage_id seen)
+    let mut seen_verifiers: std::collections::BTreeMap<String, Option<String>> =
+        std::collections::BTreeMap::new();
+    for entry in &entries {
+        seen_verifiers
+            .entry(entry.verifier_id.clone())
+            .or_insert_with(|| entry.lineage_id.clone().into());
+    }
+    let observed_verifiers: Vec<SpecFederationVerifierEntry> = seen_verifiers
+        .into_iter()
+        .map(|(verifier_id, lineage_id)| SpecFederationVerifierEntry {
+            verifier_id,
+            lineage_id,
+        })
+        .collect();
+
+    // Task 6.4: SpecAuthorityChainEntry — authority_chain_id + entry_count
+    let authority_chain_dist: Vec<SpecAuthorityChainEntry> = authority_chain_distribution
+        .iter()
+        .map(|e| SpecAuthorityChainEntry {
+            authority_chain_id: e.id.clone(),
+            entry_count: e.entry_count,
+        })
+        .collect();
+
+    // Task 6.5: SpecExecutionClusterEntry — cluster_id + entry_count
+    let execution_cluster_dist: Vec<SpecExecutionClusterEntry> =
+        execution_cluster_distribution_internal
+            .iter()
+            .map(|e| SpecExecutionClusterEntry {
+                cluster_id: e.id.clone(),
+                entry_count: e.entry_count,
+            })
+            .collect();
+
+    // Task 6.6: serialize the projection, not the internal body
+    let projection = FederationDiagnosticsProjection {
         run_id: run_id.to_string(),
-        source_artifact_path: VERIFICATION_DIVERSITY_LEDGER_FILE,
-        entry_count: entries.len(),
-        unique_verification_node_count: verification_node_distribution.len(),
-        unique_verifier_count: verifier_distribution.len(),
-        unique_authority_chain_count: authority_chain_distribution.len(),
-        unique_lineage_count: lineage_distribution.len(),
-        unique_execution_cluster_count: execution_cluster_distribution.len(),
+        verifier_count: verifier_distribution.len(),
+        observed_verifiers,
+        authority_chain_distribution: authority_chain_dist,
+        execution_cluster_distribution: execution_cluster_dist,
         missing_execution_cluster_entry_count,
-        verification_node_distribution,
-        verifier_distribution,
-        authority_chain_distribution,
-        lineage_distribution,
-        execution_cluster_distribution,
-        observed_entries,
-    })
-    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+    };
+
+    serde_json::to_value(&projection).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
 
 fn build_run_context_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
@@ -2670,25 +2751,34 @@ fn list_run_artifact_descriptors(
 }
 
 fn parse_run_artifact_path(segments: &[&str]) -> Result<String, ServiceError> {
-    if segments.is_empty()
-        || segments
-            .iter()
-            .any(|segment| !is_safe_path_segment(segment))
+    if segments.is_empty() {
+        return Err(ServiceError::Forbidden("artifact_path_not_allowed"));
+    }
+    // Task 4.3: ".." and "." segments must be rejected with 403 (path traversal guard)
+    if segments
+        .iter()
+        .any(|segment| !is_safe_path_segment(segment))
     {
-        return Err(ServiceError::NotFound("invalid_artifact_path"));
+        return Err(ServiceError::Forbidden("artifact_path_not_allowed"));
     }
     Ok(segments.join("/"))
 }
 
 fn resolve_run_artifact_path(run_dir: &Path, artifact_path: &str) -> Result<PathBuf, ServiceError> {
-    let discovered_paths = list_run_artifact_paths(run_dir)?;
-    if discovered_paths
+    // Task 4.1: Two-phase check — Allowed_Artifact_Set (403) then disk existence (404)
+    let allowed: std::collections::HashSet<&str> = RUN_LEVEL_ARTIFACTS
         .iter()
-        .any(|candidate| candidate == artifact_path)
-    {
-        return Ok(run_dir.join(artifact_path));
+        .chain(NESTED_RUN_LEVEL_ARTIFACTS.iter())
+        .copied()
+        .collect();
+    if !allowed.contains(artifact_path) {
+        return Err(ServiceError::Forbidden("artifact_path_not_allowed"));
     }
-    Err(ServiceError::NotFound("artifact_not_found"))
+    let full_path = run_dir.join(artifact_path);
+    if !full_path.is_file() {
+        return Err(ServiceError::NotFound("artifact_not_found"));
+    }
+    Ok(full_path)
 }
 
 fn build_federation_distribution<F>(
@@ -2792,6 +2882,7 @@ fn error_response(error: ServiceError) -> DiagnosticsResponse {
     match error {
         ServiceError::BadRequest(code) => json_response(400, json!({ "error": code })),
         ServiceError::Conflict(code) => json_response(409, json!({ "error": code })),
+        ServiceError::Forbidden(code) => json_response(403, json!({ "error": code })),
         ServiceError::NotFound(code) => json_response(404, json!({ "error": code })),
         ServiceError::MalformedArtifact(code) => json_response(500, json!({ "error": code })),
         ServiceError::Runtime(code) => json_response(500, json!({ "error": code })),
@@ -2802,6 +2893,7 @@ fn error_response(error: ServiceError) -> DiagnosticsResponse {
 enum ServiceError {
     BadRequest(&'static str),
     Conflict(&'static str),
+    Forbidden(&'static str),
     NotFound(&'static str),
     MalformedArtifact(&'static str),
     Runtime(&'static str),
@@ -3350,6 +3442,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    // Task 4.4: updated to expect 403 artifact_path_not_allowed for traversal segments
     #[test]
     fn run_artifact_endpoint_rejects_invalid_relative_path() {
         let dir = temp_dir();
@@ -3366,15 +3459,17 @@ mod tests {
             "/diagnostics/runs/run-20260310-1/artifacts/../proofd_run_manifest.json",
             &dir,
         );
-        assert_eq!(response.status_code, 404);
+        assert_eq!(response.status_code, 403);
         let body = body_json(response);
         assert_eq!(
             body.get("error").and_then(|v| v.as_str()),
-            Some("invalid_artifact_path")
+            Some("artifact_path_not_allowed")
         );
         let _ = fs::remove_dir_all(&dir);
     }
 
+    // Task 6.9: updated to use new projection field names (verifier_count, observed_verifiers,
+    // authority_chain_distribution with authority_chain_id, execution_cluster_distribution with cluster_id)
     #[test]
     fn run_scoped_federation_endpoint_summarizes_diversity_ledger() {
         let dir = temp_dir();
@@ -3436,55 +3531,65 @@ mod tests {
         let response = route_request("GET", "/diagnostics/runs/run-20260310-1/federation", &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
+
+        // Projection fields (Requirement 4)
         assert_eq!(
-            body.get("source_artifact_path").and_then(|v| v.as_str()),
-            Some("verification_diversity_ledger.json")
+            body.get("run_id").and_then(|v| v.as_str()),
+            Some("run-20260310-1")
         );
-        assert_eq!(body.get("entry_count").and_then(|v| v.as_u64()), Some(3));
-        assert_eq!(
-            body.get("unique_verifier_count").and_then(|v| v.as_u64()),
-            Some(2)
-        );
-        assert_eq!(
-            body.get("unique_authority_chain_count")
-                .and_then(|v| v.as_u64()),
-            Some(2)
-        );
-        assert_eq!(
-            body.get("unique_lineage_count").and_then(|v| v.as_u64()),
-            Some(2)
-        );
-        assert_eq!(
-            body.get("unique_execution_cluster_count")
-                .and_then(|v| v.as_u64()),
-            Some(1)
-        );
+        assert_eq!(body.get("verifier_count").and_then(|v| v.as_u64()), Some(2));
         assert_eq!(
             body.get("missing_execution_cluster_entry_count")
                 .and_then(|v| v.as_u64()),
             Some(1)
         );
-        assert!(body
-            .get("verifier_distribution")
+
+        // observed_verifiers sorted by verifier_id
+        let observed_verifiers = body
+            .get("observed_verifiers")
             .and_then(|v| v.as_array())
-            .is_some_and(|items| items.iter().any(|item| {
-                item.get("id").and_then(|v| v.as_str()) == Some("verifier-a")
-                    && item.get("entry_count").and_then(|v| v.as_u64()) == Some(2)
-            })));
+            .expect("observed_verifiers array");
+        assert_eq!(observed_verifiers.len(), 2);
+        assert_eq!(
+            observed_verifiers[0]
+                .get("verifier_id")
+                .and_then(|v| v.as_str()),
+            Some("verifier-a")
+        );
+        assert_eq!(
+            observed_verifiers[1]
+                .get("verifier_id")
+                .and_then(|v| v.as_str()),
+            Some("verifier-b")
+        );
+
+        // authority_chain_distribution uses authority_chain_id key
         assert!(body
             .get("authority_chain_distribution")
             .and_then(|v| v.as_array())
             .is_some_and(|items| items.iter().any(|item| {
-                item.get("id").and_then(|v| v.as_str()) == Some("chain-a")
+                item.get("authority_chain_id").and_then(|v| v.as_str()) == Some("chain-a")
                     && item.get("entry_count").and_then(|v| v.as_u64()) == Some(2)
             })));
+
+        // execution_cluster_distribution uses cluster_id key
         assert!(body
-            .get("observed_entries")
+            .get("execution_cluster_distribution")
             .and_then(|v| v.as_array())
             .is_some_and(|items| items.iter().any(|item| {
-                item.get("entry_id").and_then(|v| v.as_str()) == Some("entry-c")
-                    && item.get("execution_cluster_id").is_none()
+                item.get("cluster_id").and_then(|v| v.as_str()) == Some("cluster-a")
+                    && item.get("entry_count").and_then(|v| v.as_u64()) == Some(2)
             })));
+
+        // Forbidden fields must not appear (Requirement 5.1)
+        for forbidden in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body.as_object().is_some_and(|m| m.contains_key(*forbidden)),
+                "Forbidden field '{}' found in federation response",
+                forbidden
+            );
+        }
+
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -4379,24 +4484,20 @@ mod tests {
             "/diagnostics/runs/run-proofd-execution-r2/federation",
             &dir,
         ));
+        // Task 6.9: use projection field names
         assert_eq!(
-            federation.get("entry_count").and_then(|v| v.as_u64()),
+            federation.get("verifier_count").and_then(|v| v.as_u64()),
             Some(1)
         );
         assert_eq!(
             federation
-                .get("unique_verifier_count")
-                .and_then(|v| v.as_u64()),
-            Some(1)
-        );
-        assert_eq!(
-            federation
-                .get("unique_authority_chain_count")
-                .and_then(|v| v.as_u64()),
+                .get("authority_chain_distribution")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
             Some(1)
         );
         assert!(federation
-            .get("observed_entries")
+            .get("observed_verifiers")
             .and_then(|v| v.as_array())
             .is_some_and(|items| items.iter().any(|item| {
                 item.get("lineage_id").and_then(|v| v.as_str()) == Some("lineage-receipt-node-b")
@@ -5774,6 +5875,294 @@ mod tests {
             Some("method_not_allowed")
         );
 
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 2.3: VerifyBundleResponseBody forbidden fields serialize guard ──
+
+    #[test]
+    fn verify_bundle_response_contains_no_forbidden_fields() {
+        // Validates: Requirement 1.11, 8.6
+        // Construct a minimal VerifyBundleResponseBody and check its serialized form
+        let response_body = super::VerifyBundleResponseBody {
+            status: "ok",
+            run_id: "run-test".to_string(),
+            verdict: "TRUSTED",
+            verdict_subject: serde_json::json!({}),
+            receipt_emitted: false,
+            receipt_path: None,
+            request_fingerprint: "sha256:abc".to_string(),
+            behavioral_observability_emitted: false,
+            audit_ledger_path: None,
+            verification_diversity_ledger_binding_path: None,
+            verification_diversity_ledger_path: None,
+            replay_boundary_flow_source_path: None,
+            replay_boundary_flow_source_origin: None,
+            trust_reuse_runtime_surface_path: None,
+            trust_reuse_runtime_surface_origin: None,
+            trust_reuse_flow_source_path: None,
+            trust_reuse_flow_source_origin: None,
+            findings_count: 0,
+        };
+        let serialized = serde_json::to_value(&response_body).expect("serialize response body");
+        let obj = serialized.as_object().expect("response body is object");
+        for forbidden in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !obj.contains_key(*forbidden),
+                "Forbidden field '{}' found in VerifyBundleResponseBody",
+                forbidden
+            );
+        }
+    }
+
+    // ── Task 4.5: Allowed artifact in set but missing on disk → 404 ──────────
+
+    #[test]
+    fn run_artifact_endpoint_returns_404_for_allowed_but_missing_artifact() {
+        // Validates: Requirement 3.6
+        let dir = temp_dir();
+        let run_dir = dir.join("run-artifact-404");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        // Do NOT write proofd_run_manifest.json — it's in Allowed_Artifact_Set but absent
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-artifact-404/artifacts/proofd_run_manifest.json",
+            &dir,
+        );
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 4.4 extra: path outside Allowed_Artifact_Set → 403 ─────────────
+
+    #[test]
+    fn run_artifact_endpoint_returns_403_for_path_outside_allowed_set() {
+        // Validates: Requirement 3.7
+        let dir = temp_dir();
+        let run_dir = dir.join("run-artifact-403");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(&run_dir, "secret.json", r#"{"secret":"data"}"#);
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-artifact-403/artifacts/secret.json",
+            &dir,
+        );
+        assert_eq!(response.status_code, 403);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("artifact_path_not_allowed")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 5.2: run_dir_not_found for missing run dir on artifacts index ───
+
+    #[test]
+    fn run_artifacts_index_returns_404_run_dir_not_found_when_dir_missing() {
+        // Validates: Requirement 3.2
+        let dir = temp_dir();
+        // Do NOT create the run directory
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-nonexistent/artifacts",
+            &dir,
+        );
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("run_dir_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 6.8 / 10.2: FederationDiagnosticsProjection forbidden fields guard
+
+    #[test]
+    fn federation_projection_contains_no_forbidden_fields() {
+        // Validates: Requirement 5.1, 8.6
+        let dir = temp_dir();
+        let run_dir = dir.join("run-fed-guard");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "verification_diversity_ledger.json",
+            r#"{"entries":[{
+                "ledger_version":1,"entry_id":"e1","run_id":"run-fed-guard",
+                "timestamp_unix_ns":1,"subject_bundle_id":"b1",
+                "verification_context_id":"ctx1","verification_node_id":"n1",
+                "verifier_id":"v1","authority_chain_id":"chain1","lineage_id":"lin1",
+                "verdict":"PASS",
+                "receipt_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }]}"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-fed-guard/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let obj = body.as_object().expect("federation response is object");
+        for forbidden in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !obj.contains_key(*forbidden),
+                "Forbidden field '{}' found in FederationDiagnosticsProjection response",
+                forbidden
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 6.1: federation run_dir_not_found ────────────────────────────────
+
+    #[test]
+    fn federation_endpoint_returns_run_dir_not_found_when_dir_missing() {
+        // Validates: Requirement 4.3
+        let dir = temp_dir();
+        // Do NOT create the run directory
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-fed-missing/federation",
+            &dir,
+        );
+        assert_eq!(response.status_code, 404);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("run_dir_not_found")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 8.3: concurrent manifest creation — only one writer succeeds ────
+
+    #[test]
+    fn concurrent_manifest_creation_only_one_writer_succeeds() {
+        // Validates: Requirement 1.12
+        // Already covered by run_manifest_creation_allows_only_one_writer but
+        // this variant uses a different fingerprint to confirm conflict detection
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+
+        let dir = temp_dir();
+        let manifest_path = dir.join("proofd_run_manifest.json");
+        let fingerprint = "sha256:concurrent-test-fingerprint";
+        let manifest = serde_json::json!({
+            "run_id": "run-concurrent",
+            "request_fingerprint": fingerprint,
+            "verdict": "TRUSTED"
+        });
+        let barrier = Arc::new(Barrier::new(4));
+
+        let spawn_writer = |barrier: Arc<Barrier>| {
+            let manifest_path = manifest_path.clone();
+            let manifest = manifest.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                super::create_run_manifest_atomically(
+                    &manifest_path,
+                    &manifest,
+                    fingerprint,
+                    "run_manifest_write_failed",
+                )
+            })
+        };
+
+        let handles: Vec<_> = (0..3).map(|_| spawn_writer(barrier.clone())).collect();
+        barrier.wait();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().expect("thread")).collect();
+        let success_count = results.iter().filter(|r| r.is_ok()).count();
+        let conflict_count = results
+            .iter()
+            .filter(|r| {
+                matches!(r, Err(ServiceError::Conflict("run_id_fingerprint_conflict")))
+            })
+            .count();
+
+        assert_eq!(success_count, 1, "exactly one writer must succeed");
+        assert_eq!(conflict_count, 2, "remaining writers must get conflict error");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── Task 9.2: projection isolation — internal field additions don't leak ─
+
+    #[test]
+    fn federation_projection_only_contains_spec_fields() {
+        // Validates: Requirement 4, 5; Design §4 Spec Projection Layer
+        // Verifies that the serialized response contains ONLY the projection fields
+        let dir = temp_dir();
+        let run_dir = dir.join("run-proj-isolation");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "verification_diversity_ledger.json",
+            r#"{"entries":[{
+                "ledger_version":1,"entry_id":"e1","run_id":"run-proj-isolation",
+                "timestamp_unix_ns":1,"subject_bundle_id":"b1",
+                "verification_context_id":"ctx1","verification_node_id":"n1",
+                "verifier_id":"v1","authority_chain_id":"chain1","lineage_id":"lin1",
+                "execution_cluster_id":"cluster1",
+                "verdict":"PASS",
+                "receipt_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }]}"#,
+        );
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-proj-isolation/federation",
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let obj = body.as_object().expect("federation response is object");
+
+        // Only these spec-defined top-level keys must be present
+        const ALLOWED_KEYS: &[&str] = &[
+            "run_id",
+            "verifier_count",
+            "observed_verifiers",
+            "authority_chain_distribution",
+            "execution_cluster_distribution",
+            "missing_execution_cluster_entry_count",
+        ];
+        // Internal-only fields must NOT appear
+        const INTERNAL_ONLY_KEYS: &[&str] = &[
+            "source_artifact_path",
+            "entry_count",
+            "unique_verification_node_count",
+            "unique_verifier_count",
+            "unique_authority_chain_count",
+            "unique_lineage_count",
+            "unique_execution_cluster_count",
+            "verification_node_distribution",
+            "verifier_distribution",
+            "lineage_distribution",
+            "observed_entries",
+        ];
+        for key in INTERNAL_ONLY_KEYS {
+            assert!(
+                !obj.contains_key(*key),
+                "Internal-only field '{}' must not appear in projection response",
+                key
+            );
+        }
+        for key in ALLOWED_KEYS {
+            assert!(
+                obj.contains_key(*key),
+                "Required projection field '{}' is missing from response",
+                key
+            );
+        }
         let _ = fs::remove_dir_all(&dir);
     }
 }
@@ -7957,6 +8346,486 @@ mod proptest_kill_switch_gates {
                 body.get("error").and_then(|v| v.as_str()),
                 Some("method_not_allowed")
             );
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-13 Service-Backed Verification Expansion — Property-Based Tests
+// Tasks 7.1–7.8
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod proptest_phase13 {
+    use super::{
+        route_request, route_request_with_body, DiagnosticsResponse,
+        PHASE13_FORBIDDEN_FIELDS,
+    };
+    use proptest::prelude::*;
+    use serde_json::{json, Value};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("proofd-p13-pbt-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn body_json(r: &DiagnosticsResponse) -> Value {
+        serde_json::from_slice(&r.body).expect("valid json body")
+    }
+
+    fn write_artifact(dir: &PathBuf, name: &str, body: &str) {
+        let path = dir.join(name);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create parent");
+        }
+        fs::write(path, body).expect("write artifact");
+    }
+
+    fn collect_files(dir: &PathBuf) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        collect_recursive(dir, &mut files);
+        files.sort();
+        files
+    }
+
+    fn collect_recursive(dir: &PathBuf, out: &mut Vec<PathBuf>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    out.push(path);
+                } else if path.is_dir() {
+                    collect_recursive(&path, out);
+                }
+            }
+        }
+    }
+
+    fn minimal_ledger_json(verifier_id: &str, authority_chain_id: &str) -> String {
+        format!(
+            r#"{{"entries":[{{
+                "ledger_version":1,"entry_id":"e1","run_id":"run-pbt",
+                "timestamp_unix_ns":1,"subject_bundle_id":"b1",
+                "verification_context_id":"ctx1","verification_node_id":"n1",
+                "verifier_id":"{verifier_id}","authority_chain_id":"{authority_chain_id}",
+                "lineage_id":"lin1","verdict":"PASS",
+                "receipt_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }}]}}"#
+        )
+    }
+
+    fn safe_id_strategy() -> impl Strategy<Value = String> {
+        prop::string::string_regex("[a-z][a-z0-9-]{0,15}").unwrap()
+    }
+
+    fn safe_run_id(prefix: &str) -> String {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        format!("run-p13-{prefix}-{unique:x}")
+    }
+
+    // ── P1: Run_Id Fingerprint Conflict Protection ────────────────────────────
+    // Validates: Requirement 1.9, 1.12
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// **P1 — Run_Id Fingerprint Conflict Protection**
+        /// Validates: Requirement 1.9
+        /// ∀ run_id, req1, req2: fingerprint(req1) ≠ fingerprint(req2) ∧ same run_id → HTTP 409
+        #[test]
+        fn p1_run_id_fingerprint_conflict_protection(
+            verifier_a in safe_id_strategy(),
+            verifier_b in safe_id_strategy(),
+        ) {
+            // Only test when verifiers differ (different fingerprints)
+            prop_assume!(verifier_a != verifier_b);
+
+            use proof_verifier::testing::fixtures::create_fixture_bundle;
+
+            let dir = temp_dir();
+            let fixture = create_fixture_bundle();
+            let policy_path = fixture.root.join("proofd-policy.json");
+            let registry_path = fixture.root.join("proofd-registry.json");
+            fs::write(&policy_path, serde_json::to_vec_pretty(&fixture.policy).unwrap()).unwrap();
+            fs::write(&registry_path, serde_json::to_vec_pretty(&fixture.registry).unwrap()).unwrap();
+
+            let run_id = safe_run_id("p1");
+
+            let req1 = json!({
+                "bundle_path": fixture.root,
+                "policy_path": policy_path,
+                "registry_path": registry_path,
+                "receipt_mode": "emit_signed",
+                "run_id": run_id,
+                "receipt_signer": {
+                    "verifier_node_id": fixture.receipt_signer.verifier_node_id,
+                    "verifier_key_id": fixture.receipt_signer.verifier_key_id,
+                    "signature_algorithm": fixture.receipt_signer.signature_algorithm,
+                    "private_key": fixture.receipt_signer.private_key,
+                    "verified_at_utc": fixture.receipt_signer.verified_at_utc,
+                },
+                "diversity_binding": {
+                    "verifier_id": verifier_a,
+                    "authority_chain_id": "sha256:chain-a",
+                    "lineage_id": "lineage-a",
+                }
+            });
+            let req2 = json!({
+                "bundle_path": fixture.root,
+                "policy_path": policy_path,
+                "registry_path": registry_path,
+                "receipt_mode": "emit_signed",
+                "run_id": run_id,
+                "receipt_signer": {
+                    "verifier_node_id": fixture.receipt_signer.verifier_node_id,
+                    "verifier_key_id": fixture.receipt_signer.verifier_key_id,
+                    "signature_algorithm": fixture.receipt_signer.signature_algorithm,
+                    "private_key": fixture.receipt_signer.private_key,
+                    "verified_at_utc": fixture.receipt_signer.verified_at_utc,
+                },
+                "diversity_binding": {
+                    "verifier_id": verifier_b,
+                    "authority_chain_id": "sha256:chain-a",
+                    "lineage_id": "lineage-a",
+                }
+            });
+
+            let r1 = route_request_with_body(
+                "POST", "/verify/bundle",
+                Some(serde_json::to_vec(&req1).unwrap().as_slice()),
+                &dir,
+            );
+            prop_assert_eq!(r1.status_code, 200, "first request must succeed");
+
+            let r2 = route_request_with_body(
+                "POST", "/verify/bundle",
+                Some(serde_json::to_vec(&req2).unwrap().as_slice()),
+                &dir,
+            );
+            prop_assert_eq!(r2.status_code, 409, "second request with different fingerprint must return 409");
+            let body2 = body_json(&r2);
+            prop_assert_eq!(
+                body2.get("error").and_then(|v| v.as_str()),
+                Some("run_id_fingerprint_conflict")
+            );
+
+            let _ = fs::remove_dir_all(&fixture.root);
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P4: Artifact Discovery Read-Only Invariant ────────────────────────────
+    // Validates: Requirement 7.1, 3.9
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P4 — Artifact Discovery Read-Only Invariant**
+        /// Validates: Requirement 7.1, 3.9
+        /// GET /diagnostics/runs/{run_id}/artifacts must not write any files
+        #[test]
+        fn p4_artifact_discovery_read_only(
+            call_count in 1usize..=3usize,
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p4");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+            write_artifact(&run_dir, "proofd_run_manifest.json", r#"{"run_id":"test"}"#);
+            write_artifact(&run_dir, "report.json", r#"{"status":"PASS"}"#);
+
+            let files_before = collect_files(&run_dir);
+
+            for _ in 0..call_count {
+                let path = format!("/diagnostics/runs/{run_id}/artifacts");
+                let _ = route_request("GET", &path, &dir);
+            }
+
+            let files_after = collect_files(&run_dir);
+            prop_assert_eq!(
+                files_before, files_after,
+                "GET artifacts endpoint must not modify any files on disk"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P5: Federation Forbidden Field Invariant ──────────────────────────────
+    // Validates: Requirement 5.1, 8.6
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P5 — Federation Forbidden Field Invariant**
+        /// Validates: Requirement 5.1, 8.6
+        /// ∀ run_id, ledger: response ∩ Phase13_Forbidden_Fields = ∅
+        #[test]
+        fn p5_federation_forbidden_field_invariant(
+            verifier_id in safe_id_strategy(),
+            authority_chain_id in safe_id_strategy(),
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p5");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+            write_artifact(
+                &run_dir,
+                "verification_diversity_ledger.json",
+                &minimal_ledger_json(&verifier_id, &authority_chain_id),
+            );
+
+            let path = format!("/diagnostics/runs/{run_id}/federation");
+            let r = route_request("GET", &path, &dir);
+            prop_assert_eq!(r.status_code, 200, "federation endpoint must return 200");
+
+            let body = body_json(&r);
+            let obj = body.as_object().expect("response is object");
+            for forbidden in PHASE13_FORBIDDEN_FIELDS {
+                prop_assert!(
+                    !obj.contains_key(*forbidden),
+                    "Forbidden field '{}' found in federation response",
+                    forbidden
+                );
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P6: Federation Sorting Invariant ─────────────────────────────────────
+    // Validates: Requirement 5.2, 5.3, 5.4
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P6 — Federation Sorting Invariant**
+        /// Validates: Requirement 5.2, 5.3, 5.4
+        /// observed_verifiers, authority_chain_distribution, execution_cluster_distribution
+        /// must all be in lexicographic order
+        #[test]
+        fn p6_federation_sorting_invariant(
+            entries in prop::collection::vec(
+                (safe_id_strategy(), safe_id_strategy(), prop::option::of(safe_id_strategy())),
+                1..=6usize,
+            ),
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p6");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            // Build ledger JSON from entries
+            let entry_jsons: Vec<String> = entries.iter().enumerate().map(|(i, (vid, chain, cluster))| {
+                let cluster_field = match cluster {
+                    Some(c) => format!(r#","execution_cluster_id":"{c}""#),
+                    None => String::new(),
+                };
+                format!(
+                    r#"{{"ledger_version":1,"entry_id":"e{i}","run_id":"{run_id}",
+                    "timestamp_unix_ns":{i},"subject_bundle_id":"b{i}",
+                    "verification_context_id":"ctx{i}","verification_node_id":"n{i}",
+                    "verifier_id":"{vid}","authority_chain_id":"{chain}",
+                    "lineage_id":"lin{i}","verdict":"PASS",
+                    "receipt_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"{cluster_field}}}"#
+                )
+            }).collect();
+            let ledger = format!(r#"{{"entries":[{}]}}"#, entry_jsons.join(","));
+            write_artifact(&run_dir, "verification_diversity_ledger.json", &ledger);
+
+            let path = format!("/diagnostics/runs/{run_id}/federation");
+            let r = route_request("GET", &path, &dir);
+            prop_assert_eq!(r.status_code, 200);
+
+            let body = body_json(&r);
+
+            // observed_verifiers sorted by verifier_id
+            let verifiers: Vec<String> = body
+                .get("observed_verifiers")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|e| e.get("verifier_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_v = verifiers.clone();
+            sorted_v.sort();
+            prop_assert_eq!(&verifiers, &sorted_v, "observed_verifiers must be sorted by verifier_id");
+
+            // authority_chain_distribution sorted by authority_chain_id
+            let chains: Vec<String> = body
+                .get("authority_chain_distribution")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|e| e.get("authority_chain_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_c = chains.clone();
+            sorted_c.sort();
+            prop_assert_eq!(&chains, &sorted_c, "authority_chain_distribution must be sorted by authority_chain_id");
+
+            // execution_cluster_distribution sorted by cluster_id
+            let clusters: Vec<String> = body
+                .get("execution_cluster_distribution")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|e| e.get("cluster_id").and_then(|v| v.as_str()).map(String::from))
+                .collect();
+            let mut sorted_cl = clusters.clone();
+            sorted_cl.sort();
+            prop_assert_eq!(&clusters, &sorted_cl, "execution_cluster_distribution must be sorted by cluster_id");
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P7: Artifact Fetch Passthrough Invariant ──────────────────────────────
+    // Validates: Requirement 3.5, 3.8, 7.6
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P7 — Artifact Fetch Passthrough Invariant**
+        /// Validates: Requirement 3.5, 3.8, 7.6
+        /// ∀ artifact_path ∈ Allowed_Artifact_Set: response_body = disk_bytes
+        #[test]
+        fn p7_artifact_fetch_passthrough(
+            content in prop::string::string_regex(r#"\{"[a-z]{1,8}":"[a-z0-9]{1,16}"\}"#).unwrap(),
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p7");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            // Use proofd_run_manifest.json — always in Allowed_Artifact_Set
+            write_artifact(&run_dir, "proofd_run_manifest.json", &content);
+
+            let path = format!("/diagnostics/runs/{run_id}/artifacts/proofd_run_manifest.json");
+            let r = route_request("GET", &path, &dir);
+            prop_assert_eq!(r.status_code, 200, "artifact fetch must return 200");
+
+            let disk_bytes = fs::read(run_dir.join("proofd_run_manifest.json"))
+                .expect("read artifact from disk");
+            prop_assert_eq!(
+                r.body, disk_bytes,
+                "response body must equal disk bytes verbatim"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P8: Method Not Allowed Invariant ─────────────────────────────────────
+    // Validates: Requirement 7.4, 3.4, 4.5
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P8 — Method Not Allowed Invariant**
+        /// Validates: Requirement 7.4, 3.4, 4.5
+        /// ∀ diagnostics_path: POST → HTTP 405
+        #[test]
+        fn p8_method_not_allowed_invariant(
+            run_id in safe_id_strategy(),
+            sub in prop::sample::select(vec!["artifacts", "federation", "context", "registry", "boundary"]),
+        ) {
+            let dir = temp_dir();
+            let path = format!("/diagnostics/runs/{run_id}/{sub}");
+            let r = route_request_with_body("POST", &path, Some(b"{}"), &dir);
+            prop_assert_eq!(
+                r.status_code, 405,
+                "POST to {} must return 405",
+                path
+            );
+            let body = body_json(&r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("method_not_allowed")
+            );
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── P9: Artifact Path Normalization Invariant ─────────────────────────────
+    // Validates: Requirement 3.11, 3.7
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P9 — Artifact Path Normalization Invariant**
+        /// Validates: Requirement 3.11, 3.7
+        /// Paths with ".." or "." segments → HTTP 403
+        /// Paths outside Allowed_Artifact_Set → HTTP 403
+        #[test]
+        fn p9_artifact_path_normalization_traversal(
+            prefix in prop::string::string_regex("[a-z]{1,8}").unwrap(),
+            suffix in prop::string::string_regex("[a-z]{1,8}\\.json").unwrap(),
+        ) {
+            let dir = temp_dir();
+            let run_id = safe_run_id("p9t");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            // Path with ".." traversal segment
+            let traversal_path = format!(
+                "/diagnostics/runs/{run_id}/artifacts/{prefix}/../{suffix}"
+            );
+            let r = route_request("GET", &traversal_path, &dir);
+            prop_assert_eq!(
+                r.status_code, 403,
+                "path with '..' segment must return 403, got {} for {}",
+                r.status_code, traversal_path
+            );
+            let body = body_json(&r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("artifact_path_not_allowed")
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **P9b — Artifact Path Outside Allowed Set → 403**
+        /// Validates: Requirement 3.7
+        #[test]
+        fn p9b_artifact_path_outside_allowed_set(
+            name in prop::string::string_regex("[a-z]{4,12}_[a-z]{4,8}\\.json").unwrap(),
+        ) {
+            // Only test names that are NOT in the allowed set
+            let allowed: std::collections::HashSet<&str> = super::RUN_LEVEL_ARTIFACTS
+                .iter()
+                .chain(super::NESTED_RUN_LEVEL_ARTIFACTS.iter())
+                .copied()
+                .collect();
+            prop_assume!(!allowed.contains(name.as_str()));
+
+            let dir = temp_dir();
+            let run_id = safe_run_id("p9b");
+            let run_dir = dir.join(&run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+            // Write the file so it exists on disk — must still be rejected
+            write_artifact(&run_dir, &name, r#"{"data":"secret"}"#);
+
+            let path = format!("/diagnostics/runs/{run_id}/artifacts/{name}");
+            let r = route_request("GET", &path, &dir);
+            prop_assert_eq!(
+                r.status_code, 403,
+                "path outside Allowed_Artifact_Set must return 403 even if file exists on disk"
+            );
+            let body = body_json(&r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("artifact_path_not_allowed")
+            );
+
             let _ = fs::remove_dir_all(&dir);
         }
     }

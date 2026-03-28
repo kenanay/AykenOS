@@ -1425,6 +1425,7 @@ ci-kill-switch-phase13: \
 	ci-gate-diagnostics-callsite-correlation \
 	ci-gate-observability-routing-separation \
 	ci-gate-verifier-reputation-prohibition
+	@$(MAKE) ci-kill-switch-summary RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "Phase-13 kill-switch gates: ALL PASS"
 
 ci-freeze: PHASE10C_C2_STRICT=1
@@ -1557,7 +1558,7 @@ ci-summarize:
 	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); acceptable=("PASS","SKIP","WARN"); print(f"ERROR: summary verdict is {v} ({p})") if v not in acceptable else None; sys.exit(0 if v in acceptable else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
 
 ci-kill-switch-summary:
-	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)" --require-kill-switch-completeness
+	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)" --require-kill-switch-completeness --show-kill-switch-summary
 	@python3 -c 'import json,sys; p=sys.argv[1]; payload=json.load(open(p, encoding="utf-8")); ok=payload.get("coverage", {}).get("coverage_status") == "COMPLETE"; print(f"ERROR: kill-switch coverage incomplete ({p})") if not ok else None; sys.exit(0 if ok else 2)' "$(EVIDENCE_RUN_DIR)/reports/kill_switch_summary.json"
 
 # ABI gate (implemented): deterministic generation + baseline lock compare.
