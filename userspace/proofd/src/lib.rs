@@ -568,6 +568,19 @@ pub fn route_request_with_body(
                         Err(error) => error_response(error),
                     }
                 }
+                _ if target.path.starts_with("/diagnostics/fingerprints/") => {
+                    let fp = target
+                        .path
+                        .trim_start_matches("/diagnostics/fingerprints/")
+                        .to_string();
+                    if fp.is_empty() || fp.contains('/') {
+                        return json_response(404, json!({ "error": "not_found" }));
+                    }
+                    match build_fingerprint_boundary_diagnostics(&fp, evidence_dir) {
+                        Ok(value) => json_response(200, value),
+                        Err(error) => error_response(error),
+                    }
+                }
                 _ if target.path.starts_with("/diagnostics/runs/") => {
                     handle_run_endpoint(&target.path, evidence_dir)
                 }
@@ -1255,6 +1268,152 @@ fn build_run_boundary_diagnostics(
             observed_registry_hashes,
         },
     })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+/// Fingerprint-based boundary diagnostics: discover all runs matching `request_fingerprint`
+/// and compute cross-run consistency without a designated primary run.
+/// All runs are treated as peers — no authority assignment.
+fn build_fingerprint_boundary_diagnostics(
+    request_fingerprint: &str,
+    evidence_dir: &Path,
+) -> Result<Value, ServiceError> {
+    // Discover all runs matching this fingerprint (fail-open per entry)
+    let mut matched: Vec<(String, PathBuf)> = Vec::new();
+    let entries = fs::read_dir(evidence_dir)
+        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+
+    for entry in entries.flatten() {
+        let candidate_path = entry.path();
+        if !candidate_path.is_dir() {
+            continue;
+        }
+        let candidate_id = entry.file_name().to_string_lossy().to_string();
+        if !is_safe_path_segment(&candidate_id) {
+            continue;
+        }
+        let Ok(manifest) = load_required_run_json_artifact::<Value>(
+            &candidate_path.join(PROOFD_RUN_MANIFEST_FILE),
+            "invalid_run_manifest",
+        ) else {
+            continue;
+        };
+        let Some(fp) = manifest.get("request_fingerprint").and_then(Value::as_str) else {
+            continue;
+        };
+        if fp == request_fingerprint {
+            matched.push((candidate_id, candidate_path));
+        }
+    }
+
+    if matched.is_empty() {
+        return Err(ServiceError::NotFound("fingerprint_not_found"));
+    }
+
+    matched.sort_by(|a, b| a.0.cmp(&b.0));
+
+    // Build observed_verdicts
+    let mut observed_verdicts: Vec<RunVerdictEntry> = Vec::new();
+    for (rid, rdir) in &matched {
+        let Ok(manifest) = load_required_run_json_artifact::<Value>(
+            &rdir.join(PROOFD_RUN_MANIFEST_FILE),
+            "invalid_run_manifest",
+        ) else {
+            continue;
+        };
+        let Some(verdict) = manifest.get("verdict").and_then(Value::as_str) else {
+            continue;
+        };
+        observed_verdicts.push(RunVerdictEntry {
+            run_id: rid.clone(),
+            verdict: verdict.to_string(),
+        });
+    }
+
+    // Build observed_context_hashes (fail-open per run)
+    let mut observed_context_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in &matched {
+        let ctx_path = rdir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        if !ctx_path.is_file() {
+            continue;
+        }
+        let Ok(ctx) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
+            continue;
+        };
+        let Some(hash) = ctx.get("verification_context_id").and_then(Value::as_str) else {
+            continue;
+        };
+        observed_context_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash: hash.to_string(),
+        });
+    }
+
+    // Build observed_registry_hashes (recompute — never trust self-declared field)
+    let mut observed_registry_hashes: Vec<RunHashEntry> = Vec::new();
+    for (rid, rdir) in &matched {
+        let reg_path = rdir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
+        if !reg_path.is_file() {
+            continue;
+        }
+        let Ok(snapshot) =
+            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        else {
+            continue;
+        };
+        let Ok(hash) = compute_registry_snapshot_hash(&snapshot) else {
+            continue;
+        };
+        observed_registry_hashes.push(RunHashEntry {
+            run_id: rid.clone(),
+            hash,
+        });
+    }
+
+    // Consistency booleans
+    let all_verdicts_match = observed_verdicts
+        .windows(2)
+        .all(|w| w[0].verdict == w[1].verdict);
+
+    let all_context_hashes_match = if observed_context_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_context_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    let all_registry_hashes_match = if observed_registry_hashes.is_empty() {
+        None
+    } else {
+        Some(
+            observed_registry_hashes
+                .windows(2)
+                .all(|w| w[0].hash == w[1].hash),
+        )
+    };
+
+    let run_ids: Vec<String> = matched.iter().map(|(id, _)| id.clone()).collect();
+
+    serde_json::to_value(json!({
+        "request_fingerprint": request_fingerprint,
+        "run_count": run_ids.len(),
+        "run_ids": run_ids,
+        "verdict_consistency": {
+            "all_verdicts_match": all_verdicts_match,
+            "observed_verdicts": observed_verdicts,
+        },
+        "context_hash_consistency": {
+            "all_context_hashes_match": all_context_hashes_match,
+            "observed_context_hashes": observed_context_hashes,
+        },
+        "registry_hash_consistency": {
+            "all_registry_hashes_match": all_registry_hashes_match,
+            "observed_registry_hashes": observed_registry_hashes,
+        },
+    }))
     .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
 
@@ -7246,6 +7405,135 @@ mod tests_boundary {
         let mut sorted = peer_ids.clone();
         sorted.sort();
         assert_eq!(peer_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — basic discovery ─────────────────────
+    #[test]
+    fn fingerprints_endpoint_returns_matching_runs() {
+        let dir = temp_dir();
+        // Two runs with same fingerprint, one with different
+        for id in ["run-a", "run-b"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp-match", "PASS");
+        }
+        let other_dir = dir.join("run-c");
+        fs::create_dir_all(&other_dir).unwrap();
+        write_manifest(&other_dir, "sha256:fp-other", "PASS");
+
+        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp-match", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        let run_ids: Vec<&str> = body
+            .get("run_ids")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(run_ids, vec!["run-a", "run-b"]);
+        assert_eq!(body.get("run_count").and_then(|v| v.as_u64()), Some(2));
+        assert_eq!(
+            body.get("request_fingerprint").and_then(|v| v.as_str()),
+            Some("sha256:fp-match")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — 404 when no match ───────────────────
+    #[test]
+    fn fingerprints_endpoint_404_when_no_match() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_manifest(&run_dir, "sha256:fp-other", "PASS");
+
+        let response =
+            route_request("GET", "/diagnostics/fingerprints/sha256:fp-missing", &dir);
+        assert_eq!(response.status_code, 404);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — run_ids sorted ─────────────────────
+    #[test]
+    fn fingerprints_endpoint_run_ids_sorted() {
+        let dir = temp_dir();
+        for id in ["run-z", "run-a", "run-m"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "PASS");
+        }
+
+        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let run_ids: Vec<&str> = body
+            .get("run_ids")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        let mut sorted = run_ids.clone();
+        sorted.sort();
+        assert_eq!(run_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — POST → 405 ──────────────────────────
+    #[test]
+    fn fingerprints_endpoint_post_method_not_allowed() {
+        let dir = temp_dir();
+        let response =
+            route_request("POST", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — verdict consistency ─────────────────
+    #[test]
+    fn fingerprints_endpoint_verdict_consistency_true_when_all_match() {
+        let dir = temp_dir();
+        for id in ["run-a", "run-b", "run-c"] {
+            let run_dir = dir.join(id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest(&run_dir, "sha256:fp1", "PASS");
+        }
+
+        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — verdict inconsistency ───────────────
+    #[test]
+    fn fingerprints_endpoint_verdict_consistency_false_when_mismatch() {
+        let dir = temp_dir();
+        let run_dir_a = dir.join("run-a");
+        fs::create_dir_all(&run_dir_a).unwrap();
+        write_manifest(&run_dir_a, "sha256:fp1", "PASS");
+        let run_dir_b = dir.join("run-b");
+        fs::create_dir_all(&run_dir_b).unwrap();
+        write_manifest(&run_dir_b, "sha256:fp1", "FAIL");
+
+        let response = route_request("GET", "/diagnostics/fingerprints/sha256:fp1", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("verdict_consistency")
+                .and_then(|v| v.get("all_verdicts_match"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 }
