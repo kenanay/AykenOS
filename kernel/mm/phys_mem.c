@@ -204,7 +204,15 @@ uint64_t phys_alloc_frame_high(void)
         return 0;
     }
 
-    limit = addr_to_frame_idx(AYKEN_IDENTITY_MAP_SIZE);
+    /*
+     * Use the actual top of available physical memory (g_total_frames)
+     * rather than the identity-map ceiling. QEMU may have less RAM than
+     * AYKEN_IDENTITY_MAP_SIZE (e.g. 128 MB default), so scanning from
+     * the identity-map limit would find no frames and return 0, causing
+     * a boot crash. g_total_frames reflects the real physical memory
+     * discovered during phys_mem_init().
+     */
+    limit = g_total_frames;
     if (limit == 0) {
         return 0;
     }
