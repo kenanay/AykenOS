@@ -1781,8 +1781,9 @@ ci-gate-ring3-execution-phase10a2: ci-evidence-dir
 	@echo "kernel_profile: validation (enforced)"
 	@echo "user_minimal_mode: phase10a2 (enforced)"
 	@echo "ayken_cr3_pcid: 0 (enforced)"
+	@echo "ayken_ring3_mask_irq0_first_entry: 1 (enforced)"
 	@echo "qemu_timeout_seconds: $(RING3_QEMU_TIMEOUT)"
-	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_C2_STRICT_MARKERS="$(PHASE10C_C2_STRICT)" AYKEN_MB_SELFTEST="$(if $(filter 1,$(PHASE10C_C2_STRICT)),0,1)" AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
+	@RUN_ID=$(RUN_ID) USER_MINIMAL_MODE=phase10a2 KERNEL_PROFILE=validation AYKEN_C2_STRICT_MARKERS="$(PHASE10C_C2_STRICT)" AYKEN_MB_SELFTEST="$(if $(filter 1,$(PHASE10C_C2_STRICT)),0,1)" AYKEN_GATE4_POLICY_TEST=0 AYKEN_SCHED_BOOTSTRAP_POLICY="$(AYKEN_SCHED_BOOTSTRAP_POLICY)" AYKEN_CR3_PCID=0 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 bash scripts/ci/gate_ring3_execution_phase10a2.sh --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2" --qemu-timeout "$(RING3_QEMU_TIMEOUT)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2/report.json" "$(EVIDENCE_RUN_DIR)/reports/ring3-execution-phase10a2.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: ring3-execution-phase10a2 evidence at $(EVIDENCE_RUN_DIR)"

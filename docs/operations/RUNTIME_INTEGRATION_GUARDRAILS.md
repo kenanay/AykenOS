@@ -39,7 +39,8 @@ Asagidaki baglantilar fail-closed ihlal kabul edilir:
 2. `ayken-core` ve `semantic-cli` gelistirilebilir, ancak kernel runtime yoluna baglanmaz.
 3. Broader historical `Phase10-A2` strict/global runtime claim icin zorunlu kanit hala `ci-gate-ring3-execution-phase10a2` strict PASS'tir.
 4. Ayrik olarak, executable user-leaf runtime rule artik `ci-gate-ring3-user-leaf-rule` ile local deterministic fail-closed enforce edilir.
-5. Bu kontratin tekrar kirilmasi halinde `missing_marker:P10_RING3_USER_CODE` broader strict A2 authority icin yeniden blocker kabul edilir.
+5. `ci-gate-ring3-execution-phase10a2` first-entry timer preemption'i fail-closed kapatmak icin `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1` ile kosulmalidir.
+6. Bu kontratin tekrar kirilmasi halinde `missing_marker:P10_RING3_USER_CODE` broader strict A2 authority icin yeniden blocker kabul edilir.
 
 ### Phase 10-B
 1. `bcib-runtime` <-> `ayken-core/bcib` entegrasyonu acilabilir.

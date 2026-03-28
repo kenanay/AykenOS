@@ -29,11 +29,14 @@ This document defines governance rules for policy-sensitive build knobs.
 ## AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY
 
 - Allowed values: `0` or `1`.
+- Ring3 runtime gate enforcement:
+  - `ci-gate-ring3-execution-phase10a2` must run with `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1`.
+  - `scripts/ci/gate_ring3_execution_phase10a2.sh` must keep `ENFORCED_AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY="1"` and fail closed otherwise.
 - Dedicated executable user-leaf rule gate enforcement:
   - `ci-gate-ring3-user-leaf-rule` must run with `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1`.
   - `scripts/ci/gate_ring3_user_leaf_rule.sh` must fail closed if this knob is not `1`.
 - Authority note:
-  - this knob exists to stabilize the first-entry witness lane
+  - this knob exists to stabilize first-entry user progress before the timer IRQ path can preempt the lane
   - by itself it does not restate broader Phase10-A2 strict/global closure
 
 ## PHASE10C C2 Strict Knobs
