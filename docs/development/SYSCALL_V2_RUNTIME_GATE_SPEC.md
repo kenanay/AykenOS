@@ -108,6 +108,11 @@ Order in `ci-freeze`:
 
 Rationale: runtime contract is above static contract checks and below performance comparison.
 
+### 5.5 Required Entry Stabilization Knob
+1. `ci-gate-syscall-v2-runtime` MUST run with `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1`.
+2. `scripts/ci/gate_syscall_v2_runtime.sh` MUST fail closed if this knob is not `1`.
+3. Rationale: hosted and local freeze authority both require first-entry user progress to reach the initial syscall sequence before timer preemption.
+
 ---
 
 ## 6) Evidence Schema

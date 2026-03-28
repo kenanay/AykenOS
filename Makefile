@@ -1738,11 +1738,12 @@ ci-gate-syscall-v2-runtime: ci-evidence-dir
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: $(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)"
 	@echo "user_minimal_mode: syscall-v2-runtime (enforced)"
+	@echo "ayken_ring3_mask_irq0_first_entry: 1 (enforced)"
 	@echo "warmup_runs: $(SYSCALL_V2_RUNTIME_WARMUP)"
 	@echo "measurement_runs: $(SYSCALL_V2_RUNTIME_RUNS)"
 	@echo "timeout_seconds: $(SYSCALL_V2_RUNTIME_TIMEOUT)"
 	@echo "required_success_rate: $(SYSCALL_V2_RUNTIME_REQUIRED_SUCCESS_RATE)"
-	@USER_MINIMAL_MODE=syscall-v2-runtime ./scripts/ci/gate_syscall_v2_runtime.sh \
+	@USER_MINIMAL_MODE=syscall-v2-runtime AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 ./scripts/ci/gate_syscall_v2_runtime.sh \
 		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/syscall-v2-runtime" \
 		--kernel-profile "$(SYSCALL_V2_RUNTIME_KERNEL_PROFILE)" \
 		--warmup-runs "$(SYSCALL_V2_RUNTIME_WARMUP)" \
