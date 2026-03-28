@@ -8,3 +8,4 @@ cc 6e71668d96e1347d59638533529744623f1e858a9ea6855bf1917ba08206621a # shrinks to
 cc be04bb67998079161aef4c082ebfa6b94ecf5bf1aa4960456f592086bb67764c # shrinks to producer_ids = ["bj50-55b2j-60-", "g", "g7-f-xw7c3--", "ouu5a-7s64", "qd", "v4j---q2u46w-t5-", "z"], call_count = 3
 cc 926c1b32222b1cddd258ef435d2f2affb2f33acc960fe1bf27dceaa1775a18ee # shrinks to call_count = 2
 cc 4a32a1538f6b971e6f209d7ae0636299d4d9d8ce8e5ec41daf88dca78e2cb1f6 # shrinks to producer_ids = ["e--", "e-3ok-1-9j6", "z45-"], call_count = 1
+cc 33ab4e3b299035cfc32b263320a8e27461724cb022e1d77618cbbd4b93951a49 # shrinks to n_runs = 6
