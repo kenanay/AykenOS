@@ -13,9 +13,10 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Official closure tag (Phase-10/11): `phase10-phase11-official-closure`
 - Official closure tag (Phase-12): `phase12-official-closure-confirmed` at `1d79d4b1`
 - Phase-13 kill-switch tag: `phase13-kill-switch-gates-pass` at `0ec4bb5e`
-- Formal phase pointer: `CURRENT_PHASE=12`
+- Phase-13 formal transition tag: `phase13-formal-transition` at `7088fd71`
+- Formal phase pointer: `CURRENT_PHASE=13`
 - Phase-12 closure state: `CLOSED (official closure confirmed)`
-- Phase-13 state: `KILL_SWITCH_GATES_PASS (boundary hardening active)`
+- Phase-13 state: `ACTIVE (formal transition complete, boundary hardening active)`
 - Worktree-local Ring3 executable user-leaf rule: dedicated deterministic gate active (`ci-gate-ring3-user-leaf-rule`)
 
 ## 1) Architectural Baseline
@@ -122,14 +123,15 @@ Interpretation:
 6. The parity / graph layer remains derived diagnostics, not consensus
 
 ### 3.4 Phase-13
-`Phase-13 = KILL_SWITCH_GATES_PASS (boundary hardening active, implementation not yet claimed)`
+`Phase-13 = ACTIVE (formal transition complete, boundary hardening active)`
 
 Interpretation:
 1. Observability, relationship graph, global graph, and topology models are now explicit
 2. All 6 kill-switch gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`)
 3. 4 kill-switch invariants HOLD: observability→control plane, authority election, artifact integrity, verifier authority drift
 4. Gate fix committed via PR #63 (diagnostics-consumer allow-list producer correction)
-5. Implementation work not yet claimed — boundary hardening is the active workstream
+5. Service-backed verification expansion COMPLETE (SHA `a44febed`)
+6. Formal transition complete: `CURRENT_PHASE=13` at `7088fd71` (PR #68, CI run `23694185775`)
 
 ### 3.5 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
@@ -138,26 +140,29 @@ Interpretation:
 4. Phase-12 local closure evidence: `run-run-local-phase12c-closure-2026-03-11` at `01d1cb5c` (20/20 PASS).
 5. Phase-12 remote confirmation: `ci-freeze` run `23099070483` on PR #62 (success).
 6. Phase-12 official closure tag: `phase12-official-closure-confirmed` at `1d79d4b1`.
-7. `CURRENT_PHASE=12` — formal transition executed at `0adb2a84`.
+7. `CURRENT_PHASE=13` — formal transition executed at `7088fd71` (PR #68, CI run `23694185775`).
 8. Phase-13 kill-switch gates: all 6 PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`).
+9. Phase-13 formal transition tag: `phase13-formal-transition` at `7088fd71`.
 
 ## 4) Current Risk Concentration
 1. Executable user-leaf rule current tree'de artik live local deterministic gate ile korunur; bu rule broader `Phase10-A2` strict/global authority ile ayni sey degildir.
 2. Broader `Phase10-A2` strict/global runtime authority halen primary CI full-suite evidence bekleyen ayrik bir truth surface'tir.
 3. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
-4. ✅ `CURRENT_PHASE=12` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
+4. ✅ `CURRENT_PHASE=13` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
 5. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
-6. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+6. ✅ Phase-13 service-backed verification expansion COMPLETE.
+7. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
 
 ## 5) Roadmap Decision
 
 ### 5.1 Immediate
 1. ✅ Dedicated official closure tag olusturuldu (`phase10-phase11-official-closure`, `phase12-official-closure-confirmed`)
 2. ✅ Historical docs current-truth notlari `Phase-12` CLOSED durumuna hizalandi
-3. ✅ `CURRENT_PHASE=12` formal transition tamamlandi
+3. ✅ `CURRENT_PHASE=13` formal transition tamamlandi (PR #68, CI run `23694185775`)
 4. ✅ Phase-12 remote `ci-freeze` confirmation tamamlandi (PR #62, run `23099070483`)
 5. ✅ Phase-13 kill-switch gate suite 6/6 PASS (PR #63, tag `phase13-kill-switch-gates-pass`)
-6. Phase-13 boundary hardening devam ediyor — implementation workstream'leri Architecture Map §4'e gore
+6. ✅ Phase-13 service-backed verification expansion COMPLETE (SHA `a44febed`)
+7. Phase-13 boundary hardening devam ediyor — implementation workstream'leri Architecture Map §4'e gore
 
 ### 5.2 Near Term
 1. Phase-13 Architecture Map §4 workstream'lerini sirayla uygula: service expansion → verifier federation → context propagation → trust registry propagation → replicated verification boundary
@@ -189,6 +194,9 @@ Phase-13 kill-switch gates icin saglananlar:
 1. All 6 kill-switch gates `PASS` at `0ec4bb5e`
 2. Tag `phase13-kill-switch-gates-pass` minted
 3. Gate fix PR #63 merged (diagnostics-consumer allow-list producer correction)
+4. Service-backed verification expansion COMPLETE (SHA `a44febed`)
+5. Formal transition: `CURRENT_PHASE=13` at `7088fd71` (PR #68, CI run `23694185775`)
+6. Tag `phase13-formal-transition` minted
 
 ## References
 - `README.md`
@@ -204,4 +212,4 @@ Phase-13 kill-switch gates icin saglananlar:
 
 ---
 **Son Guncelleme:** 2026-03-28
-**Guncelleme Yontemi:** official closure truth surfaces + worktree-local Ring3 executable user-leaf rule authority split + roadmap truth surface alignment
+**Guncelleme Yontemi:** Phase-13 formal transition sync — CURRENT_PHASE=13, tag phase13-formal-transition
