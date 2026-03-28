@@ -6,11 +6,19 @@ usage() {
 Usage:
   tools/ci/summarize.sh --run-dir evidence/run-<id>
   tools/ci/summarize.sh --run-dir evidence/run-<id> --require-kill-switch-completeness
+  tools/ci/summarize.sh --run-dir evidence/run-<id> --show-kill-switch-summary
+
+Options:
+  --require-kill-switch-completeness  Fail if kill-switch gates are not all discovered.
+                                      Also enables kill-switch summary output.
+  --show-kill-switch-summary          Print kill-switch summary to stdout (without failing
+                                      on incomplete coverage). Used by ci-kill-switch-phase13.
 EOF
 }
 
 RUN_DIR=""
 REQUIRE_KILL_SWITCH_COMPLETENESS=0
+SHOW_KILL_SWITCH_SUMMARY=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --run-dir)
@@ -19,6 +27,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --require-kill-switch-completeness)
       REQUIRE_KILL_SWITCH_COMPLETENESS=1
+      SHOW_KILL_SWITCH_SUMMARY=1
+      shift 1
+      ;;
+    --show-kill-switch-summary)
+      SHOW_KILL_SWITCH_SUMMARY=1
       shift 1
       ;;
     -h|--help)
@@ -48,6 +61,6 @@ fi
 
 echo "summary: ${RUN_DIR}/reports/summary.json"
 echo "kill_switch_summary: ${RUN_DIR}/reports/kill_switch_summary.json"
-if [[ -s "${RUN_DIR}/reports/kill_switch_summary.txt" ]]; then
+if [[ "${SHOW_KILL_SWITCH_SUMMARY}" == "1" ]] && [[ -s "${RUN_DIR}/reports/kill_switch_summary.txt" ]]; then
   cat "${RUN_DIR}/reports/kill_switch_summary.txt"
 fi
