@@ -61,7 +61,7 @@ These rules are enforced by CI gates and MUST NOT be violated:
 ### 3. Ring0 Export Surface
 - Ring0 exports are constitutional surface
 - New exports require ADR (Architecture Decision Record)
-- Export ceiling: 191 symbols (enforced)
+- Export ceiling: 193 symbols (enforced)
 - Violation detection: `make ci-gate-ring0-exports`
 
 ### 4. Evidence Integrity

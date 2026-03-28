@@ -14,7 +14,7 @@
 **Phase-13 Kill-Switch Tag:** `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 **Phase-10B Merge SHA:** `bbe57747` (PR #65 - Docs/sync gate order and pr template)
 **CURRENT_PHASE:** `12` (formal transition at `0adb2a84`)
-**Ring0 Export Ceiling:** `191 symbols` (updated from 165)
+**Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 
 ## Executive Summary
 Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerinden guncel durumu ozetler.
