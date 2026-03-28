@@ -536,6 +536,12 @@ pub fn route_request_with_body(
                     }
                 }
                 "/diagnostics/parity" => serve_json_file(evidence_dir.join("parity_report.json")),
+                "/diagnostics/parity/context-relation" => {
+                    match build_parity_context_relation(evidence_dir) {
+                        Ok(value) => json_response(200, value),
+                        Err(error) => error_response(error),
+                    }
+                }
                 "/diagnostics/authority-suppression" => {
                     serve_json_file(evidence_dir.join("parity_authority_suppression_report.json"))
                 }
@@ -903,14 +909,33 @@ fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, Ser
             .insert(entry.verifier_id.clone());
     }
 
+    // verifier_id → set of context_ids observed across all entries
+    let mut verifier_contexts: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    for entry in &all_entries {
+        verifier_contexts
+            .entry(entry.verifier_id.clone())
+            .or_default()
+            .insert(entry.verification_context_id.clone());
+    }
+
     // Build verifier summary (sorted by verifier_id — BTreeMap guarantees this)
     let verifiers: Vec<Value> = verifier_runs
         .iter()
         .map(|(verifier_id, run_ids)| {
+            let contexts: Vec<&str> = verifier_contexts
+                .get(verifier_id)
+                .map(|s| {
+                    let mut v: Vec<&str> = s.iter().map(String::as_str).collect();
+                    v.sort();
+                    v
+                })
+                .unwrap_or_default();
             json!({
                 "verifier_id": verifier_id,
                 "run_count": run_ids.len(),
                 "entry_count": verifier_entry_count.get(verifier_id).copied().unwrap_or(0),
+                "context_ids": contexts,
             })
         })
         .collect();
@@ -1032,6 +1057,111 @@ fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, Servic
             "fingerprints_with_multiple_contexts": fingerprints_with_context_drift.len(),
             "fingerprints": fingerprints_with_context_drift,
         },
+    }))
+}
+
+/// Parity context-relation: for each run pair in the parity report, annotate
+/// whether the two runs share the same context, have different contexts, or
+/// context information is unavailable. Diagnostic only — no authority.
+fn build_parity_context_relation(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let parity_path = evidence_dir.join("parity_report.json");
+    let parity = load_required_run_json_artifact::<Value>(&parity_path, "invalid_parity_report")?;
+
+    // Build run_id → context_id map (fail-open per run)
+    let mut run_context: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
+
+    if let Ok(entries) = fs::read_dir(evidence_dir) {
+        for entry in entries.flatten() {
+            let run_dir = entry.path();
+            if !run_dir.is_dir() {
+                continue;
+            }
+            let run_id = entry.file_name().to_string_lossy().to_string();
+            if !is_safe_path_segment(&run_id) {
+                continue;
+            }
+            let ctx_path = run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+            if !ctx_path.is_file() {
+                continue;
+            }
+            if let Ok(ctx_json) =
+                load_required_run_json_artifact::<Value>(&ctx_path, "skip")
+            {
+                if let Some(ctx_id) =
+                    ctx_json.get("verification_context_id").and_then(Value::as_str)
+                {
+                    run_context.insert(run_id, ctx_id.to_string());
+                }
+            }
+        }
+    }
+
+    // Annotate pairs from parity report
+    let pairs = parity
+        .get("pairs")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    let annotated: Vec<Value> = pairs
+        .iter()
+        .map(|pair| {
+            let run_a = pair.get("run_a").and_then(Value::as_str).unwrap_or("");
+            let run_b = pair.get("run_b").and_then(Value::as_str).unwrap_or("");
+            let ctx_a = run_context.get(run_a);
+            let ctx_b = run_context.get(run_b);
+
+            let context_relation = match (ctx_a, ctx_b) {
+                (Some(a), Some(b)) if a == b => "same",
+                (Some(_), Some(_)) => "different",
+                _ => "unknown",
+            };
+
+            let mut annotated_pair = pair.clone();
+            if let Value::Object(ref mut map) = annotated_pair {
+                map.insert(
+                    "context_relation".to_string(),
+                    Value::String(context_relation.to_string()),
+                );
+                if let Some(ctx_id) = ctx_a {
+                    map.insert(
+                        "context_id_run_a".to_string(),
+                        Value::String(ctx_id.clone()),
+                    );
+                }
+                if let Some(ctx_id) = ctx_b {
+                    map.insert(
+                        "context_id_run_b".to_string(),
+                        Value::String(ctx_id.clone()),
+                    );
+                }
+            }
+            annotated_pair
+        })
+        .collect();
+
+    let same_count = annotated
+        .iter()
+        .filter(|p| p.get("context_relation").and_then(Value::as_str) == Some("same"))
+        .count();
+    let different_count = annotated
+        .iter()
+        .filter(|p| p.get("context_relation").and_then(Value::as_str) == Some("different"))
+        .count();
+    let unknown_count = annotated
+        .iter()
+        .filter(|p| p.get("context_relation").and_then(Value::as_str) == Some("unknown"))
+        .count();
+
+    Ok(json!({
+        "pair_count": annotated.len(),
+        "context_relation_summary": {
+            "same": same_count,
+            "different": different_count,
+            "unknown": unknown_count,
+        },
+        "pairs": annotated,
     }))
 }
 
@@ -1413,12 +1543,29 @@ fn build_fingerprint_boundary_diagnostics(
     matched.sort_by(|a, b| a.0.cmp(&b.0));
     let run_ids: Vec<String> = matched.iter().map(|(id, _)| id.clone()).collect();
 
+    // Collect context_ids for this fingerprint (fail-open per run)
+    let mut context_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for (_, run_dir) in &matched {
+        let ctx_path = run_dir.join(VERIFICATION_CONTEXT_OBJECT_RELATIVE_PATH);
+        if !ctx_path.is_file() {
+            continue;
+        }
+        if let Ok(ctx_json) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") {
+            if let Some(ctx_id) = ctx_json.get("verification_context_id").and_then(Value::as_str) {
+                context_ids.insert(ctx_id.to_string());
+            }
+        }
+    }
+    let context_ids_sorted: Vec<&str> = context_ids.iter().map(String::as_str).collect();
+
     let projection = collect_boundary_projection_for_runs(request_fingerprint, &matched)?;
 
     serde_json::to_value(json!({
         "request_fingerprint": request_fingerprint,
         "run_count": run_ids.len(),
         "run_ids": run_ids,
+        "context_ids": context_ids_sorted,
+        "context_count": context_ids.len(),
         "verdict_consistency": projection.verdict_consistency,
         "context_hash_consistency": projection.context_hash_consistency,
         "registry_hash_consistency": projection.registry_hash_consistency,
@@ -3272,6 +3419,18 @@ mod tests {
             run_dir,
             "context/verification_context_object.json",
             &obj.to_string(),
+        );
+    }
+
+    fn write_manifest_simple(run_dir: &PathBuf, fingerprint: &str, verdict: &str) {
+        write_artifact(
+            run_dir,
+            "proofd_run_manifest.json",
+            &serde_json::json!({
+                "run_id": run_dir.file_name().unwrap_or_default().to_string_lossy(),
+                "request_fingerprint": fingerprint,
+                "verdict": verdict
+            }).to_string(),
         );
     }
 
@@ -6721,6 +6880,131 @@ mod tests {
                 "forbidden field '{field}' found in global context response"
             );
         }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/fingerprints/{fp} — context_ids in response ─────────────
+    #[test]
+    fn fingerprints_endpoint_includes_context_ids() {
+        let dir = temp_dir();
+        let fp = "sha256:".to_string() + &"a".repeat(64);
+        for (run_id, ctx_id) in [("run-a", "ctx-1"), ("run-b", "ctx-2")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_manifest_simple(&run_dir, &fp, "PASS");
+            write_context_object_simple(&run_dir, ctx_id);
+        }
+
+        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp}"), &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let ctx_ids: Vec<&str> = body
+            .get("context_ids")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(ctx_ids.len(), 2);
+        assert_eq!(body.get("context_count").and_then(|v| v.as_u64()), Some(2));
+        // sorted
+        let mut sorted = ctx_ids.clone();
+        sorted.sort();
+        assert_eq!(ctx_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — context_ids in verifier entries ────────────
+    #[test]
+    fn global_federation_endpoint_includes_context_ids_per_verifier() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_diversity_ledger(&run_dir, "run-a", "verifier-1");
+
+        let response = route_request("GET", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let verifiers = body.get("verifiers").and_then(|v| v.as_array()).unwrap();
+        assert!(!verifiers.is_empty());
+        // Each verifier entry must have context_ids field
+        for v in verifiers {
+            assert!(
+                v.get("context_ids").is_some(),
+                "verifier entry missing context_ids field"
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/parity/context-relation — annotates pairs ───────────────
+    #[test]
+    fn parity_context_relation_annotates_same_context() {
+        let dir = temp_dir();
+        // Two runs with same context
+        for run_id in ["run-a", "run-b"] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_context_object_simple(&run_dir, "ctx-shared");
+        }
+        // Write a parity report with one pair
+        write_artifact(
+            &dir,
+            "parity_report.json",
+            r#"{"pairs":[{"run_a":"run-a","run_b":"run-b","status":"PARITY_MATCH"}]}"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/parity/context-relation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let pairs = body.get("pairs").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(
+            pairs[0].get("context_relation").and_then(|v| v.as_str()),
+            Some("same")
+        );
+        assert_eq!(
+            body.get("context_relation_summary")
+                .and_then(|v| v.get("same"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/parity/context-relation — different context ─────────────
+    #[test]
+    fn parity_context_relation_annotates_different_context() {
+        let dir = temp_dir();
+        let run_dir_a = dir.join("run-a");
+        fs::create_dir_all(&run_dir_a).unwrap();
+        write_context_object_simple(&run_dir_a, "ctx-1");
+        let run_dir_b = dir.join("run-b");
+        fs::create_dir_all(&run_dir_b).unwrap();
+        write_context_object_simple(&run_dir_b, "ctx-2");
+        write_artifact(
+            &dir,
+            "parity_report.json",
+            r#"{"pairs":[{"run_a":"run-a","run_b":"run-b","status":"PARITY_VERDICT_MISMATCH"}]}"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/parity/context-relation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let pairs = body.get("pairs").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(
+            pairs[0].get("context_relation").and_then(|v| v.as_str()),
+            Some("different")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/parity/context-relation — 404 when no parity report ─────
+    #[test]
+    fn parity_context_relation_404_when_no_parity_report() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/parity/context-relation", &dir);
+        assert_eq!(response.status_code, 404);
         let _ = fs::remove_dir_all(&dir);
     }
 }
