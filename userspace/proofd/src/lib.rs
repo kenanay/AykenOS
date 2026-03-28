@@ -558,6 +558,10 @@ pub fn route_request_with_body(
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
                 },
+                "/diagnostics/federation" => match build_global_federation_diagnostics(evidence_dir) {
+                    Ok(value) => json_response(200, value),
+                    Err(error) => error_response(error),
+                },
                 _ if target.path.starts_with("/diagnostics/incidents/") => {
                     let incident_id = target
                         .path
@@ -837,6 +841,91 @@ fn build_run_federation_diagnostics(run_id: &str, run_dir: &Path) -> Result<Valu
     };
 
     serde_json::to_value(&projection).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+/// Global federation diagnostics: aggregate verifier topology across all runs.
+/// Scans all run directories, loads diversity ledgers, and produces a system-level
+/// view of verifier distribution. Read-only, deterministic, non-authoritative.
+fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let entries_iter = fs::read_dir(evidence_dir)
+        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+
+    // Aggregate entries across all runs (fail-open per run)
+    let mut all_entries: Vec<VerificationDiversityLedgerEntry> = Vec::new();
+    let mut run_count = 0usize;
+    let mut runs_with_ledger = 0usize;
+
+    let mut run_dirs: Vec<PathBuf> = entries_iter
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    run_dirs.sort();
+
+    for run_dir in &run_dirs {
+        if !is_safe_path_segment(
+            &run_dir.file_name().unwrap_or_default().to_string_lossy(),
+        ) {
+            continue;
+        }
+        run_count += 1;
+        let ledger_path = run_dir.join(VERIFICATION_DIVERSITY_LEDGER_FILE);
+        if let Ok(entries) = load_diversity_ledger_entries(&ledger_path) {
+            runs_with_ledger += 1;
+            all_entries.extend(entries);
+        }
+    }
+
+    // verifier_id → { run_ids (unique), entry_count }
+    let mut verifier_runs: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    let mut verifier_entry_count: std::collections::BTreeMap<String, usize> =
+        std::collections::BTreeMap::new();
+    // fingerprint_id → unique verifier_ids
+    let mut fp_verifiers: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+
+    for entry in &all_entries {
+        verifier_runs
+            .entry(entry.verifier_id.clone())
+            .or_default()
+            .insert(entry.run_id.clone());
+        *verifier_entry_count
+            .entry(entry.verifier_id.clone())
+            .or_default() += 1;
+        fp_verifiers
+            .entry(entry.verification_context_id.clone())
+            .or_default()
+            .insert(entry.verifier_id.clone());
+    }
+
+    // Build verifier summary (sorted by verifier_id — BTreeMap guarantees this)
+    let verifiers: Vec<Value> = verifier_runs
+        .iter()
+        .map(|(verifier_id, run_ids)| {
+            json!({
+                "verifier_id": verifier_id,
+                "run_count": run_ids.len(),
+                "entry_count": verifier_entry_count.get(verifier_id).copied().unwrap_or(0),
+            })
+        })
+        .collect();
+
+    // Unique fingerprint count (by verification_context_id as proxy)
+    let fingerprint_count = fp_verifiers.len();
+
+    Ok(json!({
+        "verifier_count": verifiers.len(),
+        "verifiers": verifiers,
+        "runs": {
+            "total": run_count,
+            "with_ledger": runs_with_ledger,
+        },
+        "fingerprints": {
+            "total": fingerprint_count,
+        },
+        "total_ledger_entries": all_entries.len(),
+    }))
 }
 
 fn build_run_context_diagnostics(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
@@ -3035,6 +3124,31 @@ mod tests {
             fs::create_dir_all(parent).expect("create artifact parent");
         }
         fs::write(path, body).expect("write artifact");
+    }
+
+    fn write_diversity_ledger(run_dir: &PathBuf, run_id: &str, verifier_id: &str) {
+        let entry = serde_json::json!({
+            "entries": [{
+                "ledger_version": 1,
+                "entry_id": format!("entry-{run_id}"),
+                "run_id": run_id,
+                "timestamp_unix_ns": 1000000000u64,
+                "subject_bundle_id": "bundle-test",
+                "verification_context_id": format!("ctx-{run_id}"),
+                "verification_node_id": "node-test",
+                "verifier_id": verifier_id,
+                "authority_chain_id": "chain-test",
+                "lineage_id": "lineage-test",
+                "execution_cluster_id": null,
+                "verdict": "PASS",
+                "receipt_hash": "sha256:aabbcc"
+            }]
+        });
+        write_artifact(
+            run_dir,
+            "verification_diversity_ledger.json",
+            &entry.to_string(),
+        );
     }
 
     fn write_json<T>(path: &std::path::Path, value: &T)
@@ -6251,6 +6365,106 @@ mod tests {
                 obj.contains_key(*key),
                 "Required projection field '{}' is missing from response",
                 key
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — global view ────────────────────────────────
+    #[test]
+    fn global_federation_endpoint_aggregates_all_runs() {
+        let dir = temp_dir();
+        // Two runs with diversity ledgers
+        for (run_id, verifier_id) in [("run-a", "verifier-1"), ("run-b", "verifier-2")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_diversity_ledger(&run_dir, run_id, verifier_id);
+        }
+        // One run without ledger (fail-open)
+        let run_dir_c = dir.join("run-c");
+        fs::create_dir_all(&run_dir_c).unwrap();
+
+        let response = route_request("GET", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(body.get("verifier_count").and_then(|v| v.as_u64()), Some(2));
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            Some(3)
+        );
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("with_ledger")).and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — empty evidence dir ──────────────────────────
+    #[test]
+    fn global_federation_endpoint_empty_dir_returns_zero_counts() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(body.get("verifier_count").and_then(|v| v.as_u64()), Some(0));
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            Some(0)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — verifiers sorted ───────────────────────────
+    #[test]
+    fn global_federation_endpoint_verifiers_sorted() {
+        let dir = temp_dir();
+        for (run_id, verifier_id) in [("run-a", "verifier-z"), ("run-b", "verifier-a"), ("run-c", "verifier-m")] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_diversity_ledger(&run_dir, run_id, verifier_id);
+        }
+
+        let response = route_request("GET", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let verifier_ids: Vec<&str> = body
+            .get("verifiers")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.get("verifier_id").and_then(|v| v.as_str()))
+            .collect();
+        let mut sorted = verifier_ids.clone();
+        sorted.sort();
+        assert_eq!(verifier_ids, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — POST → 405 ─────────────────────────────────
+    #[test]
+    fn global_federation_endpoint_post_method_not_allowed() {
+        let dir = temp_dir();
+        let response = route_request("POST", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/federation — no forbidden fields ─────────────────────────
+    #[test]
+    fn global_federation_endpoint_no_forbidden_fields() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_diversity_ledger(&run_dir, "run-a", "verifier-1");
+
+        let response = route_request("GET", "/diagnostics/federation", &dir);
+        assert_eq!(response.status_code, 200);
+        let body_str = String::from_utf8_lossy(&response.body);
+        for field in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body_str.contains(field),
+                "forbidden field '{field}' found in global federation response"
             );
         }
         let _ = fs::remove_dir_all(&dir);
