@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 6e71668d96e1347d59638533529744623f1e858a9ea6855bf1917ba08206621a # shrinks to call_count = 1
+cc be04bb67998079161aef4c082ebfa6b94ecf5bf1aa4960456f592086bb67764c # shrinks to producer_ids = ["bj50-55b2j-60-", "g", "g7-f-xw7c3--", "ouu5a-7s64", "qd", "v4j---q2u46w-t5-", "z"], call_count = 3
