@@ -2527,7 +2527,12 @@ proc_t *proc_create_user_process(const char *name,
 
     // MVP-1: Allocate and map per-process mailbox at fixed VA (0x700000)
     // This enables Ring3 → Ring0 scheduler bridge communication
-    uint64_t mb_pa = phys_alloc_frame();
+    /*
+     * Gate-4 publish/accept proof reads this surface back under a non-kernel
+     * CR3 after Ring3 has authored it. Keep the mailbox leaf out of the
+     * low-phys frame class for the same MMU-visible reason as user text.
+     */
+    uint64_t mb_pa = phys_alloc_frame_high();
     if (!mb_pa) {
         outb(0xE9, (uint8_t)'6');
         goto fail;
