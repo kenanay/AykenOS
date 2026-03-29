@@ -1,0 +1,45 @@
+{
+  "schema": "ayken-closure-index/1.0",
+  "closure_type": "official_closure_candidate",
+  "phase": 13,
+  "tag": "phase13-official-closure",
+  "current_phase_after_closure": 14,
+  "authority": "ARCHITECTURE_FREEZE.md",
+  "closure_state": "LOCAL_CLOSURE_READY",
+  "closure_date_utc": null,
+  "status_surface": "pending_remote_confirmation",
+  "evidence_chain": {
+    "phase13": {
+      "run_id": "run-local-p13-kill-switch-20260315T000051Z",
+      "run_path": "evidence/run-local-p13-kill-switch-20260315T000051Z",
+      "evidence_sha": "40158350",
+      "verdict": "PASS",
+      "time_utc": "2026-03-15T00:00:51Z",
+      "gates": {
+        "observability-routing-separation": "PASS",
+        "convergence-non-election-boundary": "PASS",
+        "graph-non-authoritative-contract": "PASS",
+        "diagnostics-consumer-non-authoritative-contract": "PASS",
+        "diagnostics-callsite-correlation": "PASS",
+        "verifier-reputation-prohibition": "PASS"
+      }
+    }
+  },
+  "remote_ci_confirmation": {
+    "workflow": "ci-freeze",
+    "run_id": "PENDING",
+    "result": "PENDING"
+  },
+  "closure_manifest": "reports/phase13_official_closure_candidate/closure_manifest.json",
+  "manifest_sha256": "18f80a23a33fdc994feac346dcff283f03e957e1f455fe515e3fadf4d76e2734",
+  "evidence_root_hash": "b4efa980aa229106553c511638cab6229254a12565ec495802a7152a0fdc059a",
+  "workstreams_completed": [
+    "service-expansion",
+    "verifier-federation",
+    "context-propagation",
+    "trust-registry-propagation",
+    "replicated-verification-boundary"
+  ],
+  "current_phase_file": "docs/roadmap/CURRENT_PHASE",
+  "current_phase_value": "CURRENT_PHASE=13"
+}
