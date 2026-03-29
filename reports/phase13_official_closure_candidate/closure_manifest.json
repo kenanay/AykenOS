@@ -1,0 +1,60 @@
+{
+  "boundary_invariants": [
+    "verified proof != replay admission",
+    "replicated verification remains a Phase-13 bridge concern",
+    "proofd = verification and diagnostics service",
+    "service != authority",
+    "parity != consensus",
+    "system computes truth; it does not choose truth"
+  ],
+  "closure_attestation": {
+    "attestation_state": "UNSIGNED",
+    "reason": "attestor_key_material_not_provided"
+  },
+  "closure_class": "official_closure_candidate",
+  "closure_state": "LOCAL_CLOSURE_READY",
+  "current_phase_pointer": "13",
+  "evidence_index_path": "reports/phase13_official_closure_candidate/evidence_index.json",
+  "evidence_index_sha256": "a942947e16b8348462cec81e32e2495575dd8dc38c2bef2ef50ca8d4b26c6323",
+  "evidence_root_algorithm": "sha256_path_digest_tree_v1",
+  "evidence_root_hash": "b4efa980aa229106553c511638cab6229254a12565ec495802a7152a0fdc059a",
+  "gate_policy": {
+    "all_required_gates_passed": true,
+    "required_gate_count": 6,
+    "required_gates": [
+      "observability-routing-separation",
+      "convergence-non-election-boundary",
+      "graph-non-authoritative-contract",
+      "diagnostics-consumer-non-authoritative-contract",
+      "diagnostics-callsite-correlation",
+      "verifier-reputation-prohibition"
+    ]
+  },
+  "generated_at_utc": "2026-03-29T10:01:33Z",
+  "manifest_digest_algorithm": "sha256",
+  "manifest_hash_excluded_fields": [
+    "manifest_sha256",
+    "closure_attestation"
+  ],
+  "manifest_sha256": "18f80a23a33fdc994feac346dcff283f03e957e1f455fe515e3fadf4d76e2734",
+  "official_closure_prerequisites_remaining": [
+    "mint_dedicated_closure_tag",
+    "obtain_remote_official_confirmation",
+    "execute_formal_phase_transition"
+  ],
+  "phase": "13",
+  "recommended_tag": "phase13-official-closure",
+  "run": {
+    "evidence_run_dir": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z",
+    "git_sha": "1783b4c748a96fb403d9e3ce1a74061978a36fbe",
+    "run_id": "run-local-p13-kill-switch-20260315T000051Z"
+  },
+  "summary_note_path": "reports/phase13_official_closure_candidate/README.md",
+  "workstreams_completed": [
+    "service-expansion",
+    "verifier-federation",
+    "context-propagation",
+    "trust-registry-propagation",
+    "replicated-verification-boundary"
+  ]
+}

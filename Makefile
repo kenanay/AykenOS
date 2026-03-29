@@ -1428,6 +1428,23 @@ ci-kill-switch-phase13: \
 	@$(MAKE) ci-kill-switch-summary RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "Phase-13 kill-switch gates: ALL PASS"
 
+# Phase-13 official closure prep
+# Generates closure manifest + evidence index from a ci-kill-switch-phase13 run.
+# Usage: make phase13-official-closure-prep RUN_ID=<run-id>
+PHASE13_CLOSURE_RUN_DIR ?= $(EVIDENCE_RUN_DIR)
+PHASE13_CLOSURE_OUTPUT_DIR ?= reports/phase13_official_closure_candidate
+
+.PHONY: phase13-official-closure-prep
+phase13-official-closure-prep:
+	@echo "== PHASE-13 OFFICIAL CLOSURE PREP =="
+	@echo "run_dir: $(PHASE13_CLOSURE_RUN_DIR)"
+	@echo "output_dir: $(PHASE13_CLOSURE_OUTPUT_DIR)"
+	@python3 tools/ci/generate_phase13_closure_bundle.py \
+		--run-dir "$(PHASE13_CLOSURE_RUN_DIR)" \
+		--output-dir "$(PHASE13_CLOSURE_OUTPUT_DIR)" \
+		--current-phase-pointer 13
+	@echo "OK: closure candidate at $(PHASE13_CLOSURE_OUTPUT_DIR)"
+
 ci-freeze: PHASE10C_C2_STRICT=1
 ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13
 ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13
