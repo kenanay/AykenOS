@@ -572,6 +572,10 @@ pub fn route_request_with_body(
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
                 },
+                "/diagnostics/trust" => match build_global_trust_diagnostics(evidence_dir) {
+                    Ok(value) => json_response(200, value),
+                    Err(error) => error_response(error),
+                },
                 _ if target.path.starts_with("/diagnostics/incidents/") => {
                     let incident_id = target
                         .path
@@ -1056,6 +1060,106 @@ fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, Servic
         "context_drift": {
             "fingerprints_with_multiple_contexts": fingerprints_with_context_drift.len(),
             "fingerprints": fingerprints_with_context_drift,
+        },
+    }))
+}
+
+/// Global trust diagnostics: aggregate producer registry topology across all runs.
+/// Reads context/registry_snapshot.json from each run (fail-open per run).
+/// Shows which producers appear, their entry counts, and registry version distribution.
+/// Read-only, deterministic, non-authoritative — trust does not affect verdict.
+fn build_global_trust_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let entries_iter = fs::read_dir(evidence_dir)
+        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+
+    let mut run_dirs: Vec<PathBuf> = entries_iter
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    run_dirs.sort();
+
+    // producer_id → set of run_ids where this producer appears
+    let mut producer_runs: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    // registry_version → count of runs
+    let mut version_counts: std::collections::BTreeMap<u32, usize> =
+        std::collections::BTreeMap::new();
+    // registry_snapshot_hash → set of run_ids (for hash consistency)
+    let mut hash_runs: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+
+    let mut run_count = 0usize;
+    let mut runs_with_registry = 0usize;
+
+    for run_dir in &run_dirs {
+        let run_id_os = run_dir.file_name().unwrap_or_default().to_string_lossy();
+        if !is_safe_path_segment(&run_id_os) {
+            continue;
+        }
+        let run_id = run_id_os.to_string();
+        run_count += 1;
+
+        let reg_path = run_dir.join(CONTEXT_REGISTRY_SNAPSHOT_RELATIVE_PATH);
+        if !reg_path.is_file() {
+            continue;
+        }
+        let Ok(registry) =
+            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        else {
+            continue;
+        };
+        runs_with_registry += 1;
+
+        *version_counts
+            .entry(registry.registry_version)
+            .or_default() += 1;
+
+        hash_runs
+            .entry(registry.registry_snapshot_hash.clone())
+            .or_default()
+            .insert(run_id.clone());
+
+        for producer_id in registry.producers.keys() {
+            producer_runs
+                .entry(producer_id.clone())
+                .or_default()
+                .insert(run_id.clone());
+        }
+    }
+
+    // Build producer summary (sorted by producer_id — BTreeMap guarantees this)
+    let producers: Vec<Value> = producer_runs
+        .iter()
+        .map(|(producer_id, run_ids)| {
+            json!({
+                "producer_id": producer_id,
+                "run_count": run_ids.len(),
+            })
+        })
+        .collect();
+
+    // Registry version distribution
+    let version_distribution: Vec<Value> = version_counts
+        .iter()
+        .map(|(version, count)| json!({ "registry_version": version, "run_count": count }))
+        .collect();
+
+    // Hash consistency: multiple distinct hashes = registry drift
+    let distinct_hash_count = hash_runs.len();
+    let registry_hash_consistent = distinct_hash_count <= 1;
+
+    Ok(json!({
+        "producer_count": producers.len(),
+        "producers": producers,
+        "runs": {
+            "total": run_count,
+            "with_registry": runs_with_registry,
+        },
+        "registry_version_distribution": version_distribution,
+        "registry_hash_consistency": {
+            "consistent": registry_hash_consistent,
+            "distinct_hash_count": distinct_hash_count,
         },
     }))
 }
@@ -7005,6 +7109,116 @@ mod tests {
         let dir = temp_dir();
         let response = route_request("GET", "/diagnostics/parity/context-relation", &dir);
         assert_eq!(response.status_code, 404);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/trust — global producer registry topology ───────────────
+    #[test]
+    fn global_trust_endpoint_aggregates_producers() {
+        let dir = temp_dir();
+        // Write two runs with registry snapshots
+        for run_id in ["run-a", "run-b"] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_artifact(
+                &run_dir,
+                "context/registry_snapshot.json",
+                r#"{"registry_format_version":1,"registry_version":3,"registry_snapshot_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","producers":{"producer-1":{"active_pubkey_ids":[],"revoked_pubkey_ids":[],"superseded_pubkey_ids":[],"public_keys":{}}}}"#,
+            );
+        }
+        // One run without registry (fail-open)
+        let run_dir_c = dir.join("run-c");
+        fs::create_dir_all(&run_dir_c).unwrap();
+
+        let response = route_request("GET", "/diagnostics/trust", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(body.get("producer_count").and_then(|v| v.as_u64()), Some(1));
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            Some(3)
+        );
+        assert_eq!(
+            body.get("runs").and_then(|v| v.get("with_registry")).and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/trust — empty dir ───────────────────────────────────────
+    #[test]
+    fn global_trust_endpoint_empty_dir_returns_zero_counts() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/trust", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(body.get("producer_count").and_then(|v| v.as_u64()), Some(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/trust — hash consistency ────────────────────────────────
+    #[test]
+    fn global_trust_endpoint_detects_registry_hash_inconsistency() {
+        let dir = temp_dir();
+        for (run_id, hash) in [("run-a", "a".repeat(64)), ("run-b", "b".repeat(64))] {
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).unwrap();
+            write_artifact(
+                &run_dir,
+                "context/registry_snapshot.json",
+                &format!(r#"{{"registry_format_version":1,"registry_version":1,"registry_snapshot_hash":"{hash}","producers":{{}}}}"#),
+            );
+        }
+
+        let response = route_request("GET", "/diagnostics/trust", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("consistent"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            body.get("registry_hash_consistency")
+                .and_then(|v| v.get("distinct_hash_count"))
+                .and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/trust — POST → 405 ──────────────────────────────────────
+    #[test]
+    fn global_trust_endpoint_post_method_not_allowed() {
+        let dir = temp_dir();
+        let response = route_request("POST", "/diagnostics/trust", &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/trust — no forbidden fields ──────────────────────────────
+    #[test]
+    fn global_trust_endpoint_no_forbidden_fields() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-a");
+        fs::create_dir_all(&run_dir).unwrap();
+        write_artifact(
+            &run_dir,
+            "context/registry_snapshot.json",
+            r#"{"registry_format_version":1,"registry_version":1,"registry_snapshot_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","producers":{}}"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/trust", &dir);
+        assert_eq!(response.status_code, 200);
+        let body_str = String::from_utf8_lossy(&response.body);
+        for field in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body_str.contains(field),
+                "forbidden field '{field}' found in global trust response"
+            );
+        }
         let _ = fs::remove_dir_all(&dir);
     }
 }
