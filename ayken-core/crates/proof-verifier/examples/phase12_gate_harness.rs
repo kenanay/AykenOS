@@ -3538,10 +3538,17 @@ fn build_replicated_verification_boundary_gate_artifacts(out_dir: &Path) -> Resu
         .filter(|phrase| phase13_map.contains(**phrase))
         .map(|phrase| phrase.to_string())
         .collect::<Vec<_>>();
-    let disallowed_service_routes = ["/replay", "/consensus", "/cluster", "/federation"];
+    let disallowed_service_routes = ["/replay", "/consensus", "/cluster"];
+    // Note: "/federation" is allowed under /diagnostics/federation (Phase-13 diagnostics surface).
+    // The boundary prohibits a top-level /federation authority route, not diagnostics sub-paths.
     let exposed_disallowed_routes = disallowed_service_routes
         .iter()
-        .filter(|route| proofd_lib.contains(**route))
+        .filter(|route| {
+            // Match as a standalone route prefix, not as part of /diagnostics/*
+            let lib = &proofd_lib;
+            lib.contains(&format!("\"{}\"", route))
+                || lib.contains(&format!("\"{}/ ", route))
+        })
         .map(|route| route.to_string())
         .collect::<Vec<_>>();
 
