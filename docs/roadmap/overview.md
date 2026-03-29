@@ -162,13 +162,18 @@ Interpretation:
 4. ✅ Phase-12 remote `ci-freeze` confirmation tamamlandi (PR #62, run `23099070483`)
 5. ✅ Phase-13 kill-switch gate suite 6/6 PASS (PR #63, tag `phase13-kill-switch-gates-pass`)
 6. ✅ Phase-13 service-backed verification expansion COMPLETE (SHA `a44febed`)
-7. Phase-13 boundary hardening devam ediyor — implementation workstream'leri Architecture Map §4'e gore
+7. ✅ Phase-13 Architecture Map §4 workstream'leri COMPLETE (PR #71–#77):
+   - service expansion, verifier federation, context propagation (global + enrichment),
+     trust registry propagation, replicated verification boundary
 
 ### 5.2 Near Term
-1. Phase-13 Architecture Map §4 workstream'lerini sirayla uygula: service expansion → verifier federation → context propagation → trust registry propagation → replicated verification boundary
-2. Replay determinism stability hardening
-3. `proofd` icin query/service boundary'lerini authority semantics'ten ayri tut
-4. Cross-node verification observability graph'i derived diagnostics olarak koru; consensus topology olarak degil
+1. Phase-13 official closure prep: `make phase13-official-closure-prep`
+2. Phase-13 official closure tag: `phase13-official-closure`
+3. Remote CI confirmation for Phase-13 closure
+4. `CURRENT_PHASE=14` formal transition
+5. Replay determinism stability hardening
+6. `proofd` icin query/service boundary'lerini authority semantics'ten ayri tut
+7. Cross-node verification observability graph'i derived diagnostics olarak koru; consensus topology olarak degil
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
