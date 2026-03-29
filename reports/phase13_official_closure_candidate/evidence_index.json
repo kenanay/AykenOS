@@ -1,0 +1,61 @@
+{
+  "evidence_root_algorithm": "sha256_path_digest_tree_v1",
+  "evidence_root_hash": "b4efa980aa229106553c511638cab6229254a12565ec495802a7152a0fdc059a",
+  "gate_reports": [
+    {
+      "gate": "convergence-non-election-boundary",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/convergence-non-election-boundary/report.json",
+      "sha256": "eba8223b65eaa5570577616bfddffabb9ab75f84dc60d4073592c2b1e20a2a74",
+      "size_bytes": 240,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "diagnostics-callsite-correlation",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/diagnostics-callsite-correlation/report.json",
+      "sha256": "39e87e754ec9fba4abe5e87724fd4699e81ebcce20e012bfac1cd730417e68e0",
+      "size_bytes": 246,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "diagnostics-consumer-non-authoritative-contract",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/diagnostics-consumer-non-authoritative-contract/report.json",
+      "sha256": "98c8c26f529815d50b3543cd17bce98d363d663ba84c8848bc7910e34978e392",
+      "size_bytes": 273,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "graph-non-authoritative-contract",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/graph-non-authoritative-contract/report.json",
+      "sha256": "64de8024764128e10cf82d4099d952666bd61d61dab355d4de4a9b534ebd689d",
+      "size_bytes": 237,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "observability-routing-separation",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/observability-routing-separation/report.json",
+      "sha256": "f9b20190ba80ddc1089147fddae1e5ac46e64def6371574bb4a961de047d3324",
+      "size_bytes": 318,
+      "verdict": "PASS",
+      "violations_count": 0
+    },
+    {
+      "gate": "verifier-reputation-prohibition",
+      "path": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z/gates/verifier-reputation-prohibition/report.json",
+      "sha256": "9cd47e2848fabd2ab34e77f0117a877e7b4c253c3ca7e3507d6066951ec50b90",
+      "size_bytes": 234,
+      "verdict": "PASS",
+      "violations_count": 0
+    }
+  ],
+  "generated_at_utc": "2026-03-29T10:01:33Z",
+  "index_version": 1,
+  "run": {
+    "evidence_run_dir": "/Users/asel/Desktop/AykenOS/evidence/run-local-p13-kill-switch-20260315T000051Z",
+    "git_sha": "1783b4c748a96fb403d9e3ce1a74061978a36fbe",
+    "run_id": "run-local-p13-kill-switch-20260315T000051Z"
+  }
+}
