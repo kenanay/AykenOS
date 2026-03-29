@@ -593,7 +593,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-03-28):**
+**Current Status (2026-03-29):**
 - ✅ All CI gates active and passing (23-gate ci-freeze chain)
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
@@ -601,8 +601,11 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-13 kill-switch gates: 12/12 PASS (`coverage: COMPLETE`)
 - ✅ Phase-13 service-backed verification expansion: COMPLETE (SHA `a44febed`)
 - ✅ Phase-13 formal transition: COMPLETE (CI run `23694185775`, PR #68, tag: `phase13-formal-transition`)
+- ✅ Phase-13 Architecture Map §4 workstreams: COMPLETE (PR #71–#77)
+  - service expansion, verifier federation, context propagation, trust registry propagation, replicated verification boundary
 - ✅ `CURRENT_PHASE=13` formal transition completed (`7088fd71`)
 - ✅ Performance baseline lock committed and active
+- 🔄 Phase-13 official closure prep: pending (`make phase13-official-closure-prep`)
 
 ---
 
@@ -807,7 +810,7 @@ This document is **binding** and **enforceable** through CI gates.
 
 ## 16. Document Control
 
-**Version:** 1.7  
+**Version:** 1.8  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -819,6 +822,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.8 | 2026-03-29 | Kenan AY | Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71-#77); closure prep pending |
 | 1.7 | 2026-03-28 | Kenan AY | Phase-13 formal transition COMPLETE (PR #68, CI run #23694185775); CURRENT_PHASE=13 |
 | 1.6 | 2026-03-28 | Kenan AY | Phase-13 kill-switch 12/12 PASS; service-backed verification expansion COMPLETE; closure prep pending |
 | 1.5 | 2026-03-16 | Kenan AY | CI gate list updated to 23-gate chain; Phase-10/11/12 closure status; Phase-13 kill-switch PASS |
