@@ -576,6 +576,12 @@ pub fn route_request_with_body(
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
                 },
+                "/diagnostics/replicated-boundary" => {
+                    match build_replicated_boundary_status(evidence_dir) {
+                        Ok(value) => json_response(200, value),
+                        Err(error) => error_response(error),
+                    }
+                },
                 _ if target.path.starts_with("/diagnostics/incidents/") => {
                     let incident_id = target
                         .path
@@ -1164,7 +1170,37 @@ fn build_global_trust_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceE
     }))
 }
 
-/// Parity context-relation: for each run pair in the parity report, annotate
+/// Replicated verification boundary status: reports the current boundary state
+/// between proofd diagnostics surface and disallowed Phase-13 routes.
+/// Invariant: verified proof != replay admission.
+/// Read-only, deterministic, non-authoritative.
+fn build_replicated_boundary_status(_evidence_dir: &Path) -> Result<Value, ServiceError> {
+    // Boundary invariants from PHASE13_ARCHITECTURE_MAP.md §4.5
+    // These are static architectural facts, not runtime-computed values.
+    Ok(json!({
+        "boundary_status": "HOLD",
+        "invariants": [
+            "verified proof != replay admission",
+            "replicated verification remains a Phase-13 bridge concern",
+            "proofd = verification and diagnostics service",
+            "automatic replay admission is outside Phase-13 scope"
+        ],
+        "disallowed_routes": ["/replay", "/consensus", "/cluster"],
+        "diagnostics_routes_allowed": [
+            "/diagnostics/runs",
+            "/diagnostics/federation",
+            "/diagnostics/context",
+            "/diagnostics/trust",
+            "/diagnostics/parity",
+            "/diagnostics/incidents",
+            "/diagnostics/fingerprints/{fp}",
+            "/diagnostics/parity/context-relation",
+            "/diagnostics/replicated-boundary"
+        ],
+        "phase": "phase-13",
+        "note": "proofd is a verification and diagnostics service. It does not perform replay execution, consensus arbitration, or cluster coordination.",
+    }))
+}
 /// whether the two runs share the same context, have different contexts, or
 /// context information is unavailable. Diagnostic only — no authority.
 fn build_parity_context_relation(evidence_dir: &Path) -> Result<Value, ServiceError> {
@@ -7217,6 +7253,62 @@ mod tests {
             assert!(
                 !body_str.contains(field),
                 "forbidden field '{field}' found in global trust response"
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/replicated-boundary — boundary status ───────────────────
+    #[test]
+    fn replicated_boundary_endpoint_returns_hold_status() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/replicated-boundary", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("boundary_status").and_then(|v| v.as_str()),
+            Some("HOLD")
+        );
+        // Invariants must be present
+        let invariants = body.get("invariants").and_then(|v| v.as_array()).unwrap();
+        assert!(!invariants.is_empty());
+        // Disallowed routes must not include /diagnostics paths
+        let disallowed: Vec<&str> = body
+            .get("disallowed_routes")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        for route in &disallowed {
+            assert!(
+                !route.starts_with("/diagnostics"),
+                "disallowed route '{route}' must not be a diagnostics path"
+            );
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/replicated-boundary — POST → 405 ────────────────────────
+    #[test]
+    fn replicated_boundary_endpoint_post_method_not_allowed() {
+        let dir = temp_dir();
+        let response = route_request("POST", "/diagnostics/replicated-boundary", &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── /diagnostics/replicated-boundary — no forbidden fields ───────────────
+    #[test]
+    fn replicated_boundary_endpoint_no_forbidden_fields() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/replicated-boundary", &dir);
+        assert_eq!(response.status_code, 200);
+        let body_str = String::from_utf8_lossy(&response.body);
+        for field in super::PHASE13_FORBIDDEN_FIELDS {
+            assert!(
+                !body_str.contains(field),
+                "forbidden field '{field}' found in replicated-boundary response"
             );
         }
         let _ = fs::remove_dir_all(&dir);
