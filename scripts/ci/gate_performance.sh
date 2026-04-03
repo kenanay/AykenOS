@@ -713,10 +713,21 @@ MAILBOX_PHASE_ARBITER_TICKS_ENV="${MAILBOX_PHASE_ARBITER_TICKS}" \
 MAILBOX_PHASE_ARBITER_AVAILABLE_ENV="${MAILBOX_PHASE_ARBITER_AVAILABLE}" \
 MAILBOX_PHASE_HANDOFF_TICKS_ENV="${MAILBOX_PHASE_HANDOFF_TICKS}" \
 MAILBOX_PHASE_HANDOFF_AVAILABLE_ENV="${MAILBOX_PHASE_HANDOFF_AVAILABLE}" \
+PREEMPT_METRICS_TXT_ENV="${PREEMPT_METRICS_TXT}" \
 RESULTS_JSON_ENV="${RESULTS_JSON}" \
 python3 - <<'PY'
 import json
 import os
+
+def load_kv(path: str) -> dict[str, str]:
+    data: dict[str, str] = {}
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            if "=" not in line:
+                continue
+            key, value = line.rstrip("\n").split("=", 1)
+            data[key] = value
+    return data
 
 payload = {
     "boot_time_ms": int(os.environ["BOOT_TIME_MS_ENV"]),
@@ -852,6 +863,53 @@ payload = {
         },
     },
 }
+
+metrics_kv = load_kv(os.environ["PREEMPT_METRICS_TXT_ENV"])
+mailbox_extra_markers = (
+    "arbiter_owner_lookup_enter",
+    "arbiter_owner_lookup_exit",
+    "arbiter_candidate_lookup_enter",
+    "arbiter_candidate_lookup_exit",
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
+)
+mailbox_extra_durations = (
+    ("arbiter_owner_lookup", "arbiter_owner_lookup_enter", "arbiter_owner_lookup_exit"),
+    ("arbiter_candidate_lookup", "arbiter_candidate_lookup_enter", "arbiter_candidate_lookup_exit"),
+)
+mailbox_event_markers = (
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
+)
+
+for name in mailbox_extra_markers:
+    payload["mailbox_phase_breakdown_ticks"]["raw_markers"][name] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{name}_ticks", "0")),
+        "tick_valid": bool(int(metrics_kv.get(f"mailbox_phase_{name}_tick_valid", "0"))),
+    }
+
+for label, start, end in mailbox_extra_durations:
+    payload["mailbox_phase_breakdown_ticks"]["durations"][label] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{label}_ticks", "0")),
+        "available": bool(int(metrics_kv.get(f"mailbox_phase_{label}_available", "0"))),
+    }
+
+payload["mailbox_phase_breakdown_ticks"]["events"] = {}
+for name in mailbox_event_markers:
+    tick_valid = int(metrics_kv.get(f"mailbox_phase_{name}_tick_valid", "0"))
+    payload["mailbox_phase_breakdown_ticks"]["events"][name] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{name}_ticks", "0")),
+        "available": tick_valid in (1, 2),
+    }
+
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:
     json.dump(payload, fh, indent=2, sort_keys=True)
     fh.write("\n")

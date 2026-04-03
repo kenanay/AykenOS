@@ -463,6 +463,16 @@ phases = (
     "validate_exit",
     "arbiter_enter",
     "arbiter_exit",
+    "arbiter_owner_lookup_enter",
+    "arbiter_owner_lookup_exit",
+    "arbiter_candidate_lookup_enter",
+    "arbiter_candidate_lookup_exit",
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
     "handoff_enter",
     "handoff_exit",
 )
@@ -471,6 +481,8 @@ durations = (
     ("extract_enter", "extract_exit", "extract"),
     ("validate_enter", "validate_exit", "validate"),
     ("arbiter_enter", "arbiter_exit", "arbiter"),
+    ("arbiter_owner_lookup_enter", "arbiter_owner_lookup_exit", "arbiter_owner_lookup"),
+    ("arbiter_candidate_lookup_enter", "arbiter_candidate_lookup_exit", "arbiter_candidate_lookup"),
     ("handoff_enter", "handoff_exit", "handoff"),
 )
 

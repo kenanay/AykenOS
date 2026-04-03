@@ -102,6 +102,16 @@ void sched_perf_note_mailbox_validate_enter(void);
 void sched_perf_note_mailbox_validate_exit(void);
 void sched_perf_note_mailbox_arbiter_enter(void);
 void sched_perf_note_mailbox_arbiter_exit(void);
+void sched_perf_note_mailbox_arbiter_owner_lookup_enter(void);
+void sched_perf_note_mailbox_arbiter_owner_lookup_exit(void);
+void sched_perf_note_mailbox_arbiter_candidate_lookup_enter(void);
+void sched_perf_note_mailbox_arbiter_candidate_lookup_exit(void);
+void sched_perf_note_mailbox_arbiter_candidate_accept_keep_running(void);
+void sched_perf_note_mailbox_arbiter_candidate_accept_switch(void);
+void sched_perf_note_mailbox_arbiter_candidate_reject(void);
+void sched_perf_note_mailbox_arbiter_keep_running_fallback(void);
+void sched_perf_note_mailbox_arbiter_return_null(void);
+void sched_perf_note_mailbox_arbiter_ready_head_fallback(void);
 void sched_perf_note_mailbox_handoff_enter(void);
 void sched_perf_note_mailbox_handoff_exit(void);
 
