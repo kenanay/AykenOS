@@ -593,7 +593,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-03-29):**
+**Current Status (2026-04-03):**
 - ✅ All CI gates active and passing (23-gate ci-freeze chain)
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
@@ -602,10 +602,9 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-13 service-backed verification expansion: COMPLETE (SHA `a44febed`)
 - ✅ Phase-13 formal transition: COMPLETE (CI run `23694185775`, PR #68, tag: `phase13-formal-transition`)
 - ✅ Phase-13 Architecture Map §4 workstreams: COMPLETE (PR #71–#77)
-  - service expansion, verifier federation, context propagation, trust registry propagation, replicated verification boundary
-- ✅ `CURRENT_PHASE=13` formal transition completed (`7088fd71`)
-- ✅ Performance baseline lock committed and active
-- 🔄 Phase-13 official closure prep: pending (`make phase13-official-closure-prep`)
+- ✅ Phase-13 OFFICIALLY CLOSED (CI run `23706742211`, PR #81, tag: `phase13-official-closure-confirmed`)
+- ✅ `CURRENT_PHASE=14` formal transition completed (`8b23fe0d`)
+- ✅ Performance baseline lock updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
 
 ---
 
@@ -822,6 +821,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.9 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14; perf baseline updated (PR #83) |
 | 1.8 | 2026-03-29 | Kenan AY | Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71-#77); closure prep pending |
 | 1.7 | 2026-03-28 | Kenan AY | Phase-13 formal transition COMPLETE (PR #68, CI run #23694185775); CURRENT_PHASE=13 |
 | 1.6 | 2026-03-28 | Kenan AY | Phase-13 kill-switch 12/12 PASS; service-backed verification expansion COMPLETE; closure prep pending |
