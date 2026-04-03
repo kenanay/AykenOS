@@ -454,6 +454,7 @@ import os
 import re
 
 pattern = re.compile(r"\[\[AYKEN_PERF_MB_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+path_pattern = re.compile(r"\[\[AYKEN_PERF_MB_PATH\]\] name=([a-z_]+) phase=(enter|exit) ticks=([0-9]+) tick_valid=([0-9]+)")
 phases = (
     "snapshot_enter",
     "snapshot_exit",
@@ -492,16 +493,32 @@ durations = (
     ("arbiter_decision_enter", "arbiter_decision_exit", "arbiter_decision"),
     ("handoff_enter", "handoff_exit", "handoff"),
 )
+path_names = (
+    "switch",
+    "keep_running",
+    "reject",
+    "fallback",
+)
 
 seen = {}
+path_seen = {name: {"enter": [], "exit": []} for name in path_names}
 with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
     for line in handle:
         match = pattern.search(line)
-        if not match:
-            continue
-        name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
-        if name not in seen:
-            seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+        if match:
+            name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
+            if name not in seen:
+                seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+        path_match = path_pattern.search(line)
+        if path_match:
+            name, phase, ticks, tick_valid = (
+                path_match.group(1),
+                path_match.group(2),
+                int(path_match.group(3)),
+                int(path_match.group(4)),
+            )
+            if name in path_seen:
+                path_seen[name][phase].append({"ticks": ticks, "tick_valid": tick_valid})
 
 for phase in phases:
     payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
@@ -521,6 +538,33 @@ for start, end, label in durations:
     ticks = end_payload["ticks"] - start_payload["ticks"] if available else 0
     print(f"mailbox_phase_{label}_ticks={ticks}")
     print(f"mailbox_phase_{label}_available={available}")
+
+for name in path_names:
+    enters = path_seen[name]["enter"]
+    exits = path_seen[name]["exit"]
+    pair_count = min(len(enters), len(exits))
+    durations = []
+    for idx in range(pair_count):
+        enter_payload = enters[idx]
+        exit_payload = exits[idx]
+        if (
+            enter_payload["tick_valid"] in (1, 2) and
+            exit_payload["tick_valid"] in (1, 2) and
+            exit_payload["ticks"] >= enter_payload["ticks"]
+        ):
+            durations.append(exit_payload["ticks"] - enter_payload["ticks"])
+    total_ticks = sum(durations)
+    mean_ticks = (total_ticks // len(durations)) if durations else 0
+    min_ticks = min(durations) if durations else 0
+    max_ticks = max(durations) if durations else 0
+    print(f"mailbox_path_{name}_enter_count={len(enters)}")
+    print(f"mailbox_path_{name}_exit_count={len(exits)}")
+    print(f"mailbox_path_{name}_count={len(durations)}")
+    print(f"mailbox_path_{name}_total_ticks={total_ticks}")
+    print(f"mailbox_path_{name}_mean_ticks={mean_ticks}")
+    print(f"mailbox_path_{name}_min_ticks={min_ticks}")
+    print(f"mailbox_path_{name}_max_ticks={max_ticks}")
+    print(f"mailbox_path_{name}_available={int(len(durations) > 0)}")
 PY
 )"
 

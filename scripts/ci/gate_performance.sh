@@ -921,6 +921,19 @@ for name in mailbox_event_markers:
         "available": tick_valid in (1, 2),
     }
 
+payload["mailbox_phase_breakdown_ticks"]["path_durations"] = {}
+for name in ("switch", "keep_running", "reject", "fallback"):
+    payload["mailbox_phase_breakdown_ticks"]["path_durations"][name] = {
+        "enter_count": int(metrics_kv.get(f"mailbox_path_{name}_enter_count", "0")),
+        "exit_count": int(metrics_kv.get(f"mailbox_path_{name}_exit_count", "0")),
+        "count": int(metrics_kv.get(f"mailbox_path_{name}_count", "0")),
+        "total_ticks": int(metrics_kv.get(f"mailbox_path_{name}_total_ticks", "0")),
+        "mean_ticks": int(metrics_kv.get(f"mailbox_path_{name}_mean_ticks", "0")),
+        "min_ticks": int(metrics_kv.get(f"mailbox_path_{name}_min_ticks", "0")),
+        "max_ticks": int(metrics_kv.get(f"mailbox_path_{name}_max_ticks", "0")),
+        "available": bool(int(metrics_kv.get(f"mailbox_path_{name}_available", "0"))),
+    }
+
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:
     json.dump(payload, fh, indent=2, sort_keys=True)
     fh.write("\n")
