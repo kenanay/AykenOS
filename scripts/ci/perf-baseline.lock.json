@@ -1,10 +1,10 @@
 {
-  "created_at_utc": "2026-03-14T22:45:46Z",
+  "created_at_utc": "2026-04-03T15:03:08Z",
   "env": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
-    "ci_image_digest": "gha-ubuntu24-20260309.50.1-X64",
+    "ci_image_digest": "gha-ubuntu24-20260323.65.1-X64",
     "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
-    "env_hash": "3e27c53c19161b644374d8151f8084cf542a3d66d42a7bc94b0cb9a842944409",
+    "env_hash": "aa35d2c2110a4f3d2b01136889e085a89aa5c70191c404495c578bd98c4d6449",
     "host_arch": "x86_64",
     "host_os": "Linux",
     "kernel_profile": "validation",
@@ -22,14 +22,14 @@
     },
     "nasm_version": "NASM version 2.16.01",
     "qemu_timeout_seconds": 30,
-    "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.13)",
+    "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.14)",
     "target_triple": "x86_64-elf"
   },
-  "git_sha": "c1d324f2ad193daebd58ce4a822f97d9f30b32ee",
+  "git_sha": "69d6de67946e887da9343acc4a85d8aef24b9013",
   "metrics": {
-    "boot_time_ms": 11233,
-    "context_switch_latency_ms_proxy": 167.403226,
-    "syscall_latency_ms_proxy": 167.403226
+    "boot_time_ms": 10683,
+    "context_switch_latency_ms_proxy": 171.725806,
+    "syscall_latency_ms_proxy": 171.725806
   },
   "policy": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
@@ -52,14 +52,14 @@
     }
   },
   "raw_metrics": {
-    "boot_time_ms": 11233,
-    "context_switch_latency_ms_proxy": 167.403226,
+    "boot_time_ms": 10683,
+    "context_switch_latency_ms_proxy": 171.725806,
     "preempt_iret_count": 62,
-    "preempt_qemu_run_time_ms": 10379,
-    "preempt_run_time_ms": 10379,
+    "preempt_qemu_run_time_ms": 10647,
+    "preempt_run_time_ms": 10647,
     "preempt_sw_count": 62,
-    "preempt_wall_time_ms": 12719,
-    "syscall_latency_ms_proxy": 167.403226
+    "preempt_wall_time_ms": 13206,
+    "syscall_latency_ms_proxy": 171.725806
   },
   "schema_version": 1
 }
