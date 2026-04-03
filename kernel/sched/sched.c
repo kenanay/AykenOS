@@ -17,6 +17,7 @@
 #include "../arch/x86_64/cpu.h"
 #include "../arch/x86_64/interrupts.h"
 #include "../arch/x86_64/pic.h"
+#include "../arch/x86_64/timer.h"
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
 #include "../include/mm.h"
@@ -190,6 +191,43 @@ static void sched_emit_u64_dec(uint64_t v);
 void sched_emit_ring3_frame_proof(const uint64_t *frame_rsp);
 static void sched_mask_irq0_before_first_ring3_entry(proc_t *proc);
 static uint8_t phase10_first_entry_irq0_masked = 0;
+static void sched_note_first_user_entry_if_ring3(proc_t *proc);
+
+static inline uint64_t ayken_rdtsc(void)
+{
+    uint32_t lo = 0;
+    uint32_t hi = 0;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | (uint64_t)lo;
+}
+
+enum sched_perf_phase_id {
+    SCHED_PERF_PHASE_BOOT_START = 0,
+    SCHED_PERF_PHASE_CORE_READY,
+    SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY,
+    SCHED_PERF_PHASE_FIRST_USER_ENTRY,
+    SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY,
+    SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT,
+    SCHED_PERF_PHASE_COUNT,
+};
+
+static uint8_t sched_perf_phase_emitted[SCHED_PERF_PHASE_COUNT];
+
+enum sched_perf_mb_phase_id {
+    SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER = 0,
+    SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT,
+    SCHED_PERF_MB_PHASE_EXTRACT_ENTER,
+    SCHED_PERF_MB_PHASE_EXTRACT_EXIT,
+    SCHED_PERF_MB_PHASE_VALIDATE_ENTER,
+    SCHED_PERF_MB_PHASE_VALIDATE_EXIT,
+    SCHED_PERF_MB_PHASE_ARBITER_ENTER,
+    SCHED_PERF_MB_PHASE_ARBITER_EXIT,
+    SCHED_PERF_MB_PHASE_HANDOFF_ENTER,
+    SCHED_PERF_MB_PHASE_HANDOFF_EXIT,
+    SCHED_PERF_MB_PHASE_COUNT,
+};
+
+static uint8_t sched_perf_mb_phase_emitted[SCHED_PERF_MB_PHASE_COUNT];
 
 static void sched_emit_marker(const char *text)
 {
@@ -198,6 +236,178 @@ static void sched_emit_marker(const char *text)
     }
     while (*text) {
         outb(0xE9, (uint8_t)*text++);
+    }
+}
+
+static void sched_emit_perf_phase_marker(const char *name)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    if (!name || !*name) {
+        return;
+    }
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_PHASE]] name=");
+    sched_emit_marker(name);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
+static void sched_emit_perf_mb_phase_marker(const char *name)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    if (!name || !*name) {
+        return;
+    }
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_MB_PHASE]] name=");
+    sched_emit_marker(name);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
+static void sched_note_perf_phase_once(enum sched_perf_phase_id id, const char *name)
+{
+    if ((uint32_t)id >= (uint32_t)SCHED_PERF_PHASE_COUNT) {
+        return;
+    }
+    if (sched_perf_phase_emitted[id]) {
+        return;
+    }
+    sched_perf_phase_emitted[id] = 1;
+    sched_emit_perf_phase_marker(name);
+}
+
+static void sched_note_perf_mb_phase_once(enum sched_perf_mb_phase_id id, const char *name)
+{
+    if ((uint32_t)id >= (uint32_t)SCHED_PERF_MB_PHASE_COUNT) {
+        return;
+    }
+    if (sched_perf_mb_phase_emitted[id]) {
+        return;
+    }
+    sched_perf_mb_phase_emitted[id] = 1;
+    sched_emit_perf_mb_phase_marker(name);
+}
+
+void sched_perf_note_boot_start(void)
+{
+    sched_note_perf_phase_once(SCHED_PERF_PHASE_BOOT_START, "boot_start");
+}
+
+void sched_perf_note_core_ready(void)
+{
+    sched_note_perf_phase_once(SCHED_PERF_PHASE_CORE_READY, "core_ready");
+}
+
+void sched_perf_note_first_scheduler_activity(void)
+{
+    sched_note_perf_phase_once(
+        SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY,
+        "first_sched_activity");
+}
+
+void sched_perf_note_first_user_entry(void)
+{
+    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_USER_ENTRY, "first_user_entry");
+}
+
+void sched_perf_note_first_syscall_entry(void)
+{
+    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY, "first_syscall_entry");
+}
+
+void sched_perf_note_first_syscall_exit(void)
+{
+    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT, "first_syscall_exit");
+}
+
+void sched_perf_note_mailbox_snapshot_enter(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER, "snapshot_enter");
+}
+
+void sched_perf_note_mailbox_snapshot_exit(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT, "snapshot_exit");
+}
+
+void sched_perf_note_mailbox_extract_enter(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_EXTRACT_ENTER, "extract_enter");
+}
+
+void sched_perf_note_mailbox_extract_exit(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_EXTRACT_EXIT, "extract_exit");
+}
+
+void sched_perf_note_mailbox_validate_enter(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_VALIDATE_ENTER, "validate_enter");
+}
+
+void sched_perf_note_mailbox_validate_exit(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_VALIDATE_EXIT, "validate_exit");
+}
+
+void sched_perf_note_mailbox_arbiter_enter(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_ARBITER_ENTER, "arbiter_enter");
+}
+
+void sched_perf_note_mailbox_arbiter_exit(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_ARBITER_EXIT, "arbiter_exit");
+}
+
+void sched_perf_note_mailbox_handoff_enter(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_HANDOFF_ENTER, "handoff_enter");
+}
+
+void sched_perf_note_mailbox_handoff_exit(void)
+{
+    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_HANDOFF_EXIT, "handoff_exit");
+}
+
+static void sched_note_first_user_entry_if_ring3(proc_t *proc)
+{
+    if (!proc) {
+        return;
+    }
+    if ((proc->context.cs & 0x3u) == 0x3u) {
+        sched_perf_note_first_user_entry();
     }
 }
 
@@ -956,6 +1166,7 @@ static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out
         return 0;
     }
 
+    sched_perf_note_mailbox_snapshot_enter();
     __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
     if (kernel_cr3 &&
         ((active_cr3 & AYKEN_PTE_ADDR_MASK) != (kernel_cr3 & AYKEN_PTE_ADDR_MASK))) {
@@ -973,6 +1184,7 @@ static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out
                 __asm__ volatile("sti");
             }
         }
+        sched_perf_note_mailbox_snapshot_exit();
         return 0;
     }
 
@@ -985,6 +1197,7 @@ static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out
         }
     }
 
+    sched_perf_note_mailbox_snapshot_exit();
     return 1;
 }
 
@@ -1012,23 +1225,29 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
     if (!owner || !out_epoch || !out_pid || !owner->mailbox_pa) {
         return 0;
     }
+    sched_perf_note_mailbox_extract_enter();
     if (!sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
+        sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     mb = &mb_snapshot;
     if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
         mb->version != AYKEN_SCHED_MB_VERSION ||
         mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+        sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     if (mb->epoch == 0 || mb->epoch <= owner->mailbox_last_epoch) {
+        sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     if (mb->candidate_pid == 0) {
+        sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     *out_epoch = mb->epoch;
     *out_pid = mb->candidate_pid;
+    sched_perf_note_mailbox_extract_exit();
     return 1;
 }
 
@@ -1102,6 +1321,13 @@ static proc_t *sched_select_next_mailbox(
     int allow_keep_running,
     sched_decision_site_t site)
 {
+#define SCHED_MB_ARBITER_RETURN(value) \
+    do { \
+        sched_perf_note_mailbox_arbiter_exit(); \
+        return (value); \
+    } while (0)
+
+    sched_perf_note_mailbox_arbiter_enter();
     if (decision_id) {
         *decision_id = 0;
     }
@@ -1120,7 +1346,7 @@ static proc_t *sched_select_next_mailbox(
     // keep non-owner running and do not dereference owner mailbox under foreign CR3.
     if (site == SCHED_DECISION_SITE_YIELD && allow_keep_running &&
         prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev)) {
-        return prev;
+        SCHED_MB_ARBITER_RETURN(prev);
     }
 #endif
 
@@ -1128,12 +1354,12 @@ static proc_t *sched_select_next_mailbox(
     if (!owner) {
         sched_emit_mailbox_miss_fatal_pre(site, prev, NULL);
         sched_emit_marker("P10_MAILBOX_OWNER_MISSING_FATAL\n");
-        return NULL;
+        SCHED_MB_ARBITER_RETURN(NULL);
     }
     if (!(owner->state == PROC_READY || owner->state == PROC_RUNNING)) {
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_OWNER_NOT_READY_FATAL\n");
-        return NULL;
+        SCHED_MB_ARBITER_RETURN(NULL);
     }
 
     // Non-owner fresh decision attempt is a protocol violation.
@@ -1142,10 +1368,10 @@ static proc_t *sched_select_next_mailbox(
         sched_emit_marker("P10_MAILBOX_OWNER_MISMATCH\n");
 #if AYKEN_SCHED_BOOTSTRAP_POLICY
         if (site != SCHED_DECISION_SITE_YIELD) {
-            return NULL;
+            SCHED_MB_ARBITER_RETURN(NULL);
         }
 #else
-        return NULL;
+        SCHED_MB_ARBITER_RETURN(NULL);
 #endif
     }
 
@@ -1189,7 +1415,7 @@ static proc_t *sched_select_next_mailbox(
                 if (used_mailbox) {
                     *used_mailbox = 1;
                 }
-                return prev;
+                SCHED_MB_ARBITER_RETURN(prev);
             }
             proc_t *cand = proc_find_by_pid((int)pid);
             if (cand && (cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
@@ -1209,7 +1435,7 @@ static proc_t *sched_select_next_mailbox(
                     *used_mailbox = 1;
                 }
                 remove_from_ready_queue(cand);
-                return cand;
+                SCHED_MB_ARBITER_RETURN(cand);
             }
         }
     }
@@ -1218,7 +1444,7 @@ static proc_t *sched_select_next_mailbox(
     if (allow_keep_running && prev && prev->type == PROC_TYPE_USER) {
         if (prev->state != PROC_RUNNING) {
             sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING_INVALID_STATE\n");
-            return NULL;
+            SCHED_MB_ARBITER_RETURN(NULL);
         }
 #if AYKEN_DEBUG_SCHED
         if (ready_head == prev || ready_tail == prev) {
@@ -1231,7 +1457,7 @@ static proc_t *sched_select_next_mailbox(
             keep_running_marker_emitted = 1;
             sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
         }
-        return prev;
+        SCHED_MB_ARBITER_RETURN(prev);
 #else
         // Phase10-A2 bootstrap barrier: until first user-code proof marker is seen,
         // avoid mailbox fatal on yield miss and keep current Ring3 context running.
@@ -1241,11 +1467,11 @@ static proc_t *sched_select_next_mailbox(
                 pre_user_bypass_marker_emitted = 1;
                 sched_emit_marker("P10_MAILBOX_MISS_PRE_USER_BYPASS\n");
             }
-            return prev;
+            SCHED_MB_ARBITER_RETURN(prev);
         }
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
-        return NULL;
+        SCHED_MB_ARBITER_RETURN(NULL);
 #endif
     }
 
@@ -1254,10 +1480,10 @@ static proc_t *sched_select_next_mailbox(
 #if AYKEN_SCHED_BOOTSTRAP_POLICY
     sched_emit_marker("P10_SCHED_FALLBACK\n");
     sched_emit_marker("P10_READY_HEAD_FALLBACK\n");
-    return sched_select_next_ready_head_fallback();
+    SCHED_MB_ARBITER_RETURN(sched_select_next_ready_head_fallback());
 #else
     sched_emit_marker("P10_SCHED_FALLBACK_FORBIDDEN\n");
-    return NULL;
+    SCHED_MB_ARBITER_RETURN(NULL);
 #endif
 #else
     if (site == SCHED_DECISION_SITE_BLOCK) {
@@ -1270,8 +1496,10 @@ static proc_t *sched_select_next_mailbox(
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_NULL\n");
     }
-    return NULL;
+    SCHED_MB_ARBITER_RETURN(NULL);
 #endif
+
+#undef SCHED_MB_ARBITER_RETURN
 }
 
 #if AYKEN_DEBUG_SCHED
@@ -1363,11 +1591,14 @@ static void sched_record_mailbox_decision_event(proc_t *prev,
 
 static void sched_commit_owner_transfer_if_pending(proc_t *prev, proc_t *next)
 {
+    sched_perf_note_mailbox_handoff_enter();
     if (!g_sched_owner_transfer_pending || !prev || !next) {
+        sched_perf_note_mailbox_handoff_exit();
         return;
     }
     if (prev->pid != g_sched_owner_transfer_from_pid ||
         next->pid != g_sched_owner_transfer_to_pid) {
+        sched_perf_note_mailbox_handoff_exit();
         return;
     }
 
@@ -1377,6 +1608,7 @@ static void sched_commit_owner_transfer_if_pending(proc_t *prev, proc_t *next)
     g_sched_validation_owner_transfer_from_pid = prev->pid;
     g_sched_validation_owner_transfer_to_pid = next->pid;
     sched_clear_owner_transfer_request();
+    sched_perf_note_mailbox_handoff_exit();
 }
 
 int sched_request_owner_transfer(proc_t *caller_owner, proc_t *successor)
@@ -4955,6 +5187,8 @@ void sched_init(void)
     
     // Ring0 mechanism: Initialize scheduler bridge mailbox
     sched_mailbox_init();
+    memset(sched_perf_phase_emitted, 0, sizeof(sched_perf_phase_emitted));
+    memset(sched_perf_mb_phase_emitted, 0, sizeof(sched_perf_mb_phase_emitted));
     
     // Ring0 mechanism: No policy initialization in Ring0
     // Ring3 scheduler policy handles all policy setup
@@ -4963,6 +5197,7 @@ void sched_init(void)
 void sched_start(void)
 {
     proc_drain_deferred_reap();
+    sched_perf_note_first_scheduler_activity();
 
     // Runtime-observed config marker for CI/gates (independent from shell env echo).
     sched_emit_marker("[K][CFG] user_minimal_mode=");
@@ -5255,6 +5490,7 @@ static void sched_yield_core(int reenable_if)
                 sched_emit_marker("P10_IRQ_CANONICAL_RETURN\n");
             }
 #endif
+            sched_note_first_user_entry_if_ring3(current_proc);
             sched_mask_irq0_before_first_ring3_entry(current_proc);
             sched_emit_pre_dispatch_text_walk_proof(current_proc);
             context_switch(&prev->context, &current_proc->context);
@@ -5400,6 +5636,7 @@ static void sched_yield_core(int reenable_if)
             decision_src_pid,
             used_mailbox,
             reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
+        sched_note_first_user_entry_if_ring3(current_proc);
         sched_graft_real_user_state_into_sterile_root(current_proc);
         sched_force_ring3_entry_cr3_to_sterile_root(current_proc);
         sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
@@ -5479,6 +5716,7 @@ static void sched_yield_core(int reenable_if)
         SCHED_DBG_OUT((uint8_t)'\n');
 
         sched_dbg_mark_iret();
+        sched_note_first_user_entry_if_ring3(current_proc);
         sched_mask_irq0_before_first_ring3_entry(current_proc);
         
         switch_to_first(&current_proc->context);
@@ -5577,6 +5815,7 @@ void sched_block_current(void)
         decision_src_pid,
         used_mailbox,
         SCHED_DECISION_SITE_BLOCK);
+    sched_note_first_user_entry_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     context_switch(&prev->context, &current_proc->context);
@@ -5638,6 +5877,7 @@ void sched_exit_current(void)
 
     sched_prepare_dispatch_context_or_panic(current_proc);
 
+    sched_note_first_user_entry_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     context_switch(&prev->context, &current_proc->context);

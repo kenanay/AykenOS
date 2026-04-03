@@ -21,6 +21,8 @@ Env controls:
   PERF_LOCAL_WARMUP_RUNS=<n>                   (default: 1)
   PERF_LOCAL_AGGREGATION=median                (default: median)
   PERF_LOCAL_OUTLIER_POLICY=none               (default: none)
+  PERF_PREEMPT_BUILD_DEBUG_SCHED=0|1           (default: make profile)
+  PERF_PREEMPT_BUILD_DEBUG_IRQ=0|1             (default: make profile)
   AYKEN_SCHED_FALLBACK=0|1                     (default: 0)
 
 Behavior:
@@ -44,6 +46,8 @@ LOCAL_SAMPLE_SIZE="${PERF_LOCAL_SAMPLE_SIZE:-5}"
 LOCAL_WARMUP_RUNS="${PERF_LOCAL_WARMUP_RUNS:-1}"
 LOCAL_AGGREGATION="${PERF_LOCAL_AGGREGATION:-median}"
 LOCAL_OUTLIER_POLICY="${PERF_LOCAL_OUTLIER_POLICY:-none}"
+PREEMPT_BUILD_DEBUG_SCHED="${PERF_PREEMPT_BUILD_DEBUG_SCHED:-}"
+PREEMPT_BUILD_DEBUG_IRQ="${PERF_PREEMPT_BUILD_DEBUG_IRQ:-}"
 SCHED_FALLBACK="${AYKEN_SCHED_FALLBACK:-0}"
 
 SAMPLES_DIR=""
@@ -115,6 +119,14 @@ if [[ "${LOCAL_OUTLIER_POLICY}" != "none" ]]; then
   echo "ERROR: PERF_LOCAL_OUTLIER_POLICY must be 'none'" >&2
   exit 2
 fi
+if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]] && [[ "${PREEMPT_BUILD_DEBUG_SCHED}" != "0" && "${PREEMPT_BUILD_DEBUG_SCHED}" != "1" ]]; then
+  echo "ERROR: PERF_PREEMPT_BUILD_DEBUG_SCHED must be 0 or 1 when set" >&2
+  exit 2
+fi
+if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]] && [[ "${PREEMPT_BUILD_DEBUG_IRQ}" != "0" && "${PREEMPT_BUILD_DEBUG_IRQ}" != "1" ]]; then
+  echo "ERROR: PERF_PREEMPT_BUILD_DEBUG_IRQ must be 0 or 1 when set" >&2
+  exit 2
+fi
 for threshold_value in "${LOCAL_BOOT_THRESHOLD}" "${LOCAL_CONTEXT_THRESHOLD}" "${LOCAL_SYSCALL_THRESHOLD}"; do
   if ! is_nonnegative_number "${threshold_value}"; then
     echo "ERROR: local performance thresholds must be non-negative numbers" >&2
@@ -137,18 +149,27 @@ mkdir -p "${EVIDENCE_DIR}"
 run_gate_sample() {
   local evidence_dir="$1"
   local scratch_baseline="${evidence_dir}/provisional-baseline.lock.json"
+  local -a env_args=(
+    "PERF_BASELINE_MODE=provisional"
+    "PERF_BASELINE_AUTHORITY=${LOCAL_AUTHORITY}"
+    "PERF_REQUIRE_CI_FOR_BASELINE_INIT=0"
+    "PERF_CI_IMAGE_DIGEST=${LOCAL_DIGEST}"
+    "PERF_ALLOW_UNTRACKED_BASELINE=1"
+    "PERF_BOOT_THRESHOLD_PERCENT=${LOCAL_BOOT_THRESHOLD}"
+    "PERF_CONTEXT_THRESHOLD_PERCENT=${LOCAL_CONTEXT_THRESHOLD}"
+    "PERF_SYSCALL_THRESHOLD_PERCENT=${LOCAL_SYSCALL_THRESHOLD}"
+    "AYKEN_SCHED_FALLBACK=${SCHED_FALLBACK}"
+    "CI=false"
+  )
 
-  PERF_BASELINE_MODE="provisional" \
-  PERF_BASELINE_AUTHORITY="${LOCAL_AUTHORITY}" \
-  PERF_REQUIRE_CI_FOR_BASELINE_INIT="0" \
-  PERF_CI_IMAGE_DIGEST="${LOCAL_DIGEST}" \
-  PERF_ALLOW_UNTRACKED_BASELINE="1" \
-  PERF_BOOT_THRESHOLD_PERCENT="${LOCAL_BOOT_THRESHOLD}" \
-  PERF_CONTEXT_THRESHOLD_PERCENT="${LOCAL_CONTEXT_THRESHOLD}" \
-  PERF_SYSCALL_THRESHOLD_PERCENT="${LOCAL_SYSCALL_THRESHOLD}" \
-  AYKEN_SCHED_FALLBACK="${SCHED_FALLBACK}" \
-  CI="false" \
-  "${ROOT}/scripts/ci/gate_performance.sh" \
+  if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
+    env_args+=("PERF_PREEMPT_BUILD_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
+  fi
+  if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]]; then
+    env_args+=("PERF_PREEMPT_BUILD_DEBUG_IRQ=${PREEMPT_BUILD_DEBUG_IRQ}")
+  fi
+
+  env "${env_args[@]}" "${ROOT}/scripts/ci/gate_performance.sh" \
     --evidence-dir "${evidence_dir}" \
     --kernel-profile "${KERNEL_PROFILE}" \
     --qemu-timeout "${QEMU_TIMEOUT}" \

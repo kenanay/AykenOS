@@ -37,6 +37,7 @@
 
 static volatile uint64_t tick_count = 0;
 static volatile uint32_t timer_frequency_hz_value = 100;
+static volatile uint32_t timer_initialized = 0;
 
 static void timer_debugcon_write(const char *s)
 {
@@ -296,6 +297,7 @@ void timer_init(uint32_t frequency_hz)
     idt_set_gate_raw(32, timer_isr_asm, 0x8E); // present, ring0 interrupt gate
 
     timer_frequency_hz_value = configured_frequency_hz;
+    timer_initialized = 1;
 
     uint32_t divisor = 1193180 / configured_frequency_hz;
     outb(PIT_COMMAND, 0x36); // channel 0, lobyte/hibyte, mode 3
@@ -322,6 +324,11 @@ void timer_init(uint32_t frequency_hz)
     TIMER_DBG_CHAR('O');
     TIMER_DBG_CHAR('K');
     TIMER_DBG_CHAR(']');
+}
+
+uint32_t timer_is_initialized(void)
+{
+    return timer_initialized;
 }
 
 uint64_t timer_ticks(void)

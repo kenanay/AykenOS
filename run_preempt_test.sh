@@ -27,6 +27,8 @@ FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
 PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
 PREEMPT_CLEAN_REBUILD="${PREEMPT_CLEAN_REBUILD:-1}"
 USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
+PERF_PHASE_METRICS_KV=""
+PERF_MAILBOX_METRICS_KV=""
 
 CONTRACT_USER_MINIMAL_MODE="<make-default>"
 CONTRACT_USER_MINIMAL_MODE_SOURCE="make_default"
@@ -80,6 +82,36 @@ if [[ "${AYKEN_DETERMINISTIC_EXIT+x}" == "x" ]]; then
   CONTRACT_DETERMINISTIC_EXIT_SOURCE="env"
 fi
 
+CONTRACT_BUILD_DEBUG_SCHED="<make-default>"
+CONTRACT_BUILD_DEBUG_SCHED_SOURCE="make_default"
+if [[ "${AYKEN_DEBUG_SCHED+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_DEBUG_SCHED}" ]]; then
+    echo "ERROR: AYKEN_DEBUG_SCHED is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_DEBUG_SCHED}" != "0" && "${AYKEN_DEBUG_SCHED}" != "1" ]]; then
+    echo "ERROR: AYKEN_DEBUG_SCHED must be 0 or 1 (got '${AYKEN_DEBUG_SCHED}')"
+    exit 1
+  fi
+  CONTRACT_BUILD_DEBUG_SCHED="${AYKEN_DEBUG_SCHED}"
+  CONTRACT_BUILD_DEBUG_SCHED_SOURCE="env"
+fi
+
+CONTRACT_BUILD_DEBUG_IRQ="<make-default>"
+CONTRACT_BUILD_DEBUG_IRQ_SOURCE="make_default"
+if [[ "${AYKEN_DEBUG_IRQ+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_DEBUG_IRQ}" ]]; then
+    echo "ERROR: AYKEN_DEBUG_IRQ is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_DEBUG_IRQ}" != "0" && "${AYKEN_DEBUG_IRQ}" != "1" ]]; then
+    echo "ERROR: AYKEN_DEBUG_IRQ must be 0 or 1 (got '${AYKEN_DEBUG_IRQ}')"
+    exit 1
+  fi
+  CONTRACT_BUILD_DEBUG_IRQ="${AYKEN_DEBUG_IRQ}"
+  CONTRACT_BUILD_DEBUG_IRQ_SOURCE="env"
+fi
+
 OBSERVED_USER_MINIMAL_MODE="<unknown>"
 OBSERVED_BOOTSTRAP_POLICY="<unknown>"
 OBSERVED_MB_SELFTEST="<unknown>"
@@ -119,6 +151,10 @@ write_preempt_metrics() {
     echo "contract_mb_selftest_source=${CONTRACT_MB_SELFTEST_SOURCE}"
     echo "contract_deterministic_exit=${CONTRACT_DETERMINISTIC_EXIT}"
     echo "contract_deterministic_exit_source=${CONTRACT_DETERMINISTIC_EXIT_SOURCE}"
+    echo "contract_build_debug_sched=${CONTRACT_BUILD_DEBUG_SCHED}"
+    echo "contract_build_debug_sched_source=${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}"
+    echo "contract_build_debug_irq=${CONTRACT_BUILD_DEBUG_IRQ}"
+    echo "contract_build_debug_irq_source=${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}"
     echo "observed_user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE:-<unknown>}"
     echo "observed_bootstrap_policy=${OBSERVED_BOOTSTRAP_POLICY:-<unknown>}"
     echo "observed_mb_selftest=${OBSERVED_MB_SELFTEST:-<unknown>}"
@@ -153,6 +189,12 @@ write_preempt_metrics() {
     echo "ab_signal=${ab_signal:-0}"
     echo "sched_idle_count=${sched_idle_count:-0}"
     echo "stage_hint_missing=${stage_hint_missing:-0}"
+    if [[ -n "${PERF_PHASE_METRICS_KV}" ]]; then
+      printf '%s\n' "${PERF_PHASE_METRICS_KV}"
+    fi
+    if [[ -n "${PERF_MAILBOX_METRICS_KV}" ]]; then
+      printf '%s\n' "${PERF_MAILBOX_METRICS_KV}"
+    fi
     echo "assert_fail=${fail_value}"
   } > "${PREEMPT_METRICS_OUT}"
 }
@@ -169,6 +211,12 @@ if [[ "${CONTRACT_MB_SELFTEST_SOURCE}" == "env" ]]; then
 fi
 if [[ "${CONTRACT_DETERMINISTIC_EXIT_SOURCE}" == "env" ]]; then
   MAKE_BUILD_ARGS+=(AYKEN_DETERMINISTIC_EXIT="${CONTRACT_DETERMINISTIC_EXIT}")
+fi
+if [[ "${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_DEBUG_SCHED="${CONTRACT_BUILD_DEBUG_SCHED}")
+fi
+if [[ "${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_DEBUG_IRQ="${CONTRACT_BUILD_DEBUG_IRQ}")
 fi
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
@@ -346,6 +394,116 @@ END {
     printf "%d %d %d %d\n", len, alt, max_run, max_run_alt
 }
 ' "$ANALYSIS_LOG")"
+
+PERF_PHASE_METRICS_KV="$(
+  ANALYSIS_LOG_ENV="${ANALYSIS_LOG}" python3 - <<'PY'
+import os
+import re
+
+pattern = re.compile(r"\[\[AYKEN_PERF_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+phases = (
+    "boot_start",
+    "core_ready",
+    "first_sched_activity",
+    "first_user_entry",
+    "first_syscall_entry",
+    "first_syscall_exit",
+)
+durations = (
+    ("boot_start", "core_ready", "boot_start_to_core_ready"),
+    ("core_ready", "first_sched_activity", "core_ready_to_first_sched_activity"),
+    ("first_sched_activity", "first_user_entry", "first_sched_activity_to_first_user_entry"),
+    ("first_user_entry", "first_syscall_entry", "first_user_entry_to_first_syscall_entry"),
+    ("first_user_entry", "first_syscall_exit", "first_user_entry_to_first_syscall_exit"),
+)
+
+seen = {}
+with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        match = pattern.search(line)
+        if not match:
+            continue
+        name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
+        if name not in seen:
+            seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+
+for phase in phases:
+    payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
+    print(f"phase_{phase}_ticks={payload['ticks']}")
+    print(f"phase_{phase}_tick_valid={payload['tick_valid']}")
+
+for start, end, label in durations:
+    start_payload = seen.get(start)
+    end_payload = seen.get(end)
+    available = int(
+        start_payload is not None and
+        end_payload is not None and
+        start_payload["tick_valid"] in (1, 2) and
+        end_payload["tick_valid"] in (1, 2) and
+        end_payload["ticks"] >= start_payload["ticks"]
+    )
+    ticks = end_payload["ticks"] - start_payload["ticks"] if available else 0
+    print(f"phase_{label}_ticks={ticks}")
+    print(f"phase_{label}_available={available}")
+PY
+)"
+
+PERF_MAILBOX_METRICS_KV="$(
+  ANALYSIS_LOG_ENV="${ANALYSIS_LOG}" python3 - <<'PY'
+import os
+import re
+
+pattern = re.compile(r"\[\[AYKEN_PERF_MB_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+phases = (
+    "snapshot_enter",
+    "snapshot_exit",
+    "extract_enter",
+    "extract_exit",
+    "validate_enter",
+    "validate_exit",
+    "arbiter_enter",
+    "arbiter_exit",
+    "handoff_enter",
+    "handoff_exit",
+)
+durations = (
+    ("snapshot_enter", "snapshot_exit", "snapshot"),
+    ("extract_enter", "extract_exit", "extract"),
+    ("validate_enter", "validate_exit", "validate"),
+    ("arbiter_enter", "arbiter_exit", "arbiter"),
+    ("handoff_enter", "handoff_exit", "handoff"),
+)
+
+seen = {}
+with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        match = pattern.search(line)
+        if not match:
+            continue
+        name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
+        if name not in seen:
+            seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+
+for phase in phases:
+    payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
+    print(f"mailbox_phase_{phase}_ticks={payload['ticks']}")
+    print(f"mailbox_phase_{phase}_tick_valid={payload['tick_valid']}")
+
+for start, end, label in durations:
+    start_payload = seen.get(start)
+    end_payload = seen.get(end)
+    available = int(
+        start_payload is not None and
+        end_payload is not None and
+        start_payload["tick_valid"] in (1, 2) and
+        end_payload["tick_valid"] in (1, 2) and
+        end_payload["ticks"] >= start_payload["ticks"]
+    )
+    ticks = end_payload["ticks"] - start_payload["ticks"] if available else 0
+    print(f"mailbox_phase_{label}_ticks={ticks}")
+    print(f"mailbox_phase_{label}_available={available}")
+PY
+)"
 
 echo "=== Preempt assertion summary ==="
 echo "STRICT_MARKERS    : $STRICT_MARKERS"

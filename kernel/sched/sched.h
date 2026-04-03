@@ -88,4 +88,21 @@ void sched_validation_arm_exit_successor(proc_t *forced_next);
 void sched_validation_disarm_exit_successor(void);
 int sched_validation_take_exit_switch_event(int *from_pid, int *to_pid);
 
+void sched_perf_note_boot_start(void);
+void sched_perf_note_core_ready(void);
+void sched_perf_note_first_scheduler_activity(void);
+void sched_perf_note_first_user_entry(void);
+void sched_perf_note_first_syscall_entry(void);
+void sched_perf_note_first_syscall_exit(void);
+void sched_perf_note_mailbox_snapshot_enter(void);
+void sched_perf_note_mailbox_snapshot_exit(void);
+void sched_perf_note_mailbox_extract_enter(void);
+void sched_perf_note_mailbox_extract_exit(void);
+void sched_perf_note_mailbox_validate_enter(void);
+void sched_perf_note_mailbox_validate_exit(void);
+void sched_perf_note_mailbox_arbiter_enter(void);
+void sched_perf_note_mailbox_arbiter_exit(void);
+void sched_perf_note_mailbox_handoff_enter(void);
+void sched_perf_note_mailbox_handoff_exit(void);
+
 #endif // AYKEN_SCHED_H

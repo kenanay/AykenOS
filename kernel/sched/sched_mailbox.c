@@ -14,6 +14,7 @@
 #include "../include/sched_mailbox_abi.h"
 #include "../include/mm.h"
 #include "../arch/x86_64/port_io.h"
+#include "sched.h"
 #include "sched_mailbox.h"
 
 #ifndef AYKEN_GATE45_PROOF
@@ -341,11 +342,14 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
 // Validates Ring3-written mailbox data with double-read atomicity check
 // Emits standardized markers for CI gate validation
 int sched_mailbox_validate_ring3(proc_t *proc) {
+    int result = -1;
+
+    sched_perf_note_mailbox_validate_enter();
     if (!proc || !proc->mailbox_pa) {
-        return -1;
+        goto out;
     }
     if (proc->type != PROC_TYPE_USER) {
-        return -1;
+        goto out;
     }
 
     /*
@@ -363,7 +367,7 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
     }
     if (!mb) {
-        return -1;
+        goto out;
     }
 
     // Double-read for atomicity (detect torn writes from Ring3)
@@ -493,7 +497,8 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 #else
     marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
 #endif
-    return 0;
+    result = 0;
+    goto out;
 
 reject:
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
@@ -502,5 +507,7 @@ reject:
 #else
     (void)reject_reason;
 #endif
-    return -1;
+out:
+    sched_perf_note_mailbox_validate_exit();
+    return result;
 }
