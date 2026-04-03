@@ -24,8 +24,11 @@ This creates: `scripts/ci/perf-baseline.local.lock.json`
 ## Using Local Baseline
 
 ```bash
-# Run performance gate with local baseline
-make ci-gate-performance PERF_BASELINE_FILE=scripts/ci/perf-baseline.local.lock.json
+# Run the local performance gate
+make ci-gate-performance-local
+
+# Or run the local freeze suite with local perf authority active
+make ci-freeze-local
 ```
 
 ## Important Rules
@@ -52,7 +55,7 @@ ls -lh scripts/ci/perf-baseline.local.lock.json
 vim kernel/kernel.c
 
 # Test against local baseline
-make ci-gate-performance PERF_BASELINE_FILE=scripts/ci/perf-baseline.local.lock.json
+make ci-gate-performance-local
 
 # If performance regressed, investigate
 cat evidence/run-*/gates/performance/violations.txt
@@ -104,6 +107,7 @@ Local Dev:
   Authority: local-dev-Darwin-arm64
   Baseline:  scripts/ci/perf-baseline.local.lock.json (gitignored)
   Policy:    PERF_ENV_MISMATCH_POLICY=waiver
+  Entry:     make ci-gate-performance-local / make ci-freeze-local
 
 CI/Provisional:
   Authority: github-hosted-ubuntu-latest-x64
@@ -124,3 +128,8 @@ This separation allows:
 - Local development without CI dependency
 - Strict CI enforcement
 - No authority conflicts
+
+Implementation note:
+- Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
+- Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
+- This exception is only for the gitignored local baseline path, not for committed CI lock files.

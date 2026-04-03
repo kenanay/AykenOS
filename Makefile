@@ -824,11 +824,17 @@ PERF_ENV_MISMATCH_POLICY ?= fail
 PERF_QEMU_TIMEOUT ?= 30
 PERF_KERNEL_PROFILE ?= validation
 PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
+PERF_LOCAL_BASELINE_FILE ?= scripts/ci/perf-baseline.local.lock.json
 PERF_AUTHORITY_ENV_FILE ?= scripts/ci/perf_authority.env
 PERF_BASELINE_AUTHORITY_DEFAULT := $(shell sed -n 's/^PERF_BASELINE_AUTHORITY=//p' $(PERF_AUTHORITY_ENV_FILE) 2>/dev/null | head -n1)
 PERF_BASELINE_AUTHORITY ?= $(if $(PERF_BASELINE_AUTHORITY_DEFAULT),$(PERF_BASELINE_AUTHORITY_DEFAULT),github-hosted-ubuntu-24.04-x64)
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
+PERF_LOCAL_BASELINE_AUTHORITY ?= local-dev-$(shell uname -s)-$(shell uname -m)
+PERF_LOCAL_CI_IMAGE_DIGEST ?= local-$(shell hostname)-$(shell uname -r)
+PERF_LOCAL_BOOT_THRESHOLD_PERCENT ?= 20
+PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT ?= 15
+PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT ?= 15
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
 SYSCALL_V2_RUNTIME_WARMUP ?= 1
 ifeq ($(PERF_BASELINE_MODE),provisional)
@@ -1450,10 +1456,10 @@ ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-
 ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency
 	@echo "Freeze CI suite completed successfully!"
 
-# Local freeze (skip performance and tooling-isolation gates for development)
+# Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
-	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency
+	@echo "Local freeze suite completed successfully (local performance authority active; tooling-isolation/alias-proof/kill-switch skipped)!"
 
 # CI boundary gate with evidence collection
 ci-evidence-dir:
@@ -2690,6 +2696,58 @@ ci-gate-performance: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: performance evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-performance-local: ci-evidence-dir
+	@echo "== CI GATE PERFORMANCE LOCAL =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_local_baseline_file: $(PERF_LOCAL_BASELINE_FILE)"
+	@echo "perf_local_baseline_authority: $(PERF_LOCAL_BASELINE_AUTHORITY)"
+	@echo "perf_local_ci_image_digest: $(PERF_LOCAL_CI_IMAGE_DIGEST)"
+	@if [ ! -f "$(PERF_LOCAL_BASELINE_FILE)" ] || ! jq -e '.policy.marker_contract.measurement_contract == "deterministic_preempt_harness" and .policy.thresholds_percent.boot_time_ms == $(PERF_LOCAL_BOOT_THRESHOLD_PERCENT) and .policy.thresholds_percent.context_switch_latency_ms_proxy == $(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT) and .policy.thresholds_percent.syscall_latency_ms_proxy == $(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)' "$(PERF_LOCAL_BASELINE_FILE)" >/dev/null 2>&1; then \
+		echo "init_local_baseline: $(PERF_LOCAL_BASELINE_FILE)"; \
+		AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
+		PERF_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
+		PERF_REQUIRE_CI_FOR_BASELINE_INIT="0" \
+		PERF_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
+		PERF_ALLOW_UNTRACKED_BASELINE="1" \
+		PERF_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
+		PERF_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
+		PERF_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
+		CI="false" \
+		./scripts/ci/gate_performance.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance-local-init" \
+			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
+			--env-mismatch-policy "fail" \
+			--baseline-file "$(PERF_LOCAL_BASELINE_FILE)" \
+			--init-baseline >/dev/null 2>&1 || true; \
+		if [ ! -f "$(PERF_LOCAL_BASELINE_FILE)" ]; then \
+			echo "performance-local: FAIL (local baseline init failed)"; \
+			exit 2; \
+		fi; \
+	fi
+	@AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
+		PERF_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
+		PERF_REQUIRE_CI_FOR_BASELINE_INIT="0" \
+		PERF_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
+		PERF_ALLOW_UNTRACKED_BASELINE="1" \
+		PERF_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
+		PERF_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
+		PERF_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
+		CI="false" \
+		./scripts/ci/gate_performance.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
+			--env-mismatch-policy "waiver" \
+			--baseline-file "$(PERF_LOCAL_BASELINE_FILE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance.json"
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" ]; then \
+		cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-local-init.json"; \
+		mv -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json"; \
+	fi
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: local performance evidence at $(EVIDENCE_RUN_DIR)"
+
 perf-preempt-variance-local:
 	@echo "== LOCAL PREEMPT VARIANCE =="
 	@./scripts/ci/local_preempt_variance.sh \
@@ -2953,12 +3011,13 @@ help:
 	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
 	@echo "    (intentional regression test only: AYKEN_INTENTIONAL_PERF_REGRESSION_MS=<ms>)"
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
+	@echo "  ci-gate-performance-local - Local performance gate with auto-init local baseline authority"
 	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

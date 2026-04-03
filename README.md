@@ -20,7 +20,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-12):** `ci-freeze#23099070483 = success` (PR #62)
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
 **CURRENT_PHASE:** `14` (`Phase-13 OFFICIALLY CLOSED — CURRENT_PHASE=14 — Phase-14 ACTIVE`)
-**Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite
+**Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite with local performance authority
 **Acil Blocker:** `yok`
 **Yakın Hedef:** Phase-14 workstreams (`tracker`-authoritative: API stabilization, replay determinism, `proofd` boundary hardening, cross-node observability graph, observability UX)
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
@@ -170,7 +170,8 @@ make ci-kernel-tests
 
 # Tam CI suite
 make ci-freeze        # strict freeze suite (fail-closed)
-make ci-freeze-local  # local freeze suite
+make ci-freeze-local  # local freeze suite (local perf authority active)
+make ci-gate-performance-local  # local perf gate with auto-init gitignored baseline
 ```
 
 ### Rust Bileşenleri

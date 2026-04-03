@@ -22,6 +22,10 @@ Env controls:
   PERF_BASELINE_AUTHORITY=<id>                 (default: scripts/ci/perf_authority.env)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
+  PERF_ALLOW_UNTRACKED_BASELINE=0|1            (default: 0)
+  PERF_BOOT_THRESHOLD_PERCENT=<pct>            (default: 10)
+  PERF_CONTEXT_THRESHOLD_PERCENT=<pct>         (default: 5)
+  PERF_SYSCALL_THRESHOLD_PERCENT=<pct>         (default: 5)
   PERF_BASELINE_MODE=constitutional|provisional (default: constitutional)
   PERF_REGRESSION_POLICY=fail                   (default: fail)
   PERF_ENV_MISMATCH_POLICY=fail|waiver          (default: fail)
@@ -54,6 +58,10 @@ BASELINE_MODE="${PERF_BASELINE_MODE:-constitutional}"
 BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-${PERF_AUTHORITY_DEFAULT}}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
+ALLOW_UNTRACKED_BASELINE="${PERF_ALLOW_UNTRACKED_BASELINE:-0}"
+BOOT_THRESHOLD_PERCENT="${PERF_BOOT_THRESHOLD_PERCENT:-10}"
+CONTEXT_THRESHOLD_PERCENT="${PERF_CONTEXT_THRESHOLD_PERCENT:-5}"
+SYSCALL_THRESHOLD_PERCENT="${PERF_SYSCALL_THRESHOLD_PERCENT:-5}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"
 PREEMPT_USER_MINIMAL_MODE="${PERF_PREEMPT_USER_MINIMAL_MODE:-syscall-v2-runtime}"
 PREEMPT_BOOTSTRAP_POLICY="${PERF_PREEMPT_BOOTSTRAP_POLICY:-1}"
@@ -128,6 +136,15 @@ case "${REQUIRE_CI_FOR_BASELINE_INIT}" in
     ;;
   *)
     echo "ERROR: PERF_REQUIRE_CI_FOR_BASELINE_INIT must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+case "${ALLOW_UNTRACKED_BASELINE}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_ALLOW_UNTRACKED_BASELINE must be 0 or 1" >&2
     exit 3
     ;;
 esac
@@ -223,6 +240,17 @@ is_expected_qemu_exit_rc() {
   done
   return 1
 }
+
+is_nonnegative_number() {
+  [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]
+}
+
+for threshold_value in "${BOOT_THRESHOLD_PERCENT}" "${CONTEXT_THRESHOLD_PERCENT}" "${SYSCALL_THRESHOLD_PERCENT}"; do
+  if ! is_nonnegative_number "${threshold_value}"; then
+    echo "ERROR: performance thresholds must be non-negative numbers" >&2
+    exit 3
+  fi
+done
 
 for tool in git make python3 qemu-system-x86_64 jq; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
@@ -592,6 +620,9 @@ NOW_ENV="${NOW}" \
 GIT_SHA_ENV="${GIT_SHA}" \
 ENV_MISMATCH_POLICY_ENV="${ENV_MISMATCH_POLICY}" \
 BASELINE_AUTHORITY_ENV="${BASELINE_AUTHORITY}" \
+BOOT_THRESHOLD_PERCENT_ENV="${BOOT_THRESHOLD_PERCENT}" \
+CONTEXT_THRESHOLD_PERCENT_ENV="${CONTEXT_THRESHOLD_PERCENT}" \
+SYSCALL_THRESHOLD_PERCENT_ENV="${SYSCALL_THRESHOLD_PERCENT}" \
 ENV_JSON_ENV="${ENV_JSON}" \
 RESULTS_JSON_ENV="${RESULTS_JSON}" \
 ACTUAL_LOCK_JSON_ENV="${ACTUAL_LOCK_JSON}" \
@@ -610,9 +641,9 @@ payload = {
         "baseline_authority": os.environ["BASELINE_AUTHORITY_ENV"],
         "marker_contract": env.get("marker_contract", {}),
         "thresholds_percent": {
-            "syscall_latency_ms_proxy": 5,
-            "context_switch_latency_ms_proxy": 5,
-            "boot_time_ms": 10,
+            "syscall_latency_ms_proxy": float(os.environ["SYSCALL_THRESHOLD_PERCENT_ENV"]),
+            "context_switch_latency_ms_proxy": float(os.environ["CONTEXT_THRESHOLD_PERCENT_ENV"]),
+            "boot_time_ms": float(os.environ["BOOT_THRESHOLD_PERCENT_ENV"]),
         },
     },
     "env": env,
@@ -651,7 +682,7 @@ elif [[ -f "${BASELINE_FILE}" ]]; then
     BASELINE_REL="${BASELINE_FILE#${ROOT}/}"
   fi
   if [[ -n "${BASELINE_REL}" ]]; then
-    if ! git -C "${ROOT}" ls-files --error-unmatch -- "${BASELINE_REL}" >/dev/null 2>&1; then
+    if [[ "${ALLOW_UNTRACKED_BASELINE}" != "1" ]] && ! git -C "${ROOT}" ls-files --error-unmatch -- "${BASELINE_REL}" >/dev/null 2>&1; then
       record_violation "baseline_not_tracked:${BASELINE_REL}"
     fi
     if ! git -C "${ROOT}" diff --exit-code -- "${BASELINE_REL}" >/dev/null 2>&1; then
@@ -806,6 +837,10 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "baseline_authority=${BASELINE_AUTHORITY}"
   echo "ci_image_digest=${CI_IMAGE_DIGEST}"
   echo "require_ci_for_baseline_init=${REQUIRE_CI_FOR_BASELINE_INIT}"
+  echo "allow_untracked_baseline=${ALLOW_UNTRACKED_BASELINE}"
+  echo "boot_threshold_percent=${BOOT_THRESHOLD_PERCENT}"
+  echo "context_threshold_percent=${CONTEXT_THRESHOLD_PERCENT}"
+  echo "syscall_threshold_percent=${SYSCALL_THRESHOLD_PERCENT}"
   echo "boot_ok_marker=${BOOT_OK_MARKER}"
   echo "preempt_sw_count_pattern=${PREEMPT_SW_COUNT_PATTERN}"
   echo "preempt_iret_count_pattern=${PREEMPT_IRET_COUNT_PATTERN}"
