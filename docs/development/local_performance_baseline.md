@@ -19,7 +19,7 @@ These are SEPARATE authorities and do not conflict.
 ./scripts/ci/local_perf_baseline_init.sh
 ```
 
-This creates: `scripts/ci/perf-baseline.local.lock.json`
+This creates or refreshes: `scripts/ci/perf-baseline.local.lock.json`
 
 ## Using Local Baseline
 
@@ -98,7 +98,9 @@ This means your environment changed:
 - Kernel version changed
 - QEMU version changed
 
-Re-init baseline to capture new environment.
+Local gate now distinguishes:
+- pure env drift -> baseline may auto-refresh
+- env drift + metric regression -> fail-closed
 
 ## Architecture
 
@@ -132,7 +134,9 @@ This separation allows:
 Implementation note:
 - Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
 - Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
+- Local gate stores a sampling contract (`sample_size=5`, `warmup_runs=1`, `aggregation=median`, `outlier_policy=none` by default).
 - This exception is only for the gitignored local baseline path, not for committed CI lock files.
 - Auto-refresh is limited to contract drift only:
-  missing baseline, schema drift, authority/digest drift, measurement-contract drift, threshold drift, or legacy baseline metric holes.
-- Metric regression is not auto-refreshed; local gate stays fail-closed when current metrics exceed the local baseline contract.
+  missing baseline, schema drift, measurement-contract drift, threshold drift, sampling drift, or legacy baseline metric holes.
+- Pure env drift may auto-refresh only when current medians stay within baseline thresholds.
+- Metric regression is not auto-refreshed; local gate stays fail-closed when current medians exceed the local baseline contract.

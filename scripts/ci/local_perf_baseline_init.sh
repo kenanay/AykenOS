@@ -32,26 +32,23 @@ echo "Digest: ${PERF_CI_IMAGE_DIGEST}"
 echo "Baseline file: ${BASELINE_FILE}"
 echo ""
 
-# Run baseline init
+# Run local performance gate; missing or stale local baseline will be regenerated.
 set +e
-make ci-gate-performance PERF_BASELINE_FILE="${BASELINE_FILE}"
+make ci-gate-performance-local
 rc=$?
 set -e
 
 echo ""
 echo "=== Exit Code: ${rc} ==="
 
-if [ "${rc}" -eq 2 ]; then
-    echo "✓ Baseline initialized (fail-closed)"
+if [ "${rc}" -eq 0 ]; then
+    echo "✓ Local baseline initialized or refreshed"
     if [ -f "${BASELINE_FILE}" ]; then
         echo "✓ Baseline file created: ${BASELINE_FILE}"
         echo ""
         echo "=== Baseline Summary ==="
-        jq -r '.metrics' "${BASELINE_FILE}" 2>/dev/null || cat "${BASELINE_FILE}"
+        jq -r '.policy.sampling, .metrics' "${BASELINE_FILE}" 2>/dev/null || cat "${BASELINE_FILE}"
     fi
-elif [ "${rc}" -eq 0 ]; then
-    echo "✗ Unexpected success - baseline should not exist yet"
-    exit 1
 else
     echo "✗ Unexpected exit code: ${rc}"
     exit "${rc}"
