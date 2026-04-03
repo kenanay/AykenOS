@@ -226,6 +226,12 @@ enum sched_perf_mb_phase_id {
     SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_EXIT,
     SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_ENTER,
     SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT,
+    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK,
     SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_KEEP_RUNNING,
     SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_SWITCH,
     SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_REJECT,
@@ -427,6 +433,48 @@ void sched_perf_note_mailbox_arbiter_candidate_lookup_exit(void)
     sched_note_perf_mb_phase_once(
         SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT,
         "arbiter_candidate_lookup_exit");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_enter(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER,
+        "arbiter_decision_enter");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_exit(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT,
+        "arbiter_decision_exit");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_path_switch(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH,
+        "arbiter_decision_path_switch");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_path_keep_running(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING,
+        "arbiter_decision_path_keep_running");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_path_reject(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT,
+        "arbiter_decision_path_reject");
+}
+
+void sched_perf_note_mailbox_arbiter_decision_path_fallback(void)
+{
+    sched_note_perf_mb_phase_once(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK,
+        "arbiter_decision_path_fallback");
 }
 
 void sched_perf_note_mailbox_arbiter_candidate_accept_keep_running(void)
@@ -1401,8 +1449,27 @@ static proc_t *sched_select_next_mailbox(
     int allow_keep_running,
     sched_decision_site_t site)
 {
+    int arbiter_decision_open = 0;
+
+#define SCHED_MB_DECISION_BEGIN() \
+    do { \
+        if (!arbiter_decision_open) { \
+            sched_perf_note_mailbox_arbiter_decision_enter(); \
+            arbiter_decision_open = 1; \
+        } \
+    } while (0)
+
+#define SCHED_MB_DECISION_END() \
+    do { \
+        if (arbiter_decision_open) { \
+            sched_perf_note_mailbox_arbiter_decision_exit(); \
+            arbiter_decision_open = 0; \
+        } \
+    } while (0)
+
 #define SCHED_MB_ARBITER_RETURN(value) \
     do { \
+        SCHED_MB_DECISION_END(); \
         sched_perf_note_mailbox_arbiter_exit(); \
         return (value); \
     } while (0)
@@ -1426,6 +1493,8 @@ static proc_t *sched_select_next_mailbox(
     // keep non-owner running and do not dereference owner mailbox under foreign CR3.
     if (site == SCHED_DECISION_SITE_YIELD && allow_keep_running &&
         prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev)) {
+        SCHED_MB_DECISION_BEGIN();
+        sched_perf_note_mailbox_arbiter_decision_path_fallback();
         sched_perf_note_mailbox_arbiter_keep_running_fallback();
         SCHED_MB_ARBITER_RETURN(prev);
     }
@@ -1435,12 +1504,16 @@ static proc_t *sched_select_next_mailbox(
     proc_t *owner = sched_owner_proc(prev, site);
     sched_perf_note_mailbox_arbiter_owner_lookup_exit();
     if (!owner) {
+        SCHED_MB_DECISION_BEGIN();
+        sched_perf_note_mailbox_arbiter_decision_path_reject();
         sched_emit_mailbox_miss_fatal_pre(site, prev, NULL);
         sched_emit_marker("P10_MAILBOX_OWNER_MISSING_FATAL\n");
         sched_perf_note_mailbox_arbiter_return_null();
         SCHED_MB_ARBITER_RETURN(NULL);
     }
     if (!(owner->state == PROC_READY || owner->state == PROC_RUNNING)) {
+        SCHED_MB_DECISION_BEGIN();
+        sched_perf_note_mailbox_arbiter_decision_path_reject();
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_OWNER_NOT_READY_FATAL\n");
         sched_perf_note_mailbox_arbiter_return_null();
@@ -1450,13 +1523,16 @@ static proc_t *sched_select_next_mailbox(
     // Non-owner fresh decision attempt is a protocol violation.
     if (prev && prev->type == PROC_TYPE_USER && !sched_is_owner(prev) &&
         sched_mailbox_has_any_candidate(prev)) {
+        SCHED_MB_DECISION_BEGIN();
         sched_emit_marker("P10_MAILBOX_OWNER_MISMATCH\n");
 #if AYKEN_SCHED_BOOTSTRAP_POLICY
         if (site != SCHED_DECISION_SITE_YIELD) {
+            sched_perf_note_mailbox_arbiter_decision_path_reject();
             sched_perf_note_mailbox_arbiter_return_null();
             SCHED_MB_ARBITER_RETURN(NULL);
         }
 #else
+        sched_perf_note_mailbox_arbiter_decision_path_reject();
         sched_perf_note_mailbox_arbiter_return_null();
         SCHED_MB_ARBITER_RETURN(NULL);
 #endif
@@ -1484,6 +1560,7 @@ static proc_t *sched_select_next_mailbox(
                 consume_epoch = 0;
             }
 #endif
+            SCHED_MB_DECISION_BEGIN();
             if (prev && prev->type == PROC_TYPE_USER &&
                 prev->state == PROC_RUNNING &&
                 pid == (uint32_t)prev->pid) {
@@ -1502,6 +1579,7 @@ static proc_t *sched_select_next_mailbox(
                 if (used_mailbox) {
                     *used_mailbox = 1;
                 }
+                sched_perf_note_mailbox_arbiter_decision_path_keep_running();
                 sched_perf_note_mailbox_arbiter_candidate_accept_keep_running();
                 SCHED_MB_ARBITER_RETURN(prev);
             }
@@ -1524,6 +1602,7 @@ static proc_t *sched_select_next_mailbox(
                 if (used_mailbox) {
                     *used_mailbox = 1;
                 }
+                sched_perf_note_mailbox_arbiter_decision_path_switch();
                 sched_perf_note_mailbox_arbiter_candidate_accept_switch();
                 remove_from_ready_queue(cand);
                 SCHED_MB_ARBITER_RETURN(cand);
@@ -1535,8 +1614,10 @@ static proc_t *sched_select_next_mailbox(
 
     // Yield-only safety invariant: without fresh decision, keep current Ring3 context.
     if (allow_keep_running && prev && prev->type == PROC_TYPE_USER) {
+        SCHED_MB_DECISION_BEGIN();
         if (prev->state != PROC_RUNNING) {
             sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING_INVALID_STATE\n");
+            sched_perf_note_mailbox_arbiter_decision_path_reject();
             sched_perf_note_mailbox_arbiter_return_null();
             SCHED_MB_ARBITER_RETURN(NULL);
         }
@@ -1551,6 +1632,7 @@ static proc_t *sched_select_next_mailbox(
             keep_running_marker_emitted = 1;
             sched_emit_marker("P10_MAILBOX_MISS_KEEP_RUNNING\n");
         }
+        sched_perf_note_mailbox_arbiter_decision_path_fallback();
         sched_perf_note_mailbox_arbiter_keep_running_fallback();
         SCHED_MB_ARBITER_RETURN(prev);
 #else
@@ -1562,11 +1644,13 @@ static proc_t *sched_select_next_mailbox(
                 pre_user_bypass_marker_emitted = 1;
                 sched_emit_marker("P10_MAILBOX_MISS_PRE_USER_BYPASS\n");
             }
+            sched_perf_note_mailbox_arbiter_decision_path_fallback();
             sched_perf_note_mailbox_arbiter_keep_running_fallback();
             SCHED_MB_ARBITER_RETURN(prev);
         }
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_FATAL\n");
+        sched_perf_note_mailbox_arbiter_decision_path_reject();
         sched_perf_note_mailbox_arbiter_return_null();
         SCHED_MB_ARBITER_RETURN(NULL);
 #endif
@@ -1575,16 +1659,21 @@ static proc_t *sched_select_next_mailbox(
     // Transitional fallback is compile-time gated; default constitutional mode is fail-closed.
 #if AYKEN_SCHED_FALLBACK
 #if AYKEN_SCHED_BOOTSTRAP_POLICY
+    SCHED_MB_DECISION_BEGIN();
     sched_emit_marker("P10_SCHED_FALLBACK\n");
     sched_emit_marker("P10_READY_HEAD_FALLBACK\n");
+    sched_perf_note_mailbox_arbiter_decision_path_fallback();
     sched_perf_note_mailbox_arbiter_ready_head_fallback();
     SCHED_MB_ARBITER_RETURN(sched_select_next_ready_head_fallback());
 #else
+    SCHED_MB_DECISION_BEGIN();
     sched_emit_marker("P10_SCHED_FALLBACK_FORBIDDEN\n");
+    sched_perf_note_mailbox_arbiter_decision_path_reject();
     sched_perf_note_mailbox_arbiter_return_null();
     SCHED_MB_ARBITER_RETURN(NULL);
 #endif
 #else
+    SCHED_MB_DECISION_BEGIN();
     if (site == SCHED_DECISION_SITE_BLOCK) {
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_BLOCK_FATAL\n");
@@ -1595,10 +1684,13 @@ static proc_t *sched_select_next_mailbox(
         sched_emit_mailbox_miss_fatal_pre(site, prev, owner);
         sched_emit_marker("P10_MAILBOX_MISS_YIELD_NULL\n");
     }
+    sched_perf_note_mailbox_arbiter_decision_path_reject();
     sched_perf_note_mailbox_arbiter_return_null();
     SCHED_MB_ARBITER_RETURN(NULL);
 #endif
 
+#undef SCHED_MB_DECISION_END
+#undef SCHED_MB_DECISION_BEGIN
 #undef SCHED_MB_ARBITER_RETURN
 }
 

@@ -870,6 +870,12 @@ mailbox_extra_markers = (
     "arbiter_owner_lookup_exit",
     "arbiter_candidate_lookup_enter",
     "arbiter_candidate_lookup_exit",
+    "arbiter_decision_enter",
+    "arbiter_decision_exit",
+    "arbiter_decision_path_switch",
+    "arbiter_decision_path_keep_running",
+    "arbiter_decision_path_reject",
+    "arbiter_decision_path_fallback",
     "arbiter_candidate_accept_keep_running",
     "arbiter_candidate_accept_switch",
     "arbiter_candidate_reject",
@@ -880,8 +886,13 @@ mailbox_extra_markers = (
 mailbox_extra_durations = (
     ("arbiter_owner_lookup", "arbiter_owner_lookup_enter", "arbiter_owner_lookup_exit"),
     ("arbiter_candidate_lookup", "arbiter_candidate_lookup_enter", "arbiter_candidate_lookup_exit"),
+    ("arbiter_decision", "arbiter_decision_enter", "arbiter_decision_exit"),
 )
 mailbox_event_markers = (
+    "arbiter_decision_path_switch",
+    "arbiter_decision_path_keep_running",
+    "arbiter_decision_path_reject",
+    "arbiter_decision_path_fallback",
     "arbiter_candidate_accept_keep_running",
     "arbiter_candidate_accept_switch",
     "arbiter_candidate_reject",
