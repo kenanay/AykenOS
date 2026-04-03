@@ -455,6 +455,7 @@ import re
 
 pattern = re.compile(r"\[\[AYKEN_PERF_MB_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
 path_pattern = re.compile(r"\[\[AYKEN_PERF_MB_PATH\]\] name=([a-z_]+) phase=(enter|exit) ticks=([0-9]+) tick_valid=([0-9]+)")
+reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
 phases = (
     "snapshot_enter",
     "snapshot_exit",
@@ -499,9 +500,26 @@ path_names = (
     "reject",
     "fallback",
 )
+reason_names = (
+    "gate45_non_owner",
+    "owner_missing",
+    "owner_not_ready",
+    "owner_mismatch",
+    "no_candidate",
+    "invalid_state",
+    "bootstrap_keep_running",
+    "pre_user_bypass",
+    "yield_fatal",
+    "ready_head_fallback",
+    "fallback_forbidden",
+    "block_fatal",
+    "bootstrap_fatal",
+    "yield_null",
+)
 
 seen = {}
 path_seen = {name: {"enter": [], "exit": []} for name in path_names}
+reason_counts = {name: 0 for name in reason_names}
 with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
     for line in handle:
         match = pattern.search(line)
@@ -519,6 +537,11 @@ with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace
             )
             if name in path_seen:
                 path_seen[name][phase].append({"ticks": ticks, "tick_valid": tick_valid})
+        reason_match = reason_pattern.search(line)
+        if reason_match:
+            name = reason_match.group(1)
+            if name in reason_counts:
+                reason_counts[name] += 1
 
 for phase in phases:
     payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
@@ -565,6 +588,9 @@ for name in path_names:
     print(f"mailbox_path_{name}_min_ticks={min_ticks}")
     print(f"mailbox_path_{name}_max_ticks={max_ticks}")
     print(f"mailbox_path_{name}_available={int(len(durations) > 0)}")
+
+for name in reason_names:
+    print(f"mailbox_reason_{name}_count={reason_counts[name]}")
 PY
 )"
 

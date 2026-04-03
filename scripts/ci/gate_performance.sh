@@ -934,6 +934,27 @@ for name in ("switch", "keep_running", "reject", "fallback"):
         "available": bool(int(metrics_kv.get(f"mailbox_path_{name}_available", "0"))),
     }
 
+payload["mailbox_phase_breakdown_ticks"]["fallback_reasons"] = {}
+for name in (
+    "gate45_non_owner",
+    "owner_missing",
+    "owner_not_ready",
+    "owner_mismatch",
+    "no_candidate",
+    "invalid_state",
+    "bootstrap_keep_running",
+    "pre_user_bypass",
+    "yield_fatal",
+    "ready_head_fallback",
+    "fallback_forbidden",
+    "block_fatal",
+    "bootstrap_fatal",
+    "yield_null",
+):
+    payload["mailbox_phase_breakdown_ticks"]["fallback_reasons"][name] = int(
+        metrics_kv.get(f"mailbox_reason_{name}_count", "0")
+    )
+
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:
     json.dump(payload, fh, indent=2, sort_keys=True)
     fh.write("\n")
