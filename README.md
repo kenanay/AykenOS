@@ -13,26 +13,25 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 28.03.2026
-**Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11`
-**Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c`
+**Son Güncelleme:** 03.04.2026
+**Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
+**Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
 **Remote CI (Phase-12):** `ci-freeze#23099070483 = success` (PR #62)
-**Remote CI (Phase-10B + Docs Sync):** `ci-freeze#23406688668 = success` (PR #65)
-**Phase-13 Local SHA:** `a44febed` (`phase13: complete service-backed verification expansion`)
-**CURRENT_PHASE:** `12` (`Phase-12 OFFICIALLY CLOSED — Phase-13 service-backed verification expansion COMPLETE`)
+**Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
+**CURRENT_PHASE:** `14` (`Phase-13 OFFICIALLY CLOSED — CURRENT_PHASE=14 — Phase-14 ACTIVE`)
 **Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite
 **Acil Blocker:** `yok`
-**Yakın Hedef:** Phase-12 official closure prep → Phase-13 CI freeze
+**Yakın Hedef:** Phase-14 workstreams (replay determinism hardening, proofd boundary hardening, cross-node observability graph)
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase-13 kill-switch gates 12/12 PASS ✅ | Phase-13 service-backed verification expansion COMPLETE ✅ | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase 13 distributed observability OFFICIALLY CLOSED ✅ | CURRENT_PHASE=14 ✅ | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
-**Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62) | `CURRENT_PHASE=12` formal transition at `0adb2a84`
-**Phase 13 Status:** KILL_SWITCH_GATES_PASS (12/12) ✅ | SERVICE_BACKED_VERIFICATION_EXPANSION COMPLETE ✅ | tag `phase13-kill-switch-gates-pass` at `0ec4bb5e` | local SHA `a44febed` | phase12 official closure prep pending
-**Worktree-Local Ring3 Note:** Executable user-leaf rule artık dedicated local deterministic gate ile enforce ediliyor ✅ | `make ci-gate-ring3-user-leaf-rule` PASS | broader Phase10-A2 strict/global authority ayrı truth surface olarak beklemede
+**Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62)
+**Phase 13 Status:** OFFICIALLY CLOSED ✅ | tag `phase13-official-closure-confirmed` at `8b23fe0d` | remote `ci-freeze` run `23706742211` (PR #81) | Architecture Map §4 workstreams COMPLETE
+**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | workstreams: replay determinism hardening, proofd boundary hardening, cross-node observability graph
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
@@ -201,7 +200,8 @@ cd ayken && cargo build && ./target/debug/ayken check
 | Phase 10 — Runtime | ✅ OFFICIALLY CLOSED | CPL3 entry, deterministic runtime |
 | Phase 11 — Verification | ✅ OFFICIALLY CLOSED | Ledger, ETI, replay, proof bundle |
 | Phase 12 — Trust Layer | ✅ OFFICIALLY CLOSED | tag `phase12-official-closure-confirmed`, remote CI run `23099070483` (PR #62) |
-| Phase 13 — Service-Backed Verification Expansion | 🔄 IN PROGRESS | Kill-switch gates 12/12 PASS ✅ | Service-backed verification expansion COMPLETE ✅ | Phase-12 official closure prep pending |
+| Phase 13 — Distributed Observability | ✅ OFFICIALLY CLOSED | tag `phase13-official-closure-confirmed`, remote CI run `23706742211` (PR #81) |
+| Phase 14 — Distributed Observability Hardening | 🔄 ACTIVE | Replay determinism, proofd boundary, cross-node graph |
 
 ### Phase 12 Detayı
 
@@ -276,10 +276,11 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ## 🎯 Sonraki Hedefler
 
-**Kısa Vadeli:**
-- Phase-12 official closure prep (`make phase12-official-closure-prep`)
-- Phase-13 CI freeze (remote `ci-freeze` run)
-- Phase-14 diagnostics observability derinleştirme (lineage, drift, queryability)
+**Kısa Vadeli (Phase-14):**
+- Replay determinism stability hardening
+- proofd query/service boundary hardening
+- Cross-node observability graph (`GET /diagnostics/graph`)
+- Phase-14 official closure prep
 
 **Orta Vadeli:**
 - ARM64 + RISC-V kernel portları
@@ -294,6 +295,6 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 28 Mart 2026 — Phase-13 service-backed verification expansion tamamlandı (local SHA `a44febed`); kill-switch 12/12 PASS; Phase-12 official closure prep sıradaki adım.
+**Son Güncelleme:** 03 Nisan 2026 — Phase-13 OFFICIALLY CLOSED (ci-freeze#23706742211, PR #81); CURRENT_PHASE=14; Phase-14 spec açıldı.
 
 **© 2026 Kenan AY — AykenOS Project**

@@ -1,37 +1,31 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-03-28
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` (`evidence_sha=9cb2171b`/`01d1cb5c`, `closure_sync_sha=fe9031d7`, `ci_freeze_run=22797401328`/`23099070483`)
+**Last Updated:** 2026-04-03
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
 
 ## Current Status
-- **Runtime:** `Phase-10` officially closed via freeze evidence + remote `ci-freeze` run `22797401328`
-- **Verification Substrate:** `Phase-11` officially closed via proof-chain evidence + remote `ci-freeze` run `22797401328`
-- **Trust Layer:** `Phase-12` officially closed via normative gate set + remote `ci-freeze` run `23099070483` (PR #62)
-- **Phase-13 Kill-Switch:** 6/6 gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`); boundary hardening active
-- **Formal Governance Pointer:** `CURRENT_PHASE=12` (formal transition executed at `0adb2a84`)
-- **Next Focus:** Phase-13 boundary hardening workstreams per Architecture Map §4
-- **Worktree-Local Ring3 Rule:** executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
+- **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
+- **Verification Substrate:** `Phase-11` officially closed — `ci-freeze` run `22797401328`
+- **Trust Layer:** `Phase-12` officially closed — `ci-freeze` run `23099070483` (PR #62)
+- **Distributed Observability:** `Phase-13` officially closed — `ci-freeze` run `23706742211` (PR #81)
+- **Formal Governance Pointer:** `CURRENT_PHASE=14` (formal transition at `8b23fe0d`)
+- **Active Phase:** Phase-14 — `docs/specs/phase14-distributed-observability/README.md`
+- **Performance Baseline:** `gha-ubuntu24-20260323.65.1-X64` (PR #83)
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
 
 1. `README.md`
-2. `AYKENOS_SON_DURUM_RAPORU_2026_03_07.md`
-3. `RAPOR_OZETI_2026_03_07.md`
-4. `reports/phase10_phase11_closure_2026-03-07.md`
-5. `docs/development/PROJECT_STATUS_REPORT.md`
-6. `docs/roadmap/overview.md`
-7. `docs/specs/phase11-verification-substrate/tasks.md`
-8. `Makefile`
-9. `.github/workflows/ci-freeze.yml`
-10. `docs/specs/phase12-trust-layer/tasks.md`
-11. `docs/specs/phase12-trust-layer/PROOF_EXCHANGE_PROTOCOL_MESSAGE_FORMAT.md`
-12. `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
-13. `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
-14. `docs/governance/TEST_NAMING_CONVENTION.md`
-15. `docs/governance/TEST_PIPELINE_CONTRACT.md`
-16. `docs/governance/error_codes.json`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=14`
+3. `docs/roadmap/overview.md`
+4. `docs/development/PROJECT_STATUS_REPORT.md`
+5. `reports/phase13_official_closure_candidate/closure_index.json`
+6. `reports/phase12_official_closure_candidate/closure_manifest.json`
+7. `reports/phase10_phase11_official_closure_index.json`
+8. `docs/specs/phase14-distributed-observability/README.md`
+9. `Makefile`
+10. `.github/workflows/ci-freeze.yml`
 
 ## Live Evidence References
 1. `evidence/run-local-freeze-p10p11/reports/summary.json`
@@ -54,8 +48,9 @@ Current repo truth icin once su dosyalari referans alin:
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
 2. `docs/roadmap/overview.md`
-3. `docs/roadmap/CURRENT_PHASE`
+3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=14`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
+5. `docs/specs/phase14-distributed-observability/README.md`
 
 ## Phase-11 Reference Set
 1. `docs/specs/phase11-verification-substrate/design.md`
@@ -145,4 +140,6 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
 
 ## Note
-Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin 2026-03-07 official closure truth ve yukaridaki primary truth kaynaklari kullanilmalidir.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`) ve yukaridaki primary truth kaynaklari kullanilmalidir.
+
+**Son Guncelleme:** 2026-04-03
