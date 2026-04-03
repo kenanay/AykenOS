@@ -128,15 +128,17 @@ Current classification:
 
 Meaning:
 1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
-2. Three workstreams: replay determinism hardening, proofd query/service boundary hardening, cross-node observability graph
+2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+3. Active workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
 
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
 2. `CURRENT_PHASE=14` — formal transition executed at `8b23fe0d`.
 3. Phase-10/11/12/13 all OFFICIALLY CLOSED.
-4. Phase-14 workstreams: replay determinism hardening, proofd boundary hardening, cross-node observability graph.
+4. Phase-14 workstream truth is tracker-authoritative; README/spec and architecture surfaces must align to the tracker.
 5. `proofd` MUST NOT drift into authority, majority, or control-plane semantics.
 6. Phase-14 graph / observability growth MUST remain derived-only and MUST NOT become authority arbitration or truth election.
+7. `ABDF` and `BCIB` remain existing substrates; Phase-14 does not re-center them as primary workstreams.
 
 ## 4) Current Risk Surface
 1. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir — Phase-14 workstream 3.1.
@@ -145,11 +147,13 @@ Meaning:
 4. Phase-14 graph / observability growth MUST remain derived-only.
 
 ## 5) Next Steps
-1. Phase-14 workstream 3.1: Replay determinism stability hardening
-2. Phase-14 workstream 3.2: proofd query/service boundary hardening
-3. Phase-14 workstream 3.3: Cross-node observability graph (`GET /diagnostics/graph`)
-4. Keep monitoring replay stability under interrupt ordering nondeterminism
-5. Preserve `proofd != authority surface` and `parity != consensus`
+1. Phase-14 workstream 3.1: Read-only external API stabilization
+2. Phase-14 workstream 3.2: Replay determinism stability hardening
+3. Phase-14 workstream 3.3: `proofd` query/service boundary hardening
+4. Phase-14 workstream 3.4: Cross-node observability graph (`GET /diagnostics/graph`)
+5. Phase-14 workstream 3.5: Observability UX (human-readable layer)
+6. Keep monitoring replay stability under interrupt ordering nondeterminism
+7. Preserve `service != authority`, `diagnostics != decision`, and `parity != consensus`
 
 ## References
 - `README.md`

@@ -1,4 +1,7 @@
-use proof_verifier::canonical::jcs::{canonicalize_json, canonicalize_json_value};
+pub mod determinism;
+pub mod internal;
+
+use proof_verifier::canonical::jcs::canonicalize_json_value;
 use proof_verifier::diversity_ledger::{
     load_diversity_ledger_entries, VerificationDiversityLedgerEntry,
 };
@@ -18,7 +21,7 @@ use proof_verifier::trust_reuse_runtime_surface::{
 };
 use proof_verifier::types::{AuditMode, ReceiptMode, ReceiptSignerConfig, VerifyRequest};
 use proof_verifier::verification_context_object::{
-    compute_verification_context_id, load_verification_context_object, VerificationContextObject,
+    load_verification_context_object, VerificationContextObject,
 };
 use proof_verifier::{verify_bundle, RegistrySnapshot, TrustPolicy};
 use serde::{Deserialize, Serialize};
@@ -30,10 +33,22 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::determinism::artifacts::{
+    write_canonical_json_file_if_absent_or_same, write_canonical_json_value_if_absent_or_same,
+};
+use crate::determinism::contract::{
+    build_verification_context_material, build_verification_determinism_contract,
+};
+use crate::determinism::fingerprint::canonical_hash_value_prefixed;
+use crate::internal::replay_route::handle_internal_replay;
+
 const RUN_LEVEL_ARTIFACTS: &[&str] = &[
     "report.json",
     "parity_report.json",
     "proofd_run_manifest.json",
+    "verification_determinism_contract.json",
+    "verification_determinism_replay_report.json",
+    "verification_determinism_incident.json",
     "verification_audit_ledger.jsonl",
     "verification_diversity_ledger_binding.json",
     "verification_diversity_ledger.json",
@@ -74,6 +89,11 @@ const TRUST_REUSE_RUNTIME_EVALUATOR_DIR: &str = "trust_reuse_runtime_evaluator";
 const TRUST_REUSE_RUNTIME_EXPECTED_SUBJECT_FILE: &str = "expected_verdict_subject.json";
 const PROOFD_RUN_MANIFEST_FILE: &str = "proofd_run_manifest.json";
 const RECEIPT_RELATIVE_PATH: &str = "receipts/verification_receipt.json";
+const VERIFICATION_DETERMINISM_CONTRACT_FILE: &str = "verification_determinism_contract.json";
+const VERIFICATION_DETERMINISM_REPLAY_REPORT_FILE: &str =
+    "verification_determinism_replay_report.json";
+const VERIFICATION_DETERMINISM_INCIDENT_FILE: &str = "verification_determinism_incident.json";
+pub const API_VERSION: u16 = 1;
 const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
     RECEIPT_RELATIVE_PATH,
     CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH,
@@ -84,6 +104,8 @@ const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
 ];
 const MAX_VERIFY_BUNDLE_BODY_BYTES: usize = 64 * 1024;
 static GENERATED_RUN_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+#[cfg(test)]
+static TEST_TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 // Task 10.1: Normatif Phase-13 forbidden fields — used by serialize guard tests
 #[allow(dead_code)]
@@ -110,6 +132,18 @@ const PHASE13_FORBIDDEN_FIELDS: &[&str] = &[
     "node_priority",
     "verification_weight",
 ];
+
+#[cfg(test)]
+fn unique_test_temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock drift")
+        .as_nanos();
+    let counter = TEST_TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!("{prefix}-{unique}-{counter:016x}"));
+    fs::create_dir_all(&path).expect("create temp dir");
+    path
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestTarget {
@@ -209,6 +243,13 @@ struct VerifyBundleRequestBody {
     trust_reuse_runtime_binding: Option<VerifyBundleTrustReuseRuntimeBinding>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ReplayDeterminismRequestBody {
+    verify_request: VerifyBundleRequestBody,
+    #[serde(default)]
+    source_run_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct VerifyBundleResponseBody {
     status: &'static str,
@@ -228,6 +269,8 @@ struct VerifyBundleResponseBody {
     trust_reuse_runtime_surface_origin: Option<String>,
     trust_reuse_flow_source_path: Option<String>,
     trust_reuse_flow_source_origin: Option<String>,
+    verification_determinism_contract_path: String,
+    verification_determinism_artifact_hash: String,
     findings_count: usize,
 }
 
@@ -529,6 +572,41 @@ pub fn route_request_with_body(
                         "mode": "verification_execution_and_read_only_diagnostics",
                     }),
                 ),
+                "/diagnostics/version" => json_response(
+                    200,
+                    json!({
+                        "api_version": API_VERSION,
+                        "service": "proofd",
+                        "contract": "read-only diagnostics surface",
+                        "invariants": [
+                            "service != authority",
+                            "diagnostics != decision",
+                            "parity != consensus",
+                            "trust does not affect verdict"
+                        ],
+                        "endpoints": [
+                            "GET /healthz",
+                            "GET /diagnostics/version",
+                            "GET /diagnostics/runs",
+                            "GET /diagnostics/runs/{run_id}",
+                            "GET /diagnostics/runs/{run_id}/artifacts",
+                            "GET /diagnostics/runs/{run_id}/federation",
+                            "GET /diagnostics/runs/{run_id}/context",
+                            "GET /diagnostics/runs/{run_id}/registry",
+                            "GET /diagnostics/runs/{run_id}/boundary",
+                            "GET /diagnostics/runs/{run_id}/incidents",
+                            "GET /diagnostics/runs/{run_id}/parity",
+                            "GET /diagnostics/federation",
+                            "GET /diagnostics/context",
+                            "GET /diagnostics/trust",
+                            "GET /diagnostics/parity",
+                            "GET /diagnostics/parity/context-relation",
+                            "GET /diagnostics/incidents",
+                            "GET /diagnostics/fingerprints/{fp}",
+                            "GET /diagnostics/replicated-boundary"
+                        ]
+                    }),
+                ),
                 "/diagnostics/incidents" => {
                     match load_incident_report(evidence_dir, target.query.as_deref()) {
                         Ok(value) => json_response(200, value),
@@ -564,10 +642,12 @@ pub fn route_request_with_body(
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
                 },
-                "/diagnostics/federation" => match build_global_federation_diagnostics(evidence_dir) {
-                    Ok(value) => json_response(200, value),
-                    Err(error) => error_response(error),
-                },
+                "/diagnostics/federation" => {
+                    match build_global_federation_diagnostics(evidence_dir) {
+                        Ok(value) => json_response(200, value),
+                        Err(error) => error_response(error),
+                    }
+                }
                 "/diagnostics/context" => match build_global_context_diagnostics(evidence_dir) {
                     Ok(value) => json_response(200, value),
                     Err(error) => error_response(error),
@@ -581,7 +661,7 @@ pub fn route_request_with_body(
                         Ok(value) => json_response(200, value),
                         Err(error) => error_response(error),
                     }
-                },
+                }
                 _ if target.path.starts_with("/diagnostics/incidents/") => {
                     let incident_id = target
                         .path
@@ -613,6 +693,9 @@ pub fn route_request_with_body(
         }
         "POST" => match target.path.as_str() {
             "/verify/bundle" => handle_verify_bundle(raw_body.unwrap_or_default(), evidence_dir),
+            "/internal/replay" => {
+                handle_internal_replay(raw_body.unwrap_or_default(), evidence_dir)
+            }
             _ if is_observability_path(&target.path) => {
                 json_response(405, json!({ "error": "method_not_allowed" }))
             }
@@ -860,15 +943,16 @@ fn build_run_federation_diagnostics(run_id: &str, run_dir: &Path) -> Result<Valu
         missing_execution_cluster_entry_count,
     };
 
-    serde_json::to_value(&projection).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+    serde_json::to_value(&projection)
+        .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
 }
 
 /// Global federation diagnostics: aggregate verifier topology across all runs.
 /// Scans all run directories, loads diversity ledgers, and produces a system-level
 /// view of verifier distribution. Read-only, deterministic, non-authoritative.
 fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
-    let entries_iter = fs::read_dir(evidence_dir)
-        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+    let entries_iter =
+        fs::read_dir(evidence_dir).map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
 
     // Aggregate entries across all runs (fail-open per run)
     let mut all_entries: Vec<VerificationDiversityLedgerEntry> = Vec::new();
@@ -883,9 +967,7 @@ fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, Ser
     run_dirs.sort();
 
     for run_dir in &run_dirs {
-        if !is_safe_path_segment(
-            &run_dir.file_name().unwrap_or_default().to_string_lossy(),
-        ) {
+        if !is_safe_path_segment(&run_dir.file_name().unwrap_or_default().to_string_lossy()) {
             continue;
         }
         run_count += 1;
@@ -920,8 +1002,10 @@ fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, Ser
     }
 
     // verifier_id → set of context_ids observed across all entries
-    let mut verifier_contexts: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
-        std::collections::BTreeMap::new();
+    let mut verifier_contexts: std::collections::BTreeMap<
+        String,
+        std::collections::BTreeSet<String>,
+    > = std::collections::BTreeMap::new();
     for entry in &all_entries {
         verifier_contexts
             .entry(entry.verifier_id.clone())
@@ -972,8 +1056,8 @@ fn build_global_federation_diagnostics(evidence_dir: &Path) -> Result<Value, Ser
 /// context, and whether context IDs are consistent within fingerprint groups.
 /// Read-only, deterministic, non-authoritative.
 fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
-    let entries_iter = fs::read_dir(evidence_dir)
-        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+    let entries_iter =
+        fs::read_dir(evidence_dir).map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
 
     let mut run_dirs: Vec<PathBuf> = entries_iter
         .flatten()
@@ -1009,7 +1093,10 @@ fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, Servic
         let Ok(ctx_json) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") else {
             continue;
         };
-        let Some(context_id) = ctx_json.get("verification_context_id").and_then(Value::as_str) else {
+        let Some(context_id) = ctx_json
+            .get("verification_context_id")
+            .and_then(Value::as_str)
+        else {
             continue;
         };
         runs_with_context += 1;
@@ -1075,8 +1162,8 @@ fn build_global_context_diagnostics(evidence_dir: &Path) -> Result<Value, Servic
 /// Shows which producers appear, their entry counts, and registry version distribution.
 /// Read-only, deterministic, non-authoritative — trust does not affect verdict.
 fn build_global_trust_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
-    let entries_iter = fs::read_dir(evidence_dir)
-        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+    let entries_iter =
+        fs::read_dir(evidence_dir).map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
 
     let mut run_dirs: Vec<PathBuf> = entries_iter
         .flatten()
@@ -1110,16 +1197,13 @@ fn build_global_trust_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceE
         if !reg_path.is_file() {
             continue;
         }
-        let Ok(registry) =
-            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        let Ok(registry) = load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
         else {
             continue;
         };
         runs_with_registry += 1;
 
-        *version_counts
-            .entry(registry.registry_version)
-            .or_default() += 1;
+        *version_counts.entry(registry.registry_version).or_default() += 1;
 
         hash_runs
             .entry(registry.registry_snapshot_hash.clone())
@@ -1225,11 +1309,10 @@ fn build_parity_context_relation(evidence_dir: &Path) -> Result<Value, ServiceEr
             if !ctx_path.is_file() {
                 continue;
             }
-            if let Ok(ctx_json) =
-                load_required_run_json_artifact::<Value>(&ctx_path, "skip")
-            {
-                if let Some(ctx_id) =
-                    ctx_json.get("verification_context_id").and_then(Value::as_str)
+            if let Ok(ctx_json) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") {
+                if let Some(ctx_id) = ctx_json
+                    .get("verification_context_id")
+                    .and_then(Value::as_str)
                 {
                     run_context.insert(run_id, ctx_id.to_string());
                 }
@@ -1650,8 +1733,8 @@ fn build_fingerprint_boundary_diagnostics(
 
     // Discover all runs matching this fingerprint (fail-open per entry)
     let mut matched: Vec<(String, PathBuf)> = Vec::new();
-    let entries = fs::read_dir(evidence_dir)
-        .map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+    let entries =
+        fs::read_dir(evidence_dir).map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
 
     for entry in entries.flatten() {
         let candidate_path = entry.path();
@@ -1691,7 +1774,10 @@ fn build_fingerprint_boundary_diagnostics(
             continue;
         }
         if let Ok(ctx_json) = load_required_run_json_artifact::<Value>(&ctx_path, "skip") {
-            if let Some(ctx_id) = ctx_json.get("verification_context_id").and_then(Value::as_str) {
+            if let Some(ctx_id) = ctx_json
+                .get("verification_context_id")
+                .and_then(Value::as_str)
+            {
                 context_ids.insert(ctx_id.to_string());
             }
         }
@@ -1817,6 +1903,14 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
     };
 
     write_verification_context_package(&run_dir, &policy, &registry, &outcome)?;
+    let determinism_contract =
+        build_verification_determinism_contract(&registry, &outcome, &request_fingerprint)?;
+    write_canonical_json_file_if_absent_or_same(
+        &run_dir.join(VERIFICATION_DETERMINISM_CONTRACT_FILE),
+        &determinism_contract,
+        "determinism_contract_write_failed",
+        "determinism_contract_bytes_conflict",
+    )?;
 
     let behavioral_observability_emitted = if let Some(manifest) = &diversity_manifest {
         let binding_path = run_dir.join(VERIFICATION_DIVERSITY_BINDING_FILE);
@@ -1938,8 +2032,7 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
                     trust_reuse_runtime_surface_relative_path = Some(relative_path.to_string());
                 }
                 if trust_reuse_runtime_surface_origin.is_none() {
-                    trust_reuse_runtime_surface_origin =
-                        Some(runtime_surface_origin.to_string());
+                    trust_reuse_runtime_surface_origin = Some(runtime_surface_origin.to_string());
                 }
             }
             trust_reuse_source_relative_path = Some(TRUST_REUSE_FLOW_SOURCE_FILE.to_string());
@@ -1986,6 +2079,8 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
         "trust_reuse_runtime_surface_origin": trust_reuse_runtime_surface_origin,
         "trust_reuse_flow_source_path": trust_reuse_source_relative_path,
         "trust_reuse_flow_source_origin": trust_reuse_source_origin,
+        "verification_determinism_contract_path": VERIFICATION_DETERMINISM_CONTRACT_FILE,
+        "verification_determinism_artifact_hash": determinism_contract.artifact_hash,
         "request_fingerprint": request_fingerprint,
         "verdict": verdict_label(&outcome.verdict),
         "verdict_subject": outcome.subject,
@@ -2046,6 +2141,16 @@ fn verify_bundle_request(raw_body: &[u8], evidence_dir: &Path) -> Result<Value, 
             .get("trust_reuse_flow_source_origin")
             .and_then(Value::as_str)
             .map(|value| value.to_string()),
+        verification_determinism_contract_path: run_manifest
+            .get("verification_determinism_contract_path")
+            .and_then(Value::as_str)
+            .unwrap_or(VERIFICATION_DETERMINISM_CONTRACT_FILE)
+            .to_string(),
+        verification_determinism_artifact_hash: run_manifest
+            .get("verification_determinism_artifact_hash")
+            .and_then(Value::as_str)
+            .unwrap_or(&determinism_contract.artifact_hash)
+            .to_string(),
         findings_count: outcome.findings.len(),
     };
 
@@ -2156,6 +2261,19 @@ fn parse_query(
 }
 
 fn parse_verify_bundle_request(raw_body: &[u8]) -> Result<VerifyBundleRequestBody, ServiceError> {
+    if raw_body.is_empty() {
+        return Err(ServiceError::BadRequest("missing_request_body"));
+    }
+    if raw_body.len() > MAX_VERIFY_BUNDLE_BODY_BYTES {
+        return Err(ServiceError::BadRequest("request_body_too_large"));
+    }
+
+    serde_json::from_slice(raw_body).map_err(|_| ServiceError::BadRequest("invalid_request_body"))
+}
+
+fn parse_replay_determinism_request(
+    raw_body: &[u8],
+) -> Result<ReplayDeterminismRequestBody, ServiceError> {
     if raw_body.is_empty() {
         return Err(ServiceError::BadRequest("missing_request_body"));
     }
@@ -2389,6 +2507,18 @@ fn validate_verify_bundle_request(request: &VerifyBundleRequestBody) -> Result<(
     Ok(())
 }
 
+fn validate_replay_determinism_request(
+    request: &ReplayDeterminismRequestBody,
+) -> Result<(), ServiceError> {
+    validate_verify_bundle_request(&request.verify_request)?;
+    if let Some(source_run_id) = request.source_run_id.as_deref() {
+        if source_run_id.is_empty() || !is_safe_path_segment(source_run_id) {
+            return Err(ServiceError::BadRequest("invalid_run_id"));
+        }
+    }
+    Ok(())
+}
+
 fn load_json_from_path<T>(path: &Path, error_code: &'static str) -> Result<T, ServiceError>
 where
     T: serde::de::DeserializeOwned,
@@ -2400,11 +2530,12 @@ where
 fn compute_verify_bundle_request_fingerprint(
     request: &VerifyBundleRequestBody,
 ) -> Result<String, ServiceError> {
-    let bytes = serde_json::to_vec(request)
+    let mut value = serde_json::to_value(request)
         .map_err(|_| ServiceError::Runtime("request_fingerprint_serialize_failed"))?;
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    Ok(format!("sha256:{}", encode_lower_hex(&hasher.finalize())))
+    if let Some(object) = value.as_object_mut() {
+        object.remove("run_id");
+    }
+    canonical_hash_value_prefixed(&value, "request_fingerprint_serialize_failed")
 }
 
 fn generate_run_id() -> Result<String, ServiceError> {
@@ -2903,29 +3034,6 @@ fn write_json_value_if_absent_or_same(
     write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
 }
 
-fn write_canonical_json_file_if_absent_or_same<T>(
-    path: &Path,
-    value: &T,
-    write_error: &'static str,
-    conflict_error: &'static str,
-) -> Result<(), ServiceError>
-where
-    T: Serialize,
-{
-    let bytes = canonicalize_json(value).map_err(|_| ServiceError::Runtime(write_error))?;
-    write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
-}
-
-fn write_canonical_json_value_if_absent_or_same(
-    path: &Path,
-    value: &Value,
-    write_error: &'static str,
-    conflict_error: &'static str,
-) -> Result<(), ServiceError> {
-    let bytes = canonicalize_json_value(value).map_err(|_| ServiceError::Runtime(write_error))?;
-    write_bytes_if_absent_or_same(path, &bytes, write_error, conflict_error)
-}
-
 fn persist_run_manifest(
     path: &Path,
     value: &Value,
@@ -3013,22 +3121,7 @@ fn write_verification_context_package(
     registry: &RegistrySnapshot,
     outcome: &proof_verifier::types::VerificationOutcome,
 ) -> Result<(), ServiceError> {
-    let context_rules = build_default_context_rules_object();
-    let mut context = VerificationContextObject {
-        context_version: 1,
-        verification_context_id: String::new(),
-        policy_hash: outcome.subject.policy_hash.clone(),
-        registry_snapshot_hash: outcome.subject.registry_snapshot_hash.clone(),
-        verifier_contract_version: VERIFICATION_CONTEXT_VERIFIER_CONTRACT_VERSION.to_string(),
-        context_rules_hash: compute_context_rules_hash(&context_rules)?,
-        context_epoch: None,
-        historical_cutoff_utc: None,
-        policy_snapshot_ref: None,
-        registry_snapshot_ref: None,
-        time_semantics_mode: None,
-    };
-    context.verification_context_id = compute_verification_context_id(&context)
-        .map_err(|_| ServiceError::Runtime("verification_context_id_compute_failed"))?;
+    let (context_rules, context) = build_verification_context_material(outcome)?;
 
     write_canonical_json_file_if_absent_or_same(
         &run_dir.join(CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH),
@@ -3348,8 +3441,7 @@ fn collect_boundary_projection_for_runs(
         if !reg_path.is_file() {
             continue;
         }
-        let Ok(snapshot) =
-            load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
+        let Ok(snapshot) = load_required_run_json_artifact::<RegistrySnapshot>(&reg_path, "skip")
         else {
             continue;
         };
@@ -3475,8 +3567,9 @@ enum ServiceError {
 #[cfg(test)]
 mod tests {
     use super::{
-        create_run_manifest_atomically, route_request, route_request_with_body,
-        DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        compute_verify_bundle_request_fingerprint, create_run_manifest_atomically,
+        parse_verify_bundle_request, route_request, route_request_with_body, DiagnosticsResponse,
+        ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
     };
     use proof_verifier::canonical::jcs::canonicalize_json_value;
     use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
@@ -3500,16 +3593,9 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Barrier};
     use std::thread;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-test-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-test")
     }
 
     fn write_artifact(dir: &PathBuf, name: &str, body: &str) {
@@ -3570,7 +3656,8 @@ mod tests {
                 "run_id": run_dir.file_name().unwrap_or_default().to_string_lossy(),
                 "request_fingerprint": fingerprint,
                 "verdict": verdict
-            }).to_string(),
+            })
+            .to_string(),
         );
     }
 
@@ -3661,6 +3748,51 @@ mod tests {
 
     fn body_json(response: DiagnosticsResponse) -> serde_json::Value {
         serde_json::from_slice(&response.body).expect("valid json body")
+    }
+
+    #[test]
+    fn diagnostics_version_endpoint_returns_phase14_contract() {
+        let dir = temp_dir();
+
+        let response = route_request("GET", "/diagnostics/version", &dir);
+        assert_eq!(response.status_code, 200);
+
+        let body = body_json(response);
+        assert_eq!(body.get("api_version").and_then(|v| v.as_u64()), Some(1));
+        assert_eq!(body.get("service").and_then(|v| v.as_str()), Some("proofd"));
+        assert!(body.get("phase").is_none());
+        assert_eq!(
+            body.get("contract").and_then(|v| v.as_str()),
+            Some("read-only diagnostics surface")
+        );
+        assert!(body
+            .get("invariants")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items
+                .iter()
+                .any(|item| item.as_str() == Some("service != authority"))));
+        assert!(body
+            .get("endpoints")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items
+                .iter()
+                .any(|item| item.as_str() == Some("GET /diagnostics/version"))));
+        assert!(body
+            .get("endpoints")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items
+                .iter()
+                .all(|item| item.as_str().is_some_and(|endpoint| {
+                    endpoint == "GET /healthz" || endpoint.starts_with("GET /diagnostics/")
+                }))));
+        assert!(body
+            .get("endpoints")
+            .and_then(|v| v.as_array())
+            .is_some_and(|items| items.iter().all(|item| item
+                .as_str()
+                .is_some_and(|endpoint| !endpoint.contains("/verify")))));
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -4725,10 +4857,36 @@ mod tests {
             .get("request_fingerprint")
             .and_then(|v| v.as_str())
             .is_some_and(|value| value.starts_with("sha256:")));
+        assert_eq!(
+            body.get("verification_determinism_contract_path")
+                .and_then(|v| v.as_str()),
+            Some("verification_determinism_contract.json")
+        );
+        assert!(body
+            .get("verification_determinism_artifact_hash")
+            .and_then(|v| v.as_str())
+            .is_some_and(|value| value.starts_with("sha256:")));
 
         let run_dir = dir.join("run-proofd-execution-r1");
         assert!(run_dir.join("proofd_run_manifest.json").is_file());
         assert!(run_dir.join("receipts/verification_receipt.json").is_file());
+        assert!(run_dir
+            .join("verification_determinism_contract.json")
+            .is_file());
+
+        let determinism_contract = body_json(DiagnosticsResponse {
+            status_code: 200,
+            body: fs::read(run_dir.join("verification_determinism_contract.json"))
+                .expect("read determinism contract"),
+            content_type: "application/json; charset=utf-8",
+        });
+        assert_eq!(
+            determinism_contract
+                .get("artifact_hash")
+                .and_then(|v| v.as_str()),
+            body.get("verification_determinism_artifact_hash")
+                .and_then(|v| v.as_str())
+        );
 
         let run_summary = body_json(route_request(
             "GET",
@@ -4741,6 +4899,225 @@ mod tests {
             .is_some_and(|artifacts| artifacts
                 .iter()
                 .any(|item| item.as_str() == Some("proofd_run_manifest.json"))));
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_bundle_request_fingerprint_is_canonical_and_ignores_run_id() {
+        let request_a = parse_verify_bundle_request(
+            br#"{
+                "bundle_path":"/abs/bundle",
+                "policy_path":"/abs/policy.json",
+                "registry_path":"/abs/registry.json",
+                "receipt_mode":"emit_unsigned",
+                "run_id":"run-a"
+            }"#,
+        )
+        .expect("parse request a");
+        let request_b = parse_verify_bundle_request(
+            br#"{
+                "run_id":"run-b",
+                "registry_path":"/abs/registry.json",
+                "receipt_mode":"emit_unsigned",
+                "policy_path":"/abs/policy.json",
+                "bundle_path":"/abs/bundle"
+            }"#,
+        )
+        .expect("parse request b");
+
+        let fingerprint_a =
+            compute_verify_bundle_request_fingerprint(&request_a).expect("fingerprint a");
+        let fingerprint_b =
+            compute_verify_bundle_request_fingerprint(&request_b).expect("fingerprint b");
+
+        assert_eq!(fingerprint_a, fingerprint_b);
+    }
+
+    #[test]
+    fn internal_replay_endpoint_confirms_determinism_against_existing_run() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+
+        let verify_request = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+            "run_id": "run-proofd-replay-r1",
+        });
+        let verify_request_bytes = serde_json::to_vec(&verify_request).expect("serialize request");
+        let verify_response = route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(verify_request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(verify_response.status_code, 200);
+
+        let replay_request = json!({
+            "source_run_id": "run-proofd-replay-r1",
+            "verify_request": verify_request,
+        });
+        let replay_request_bytes =
+            serde_json::to_vec(&replay_request).expect("serialize replay request");
+        let replay_response = route_request_with_body(
+            "POST",
+            "/internal/replay",
+            Some(replay_request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(replay_response.status_code, 200);
+        let body = body_json(replay_response);
+        assert_eq!(body.get("status").and_then(|v| v.as_str()), Some("ok"));
+        assert_eq!(
+            body.get("matches_original").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert!(dir
+            .join("run-proofd-replay-r1")
+            .join("verification_determinism_replay_report.json")
+            .is_file());
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_bundle_endpoint_keeps_determinism_hash_stable_across_run_ids() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+
+        let request_a = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+            "run_id": "run-proofd-cross-node-a",
+        });
+        let request_b = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+            "run_id": "run-proofd-cross-node-b",
+        });
+        let request_a_bytes = serde_json::to_vec(&request_a).expect("serialize request a");
+        let request_b_bytes = serde_json::to_vec(&request_b).expect("serialize request b");
+        let response_a = body_json(route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(request_a_bytes.as_slice()),
+            &dir,
+        ));
+        let response_b = body_json(route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(request_b_bytes.as_slice()),
+            &dir,
+        ));
+
+        assert_eq!(
+            response_a
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str()),
+            response_b
+                .get("request_fingerprint")
+                .and_then(|v| v.as_str())
+        );
+        assert_eq!(
+            response_a
+                .get("verification_determinism_artifact_hash")
+                .and_then(|v| v.as_str()),
+            response_b
+                .get("verification_determinism_artifact_hash")
+                .and_then(|v| v.as_str())
+        );
+
+        let _ = fs::remove_dir_all(&fixture.root);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn internal_replay_endpoint_emits_determinism_incident_on_hash_mismatch() {
+        let dir = temp_dir();
+        let fixture = create_fixture_bundle();
+        let policy_path = fixture.root.join("proofd-policy.json");
+        let registry_path = fixture.root.join("proofd-registry.json");
+        write_json(&policy_path, &fixture.policy);
+        write_json(&registry_path, &fixture.registry);
+
+        let verify_request = json!({
+            "bundle_path": fixture.root,
+            "policy_path": policy_path,
+            "registry_path": registry_path,
+            "receipt_mode": "emit_unsigned",
+            "run_id": "run-proofd-replay-r2",
+        });
+        let verify_request_bytes = serde_json::to_vec(&verify_request).expect("serialize request");
+        let verify_response = route_request_with_body(
+            "POST",
+            "/verify/bundle",
+            Some(verify_request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(verify_response.status_code, 200);
+
+        write_artifact(
+            &dir.join("run-proofd-replay-r2"),
+            "verification_determinism_contract.json",
+            r#"{
+              "contract": {
+                "contract_version": 1,
+                "request_fingerprint": "sha256:tampered",
+                "verdict": "TRUSTED",
+                "subject_hash": "sha256:tampered",
+                "context_hash": "sha256:tampered",
+                "authority_hash": "sha256:tampered",
+                "findings_hash": "sha256:tampered",
+                "receipt_payload_hash": null
+              },
+              "artifact_hash": "sha256:tampered"
+            }"#,
+        );
+
+        let replay_request = json!({
+            "source_run_id": "run-proofd-replay-r2",
+            "verify_request": verify_request,
+        });
+        let replay_request_bytes =
+            serde_json::to_vec(&replay_request).expect("serialize replay request");
+        let replay_response = route_request_with_body(
+            "POST",
+            "/internal/replay",
+            Some(replay_request_bytes.as_slice()),
+            &dir,
+        );
+        assert_eq!(replay_response.status_code, 409);
+        let body = body_json(replay_response);
+        assert_eq!(
+            body.get("status").and_then(|v| v.as_str()),
+            Some("DETERMINISM_VIOLATION")
+        );
+        assert_eq!(
+            body.get("incident")
+                .and_then(|v| v.get("type"))
+                .and_then(|v| v.as_str()),
+            Some("determinism_incident")
+        );
+        assert!(dir
+            .join("run-proofd-replay-r2")
+            .join("verification_determinism_incident.json")
+            .is_file());
 
         let _ = fs::remove_dir_all(&fixture.root);
         let _ = fs::remove_dir_all(&dir);
@@ -6529,6 +6906,9 @@ mod tests {
             trust_reuse_runtime_surface_origin: None,
             trust_reuse_flow_source_path: None,
             trust_reuse_flow_source_origin: None,
+            verification_determinism_contract_path: "verification_determinism_contract.json"
+                .to_string(),
+            verification_determinism_artifact_hash: "sha256:abc".to_string(),
             findings_count: 0,
         };
         let serialized = serde_json::to_value(&response_body).expect("serialize response body");
@@ -6598,11 +6978,7 @@ mod tests {
         let dir = temp_dir();
         // Do NOT create the run directory
 
-        let response = route_request(
-            "GET",
-            "/diagnostics/runs/run-nonexistent/artifacts",
-            &dir,
-        );
+        let response = route_request("GET", "/diagnostics/runs/run-nonexistent/artifacts", &dir);
         assert_eq!(response.status_code, 404);
         let body = body_json(response);
         assert_eq!(
@@ -6655,11 +7031,7 @@ mod tests {
         let dir = temp_dir();
         // Do NOT create the run directory
 
-        let response = route_request(
-            "GET",
-            "/diagnostics/runs/run-fed-missing/federation",
-            &dir,
-        );
+        let response = route_request("GET", "/diagnostics/runs/run-fed-missing/federation", &dir);
         assert_eq!(response.status_code, 404);
         let body = body_json(response);
         assert_eq!(
@@ -6706,17 +7078,26 @@ mod tests {
         let handles: Vec<_> = (0..3).map(|_| spawn_writer(barrier.clone())).collect();
         barrier.wait();
 
-        let results: Vec<_> = handles.into_iter().map(|h| h.join().expect("thread")).collect();
+        let results: Vec<_> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread"))
+            .collect();
         let success_count = results.iter().filter(|r| r.is_ok()).count();
         let conflict_count = results
             .iter()
             .filter(|r| {
-                matches!(r, Err(ServiceError::Conflict("run_id_fingerprint_conflict")))
+                matches!(
+                    r,
+                    Err(ServiceError::Conflict("run_id_fingerprint_conflict"))
+                )
             })
             .count();
 
         assert_eq!(success_count, 1, "exactly one writer must succeed");
-        assert_eq!(conflict_count, 2, "remaining writers must get conflict error");
+        assert_eq!(
+            conflict_count, 2,
+            "remaining writers must get conflict error"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -6813,11 +7194,15 @@ mod tests {
 
         assert_eq!(body.get("verifier_count").and_then(|v| v.as_u64()), Some(2));
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("total"))
+                .and_then(|v| v.as_u64()),
             Some(3)
         );
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("with_ledger")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("with_ledger"))
+                .and_then(|v| v.as_u64()),
             Some(2)
         );
         let _ = fs::remove_dir_all(&dir);
@@ -6832,7 +7217,9 @@ mod tests {
         let body = body_json(response);
         assert_eq!(body.get("verifier_count").and_then(|v| v.as_u64()), Some(0));
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("total"))
+                .and_then(|v| v.as_u64()),
             Some(0)
         );
         let _ = fs::remove_dir_all(&dir);
@@ -6842,7 +7229,11 @@ mod tests {
     #[test]
     fn global_federation_endpoint_verifiers_sorted() {
         let dir = temp_dir();
-        for (run_id, verifier_id) in [("run-a", "verifier-z"), ("run-b", "verifier-a"), ("run-c", "verifier-m")] {
+        for (run_id, verifier_id) in [
+            ("run-a", "verifier-z"),
+            ("run-b", "verifier-a"),
+            ("run-c", "verifier-m"),
+        ] {
             let run_dir = dir.join(run_id);
             fs::create_dir_all(&run_dir).unwrap();
             write_diversity_ledger(&run_dir, run_id, verifier_id);
@@ -6918,11 +7309,15 @@ mod tests {
 
         assert_eq!(body.get("context_count").and_then(|v| v.as_u64()), Some(2));
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("total"))
+                .and_then(|v| v.as_u64()),
             Some(3)
         );
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("with_context")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("with_context"))
+                .and_then(|v| v.as_u64()),
             Some(2)
         );
         let _ = fs::remove_dir_all(&dir);
@@ -7172,11 +7567,15 @@ mod tests {
 
         assert_eq!(body.get("producer_count").and_then(|v| v.as_u64()), Some(1));
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("total")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("total"))
+                .and_then(|v| v.as_u64()),
             Some(3)
         );
         assert_eq!(
-            body.get("runs").and_then(|v| v.get("with_registry")).and_then(|v| v.as_u64()),
+            body.get("runs")
+                .and_then(|v| v.get("with_registry"))
+                .and_then(|v| v.as_u64()),
             Some(2)
         );
         let _ = fs::remove_dir_all(&dir);
@@ -7203,7 +7602,9 @@ mod tests {
             write_artifact(
                 &run_dir,
                 "context/registry_snapshot.json",
-                &format!(r#"{{"registry_format_version":1,"registry_version":1,"registry_snapshot_hash":"{hash}","producers":{{}}}}"#),
+                &format!(
+                    r#"{{"registry_format_version":1,"registry_version":1,"registry_snapshot_hash":"{hash}","producers":{{}}}}"#
+                ),
             );
         }
 
@@ -7336,18 +7737,11 @@ mod proptest_registry {
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-pbt-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-pbt")
     }
 
     /// Build a `RegistrySnapshot` from a list of producer ids.
@@ -7865,16 +8259,9 @@ mod tests_boundary {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-boundary-test-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-boundary-test")
     }
 
     fn write_manifest(run_dir: &PathBuf, fingerprint: &str, verdict: &str) {
@@ -8412,7 +8799,11 @@ mod tests_boundary {
         fs::create_dir_all(&other_dir).unwrap();
         write_manifest(&other_dir, &fp_other, "PASS");
 
-        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp_match}"), &dir);
+        let response = route_request(
+            "GET",
+            &format!("/diagnostics/fingerprints/{fp_match}"),
+            &dir,
+        );
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
 
@@ -8442,7 +8833,11 @@ mod tests_boundary {
         fs::create_dir_all(&run_dir).unwrap();
         write_manifest(&run_dir, &fp_other, "PASS");
 
-        let response = route_request("GET", &format!("/diagnostics/fingerprints/{fp_missing}"), &dir);
+        let response = route_request(
+            "GET",
+            &format!("/diagnostics/fingerprints/{fp_missing}"),
+            &dir,
+        );
         assert_eq!(response.status_code, 404);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -8576,16 +8971,9 @@ mod proptest_boundary {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-boundary-pbt-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-boundary-pbt")
     }
 
     fn write_manifest(run_dir: &PathBuf, fingerprint: &str, verdict: &str) {
@@ -9114,18 +9502,11 @@ mod tests_kill_switch_gates {
     use serde_json::Value;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     // ── shared helpers ────────────────────────────────────────────────────────
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-ks-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-ks")
     }
 
     fn body_json(r: DiagnosticsResponse) -> Value {
@@ -9350,16 +9731,9 @@ mod proptest_kill_switch_gates {
     use serde_json::Value;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-ks-pbt-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-ks-pbt")
     }
 
     fn body_json(r: DiagnosticsResponse) -> Value {
@@ -9674,8 +10048,7 @@ mod proptest_kill_switch_gates {
 #[cfg(test)]
 mod proptest_phase13 {
     use super::{
-        route_request, route_request_with_body, DiagnosticsResponse,
-        PHASE13_FORBIDDEN_FIELDS,
+        route_request, route_request_with_body, DiagnosticsResponse, PHASE13_FORBIDDEN_FIELDS,
     };
     use proptest::prelude::*;
     use serde_json::{json, Value};
@@ -9684,13 +10057,7 @@ mod proptest_phase13 {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock drift")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("proofd-p13-pbt-{unique}"));
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
+        super::unique_test_temp_dir("proofd-p13-pbt")
     }
 
     fn body_json(r: &DiagnosticsResponse) -> Value {

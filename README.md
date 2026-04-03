@@ -22,7 +22,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **CURRENT_PHASE:** `14` (`Phase-13 OFFICIALLY CLOSED — CURRENT_PHASE=14 — Phase-14 ACTIVE`)
 **Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite
 **Acil Blocker:** `yok`
-**Yakın Hedef:** Phase-14 workstreams (replay determinism hardening, proofd boundary hardening, cross-node observability graph)
+**Yakın Hedef:** Phase-14 workstreams (`tracker`-authoritative: API stabilization, replay determinism, `proofd` boundary hardening, cross-node observability graph, observability UX)
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 
 **Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase 13 distributed observability OFFICIALLY CLOSED ✅ | CURRENT_PHASE=14 ✅ | Architecture Freeze ACTIVE ✅
@@ -31,7 +31,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
 **Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62)
 **Phase 13 Status:** OFFICIALLY CLOSED ✅ | tag `phase13-official-closure-confirmed` at `8b23fe0d` | remote `ci-freeze` run `23706742211` (PR #81) | Architecture Map §4 workstreams COMPLETE
-**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | workstreams: replay determinism hardening, proofd boundary hardening, cross-node observability graph
+**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | tracker-authoritative workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
@@ -277,9 +277,11 @@ AykenOS iki lisans modeli ile dağıtılır:
 ## 🎯 Sonraki Hedefler
 
 **Kısa Vadeli (Phase-14):**
+- Read-only external API stabilization
 - Replay determinism stability hardening
 - proofd query/service boundary hardening
 - Cross-node observability graph (`GET /diagnostics/graph`)
+- Observability UX (human-readable layer)
 - Phase-14 official closure prep
 
 **Orta Vadeli:**

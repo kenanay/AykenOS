@@ -65,6 +65,7 @@ run_gate "make ci-gate-abi" "ABI Gate"
 run_gate "make PRE_CI_MODE=1 ci-gate-boundary" "Boundary Gate"
 run_gate "make ci-gate-hygiene" "Hygiene Gate"
 run_gate "make ci-gate-constitutional" "Constitutional Gate"
+run_gate "make ci-gate-determinism-replay-consistency" "Determinism Replay Consistency Gate"
 
 echo ""
 echo "== PRE-CI DISCIPLINE: ALL GATES PASS =="
