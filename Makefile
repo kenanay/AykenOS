@@ -839,6 +839,8 @@ PERF_LOCAL_SAMPLE_SIZE ?= 5
 PERF_LOCAL_WARMUP_RUNS ?= 1
 PERF_LOCAL_AGGREGATION ?= median
 PERF_LOCAL_OUTLIER_POLICY ?= none
+PERF_STABILITY_CONTRACT_FILE ?= scripts/ci/perf-stability.contract.json
+PERF_STABILITY_PROFILE ?= local-default
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
 SYSCALL_V2_RUNTIME_WARMUP ?= 1
 ifeq ($(PERF_BASELINE_MODE),provisional)
@@ -1462,7 +1464,7 @@ ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-
 
 # Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency
 	@echo "Local freeze suite completed successfully (local performance authority active; tooling-isolation/alias-proof/kill-switch skipped)!"
 
 # CI boundary gate with evidence collection
@@ -2730,6 +2732,21 @@ ci-gate-performance-local: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: local performance evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-performance-stability: ci-evidence-dir
+	@echo "== CI GATE PERFORMANCE STABILITY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_stability_contract_file: $(PERF_STABILITY_CONTRACT_FILE)"
+	@echo "perf_stability_profile: $(PERF_STABILITY_PROFILE)"
+	@PERF_STABILITY_PROFILE="$(PERF_STABILITY_PROFILE)" \
+		./scripts/ci/gate_performance_stability.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance-stability" \
+			--source-gate-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--contract-file "$(PERF_STABILITY_CONTRACT_FILE)" \
+			--contract-profile "$(PERF_STABILITY_PROFILE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-stability/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-stability.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: performance-stability evidence at $(EVIDENCE_RUN_DIR)"
+
 perf-preempt-variance-local:
 	@echo "== LOCAL PREEMPT VARIANCE =="
 	@./scripts/ci/local_preempt_variance.sh \
@@ -2995,12 +3012,14 @@ help:
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
 	@echo "  ci-gate-performance-local - Local performance gate with auto-init local baseline authority"
 	@echo "    (sampling overrides: PERF_LOCAL_SAMPLE_SIZE, PERF_LOCAL_WARMUP_RUNS, PERF_LOCAL_AGGREGATION, PERF_LOCAL_OUTLIER_POLICY)"
+	@echo "  ci-gate-performance-stability - Stability gate over sampled performance-local evidence"
+	@echo "    (contract overrides: PERF_STABILITY_CONTRACT_FILE, PERF_STABILITY_PROFILE)"
 	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

@@ -27,6 +27,9 @@ This creates or refreshes: `scripts/ci/perf-baseline.local.lock.json`
 # Run the local performance gate
 make ci-gate-performance-local
 
+# Evaluate sampled stability separately
+make ci-gate-performance-stability
+
 # Or run the local freeze suite with local perf authority active
 make ci-freeze-local
 ```
@@ -137,8 +140,13 @@ Implementation note:
 - Local gate stores a sampling contract (`sample_size=5`, `warmup_runs=1`, `aggregation=median`, `outlier_policy=none` by default).
 - Local gate records jitter visibility in run evidence: `min`, `max`, `range`, `range_percent_of_median`, `median_abs_deviation`, and MAD-based outlier candidates.
 - MAD-based outlier detection is currently diagnostic-only; samples are reported, not discarded.
+- Local stability gate reads sampled performance evidence and applies a separate stability contract from `scripts/ci/perf-stability.contract.json`.
+- Stability is evaluated independently from median performance:
+  range and MAD breaches fail,
+  outlier candidate count is currently warn-only in the default local profile.
 - This exception is only for the gitignored local baseline path, not for committed CI lock files.
 - Auto-refresh is limited to contract drift only:
   missing baseline, schema drift, measurement-contract drift, threshold drift, sampling drift, or legacy baseline metric holes.
 - Pure env drift may auto-refresh only when current medians stay within baseline thresholds.
 - Metric regression is not auto-refreshed; local gate stays fail-closed when current medians exceed the local baseline contract.
+- Stability contract tuning lives outside the gate script so range/MAD/outlier policy can be adjusted without changing gate logic.

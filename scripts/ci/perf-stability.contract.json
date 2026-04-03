@@ -1,0 +1,52 @@
+{
+  "profiles": {
+    "local-default": {
+      "description": "Local median-sampled stability contract for performance-local evidence",
+      "metrics": {
+        "boot_time_ms": {
+          "mad_percent_of_median": {
+            "max": 3.0,
+            "severity": "fail"
+          },
+          "outlier_candidate_count": {
+            "max": 1,
+            "severity": "warn"
+          },
+          "range_percent_of_median": {
+            "max": 5.0,
+            "severity": "fail"
+          }
+        },
+        "context_switch_latency_ms_proxy": {
+          "mad_percent_of_median": {
+            "max": 1.0,
+            "severity": "fail"
+          },
+          "outlier_candidate_count": {
+            "max": 1,
+            "severity": "warn"
+          },
+          "range_percent_of_median": {
+            "max": 3.0,
+            "severity": "fail"
+          }
+        },
+        "syscall_latency_ms_proxy": {
+          "mad_percent_of_median": {
+            "max": 1.0,
+            "severity": "fail"
+          },
+          "outlier_candidate_count": {
+            "max": 1,
+            "severity": "warn"
+          },
+          "range_percent_of_median": {
+            "max": 3.0,
+            "severity": "fail"
+          }
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}
