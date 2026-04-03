@@ -369,6 +369,94 @@ static void sched_emit_perf_mb_reason_marker(const char *name)
     sched_emit_marker("\n");
 }
 
+static void sched_emit_perf_mb_extract_reason_marker(const char *name)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    if (!name || !*name) {
+        return;
+    }
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_MB_EXTRACT_REASON]] name=");
+    sched_emit_marker(name);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
+static void sched_emit_perf_mb_extract_raw_marker(uint64_t epoch,
+                                                  uint32_t candidate_pid,
+                                                  uint64_t owner_last_epoch)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_MB_EXTRACT_RAW]] epoch=");
+    sched_emit_u64_dec(epoch);
+    sched_emit_marker(" candidate_pid=");
+    sched_emit_u64_dec((uint64_t)candidate_pid);
+    sched_emit_marker(" owner_last_epoch=");
+    sched_emit_u64_dec(owner_last_epoch);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
+static void sched_emit_perf_mb_candidate_visibility_marker(const char *name, uint32_t pid)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    if (!name || !*name) {
+        return;
+    }
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_MB_VISIBLE]] name=");
+    sched_emit_marker(name);
+    sched_emit_marker(" pid=");
+    sched_emit_u64_dec((uint64_t)pid);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
 static void sched_note_perf_phase_once(enum sched_perf_phase_id id, const char *name)
 {
     if ((uint32_t)id >= (uint32_t)SCHED_PERF_PHASE_COUNT) {
@@ -1453,26 +1541,43 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
     }
     sched_perf_note_mailbox_extract_enter();
     if (!sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
+        sched_emit_perf_mb_extract_reason_marker("snapshot_fail");
         sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     mb = &mb_snapshot;
-    if (mb->magic != AYKEN_SCHED_MB_MAGIC ||
-        mb->version != AYKEN_SCHED_MB_VERSION ||
-        mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+    sched_emit_perf_mb_extract_raw_marker(
+        mb->epoch,
+        mb->candidate_pid,
+        owner->mailbox_last_epoch);
+    if (mb->magic != AYKEN_SCHED_MB_MAGIC) {
+        sched_emit_perf_mb_extract_reason_marker("bad_magic");
+        sched_perf_note_mailbox_extract_exit();
+        return 0;
+    }
+    if (mb->version != AYKEN_SCHED_MB_VERSION) {
+        sched_emit_perf_mb_extract_reason_marker("bad_version");
+        sched_perf_note_mailbox_extract_exit();
+        return 0;
+    }
+    if (mb->kind != AYKEN_SCHED_HINT_CANDIDATE) {
+        sched_emit_perf_mb_extract_reason_marker("bad_kind");
         sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     if (mb->epoch == 0 || mb->epoch <= owner->mailbox_last_epoch) {
+        sched_emit_perf_mb_extract_reason_marker("epoch_stale");
         sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     if (mb->candidate_pid == 0) {
+        sched_emit_perf_mb_extract_reason_marker("pid_zero");
         sched_perf_note_mailbox_extract_exit();
         return 0;
     }
     *out_epoch = mb->epoch;
     *out_pid = mb->candidate_pid;
+    sched_emit_perf_mb_extract_reason_marker("ok");
     sched_perf_note_mailbox_extract_exit();
     return 1;
 }
@@ -1662,7 +1767,8 @@ static proc_t *sched_select_next_mailbox(
     {
         uint64_t epoch = 0;
         uint32_t pid = 0;
-        if (sched_mailbox_extract_candidate(owner, &epoch, &pid)) {
+        int extracted = sched_mailbox_extract_candidate(owner, &epoch, &pid);
+        if (extracted) {
             int consume_epoch = 1;
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
             // Gate-4 proof requires timer-path ACCEPT for epoch=1 before scheduler
@@ -1684,6 +1790,7 @@ static proc_t *sched_select_next_mailbox(
             if (prev && prev->type == PROC_TYPE_USER &&
                 prev->state == PROC_RUNNING &&
                 pid == (uint32_t)prev->pid) {
+                sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
                 sched_perf_note_mailbox_arbiter_path_keep_running_enter();
                 if (consume_epoch) {
                     owner->mailbox_last_epoch = epoch;
@@ -1709,6 +1816,7 @@ static proc_t *sched_select_next_mailbox(
             proc_t *cand = proc_find_by_pid((int)pid);
             if (cand && (cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
                 sched_perf_note_mailbox_arbiter_candidate_lookup_exit();
+                sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
                 sched_perf_note_mailbox_arbiter_path_switch_enter();
                 if (consume_epoch) {
                     owner->mailbox_last_epoch = epoch;
@@ -1732,9 +1840,18 @@ static proc_t *sched_select_next_mailbox(
                 SCHED_MB_ARBITER_RETURN(cand);
             }
             sched_perf_note_mailbox_arbiter_candidate_lookup_exit();
+            if (!cand) {
+                SCHED_MB_REASON("candidate_proc_missing");
+                sched_emit_perf_mb_candidate_visibility_marker("proc_missing", pid);
+            } else {
+                SCHED_MB_REASON("candidate_proc_not_schedulable");
+                sched_emit_perf_mb_candidate_visibility_marker("proc_not_schedulable", pid);
+            }
             sched_perf_note_mailbox_arbiter_candidate_reject();
         }
-        SCHED_MB_REASON("no_candidate");
+        if (!extracted) {
+            SCHED_MB_REASON("no_candidate");
+        }
     }
 
     // Yield-only safety invariant: without fresh decision, keep current Ring3 context.

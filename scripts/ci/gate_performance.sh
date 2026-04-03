@@ -900,6 +900,20 @@ mailbox_event_markers = (
     "arbiter_return_null",
     "arbiter_ready_head_fallback",
 )
+mailbox_extract_reason_names = (
+    "snapshot_fail",
+    "bad_magic",
+    "bad_version",
+    "bad_kind",
+    "epoch_stale",
+    "pid_zero",
+    "ok",
+)
+mailbox_candidate_visibility_names = (
+    "visible",
+    "proc_missing",
+    "proc_not_schedulable",
+)
 
 for name in mailbox_extra_markers:
     payload["mailbox_phase_breakdown_ticks"]["raw_markers"][name] = {
@@ -940,6 +954,8 @@ for name in (
     "owner_missing",
     "owner_not_ready",
     "owner_mismatch",
+    "candidate_proc_missing",
+    "candidate_proc_not_schedulable",
     "no_candidate",
     "invalid_state",
     "bootstrap_keep_running",
@@ -953,6 +969,38 @@ for name in (
 ):
     payload["mailbox_phase_breakdown_ticks"]["fallback_reasons"][name] = int(
         metrics_kv.get(f"mailbox_reason_{name}_count", "0")
+    )
+
+payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"] = {
+    "extract_reasons": {},
+    "raw_observations": {
+        "count": int(metrics_kv.get("mailbox_extract_raw_observation_count", "0")),
+        "latest_epoch": int(metrics_kv.get("mailbox_extract_raw_latest_epoch", "0")),
+        "latest_candidate_pid": int(metrics_kv.get("mailbox_extract_raw_latest_candidate_pid", "0")),
+        "latest_owner_last_epoch": int(metrics_kv.get("mailbox_extract_raw_latest_owner_last_epoch", "0")),
+        "epoch_zero_count": int(metrics_kv.get("mailbox_extract_raw_epoch_zero_count", "0")),
+        "epoch_lte_owner_last_epoch_count": int(
+            metrics_kv.get("mailbox_extract_raw_epoch_lte_owner_last_epoch_count", "0")
+        ),
+        "epoch_gt_owner_last_epoch_count": int(
+            metrics_kv.get("mailbox_extract_raw_epoch_gt_owner_last_epoch_count", "0")
+        ),
+        "candidate_pid_zero_count": int(
+            metrics_kv.get("mailbox_extract_raw_candidate_pid_zero_count", "0")
+        ),
+        "candidate_pid_nonzero_count": int(
+            metrics_kv.get("mailbox_extract_raw_candidate_pid_nonzero_count", "0")
+        ),
+    },
+    "candidate_visibility": {},
+}
+for name in mailbox_extract_reason_names:
+    payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"]["extract_reasons"][name] = int(
+        metrics_kv.get(f"mailbox_extract_reason_{name}_count", "0")
+    )
+for name in mailbox_candidate_visibility_names:
+    payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"]["candidate_visibility"][name] = int(
+        metrics_kv.get(f"mailbox_candidate_visibility_{name}_count", "0")
     )
 
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:

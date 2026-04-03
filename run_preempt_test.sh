@@ -456,6 +456,9 @@ import re
 pattern = re.compile(r"\[\[AYKEN_PERF_MB_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
 path_pattern = re.compile(r"\[\[AYKEN_PERF_MB_PATH\]\] name=([a-z_]+) phase=(enter|exit) ticks=([0-9]+) tick_valid=([0-9]+)")
 reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+extract_reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+extract_raw_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_RAW\]\] epoch=([0-9]+) candidate_pid=([0-9]+) owner_last_epoch=([0-9]+)")
+visibility_pattern = re.compile(r"\[\[AYKEN_PERF_MB_VISIBLE\]\] name=([a-z_]+) pid=([0-9]+)")
 phases = (
     "snapshot_enter",
     "snapshot_exit",
@@ -505,6 +508,8 @@ reason_names = (
     "owner_missing",
     "owner_not_ready",
     "owner_mismatch",
+    "candidate_proc_missing",
+    "candidate_proc_not_schedulable",
     "no_candidate",
     "invalid_state",
     "bootstrap_keep_running",
@@ -516,10 +521,37 @@ reason_names = (
     "bootstrap_fatal",
     "yield_null",
 )
+extract_reason_names = (
+    "snapshot_fail",
+    "bad_magic",
+    "bad_version",
+    "bad_kind",
+    "epoch_stale",
+    "pid_zero",
+    "ok",
+)
+visibility_names = (
+    "visible",
+    "proc_missing",
+    "proc_not_schedulable",
+)
 
 seen = {}
 path_seen = {name: {"enter": [], "exit": []} for name in path_names}
 reason_counts = {name: 0 for name in reason_names}
+extract_reason_counts = {name: 0 for name in extract_reason_names}
+visibility_counts = {name: 0 for name in visibility_names}
+extract_raw_stats = {
+    "observation_count": 0,
+    "latest_epoch": 0,
+    "latest_candidate_pid": 0,
+    "latest_owner_last_epoch": 0,
+    "epoch_zero_count": 0,
+    "epoch_lte_owner_last_epoch_count": 0,
+    "epoch_gt_owner_last_epoch_count": 0,
+    "candidate_pid_zero_count": 0,
+    "candidate_pid_nonzero_count": 0,
+}
 with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
     for line in handle:
         match = pattern.search(line)
@@ -542,6 +574,35 @@ with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace
             name = reason_match.group(1)
             if name in reason_counts:
                 reason_counts[name] += 1
+        extract_reason_match = extract_reason_pattern.search(line)
+        if extract_reason_match:
+            name = extract_reason_match.group(1)
+            if name in extract_reason_counts:
+                extract_reason_counts[name] += 1
+        extract_raw_match = extract_raw_pattern.search(line)
+        if extract_raw_match:
+            epoch = int(extract_raw_match.group(1))
+            candidate_pid = int(extract_raw_match.group(2))
+            owner_last_epoch = int(extract_raw_match.group(3))
+            extract_raw_stats["observation_count"] += 1
+            extract_raw_stats["latest_epoch"] = epoch
+            extract_raw_stats["latest_candidate_pid"] = candidate_pid
+            extract_raw_stats["latest_owner_last_epoch"] = owner_last_epoch
+            if epoch == 0:
+                extract_raw_stats["epoch_zero_count"] += 1
+            if epoch <= owner_last_epoch:
+                extract_raw_stats["epoch_lte_owner_last_epoch_count"] += 1
+            else:
+                extract_raw_stats["epoch_gt_owner_last_epoch_count"] += 1
+            if candidate_pid == 0:
+                extract_raw_stats["candidate_pid_zero_count"] += 1
+            else:
+                extract_raw_stats["candidate_pid_nonzero_count"] += 1
+        visibility_match = visibility_pattern.search(line)
+        if visibility_match:
+            name = visibility_match.group(1)
+            if name in visibility_counts:
+                visibility_counts[name] += 1
 
 for phase in phases:
     payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
@@ -591,6 +652,15 @@ for name in path_names:
 
 for name in reason_names:
     print(f"mailbox_reason_{name}_count={reason_counts[name]}")
+
+for name in extract_reason_names:
+    print(f"mailbox_extract_reason_{name}_count={extract_reason_counts[name]}")
+
+for key, value in extract_raw_stats.items():
+    print(f"mailbox_extract_raw_{key}={value}")
+
+for name in visibility_names:
+    print(f"mailbox_candidate_visibility_{name}_count={visibility_counts[name]}")
 PY
 )"
 
