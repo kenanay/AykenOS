@@ -133,3 +133,6 @@ Implementation note:
 - Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
 - Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
 - This exception is only for the gitignored local baseline path, not for committed CI lock files.
+- Auto-refresh is limited to contract drift only:
+  missing baseline, schema drift, authority/digest drift, measurement-contract drift, threshold drift, or legacy baseline metric holes.
+- Metric regression is not auto-refreshed; local gate stays fail-closed when current metrics exceed the local baseline contract.

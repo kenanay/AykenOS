@@ -2702,48 +2702,22 @@ ci-gate-performance-local: ci-evidence-dir
 	@echo "perf_local_baseline_file: $(PERF_LOCAL_BASELINE_FILE)"
 	@echo "perf_local_baseline_authority: $(PERF_LOCAL_BASELINE_AUTHORITY)"
 	@echo "perf_local_ci_image_digest: $(PERF_LOCAL_CI_IMAGE_DIGEST)"
-	@if [ ! -f "$(PERF_LOCAL_BASELINE_FILE)" ] || ! jq -e '.policy.marker_contract.measurement_contract == "deterministic_preempt_harness" and .policy.thresholds_percent.boot_time_ms == $(PERF_LOCAL_BOOT_THRESHOLD_PERCENT) and .policy.thresholds_percent.context_switch_latency_ms_proxy == $(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT) and .policy.thresholds_percent.syscall_latency_ms_proxy == $(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)' "$(PERF_LOCAL_BASELINE_FILE)" >/dev/null 2>&1; then \
-		echo "init_local_baseline: $(PERF_LOCAL_BASELINE_FILE)"; \
+	@PERF_LOCAL_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
+		PERF_LOCAL_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
+		PERF_LOCAL_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
+		PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
+		PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
+		PERF_KERNEL_PROFILE="$(PERF_KERNEL_PROFILE)" \
+		PERF_QEMU_TIMEOUT="$(PERF_QEMU_TIMEOUT)" \
 		AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
-		PERF_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
-		PERF_REQUIRE_CI_FOR_BASELINE_INIT="0" \
-		PERF_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
-		PERF_ALLOW_UNTRACKED_BASELINE="1" \
-		PERF_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
-		PERF_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
-		PERF_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
-		CI="false" \
-		./scripts/ci/gate_performance.sh \
-			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance-local-init" \
-			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
-			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
-			--env-mismatch-policy "fail" \
-			--baseline-file "$(PERF_LOCAL_BASELINE_FILE)" \
-			--init-baseline >/dev/null 2>&1 || true; \
-		if [ ! -f "$(PERF_LOCAL_BASELINE_FILE)" ]; then \
-			echo "performance-local: FAIL (local baseline init failed)"; \
-			exit 2; \
-		fi; \
-	fi
-	@AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
-		PERF_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
-		PERF_REQUIRE_CI_FOR_BASELINE_INIT="0" \
-		PERF_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
-		PERF_ALLOW_UNTRACKED_BASELINE="1" \
-		PERF_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
-		PERF_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
-		PERF_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
-		CI="false" \
-		./scripts/ci/gate_performance.sh \
+		./scripts/ci/gate_performance_local.sh \
 			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
 			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
 			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
-			--env-mismatch-policy "waiver" \
 			--baseline-file "$(PERF_LOCAL_BASELINE_FILE)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance.json"
-	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" ]; then \
-		cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-local-init.json"; \
-		mv -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/report.json" "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json"; \
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json" ]; then \
+		cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-local-init.json"; \
 	fi
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: local performance evidence at $(EVIDENCE_RUN_DIR)"
