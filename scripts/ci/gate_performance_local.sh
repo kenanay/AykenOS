@@ -25,6 +25,7 @@ Env controls:
 
 Behavior:
   - Local gate collects multiple provisional samples and compares medians.
+  - Jitter/outlier visibility is reported with MAD-based diagnostics; no samples are discarded.
   - Auto-refresh is limited to structural baseline drift and pure env drift.
   - Metric regression NEVER auto-refreshes; it remains fail-closed.
 USAGE
@@ -226,15 +227,69 @@ def median(values):
         return ordered[mid]
     return (ordered[mid - 1] + ordered[mid]) / 2.0
 
+def summarize_metric(values, sample_labels):
+    samples = [float(v) for v in values]
+    med = median(samples)
+    min_v = min(samples)
+    max_v = max(samples)
+    range_v = max_v - min_v
+    deviations = [abs(v - med) for v in samples]
+    mad = median(deviations)
+
+    candidates = []
+    mad_zero_fallback_used = False
+    if mad == 0:
+        for idx, value in enumerate(samples):
+            if value != med:
+                mad_zero_fallback_used = True
+                candidates.append(
+                    {
+                        "sample_label": sample_labels[idx],
+                        "sample_index": idx + 1,
+                        "value": value,
+                        "reason": "mad_zero_non_median_sample",
+                    }
+                )
+    else:
+        for idx, value in enumerate(samples):
+            modified_z_score = 0.6745 * abs(value - med) / mad
+            if modified_z_score > 3.5:
+                candidates.append(
+                    {
+                        "sample_label": sample_labels[idx],
+                        "sample_index": idx + 1,
+                        "value": value,
+                        "modified_z_score": modified_z_score,
+                    }
+                )
+
+    return {
+        "median": med,
+        "samples": samples,
+        "sample_labels": sample_labels,
+        "sample_count": len(samples),
+        "min": min_v,
+        "max": max_v,
+        "range": range_v,
+        "range_percent_of_median": (range_v / med * 100.0) if med else None,
+        "median_abs_deviation": mad,
+        "outlier_analysis": {
+            "detector": "mad",
+            "threshold_modifier": 3.5,
+            "policy_effective": "report_only",
+            "mad_zero_fallback_used": mad_zero_fallback_used,
+            "candidate_count": len(candidates),
+            "candidates": candidates,
+        },
+    }
+
 metrics = {}
+sample_labels = [p.name for p in usable_dirs]
 for key in ("boot_time_ms", "context_switch_latency_ms_proxy", "syscall_latency_ms_proxy"):
     vals = [report.get("results", {}).get(key) for report in reports]
     if any(v is None for v in vals):
         raise SystemExit(f"sample_metric_missing:{key}")
-    metrics[key] = {
-        "median": median(vals),
-        "samples": [float(v) for v in vals],
-    }
+    metrics[key] = summarize_metric(vals, sample_labels)
 
 payload = {
     "sampling": {
@@ -448,6 +503,134 @@ def add_diff(line, violation=False):
     if violation:
         violations.append(f"baseline_diff:{line}")
 
+def median(values):
+    ordered = sorted(float(v) for v in values)
+    n = len(ordered)
+    mid = n // 2
+    if n % 2 == 1:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2.0
+
+def summarize_metric(metric):
+    if not isinstance(metric, dict):
+        return {
+            "median": None,
+            "samples": [],
+            "sample_count": 0,
+            "min": None,
+            "max": None,
+            "range": None,
+            "range_percent_of_median": None,
+            "median_abs_deviation": None,
+            "outlier_analysis": {
+                "detector": "mad",
+                "threshold_modifier": 3.5,
+                "policy_effective": "report_only",
+                "mad_zero_fallback_used": False,
+                "candidate_count": 0,
+                "candidates": [],
+            },
+        }
+
+    samples = metric.get("samples")
+    if isinstance(samples, list) and samples:
+        raw_samples = [float(v) for v in samples]
+    else:
+        median_value = metric.get("median")
+        raw_samples = [float(median_value)] if median_value is not None else []
+
+    sample_labels = metric.get("sample_labels")
+    if not isinstance(sample_labels, list) or len(sample_labels) != len(raw_samples):
+        sample_labels = [f"sample-{idx + 1}" for idx in range(len(raw_samples))]
+
+    if not raw_samples:
+        summary = {
+            "median": metric.get("median"),
+            "samples": [],
+            "sample_labels": sample_labels,
+            "sample_count": 0,
+            "min": None,
+            "max": None,
+            "range": None,
+            "range_percent_of_median": None,
+            "median_abs_deviation": None,
+            "outlier_analysis": {
+                "detector": "mad",
+                "threshold_modifier": 3.5,
+                "policy_effective": "report_only",
+                "mad_zero_fallback_used": False,
+                "candidate_count": 0,
+                "candidates": [],
+            },
+        }
+    else:
+        med = float(metric.get("median")) if metric.get("median") is not None else median(raw_samples)
+        min_v = min(raw_samples)
+        max_v = max(raw_samples)
+        range_v = max_v - min_v
+        deviations = [abs(v - med) for v in raw_samples]
+        mad = median(deviations)
+        candidates = []
+        mad_zero_fallback_used = False
+        if mad == 0:
+            for idx, value in enumerate(raw_samples):
+                if value != med:
+                    mad_zero_fallback_used = True
+                    candidates.append(
+                        {
+                            "sample_label": sample_labels[idx],
+                            "sample_index": idx + 1,
+                            "value": value,
+                            "reason": "mad_zero_non_median_sample",
+                        }
+                    )
+        else:
+            for idx, value in enumerate(raw_samples):
+                modified_z_score = 0.6745 * abs(value - med) / mad
+                if modified_z_score > 3.5:
+                    candidates.append(
+                        {
+                            "sample_label": sample_labels[idx],
+                            "sample_index": idx + 1,
+                            "value": value,
+                            "modified_z_score": modified_z_score,
+                        }
+                    )
+
+        summary = {
+            "median": med,
+            "samples": raw_samples,
+            "sample_labels": sample_labels,
+            "sample_count": len(raw_samples),
+            "min": min_v,
+            "max": max_v,
+            "range": range_v,
+            "range_percent_of_median": (range_v / med * 100.0) if med else None,
+            "median_abs_deviation": mad,
+            "outlier_analysis": {
+                "detector": "mad",
+                "threshold_modifier": 3.5,
+                "policy_effective": "report_only",
+                "mad_zero_fallback_used": mad_zero_fallback_used,
+                "candidate_count": len(candidates),
+                "candidates": candidates,
+            },
+        }
+
+    for key in (
+        "min",
+        "max",
+        "range",
+        "range_percent_of_median",
+        "median_abs_deviation",
+        "outlier_analysis",
+        "sample_count",
+        "sample_labels",
+    ):
+        if key in metric:
+            summary[key] = metric[key]
+    return summary
+
 b_env_hash = baseline_env.get("env_hash")
 c_env_hash = current_env.get("env_hash")
 if b_env_hash != c_env_hash:
@@ -468,14 +651,19 @@ metrics_summary = {}
 for key in ("boot_time_ms", "context_switch_latency_ms_proxy", "syscall_latency_ms_proxy"):
     baseline_value = baseline_metrics.get(key, {})
     current_value = current_metrics.get(key, {})
-    baseline_median = baseline_value.get("median")
-    current_median = current_value.get("median")
+    baseline_summary = summarize_metric(baseline_value)
+    current_summary = summarize_metric(current_value)
+    baseline_median = baseline_summary.get("median")
+    current_median = current_summary.get("median")
     threshold_percent = float(thresholds.get(key, 0))
     metrics_summary[key] = {
         "baseline_median": baseline_median,
         "current_median": current_median,
-        "samples": current_value.get("samples", []),
+        "baseline_samples": baseline_summary.get("samples", []),
+        "samples": current_summary.get("samples", []),
         "threshold_percent": threshold_percent,
+        "baseline_stats": baseline_summary,
+        "current_stats": current_summary,
     }
     if baseline_median is None or current_median is None:
         add_diff(f"metric_missing:{key}:baseline={baseline_median}:actual={current_median}", violation=True)
@@ -581,11 +769,26 @@ from pathlib import Path
 stable = json.load(open(os.environ["STABLE_METRICS_ENV"], encoding="utf-8"))
 metrics = {}
 for key, value in stable.get("metrics", {}).items():
+    metric_summary = {
+        "median": value.get("median"),
+        "samples": value.get("samples", []),
+        "sample_labels": value.get("sample_labels", []),
+        "sample_count": value.get("sample_count"),
+        "min": value.get("min"),
+        "max": value.get("max"),
+        "range": value.get("range"),
+        "range_percent_of_median": value.get("range_percent_of_median"),
+        "median_abs_deviation": value.get("median_abs_deviation"),
+        "outlier_analysis": value.get("outlier_analysis", {}),
+    }
     metrics[key] = {
         "baseline_median": value.get("median"),
         "current_median": value.get("median"),
+        "baseline_samples": value.get("samples", []),
         "samples": value.get("samples", []),
         "threshold_percent": None,
+        "baseline_stats": metric_summary,
+        "current_stats": metric_summary,
     }
 
 payload = {

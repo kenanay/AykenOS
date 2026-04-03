@@ -135,6 +135,8 @@ Implementation note:
 - Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
 - Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
 - Local gate stores a sampling contract (`sample_size=5`, `warmup_runs=1`, `aggregation=median`, `outlier_policy=none` by default).
+- Local gate records jitter visibility in run evidence: `min`, `max`, `range`, `range_percent_of_median`, `median_abs_deviation`, and MAD-based outlier candidates.
+- MAD-based outlier detection is currently diagnostic-only; samples are reported, not discarded.
 - This exception is only for the gitignored local baseline path, not for committed CI lock files.
 - Auto-refresh is limited to contract drift only:
   missing baseline, schema drift, measurement-contract drift, threshold drift, sampling drift, or legacy baseline metric holes.
