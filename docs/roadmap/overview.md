@@ -1,23 +1,26 @@
-# AykenOS Roadmap - Code and Evidence Status (2026-03-28)
+# AykenOS Roadmap - Code and Evidence Status (2026-04-03)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## Scope
 Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence run'lari ve remote `ci-freeze` confirmation uzerinden ozetler.
 
-- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11`
+- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
 - Evidence git SHA (Phase-10/11): `9cb2171b`
 - Evidence git SHA (Phase-12C): `01d1cb5c`
+- Evidence git SHA (Phase-13): `40158350`
 - Closure sync SHA (Phase-10/11): `fe9031d7`
 - Official CI (Phase-10/11): `ci-freeze` run `22797401328` (`success`)
 - Official CI (Phase-12): `ci-freeze` run `23099070483` (`success`) — PR #62
+- Official CI (Phase-13): `ci-freeze` run `23706742211` (`success`) — PR #81
 - Official closure tag (Phase-10/11): `phase10-phase11-official-closure`
 - Official closure tag (Phase-12): `phase12-official-closure-confirmed` at `1d79d4b1`
+- Official closure tag (Phase-13): `phase13-official-closure-confirmed` at `8b23fe0d`
 - Phase-13 kill-switch tag: `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 - Phase-13 formal transition tag: `phase13-formal-transition` at `7088fd71`
-- Formal phase pointer: `CURRENT_PHASE=13`
+- Formal phase pointer: `CURRENT_PHASE=14`
 - Phase-12 closure state: `CLOSED (official closure confirmed)`
-- Phase-13 state: `ACTIVE (formal transition complete, boundary hardening active)`
-- Worktree-local Ring3 executable user-leaf rule: dedicated deterministic gate active (`ci-gate-ring3-user-leaf-rule`)
+- Phase-13 closure state: `CLOSED (official closure confirmed)`
+- Phase-14 state: `ACTIVE (spec opened, workstreams defined)`
 
 ## 1) Architectural Baseline
 
@@ -123,15 +126,23 @@ Interpretation:
 6. The parity / graph layer remains derived diagnostics, not consensus
 
 ### 3.4 Phase-13
-`Phase-13 = ACTIVE (formal transition complete, boundary hardening active)`
+`Phase-13 = CLOSED (official closure confirmed)`
 
 Interpretation:
-1. Observability, relationship graph, global graph, and topology models are now explicit
-2. All 6 kill-switch gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`)
-3. 4 kill-switch invariants HOLD: observability→control plane, authority election, artifact integrity, verifier authority drift
-4. Gate fix committed via PR #63 (diagnostics-consumer allow-list producer correction)
-5. Service-backed verification expansion COMPLETE (SHA `a44febed`)
-6. Formal transition complete: `CURRENT_PHASE=13` at `7088fd71` (PR #68, CI run `23694185775`)
+1. All 6 kill-switch gates PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`)
+2. 4 kill-switch invariants HOLD: observability→control plane, authority election, artifact integrity, verifier authority drift
+3. Architecture Map §4 workstreams COMPLETE (PR #71–#77): service expansion, verifier federation, context propagation, trust registry propagation, replicated verification boundary
+4. Official closure tag: `phase13-official-closure-confirmed` at `8b23fe0d`
+5. Remote `ci-freeze` run `23706742211` confirmed on PR #81 (`success`)
+6. `CURRENT_PHASE=14` formal transition executed
+
+### 3.5 Phase-14
+`Phase-14 = ACTIVE (spec opened, workstreams defined)`
+
+Interpretation:
+1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
+2. Three workstreams: replay determinism hardening, proofd query/service boundary hardening, cross-node observability graph
+3. All Phase-13 invariants inherited and preserved
 
 ### 3.5 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
@@ -140,45 +151,40 @@ Interpretation:
 4. Phase-12 local closure evidence: `run-run-local-phase12c-closure-2026-03-11` at `01d1cb5c` (20/20 PASS).
 5. Phase-12 remote confirmation: `ci-freeze` run `23099070483` on PR #62 (success).
 6. Phase-12 official closure tag: `phase12-official-closure-confirmed` at `1d79d4b1`.
-7. `CURRENT_PHASE=13` — formal transition executed at `7088fd71` (PR #68, CI run `23694185775`).
-8. Phase-13 kill-switch gates: all 6 PASS at `0ec4bb5e` (tag: `phase13-kill-switch-gates-pass`).
-9. Phase-13 formal transition tag: `phase13-formal-transition` at `7088fd71`.
+7. Phase-13 kill-switch evidence: `run-local-p13-kill-switch-20260315T000051Z` at `40158350` (6/6 PASS).
+8. Phase-13 remote confirmation: `ci-freeze` run `23706742211` on PR #81 (success).
+9. Phase-13 official closure tag: `phase13-official-closure-confirmed` at `8b23fe0d`.
+10. `CURRENT_PHASE=14` — formal transition executed at `8b23fe0d` (PR #82).
 
 ## 4) Current Risk Concentration
-1. Executable user-leaf rule current tree'de artik live local deterministic gate ile korunur; bu rule broader `Phase10-A2` strict/global authority ile ayni sey degildir.
-2. Broader `Phase10-A2` strict/global runtime authority halen primary CI full-suite evidence bekleyen ayrik bir truth surface'tir.
-3. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir.
-4. ✅ `CURRENT_PHASE=13` formal transition tamamlandi; Phase-12 official closure remote `ci-freeze` ile confirmed.
-5. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
-6. ✅ Phase-13 service-backed verification expansion COMPLETE.
-7. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+1. Executable user-leaf rule current tree'de artik live local deterministic gate ile korunur.
+2. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir — Phase-14 workstream 3.1.
+3. ✅ `CURRENT_PHASE=14` formal transition tamamlandi; Phase-13 official closure remote `ci-freeze` ile confirmed.
+4. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
+5. ✅ Phase-13 Architecture Map §4 workstreams COMPLETE.
+6. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
 
 ## 5) Roadmap Decision
 
-### 5.1 Immediate
-1. ✅ Dedicated official closure tag olusturuldu (`phase10-phase11-official-closure`, `phase12-official-closure-confirmed`)
-2. ✅ Historical docs current-truth notlari `Phase-12` CLOSED durumuna hizalandi
-3. ✅ `CURRENT_PHASE=13` formal transition tamamlandi (PR #68, CI run `23694185775`)
-4. ✅ Phase-12 remote `ci-freeze` confirmation tamamlandi (PR #62, run `23099070483`)
-5. ✅ Phase-13 kill-switch gate suite 6/6 PASS (PR #63, tag `phase13-kill-switch-gates-pass`)
-6. ✅ Phase-13 service-backed verification expansion COMPLETE (SHA `a44febed`)
-7. ✅ Phase-13 Architecture Map §4 workstream'leri COMPLETE (PR #71–#77):
-   - service expansion, verifier federation, context propagation (global + enrichment),
-     trust registry propagation, replicated verification boundary
+### 5.1 Immediate (COMPLETED)
+1. ✅ Phase-10/11/12/13 official closure tags minted
+2. ✅ `CURRENT_PHASE=14` formal transition tamamlandi
+3. ✅ Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71–#77)
+4. ✅ Phase-13 OFFICIALLY CLOSED (CI run `23706742211`, PR #81)
+5. ✅ Performance baseline updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
+6. ✅ Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
 
-### 5.2 Near Term
-1. Phase-13 official closure prep: `make phase13-official-closure-prep`
-2. Phase-13 official closure tag: `phase13-official-closure`
-3. Remote CI confirmation for Phase-13 closure
-4. `CURRENT_PHASE=14` formal transition
-5. Replay determinism stability hardening
-6. `proofd` icin query/service boundary'lerini authority semantics'ten ayri tut
-7. Cross-node verification observability graph'i derived diagnostics olarak koru; consensus topology olarak degil
+### 5.2 Near Term (Phase-14)
+1. Replay determinism stability hardening
+2. `proofd` query/service boundary hardening (authority semantics separation)
+3. Cross-node observability graph (`GET /diagnostics/graph`)
+4. Phase-14 official closure prep
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
 2. Distributed replay'i trust transport'tan once acmak
 3. `CURRENT_PHASE` pointer'ini formal transition olmadan degistirmek
+4. Observability'yi authority veya scheduling mekanizmasina donusturmek
 
 ## 6) Exit Criteria Snapshot
 Phase-10/11 official closure icin saglananlar:
@@ -195,13 +201,14 @@ Phase-12 official closure icin saglananlar:
 4. `CURRENT_PHASE=12` formal transition executed
 5. Remote `ci-freeze` run `23099070483` confirmed (PR #62, success)
 
-Phase-13 kill-switch gates icin saglananlar:
+Phase-13 official closure icin saglananlar:
 1. All 6 kill-switch gates `PASS` at `0ec4bb5e`
 2. Tag `phase13-kill-switch-gates-pass` minted
-3. Gate fix PR #63 merged (diagnostics-consumer allow-list producer correction)
-4. Service-backed verification expansion COMPLETE (SHA `a44febed`)
-5. Formal transition: `CURRENT_PHASE=13` at `7088fd71` (PR #68, CI run `23694185775`)
-6. Tag `phase13-formal-transition` minted
+3. Architecture Map §4 workstreams COMPLETE (PR #71–#77)
+4. Closure manifest generated: `reports/phase13_official_closure_candidate/`
+5. Official closure tag `phase13-official-closure-confirmed` minted at `8b23fe0d`
+6. Remote `ci-freeze` run `23706742211` confirmed (PR #81, success)
+7. `CURRENT_PHASE=14` formal transition executed
 
 ## References
 - `README.md`
@@ -209,12 +216,14 @@ Phase-13 kill-switch gates icin saglananlar:
 - `reports/phase10_phase11_closure_2026-03-07.md`
 - `reports/phase10_phase11_official_closure_index.json`
 - `reports/phase12_official_closure_candidate/closure_manifest.json`
+- `reports/phase13_official_closure_candidate/closure_manifest.json`
 - `evidence/run-local-freeze-p10p11/reports/summary.json`
 - `evidence/run-local-phase11-closure/reports/summary.json`
 - `evidence/run-run-local-phase12c-closure-2026-03-11/reports/summary.json`
+- `evidence/run-local-p13-kill-switch-20260315T000051Z/reports/summary.json`
 - `.github/workflows/ci-freeze.yml`
-- `docs/specs/phase11-verification-substrate/tasks.md`
+- `docs/specs/phase14-distributed-observability/README.md`
 
 ---
-**Son Guncelleme:** 2026-03-28
-**Guncelleme Yontemi:** Phase-13 formal transition sync — CURRENT_PHASE=13, tag phase13-formal-transition
+**Son Guncelleme:** 2026-04-03
+**Guncelleme Yontemi:** Phase-13 OFFICIALLY CLOSED + CURRENT_PHASE=14 + Phase-14 spec opened
