@@ -1502,45 +1502,31 @@ static proc_t *sched_select_next_mailbox(
 #undef SCHED_MB_ARBITER_RETURN
 }
 
-#if AYKEN_DEBUG_SCHED
-static void sched_dbg_puts(const char *s)
-{
-    if (!s) {
-        return;
-    }
-    while (*s) {
-        SCHED_DBG_OUT((uint8_t)*s++);
-    }
-}
-
+// Canonical preempt observability markers must remain available even when
+// verbose scheduler debug tracing is compiled out.
 static void sched_dbg_mark_pid(uint32_t pid)
 {
     if (pid != 2u && pid != 3u) {
         return;
     }
-    sched_dbg_puts("MARK:PID=");
-    SCHED_DBG_OUT((uint8_t)('0' + (uint8_t)pid));
-    SCHED_DBG_OUT((uint8_t)'\n');
+    sched_emit_marker("MARK:PID=");
+    outb(0xE9, (uint8_t)('0' + (uint8_t)pid));
+    outb(0xE9, (uint8_t)'\n');
 }
 
 static void sched_dbg_mark_sw(char from, char to)
 {
-    sched_dbg_puts("MARK:SW=");
-    SCHED_DBG_OUT((uint8_t)from);
-    SCHED_DBG_OUT((uint8_t)'>');
-    SCHED_DBG_OUT((uint8_t)to);
-    SCHED_DBG_OUT((uint8_t)'\n');
+    sched_emit_marker("MARK:SW=");
+    outb(0xE9, (uint8_t)from);
+    outb(0xE9, (uint8_t)'>');
+    outb(0xE9, (uint8_t)to);
+    outb(0xE9, (uint8_t)'\n');
 }
 
 static void sched_dbg_mark_iret(void)
 {
-    sched_dbg_puts("MARK:IRET\n");
+    sched_emit_marker("MARK:IRET\n");
 }
-#else
-static inline void sched_dbg_mark_pid(uint32_t pid) { (void)pid; }
-static inline void sched_dbg_mark_sw(char from, char to) { (void)from; (void)to; }
-static inline void sched_dbg_mark_iret(void) { }
-#endif
 
 proc_t *current_proc = NULL;
 
