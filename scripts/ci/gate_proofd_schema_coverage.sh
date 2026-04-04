@@ -51,11 +51,11 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 3
 fi
 
+mkdir -p "${EVIDENCE_DIR}"
+
 if [[ -z "${SOURCE_GATE_DIR}" ]]; then
   SOURCE_GATE_DIR="$(cd "$(dirname "${EVIDENCE_DIR}")" && pwd)/proofd-service"
 fi
-
-mkdir -p "${EVIDENCE_DIR}"
 
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 DETAIL_REPORT_JSON="${EVIDENCE_DIR}/proofd_schema_coverage_report.json"
@@ -97,6 +97,8 @@ seen_paths = set()
 if not isinstance(schema_contracts, list):
     violations.append("schema_contracts_missing")
     schema_contracts = []
+elif len(schema_contracts) == 0:
+    violations.append("schema_contracts_empty")
 
 for entry in schema_contracts:
     if not isinstance(entry, dict):
