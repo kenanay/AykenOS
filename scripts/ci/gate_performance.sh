@@ -6,6 +6,11 @@ CI_TOOLS="${ROOT}/tools/ci"
 source "${CI_TOOLS}/lib.sh"
 source "${ROOT}/scripts/ci/lib-drift-persistence.sh"
 source "${ROOT}/scripts/ci/lib-drift-allowlist.sh"
+if [[ -f "${ROOT}/scripts/ci/perf_flags.env" ]]; then
+  # Default-off split-metric enforcement scaffold. Env overrides remain authoritative.
+  # shellcheck disable=SC1091
+  source "${ROOT}/scripts/ci/perf_flags.env"
+fi
 
 usage() {
   cat <<'USAGE'
@@ -74,6 +79,16 @@ PREEMPT_RING3_ENTRY_GUARD="${PERF_PREEMPT_RING3_ENTRY_GUARD:-}"
 PREEMPT_BUILD_DEBUG_SCHED="${PERF_PREEMPT_BUILD_DEBUG_SCHED:-}"
 PREEMPT_BUILD_DEBUG_IRQ="${PERF_PREEMPT_BUILD_DEBUG_IRQ:-}"
 PREEMPT_EXPECTED_QEMU_EXIT_SET="${PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET:-0,1}"
+SPLIT_METRICS_SHADOW="${PERF_SPLIT_METRICS_SHADOW:-0}"
+SPLIT_METRICS_ENFORCEMENT="${PERF_SPLIT_METRICS_ENFORCEMENT:-0}"
+ENFORCE_ENTRY="${PERF_ENFORCE_ENTRY:-0}"
+ENFORCE_RETURN="${PERF_ENFORCE_RETURN:-0}"
+ENFORCE_PURE="${PERF_ENFORCE_PURE:-0}"
+VARIANCE_GUARD="${PERF_VARIANCE_GUARD:-0.10}"
+CONSECUTIVE_VIOLATION_LIMIT="${PERF_CONSECUTIVE_VIOLATION_LIMIT:-2}"
+GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT="${PERF_GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT:-2}"
+SPLIT_POLICY_JSON="${PERF_SPLIT_POLICY_JSON:-scripts/ci/perf-threshold-policy.json}"
+PERF_ENFORCEMENT_STATE_FILE="${PERF_ENFORCEMENT_STATE_FILE:-.ci-state/perf-enforcement-state.json}"
 MEASUREMENT_CONTRACT="deterministic_preempt_harness"
 SCHED_FALLBACK="${AYKEN_SCHED_FALLBACK:-0}"
 BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
@@ -208,6 +223,22 @@ case "${PREEMPT_RING3_ENTRY_GUARD}" in
     ;;
 esac
 
+for split_flag in \
+  "${SPLIT_METRICS_SHADOW}" \
+  "${SPLIT_METRICS_ENFORCEMENT}" \
+  "${ENFORCE_ENTRY}" \
+  "${ENFORCE_RETURN}" \
+  "${ENFORCE_PURE}"; do
+  case "${split_flag}" in
+    0|1)
+      ;;
+    *)
+      echo "ERROR: split-metric perf flags must be 0 or 1" >&2
+      exit 3
+      ;;
+  esac
+done
+
 if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]] && [[ "${PREEMPT_BUILD_DEBUG_SCHED}" != "0" && "${PREEMPT_BUILD_DEBUG_SCHED}" != "1" ]]; then
   echo "ERROR: PERF_PREEMPT_BUILD_DEBUG_SCHED must be 0 or 1 when set" >&2
   exit 3
@@ -284,6 +315,27 @@ for threshold_value in "${BOOT_THRESHOLD_PERCENT}" "${CONTEXT_THRESHOLD_PERCENT}
     exit 3
   fi
 done
+
+for threshold_value in "${VARIANCE_GUARD}"; do
+  if ! is_nonnegative_number "${threshold_value}"; then
+    echo "ERROR: PERF_VARIANCE_GUARD must be a non-negative number" >&2
+    exit 3
+  fi
+done
+
+for integer_value in "${CONSECUTIVE_VIOLATION_LIMIT}" "${GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT}"; do
+  if [[ ! "${integer_value}" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: split-metric violation limits must be non-negative integers" >&2
+    exit 3
+  fi
+done
+
+if [[ ! "${SPLIT_POLICY_JSON}" = /* ]]; then
+  SPLIT_POLICY_JSON="${ROOT}/${SPLIT_POLICY_JSON}"
+fi
+if [[ ! "${PERF_ENFORCEMENT_STATE_FILE}" = /* ]]; then
+  PERF_ENFORCEMENT_STATE_FILE="${ROOT}/${PERF_ENFORCEMENT_STATE_FILE}"
+fi
 
 for tool in git make python3 qemu-system-x86_64 jq; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
@@ -364,6 +416,7 @@ VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
 ALLOWLIST_BYPASS_TXT="${EVIDENCE_DIR}/allowlist_bypass.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
+SPLIT_ENFORCEMENT_JSON="${EVIDENCE_DIR}/split_metric_enforcement.json"
 
 : > "${ENV_JSON}"
 : > "${RESULTS_JSON}"
@@ -377,6 +430,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${BASELINE_DIFF_TXT}"
 : > "${VIOLATIONS_TXT}"
 : > "${ALLOWLIST_BYPASS_TXT}"
+: > "${SPLIT_ENFORCEMENT_JSON}"
 
 record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
@@ -1412,6 +1466,53 @@ else
   fi
 fi
 
+# 9) Split-metric enforcement scaffold (default-off, non-authoritative).
+if ! \
+  PERF_SPLIT_METRICS_SHADOW="${SPLIT_METRICS_SHADOW}" \
+  PERF_SPLIT_METRICS_ENFORCEMENT="${SPLIT_METRICS_ENFORCEMENT}" \
+  PERF_ENFORCE_ENTRY="${ENFORCE_ENTRY}" \
+  PERF_ENFORCE_RETURN="${ENFORCE_RETURN}" \
+  PERF_ENFORCE_PURE="${ENFORCE_PURE}" \
+  PERF_VARIANCE_GUARD="${VARIANCE_GUARD}" \
+  PERF_CONSECUTIVE_VIOLATION_LIMIT="${CONSECUTIVE_VIOLATION_LIMIT}" \
+  PERF_GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT="${GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT}" \
+  python3 "${ROOT}/scripts/ci/perf_enforcement_state.py" \
+    --results-json "${RESULTS_JSON}" \
+    --env-json "${ENV_JSON}" \
+    --policy-json "${SPLIT_POLICY_JSON}" \
+    --state-path "${PERF_ENFORCEMENT_STATE_FILE}" \
+    --output-json "${SPLIT_ENFORCEMENT_JSON}" >/dev/null 2>&1
+then
+  SPLIT_ENFORCEMENT_JSON_ENV="${SPLIT_ENFORCEMENT_JSON}" \
+  SPLIT_POLICY_JSON_ENV="${SPLIT_POLICY_JSON}" \
+  PERF_ENFORCEMENT_STATE_FILE_ENV="${PERF_ENFORCEMENT_STATE_FILE}" \
+  python3 - <<'PY'
+import json
+import os
+payload = {
+    "schema_version": 1,
+    "gate": "performance-split-enforcement",
+    "mode": "disabled",
+    "policy_path": os.environ["SPLIT_POLICY_JSON_ENV"],
+    "policy_present": False,
+    "global": {
+        "shadow_requested": False,
+        "enforcement_requested": False,
+        "enforcement_enabled": False,
+        "disabled_reason": "tool_error",
+        "shadow_violation_count": 0,
+        "blocking_violation_count": 0,
+    },
+    "metrics": {},
+    "note": "Split-metric enforcement helper failed; gate remains fail-closed disabled.",
+    "state_path": os.environ["PERF_ENFORCEMENT_STATE_FILE_ENV"],
+}
+with open(os.environ["SPLIT_ENFORCEMENT_JSON_ENV"], "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+fi
+
 VIOLATIONS_COUNT="$(wc -l < "${VIOLATIONS_TXT}" | tr -d ' ' || echo 0)"
 
 # Compute drift authority hash for evidence
@@ -1471,6 +1572,16 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_observed_mb_selftest=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"
   echo "preempt_observed_deterministic_exit=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
   echo "preempt_observed_ring3_entry_guard=${PREEMPT_OBSERVED_RING3_ENTRY_GUARD:-missing}"
+  echo "split_metrics_shadow=${SPLIT_METRICS_SHADOW}"
+  echo "split_metrics_enforcement=${SPLIT_METRICS_ENFORCEMENT}"
+  echo "split_metric_policy_json=${SPLIT_POLICY_JSON}"
+  echo "split_metric_state_file=${PERF_ENFORCEMENT_STATE_FILE}"
+  echo "split_metric_variance_guard=${VARIANCE_GUARD}"
+  echo "split_metric_consecutive_violation_limit=${CONSECUTIVE_VIOLATION_LIMIT}"
+  echo "split_metric_multi_metric_disable_limit=${GLOBAL_DISABLE_METRIC_VIOLATION_LIMIT}"
+  echo "split_metric_enforce_entry=${ENFORCE_ENTRY}"
+  echo "split_metric_enforce_return=${ENFORCE_RETURN}"
+  echo "split_metric_enforce_pure=${ENFORCE_PURE}"
   echo "env_hash=${ENV_HASH}"
   echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
   echo "drift_allowlist_file=${DRIFT_ALLOWLIST_FILE}"
@@ -1528,6 +1639,7 @@ out = {
     "meta": meta,
     "env": read_json("env.json"),
     "results": read_json("results.json"),
+    "split_metric_enforcement": read_json("split_metric_enforcement.json"),
     "baseline_diff": read_lines("baseline.diff.txt"),
     "violations": read_lines("violations.txt"),
     "drift_counters": read_lines("drift_counters.txt"),
