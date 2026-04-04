@@ -227,15 +227,23 @@ for source in source_paths:
     )
 
 
-git_shas = sorted({run["git_sha"] for run in eligible_runs if run.get("git_sha") and run.get("git_sha") != "unknown"})
-env_hashes = sorted({run["env_hash"] for run in eligible_runs if run.get("env_hash")})
+git_sha_values = [run.get("git_sha") for run in eligible_runs]
+env_hash_values = [run.get("env_hash") for run in eligible_runs]
+git_sha_missing_count = sum(1 for value in git_sha_values if not value or value == "unknown")
+env_hash_missing_count = sum(1 for value in env_hash_values if not value)
+git_shas = sorted({value for value in git_sha_values if value and value != "unknown"})
+env_hashes = sorted({value for value in env_hash_values if value})
+git_sha_consistent = git_sha_missing_count == 0 and len(git_shas) == 1 and bool(git_shas)
+env_hash_consistent = env_hash_missing_count == 0 and len(env_hashes) == 1 and bool(env_hashes)
 source_lineage = {
     "authority": authority,
     "eligible_run_count": len(eligible_runs),
-    "git_sha": git_shas[0] if len(git_shas) == 1 else None,
-    "git_sha_consistent": len(git_shas) == 1 and bool(git_shas),
-    "env_hash": env_hashes[0] if len(env_hashes) == 1 else None,
-    "env_hash_consistent": len(env_hashes) == 1 and bool(env_hashes),
+    "git_sha": git_shas[0] if git_sha_consistent else None,
+    "git_sha_consistent": git_sha_consistent,
+    "git_sha_missing_count": git_sha_missing_count,
+    "env_hash": env_hashes[0] if env_hash_consistent else None,
+    "env_hash_consistent": env_hash_consistent,
+    "env_hash_missing_count": env_hash_missing_count,
 }
 
 
