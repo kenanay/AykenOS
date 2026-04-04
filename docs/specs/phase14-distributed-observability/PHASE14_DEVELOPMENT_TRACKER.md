@@ -146,9 +146,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 ## 7. Open Items
 
 1. Should Phase-14 API versioning remain header-only plus discovery endpoint, or also define an explicit path/version namespace?
-2. Which `/diagnostics/*` surfaces are officially external-facing in v1, and which remain internal or experimental?
-3. Do we want a dedicated Phase-14 contract document for response schemas, separate from the architecture map?
-4. What is the exact evidence bundle required to mark Workstream 3.1 as `CI_CONFIRMED`?
+2. What is the exact evidence bundle required to mark Workstream 3.1 as `CI_CONFIRMED`?
 
 ---
 

@@ -1,3 +1,4 @@
+pub mod api_contract;
 pub mod determinism;
 pub mod internal;
 
@@ -33,6 +34,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::api_contract::{allowed_query_keys_for_path, ALLOWED_INCIDENT_FILTERS};
 use crate::determinism::artifacts::{
     write_canonical_json_file_if_absent_or_same, write_canonical_json_value_if_absent_or_same,
 };
@@ -68,7 +70,6 @@ const RUN_LEVEL_ARTIFACTS: &[&str] = &[
     "failure_matrix.json",
 ];
 
-const ALLOWED_INCIDENT_FILTERS: &[&str] = &["severity", "surface_key", "node_id"];
 const VERIFICATION_AUDIT_LEDGER_FILE: &str = "verification_audit_ledger.jsonl";
 const VERIFICATION_DIVERSITY_BINDING_FILE: &str = "verification_diversity_ledger_binding.json";
 const VERIFICATION_DIVERSITY_LEDGER_FILE: &str = "verification_diversity_ledger.json";
@@ -93,7 +94,7 @@ const VERIFICATION_DETERMINISM_CONTRACT_FILE: &str = "verification_determinism_c
 const VERIFICATION_DETERMINISM_REPLAY_REPORT_FILE: &str =
     "verification_determinism_replay_report.json";
 const VERIFICATION_DETERMINISM_INCIDENT_FILE: &str = "verification_determinism_incident.json";
-pub const API_VERSION: u16 = 1;
+pub use crate::api_contract::{API_VERSION, PHASE13_FORBIDDEN_FIELDS};
 const NESTED_RUN_LEVEL_ARTIFACTS: &[&str] = &[
     RECEIPT_RELATIVE_PATH,
     CONTEXT_POLICY_SNAPSHOT_RELATIVE_PATH,
@@ -106,32 +107,6 @@ const MAX_VERIFY_BUNDLE_BODY_BYTES: usize = 64 * 1024;
 static GENERATED_RUN_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 #[cfg(test)]
 static TEST_TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-// Task 10.1: Normatif Phase-13 forbidden fields — used by serialize guard tests
-#[allow(dead_code)]
-const PHASE13_FORBIDDEN_FIELDS: &[&str] = &[
-    "preferred_verifier",
-    "winning_verifier",
-    "trust_rank",
-    "verifier_score",
-    "trust_score",
-    "reliability_index",
-    "weighted_authority",
-    "correctness_rate",
-    "agreement_ratio",
-    "node_success_ratio",
-    "verifier_reputation",
-    "recommended_action",
-    "routing_hint",
-    "execution_override",
-    "retry",
-    "override",
-    "promote",
-    "commit",
-    "mitigation",
-    "node_priority",
-    "verification_weight",
-];
 
 #[cfg(test)]
 fn unique_test_temp_dir(prefix: &str) -> PathBuf {
@@ -584,27 +559,7 @@ pub fn route_request_with_body(
                             "parity != consensus",
                             "trust does not affect verdict"
                         ],
-                        "endpoints": [
-                            "GET /healthz",
-                            "GET /diagnostics/version",
-                            "GET /diagnostics/runs",
-                            "GET /diagnostics/runs/{run_id}",
-                            "GET /diagnostics/runs/{run_id}/artifacts",
-                            "GET /diagnostics/runs/{run_id}/federation",
-                            "GET /diagnostics/runs/{run_id}/context",
-                            "GET /diagnostics/runs/{run_id}/registry",
-                            "GET /diagnostics/runs/{run_id}/boundary",
-                            "GET /diagnostics/runs/{run_id}/incidents",
-                            "GET /diagnostics/runs/{run_id}/parity",
-                            "GET /diagnostics/federation",
-                            "GET /diagnostics/context",
-                            "GET /diagnostics/trust",
-                            "GET /diagnostics/parity",
-                            "GET /diagnostics/parity/context-relation",
-                            "GET /diagnostics/incidents",
-                            "GET /diagnostics/fingerprints/{fp}",
-                            "GET /diagnostics/replicated-boundary"
-                        ]
+                        "endpoints": crate::api_contract::public_endpoint_declarations()
                     }),
                 ),
                 "/diagnostics/incidents" => {
@@ -713,8 +668,8 @@ fn validate_get_query(target: &RequestTarget) -> Result<(), ServiceError> {
         return Ok(());
     }
 
-    if target.path == "/diagnostics/incidents" {
-        let _ = parse_query(target.query.as_deref(), ALLOWED_INCIDENT_FILTERS)?;
+    if let Some(allowed_keys) = allowed_query_keys_for_path(&target.path) {
+        let _ = parse_query(target.query.as_deref(), allowed_keys)?;
         return Ok(());
     }
 
@@ -3774,9 +3729,18 @@ mod tests {
         assert!(body
             .get("endpoints")
             .and_then(|v| v.as_array())
-            .is_some_and(|items| items
-                .iter()
-                .any(|item| item.as_str() == Some("GET /diagnostics/version"))));
+            .is_some_and(|items| {
+                let actual = items
+                    .iter()
+                    .filter_map(|item| item.as_str())
+                    .collect::<Vec<_>>();
+                let expected = super::api_contract::public_endpoint_declarations();
+                actual.len() == expected.len()
+                    && actual
+                        .iter()
+                        .zip(expected.iter())
+                        .all(|(left, right)| *left == right.as_str())
+            }));
         assert!(body
             .get("endpoints")
             .and_then(|v| v.as_array())

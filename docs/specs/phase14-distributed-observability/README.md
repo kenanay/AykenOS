@@ -163,5 +163,6 @@ Phase-14 is complete when:
 - `docs/roadmap/CURRENT_PHASE` — formal phase pointer
 - `docs/roadmap/overview.md` — roadmap truth surface
 - `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md` — live workstream tracker
+- `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md` — canonical external diagnostics contract
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — architectural map
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts
