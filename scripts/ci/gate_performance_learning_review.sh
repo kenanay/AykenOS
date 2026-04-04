@@ -112,6 +112,8 @@ def median_abs_deviation(values: list[float], median: float) -> float:
     return statistics.median(deviations) if deviations else 0.0
 
 
+MIN_ENFORCEMENT_SAMPLE_COUNT = 5
+
 source_glob = sys.argv[1]
 source_reports_txt = Path(sys.argv[2])
 reports_json = Path(sys.argv[3])
@@ -230,6 +232,7 @@ history_payload = {
     "eligibility_policy": {
         "verdict": "PASS",
         "same_authority_required": True,
+        "minimum_enforcement_sample_count": MIN_ENFORCEMENT_SAMPLE_COUNT,
         "required_split_metrics": [
             "entry_latency_ticks",
             "syscall_latency_ticks_pure",
@@ -267,11 +270,24 @@ for metric_name, config in recommendation_config.items():
         "max": max(values),
     }
     recommendation = max(p95 or median, median + (config["mad_multiplier"] * mad))
+    enforcement = config["enforcement"]
+    status = "ready"
+    note = "Minimum sample count satisfied for recommendation review."
+    if len(values) < MIN_ENFORCEMENT_SAMPLE_COUNT:
+        enforcement = "none"
+        status = "insufficient_samples"
+        note = (
+            f"Sample count {len(values)} is below the minimum "
+            f"{MIN_ENFORCEMENT_SAMPLE_COUNT}; recommendation is observational only."
+        )
     recommendations[metric_name] = {
-        "enforcement": config["enforcement"],
+        "enforcement": enforcement,
+        "status": status,
         "recommended_threshold_ticks": recommendation,
         "based_on": f"max(p95, median + {config['mad_multiplier']:.0f}*MAD)",
         "sample_count": len(values),
+        "minimum_enforcement_sample_count": MIN_ENFORCEMENT_SAMPLE_COUNT,
+        "note": note,
     }
 
 summary_payload = {
@@ -294,6 +310,7 @@ report_payload = {
     "authority": authority,
     "eligible_run_count": len(eligible_runs),
     "excluded_run_count": len(excluded_runs),
+    "minimum_enforcement_sample_count": MIN_ENFORCEMENT_SAMPLE_COUNT,
     "eligibility_policy": history_payload["eligibility_policy"],
     "output_files": {
         "history": history_json.name,

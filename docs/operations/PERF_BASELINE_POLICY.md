@@ -166,6 +166,7 @@ Split-metric learning is explicitly non-authoritative.
 - Input reports must already be clean `performance` gate `PASS` runs from a single authority surface
 - Output is evidence-only:
   `history.json`, `summary.json`, `recommendations.json`
+- If `sample_count < 5`, recommendations must stay `enforcement=none` and `status=insufficient_samples`
 - The learning review must not mutate `scripts/ci/perf-baseline.lock.json`
 - The learning review must not auto-waive regressions or auto-commit new thresholds
 
