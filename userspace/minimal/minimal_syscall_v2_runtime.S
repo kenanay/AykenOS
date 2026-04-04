@@ -11,7 +11,7 @@
 .global _start
 
 _start:
-    // Scheduler mailbox epoch heartbeat (owner-local, as in phase10 payload).
+    // Stage 1: payload entry reached.
     mov $0x700000, %rbx
     mov 8(%rbx), %rax
     inc %rax
@@ -22,6 +22,11 @@ _start:
     //   [rsp+0x10] : capability_token_t {id:u64, perms:u32, type:u32}
     sub $64, %rsp
 
+    // Stage 2: user reached the first syscall gate attempt site.
+    mov 8(%rbx), %rax
+    inc %rax
+    mov %rax, 8(%rbx)
+
     // time_query(type=0, out=&buf)
     mov $1006, %rax
     xor %rdi, %rdi
@@ -29,6 +34,12 @@ _start:
     xor %rdx, %rdx
     xor %r10, %r10
     int $0x80
+
+    // Stage 3: first syscall returned to userspace.
+    mov 8(%rbx), %rax
+    inc %rax
+    mov %rax, 8(%rbx)
+
     mov 8(%rbx), %rax
     inc %rax
     mov %rax, 8(%rbx)

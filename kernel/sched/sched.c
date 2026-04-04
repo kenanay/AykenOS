@@ -206,6 +206,8 @@ enum sched_perf_phase_id {
     SCHED_PERF_PHASE_CORE_READY,
     SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY,
     SCHED_PERF_PHASE_FIRST_USER_ENTRY,
+    SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY,
+    SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN,
     SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY,
     SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT,
     SCHED_PERF_PHASE_COUNT,
@@ -541,6 +543,20 @@ void sched_perf_note_first_scheduler_activity(void)
 void sched_perf_note_first_user_entry(void)
 {
     sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_USER_ENTRY, "first_user_entry");
+}
+
+void sched_perf_note_first_syscall_gate_entry(void)
+{
+    sched_note_perf_phase_once(
+        SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY,
+        "first_syscall_gate_entry");
+}
+
+void sched_perf_note_first_syscall_gate_return(void)
+{
+    sched_note_perf_phase_once(
+        SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN,
+        "first_syscall_gate_return");
 }
 
 void sched_perf_note_first_syscall_entry(void)

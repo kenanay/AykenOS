@@ -92,6 +92,8 @@ void sched_perf_note_boot_start(void);
 void sched_perf_note_core_ready(void);
 void sched_perf_note_first_scheduler_activity(void);
 void sched_perf_note_first_user_entry(void);
+void sched_perf_note_first_syscall_gate_entry(void);
+void sched_perf_note_first_syscall_gate_return(void);
 void sched_perf_note_first_syscall_entry(void);
 void sched_perf_note_first_syscall_exit(void);
 void sched_perf_note_mailbox_snapshot_enter(void);

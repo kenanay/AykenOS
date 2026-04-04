@@ -410,6 +410,8 @@ phases = (
     "core_ready",
     "first_sched_activity",
     "first_user_entry",
+    "first_syscall_gate_entry",
+    "first_syscall_gate_return",
     "first_syscall_entry",
     "first_syscall_exit",
 )
@@ -417,6 +419,9 @@ durations = (
     ("boot_start", "core_ready", "boot_start_to_core_ready"),
     ("core_ready", "first_sched_activity", "core_ready_to_first_sched_activity"),
     ("first_sched_activity", "first_user_entry", "first_sched_activity_to_first_user_entry"),
+    ("first_user_entry", "first_syscall_gate_entry", "first_user_entry_to_first_syscall_gate_entry"),
+    ("first_syscall_gate_entry", "first_syscall_entry", "first_syscall_gate_entry_to_first_syscall_entry"),
+    ("first_syscall_gate_entry", "first_syscall_gate_return", "first_syscall_gate_entry_to_first_syscall_gate_return"),
     ("first_user_entry", "first_syscall_entry", "first_user_entry_to_first_syscall_entry"),
     ("first_user_entry", "first_syscall_exit", "first_user_entry_to_first_syscall_exit"),
 )

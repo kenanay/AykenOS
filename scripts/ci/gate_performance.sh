@@ -548,6 +548,10 @@ PHASE_FIRST_SCHED_ACTIVITY_TICKS="$(extract_kv_metric "phase_first_sched_activit
 PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID="$(extract_kv_metric "phase_first_sched_activity_tick_valid" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_user_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_syscall_gate_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS="$(extract_kv_metric "phase_first_syscall_gate_return_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID="$(extract_kv_metric "phase_first_syscall_gate_return_tick_valid" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_syscall_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
@@ -558,6 +562,12 @@ PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS="$(extract_kv_metric "phase_core_
 PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE="$(extract_kv_metric "phase_core_ready_to_first_sched_activity_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS="$(extract_kv_metric "phase_first_sched_activity_to_first_user_entry_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_sched_activity_to_first_user_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_gate_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_gate_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_entry_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
@@ -702,6 +712,10 @@ PHASE_FIRST_SCHED_ACTIVITY_TICKS_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TICKS}" \
 PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID}" \
 PHASE_FIRST_USER_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TICKS}" \
 PHASE_FIRST_USER_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_USER_ENTRY_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID}" \
 PHASE_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_ENTRY_TICKS}" \
 PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID}" \
 PHASE_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_SYSCALL_EXIT_TICKS}" \
@@ -712,6 +726,12 @@ PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS_ENV="${PHASE_CORE_READY_TO_FIRST_
 PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE_ENV="${PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE}" \
 PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS}" \
 PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE}" \
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE}" \
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}" \
@@ -797,6 +817,14 @@ payload = {
                 "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TICKS_ENV"]),
                 "tick_valid": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TICK_VALID_ENV"])),
             },
+            "first_syscall_gate_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID_ENV"])),
+            },
+            "first_syscall_gate_return": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID_ENV"])),
+            },
             "first_syscall_entry": {
                 "ticks": int(os.environ["PHASE_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
                 "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID_ENV"])),
@@ -818,6 +846,18 @@ payload = {
             "first_sched_activity_to_first_user_entry": {
                 "ticks": int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS_ENV"]),
                 "available": bool(int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_user_entry_to_first_syscall_gate_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_gate_return": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV"])),
             },
             "first_user_entry_to_first_syscall_entry": {
                 "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
