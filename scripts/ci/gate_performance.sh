@@ -417,6 +417,7 @@ ALLOWLIST_BYPASS_TXT="${EVIDENCE_DIR}/allowlist_bypass.txt"
 META_TXT="${EVIDENCE_DIR}/meta.txt"
 REPORT_JSON="${EVIDENCE_DIR}/report.json"
 SPLIT_ENFORCEMENT_JSON="${EVIDENCE_DIR}/split_metric_enforcement.json"
+SPLIT_POLICY_VERIFICATION_JSON="${EVIDENCE_DIR}/split_metric_policy_verification.json"
 
 : > "${ENV_JSON}"
 : > "${RESULTS_JSON}"
@@ -1466,7 +1467,43 @@ else
   fi
 fi
 
-# 9) Split-metric enforcement scaffold (default-off, non-authoritative).
+# 9) Split-metric policy source verification (default-off, non-authoritative).
+if ! bash "${ROOT}/scripts/ci/verify_perf_policy_source.sh" \
+    --policy-json "${SPLIT_POLICY_JSON}" \
+    --env-json "${ENV_JSON}" \
+    --expected-authority "${BASELINE_AUTHORITY}" \
+    --expected-git-sha "${GIT_SHA}" \
+    --output-json "${SPLIT_POLICY_VERIFICATION_JSON}" >/dev/null 2>&1
+then
+  :
+fi
+if [[ ! -s "${SPLIT_POLICY_VERIFICATION_JSON}" ]]; then
+  SPLIT_POLICY_VERIFICATION_JSON_ENV="${SPLIT_POLICY_VERIFICATION_JSON}" \
+  SPLIT_POLICY_JSON_ENV="${SPLIT_POLICY_JSON}" \
+  BASELINE_AUTHORITY_ENV="${BASELINE_AUTHORITY}" \
+  GIT_SHA_ENV="${GIT_SHA}" \
+  python3 - <<'PY'
+import json
+import os
+payload = {
+    "schema_version": 1,
+    "trusted": False,
+    "reason": "verification_tool_error",
+    "policy_path": os.environ["SPLIT_POLICY_JSON_ENV"],
+    "expected": {
+        "authority": os.environ["BASELINE_AUTHORITY_ENV"],
+        "git_sha": os.environ["GIT_SHA_ENV"],
+        "env_hash": None,
+    },
+    "actual": {},
+}
+with open(os.environ["SPLIT_POLICY_VERIFICATION_JSON_ENV"], "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+PY
+fi
+
+# 10) Split-metric enforcement scaffold (default-off, non-authoritative).
 if ! \
   PERF_SPLIT_METRICS_SHADOW="${SPLIT_METRICS_SHADOW}" \
   PERF_SPLIT_METRICS_ENFORCEMENT="${SPLIT_METRICS_ENFORCEMENT}" \
@@ -1480,11 +1517,13 @@ if ! \
     --results-json "${RESULTS_JSON}" \
     --env-json "${ENV_JSON}" \
     --policy-json "${SPLIT_POLICY_JSON}" \
+    --policy-verification-json "${SPLIT_POLICY_VERIFICATION_JSON}" \
     --state-path "${PERF_ENFORCEMENT_STATE_FILE}" \
     --output-json "${SPLIT_ENFORCEMENT_JSON}" >/dev/null 2>&1
 then
   SPLIT_ENFORCEMENT_JSON_ENV="${SPLIT_ENFORCEMENT_JSON}" \
   SPLIT_POLICY_JSON_ENV="${SPLIT_POLICY_JSON}" \
+  SPLIT_POLICY_VERIFICATION_JSON_ENV="${SPLIT_POLICY_VERIFICATION_JSON}" \
   PERF_ENFORCEMENT_STATE_FILE_ENV="${PERF_ENFORCEMENT_STATE_FILE}" \
   python3 - <<'PY'
 import json
@@ -1494,6 +1533,7 @@ payload = {
     "gate": "performance-split-enforcement",
     "mode": "disabled",
     "policy_path": os.environ["SPLIT_POLICY_JSON_ENV"],
+    "policy_verification_path": os.environ["SPLIT_POLICY_VERIFICATION_JSON_ENV"],
     "policy_present": False,
     "global": {
         "shadow_requested": False,
@@ -1575,6 +1615,7 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "split_metrics_shadow=${SPLIT_METRICS_SHADOW}"
   echo "split_metrics_enforcement=${SPLIT_METRICS_ENFORCEMENT}"
   echo "split_metric_policy_json=${SPLIT_POLICY_JSON}"
+  echo "split_metric_policy_verification_json=${SPLIT_POLICY_VERIFICATION_JSON}"
   echo "split_metric_state_file=${PERF_ENFORCEMENT_STATE_FILE}"
   echo "split_metric_variance_guard=${VARIANCE_GUARD}"
   echo "split_metric_consecutive_violation_limit=${CONSECUTIVE_VIOLATION_LIMIT}"
@@ -1639,6 +1680,7 @@ out = {
     "meta": meta,
     "env": read_json("env.json"),
     "results": read_json("results.json"),
+    "split_metric_policy_verification": read_json("split_metric_policy_verification.json"),
     "split_metric_enforcement": read_json("split_metric_enforcement.json"),
     "baseline_diff": read_lines("baseline.diff.txt"),
     "violations": read_lines("violations.txt"),
