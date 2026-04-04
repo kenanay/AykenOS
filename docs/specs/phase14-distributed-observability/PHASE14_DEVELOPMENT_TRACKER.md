@@ -55,7 +55,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 |---|---|---|---|---|
 | 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
-| 3.3 | `proofd` Query/Service Boundary Hardening | VALIDATED_LOCAL | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, and partial contract-driven dispatch are implemented and locally validated | Obtain remote `ci-freeze` confirmation, then finish computed-route registry hardening |
+| 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
 | 3.4 | Cross-Node Observability Graph | TODO | Architectural target exists; current graph surface remains Phase-13-derived | Define Phase-14 graph contract and artifact shape |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
@@ -74,7 +74,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ### 2026-04-05
 
-**Workstream 3.3 advanced from architecture to validated local hardening**
+**Workstream 3.3 completed and merged to `main`**
 - Canonical external diagnostics contract registry added at `userspace/proofd/src/api_contract.rs`
 - `/diagnostics/version`, query allowlists, harness expectations, and forbidden-field scan now derive from a single contract surface
 - Runtime forbidden-field enforcement added for public diagnostics responses with fail-closed `500 forbidden_observability_field_exposed`
@@ -82,13 +82,15 @@ This tracker is operational, not historical. Historical closure truth remains in
 - Service-owned diagnostics responses now fail closed with `500 diagnostics_schema_contract_violation` on missing required fields or required top-level type mismatch
 - Explicit schema coverage declarations now exist for every public diagnostics endpoint (`none`, `root_only`, `full`)
 - `ci-gate-proofd-schema-coverage` added as a pure validation gate over `proofd-service` evidence
-- Public computed diagnostics dispatch is now partially contract-driven for root and run-scoped routes
+- Public diagnostics routing now resolves through a unified `path -> endpoint_id -> handler -> schema` flow
 - External diagnostics contract document updated to record schema coverage and boundary rules
-- Local validation observed:
-  - `cargo test -p proofd` passed (`168` lib tests + `6` main tests)
+- Local and remote validation observed:
+  - `cargo test -p proofd` passed (`171` lib tests + `6` main tests)
   - `ci-gate-observability-routing-separation` passed
   - `ci-gate-proofd-observability-boundary` passed
   - `ci-gate-proofd-service` passed
+  - `ci-gate-proofd-schema-coverage` passed
+  - PR `#93` merged after `ci-freeze` passed on the final dispatch-hardening slice
 
 ### 2026-04-03
 
@@ -146,11 +148,12 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-03 | `make ci-gate-determinism-replay-consistency RUN_ID=local-determinism-gate-pure` | PASS | Makefile wiring validated through `proofd-service`, verification-contract, and pure replay-consistency gate |
 | 2026-04-03 | `bash scripts/ci/gate_determinism_replay_consistency.sh --evidence-dir out/evidence/run-local-determinism-gate-direct/gates/determinism-replay-consistency --source-gate-dir out/evidence/run-local-determinism-gate-pure/gates/proofd-service` | PASS | Direct gate run validated existing `proofd-service` artifacts without bootstrapping a new run |
 | 2026-04-03 | `bash scripts/ci/pre_ci_discipline.sh` | FAIL-CLOSED | Stopped at hygiene because tracked files were modified in worktree |
-| 2026-04-05 | `cargo test -p proofd` | PASS | Workstream 3.3 schema contract + runtime boundary hardening passed locally (`168` lib tests + `6` main tests) |
-| 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-boundary-scan-round3` | PASS | Canonical route/contract separation remained intact after schema layer and registry-driven dispatch changes |
-| 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-boundary-round3` | PASS | Runtime forbidden-field enforcement and public boundary behavior remained valid |
-| 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-contract-round3` | PASS | Service contract harness remained aligned while schema contract metadata was added |
-| 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-coverage-round3 --source-gate-dir /tmp/proofd-service-contract-round3` | PASS | Every public diagnostics endpoint declared explicit schema coverage and current passthrough/service-owned split remained intentional |
+| 2026-04-05 | `cargo test -p proofd` | PASS | Final dispatch-hardening slice passed locally (`171` lib tests + `6` main tests) |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-final-dispatch` | PASS | Unified public resolver preserved service contract expectations |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-coverage-final-dispatch --source-gate-dir /tmp/proofd-service-final-dispatch` | PASS | Explicit coverage declarations remained complete after dispatch unification |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-boundary-final-dispatch` | PASS | Runtime forbidden-field enforcement remained intact after route hardening |
+| 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-routing-separation-final-dispatch` | PASS | Contract-driven routing preserved observability/scheduling separation |
+| 2026-04-05 | `bash scripts/ci/gate_diagnostics_consumer_non_authoritative_contract.sh --evidence-dir /tmp/diag-consumer-final-dispatch` | PASS | Canonical diagnostics registry remained boundary-only and did not regress into consumer misuse |
 
 ---
 
@@ -169,16 +172,16 @@ This tracker is operational, not historical. Historical closure truth remains in
 ## 7. Open Items
 
 1. Should service-owned response schema coverage expand to artifact-backed passthrough endpoints, or remain intentionally limited to `proofd`-computed/index responses in v1?
-2. What is the narrowest remaining slice to make computed diagnostics dispatch fully registry-driven without over-coupling handler logic to route metadata?
+2. Should non-GET diagnostics method rejection eventually move from namespace prefix logic into the same endpoint registry layer, or remain a separate boundary check?
 
 ---
 
 ## 8. Next Steps
 
-1. Obtain remote `ci-freeze` confirmation for the current 3.3 schema contract + runtime boundary hardening slice.
-2. Finish moving remaining computed diagnostics endpoints to registry-driven dispatch.
-3. Decide whether v1 should intentionally keep artifact-backed passthrough endpoints outside structural schema enforcement.
-4. Only after that, evaluate whether a new dedicated gate is necessary or the existing proofd gates remain sufficient.
+1. Keep artifact-backed passthrough endpoints intentionally outside structural schema enforcement unless a narrower v2 rule is defined.
+2. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
+3. Open Workstream 3.4 without weakening the 3.3 diagnostics contract boundary.
+4. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
 
 ---
 

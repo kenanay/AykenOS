@@ -93,7 +93,7 @@ Workstream numbering in this document MUST align with the Phase-14 development t
 - Response field audit (PHASE13_FORBIDDEN_FIELDS enforcement)
 - Response schema stability contract for service-owned diagnostics responses
 - Explicit schema coverage declarations (`none` / `root_only` / `full`) for every public diagnostics endpoint
-- Contract-driven dispatch for public computed diagnostics routes
+- Unified contract-driven dispatch for public diagnostics routes (`path -> endpoint_id -> handler -> schema`)
 - Service boundary documentation
 - Read-only contract enforcement tests
 

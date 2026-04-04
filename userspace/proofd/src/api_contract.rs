@@ -50,6 +50,20 @@ pub struct DiagnosticsEndpointContract {
     pub scope: EndpointScope,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DiagnosticsPathParams {
+    pub run_id: Option<String>,
+    pub incident_id: Option<String>,
+    pub fp: Option<String>,
+    pub artifact_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedDiagnosticsEndpoint {
+    pub contract: &'static DiagnosticsEndpointContract,
+    pub params: DiagnosticsPathParams,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ForbiddenObservabilityField {
     pub normalized_field: &'static str,
@@ -516,30 +530,42 @@ pub fn allowed_query_keys_for_path(path: &str) -> Option<&'static [&'static str]
         return Some(NO_QUERY_KEYS);
     }
 
-    if let Some(endpoint) = public_endpoint_contract_for_path(path) {
-        return Some(endpoint.allowed_query_keys);
+    if let Some(resolved) = resolve_public_endpoint(path) {
+        return Some(resolved.contract.allowed_query_keys);
     }
     None
 }
 
 pub fn root_endpoint_contract_for_path(path: &str) -> Option<&'static DiagnosticsEndpointContract> {
-    ROOT_DIAGNOSTICS_ENDPOINTS
-        .iter()
-        .find(|endpoint| path_matches_template(path, endpoint.path_template))
+    resolve_root_endpoint(path).map(|resolved| resolved.contract)
 }
 
 pub fn run_scoped_endpoint_contract_for_path(
     path: &str,
 ) -> Option<&'static DiagnosticsEndpointContract> {
-    RUN_SCOPED_DIAGNOSTICS_ENDPOINTS
-        .iter()
-        .find(|endpoint| path_matches_template(path, endpoint.path_template))
+    resolve_run_scoped_endpoint(path).map(|resolved| resolved.contract)
 }
 
 pub fn public_endpoint_contract_for_path(
     path: &str,
 ) -> Option<&'static DiagnosticsEndpointContract> {
-    root_endpoint_contract_for_path(path).or_else(|| run_scoped_endpoint_contract_for_path(path))
+    resolve_public_endpoint(path).map(|resolved| resolved.contract)
+}
+
+pub fn resolve_root_endpoint(path: &str) -> Option<ResolvedDiagnosticsEndpoint> {
+    ROOT_DIAGNOSTICS_ENDPOINTS
+        .iter()
+        .find_map(|contract| resolve_endpoint_contract(path, contract))
+}
+
+pub fn resolve_run_scoped_endpoint(path: &str) -> Option<ResolvedDiagnosticsEndpoint> {
+    RUN_SCOPED_DIAGNOSTICS_ENDPOINTS
+        .iter()
+        .find_map(|contract| resolve_endpoint_contract(path, contract))
+}
+
+pub fn resolve_public_endpoint(path: &str) -> Option<ResolvedDiagnosticsEndpoint> {
+    resolve_root_endpoint(path).or_else(|| resolve_run_scoped_endpoint(path))
 }
 
 pub fn root_passthrough_contract_for_path(
@@ -556,10 +582,19 @@ pub fn run_scoped_passthrough_contract_for_path(
     run_scoped_endpoint_contract_for_path(path).filter(|endpoint| endpoint.artifact_file.is_some())
 }
 
-fn path_matches_template(path: &str, path_template: &str) -> bool {
+fn resolve_endpoint_contract(
+    path: &str,
+    contract: &'static DiagnosticsEndpointContract,
+) -> Option<ResolvedDiagnosticsEndpoint> {
+    resolve_path_params(path, contract.path_template)
+        .map(|params| ResolvedDiagnosticsEndpoint { contract, params })
+}
+
+fn resolve_path_params(path: &str, path_template: &str) -> Option<DiagnosticsPathParams> {
     let path_segments = split_segments(path);
     let template_segments = split_segments(path_template);
 
+    let mut params = DiagnosticsPathParams::default();
     let mut path_index = 0usize;
     let mut template_index = 0usize;
 
@@ -567,30 +602,91 @@ fn path_matches_template(path: &str, path_template: &str) -> bool {
         let template_segment = template_segments[template_index];
 
         if template_segment == "{artifact_path}" {
-            return path_index < path_segments.len();
+            if path_index >= path_segments.len() {
+                return None;
+            }
+            params.artifact_path = Some(path_segments[path_index..].join("/"));
+            return (template_index + 1 == template_segments.len()).then_some(params);
         }
 
         if path_index >= path_segments.len() {
-            return false;
+            return None;
         }
 
         let path_segment = path_segments[path_index];
         let is_placeholder = template_segment.starts_with('{') && template_segment.ends_with('}');
-        if !is_placeholder && template_segment != path_segment {
-            return false;
+        if is_placeholder {
+            if !capture_path_param(&mut params, template_segment, path_segment) {
+                return None;
+            }
+        } else if template_segment != path_segment {
+            return None;
         }
 
         template_index += 1;
         path_index += 1;
     }
 
-    path_index == path_segments.len()
+    (path_index == path_segments.len()).then_some(params)
+}
+
+fn capture_path_param(params: &mut DiagnosticsPathParams, key: &str, value: &str) -> bool {
+    match key {
+        "{run_id}" => params.run_id = Some(value.to_string()),
+        "{incident_id}" => params.incident_id = Some(value.to_string()),
+        "{fp}" => params.fp = Some(value.to_string()),
+        _ => return false,
+    }
+    true
 }
 
 fn split_segments(path: &str) -> Vec<&str> {
     path.split('/')
         .filter(|segment| !segment.is_empty())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{resolve_public_endpoint, DiagnosticsEndpointId};
+
+    #[test]
+    fn resolver_captures_root_diagnostics_params() {
+        let incident = resolve_public_endpoint("/diagnostics/incidents/sha256:incident")
+            .expect("incident endpoint should resolve");
+        assert_eq!(incident.contract.id, DiagnosticsEndpointId::IncidentById);
+        assert_eq!(
+            incident.params.incident_id.as_deref(),
+            Some("sha256:incident")
+        );
+
+        let fingerprint = resolve_public_endpoint(
+            "/diagnostics/fingerprints/sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("fingerprint endpoint should resolve");
+        assert_eq!(
+            fingerprint.contract.id,
+            DiagnosticsEndpointId::FingerprintBoundary
+        );
+        assert_eq!(
+            fingerprint.params.fp.as_deref(),
+            Some("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        );
+    }
+
+    #[test]
+    fn resolver_captures_run_scoped_artifact_path() {
+        let resolved = resolve_public_endpoint(
+            "/diagnostics/runs/run-20260310-1/artifacts/receipts/verification_receipt.json",
+        )
+        .expect("artifact endpoint should resolve");
+        assert_eq!(resolved.contract.id, DiagnosticsEndpointId::RunArtifactFile);
+        assert_eq!(resolved.params.run_id.as_deref(), Some("run-20260310-1"));
+        assert_eq!(
+            resolved.params.artifact_path.as_deref(),
+            Some("receipts/verification_receipt.json")
+        );
+    }
 }
 
 fn scan_forbidden_observability_fields_inner(
