@@ -148,6 +148,14 @@ jobs:
         with:
           path: .ci-state
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
+      - name: Upload performance evidence on success
+        if: ${{ success() && github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            evidence/run-*/gates/performance/**
       - name: Dump gate violations on failure
         if: failure()
         run: |
