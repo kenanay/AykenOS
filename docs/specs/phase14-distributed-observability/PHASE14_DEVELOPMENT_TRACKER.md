@@ -80,6 +80,8 @@ This tracker is operational, not historical. Historical closure truth remains in
 - Runtime forbidden-field enforcement added for public diagnostics responses with fail-closed `500 forbidden_observability_field_exposed`
 - Service-owned response schema registry added at `userspace/proofd/src/api_schema.rs`
 - Service-owned diagnostics responses now fail closed with `500 diagnostics_schema_contract_violation` on missing required fields or required top-level type mismatch
+- Explicit schema coverage declarations now exist for every public diagnostics endpoint (`none`, `root_only`, `full`)
+- `ci-gate-proofd-schema-coverage` added as a pure validation gate over `proofd-service` evidence
 - Public computed diagnostics dispatch is now partially contract-driven for root and run-scoped routes
 - External diagnostics contract document updated to record schema coverage and boundary rules
 - Local validation observed:
@@ -148,6 +150,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-boundary-scan-round3` | PASS | Canonical route/contract separation remained intact after schema layer and registry-driven dispatch changes |
 | 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-boundary-round3` | PASS | Runtime forbidden-field enforcement and public boundary behavior remained valid |
 | 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-contract-round3` | PASS | Service contract harness remained aligned while schema contract metadata was added |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-coverage-round3 --source-gate-dir /tmp/proofd-service-contract-round3` | PASS | Every public diagnostics endpoint declared explicit schema coverage and current passthrough/service-owned split remained intentional |
 
 ---
 

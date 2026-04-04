@@ -138,6 +138,18 @@ schema.
 - required field type mismatch => `500 diagnostics_schema_contract_violation`
 - unknown field => allowed in v1 for forward compatibility
 
+### Coverage Model
+
+Each public diagnostics endpoint MUST declare explicit schema coverage:
+
+- `none`
+  - no structural schema validation
+  - runtime forbidden-field enforcement may still apply
+- `root_only`
+  - only the response root kind is validated
+- `full`
+  - root kind plus required/optional top-level fields are validated
+
 ### Current Coverage
 
 The v1 schema contract currently covers:

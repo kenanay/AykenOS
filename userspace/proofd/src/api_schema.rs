@@ -15,6 +15,21 @@ pub enum SchemaValueKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaCoverage {
+    None,
+    RootOnly,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResponseMode {
+    Computed,
+    ArtifactFiltered,
+    ArtifactJsonPassthrough,
+    ArtifactFilePassthrough,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SchemaField {
     pub name: &'static str,
     pub kind: SchemaValueKind,
@@ -549,49 +564,157 @@ pub fn schema_for_endpoint_id(
         .find(|schema| schema.endpoint_id == endpoint_id)
 }
 
+pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> SchemaCoverage {
+    match endpoint_id {
+        DiagnosticsEndpointId::Version
+        | DiagnosticsEndpointId::Runs
+        | DiagnosticsEndpointId::Federation
+        | DiagnosticsEndpointId::Context
+        | DiagnosticsEndpointId::Trust
+        | DiagnosticsEndpointId::ParityContextRelation
+        | DiagnosticsEndpointId::Incidents
+        | DiagnosticsEndpointId::IncidentById
+        | DiagnosticsEndpointId::FingerprintBoundary
+        | DiagnosticsEndpointId::ReplicatedBoundary
+        | DiagnosticsEndpointId::RunSummary
+        | DiagnosticsEndpointId::RunArtifactsIndex
+        | DiagnosticsEndpointId::RunFederation
+        | DiagnosticsEndpointId::RunContext
+        | DiagnosticsEndpointId::RunRegistry
+        | DiagnosticsEndpointId::RunBoundary => SchemaCoverage::Full,
+        DiagnosticsEndpointId::Parity
+        | DiagnosticsEndpointId::AuthoritySuppression
+        | DiagnosticsEndpointId::AuthorityTopology
+        | DiagnosticsEndpointId::Graph
+        | DiagnosticsEndpointId::Drift
+        | DiagnosticsEndpointId::Convergence
+        | DiagnosticsEndpointId::FailureMatrix
+        | DiagnosticsEndpointId::RunArtifactFile
+        | DiagnosticsEndpointId::RunIncidents
+        | DiagnosticsEndpointId::RunParity
+        | DiagnosticsEndpointId::RunAuthoritySuppression
+        | DiagnosticsEndpointId::RunAuthorityTopology
+        | DiagnosticsEndpointId::RunGraph
+        | DiagnosticsEndpointId::RunDrift
+        | DiagnosticsEndpointId::RunConvergence
+        | DiagnosticsEndpointId::RunFailureMatrix => SchemaCoverage::None,
+    }
+}
+
+pub fn response_mode_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> ResponseMode {
+    match endpoint_id {
+        DiagnosticsEndpointId::Parity
+        | DiagnosticsEndpointId::AuthoritySuppression
+        | DiagnosticsEndpointId::AuthorityTopology
+        | DiagnosticsEndpointId::Graph
+        | DiagnosticsEndpointId::Drift
+        | DiagnosticsEndpointId::Convergence
+        | DiagnosticsEndpointId::FailureMatrix
+        | DiagnosticsEndpointId::RunIncidents
+        | DiagnosticsEndpointId::RunParity
+        | DiagnosticsEndpointId::RunAuthoritySuppression
+        | DiagnosticsEndpointId::RunAuthorityTopology
+        | DiagnosticsEndpointId::RunGraph
+        | DiagnosticsEndpointId::RunDrift
+        | DiagnosticsEndpointId::RunConvergence
+        | DiagnosticsEndpointId::RunFailureMatrix => ResponseMode::ArtifactJsonPassthrough,
+        DiagnosticsEndpointId::RunArtifactFile => ResponseMode::ArtifactFilePassthrough,
+        DiagnosticsEndpointId::Incidents => ResponseMode::ArtifactFiltered,
+        _ => ResponseMode::Computed,
+    }
+}
+
 pub fn schema_for_path(path: &str) -> Option<&'static EndpointSchema> {
     public_endpoint_contract_for_path(path).and_then(|contract| schema_for_endpoint_id(contract.id))
+}
+
+pub fn schema_coverage_for_path(path: &str) -> Option<SchemaCoverage> {
+    public_endpoint_contract_for_path(path)
+        .map(|contract| schema_coverage_for_endpoint_id(contract.id))
 }
 
 pub fn validate_response_schema_for_path(
     path: &str,
     value: &Value,
 ) -> Result<(), SchemaValidationError> {
-    let Some(schema) = schema_for_path(path) else {
+    let Some(contract) = public_endpoint_contract_for_path(path) else {
         return Ok(());
     };
-    validate_response_schema(schema, value)
+    let coverage = schema_coverage_for_endpoint_id(contract.id);
+    match coverage {
+        SchemaCoverage::None => Ok(()),
+        SchemaCoverage::RootOnly => {
+            let schema = schema_for_endpoint_id(contract.id)
+                .expect("schema coverage root_only requires schema declaration");
+            validate_root_kind_only(schema, value)
+        }
+        SchemaCoverage::Full => {
+            let schema = schema_for_endpoint_id(contract.id)
+                .expect("schema coverage full requires schema declaration");
+            validate_response_schema(schema, value)
+        }
+    }
 }
 
 pub fn public_schema_declarations() -> Vec<Value> {
     ROOT_DIAGNOSTICS_ENDPOINTS
         .iter()
         .chain(RUN_SCOPED_DIAGNOSTICS_ENDPOINTS.iter())
-        .filter_map(|contract| {
-            schema_for_endpoint_id(contract.id).map(|schema| {
-                json!({
-                    "path_template": contract.path_template,
-                    "root_kind": schema_value_kind_name(schema.root_kind),
-                    "required_fields": schema
-                        .required_fields
-                        .iter()
-                        .map(|field| json!({
-                            "name": field.name,
-                            "kind": schema_value_kind_name(field.kind),
-                        }))
-                        .collect::<Vec<_>>(),
-                    "optional_fields": schema
-                        .optional_fields
-                        .iter()
-                        .map(|field| json!({
-                            "name": field.name,
-                            "kind": schema_value_kind_name(field.kind),
-                        }))
-                        .collect::<Vec<_>>(),
-                })
+        .map(|contract| {
+            let coverage = schema_coverage_for_endpoint_id(contract.id);
+            let schema = schema_for_endpoint_id(contract.id);
+            let response_mode = response_mode_for_endpoint_id(contract.id);
+            json!({
+                "path_template": contract.path_template,
+                "scope": match contract.scope {
+                    crate::api_contract::EndpointScope::Root => "root",
+                    crate::api_contract::EndpointScope::RunScoped => "run",
+                },
+                "artifact_backed": contract.artifact_file.is_some(),
+                "response_mode": response_mode_name(response_mode),
+                "coverage": schema_coverage_name(coverage),
+                "schema_present": schema.is_some(),
+                "schema_enforcement_active": coverage != SchemaCoverage::None,
+                "root_kind": schema.map(|schema| schema_value_kind_name(schema.root_kind)),
+                "required_fields": schema
+                    .map(|schema| {
+                        schema
+                            .required_fields
+                            .iter()
+                            .map(|field| json!({
+                                "name": field.name,
+                                "kind": schema_value_kind_name(field.kind),
+                            }))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default(),
+                "optional_fields": schema
+                    .map(|schema| {
+                        schema
+                            .optional_fields
+                            .iter()
+                            .map(|field| json!({
+                                "name": field.name,
+                                "kind": schema_value_kind_name(field.kind),
+                            }))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default(),
             })
         })
         .collect()
+}
+
+fn validate_root_kind_only(
+    schema: &EndpointSchema,
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    if !schema.root_kind.matches(value) {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: schema.root_kind,
+        });
+    }
+    Ok(())
 }
 
 fn validate_response_schema(
@@ -644,6 +767,23 @@ fn schema_value_kind_name(kind: SchemaValueKind) -> &'static str {
     }
 }
 
+fn schema_coverage_name(coverage: SchemaCoverage) -> &'static str {
+    match coverage {
+        SchemaCoverage::None => "none",
+        SchemaCoverage::RootOnly => "root_only",
+        SchemaCoverage::Full => "full",
+    }
+}
+
+fn response_mode_name(mode: ResponseMode) -> &'static str {
+    match mode {
+        ResponseMode::Computed => "computed",
+        ResponseMode::ArtifactFiltered => "artifact_filtered",
+        ResponseMode::ArtifactJsonPassthrough => "artifact_json_passthrough",
+        ResponseMode::ArtifactFilePassthrough => "artifact_file_passthrough",
+    }
+}
+
 impl SchemaValueKind {
     fn matches(self, value: &Value) -> bool {
         match self {
@@ -659,8 +799,10 @@ impl SchemaValueKind {
 #[cfg(test)]
 mod tests {
     use super::{
-        schema_for_path, validate_response_schema_for_path, SchemaValidationError, SchemaValueKind,
+        schema_coverage_for_endpoint_id, schema_for_path, validate_response_schema_for_path,
+        SchemaCoverage, SchemaValidationError, SchemaValueKind,
     };
+    use crate::api_contract::DiagnosticsEndpointId;
     use serde_json::json;
 
     #[test]
@@ -706,5 +848,13 @@ mod tests {
             .required_fields
             .iter()
             .any(|field| field.name == "request_fingerprint"));
+    }
+
+    #[test]
+    fn coverage_marks_parity_passthrough_as_none() {
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::Parity),
+            SchemaCoverage::None
+        );
     }
 }
