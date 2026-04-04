@@ -76,7 +76,27 @@ This contract does not cover:
 
 ---
 
-## 5. Canonical Inputs
+## 5. Security Boundary
+
+The 3.4 graph surface is security-sensitive because it aggregates multi-node
+diagnostics.
+
+The graph contract MUST therefore preserve these boundaries:
+
+- graph aggregation MUST NOT become truth selection
+- graph aggregation MUST NOT become verifier routing input
+- graph aggregation MUST NOT become replay admission input
+- graph aggregation MUST NOT mix incompatible execution classes
+- graph output MUST remain read-only and descriptive
+
+The two most important security sentences are:
+
+- `cluster size MUST NOT imply correctness`
+- `graph output MUST NOT be consumed by execution-bearing paths`
+
+---
+
+## 6. Canonical Inputs
 
 The 3.4 graph is derived from existing diagnostics artifacts. It does not create
 new truth-bearing inputs.
@@ -94,7 +114,7 @@ them as policy or authority.
 
 ---
 
-## 6. Response Envelope
+## 7. Response Envelope
 
 The public response root MUST be a JSON object.
 
@@ -102,7 +122,13 @@ The current v1 target envelope is:
 
 ```json
 {
+  "authority": "github-hosted-ubuntu-24.04-x64",
+  "env_hash": "sha256...",
   "status": "PASS",
+  "provenance": {
+    "artifact_set_hash": "sha256...",
+    "source_runs": ["run-20260405-1"]
+  },
   "graph": {
     "node_count": 3,
     "edge_count": 2,
@@ -117,13 +143,28 @@ The current v1 target envelope is:
 
 ### Root Rules
 
+- `authority` is required
+- `env_hash` is required
+- `provenance` is required
 - `graph` is required
 - `status` is allowed and remains descriptive-only
 - unknown top-level fields are allowed in v1 if they remain non-authoritative
 
+### Authority and Provenance Rules
+
+- `authority` identifies the execution class that produced the graph inputs
+- `env_hash` binds the graph to a deterministic execution fingerprint
+- `provenance.artifact_set_hash` binds the graph to a specific artifact set
+- `provenance.source_runs` lists the contributing run ids
+
+Mixed authority or mixed `env_hash` inputs are forbidden in one v1 graph.
+
+If inputs come from incompatible execution classes, they MUST be represented as
+separate graphs, not one merged graph.
+
 ---
 
-## 7. Graph Object Contract
+## 8. Graph Object Contract
 
 The `graph` object is the canonical graph payload.
 
@@ -156,7 +197,7 @@ winner selection, or finality.
 
 ---
 
-## 8. Node Model
+## 9. Node Model
 
 Each `graph.nodes[]` entry MUST be a JSON object.
 
@@ -165,6 +206,7 @@ Each `graph.nodes[]` entry MUST be a JSON object.
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | stable node identity within the graph |
+| `node_fingerprint` | string | stable fingerprint for the node observation source |
 | `surface_key` | string | surface grouping key |
 | `outcome_key` | string | outcome grouping key |
 | `verdict` | string | descriptive verification verdict label |
@@ -186,11 +228,16 @@ Each `graph.nodes[]` entry MUST be a JSON object.
 | `historical_only` | boolean | historical-only explanatory marker |
 | `insufficient_evidence` | boolean | insufficient-evidence explanatory marker |
 
+`id` is presentation-facing. `node_fingerprint` is the binding surface.
+
+Implementations MUST treat `node_fingerprint` as the stable identity anchor for
+graph membership and correlation. A plain display id is not sufficient.
+
 Node entries MUST describe. They MUST NOT rank.
 
 ---
 
-## 9. Edge Model
+## 10. Edge Model
 
 Each `graph.edges[]` entry MUST be a JSON object.
 
@@ -219,7 +266,7 @@ selection instructions.
 
 ---
 
-## 10. Incident Model
+## 11. Incident Model
 
 Each `graph.incidents[]` entry MUST be a JSON object.
 
@@ -244,9 +291,34 @@ Each `graph.incidents[]` entry MUST be a JSON object.
 Incident severity remains descriptive. It MUST NOT be reused as a policy or
 priority signal.
 
+Severity is not ordered in v1.
+
+That means:
+
+- severity MUST NOT be compared for ranking
+- severity MUST NOT be converted into trust weighting
+- severity MUST NOT imply preferred node or preferred cluster
+
 ---
 
-## 11. Cluster Model
+## 12. Conflict Classification
+
+The graph MAY expose conflict classes, but they remain descriptive only.
+
+Allowed conflict kinds include:
+
+- `verdict_mismatch`
+- `subject_drift`
+- `context_drift`
+- `authority_drift`
+- `mixed`
+
+Conflict labels explain disagreement shape. They MUST NOT be used as execution
+switches.
+
+---
+
+## 13. Cluster Model
 
 `graph.clusters[]` is optional in v1, but if present it MUST remain descriptive.
 
@@ -270,9 +342,18 @@ priority signal.
 
 Clusters MAY explain grouping. They MUST NOT elect a winner.
 
+Cluster size is descriptive only.
+
+That means:
+
+- larger cluster size MUST NOT imply correctness
+- larger cluster size MUST NOT imply authority
+- larger cluster size MUST NOT imply preferred routing
+- cluster dominance metadata MUST remain explanatory only
+
 ---
 
-## 12. Determinism Rules
+## 14. Determinism Rules
 
 The graph surface MUST remain deterministic.
 
@@ -294,7 +375,24 @@ cluster sizes.
 
 ---
 
-## 13. Forbidden Semantics
+## 15. Bounded Graph Rules
+
+The graph surface MUST be bounded.
+
+That means:
+
+- graph generation MUST enforce an implementation-defined upper bound on
+  `node_count`
+- graph generation MUST enforce an implementation-defined upper bound on
+  `edge_count`
+- graph generation MUST NOT permit unbounded query-driven fan-out
+
+Exact numeric ceilings may be implementation-specific, but they MUST be fixed
+before the 3.4 endpoint is promoted as a stable Phase-14 graph surface.
+
+---
+
+## 16. Forbidden Semantics
 
 The graph surface MUST NOT expose fields or semantics such as:
 
@@ -320,7 +418,7 @@ Those remain descriptive-only.
 
 ---
 
-## 14. Read-Only Rules
+## 17. Read-Only Rules
 
 The graph contract inherits the external diagnostics boundary:
 
@@ -329,11 +427,33 @@ The graph contract inherits the external diagnostics boundary:
 - write methods => `405 method_not_allowed`
 - unknown path => `404 not_found`
 
+In v1, graph endpoints are queryless by default.
+
+That means:
+
+- `GET /diagnostics/graph` accepts no query parameters
+- `GET /diagnostics/runs/{run_id}/graph` accepts no query parameters
+
 No 3.4 graph surface may mutate artifacts or execution state.
 
 ---
 
-## 15. Failure Meaning
+## 18. Threat Model Summary
+
+The v1 graph contract is designed to reduce these concrete risks:
+
+| Threat | Contract Countermeasure |
+|---|---|
+| truth-election drift | forbidden semantics + non-negotiable invariants |
+| graph-to-routing drift | read-only rules + routing-hint prohibition |
+| data poisoning | provenance + `authority` + `env_hash` + `node_fingerprint` |
+| cross-authority contamination | mixed authority / mixed `env_hash` forbidden |
+| topology inference misuse | descriptive-only cluster and conflict model |
+| DoS by oversized graph | bounded graph rules |
+
+---
+
+## 19. Failure Meaning
 
 If this contract is violated, the graph surface has drifted from:
 
@@ -347,7 +467,7 @@ That is a Phase-14 architectural failure.
 
 ---
 
-## 16. References
+## 20. References
 
 - `docs/specs/phase14-distributed-observability/README.md`
 - `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`

@@ -56,7 +56,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
-| 3.4 | Cross-Node Observability Graph | IN PROGRESS | Canonical graph contract v1 is now drafted; current endpoint surface still remains Phase-13-derived | Bind `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` to the v1 graph contract and artifact shape |
+| 3.4 | Cross-Node Observability Graph | IN PROGRESS | Canonical graph contract v1 is drafted and security-bounded; current endpoint surface still remains Phase-13-derived | Bind `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` to the v1 graph contract and artifact shape without introducing authority or routing semantics |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
 ### Status Legend
@@ -99,6 +99,12 @@ This tracker is operational, not historical. Historical closure truth remains in
   - `graph != authority`
   - `graph != routing hint`
   - `graph != consensus`
+- Security hardening added directly at the contract layer:
+  - `authority` / `env_hash` boundary required
+  - graph provenance required
+  - `node_fingerprint` required for stable node binding
+  - graph endpoints remain queryless in v1
+  - bounded graph generation is required before endpoint promotion
 - Current implementation note:
   - `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` still serve Phase-13-derived graph artifacts
   - the new document freezes the target field vocabulary, edge model, cluster model, and determinism rules before endpoint implementation
