@@ -29,12 +29,14 @@ The gate currently allows these runtime references:
 - `ayken-core/crates/proof-verifier/examples/phase12_gate_harness.rs`
 - `ayken-core/crates/proof-verifier/src/authority/authority_drift_topology.rs`
 - `ayken-core/crates/proof-verifier/src/authority/drift_attribution.rs`
+- `userspace/proofd/src/api_contract.rs`
 - `userspace/proofd/src/lib.rs`
 - `userspace/proofd/examples/proofd_gate_harness.rs`
 
 These are allowed because they either:
 
 - produce canonical diagnostics artifacts
+- define the canonical public diagnostics boundary registry
 - expose raw artifact passthrough behavior
 - enforce the diagnostics boundary itself
 

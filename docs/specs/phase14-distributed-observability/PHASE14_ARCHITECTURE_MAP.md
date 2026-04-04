@@ -75,6 +75,9 @@ These rules are inherited from Phase-13 and MUST be preserved throughout Phase-1
 **Scope:**
 - Query parameter validation hardening (bounded, deterministic)
 - Response field audit (PHASE13_FORBIDDEN_FIELDS enforcement)
+- Response schema stability contract for service-owned diagnostics responses
+- Explicit schema coverage declarations (`none` / `root_only` / `full`) for every public diagnostics endpoint
+- Contract-driven dispatch for public computed diagnostics routes
 - Service boundary documentation
 - Read-only contract enforcement property tests
 
@@ -178,4 +181,5 @@ Phase-14 is complete when:
 - `docs/roadmap/CURRENT_PHASE` — formal phase pointer (`CURRENT_PHASE=14`)
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — predecessor map
 - `docs/specs/phase14-distributed-observability/README.md` — phase spec
+- `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md` — canonical external diagnostics contract
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts

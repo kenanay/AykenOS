@@ -14,61 +14,18 @@ use proof_verifier::verification_context_object::{
 };
 use proof_verifier::verifier_attestation::{write_verifier_attestation, VerifierAttestation};
 use proof_verifier::{verify_bundle, VerdictSubject};
+use proofd::api_contract::{
+    forbidden_observability_field_tokens, materialize_path_template, public_endpoint_declarations,
+    root_passthrough_endpoints, run_scoped_passthrough_endpoints,
+    scan_forbidden_observability_fields,
+};
+use proofd::api_schema::public_schema_declarations;
 use proofd::{route_request, route_request_with_body};
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-
-const OBSERVABILITY_ROOT_ENDPOINTS: &[(&str, &str)] = &[
-    (
-        "/diagnostics/incidents",
-        "parity_determinism_incidents.json",
-    ),
-    ("/diagnostics/parity", "parity_report.json"),
-    ("/diagnostics/drift", "parity_drift_attribution_report.json"),
-    ("/diagnostics/convergence", "parity_convergence_report.json"),
-    ("/diagnostics/failure-matrix", "failure_matrix.json"),
-    (
-        "/diagnostics/authority-topology",
-        "parity_authority_drift_topology.json",
-    ),
-    (
-        "/diagnostics/authority-suppression",
-        "parity_authority_suppression_report.json",
-    ),
-    ("/diagnostics/graph", "parity_incident_graph.json"),
-];
-
-const FORBIDDEN_OBSERVABILITY_FIELDS: &[&str] = &[
-    "autorecovery",
-    "autoquarantine",
-    "acceptedauthority",
-    "acceptauthority",
-    "commit",
-    "commitclusterstate",
-    "committedcluster",
-    "elect",
-    "executionoverride",
-    "forceaccept",
-    "mitigation",
-    "nodepriority",
-    "override",
-    "promote",
-    "quarantine",
-    "recommendedaction",
-    "recommendedactions",
-    "resolvetruth",
-    "routinghint",
-    "retry",
-    "selectedtruth",
-    "selectwinner",
-    "suppressnode",
-    "triggerreplayadmission",
-    "verificationweight",
-    "winningverdict",
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HarnessMode {
@@ -170,6 +127,7 @@ fn run_service_contract_gate(evidence_root: &Path, run_id: &str, out_dir: &Path)
                     "run_id": run_id,
                     "endpoint_count": 0,
                     "endpoint_checks": [],
+                    "schema_contracts": [],
                 }),
             );
             write_json(
@@ -306,62 +264,9 @@ fn build_service_contract_artifacts(
         return Err(format!("missing run directory {}", run_dir.display()));
     }
 
-    let root_endpoint_files = [
-        ("/diagnostics/parity", "parity_report.json"),
-        (
-            "/diagnostics/incidents",
-            "parity_determinism_incidents.json",
-        ),
-        ("/diagnostics/drift", "parity_drift_attribution_report.json"),
-        ("/diagnostics/convergence", "parity_convergence_report.json"),
-        ("/diagnostics/failure-matrix", "failure_matrix.json"),
-        (
-            "/diagnostics/authority-topology",
-            "parity_authority_drift_topology.json",
-        ),
-        (
-            "/diagnostics/authority-suppression",
-            "parity_authority_suppression_report.json",
-        ),
-        ("/diagnostics/graph", "parity_incident_graph.json"),
-    ];
-    let run_endpoint_files = [
-        (
-            format!("/diagnostics/runs/{run_id}/parity"),
-            "parity_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/incidents"),
-            "parity_determinism_incidents.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/drift"),
-            "parity_drift_attribution_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/convergence"),
-            "parity_convergence_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/failure-matrix"),
-            "failure_matrix.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/authority-topology"),
-            "parity_authority_drift_topology.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/authority-suppression"),
-            "parity_authority_suppression_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/graph"),
-            "parity_incident_graph.json",
-        ),
-    ];
-
     let mut violations = Vec::new();
     let mut endpoint_checks = Vec::new();
+    let schema_contracts = public_schema_declarations();
     let mut root_passthrough_ok = true;
     let mut run_scoped_passthrough_ok = true;
     let mut verification_execution_active = false;
@@ -384,32 +289,71 @@ fn build_service_contract_artifacts(
         "status": pass_fail(health_ok),
     }));
 
-    for (endpoint, filename) in root_endpoint_files {
+    let (version_status, version_body) = route_json("/diagnostics/version", evidence_root)?;
+    let expected_endpoints = public_endpoint_declarations();
+    let version_ok = version_status == 200
+        && version_body
+            .get("api_version")
+            .and_then(Value::as_u64)
+            .is_some_and(|value| value == 1)
+        && version_body
+            .get("endpoints")
+            .and_then(Value::as_array)
+            .map(|items| {
+                let actual = items
+                    .iter()
+                    .filter_map(|item| item.as_str())
+                    .collect::<Vec<_>>();
+                actual.len() == expected_endpoints.len()
+                    && actual
+                        .iter()
+                        .zip(expected_endpoints.iter())
+                        .all(|(left, right)| *left == right.as_str())
+            })
+            .unwrap_or(false);
+    if !version_ok {
+        violations.push("version_endpoint_contract_mismatch".to_string());
+    }
+    endpoint_checks.push(json!({
+        "endpoint": "/diagnostics/version",
+        "scope": "root",
+        "status": pass_fail(version_ok),
+    }));
+
+    for endpoint in root_passthrough_endpoints() {
+        let filename = endpoint
+            .artifact_file
+            .expect("root passthrough endpoint missing artifact file");
+        let path = endpoint.path_template;
         let expected = read_json_file(&evidence_root.join(filename))?;
-        let (status_code, payload) = route_json(endpoint, evidence_root)?;
+        let (status_code, payload) = route_json(path, evidence_root)?;
         let passed = status_code == 200 && payload == expected;
         if !passed {
-            violations.push(format!("root_passthrough_mismatch:{endpoint}"));
+            violations.push(format!("root_passthrough_mismatch:{path}"));
             root_passthrough_ok = false;
         }
         endpoint_checks.push(json!({
-            "endpoint": endpoint,
+            "endpoint": path,
             "artifact": filename,
             "scope": "root",
             "status": pass_fail(passed),
         }));
     }
 
-    for (endpoint, filename) in &run_endpoint_files {
+    for endpoint in run_scoped_passthrough_endpoints() {
+        let filename = endpoint
+            .artifact_file
+            .expect("run-scoped passthrough endpoint missing artifact file");
+        let path = materialize_path_template(endpoint.path_template, run_id);
         let expected = read_json_file(&run_dir.join(filename))?;
-        let (status_code, payload) = route_json(endpoint, evidence_root)?;
+        let (status_code, payload) = route_json(&path, evidence_root)?;
         let passed = status_code == 200 && payload == expected;
         if !passed {
-            violations.push(format!("run_passthrough_mismatch:{endpoint}"));
+            violations.push(format!("run_passthrough_mismatch:{path}"));
             run_scoped_passthrough_ok = false;
         }
         endpoint_checks.push(json!({
-            "endpoint": endpoint,
+            "endpoint": path,
             "artifact": filename,
             "scope": "run",
             "status": pass_fail(passed),
@@ -957,6 +901,7 @@ fn build_service_contract_artifacts(
         "run_id": run_id,
         "endpoint_count": endpoint_checks.len(),
         "endpoint_checks": endpoint_checks,
+        "schema_contracts": schema_contracts,
         "verify_request_path": "proofd_verify_request.json",
         "verify_response_path": "proofd_verify_response.json",
     });
@@ -1140,79 +1085,52 @@ fn build_observability_boundary_artifacts(
         return Err(format!("missing run directory {}", run_dir.display()));
     }
 
-    let run_endpoint_files = vec![
-        (
-            format!("/diagnostics/runs/{run_id}/incidents"),
-            "parity_determinism_incidents.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/parity"),
-            "parity_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/drift"),
-            "parity_drift_attribution_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/convergence"),
-            "parity_convergence_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/failure-matrix"),
-            "failure_matrix.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/authority-topology"),
-            "parity_authority_drift_topology.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/authority-suppression"),
-            "parity_authority_suppression_report.json",
-        ),
-        (
-            format!("/diagnostics/runs/{run_id}/graph"),
-            "parity_incident_graph.json",
-        ),
-    ];
-
     let mut violations = Vec::new();
     let mut endpoint_checks = Vec::new();
     let mut payload_hits = Vec::new();
     let mut payload_scan_targets = 0usize;
     let mut artifact_backed_ok = true;
 
-    for (endpoint, filename) in OBSERVABILITY_ROOT_ENDPOINTS {
+    for endpoint in root_passthrough_endpoints() {
+        let filename = endpoint
+            .artifact_file
+            .expect("root passthrough endpoint missing artifact file");
+        let path = endpoint.path_template;
         let expected = read_json_file(&evidence_root.join(filename))?;
-        let (status_code, payload) = route_json(endpoint, evidence_root)?;
+        let (status_code, payload) = route_json(path, evidence_root)?;
         let passed = status_code == 200 && payload == expected;
         if !passed {
-            violations.push(format!("artifact_passthrough_mismatch:{endpoint}"));
+            violations.push(format!("artifact_passthrough_mismatch:{path}"));
             artifact_backed_ok = false;
         } else {
             payload_scan_targets += 1;
-            payload_hits.extend(scan_forbidden_observability_fields(endpoint, &payload));
+            payload_hits.extend(scan_forbidden_observability_fields(path, &payload));
         }
         endpoint_checks.push(json!({
-            "endpoint": endpoint,
+            "endpoint": path,
             "artifact": filename,
             "scope": "root",
             "status": pass_fail(passed),
         }));
     }
 
-    for (endpoint, filename) in &run_endpoint_files {
+    for endpoint in run_scoped_passthrough_endpoints() {
+        let filename = endpoint
+            .artifact_file
+            .expect("run-scoped passthrough endpoint missing artifact file");
+        let path = materialize_path_template(endpoint.path_template, run_id);
         let expected = read_json_file(&run_dir.join(filename))?;
-        let (status_code, payload) = route_json(endpoint, evidence_root)?;
+        let (status_code, payload) = route_json(&path, evidence_root)?;
         let passed = status_code == 200 && payload == expected;
         if !passed {
-            violations.push(format!("artifact_passthrough_mismatch:{endpoint}"));
+            violations.push(format!("artifact_passthrough_mismatch:{path}"));
             artifact_backed_ok = false;
         } else {
             payload_scan_targets += 1;
-            payload_hits.extend(scan_forbidden_observability_fields(endpoint, &payload));
+            payload_hits.extend(scan_forbidden_observability_fields(&path, &payload));
         }
         endpoint_checks.push(json!({
-            "endpoint": endpoint,
+            "endpoint": path,
             "artifact": filename,
             "scope": "run",
             "status": pass_fail(passed),
@@ -1414,7 +1332,7 @@ fn build_observability_boundary_artifacts(
             "allowed_incident_filter_ok": allowed_incident_filter_ok,
             "payload_non_authoritative_ok": payload_non_authoritative_ok,
             "payload_control_plane_free_ok": payload_control_plane_free_ok,
-            "forbidden_fields": FORBIDDEN_OBSERVABILITY_FIELDS,
+            "forbidden_fields": forbidden_observability_field_tokens(),
             "endpoint_count": endpoint_checks.len(),
             "endpoint_checks": endpoint_checks,
             "payload_scan_target_count": payload_scan_targets,
@@ -1452,86 +1370,6 @@ fn route_json(target: &str, evidence_root: &Path) -> Result<(u16, Value), String
     let body = serde_json::from_slice::<Value>(&response.body)
         .map_err(|error| format!("invalid json body for {target}: {error}"))?;
     Ok((response.status_code, body))
-}
-
-fn scan_forbidden_observability_fields(endpoint: &str, value: &Value) -> Vec<Value> {
-    let mut hits = Vec::new();
-    scan_forbidden_observability_fields_inner(endpoint, "$", value, &mut hits);
-    hits
-}
-
-fn scan_forbidden_observability_fields_inner(
-    endpoint: &str,
-    path: &str,
-    value: &Value,
-    hits: &mut Vec<Value>,
-) {
-    match value {
-        Value::Object(map) => {
-            for (key, child) in map {
-                let normalized = normalize_field_key(key);
-                if let Some(case_id) = observability_case_for_field(&normalized) {
-                    hits.push(json!({
-                        "case_id": case_id,
-                        "endpoint": endpoint,
-                        "field": key,
-                        "normalized_field": normalized,
-                        "json_path": format!("{path}.{key}"),
-                    }));
-                }
-                scan_forbidden_observability_fields_inner(
-                    endpoint,
-                    &format!("{path}.{key}"),
-                    child,
-                    hits,
-                );
-            }
-        }
-        Value::Array(items) => {
-            for (index, item) in items.iter().enumerate() {
-                scan_forbidden_observability_fields_inner(
-                    endpoint,
-                    &format!("{path}[{index}]"),
-                    item,
-                    hits,
-                );
-            }
-        }
-        _ => {}
-    }
-}
-
-fn normalize_field_key(key: &str) -> String {
-    key.chars()
-        .filter(|ch| ch.is_ascii_alphanumeric())
-        .map(|ch| ch.to_ascii_lowercase())
-        .collect()
-}
-
-fn observability_case_for_field(field: &str) -> Option<&'static str> {
-    match field {
-        "selectedtruth" | "winningverdict" | "committedcluster" | "acceptedauthority"
-        | "acceptauthority" | "resolvetruth" | "selectwinner" | "elect" => Some("P13-NEG-13"),
-        "retry"
-        | "override"
-        | "promote"
-        | "commit"
-        | "forceaccept"
-        | "recommendedaction"
-        | "recommendedactions"
-        | "mitigation"
-        | "routinghint"
-        | "nodepriority"
-        | "verificationweight"
-        | "executionoverride"
-        | "quarantine"
-        | "autoquarantine"
-        | "autorecovery"
-        | "suppressnode"
-        | "triggerreplayadmission"
-        | "commitclusterstate" => Some("P13-NEG-14"),
-        _ => None,
-    }
 }
 
 fn route_json_with_body(

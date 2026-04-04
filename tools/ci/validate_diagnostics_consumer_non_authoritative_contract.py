@@ -23,6 +23,10 @@ DEFAULT_ALLOWED_PATHS = {
     # Gate intent is to block consumer-side use; producer-side is allowed.
     "ayken-core/crates/proof-verifier/src/authority_sinkhole_absorption.rs",
     "ayken-core/crates/proof-verifier/src/diversity_floor.rs",
+    # Canonical public diagnostics contract registry: these references define
+    # boundary-visible artifact identities and query/method policy, but do not
+    # consume diagnostics as execution input.
+    "userspace/proofd/src/api_contract.rs",
     "userspace/proofd/src/lib.rs",
     "userspace/proofd/examples/proofd_gate_harness.rs",
 }

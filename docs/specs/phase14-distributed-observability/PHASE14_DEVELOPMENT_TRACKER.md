@@ -3,7 +3,7 @@
 **Phase:** 14  
 **Status:** ACTIVE  
 **Tracker State:** LIVE  
-**Last Updated:** 2026-04-03  
+**Last Updated:** 2026-04-05
 **Authority:** `ARCHITECTURE_FREEZE.md`  
 **Formal Pointer:** `docs/roadmap/CURRENT_PHASE` = `CURRENT_PHASE=14`  
 **Primary Spec:** `docs/specs/phase14-distributed-observability/README.md`  
@@ -53,9 +53,9 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 | ID | Workstream | Status | Current State | Next Concrete Step |
 |---|---|---|---|---|
-| 3.1 | Read-Only External API Stabilization | IN PROGRESS | Phase-14 API contract work started; `/diagnostics/version` and `X-Ayken-API-Version` slice is the current implementation target | Commit and merge the first stable versioned API slice, then document the external contract |
-| 3.2 | Replay Determinism Stability Hardening | IN PROGRESS | Canonical request fingerprint, determinism contract artifact, internal replay comparison, incident model, dedicated `determinism/` + `internal/` module boundaries, and a producer-driven `ci-gate-determinism-replay-consistency` are implemented and validated locally | Commit and merge the slice, then obtain clean-worktree pre-CI and remote `ci-freeze` confirmation |
-| 3.3 | `proofd` Query/Service Boundary Hardening | TODO | Architecture defined, implementation order fixed after 3.1 | Extend query validation and forbidden-field enforcement after API surface stabilization |
+| 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
+| 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
+| 3.3 | `proofd` Query/Service Boundary Hardening | VALIDATED_LOCAL | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, and partial contract-driven dispatch are implemented and locally validated | Obtain remote `ci-freeze` confirmation, then finish computed-route registry hardening |
 | 3.4 | Cross-Node Observability Graph | TODO | Architectural target exists; current graph surface remains Phase-13-derived | Define Phase-14 graph contract and artifact shape |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
@@ -71,6 +71,24 @@ This tracker is operational, not historical. Historical closure truth remains in
 ---
 
 ## 4. Activity Log
+
+### 2026-04-05
+
+**Workstream 3.3 advanced from architecture to validated local hardening**
+- Canonical external diagnostics contract registry added at `userspace/proofd/src/api_contract.rs`
+- `/diagnostics/version`, query allowlists, harness expectations, and forbidden-field scan now derive from a single contract surface
+- Runtime forbidden-field enforcement added for public diagnostics responses with fail-closed `500 forbidden_observability_field_exposed`
+- Service-owned response schema registry added at `userspace/proofd/src/api_schema.rs`
+- Service-owned diagnostics responses now fail closed with `500 diagnostics_schema_contract_violation` on missing required fields or required top-level type mismatch
+- Explicit schema coverage declarations now exist for every public diagnostics endpoint (`none`, `root_only`, `full`)
+- `ci-gate-proofd-schema-coverage` added as a pure validation gate over `proofd-service` evidence
+- Public computed diagnostics dispatch is now partially contract-driven for root and run-scoped routes
+- External diagnostics contract document updated to record schema coverage and boundary rules
+- Local validation observed:
+  - `cargo test -p proofd` passed (`168` lib tests + `6` main tests)
+  - `ci-gate-observability-routing-separation` passed
+  - `ci-gate-proofd-observability-boundary` passed
+  - `ci-gate-proofd-service` passed
 
 ### 2026-04-03
 
@@ -128,6 +146,11 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-03 | `make ci-gate-determinism-replay-consistency RUN_ID=local-determinism-gate-pure` | PASS | Makefile wiring validated through `proofd-service`, verification-contract, and pure replay-consistency gate |
 | 2026-04-03 | `bash scripts/ci/gate_determinism_replay_consistency.sh --evidence-dir out/evidence/run-local-determinism-gate-direct/gates/determinism-replay-consistency --source-gate-dir out/evidence/run-local-determinism-gate-pure/gates/proofd-service` | PASS | Direct gate run validated existing `proofd-service` artifacts without bootstrapping a new run |
 | 2026-04-03 | `bash scripts/ci/pre_ci_discipline.sh` | FAIL-CLOSED | Stopped at hygiene because tracked files were modified in worktree |
+| 2026-04-05 | `cargo test -p proofd` | PASS | Workstream 3.3 schema contract + runtime boundary hardening passed locally (`168` lib tests + `6` main tests) |
+| 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-boundary-scan-round3` | PASS | Canonical route/contract separation remained intact after schema layer and registry-driven dispatch changes |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-boundary-round3` | PASS | Runtime forbidden-field enforcement and public boundary behavior remained valid |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-contract-round3` | PASS | Service contract harness remained aligned while schema contract metadata was added |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-coverage-round3 --source-gate-dir /tmp/proofd-service-contract-round3` | PASS | Every public diagnostics endpoint declared explicit schema coverage and current passthrough/service-owned split remained intentional |
 
 ---
 
@@ -145,19 +168,17 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ## 7. Open Items
 
-1. Should Phase-14 API versioning remain header-only plus discovery endpoint, or also define an explicit path/version namespace?
-2. Which `/diagnostics/*` surfaces are officially external-facing in v1, and which remain internal or experimental?
-3. Do we want a dedicated Phase-14 contract document for response schemas, separate from the architecture map?
-4. What is the exact evidence bundle required to mark Workstream 3.1 as `CI_CONFIRMED`?
+1. Should service-owned response schema coverage expand to artifact-backed passthrough endpoints, or remain intentionally limited to `proofd`-computed/index responses in v1?
+2. What is the narrowest remaining slice to make computed diagnostics dispatch fully registry-driven without over-coupling handler logic to route metadata?
 
 ---
 
 ## 8. Next Steps
 
-1. Commit and merge the Phase-14 tracker/doc sync plus determinism gate slice.
-2. Re-run `pre_ci_discipline.sh` on a clean worktree so the new determinism gate is exercised in the full local discipline chain.
-3. Obtain remote `ci-freeze` confirmation for Workstream 3.2 evidence before considering `CI_CONFIRMED`.
-4. Move to Workstream 3.3 hardening once 3.1 and 3.2 are merged and locally disciplined.
+1. Obtain remote `ci-freeze` confirmation for the current 3.3 schema contract + runtime boundary hardening slice.
+2. Finish moving remaining computed diagnostics endpoints to registry-driven dispatch.
+3. Decide whether v1 should intentionally keep artifact-backed passthrough endpoints outside structural schema enforcement.
+4. Only after that, evaluate whether a new dedicated gate is necessary or the existing proofd gates remain sufficient.
 
 ---
 
