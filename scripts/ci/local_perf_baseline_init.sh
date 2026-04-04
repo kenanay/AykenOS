@@ -18,6 +18,9 @@ export PERF_REQUIRE_CI_FOR_BASELINE_INIT="0"  # Allow local init
 export PERF_QEMU_TIMEOUT="30"
 export PERF_KERNEL_PROFILE="validation"
 export PERF_ENV_MISMATCH_POLICY="fail"  # Use fail for local too
+export PERF_BOOT_THRESHOLD_PERCENT="20"
+export PERF_CONTEXT_THRESHOLD_PERCENT="15"
+export PERF_SYSCALL_THRESHOLD_PERCENT="15"
 export CI="false"
 export RUN_ID="local-dev-$(date +%s)"
 
@@ -29,26 +32,23 @@ echo "Digest: ${PERF_CI_IMAGE_DIGEST}"
 echo "Baseline file: ${BASELINE_FILE}"
 echo ""
 
-# Run baseline init
+# Run local performance gate; missing or stale local baseline will be regenerated.
 set +e
-make ci-gate-performance PERF_BASELINE_FILE="${BASELINE_FILE}"
+make ci-gate-performance-local
 rc=$?
 set -e
 
 echo ""
 echo "=== Exit Code: ${rc} ==="
 
-if [ "${rc}" -eq 2 ]; then
-    echo "✓ Baseline initialized (fail-closed)"
+if [ "${rc}" -eq 0 ]; then
+    echo "✓ Local baseline initialized or refreshed"
     if [ -f "${BASELINE_FILE}" ]; then
         echo "✓ Baseline file created: ${BASELINE_FILE}"
         echo ""
         echo "=== Baseline Summary ==="
-        jq -r '.metrics' "${BASELINE_FILE}" 2>/dev/null || cat "${BASELINE_FILE}"
+        jq -r '.policy.sampling, .metrics' "${BASELINE_FILE}" 2>/dev/null || cat "${BASELINE_FILE}"
     fi
-elif [ "${rc}" -eq 0 ]; then
-    echo "✗ Unexpected success - baseline should not exist yet"
-    exit 1
 else
     echo "✗ Unexpected exit code: ${rc}"
     exit "${rc}"
@@ -57,7 +57,7 @@ fi
 echo ""
 echo "=== Next Steps ==="
 echo "1. Review baseline: cat ${BASELINE_FILE}"
-echo "2. Test comparison: make ci-gate-performance PERF_BASELINE_FILE=${BASELINE_FILE}"
+echo "2. Test comparison: make ci-gate-performance-local"
 echo "3. This baseline is LOCAL only - do not commit to repo"
 echo ""
 echo "For CI baseline, use GitHub Actions workflow after billing is resolved."

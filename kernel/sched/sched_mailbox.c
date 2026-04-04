@@ -14,6 +14,7 @@
 #include "../include/sched_mailbox_abi.h"
 #include "../include/mm.h"
 #include "../arch/x86_64/port_io.h"
+#include "sched.h"
 #include "sched_mailbox.h"
 
 #ifndef AYKEN_GATE45_PROOF
@@ -33,6 +34,8 @@ static ayken_sched_mailbox_t g_selftest_mb __attribute__((aligned(64)));
 static uint64_t g_selftest_last_epoch = 0;
 static volatile uint8_t g_gate4_epoch1_pending = 0;
 
+static int sched_mailbox_validate_ring3_impl(proc_t *proc);
+
 static void mb_reset(void) {
     g_selftest_mb.magic = AYKEN_SCHED_MB_MAGIC;
     g_selftest_mb.version = AYKEN_SCHED_MB_VERSION;
@@ -45,7 +48,7 @@ static void mb_reset(void) {
     g_selftest_mb.reject_reason = AYKEN_SCHED_REJECT_NONE;
 }
 
-void sched_mailbox_init(void) {
+static void sched_mailbox_init_impl(void) {
     mb_reset();
     g_selftest_last_epoch = 0;
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
@@ -55,7 +58,7 @@ void sched_mailbox_init(void) {
 #endif
 }
 
-int sched_mailbox_gate4_epoch1_pending(void)
+static int sched_mailbox_gate4_epoch1_pending_impl(void)
 {
     return g_gate4_epoch1_pending ? 1 : 0;
 }
@@ -248,7 +251,7 @@ static void marker_ring3_publish(uint32_t pid, uint64_t epoch)
 }
 #endif
 
-void sched_mailbox_selftest(void) {
+static void sched_mailbox_selftest_impl(void) {
     ayken_sched_mailbox_t* mb = sched_mailbox_get_selftest();
     proc_t* out = NULL;
 
@@ -291,7 +294,7 @@ void sched_mailbox_selftest(void) {
 // MVP-2: Ring3 simulation test (validates Ring3 library behavior)
 // Simulates Ring3 ayken_sched_hint() writes to mailbox
 // Tests Ring0 validation with real Ring3-style writes
-void sched_mailbox_test_ring3_simulation(proc_t *proc) {
+static void sched_mailbox_test_ring3_simulation_impl(proc_t *proc) {
     if (!proc || !proc->mailbox_pa) {
         dbg_print("[MVP-2] No mailbox for simulation test\n");
         return;
@@ -317,7 +320,7 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
     outb(0xE9, '\n');
 
     // Trigger validation (same as timer tick would)
-    sched_mailbox_validate_ring3(proc);
+    sched_mailbox_validate_ring3_impl(proc);
 
     // Simulate invalid PID write
     current_epoch = mb->epoch;
@@ -329,7 +332,7 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
     dbg_print_u64(next_epoch);
     outb(0xE9, '\n');
 
-    sched_mailbox_validate_ring3(proc);
+    sched_mailbox_validate_ring3_impl(proc);
 
     dbg_print("[MVP-2] Ring3 Simulation Test Complete\n");
 
@@ -340,12 +343,15 @@ void sched_mailbox_test_ring3_simulation(proc_t *proc) {
 // MVP-1: Ring3 mailbox validation (called from timer tick)
 // Validates Ring3-written mailbox data with double-read atomicity check
 // Emits standardized markers for CI gate validation
-int sched_mailbox_validate_ring3(proc_t *proc) {
+static int sched_mailbox_validate_ring3_impl(proc_t *proc) {
+    int result = -1;
+
+    sched_perf_note_mailbox_validate_enter();
     if (!proc || !proc->mailbox_pa) {
-        return -1;
+        goto out;
     }
     if (proc->type != PROC_TYPE_USER) {
-        return -1;
+        goto out;
     }
 
     /*
@@ -363,7 +369,7 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
         mb = (ayken_sched_mailbox_t *)paging_phys_to_virt(proc->mailbox_pa);
     }
     if (!mb) {
-        return -1;
+        goto out;
     }
 
     // Double-read for atomicity (detect torn writes from Ring3)
@@ -469,8 +475,23 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 #if AYKEN_GATE45_PROOF
     // Gate-4.5: leave epoch consume to scheduler decision path so decision->switch
     // proof can consume the first accepted epoch deterministically.
+    sched_perf_note_mailbox_consume(
+        "timer_validate_irq",
+        proc->mailbox_last_epoch,
+        proc->mailbox_last_epoch,
+        e1,
+        "timer_validate_accept_deferred");
 #else
-    proc->mailbox_last_epoch = e1;
+    {
+        uint64_t old_last_epoch = proc->mailbox_last_epoch;
+        proc->mailbox_last_epoch = e1;
+        sched_perf_note_mailbox_consume(
+            "timer_validate_irq",
+            old_last_epoch,
+            proc->mailbox_last_epoch,
+            e1,
+            "timer_validate_accept_consume");
+    }
 #endif
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
@@ -493,7 +514,8 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 #else
     marker_accept((uint32_t)proc->pid, e1, pid, "IRQ");
 #endif
-    return 0;
+    result = 0;
+    goto out;
 
 reject:
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
@@ -502,5 +524,29 @@ reject:
 #else
     (void)reject_reason;
 #endif
+out:
+    sched_perf_note_mailbox_validate_exit();
+    return result;
+}
+
+int sched_mailbox_control(uint32_t op, proc_t *proc)
+{
+    switch (op) {
+    case SCHED_MAILBOX_CONTROL_INIT:
+        sched_mailbox_init_impl();
+        return 0;
+    case SCHED_MAILBOX_CONTROL_VALIDATE_RING3:
+        return sched_mailbox_validate_ring3_impl(proc);
+    case SCHED_MAILBOX_CONTROL_SELFTEST:
+        sched_mailbox_selftest_impl();
+        return 0;
+    case SCHED_MAILBOX_CONTROL_TEST_RING3_SIMULATION:
+        sched_mailbox_test_ring3_simulation_impl(proc);
+        return 0;
+    case SCHED_MAILBOX_CONTROL_GATE4_EPOCH1_PENDING:
+        return sched_mailbox_gate4_epoch1_pending_impl();
+    default:
+        break;
+    }
     return -1;
 }

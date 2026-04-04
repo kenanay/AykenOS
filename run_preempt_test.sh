@@ -25,8 +25,11 @@ PREEMPT_MIN_AB_ALT="${PREEMPT_MIN_AB_ALT:-96}"
 STRICT_MARKERS="${STRICT_MARKERS:-0}"
 FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
 PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
+PREEMPT_ANALYSIS_LOG_OUT="${PREEMPT_ANALYSIS_LOG_OUT:-}"
 PREEMPT_CLEAN_REBUILD="${PREEMPT_CLEAN_REBUILD:-1}"
 USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
+PERF_PHASE_METRICS_KV=""
+PERF_MAILBOX_METRICS_KV=""
 
 CONTRACT_USER_MINIMAL_MODE="<make-default>"
 CONTRACT_USER_MINIMAL_MODE_SOURCE="make_default"
@@ -80,10 +83,56 @@ if [[ "${AYKEN_DETERMINISTIC_EXIT+x}" == "x" ]]; then
   CONTRACT_DETERMINISTIC_EXIT_SOURCE="env"
 fi
 
+CONTRACT_BUILD_DEBUG_SCHED="<make-default>"
+CONTRACT_BUILD_DEBUG_SCHED_SOURCE="make_default"
+if [[ "${AYKEN_DEBUG_SCHED+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_DEBUG_SCHED}" ]]; then
+    echo "ERROR: AYKEN_DEBUG_SCHED is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_DEBUG_SCHED}" != "0" && "${AYKEN_DEBUG_SCHED}" != "1" ]]; then
+    echo "ERROR: AYKEN_DEBUG_SCHED must be 0 or 1 (got '${AYKEN_DEBUG_SCHED}')"
+    exit 1
+  fi
+  CONTRACT_BUILD_DEBUG_SCHED="${AYKEN_DEBUG_SCHED}"
+  CONTRACT_BUILD_DEBUG_SCHED_SOURCE="env"
+fi
+
+CONTRACT_BUILD_DEBUG_IRQ="<make-default>"
+CONTRACT_BUILD_DEBUG_IRQ_SOURCE="make_default"
+if [[ "${AYKEN_DEBUG_IRQ+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_DEBUG_IRQ}" ]]; then
+    echo "ERROR: AYKEN_DEBUG_IRQ is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_DEBUG_IRQ}" != "0" && "${AYKEN_DEBUG_IRQ}" != "1" ]]; then
+    echo "ERROR: AYKEN_DEBUG_IRQ must be 0 or 1 (got '${AYKEN_DEBUG_IRQ}')"
+    exit 1
+  fi
+  CONTRACT_BUILD_DEBUG_IRQ="${AYKEN_DEBUG_IRQ}"
+  CONTRACT_BUILD_DEBUG_IRQ_SOURCE="env"
+fi
+
+CONTRACT_RING3_ENTRY_GUARD="<make-default>"
+CONTRACT_RING3_ENTRY_GUARD_SOURCE="make_default"
+if [[ "${AYKEN_RING3_ENTRY_GUARD+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_RING3_ENTRY_GUARD}" ]]; then
+    echo "ERROR: AYKEN_RING3_ENTRY_GUARD is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_RING3_ENTRY_GUARD}" != "0" && "${AYKEN_RING3_ENTRY_GUARD}" != "1" ]]; then
+    echo "ERROR: AYKEN_RING3_ENTRY_GUARD must be 0 or 1 (got '${AYKEN_RING3_ENTRY_GUARD}')"
+    exit 1
+  fi
+  CONTRACT_RING3_ENTRY_GUARD="${AYKEN_RING3_ENTRY_GUARD}"
+  CONTRACT_RING3_ENTRY_GUARD_SOURCE="env"
+fi
+
 OBSERVED_USER_MINIMAL_MODE="<unknown>"
 OBSERVED_BOOTSTRAP_POLICY="<unknown>"
 OBSERVED_MB_SELFTEST="<unknown>"
 OBSERVED_DETERMINISTIC_EXIT="<unknown>"
+OBSERVED_RING3_ENTRY_GUARD="<unknown>"
 
 now_ms() {
   python3 - <<'PY'
@@ -119,10 +168,17 @@ write_preempt_metrics() {
     echo "contract_mb_selftest_source=${CONTRACT_MB_SELFTEST_SOURCE}"
     echo "contract_deterministic_exit=${CONTRACT_DETERMINISTIC_EXIT}"
     echo "contract_deterministic_exit_source=${CONTRACT_DETERMINISTIC_EXIT_SOURCE}"
+    echo "contract_build_debug_sched=${CONTRACT_BUILD_DEBUG_SCHED}"
+    echo "contract_build_debug_sched_source=${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}"
+    echo "contract_build_debug_irq=${CONTRACT_BUILD_DEBUG_IRQ}"
+    echo "contract_build_debug_irq_source=${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}"
+    echo "contract_ring3_entry_guard=${CONTRACT_RING3_ENTRY_GUARD}"
+    echo "contract_ring3_entry_guard_source=${CONTRACT_RING3_ENTRY_GUARD_SOURCE}"
     echo "observed_user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE:-<unknown>}"
     echo "observed_bootstrap_policy=${OBSERVED_BOOTSTRAP_POLICY:-<unknown>}"
     echo "observed_mb_selftest=${OBSERVED_MB_SELFTEST:-<unknown>}"
     echo "observed_deterministic_exit=${OBSERVED_DETERMINISTIC_EXIT:-<unknown>}"
+    echo "observed_ring3_entry_guard=${OBSERVED_RING3_ENTRY_GUARD:-<unknown>}"
     echo "strict_markers=${STRICT_MARKERS}"
     echo "preempt_clean_rebuild=${PREEMPT_CLEAN_REBUILD}"
     echo "qemu_run_time_ms=${qemu_run_time_ms:-0}"
@@ -153,6 +209,12 @@ write_preempt_metrics() {
     echo "ab_signal=${ab_signal:-0}"
     echo "sched_idle_count=${sched_idle_count:-0}"
     echo "stage_hint_missing=${stage_hint_missing:-0}"
+    if [[ -n "${PERF_PHASE_METRICS_KV}" ]]; then
+      printf '%s\n' "${PERF_PHASE_METRICS_KV}"
+    fi
+    if [[ -n "${PERF_MAILBOX_METRICS_KV}" ]]; then
+      printf '%s\n' "${PERF_MAILBOX_METRICS_KV}"
+    fi
     echo "assert_fail=${fail_value}"
   } > "${PREEMPT_METRICS_OUT}"
 }
@@ -169,6 +231,15 @@ if [[ "${CONTRACT_MB_SELFTEST_SOURCE}" == "env" ]]; then
 fi
 if [[ "${CONTRACT_DETERMINISTIC_EXIT_SOURCE}" == "env" ]]; then
   MAKE_BUILD_ARGS+=(AYKEN_DETERMINISTIC_EXIT="${CONTRACT_DETERMINISTIC_EXIT}")
+fi
+if [[ "${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_DEBUG_SCHED="${CONTRACT_BUILD_DEBUG_SCHED}")
+fi
+if [[ "${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_DEBUG_IRQ="${CONTRACT_BUILD_DEBUG_IRQ}")
+fi
+if [[ "${CONTRACT_RING3_ENTRY_GUARD_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_RING3_ENTRY_GUARD="${CONTRACT_RING3_ENTRY_GUARD}")
 fi
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
@@ -248,6 +319,9 @@ fi
 
 cat "$SANITIZED_DEBUG_LOG" "$SANITIZED_SERIAL_LOG" > "$SANITIZED_MERGED_LOG"
 ANALYSIS_LOG="$SANITIZED_MERGED_LOG"
+if [[ -n "${PREEMPT_ANALYSIS_LOG_OUT}" ]]; then
+  cp "$SANITIZED_MERGED_LOG" "${PREEMPT_ANALYSIS_LOG_OUT}"
+fi
 
 debug_size="$(wc -c < "$SANITIZED_DEBUG_LOG" | tr -d ' ')"
 serial_size="$(wc -c < "$SANITIZED_SERIAL_LOG" | tr -d ' ')"
@@ -262,6 +336,14 @@ mark_iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/MARK:IRET/,"&")}END{print c+0}' "$AN
 iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/(ABOUT_TO_IRETQ|MARK:IRET)/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 sched_idle_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SEL\]\[IDLE\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 proof_done_seen="$(awk 'BEGIN{c=0}{c+=gsub(/\[\[AYKEN_PROOF_DONE\]\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_arm_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_ARM/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_defer_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_DEFER_IRQ/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_disarm_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_DISARM/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+if [[ "${ring3_entry_guard_arm_count}" -gt 0 ]]; then
+  OBSERVED_RING3_ENTRY_GUARD="1"
+else
+  OBSERVED_RING3_ENTRY_GUARD="0"
+fi
 cfg_line="$(grep -E '\[K\]\[CFG\] user_minimal_mode=' "$ANALYSIS_LOG" | tail -n1 || true)"
 if [[ -n "${cfg_line}" ]]; then
   OBSERVED_USER_MINIMAL_MODE="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*user_minimal_mode=\([^[:space:]]*\).*/\1/p')"
@@ -347,6 +429,347 @@ END {
 }
 ' "$ANALYSIS_LOG")"
 
+PERF_PHASE_METRICS_KV="$(
+  ANALYSIS_LOG_ENV="${ANALYSIS_LOG}" python3 - <<'PY'
+import os
+import re
+
+pattern = re.compile(r"\[\[AYKEN_PERF_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+phases = (
+    "boot_start",
+    "core_ready",
+    "first_sched_activity",
+    "first_user_entry",
+    "first_syscall_gate_entry",
+    "first_syscall_gate_return",
+    "first_syscall_entry",
+    "first_syscall_exit",
+)
+durations = (
+    ("boot_start", "core_ready", "boot_start_to_core_ready"),
+    ("core_ready", "first_sched_activity", "core_ready_to_first_sched_activity"),
+    ("first_sched_activity", "first_user_entry", "first_sched_activity_to_first_user_entry"),
+    ("first_user_entry", "first_syscall_gate_entry", "first_user_entry_to_first_syscall_gate_entry"),
+    ("first_syscall_gate_entry", "first_syscall_entry", "first_syscall_gate_entry_to_first_syscall_entry"),
+    ("first_syscall_gate_entry", "first_syscall_exit", "first_syscall_gate_entry_to_first_syscall_exit"),
+    ("first_syscall_gate_entry", "first_syscall_gate_return", "first_syscall_gate_entry_to_first_syscall_gate_return"),
+    ("first_user_entry", "first_syscall_entry", "first_user_entry_to_first_syscall_entry"),
+    ("first_user_entry", "first_syscall_exit", "first_user_entry_to_first_syscall_exit"),
+)
+
+seen = {}
+with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        match = pattern.search(line)
+        if not match:
+            continue
+        name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
+        if name not in seen:
+            seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+
+for phase in phases:
+    payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
+    print(f"phase_{phase}_ticks={payload['ticks']}")
+    print(f"phase_{phase}_tick_valid={payload['tick_valid']}")
+
+for start, end, label in durations:
+    start_payload = seen.get(start)
+    end_payload = seen.get(end)
+    available = int(
+        start_payload is not None and
+        end_payload is not None and
+        start_payload["tick_valid"] in (1, 2) and
+        end_payload["tick_valid"] in (1, 2) and
+        end_payload["ticks"] >= start_payload["ticks"]
+    )
+    ticks = end_payload["ticks"] - start_payload["ticks"] if available else 0
+    print(f"phase_{label}_ticks={ticks}")
+    print(f"phase_{label}_available={available}")
+PY
+)"
+
+PERF_MAILBOX_METRICS_KV="$(
+  ANALYSIS_LOG_ENV="${ANALYSIS_LOG}" python3 - <<'PY'
+import os
+import re
+
+pattern = re.compile(r"\[\[AYKEN_PERF_MB_PHASE\]\] name=([a-z_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+path_pattern = re.compile(r"\[\[AYKEN_PERF_MB_PATH\]\] name=([a-z_]+) phase=(enter|exit) ticks=([0-9]+) tick_valid=([0-9]+)")
+reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+extract_reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+extract_raw_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_RAW\]\] epoch=([0-9]+) candidate_pid=([0-9]+) owner_last_epoch=([0-9]+)")
+visibility_pattern = re.compile(r"\[\[AYKEN_PERF_MB_VISIBLE\]\] name=([a-z_]+) pid=([0-9]+)")
+consume_pattern = re.compile(r"\[\[AYKEN_PERF_MB_CONSUME\]\] site=([A-Za-z0-9_]+) old_last_epoch=([0-9]+) new_last_epoch=([0-9]+) candidate_epoch=([0-9]+) reason=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
+phases = (
+    "snapshot_enter",
+    "snapshot_exit",
+    "extract_enter",
+    "extract_exit",
+    "validate_enter",
+    "validate_exit",
+    "arbiter_enter",
+    "arbiter_exit",
+    "arbiter_owner_lookup_enter",
+    "arbiter_owner_lookup_exit",
+    "arbiter_candidate_lookup_enter",
+    "arbiter_candidate_lookup_exit",
+    "arbiter_decision_enter",
+    "arbiter_decision_exit",
+    "arbiter_decision_path_switch",
+    "arbiter_decision_path_keep_running",
+    "arbiter_decision_path_reject",
+    "arbiter_decision_path_fallback",
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
+    "handoff_enter",
+    "handoff_exit",
+)
+durations = (
+    ("snapshot_enter", "snapshot_exit", "snapshot"),
+    ("extract_enter", "extract_exit", "extract"),
+    ("validate_enter", "validate_exit", "validate"),
+    ("arbiter_enter", "arbiter_exit", "arbiter"),
+    ("arbiter_owner_lookup_enter", "arbiter_owner_lookup_exit", "arbiter_owner_lookup"),
+    ("arbiter_candidate_lookup_enter", "arbiter_candidate_lookup_exit", "arbiter_candidate_lookup"),
+    ("arbiter_decision_enter", "arbiter_decision_exit", "arbiter_decision"),
+    ("handoff_enter", "handoff_exit", "handoff"),
+)
+path_names = (
+    "switch",
+    "keep_running",
+    "reject",
+    "fallback",
+)
+reason_names = (
+    "gate45_non_owner",
+    "owner_missing",
+    "owner_not_ready",
+    "owner_mismatch",
+    "candidate_proc_missing",
+    "candidate_proc_not_schedulable",
+    "no_candidate",
+    "invalid_state",
+    "bootstrap_keep_running",
+    "pre_user_bypass",
+    "yield_fatal",
+    "ready_head_fallback",
+    "fallback_forbidden",
+    "block_fatal",
+    "bootstrap_fatal",
+    "yield_null",
+)
+extract_reason_names = (
+    "snapshot_fail",
+    "bad_magic",
+    "bad_version",
+    "bad_kind",
+    "epoch_stale",
+    "pid_zero",
+    "ok",
+)
+visibility_names = (
+    "visible",
+    "proc_missing",
+    "proc_not_schedulable",
+)
+consume_reason_names = (
+    "timer_validate_accept_consume",
+    "timer_validate_accept_deferred",
+    "scheduler_keep_running_consume",
+    "scheduler_switch_consume",
+    "gate4_epoch1_pending_bypass",
+    "gate45_self_keep_running_bypass",
+)
+consume_site_names = (
+    "timer_validate_irq",
+    "START",
+    "YIELD",
+    "BLOCK",
+    "IRQ",
+)
+
+seen = {}
+path_seen = {name: {"enter": [], "exit": []} for name in path_names}
+reason_counts = {name: 0 for name in reason_names}
+extract_reason_counts = {name: 0 for name in extract_reason_names}
+visibility_counts = {name: 0 for name in visibility_names}
+consume_reason_counts = {name: 0 for name in consume_reason_names}
+consume_site_counts = {name: 0 for name in consume_site_names}
+consume_latest = {
+    "site": "",
+    "old_last_epoch": 0,
+    "new_last_epoch": 0,
+    "candidate_epoch": 0,
+    "reason": "",
+    "ticks": 0,
+    "tick_valid": 0,
+}
+consume_observation_count = 0
+extract_raw_stats = {
+    "observation_count": 0,
+    "latest_epoch": 0,
+    "latest_candidate_pid": 0,
+    "latest_owner_last_epoch": 0,
+    "epoch_zero_count": 0,
+    "epoch_lte_owner_last_epoch_count": 0,
+    "epoch_gt_owner_last_epoch_count": 0,
+    "candidate_pid_zero_count": 0,
+    "candidate_pid_nonzero_count": 0,
+}
+with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        match = pattern.search(line)
+        if match:
+            name, ticks, tick_valid = match.group(1), int(match.group(2)), int(match.group(3))
+            if name not in seen:
+                seen[name] = {"ticks": ticks, "tick_valid": tick_valid}
+        path_match = path_pattern.search(line)
+        if path_match:
+            name, phase, ticks, tick_valid = (
+                path_match.group(1),
+                path_match.group(2),
+                int(path_match.group(3)),
+                int(path_match.group(4)),
+            )
+            if name in path_seen:
+                path_seen[name][phase].append({"ticks": ticks, "tick_valid": tick_valid})
+        reason_match = reason_pattern.search(line)
+        if reason_match:
+            name = reason_match.group(1)
+            if name in reason_counts:
+                reason_counts[name] += 1
+        extract_reason_match = extract_reason_pattern.search(line)
+        if extract_reason_match:
+            name = extract_reason_match.group(1)
+            if name in extract_reason_counts:
+                extract_reason_counts[name] += 1
+        extract_raw_match = extract_raw_pattern.search(line)
+        if extract_raw_match:
+            epoch = int(extract_raw_match.group(1))
+            candidate_pid = int(extract_raw_match.group(2))
+            owner_last_epoch = int(extract_raw_match.group(3))
+            extract_raw_stats["observation_count"] += 1
+            extract_raw_stats["latest_epoch"] = epoch
+            extract_raw_stats["latest_candidate_pid"] = candidate_pid
+            extract_raw_stats["latest_owner_last_epoch"] = owner_last_epoch
+            if epoch == 0:
+                extract_raw_stats["epoch_zero_count"] += 1
+            if epoch <= owner_last_epoch:
+                extract_raw_stats["epoch_lte_owner_last_epoch_count"] += 1
+            else:
+                extract_raw_stats["epoch_gt_owner_last_epoch_count"] += 1
+            if candidate_pid == 0:
+                extract_raw_stats["candidate_pid_zero_count"] += 1
+            else:
+                extract_raw_stats["candidate_pid_nonzero_count"] += 1
+        visibility_match = visibility_pattern.search(line)
+        if visibility_match:
+            name = visibility_match.group(1)
+            if name in visibility_counts:
+                visibility_counts[name] += 1
+        consume_match = consume_pattern.search(line)
+        if consume_match:
+            site = consume_match.group(1)
+            old_last_epoch = int(consume_match.group(2))
+            new_last_epoch = int(consume_match.group(3))
+            candidate_epoch = int(consume_match.group(4))
+            reason = consume_match.group(5)
+            ticks = int(consume_match.group(6))
+            tick_valid = int(consume_match.group(7))
+            consume_observation_count += 1
+            consume_latest = {
+                "site": site,
+                "old_last_epoch": old_last_epoch,
+                "new_last_epoch": new_last_epoch,
+                "candidate_epoch": candidate_epoch,
+                "reason": reason,
+                "ticks": ticks,
+                "tick_valid": tick_valid,
+            }
+            if reason in consume_reason_counts:
+                consume_reason_counts[reason] += 1
+            if site in consume_site_counts:
+                consume_site_counts[site] += 1
+
+for phase in phases:
+    payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
+    print(f"mailbox_phase_{phase}_ticks={payload['ticks']}")
+    print(f"mailbox_phase_{phase}_tick_valid={payload['tick_valid']}")
+
+for start, end, label in durations:
+    start_payload = seen.get(start)
+    end_payload = seen.get(end)
+    available = int(
+        start_payload is not None and
+        end_payload is not None and
+        start_payload["tick_valid"] in (1, 2) and
+        end_payload["tick_valid"] in (1, 2) and
+        end_payload["ticks"] >= start_payload["ticks"]
+    )
+    ticks = end_payload["ticks"] - start_payload["ticks"] if available else 0
+    print(f"mailbox_phase_{label}_ticks={ticks}")
+    print(f"mailbox_phase_{label}_available={available}")
+
+for name in path_names:
+    enters = path_seen[name]["enter"]
+    exits = path_seen[name]["exit"]
+    pair_count = min(len(enters), len(exits))
+    durations = []
+    for idx in range(pair_count):
+        enter_payload = enters[idx]
+        exit_payload = exits[idx]
+        if (
+            enter_payload["tick_valid"] in (1, 2) and
+            exit_payload["tick_valid"] in (1, 2) and
+            exit_payload["ticks"] >= enter_payload["ticks"]
+        ):
+            durations.append(exit_payload["ticks"] - enter_payload["ticks"])
+    total_ticks = sum(durations)
+    mean_ticks = (total_ticks // len(durations)) if durations else 0
+    min_ticks = min(durations) if durations else 0
+    max_ticks = max(durations) if durations else 0
+    print(f"mailbox_path_{name}_enter_count={len(enters)}")
+    print(f"mailbox_path_{name}_exit_count={len(exits)}")
+    print(f"mailbox_path_{name}_count={len(durations)}")
+    print(f"mailbox_path_{name}_total_ticks={total_ticks}")
+    print(f"mailbox_path_{name}_mean_ticks={mean_ticks}")
+    print(f"mailbox_path_{name}_min_ticks={min_ticks}")
+    print(f"mailbox_path_{name}_max_ticks={max_ticks}")
+    print(f"mailbox_path_{name}_available={int(len(durations) > 0)}")
+
+for name in reason_names:
+    print(f"mailbox_reason_{name}_count={reason_counts[name]}")
+
+for name in extract_reason_names:
+    print(f"mailbox_extract_reason_{name}_count={extract_reason_counts[name]}")
+
+for key, value in extract_raw_stats.items():
+    print(f"mailbox_extract_raw_{key}={value}")
+
+for name in visibility_names:
+    print(f"mailbox_candidate_visibility_{name}_count={visibility_counts[name]}")
+
+print(f"mailbox_consume_observation_count={consume_observation_count}")
+print(f"mailbox_consume_latest_site={consume_latest['site']}")
+print(f"mailbox_consume_latest_old_last_epoch={consume_latest['old_last_epoch']}")
+print(f"mailbox_consume_latest_new_last_epoch={consume_latest['new_last_epoch']}")
+print(f"mailbox_consume_latest_candidate_epoch={consume_latest['candidate_epoch']}")
+print(f"mailbox_consume_latest_reason={consume_latest['reason']}")
+print(f"mailbox_consume_latest_ticks={consume_latest['ticks']}")
+print(f"mailbox_consume_latest_tick_valid={consume_latest['tick_valid']}")
+
+for name in consume_reason_names:
+    print(f"mailbox_consume_reason_{name}_count={consume_reason_counts[name]}")
+
+for name in consume_site_names:
+    print(f"mailbox_consume_site_{name}_count={consume_site_counts[name]}")
+PY
+)"
+
 echo "=== Preempt assertion summary ==="
 echo "STRICT_MARKERS    : $STRICT_MARKERS"
 echo "QEMU exit rc      : ${qemu_exit_rc}"
@@ -356,6 +779,7 @@ echo "Observed user mode: ${OBSERVED_USER_MINIMAL_MODE}"
 echo "Observed bootstrap: ${OBSERVED_BOOTSTRAP_POLICY}"
 echo "Observed selftest : ${OBSERVED_MB_SELFTEST}"
 echo "Observed det-exit : ${OBSERVED_DETERMINISTIC_EXIT}"
+echo "Observed entry guard: ${OBSERVED_RING3_ENTRY_GUARD}"
 echo "MARK PID2 entries : $mark_pid2_count"
 echo "MARK PID3 entries : $mark_pid3_count"
 echo "MARK alternations : $mark_alt_count"

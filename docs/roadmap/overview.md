@@ -141,8 +141,9 @@ Interpretation:
 
 Interpretation:
 1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
-2. Three workstreams: replay determinism hardening, proofd query/service boundary hardening, cross-node observability graph
-3. All Phase-13 invariants inherited and preserved
+2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+3. Active workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
+4. All Phase-13 invariants inherited and preserved
 
 ### 3.5 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
@@ -175,10 +176,12 @@ Interpretation:
 6. ✅ Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
 
 ### 5.2 Near Term (Phase-14)
-1. Replay determinism stability hardening
-2. `proofd` query/service boundary hardening (authority semantics separation)
-3. Cross-node observability graph (`GET /diagnostics/graph`)
-4. Phase-14 official closure prep
+1. Read-only external API stabilization
+2. Replay determinism stability hardening
+3. `proofd` query/service boundary hardening (authority semantics separation)
+4. Cross-node observability graph (`GET /diagnostics/graph`)
+5. Observability UX (human-readable layer)
+6. Phase-14 official closure prep
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek

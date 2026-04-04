@@ -33,5 +33,5 @@ echo "Baseline: ${BASELINE_FILE}"
 echo "Policy: waiver (env changes allowed)"
 echo ""
 
-# Run performance gate
-make ci-gate-performance PERF_BASELINE_FILE="${BASELINE_FILE}"
+# Run local performance gate against the gitignored local baseline
+make ci-gate-performance-local

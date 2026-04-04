@@ -329,6 +329,7 @@ void kmain_real(ayken_boot_info_t *boot)
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)']'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)']'), "Nd"(0xE9));
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"(0xE9));
+    sched_perf_note_boot_start();
     
     // Initialize serial port for debugging
     serial_init_com1();
@@ -392,6 +393,7 @@ void kmain_real(ayken_boot_info_t *boot)
 
     // 6) Artık scheduler'a devrediyoruz
     fb_print("[boot] Kernel init tamamlandi -> scheduler baslatiliyor...\n");
+    sched_perf_note_core_ready();
     fb_print("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
     debugcon_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
 

@@ -19,13 +19,19 @@ These are SEPARATE authorities and do not conflict.
 ./scripts/ci/local_perf_baseline_init.sh
 ```
 
-This creates: `scripts/ci/perf-baseline.local.lock.json`
+This creates or refreshes: `scripts/ci/perf-baseline.local.lock.json`
 
 ## Using Local Baseline
 
 ```bash
-# Run performance gate with local baseline
-make ci-gate-performance PERF_BASELINE_FILE=scripts/ci/perf-baseline.local.lock.json
+# Run the local performance gate
+make ci-gate-performance-local
+
+# Evaluate sampled stability separately
+make ci-gate-performance-stability
+
+# Or run the local freeze suite with local perf authority active
+make ci-freeze-local
 ```
 
 ## Important Rules
@@ -52,7 +58,7 @@ ls -lh scripts/ci/perf-baseline.local.lock.json
 vim kernel/kernel.c
 
 # Test against local baseline
-make ci-gate-performance PERF_BASELINE_FILE=scripts/ci/perf-baseline.local.lock.json
+make ci-gate-performance-local
 
 # If performance regressed, investigate
 cat evidence/run-*/gates/performance/violations.txt
@@ -95,7 +101,9 @@ This means your environment changed:
 - Kernel version changed
 - QEMU version changed
 
-Re-init baseline to capture new environment.
+Local gate now distinguishes:
+- pure env drift -> baseline may auto-refresh
+- env drift + metric regression -> fail-closed
 
 ## Architecture
 
@@ -104,6 +112,7 @@ Local Dev:
   Authority: local-dev-Darwin-arm64
   Baseline:  scripts/ci/perf-baseline.local.lock.json (gitignored)
   Policy:    PERF_ENV_MISMATCH_POLICY=waiver
+  Entry:     make ci-gate-performance-local / make ci-freeze-local
 
 CI/Provisional:
   Authority: github-hosted-ubuntu-latest-x64
@@ -124,3 +133,22 @@ This separation allows:
 - Local development without CI dependency
 - Strict CI enforcement
 - No authority conflicts
+
+Implementation note:
+- Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
+- Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
+- CI/global enforcement still keys off the legacy proxy metrics (`boot_time_ms`, `context_switch_latency_ms_proxy`, `syscall_latency_ms_proxy`).
+- Split latency diagnostics (`entry_latency_ticks`, `syscall_latency_ticks_pure`, `syscall_gate_return_latency_ticks`) are informational until the Linux authority baseline is renewed.
+- Local gate stores a sampling contract (`sample_size=5`, `warmup_runs=1`, `aggregation=median`, `outlier_policy=none` by default).
+- Local gate records jitter visibility in run evidence: `min`, `max`, `range`, `range_percent_of_median`, `median_abs_deviation`, and MAD-based outlier candidates.
+- MAD-based outlier detection is currently diagnostic-only; samples are reported, not discarded.
+- Local stability gate reads sampled performance evidence and applies a separate stability contract from `scripts/ci/perf-stability.contract.json`.
+- Stability is evaluated independently from median performance:
+  range and MAD breaches fail,
+  outlier candidate count is currently warn-only in the default local profile.
+- This exception is only for the gitignored local baseline path, not for committed CI lock files.
+- Auto-refresh is limited to contract drift only:
+  missing baseline, schema drift, measurement-contract drift, threshold drift, sampling drift, or legacy baseline metric holes.
+- Pure env drift may auto-refresh only when current medians stay within baseline thresholds.
+- Metric regression is not auto-refreshed; local gate stays fail-closed when current medians exceed the local baseline contract.
+- Stability contract tuning lives outside the gate script so range/MAD/outlier policy can be adjusted without changing gate logic.

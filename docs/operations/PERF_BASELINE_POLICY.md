@@ -158,6 +158,18 @@ The following actions are STRICTLY PROHIBITED and will result in PR rejection:
 
 **Action:** PR rejected, thresholds are constitutional constants
 
+### Performance Learning Review
+
+Split-metric learning is explicitly non-authoritative.
+
+- Use `make ci-gate-performance-learning-review PERF_LEARNING_SOURCE_GLOB='<glob>'`
+- Input reports must already be clean `performance` gate `PASS` runs from a single authority surface
+- Output is evidence-only:
+  `history.json`, `summary.json`, `recommendations.json`
+- If `sample_count < 5`, recommendations must stay `enforcement=none` and `status=insufficient_samples`
+- The learning review must not mutate `scripts/ci/perf-baseline.lock.json`
+- The learning review must not auto-waive regressions or auto-commit new thresholds
+
 ## Baseline Renewal Workflow
 
 ### Step 1: Verify Renewal Condition

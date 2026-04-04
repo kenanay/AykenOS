@@ -27,6 +27,12 @@ Current repo truth icin once su dosyalari referans alin:
 9. `Makefile`
 10. `.github/workflows/ci-freeze.yml`
 
+Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
+
+1. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+
+README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
+
 ## Live Evidence References
 1. `evidence/run-local-freeze-p10p11/reports/summary.json`
 2. `evidence/run-local-phase11-closure/reports/summary.json`
@@ -51,6 +57,8 @@ Current repo truth icin once su dosyalari referans alin:
 3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=14`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
 5. `docs/specs/phase14-distributed-observability/README.md`
+6. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+7. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-11 Reference Set
 1. `docs/specs/phase11-verification-substrate/design.md`

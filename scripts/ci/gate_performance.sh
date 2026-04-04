@@ -22,6 +22,10 @@ Env controls:
   PERF_BASELINE_AUTHORITY=<id>                 (default: scripts/ci/perf_authority.env)
   PERF_REQUIRE_CI_FOR_BASELINE_INIT=0|1        (default: 1)
   PERF_CI_IMAGE_DIGEST=<digest-or-build-id>    (default: unknown)
+  PERF_ALLOW_UNTRACKED_BASELINE=0|1            (default: 0)
+  PERF_BOOT_THRESHOLD_PERCENT=<pct>            (default: 10)
+  PERF_CONTEXT_THRESHOLD_PERCENT=<pct>         (default: 5)
+  PERF_SYSCALL_THRESHOLD_PERCENT=<pct>         (default: 5)
   PERF_BASELINE_MODE=constitutional|provisional (default: constitutional)
   PERF_REGRESSION_POLICY=fail                   (default: fail)
   PERF_ENV_MISMATCH_POLICY=fail|waiver          (default: fail)
@@ -30,6 +34,9 @@ Env controls:
   PERF_PREEMPT_BOOTSTRAP_POLICY=0|1            (default: 1)
   PERF_PREEMPT_MB_SELFTEST=0|1                 (default: 0)
   PERF_PREEMPT_DETERMINISTIC_EXIT=0|1          (default: 1)
+  PERF_PREEMPT_RING3_ENTRY_GUARD=0|1           (default: 1 for syscall-v2-runtime, else 0)
+  PERF_PREEMPT_BUILD_DEBUG_SCHED=0|1           (default: make profile)
+  PERF_PREEMPT_BUILD_DEBUG_IRQ=0|1             (default: make profile)
   PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET=csv      (default: 0,1)
   DRIFT_ALLOWLIST_FILE=<path>                  (default: constitution/drift_blocking_allowlist.json)
 
@@ -54,11 +61,18 @@ BASELINE_MODE="${PERF_BASELINE_MODE:-constitutional}"
 BASELINE_AUTHORITY="${PERF_BASELINE_AUTHORITY:-${PERF_AUTHORITY_DEFAULT}}"
 REQUIRE_CI_FOR_BASELINE_INIT="${PERF_REQUIRE_CI_FOR_BASELINE_INIT:-1}"
 CI_IMAGE_DIGEST="${PERF_CI_IMAGE_DIGEST:-unknown}"
+ALLOW_UNTRACKED_BASELINE="${PERF_ALLOW_UNTRACKED_BASELINE:-0}"
+BOOT_THRESHOLD_PERCENT="${PERF_BOOT_THRESHOLD_PERCENT:-10}"
+CONTEXT_THRESHOLD_PERCENT="${PERF_CONTEXT_THRESHOLD_PERCENT:-5}"
+SYSCALL_THRESHOLD_PERCENT="${PERF_SYSCALL_THRESHOLD_PERCENT:-5}"
 PREEMPT_FORCE_EFI_REBUILD="${PERF_PREEMPT_FORCE_EFI_REBUILD:-1}"
 PREEMPT_USER_MINIMAL_MODE="${PERF_PREEMPT_USER_MINIMAL_MODE:-syscall-v2-runtime}"
 PREEMPT_BOOTSTRAP_POLICY="${PERF_PREEMPT_BOOTSTRAP_POLICY:-1}"
 PREEMPT_MB_SELFTEST="${PERF_PREEMPT_MB_SELFTEST:-0}"
 PREEMPT_DETERMINISTIC_EXIT="${PERF_PREEMPT_DETERMINISTIC_EXIT:-1}"
+PREEMPT_RING3_ENTRY_GUARD="${PERF_PREEMPT_RING3_ENTRY_GUARD:-}"
+PREEMPT_BUILD_DEBUG_SCHED="${PERF_PREEMPT_BUILD_DEBUG_SCHED:-}"
+PREEMPT_BUILD_DEBUG_IRQ="${PERF_PREEMPT_BUILD_DEBUG_IRQ:-}"
 PREEMPT_EXPECTED_QEMU_EXIT_SET="${PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET:-0,1}"
 MEASUREMENT_CONTRACT="deterministic_preempt_harness"
 SCHED_FALLBACK="${AYKEN_SCHED_FALLBACK:-0}"
@@ -66,6 +80,14 @@ BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
 PREEMPT_SW_COUNT_PATTERN='[SW|MARK:SW] count:'
 PREEMPT_IRET_COUNT_PATTERN='[IRET markers] count:'
 INIT_BASELINE=0
+
+if [[ -z "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  if [[ "${PREEMPT_USER_MINIMAL_MODE}" == "syscall-v2-runtime" ]]; then
+    PREEMPT_RING3_ENTRY_GUARD="1"
+  else
+    PREEMPT_RING3_ENTRY_GUARD="0"
+  fi
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -132,6 +154,15 @@ case "${REQUIRE_CI_FOR_BASELINE_INIT}" in
     ;;
 esac
 
+case "${ALLOW_UNTRACKED_BASELINE}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_ALLOW_UNTRACKED_BASELINE must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
 case "${PREEMPT_FORCE_EFI_REBUILD}" in
   0|1)
     ;;
@@ -167,6 +198,25 @@ case "${PREEMPT_DETERMINISTIC_EXIT}" in
     exit 3
     ;;
 esac
+
+case "${PREEMPT_RING3_ENTRY_GUARD}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_RING3_ENTRY_GUARD must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]] && [[ "${PREEMPT_BUILD_DEBUG_SCHED}" != "0" && "${PREEMPT_BUILD_DEBUG_SCHED}" != "1" ]]; then
+  echo "ERROR: PERF_PREEMPT_BUILD_DEBUG_SCHED must be 0 or 1 when set" >&2
+  exit 3
+fi
+
+if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]] && [[ "${PREEMPT_BUILD_DEBUG_IRQ}" != "0" && "${PREEMPT_BUILD_DEBUG_IRQ}" != "1" ]]; then
+  echo "ERROR: PERF_PREEMPT_BUILD_DEBUG_IRQ must be 0 or 1 when set" >&2
+  exit 3
+fi
 
 if [[ ! "${PREEMPT_EXPECTED_QEMU_EXIT_SET}" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
   echo "ERROR: PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET must be comma-separated exit codes (got '${PREEMPT_EXPECTED_QEMU_EXIT_SET}')" >&2
@@ -223,6 +273,17 @@ is_expected_qemu_exit_rc() {
   done
   return 1
 }
+
+is_nonnegative_number() {
+  [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]
+}
+
+for threshold_value in "${BOOT_THRESHOLD_PERCENT}" "${CONTEXT_THRESHOLD_PERCENT}" "${SYSCALL_THRESHOLD_PERCENT}"; do
+  if ! is_nonnegative_number "${threshold_value}"; then
+    echo "ERROR: performance thresholds must be non-negative numbers" >&2
+    exit 3
+  fi
+done
 
 for tool in git make python3 qemu-system-x86_64 jq; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
@@ -296,6 +357,7 @@ RAW_LOG="${EVIDENCE_DIR}/raw.log"
 BOOT_AUDIT_LOG="${EVIDENCE_DIR}/boot-audit.log"
 PREEMPT_LOG="${EVIDENCE_DIR}/preempt.log"
 PREEMPT_METRICS_TXT="${EVIDENCE_DIR}/preempt.metrics.txt"
+PREEMPT_ANALYSIS_LOG="${EVIDENCE_DIR}/preempt.analysis.log"
 ACTUAL_LOCK_JSON="${EVIDENCE_DIR}/actual.lock.json"
 BASELINE_DIFF_TXT="${EVIDENCE_DIR}/baseline.diff.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
@@ -310,6 +372,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${BOOT_AUDIT_LOG}"
 : > "${PREEMPT_LOG}"
 : > "${PREEMPT_METRICS_TXT}"
+: > "${PREEMPT_ANALYSIS_LOG}"
 : > "${ACTUAL_LOCK_JSON}"
 : > "${BASELINE_DIFF_TXT}"
 : > "${VIOLATIONS_TXT}"
@@ -344,6 +407,7 @@ PREEMPT_USER_MINIMAL_MODE_ENV="${PREEMPT_USER_MINIMAL_MODE}" \
 PREEMPT_BOOTSTRAP_POLICY_ENV="${PREEMPT_BOOTSTRAP_POLICY}" \
 PREEMPT_MB_SELFTEST_ENV="${PREEMPT_MB_SELFTEST}" \
 PREEMPT_DETERMINISTIC_EXIT_ENV="${PREEMPT_DETERMINISTIC_EXIT}" \
+PREEMPT_RING3_ENTRY_GUARD_ENV="${PREEMPT_RING3_ENTRY_GUARD}" \
 PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV="${PREEMPT_EXPECTED_QEMU_EXIT_SET}" \
 MEASUREMENT_CONTRACT_ENV="${MEASUREMENT_CONTRACT}" \
 ENV_JSON_ENV="${ENV_JSON}" \
@@ -375,6 +439,7 @@ payload = {
         "preempt_bootstrap_policy": int(os.environ["PREEMPT_BOOTSTRAP_POLICY_ENV"]),
         "preempt_mb_selftest": int(os.environ["PREEMPT_MB_SELFTEST_ENV"]),
         "preempt_deterministic_exit": int(os.environ["PREEMPT_DETERMINISTIC_EXIT_ENV"]),
+        "preempt_ring3_entry_guard": int(os.environ["PREEMPT_RING3_ENTRY_GUARD_ENV"]),
         "preempt_expected_qemu_exit_set": os.environ["PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV"],
     },
 }
@@ -397,8 +462,39 @@ print(json.load(open(sys.argv[1], encoding="utf-8"))["env_hash"])
 PY
 )"
 
-# 2) Build boot image once.
-if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img >> "${BUILD_LOG}" 2>&1; then
+# 2) Build the authoritative boot image under the exact preempt contract.
+PREEMPT_BUILD_ARGS=(
+  "KERNEL_PROFILE=${KERNEL_PROFILE}"
+  "USER_MINIMAL_MODE=${PREEMPT_USER_MINIMAL_MODE}"
+  "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
+  "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
+  "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
+  "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
+)
+if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
+  PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
+fi
+if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]]; then
+  PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_IRQ=${PREEMPT_BUILD_DEBUG_IRQ}")
+fi
+
+{
+  echo "[PERF] authoritative preempt build contract"
+  echo "[PERF]   user_minimal_mode=${PREEMPT_USER_MINIMAL_MODE}"
+  echo "[PERF]   bootstrap_policy=${PREEMPT_BOOTSTRAP_POLICY}"
+  echo "[PERF]   mb_selftest=${PREEMPT_MB_SELFTEST}"
+  echo "[PERF]   deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
+  echo "[PERF]   ring3_entry_guard=${PREEMPT_RING3_ENTRY_GUARD}"
+  echo "[PERF]   debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
+  echo "[PERF]   debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
+} >> "${BUILD_LOG}"
+
+if [[ "${PREEMPT_FORCE_EFI_REBUILD}" == "1" ]]; then
+  if ! make -C "${ROOT}" "${PREEMPT_BUILD_ARGS[@]}" clean >> "${BUILD_LOG}" 2>&1; then
+    record_violation "build_failed:make clean"
+  fi
+fi
+if ! make -C "${ROOT}" "${PREEMPT_BUILD_ARGS[@]}" efi-img >> "${BUILD_LOG}" 2>&1; then
   record_violation "build_failed:make efi-img"
 fi
 cp -f "${BUILD_LOG}" "${RAW_LOG}" 2>/dev/null || true
@@ -416,17 +512,27 @@ BOOT_TIME_MS="$((BOOT_END_MS - BOOT_START_MS))"
 
 # 4) Measure context-switch proxy from preempt validation.
 PREEMPT_START_MS="$(now_ms)"
-if ! (cd "${ROOT}" && \
-  QEMU_TIMEOUT="${QEMU_TIMEOUT}" \
-  STRICT_MARKERS=1 \
-  FORCE_EFI_REBUILD="${PREEMPT_FORCE_EFI_REBUILD}" \
-  KERNEL_PROFILE="${KERNEL_PROFILE}" \
-  USER_MINIMAL_MODE="${PREEMPT_USER_MINIMAL_MODE}" \
-  AYKEN_SCHED_BOOTSTRAP_POLICY="${PREEMPT_BOOTSTRAP_POLICY}" \
-  AYKEN_MB_SELFTEST="${PREEMPT_MB_SELFTEST}" \
-  AYKEN_DETERMINISTIC_EXIT="${PREEMPT_DETERMINISTIC_EXIT}" \
-  PREEMPT_METRICS_OUT="${PREEMPT_METRICS_TXT}" \
-  ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
+PREEMPT_TEST_ENV=(
+  "QEMU_TIMEOUT=${QEMU_TIMEOUT}"
+  "STRICT_MARKERS=1"
+  "FORCE_EFI_REBUILD=0"
+  "PREEMPT_CLEAN_REBUILD=0"
+  "KERNEL_PROFILE=${KERNEL_PROFILE}"
+  "USER_MINIMAL_MODE=${PREEMPT_USER_MINIMAL_MODE}"
+  "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
+  "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
+  "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
+  "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
+  "PREEMPT_METRICS_OUT=${PREEMPT_METRICS_TXT}"
+  "PREEMPT_ANALYSIS_LOG_OUT=${PREEMPT_ANALYSIS_LOG}"
+)
+if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
+  PREEMPT_TEST_ENV+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
+fi
+if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]]; then
+  PREEMPT_TEST_ENV+=("AYKEN_DEBUG_IRQ=${PREEMPT_BUILD_DEBUG_IRQ}")
+fi
+if ! (cd "${ROOT}" && env "${PREEMPT_TEST_ENV[@]}" ./run_preempt_test.sh) > "${PREEMPT_LOG}" 2>&1; then
   record_violation "preempt_test_failed:run_preempt_test.sh"
 fi
 PREEMPT_END_MS="$(now_ms)"
@@ -450,10 +556,81 @@ PREEMPT_CONTRACT_USER_MODE_SOURCE="$(extract_kv_text "contract_user_minimal_mode
 PREEMPT_CONTRACT_BOOTSTRAP_SOURCE="$(extract_kv_text "contract_bootstrap_policy_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_MB_SELFTEST_SOURCE="$(extract_kv_text "contract_mb_selftest_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_DETERMINISTIC_EXIT_SOURCE="$(extract_kv_text "contract_deterministic_exit_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BUILD_DEBUG_SCHED="$(extract_kv_text "contract_build_debug_sched" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BUILD_DEBUG_IRQ="$(extract_kv_text "contract_build_debug_irq" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE="$(extract_kv_text "contract_build_debug_sched_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE="$(extract_kv_text "contract_build_debug_irq_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_ENTRY_GUARD="$(extract_kv_text "contract_ring3_entry_guard" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE="$(extract_kv_text "contract_ring3_entry_guard_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_USER_MODE="$(extract_kv_text "observed_user_minimal_mode" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_BOOTSTRAP="$(extract_kv_text "observed_bootstrap_policy" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_MB_SELFTEST="$(extract_kv_text "observed_mb_selftest" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_DETERMINISTIC_EXIT="$(extract_kv_text "observed_deterministic_exit" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_RING3_ENTRY_GUARD="$(extract_kv_text "observed_ring3_entry_guard" "${PREEMPT_METRICS_TXT}")"
+PHASE_BOOT_START_TICKS="$(extract_kv_metric "phase_boot_start_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_BOOT_START_TICK_VALID="$(extract_kv_metric "phase_boot_start_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_CORE_READY_TICKS="$(extract_kv_metric "phase_core_ready_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_CORE_READY_TICK_VALID="$(extract_kv_metric "phase_core_ready_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SCHED_ACTIVITY_TICKS="$(extract_kv_metric "phase_first_sched_activity_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID="$(extract_kv_metric "phase_first_sched_activity_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_user_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_syscall_gate_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS="$(extract_kv_metric "phase_first_syscall_gate_return_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID="$(extract_kv_metric "phase_first_syscall_gate_return_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID="$(extract_kv_metric "phase_first_syscall_entry_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_EXIT_TICK_VALID="$(extract_kv_metric "phase_first_syscall_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+PHASE_BOOT_START_TO_CORE_READY_TICKS="$(extract_kv_metric "phase_boot_start_to_core_ready_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_BOOT_START_TO_CORE_READY_AVAILABLE="$(extract_kv_metric "phase_boot_start_to_core_ready_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS="$(extract_kv_metric "phase_core_ready_to_first_sched_activity_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE="$(extract_kv_metric "phase_core_ready_to_first_sched_activity_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS="$(extract_kv_metric "phase_first_sched_activity_to_first_user_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_sched_activity_to_first_user_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_gate_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_gate_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_exit_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_exit_available" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_ENTER_TICKS="$(extract_kv_metric "mailbox_phase_snapshot_enter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_ENTER_TICK_VALID="$(extract_kv_metric "mailbox_phase_snapshot_enter_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_EXIT_TICKS="$(extract_kv_metric "mailbox_phase_snapshot_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_EXIT_TICK_VALID="$(extract_kv_metric "mailbox_phase_snapshot_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_ENTER_TICKS="$(extract_kv_metric "mailbox_phase_extract_enter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_ENTER_TICK_VALID="$(extract_kv_metric "mailbox_phase_extract_enter_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_EXIT_TICKS="$(extract_kv_metric "mailbox_phase_extract_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_EXIT_TICK_VALID="$(extract_kv_metric "mailbox_phase_extract_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_ENTER_TICKS="$(extract_kv_metric "mailbox_phase_validate_enter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_ENTER_TICK_VALID="$(extract_kv_metric "mailbox_phase_validate_enter_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_EXIT_TICKS="$(extract_kv_metric "mailbox_phase_validate_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_EXIT_TICK_VALID="$(extract_kv_metric "mailbox_phase_validate_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_ENTER_TICKS="$(extract_kv_metric "mailbox_phase_arbiter_enter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_ENTER_TICK_VALID="$(extract_kv_metric "mailbox_phase_arbiter_enter_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_EXIT_TICKS="$(extract_kv_metric "mailbox_phase_arbiter_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_EXIT_TICK_VALID="$(extract_kv_metric "mailbox_phase_arbiter_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_ENTER_TICKS="$(extract_kv_metric "mailbox_phase_handoff_enter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_ENTER_TICK_VALID="$(extract_kv_metric "mailbox_phase_handoff_enter_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_EXIT_TICKS="$(extract_kv_metric "mailbox_phase_handoff_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_EXIT_TICK_VALID="$(extract_kv_metric "mailbox_phase_handoff_exit_tick_valid" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_TICKS="$(extract_kv_metric "mailbox_phase_snapshot_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_SNAPSHOT_AVAILABLE="$(extract_kv_metric "mailbox_phase_snapshot_available" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_TICKS="$(extract_kv_metric "mailbox_phase_extract_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_EXTRACT_AVAILABLE="$(extract_kv_metric "mailbox_phase_extract_available" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_TICKS="$(extract_kv_metric "mailbox_phase_validate_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_VALIDATE_AVAILABLE="$(extract_kv_metric "mailbox_phase_validate_available" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_TICKS="$(extract_kv_metric "mailbox_phase_arbiter_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_ARBITER_AVAILABLE="$(extract_kv_metric "mailbox_phase_arbiter_available" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_TICKS="$(extract_kv_metric "mailbox_phase_handoff_ticks" "${PREEMPT_METRICS_TXT}")"
+MAILBOX_PHASE_HANDOFF_AVAILABLE="$(extract_kv_metric "mailbox_phase_handoff_available" "${PREEMPT_METRICS_TXT}")"
 
 if [[ "${PREEMPT_QEMU_TIMEOUT_HIT}" -gt 0 ]]; then
   record_violation "preempt_qemu_timeout:exit_rc=${PREEMPT_QEMU_EXIT_RC}:timeout_seconds=${QEMU_TIMEOUT}"
@@ -478,6 +655,9 @@ fi
 if [[ "${PREEMPT_CONTRACT_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
   record_violation "preempt_contract_not_consumed:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:actual=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
 fi
+if [[ "${PREEMPT_CONTRACT_RING3_ENTRY_GUARD}" != "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  record_violation "preempt_contract_not_consumed:ring3_entry_guard:expected=${PREEMPT_RING3_ENTRY_GUARD}:actual=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
+fi
 if [[ "${PREEMPT_OBSERVED_USER_MODE}" != "${PREEMPT_USER_MINIMAL_MODE}" ]]; then
   record_violation "preempt_observed_mismatch:user_minimal_mode:expected=${PREEMPT_USER_MINIMAL_MODE}:observed=${PREEMPT_OBSERVED_USER_MODE:-missing}"
 fi
@@ -489,6 +669,9 @@ if [[ "${PREEMPT_OBSERVED_MB_SELFTEST}" != "${PREEMPT_MB_SELFTEST}" ]]; then
 fi
 if [[ "${PREEMPT_OBSERVED_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
   record_violation "preempt_observed_mismatch:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:observed=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_RING3_ENTRY_GUARD}" != "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  record_violation "preempt_observed_mismatch:ring3_entry_guard:expected=${PREEMPT_RING3_ENTRY_GUARD}:observed=${PREEMPT_OBSERVED_RING3_ENTRY_GUARD:-missing}"
 fi
 
 PREEMPT_TIME_MS="${PREEMPT_TIME_MS_WALL}"
@@ -556,10 +739,85 @@ PREEMPT_SW_COUNT_ENV="${PREEMPT_SW_COUNT}" \
 PREEMPT_IRET_COUNT_ENV="${PREEMPT_IRET_COUNT}" \
 CONTEXT_SWITCH_LATENCY_MS_PROXY_ENV="${CONTEXT_SWITCH_LATENCY_MS_PROXY}" \
 SYSCALL_LATENCY_MS_PROXY_ENV="${SYSCALL_LATENCY_MS_PROXY}" \
+PHASE_BOOT_START_TICKS_ENV="${PHASE_BOOT_START_TICKS}" \
+PHASE_BOOT_START_TICK_VALID_ENV="${PHASE_BOOT_START_TICK_VALID}" \
+PHASE_CORE_READY_TICKS_ENV="${PHASE_CORE_READY_TICKS}" \
+PHASE_CORE_READY_TICK_VALID_ENV="${PHASE_CORE_READY_TICK_VALID}" \
+PHASE_FIRST_SCHED_ACTIVITY_TICKS_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TICKS}" \
+PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID}" \
+PHASE_FIRST_USER_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TICKS}" \
+PHASE_FIRST_USER_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_USER_ENTRY_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_ENTRY_TICKS}" \
+PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID}" \
+PHASE_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_SYSCALL_EXIT_TICKS}" \
+PHASE_FIRST_SYSCALL_EXIT_TICK_VALID_ENV="${PHASE_FIRST_SYSCALL_EXIT_TICK_VALID}" \
+PHASE_BOOT_START_TO_CORE_READY_TICKS_ENV="${PHASE_BOOT_START_TO_CORE_READY_TICKS}" \
+PHASE_BOOT_START_TO_CORE_READY_AVAILABLE_ENV="${PHASE_BOOT_START_TO_CORE_READY_AVAILABLE}" \
+PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS_ENV="${PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS}" \
+PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE_ENV="${PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE}" \
+PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS}" \
+PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}" \
+PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE}" \
+MAILBOX_PHASE_SNAPSHOT_ENTER_TICKS_ENV="${MAILBOX_PHASE_SNAPSHOT_ENTER_TICKS}" \
+MAILBOX_PHASE_SNAPSHOT_ENTER_TICK_VALID_ENV="${MAILBOX_PHASE_SNAPSHOT_ENTER_TICK_VALID}" \
+MAILBOX_PHASE_SNAPSHOT_EXIT_TICKS_ENV="${MAILBOX_PHASE_SNAPSHOT_EXIT_TICKS}" \
+MAILBOX_PHASE_SNAPSHOT_EXIT_TICK_VALID_ENV="${MAILBOX_PHASE_SNAPSHOT_EXIT_TICK_VALID}" \
+MAILBOX_PHASE_EXTRACT_ENTER_TICKS_ENV="${MAILBOX_PHASE_EXTRACT_ENTER_TICKS}" \
+MAILBOX_PHASE_EXTRACT_ENTER_TICK_VALID_ENV="${MAILBOX_PHASE_EXTRACT_ENTER_TICK_VALID}" \
+MAILBOX_PHASE_EXTRACT_EXIT_TICKS_ENV="${MAILBOX_PHASE_EXTRACT_EXIT_TICKS}" \
+MAILBOX_PHASE_EXTRACT_EXIT_TICK_VALID_ENV="${MAILBOX_PHASE_EXTRACT_EXIT_TICK_VALID}" \
+MAILBOX_PHASE_VALIDATE_ENTER_TICKS_ENV="${MAILBOX_PHASE_VALIDATE_ENTER_TICKS}" \
+MAILBOX_PHASE_VALIDATE_ENTER_TICK_VALID_ENV="${MAILBOX_PHASE_VALIDATE_ENTER_TICK_VALID}" \
+MAILBOX_PHASE_VALIDATE_EXIT_TICKS_ENV="${MAILBOX_PHASE_VALIDATE_EXIT_TICKS}" \
+MAILBOX_PHASE_VALIDATE_EXIT_TICK_VALID_ENV="${MAILBOX_PHASE_VALIDATE_EXIT_TICK_VALID}" \
+MAILBOX_PHASE_ARBITER_ENTER_TICKS_ENV="${MAILBOX_PHASE_ARBITER_ENTER_TICKS}" \
+MAILBOX_PHASE_ARBITER_ENTER_TICK_VALID_ENV="${MAILBOX_PHASE_ARBITER_ENTER_TICK_VALID}" \
+MAILBOX_PHASE_ARBITER_EXIT_TICKS_ENV="${MAILBOX_PHASE_ARBITER_EXIT_TICKS}" \
+MAILBOX_PHASE_ARBITER_EXIT_TICK_VALID_ENV="${MAILBOX_PHASE_ARBITER_EXIT_TICK_VALID}" \
+MAILBOX_PHASE_HANDOFF_ENTER_TICKS_ENV="${MAILBOX_PHASE_HANDOFF_ENTER_TICKS}" \
+MAILBOX_PHASE_HANDOFF_ENTER_TICK_VALID_ENV="${MAILBOX_PHASE_HANDOFF_ENTER_TICK_VALID}" \
+MAILBOX_PHASE_HANDOFF_EXIT_TICKS_ENV="${MAILBOX_PHASE_HANDOFF_EXIT_TICKS}" \
+MAILBOX_PHASE_HANDOFF_EXIT_TICK_VALID_ENV="${MAILBOX_PHASE_HANDOFF_EXIT_TICK_VALID}" \
+MAILBOX_PHASE_SNAPSHOT_TICKS_ENV="${MAILBOX_PHASE_SNAPSHOT_TICKS}" \
+MAILBOX_PHASE_SNAPSHOT_AVAILABLE_ENV="${MAILBOX_PHASE_SNAPSHOT_AVAILABLE}" \
+MAILBOX_PHASE_EXTRACT_TICKS_ENV="${MAILBOX_PHASE_EXTRACT_TICKS}" \
+MAILBOX_PHASE_EXTRACT_AVAILABLE_ENV="${MAILBOX_PHASE_EXTRACT_AVAILABLE}" \
+MAILBOX_PHASE_VALIDATE_TICKS_ENV="${MAILBOX_PHASE_VALIDATE_TICKS}" \
+MAILBOX_PHASE_VALIDATE_AVAILABLE_ENV="${MAILBOX_PHASE_VALIDATE_AVAILABLE}" \
+MAILBOX_PHASE_ARBITER_TICKS_ENV="${MAILBOX_PHASE_ARBITER_TICKS}" \
+MAILBOX_PHASE_ARBITER_AVAILABLE_ENV="${MAILBOX_PHASE_ARBITER_AVAILABLE}" \
+MAILBOX_PHASE_HANDOFF_TICKS_ENV="${MAILBOX_PHASE_HANDOFF_TICKS}" \
+MAILBOX_PHASE_HANDOFF_AVAILABLE_ENV="${MAILBOX_PHASE_HANDOFF_AVAILABLE}" \
+PREEMPT_METRICS_TXT_ENV="${PREEMPT_METRICS_TXT}" \
 RESULTS_JSON_ENV="${RESULTS_JSON}" \
 python3 - <<'PY'
 import json
 import os
+
+def load_kv(path: str) -> dict[str, str]:
+    data: dict[str, str] = {}
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            if "=" not in line:
+                continue
+            key, value = line.rstrip("\n").split("=", 1)
+            data[key] = value
+    return data
 
 payload = {
     "boot_time_ms": int(os.environ["BOOT_TIME_MS_ENV"]),
@@ -578,7 +836,370 @@ payload = {
         if os.environ["SYSCALL_LATENCY_MS_PROXY_ENV"] != "INF"
         else None
     ),
+    "entry_latency_ticks": {
+        "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV"])),
+    },
+    "syscall_latency_ticks_pure": {
+        "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV"])),
+    },
+    "syscall_gate_return_latency_ticks": {
+        "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV"])),
+    },
+    "metric_model": {
+        "context_switch_latency_ms_proxy": {
+            "role": "authoritative_proxy",
+            "units": "ms",
+            "source": "preempt_run_time_ms / preempt_sw_count",
+            "enforcement": "baseline_threshold",
+        },
+        "syscall_latency_ms_proxy": {
+            "role": "authoritative_proxy",
+            "units": "ms",
+            "source": "preempt_run_time_ms / preempt_iret_count",
+            "enforcement": "baseline_threshold",
+            "note": "Includes the guarded first-entry window; keep for continuity while split diagnostics expose the pure syscall phase.",
+        },
+        "entry_latency_ticks": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_user_entry -> first_syscall_gate_entry",
+            "enforcement": "informational_only",
+        },
+        "syscall_latency_ticks_pure": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_syscall_gate_entry -> first_syscall_exit",
+            "enforcement": "informational_only",
+        },
+        "syscall_gate_return_latency_ticks": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_syscall_gate_entry -> first_syscall_gate_return",
+            "enforcement": "informational_only",
+        },
+    },
+    "phase_breakdown_ticks": {
+        "raw_markers": {
+            "boot_start": {
+                "ticks": int(os.environ["PHASE_BOOT_START_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_BOOT_START_TICK_VALID_ENV"])),
+            },
+            "core_ready": {
+                "ticks": int(os.environ["PHASE_CORE_READY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_CORE_READY_TICK_VALID_ENV"])),
+            },
+            "first_sched_activity": {
+                "ticks": int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TICK_VALID_ENV"])),
+            },
+            "first_user_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TICK_VALID_ENV"])),
+            },
+            "first_syscall_gate_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TICK_VALID_ENV"])),
+            },
+            "first_syscall_gate_return": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_RETURN_TICK_VALID_ENV"])),
+            },
+            "first_syscall_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_ENTRY_TICK_VALID_ENV"])),
+            },
+            "first_syscall_exit": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["PHASE_FIRST_SYSCALL_EXIT_TICK_VALID_ENV"])),
+            },
+        },
+        "durations": {
+            "boot_start_to_core_ready": {
+                "ticks": int(os.environ["PHASE_BOOT_START_TO_CORE_READY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_BOOT_START_TO_CORE_READY_AVAILABLE_ENV"])),
+            },
+            "core_ready_to_first_sched_activity": {
+                "ticks": int(os.environ["PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_CORE_READY_TO_FIRST_SCHED_ACTIVITY_AVAILABLE_ENV"])),
+            },
+            "first_sched_activity_to_first_user_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SCHED_ACTIVITY_TO_FIRST_USER_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_user_entry_to_first_syscall_gate_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_exit": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_gate_return": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV"])),
+            },
+            "first_user_entry_to_first_syscall_entry": {
+                "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_user_entry_to_first_syscall_exit": {
+                "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV"])),
+            },
+        },
+    },
+    "mailbox_phase_breakdown_ticks": {
+        "raw_markers": {
+            "snapshot_enter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_SNAPSHOT_ENTER_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_SNAPSHOT_ENTER_TICK_VALID_ENV"])),
+            },
+            "snapshot_exit": {
+                "ticks": int(os.environ["MAILBOX_PHASE_SNAPSHOT_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_SNAPSHOT_EXIT_TICK_VALID_ENV"])),
+            },
+            "extract_enter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_EXTRACT_ENTER_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_EXTRACT_ENTER_TICK_VALID_ENV"])),
+            },
+            "extract_exit": {
+                "ticks": int(os.environ["MAILBOX_PHASE_EXTRACT_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_EXTRACT_EXIT_TICK_VALID_ENV"])),
+            },
+            "validate_enter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_VALIDATE_ENTER_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_VALIDATE_ENTER_TICK_VALID_ENV"])),
+            },
+            "validate_exit": {
+                "ticks": int(os.environ["MAILBOX_PHASE_VALIDATE_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_VALIDATE_EXIT_TICK_VALID_ENV"])),
+            },
+            "arbiter_enter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_ARBITER_ENTER_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_ARBITER_ENTER_TICK_VALID_ENV"])),
+            },
+            "arbiter_exit": {
+                "ticks": int(os.environ["MAILBOX_PHASE_ARBITER_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_ARBITER_EXIT_TICK_VALID_ENV"])),
+            },
+            "handoff_enter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_HANDOFF_ENTER_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_HANDOFF_ENTER_TICK_VALID_ENV"])),
+            },
+            "handoff_exit": {
+                "ticks": int(os.environ["MAILBOX_PHASE_HANDOFF_EXIT_TICKS_ENV"]),
+                "tick_valid": bool(int(os.environ["MAILBOX_PHASE_HANDOFF_EXIT_TICK_VALID_ENV"])),
+            },
+        },
+        "durations": {
+            "snapshot": {
+                "ticks": int(os.environ["MAILBOX_PHASE_SNAPSHOT_TICKS_ENV"]),
+                "available": bool(int(os.environ["MAILBOX_PHASE_SNAPSHOT_AVAILABLE_ENV"])),
+            },
+            "extract": {
+                "ticks": int(os.environ["MAILBOX_PHASE_EXTRACT_TICKS_ENV"]),
+                "available": bool(int(os.environ["MAILBOX_PHASE_EXTRACT_AVAILABLE_ENV"])),
+            },
+            "validate": {
+                "ticks": int(os.environ["MAILBOX_PHASE_VALIDATE_TICKS_ENV"]),
+                "available": bool(int(os.environ["MAILBOX_PHASE_VALIDATE_AVAILABLE_ENV"])),
+            },
+            "arbiter": {
+                "ticks": int(os.environ["MAILBOX_PHASE_ARBITER_TICKS_ENV"]),
+                "available": bool(int(os.environ["MAILBOX_PHASE_ARBITER_AVAILABLE_ENV"])),
+            },
+            "handoff": {
+                "ticks": int(os.environ["MAILBOX_PHASE_HANDOFF_TICKS_ENV"]),
+                "available": bool(int(os.environ["MAILBOX_PHASE_HANDOFF_AVAILABLE_ENV"])),
+            },
+        },
+    },
 }
+
+metrics_kv = load_kv(os.environ["PREEMPT_METRICS_TXT_ENV"])
+mailbox_extra_markers = (
+    "arbiter_owner_lookup_enter",
+    "arbiter_owner_lookup_exit",
+    "arbiter_candidate_lookup_enter",
+    "arbiter_candidate_lookup_exit",
+    "arbiter_decision_enter",
+    "arbiter_decision_exit",
+    "arbiter_decision_path_switch",
+    "arbiter_decision_path_keep_running",
+    "arbiter_decision_path_reject",
+    "arbiter_decision_path_fallback",
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
+)
+mailbox_extra_durations = (
+    ("arbiter_owner_lookup", "arbiter_owner_lookup_enter", "arbiter_owner_lookup_exit"),
+    ("arbiter_candidate_lookup", "arbiter_candidate_lookup_enter", "arbiter_candidate_lookup_exit"),
+    ("arbiter_decision", "arbiter_decision_enter", "arbiter_decision_exit"),
+)
+mailbox_event_markers = (
+    "arbiter_decision_path_switch",
+    "arbiter_decision_path_keep_running",
+    "arbiter_decision_path_reject",
+    "arbiter_decision_path_fallback",
+    "arbiter_candidate_accept_keep_running",
+    "arbiter_candidate_accept_switch",
+    "arbiter_candidate_reject",
+    "arbiter_keep_running_fallback",
+    "arbiter_return_null",
+    "arbiter_ready_head_fallback",
+)
+mailbox_extract_reason_names = (
+    "snapshot_fail",
+    "bad_magic",
+    "bad_version",
+    "bad_kind",
+    "epoch_stale",
+    "pid_zero",
+    "ok",
+)
+mailbox_candidate_visibility_names = (
+    "visible",
+    "proc_missing",
+    "proc_not_schedulable",
+)
+mailbox_consume_reason_names = (
+    "timer_validate_accept_consume",
+    "timer_validate_accept_deferred",
+    "scheduler_keep_running_consume",
+    "scheduler_switch_consume",
+    "gate4_epoch1_pending_bypass",
+    "gate45_self_keep_running_bypass",
+)
+mailbox_consume_site_names = (
+    "timer_validate_irq",
+    "START",
+    "YIELD",
+    "BLOCK",
+    "IRQ",
+)
+
+for name in mailbox_extra_markers:
+    payload["mailbox_phase_breakdown_ticks"]["raw_markers"][name] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{name}_ticks", "0")),
+        "tick_valid": bool(int(metrics_kv.get(f"mailbox_phase_{name}_tick_valid", "0"))),
+    }
+
+for label, start, end in mailbox_extra_durations:
+    payload["mailbox_phase_breakdown_ticks"]["durations"][label] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{label}_ticks", "0")),
+        "available": bool(int(metrics_kv.get(f"mailbox_phase_{label}_available", "0"))),
+    }
+
+payload["mailbox_phase_breakdown_ticks"]["events"] = {}
+for name in mailbox_event_markers:
+    tick_valid = int(metrics_kv.get(f"mailbox_phase_{name}_tick_valid", "0"))
+    payload["mailbox_phase_breakdown_ticks"]["events"][name] = {
+        "ticks": int(metrics_kv.get(f"mailbox_phase_{name}_ticks", "0")),
+        "available": tick_valid in (1, 2),
+    }
+
+payload["mailbox_phase_breakdown_ticks"]["path_durations"] = {}
+for name in ("switch", "keep_running", "reject", "fallback"):
+    payload["mailbox_phase_breakdown_ticks"]["path_durations"][name] = {
+        "enter_count": int(metrics_kv.get(f"mailbox_path_{name}_enter_count", "0")),
+        "exit_count": int(metrics_kv.get(f"mailbox_path_{name}_exit_count", "0")),
+        "count": int(metrics_kv.get(f"mailbox_path_{name}_count", "0")),
+        "total_ticks": int(metrics_kv.get(f"mailbox_path_{name}_total_ticks", "0")),
+        "mean_ticks": int(metrics_kv.get(f"mailbox_path_{name}_mean_ticks", "0")),
+        "min_ticks": int(metrics_kv.get(f"mailbox_path_{name}_min_ticks", "0")),
+        "max_ticks": int(metrics_kv.get(f"mailbox_path_{name}_max_ticks", "0")),
+        "available": bool(int(metrics_kv.get(f"mailbox_path_{name}_available", "0"))),
+    }
+
+payload["mailbox_phase_breakdown_ticks"]["fallback_reasons"] = {}
+for name in (
+    "gate45_non_owner",
+    "owner_missing",
+    "owner_not_ready",
+    "owner_mismatch",
+    "candidate_proc_missing",
+    "candidate_proc_not_schedulable",
+    "no_candidate",
+    "invalid_state",
+    "bootstrap_keep_running",
+    "pre_user_bypass",
+    "yield_fatal",
+    "ready_head_fallback",
+    "fallback_forbidden",
+    "block_fatal",
+    "bootstrap_fatal",
+    "yield_null",
+):
+    payload["mailbox_phase_breakdown_ticks"]["fallback_reasons"][name] = int(
+        metrics_kv.get(f"mailbox_reason_{name}_count", "0")
+    )
+
+payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"] = {
+    "extract_reasons": {},
+    "raw_observations": {
+        "count": int(metrics_kv.get("mailbox_extract_raw_observation_count", "0")),
+        "latest_epoch": int(metrics_kv.get("mailbox_extract_raw_latest_epoch", "0")),
+        "latest_candidate_pid": int(metrics_kv.get("mailbox_extract_raw_latest_candidate_pid", "0")),
+        "latest_owner_last_epoch": int(metrics_kv.get("mailbox_extract_raw_latest_owner_last_epoch", "0")),
+        "epoch_zero_count": int(metrics_kv.get("mailbox_extract_raw_epoch_zero_count", "0")),
+        "epoch_lte_owner_last_epoch_count": int(
+            metrics_kv.get("mailbox_extract_raw_epoch_lte_owner_last_epoch_count", "0")
+        ),
+        "epoch_gt_owner_last_epoch_count": int(
+            metrics_kv.get("mailbox_extract_raw_epoch_gt_owner_last_epoch_count", "0")
+        ),
+        "candidate_pid_zero_count": int(
+            metrics_kv.get("mailbox_extract_raw_candidate_pid_zero_count", "0")
+        ),
+        "candidate_pid_nonzero_count": int(
+            metrics_kv.get("mailbox_extract_raw_candidate_pid_nonzero_count", "0")
+        ),
+    },
+    "candidate_visibility": {},
+}
+for name in mailbox_extract_reason_names:
+    payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"]["extract_reasons"][name] = int(
+        metrics_kv.get(f"mailbox_extract_reason_{name}_count", "0")
+    )
+for name in mailbox_candidate_visibility_names:
+    payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"]["candidate_visibility"][name] = int(
+        metrics_kv.get(f"mailbox_candidate_visibility_{name}_count", "0")
+    )
+
+payload["mailbox_phase_breakdown_ticks"]["consume_trace"] = {
+    "count": int(metrics_kv.get("mailbox_consume_observation_count", "0")),
+    "latest": {
+        "site": metrics_kv.get("mailbox_consume_latest_site", ""),
+        "old_last_epoch": int(metrics_kv.get("mailbox_consume_latest_old_last_epoch", "0")),
+        "new_last_epoch": int(metrics_kv.get("mailbox_consume_latest_new_last_epoch", "0")),
+        "candidate_epoch": int(metrics_kv.get("mailbox_consume_latest_candidate_epoch", "0")),
+        "reason": metrics_kv.get("mailbox_consume_latest_reason", ""),
+        "ticks": int(metrics_kv.get("mailbox_consume_latest_ticks", "0")),
+        "tick_valid": int(metrics_kv.get("mailbox_consume_latest_tick_valid", "0")),
+    },
+    "reason_counts": {},
+    "site_counts": {},
+}
+for name in mailbox_consume_reason_names:
+    payload["mailbox_phase_breakdown_ticks"]["consume_trace"]["reason_counts"][name] = int(
+        metrics_kv.get(f"mailbox_consume_reason_{name}_count", "0")
+    )
+for name in mailbox_consume_site_names:
+    payload["mailbox_phase_breakdown_ticks"]["consume_trace"]["site_counts"][name] = int(
+        metrics_kv.get(f"mailbox_consume_site_{name}_count", "0")
+    )
+
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:
     json.dump(payload, fh, indent=2, sort_keys=True)
     fh.write("\n")
@@ -592,6 +1213,9 @@ NOW_ENV="${NOW}" \
 GIT_SHA_ENV="${GIT_SHA}" \
 ENV_MISMATCH_POLICY_ENV="${ENV_MISMATCH_POLICY}" \
 BASELINE_AUTHORITY_ENV="${BASELINE_AUTHORITY}" \
+BOOT_THRESHOLD_PERCENT_ENV="${BOOT_THRESHOLD_PERCENT}" \
+CONTEXT_THRESHOLD_PERCENT_ENV="${CONTEXT_THRESHOLD_PERCENT}" \
+SYSCALL_THRESHOLD_PERCENT_ENV="${SYSCALL_THRESHOLD_PERCENT}" \
 ENV_JSON_ENV="${ENV_JSON}" \
 RESULTS_JSON_ENV="${RESULTS_JSON}" \
 ACTUAL_LOCK_JSON_ENV="${ACTUAL_LOCK_JSON}" \
@@ -610,9 +1234,9 @@ payload = {
         "baseline_authority": os.environ["BASELINE_AUTHORITY_ENV"],
         "marker_contract": env.get("marker_contract", {}),
         "thresholds_percent": {
-            "syscall_latency_ms_proxy": 5,
-            "context_switch_latency_ms_proxy": 5,
-            "boot_time_ms": 10,
+            "syscall_latency_ms_proxy": float(os.environ["SYSCALL_THRESHOLD_PERCENT_ENV"]),
+            "context_switch_latency_ms_proxy": float(os.environ["CONTEXT_THRESHOLD_PERCENT_ENV"]),
+            "boot_time_ms": float(os.environ["BOOT_THRESHOLD_PERCENT_ENV"]),
         },
     },
     "env": env,
@@ -651,7 +1275,7 @@ elif [[ -f "${BASELINE_FILE}" ]]; then
     BASELINE_REL="${BASELINE_FILE#${ROOT}/}"
   fi
   if [[ -n "${BASELINE_REL}" ]]; then
-    if ! git -C "${ROOT}" ls-files --error-unmatch -- "${BASELINE_REL}" >/dev/null 2>&1; then
+    if [[ "${ALLOW_UNTRACKED_BASELINE}" != "1" ]] && ! git -C "${ROOT}" ls-files --error-unmatch -- "${BASELINE_REL}" >/dev/null 2>&1; then
       record_violation "baseline_not_tracked:${BASELINE_REL}"
     fi
     if ! git -C "${ROOT}" diff --exit-code -- "${BASELINE_REL}" >/dev/null 2>&1; then
@@ -806,6 +1430,10 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "baseline_authority=${BASELINE_AUTHORITY}"
   echo "ci_image_digest=${CI_IMAGE_DIGEST}"
   echo "require_ci_for_baseline_init=${REQUIRE_CI_FOR_BASELINE_INIT}"
+  echo "allow_untracked_baseline=${ALLOW_UNTRACKED_BASELINE}"
+  echo "boot_threshold_percent=${BOOT_THRESHOLD_PERCENT}"
+  echo "context_threshold_percent=${CONTEXT_THRESHOLD_PERCENT}"
+  echo "syscall_threshold_percent=${SYSCALL_THRESHOLD_PERCENT}"
   echo "boot_ok_marker=${BOOT_OK_MARKER}"
   echo "preempt_sw_count_pattern=${PREEMPT_SW_COUNT_PATTERN}"
   echo "preempt_iret_count_pattern=${PREEMPT_IRET_COUNT_PATTERN}"
@@ -814,6 +1442,8 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_bootstrap_policy=${PREEMPT_BOOTSTRAP_POLICY}"
   echo "preempt_mb_selftest=${PREEMPT_MB_SELFTEST}"
   echo "preempt_deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
+  echo "preempt_build_debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
+  echo "preempt_build_debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
   echo "preempt_expected_qemu_exit_set=${PREEMPT_EXPECTED_QEMU_EXIT_SET}"
   echo "measurement_contract=${MEASUREMENT_CONTRACT}"
   echo "ayken_sched_fallback=${SCHED_FALLBACK}"
@@ -826,14 +1456,21 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_contract_bootstrap_policy=${PREEMPT_CONTRACT_BOOTSTRAP:-missing}"
   echo "preempt_contract_mb_selftest=${PREEMPT_CONTRACT_MB_SELFTEST:-missing}"
   echo "preempt_contract_deterministic_exit=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
+  echo "preempt_contract_build_debug_sched=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED:-missing}"
+  echo "preempt_contract_build_debug_irq=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ:-missing}"
+  echo "preempt_contract_ring3_entry_guard=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
   echo "preempt_contract_user_minimal_mode_source=${PREEMPT_CONTRACT_USER_MODE_SOURCE:-missing}"
   echo "preempt_contract_bootstrap_policy_source=${PREEMPT_CONTRACT_BOOTSTRAP_SOURCE:-missing}"
   echo "preempt_contract_mb_selftest_source=${PREEMPT_CONTRACT_MB_SELFTEST_SOURCE:-missing}"
   echo "preempt_contract_deterministic_exit_source=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT_SOURCE:-missing}"
+  echo "preempt_contract_build_debug_sched_source=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE:-missing}"
+  echo "preempt_contract_build_debug_irq_source=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE:-missing}"
+  echo "preempt_contract_ring3_entry_guard_source=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE:-missing}"
   echo "preempt_observed_user_minimal_mode=${PREEMPT_OBSERVED_USER_MODE:-missing}"
   echo "preempt_observed_bootstrap_policy=${PREEMPT_OBSERVED_BOOTSTRAP:-missing}"
   echo "preempt_observed_mb_selftest=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"
   echo "preempt_observed_deterministic_exit=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
+  echo "preempt_observed_ring3_entry_guard=${PREEMPT_OBSERVED_RING3_ENTRY_GUARD:-missing}"
   echo "env_hash=${ENV_HASH}"
   echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
   echo "drift_allowlist_file=${DRIFT_ALLOWLIST_FILE}"
@@ -844,6 +1481,12 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_qemu_run_time_ms=${PREEMPT_QEMU_RUN_TIME_MS}"
   echo "context_switch_latency_ms_proxy=${CONTEXT_SWITCH_LATENCY_MS_PROXY}"
   echo "syscall_latency_ms_proxy=${SYSCALL_LATENCY_MS_PROXY}"
+  echo "entry_latency_ticks=${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS}"
+  echo "entry_latency_ticks_available=${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE}"
+  echo "syscall_latency_ticks_pure=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}"
+  echo "syscall_latency_ticks_pure_available=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE}"
+  echo "syscall_gate_return_latency_ticks=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS}"
+  echo "syscall_gate_return_latency_ticks_available=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE}"
   echo "violations_count=${VIOLATIONS_COUNT}"
 } > "${META_TXT}"
 
@@ -881,6 +1524,7 @@ out = {
     "violations_count": violations_count,
     "measurement_contract": meta.get("measurement_contract", "unknown"),
     "measurement_contract_note": "Deterministic preempt harness scenario is enforced (not constitutional default runtime).",
+    "metric_model_note": "Legacy ms proxy metrics remain the baseline-enforced surface; split tick metrics expose entry-window and pure syscall timing after the ring3 entry guard change.",
     "meta": meta,
     "env": read_json("env.json"),
     "results": read_json("results.json"),

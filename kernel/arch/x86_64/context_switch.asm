@@ -8,6 +8,7 @@ global syscall_isr
 global timer_isr_asm
 
 extern syscall_handler
+extern sched_perf_note_phase
 extern init_process_main
 extern sched_irq_user_ctx_saved
 extern timer_isr_c
@@ -36,6 +37,9 @@ extern ring3_enter_iretq
 %else
 %define DEBUG_SCHED 0
 %endif
+
+%define SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY 4
+%define SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN 5
 
 %macro DBG_CHAR 1
 %if DEBUG_SCHED
@@ -292,16 +296,28 @@ syscall_isr:
     ; SysV ABI alignment before C call.
     sub rsp, 8
 
+    ; Sidecar diagnostics: prove whether user reaches the INT 0x80 gate at all.
+    mov edi, SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY
+    call sched_perf_note_phase
+
     ; uint64_t syscall_handler(uint64_t num, uint64_t arg1,
     ;                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
-    mov r8,  r10
-    mov rcx, rdx
-    mov rdx, rsi
-    mov rsi, rdi
-    mov rdi, rax
+    mov r8,  [rsp + 56]
+    mov rcx, [rsp + 24]
+    mov rdx, [rsp + 16]
+    mov rsi, [rsp + 8]
+    mov rdi, [rsp + 64]
     DBG_ASSERT_RSP_ALIGNED 'S'
 
     call syscall_handler
+
+    ; Preserve the syscall return value while recording the gate return marker.
+    sub rsp, 16
+    mov [rsp], rax
+    mov edi, SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN
+    call sched_perf_note_phase
+    mov rax, [rsp]
+    add rsp, 16
 
     add rsp, 8
 

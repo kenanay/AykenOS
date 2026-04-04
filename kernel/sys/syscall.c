@@ -93,6 +93,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
 #endif
 
     // Marker: syscall entry/return for Phase 10-A2 Task 3 roundtrip evidence.
+    sched_perf_note_first_syscall_entry();
     debugcon_write("[[AYKEN_SYSCALL_ENTER]]\n");
     debugcon_write("P10_SYSCALL_ENTER\n");
     
@@ -109,6 +110,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     }
     
     // Marker: Syscall return
+    sched_perf_note_first_syscall_exit();
     debugcon_write("[[AYKEN_SYSCALL_RETURN]]\n");
     debugcon_write("P10_SYSCALL_RETURN\n");
     if (syscall_num == 1008 && result != 0) {

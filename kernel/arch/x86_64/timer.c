@@ -37,6 +37,7 @@
 
 static volatile uint64_t tick_count = 0;
 static volatile uint32_t timer_frequency_hz_value = 100;
+static volatile uint32_t timer_initialized = 0;
 
 static void timer_debugcon_write(const char *s)
 {
@@ -196,29 +197,6 @@ void timer_isr_c(void *frame_ptr)
             proc_emit_low_half_kheap_runtime_proof(current_proc, "timer_irq");
         }
 #endif
-        // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
-        // user stub can publish epoch/syscall markers before strict IRQ arbitration.
-        // Gate-4 isolated policy proof keeps its original timer behavior.
-#if (!defined(AYKEN_GATE4_POLICY_TEST) || (AYKEN_GATE4_POLICY_TEST == 0))
-        // Keep early Ring3 bootstrap window uninterrupted so the stub can
-        // publish mailbox epoch, perform syscall roundtrip, and hit INT3 proof.
-        // This does not alter Gate-4 isolated policy mode.
-        static uint8_t phase10_entry_irq_defer_marker_emitted = 0;
-        static uint8_t phase10_entry_irq_deferred_once = 0;
-        if (!phase10_entry_irq_deferred_once &&
-            frame->rip >= USER_TEXT_BASE &&
-            frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
-            phase10_entry_irq_deferred_once = 1;
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-            if (!phase10_entry_irq_defer_marker_emitted) {
-                phase10_entry_irq_defer_marker_emitted = 1;
-                timer_debugcon_write("P10_IRQ_DEFER_ENTRY\n");
-            }
-#endif
-            return;
-        }
-#endif
-
         current_proc->context.r15 = frame->r15;
         current_proc->context.r14 = frame->r14;
         current_proc->context.r13 = frame->r13;
@@ -238,7 +216,6 @@ void timer_isr_c(void *frame_ptr)
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
    ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
     (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
-        extern int sched_mailbox_validate_ring3(proc_t *proc);
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
         // Gate-4/4.5 isolated proofs validate owner authority only.
         if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
@@ -276,6 +253,9 @@ void timer_isr_c(void *frame_ptr)
             timer_debugcon_write("P10_SCHED_EVENT_NOTIFY\n");
         }
 #endif
+        if (sched_should_defer_irq_resched_on_ring3_entry(current_proc)) {
+            return;
+        }
         sched_request_resched_irq();
     }
 }
@@ -296,6 +276,7 @@ void timer_init(uint32_t frequency_hz)
     idt_set_gate_raw(32, timer_isr_asm, 0x8E); // present, ring0 interrupt gate
 
     timer_frequency_hz_value = configured_frequency_hz;
+    timer_initialized = 1;
 
     uint32_t divisor = 1193180 / configured_frequency_hz;
     outb(PIT_COMMAND, 0x36); // channel 0, lobyte/hibyte, mode 3
@@ -322,6 +303,11 @@ void timer_init(uint32_t frequency_hz)
     TIMER_DBG_CHAR('O');
     TIMER_DBG_CHAR('K');
     TIMER_DBG_CHAR(']');
+}
+
+uint32_t timer_is_initialized(void)
+{
+    return timer_initialized;
 }
 
 uint64_t timer_ticks(void)

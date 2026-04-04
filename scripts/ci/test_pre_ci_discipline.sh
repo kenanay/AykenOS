@@ -22,23 +22,32 @@ pass() { echo "  ✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
 fail() { echo "  ❌ FAIL: $1"; echo "     $2"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
 # Run discipline script with mock make.
-# ABI_EXIT, BOUNDARY_EXIT, HYGIENE_EXIT, CONSTITUTIONAL_EXIT control gate results.
+# ABI_EXIT, BOUNDARY_EXIT, HYGIENE_EXIT, CONSTITUTIONAL_EXIT, DETERMINISM_EXIT control gate results.
 run_with_mocks() {
     local abi_exit="${ABI_EXIT:-0}"
     local boundary_exit="${BOUNDARY_EXIT:-0}"
     local hygiene_exit="${HYGIENE_EXIT:-0}"
     local constitutional_exit="${CONSTITUTIONAL_EXIT:-0}"
+    local determinism_exit="${DETERMINISM_EXIT:-0}"
 
     # Inject mock make into PATH via a temp dir
     local tmpdir
     tmpdir="$(mktemp -d)"
     cat > "${tmpdir}/make" <<MOCK
 #!/usr/bin/env bash
-case "\$1" in
+target=""
+for arg in "\$@"; do
+  case "\$arg" in
+    *=*) ;;
+    *) target="\$arg" ;;
+  esac
+done
+case "\${target}" in
   ci-gate-abi)            exit ${abi_exit} ;;
   ci-gate-boundary)       exit ${boundary_exit} ;;
   ci-gate-hygiene)        exit ${hygiene_exit} ;;
   ci-gate-constitutional) exit ${constitutional_exit} ;;
+  ci-gate-determinism-replay-consistency) exit ${determinism_exit} ;;
   *) exit 0 ;;
 esac
 MOCK
@@ -58,16 +67,25 @@ run_discipline() {
     local boundary_exit="${BOUNDARY_EXIT:-0}"
     local hygiene_exit="${HYGIENE_EXIT:-0}"
     local constitutional_exit="${CONSTITUTIONAL_EXIT:-0}"
+    local determinism_exit="${DETERMINISM_EXIT:-0}"
 
     local tmpdir
     tmpdir="$(mktemp -d)"
     cat > "${tmpdir}/make" <<MOCK
 #!/usr/bin/env bash
-case "\$1" in
+target=""
+for arg in "\$@"; do
+  case "\$arg" in
+    *=*) ;;
+    *) target="\$arg" ;;
+  esac
+done
+case "\${target}" in
   ci-gate-abi)            exit ${abi_exit} ;;
   ci-gate-boundary)       exit ${boundary_exit} ;;
   ci-gate-hygiene)        exit ${hygiene_exit} ;;
   ci-gate-constitutional) exit ${constitutional_exit} ;;
+  ci-gate-determinism-replay-consistency) exit ${determinism_exit} ;;
   *) exit 0 ;;
 esac
 MOCK
@@ -87,19 +105,22 @@ echo ""
 echo "=== Property 1: Kapı Sırası Değişmezi ==="
 
 # All pass — verify all 4 gate names appear in order
-ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+# All pass — verify all 5 gate names appear in order
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 abi_pos=$(echo "${DISCIPLINE_OUTPUT}" | grep -n "ABI Gate" | head -1 | cut -d: -f1)
 boundary_pos=$(echo "${DISCIPLINE_OUTPUT}" | grep -n "Boundary Gate" | head -1 | cut -d: -f1)
 hygiene_pos=$(echo "${DISCIPLINE_OUTPUT}" | grep -n "Hygiene Gate" | head -1 | cut -d: -f1)
 constitutional_pos=$(echo "${DISCIPLINE_OUTPUT}" | grep -n "Constitutional Gate" | head -1 | cut -d: -f1)
+determinism_pos=$(echo "${DISCIPLINE_OUTPUT}" | grep -n "Determinism Replay Consistency Gate" | head -1 | cut -d: -f1)
 
-if [ -n "${abi_pos}" ] && [ -n "${boundary_pos}" ] && [ -n "${hygiene_pos}" ] && [ -n "${constitutional_pos}" ] \
+if [ -n "${abi_pos}" ] && [ -n "${boundary_pos}" ] && [ -n "${hygiene_pos}" ] && [ -n "${constitutional_pos}" ] && [ -n "${determinism_pos}" ] \
    && [ "${abi_pos}" -lt "${boundary_pos}" ] \
    && [ "${boundary_pos}" -lt "${hygiene_pos}" ] \
-   && [ "${hygiene_pos}" -lt "${constitutional_pos}" ]; then
-    pass "Kapı sırası ABI→Boundary→Hygiene→Constitutional"
+   && [ "${hygiene_pos}" -lt "${constitutional_pos}" ] \
+   && [ "${constitutional_pos}" -lt "${determinism_pos}" ]; then
+    pass "Kapı sırası ABI→Boundary→Hygiene→Constitutional→Determinism"
 else
-    fail "Kapı sırası yanlış" "Beklenen: ABI < Boundary < Hygiene < Constitutional, Alınan pozisyonlar: ${abi_pos} ${boundary_pos} ${hygiene_pos} ${constitutional_pos}"
+    fail "Kapı sırası yanlış" "Beklenen: ABI < Boundary < Hygiene < Constitutional < Determinism, Alınan pozisyonlar: ${abi_pos} ${boundary_pos} ${hygiene_pos} ${constitutional_pos} ${determinism_pos}"
 fi
 
 # ==========================================
@@ -109,7 +130,7 @@ echo ""
 echo "=== Property 2: Fail-Closed Davranışı ==="
 
 # ABI fails → Boundary must NOT appear
-ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 if echo "${DISCIPLINE_OUTPUT}" | grep -q "Boundary Gate"; then
     fail "ABI başarısız → Boundary çalışmamalı" "Boundary Gate çıktıda görüldü"
 else
@@ -117,7 +138,7 @@ else
 fi
 
 # Boundary fails → Hygiene must NOT appear
-ABI_EXIT=0 BOUNDARY_EXIT=1 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+ABI_EXIT=0 BOUNDARY_EXIT=1 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 if echo "${DISCIPLINE_OUTPUT}" | grep -q "Hygiene Gate"; then
     fail "Boundary başarısız → Hygiene çalışmamalı" "Hygiene Gate çıktıda görüldü"
 else
@@ -125,19 +146,32 @@ else
 fi
 
 # Hygiene fails → Constitutional must NOT appear
-ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=1 CONSTITUTIONAL_EXIT=0 run_discipline
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=1 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 if echo "${DISCIPLINE_OUTPUT}" | grep -q "Constitutional Gate"; then
     fail "Hygiene başarısız → Constitutional çalışmamalı" "Constitutional Gate çıktıda görüldü"
 else
     pass "Hygiene başarısız → Constitutional çalışmadı"
 fi
 
-# Constitutional fails → exit 2, all 4 ran
-ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=1 run_discipline
+# Constitutional fails → Determinism must NOT appear
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=1 DETERMINISM_EXIT=0 run_discipline
 if echo "${DISCIPLINE_OUTPUT}" | grep -q "Constitutional Gate"; then
     pass "Constitutional başarısız → Constitutional çalıştı (son kapı)"
 else
     fail "Constitutional başarısız → Constitutional görülmedi" ""
+fi
+if echo "${DISCIPLINE_OUTPUT}" | grep -q "Determinism Replay Consistency Gate"; then
+    fail "Constitutional başarısız → Determinism çalışmamalı" "Determinism Replay Consistency Gate çıktıda görüldü"
+else
+    pass "Constitutional başarısız → Determinism çalışmadı"
+fi
+
+# Determinism fails → exit 2, all earlier gates ran
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=1 run_discipline
+if echo "${DISCIPLINE_OUTPUT}" | grep -q "Determinism Replay Consistency Gate"; then
+    pass "Determinism başarısız → Determinism kapısı çalıştı"
+else
+    fail "Determinism başarısız → kapı görülmedi" ""
 fi
 
 # ==========================================
@@ -148,10 +182,10 @@ echo "=== Property 3: Başarısızlık Çıkış Kodu ==="
 
 for gate_pos in "ABI" "Boundary" "Hygiene" "Constitutional"; do
     case "${gate_pos}" in
-        ABI)            ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline ;;
-        Boundary)       ABI_EXIT=0 BOUNDARY_EXIT=1 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline ;;
-        Hygiene)        ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=1 CONSTITUTIONAL_EXIT=0 run_discipline ;;
-        Constitutional) ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=1 run_discipline ;;
+        ABI)            ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline ;;
+        Boundary)       ABI_EXIT=0 BOUNDARY_EXIT=1 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline ;;
+        Hygiene)        ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=1 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline ;;
+        Constitutional) ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=1 DETERMINISM_EXIT=0 run_discipline ;;
     esac
     if [ "${DISCIPLINE_EXIT}" -eq 2 ]; then
         pass "${gate_pos} başarısız → çıkış kodu 2"
@@ -160,6 +194,13 @@ for gate_pos in "ABI" "Boundary" "Hygiene" "Constitutional"; do
     fi
 done
 
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=1 run_discipline
+if [ "${DISCIPLINE_EXIT}" -eq 2 ]; then
+    pass "Determinism başarısız → çıkış kodu 2"
+else
+    fail "Determinism başarısız → çıkış kodu 2 beklendi" "Alınan: ${DISCIPLINE_EXIT}"
+fi
+
 # ==========================================
 # Feature: pre-ci-discipline, Property 4: Başarısızlık çıktısı bütünlüğü
 # ==========================================
@@ -167,7 +208,7 @@ echo ""
 echo "=== Property 4: Başarısızlık Çıktısı Bütünlüğü ==="
 
 # ABI failure: output must contain gate name + fail-closed + evidence path
-ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+ABI_EXIT=1 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 
 if echo "${DISCIPLINE_OUTPUT}" | grep -q "ABI Gate"; then
     pass "Başarısızlık çıktısı kapı adını içeriyor (ABI Gate)"
@@ -193,7 +234,7 @@ fi
 echo ""
 echo "=== Property 5: Başarı Çıktısı Bütünlüğü ==="
 
-ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 run_discipline
+ABI_EXIT=0 BOUNDARY_EXIT=0 HYGIENE_EXIT=0 CONSTITUTIONAL_EXIT=0 DETERMINISM_EXIT=0 run_discipline
 
 if [ "${DISCIPLINE_EXIT}" -eq 0 ]; then
     pass "Tüm kapılar geçti → çıkış kodu 0"
@@ -214,7 +255,7 @@ else
 fi
 
 # Her kapı için PASS onayı
-for gate in "ABI Gate" "Boundary Gate" "Hygiene Gate" "Constitutional Gate"; do
+for gate in "ABI Gate" "Boundary Gate" "Hygiene Gate" "Constitutional Gate" "Determinism Replay Consistency Gate"; do
     if echo "${DISCIPLINE_OUTPUT}" | grep -q "PASS.*${gate}\|${gate}.*PASS\|✅ PASS"; then
         pass "PASS onayı mevcut: ${gate}"
     else

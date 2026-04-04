@@ -60,6 +60,7 @@ AYKEN_RING3_FRESH_FRAME_PROBE ?= 0
 AYKEN_RING3_IRETQ_DIAG_PROBE ?= 0
 AYKEN_RING3_POST_CR3_TEXT_PROBE ?= 0
 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY ?= 0
+AYKEN_RING3_ENTRY_GUARD ?= 0
 AYKEN_SHARE_KERNEL_UPPER_HALF ?= 0
 AYKEN_RING3_LOW_FETCH_STUB ?= 0
 AYKEN_RING3_CANONICAL_FETCH_STUB ?= 0
@@ -143,6 +144,10 @@ endif
 
 ifneq ($(filter $(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY),0 1),$(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY))
 $(error Invalid AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY='$(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_RING3_ENTRY_GUARD),0 1),$(AYKEN_RING3_ENTRY_GUARD))
+$(error Invalid AYKEN_RING3_ENTRY_GUARD='$(AYKEN_RING3_ENTRY_GUARD)'. Use 0 or 1)
 endif
 
 ifneq ($(filter $(AYKEN_SHARE_KERNEL_UPPER_HALF),0 1),$(AYKEN_SHARE_KERNEL_UPPER_HALF))
@@ -645,6 +650,7 @@ KERNEL_CFLAGS += -DAYKEN_RING3_FRESH_FRAME_PROBE=$(AYKEN_RING3_FRESH_FRAME_PROBE
 KERNEL_CFLAGS += -DAYKEN_RING3_IRETQ_DIAG_PROBE=$(AYKEN_RING3_IRETQ_DIAG_PROBE)
 KERNEL_CFLAGS += -DAYKEN_RING3_POST_CR3_TEXT_PROBE=$(AYKEN_RING3_POST_CR3_TEXT_PROBE)
 KERNEL_CFLAGS += -DAYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=$(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY)
+KERNEL_CFLAGS += -DAYKEN_RING3_ENTRY_GUARD=$(AYKEN_RING3_ENTRY_GUARD)
 KERNEL_CFLAGS += -DAYKEN_SHARE_KERNEL_UPPER_HALF=$(AYKEN_SHARE_KERNEL_UPPER_HALF)
 KERNEL_CFLAGS += -DAYKEN_RING3_LOW_FETCH_STUB=$(AYKEN_RING3_LOW_FETCH_STUB)
 KERNEL_CFLAGS += -DAYKEN_RING3_CANONICAL_FETCH_STUB=$(AYKEN_RING3_CANONICAL_FETCH_STUB)
@@ -824,11 +830,26 @@ PERF_ENV_MISMATCH_POLICY ?= fail
 PERF_QEMU_TIMEOUT ?= 30
 PERF_KERNEL_PROFILE ?= validation
 PERF_BASELINE_FILE ?= scripts/ci/perf-baseline.lock.json
+PERF_LOCAL_BASELINE_FILE ?= scripts/ci/perf-baseline.local.lock.json
 PERF_AUTHORITY_ENV_FILE ?= scripts/ci/perf_authority.env
 PERF_BASELINE_AUTHORITY_DEFAULT := $(shell sed -n 's/^PERF_BASELINE_AUTHORITY=//p' $(PERF_AUTHORITY_ENV_FILE) 2>/dev/null | head -n1)
 PERF_BASELINE_AUTHORITY ?= $(if $(PERF_BASELINE_AUTHORITY_DEFAULT),$(PERF_BASELINE_AUTHORITY_DEFAULT),github-hosted-ubuntu-24.04-x64)
 PERF_REQUIRE_CI_FOR_BASELINE_INIT ?= 1
 PERF_CI_IMAGE_DIGEST ?= unknown
+PERF_LOCAL_BASELINE_AUTHORITY ?= local-dev-$(shell uname -s)-$(shell uname -m)
+PERF_LOCAL_CI_IMAGE_DIGEST ?= local-$(shell hostname)-$(shell uname -r)
+PERF_LOCAL_BOOT_THRESHOLD_PERCENT ?= 20
+PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT ?= 15
+PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT ?= 15
+PERF_LOCAL_SAMPLE_SIZE ?= 5
+PERF_LOCAL_WARMUP_RUNS ?= 1
+PERF_LOCAL_AGGREGATION ?= median
+PERF_LOCAL_OUTLIER_POLICY ?= none
+PERF_PREEMPT_BUILD_DEBUG_SCHED ?=
+PERF_PREEMPT_BUILD_DEBUG_IRQ ?=
+PERF_STABILITY_CONTRACT_FILE ?= scripts/ci/perf-stability.contract.json
+PERF_STABILITY_PROFILE ?= local-default
+PERF_LEARNING_SOURCE_GLOB ?=
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
 SYSCALL_V2_RUNTIME_WARMUP ?= 1
 ifeq ($(PERF_BASELINE_MODE),provisional)
@@ -1446,14 +1467,14 @@ phase13-official-closure-prep:
 	@echo "OK: closure candidate at $(PHASE13_CLOSURE_OUTPUT_DIR)"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency
 	@echo "Freeze CI suite completed successfully!"
 
-# Local freeze (skip performance and tooling-isolation gates for development)
+# Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
-	@echo "Local freeze suite completed successfully (performance & tooling-isolation gates skipped)!"
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency
+	@echo "Local freeze suite completed successfully (local performance authority active; tooling-isolation/alias-proof/kill-switch skipped)!"
 
 # CI boundary gate with evidence collection
 ci-evidence-dir:
@@ -2529,6 +2550,23 @@ ci-gate-verification-determinism-contract: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: verification-determinism-contract evidence at $(EVIDENCE_RUN_DIR)"
 
+ci-gate-determinism-replay-consistency: ci-gate-proofd-service ci-gate-verification-determinism-contract
+	@echo "== CI GATE DETERMINISM REPLAY CONSISTENCY =="
+	@echo "run_id: $(RUN_ID)"
+	@bash scripts/ci/gate_determinism_replay_consistency.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/report.json" "$(EVIDENCE_RUN_DIR)/reports/determinism-replay-consistency.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/determinism_replay_consistency_report.json" "$(EVIDENCE_RUN_DIR)/reports/determinism-replay-consistency-details.json"
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/internal_replay_output.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/internal_replay_output.json" "$(EVIDENCE_RUN_DIR)/reports/determinism-replay-output.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_verify_request.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_verify_request.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-verify-request.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_verify_response.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_verify_response.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-verify-response.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_run_manifest.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/proofd_run_manifest.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-run-manifest.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_contract.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_contract.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-contract-artifact.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_replay_report.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_replay_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-replay-report.json"; fi
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_incident.json" ]; then cp -f "$(EVIDENCE_RUN_DIR)/gates/determinism-replay-consistency/verification_determinism_incident.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-determinism-incident.json"; fi
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: determinism-replay-consistency evidence at $(EVIDENCE_RUN_DIR)"
+
 ci-gate-verifier-reputation-prohibition: ci-evidence-dir
 	@echo "== CI GATE VERIFIER REPUTATION PROHIBITION =="
 	@echo "run_id: $(RUN_ID)"
@@ -2662,6 +2700,8 @@ ci-gate-performance: ci-evidence-dir
 		PERF_BASELINE_AUTHORITY="$(PERF_BASELINE_AUTHORITY)" \
 		PERF_REQUIRE_CI_FOR_BASELINE_INIT="$(PERF_REQUIRE_CI_FOR_BASELINE_INIT)" \
 		PERF_CI_IMAGE_DIGEST="$(PERF_CI_IMAGE_DIGEST)" \
+		PERF_PREEMPT_BUILD_DEBUG_SCHED="$(PERF_PREEMPT_BUILD_DEBUG_SCHED)" \
+		PERF_PREEMPT_BUILD_DEBUG_IRQ="$(PERF_PREEMPT_BUILD_DEBUG_IRQ)" \
 		./scripts/ci/gate_performance.sh \
 			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
 			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
@@ -2672,6 +2712,64 @@ ci-gate-performance: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: performance evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-performance-local: ci-evidence-dir
+	@echo "== CI GATE PERFORMANCE LOCAL =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_local_baseline_file: $(PERF_LOCAL_BASELINE_FILE)"
+	@echo "perf_local_baseline_authority: $(PERF_LOCAL_BASELINE_AUTHORITY)"
+	@echo "perf_local_ci_image_digest: $(PERF_LOCAL_CI_IMAGE_DIGEST)"
+	@PERF_LOCAL_BASELINE_AUTHORITY="$(PERF_LOCAL_BASELINE_AUTHORITY)" \
+		PERF_LOCAL_CI_IMAGE_DIGEST="$(PERF_LOCAL_CI_IMAGE_DIGEST)" \
+		PERF_LOCAL_BOOT_THRESHOLD_PERCENT="$(PERF_LOCAL_BOOT_THRESHOLD_PERCENT)" \
+		PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT="$(PERF_LOCAL_CONTEXT_THRESHOLD_PERCENT)" \
+		PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT="$(PERF_LOCAL_SYSCALL_THRESHOLD_PERCENT)" \
+		PERF_LOCAL_SAMPLE_SIZE="$(PERF_LOCAL_SAMPLE_SIZE)" \
+		PERF_LOCAL_WARMUP_RUNS="$(PERF_LOCAL_WARMUP_RUNS)" \
+		PERF_LOCAL_AGGREGATION="$(PERF_LOCAL_AGGREGATION)" \
+		PERF_LOCAL_OUTLIER_POLICY="$(PERF_LOCAL_OUTLIER_POLICY)" \
+		PERF_PREEMPT_BUILD_DEBUG_SCHED="$(PERF_PREEMPT_BUILD_DEBUG_SCHED)" \
+		PERF_PREEMPT_BUILD_DEBUG_IRQ="$(PERF_PREEMPT_BUILD_DEBUG_IRQ)" \
+		PERF_KERNEL_PROFILE="$(PERF_KERNEL_PROFILE)" \
+		PERF_QEMU_TIMEOUT="$(PERF_QEMU_TIMEOUT)" \
+		AYKEN_SCHED_FALLBACK="$(AYKEN_SCHED_FALLBACK)" \
+		./scripts/ci/gate_performance_local.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--kernel-profile "$(PERF_KERNEL_PROFILE)" \
+			--qemu-timeout "$(PERF_QEMU_TIMEOUT)" \
+			--baseline-file "$(PERF_LOCAL_BASELINE_FILE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance.json"
+	@if [ -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json" ]; then \
+		cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-local-init/init-report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-local-init.json"; \
+	fi
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: local performance evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-performance-stability: ci-evidence-dir
+	@echo "== CI GATE PERFORMANCE STABILITY =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_stability_contract_file: $(PERF_STABILITY_CONTRACT_FILE)"
+	@echo "perf_stability_profile: $(PERF_STABILITY_PROFILE)"
+	@PERF_STABILITY_PROFILE="$(PERF_STABILITY_PROFILE)" \
+		./scripts/ci/gate_performance_stability.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance-stability" \
+			--source-gate-dir "$(EVIDENCE_RUN_DIR)/gates/performance" \
+			--contract-file "$(PERF_STABILITY_CONTRACT_FILE)" \
+			--contract-profile "$(PERF_STABILITY_PROFILE)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-stability/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-stability.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: performance-stability evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-performance-learning-review: ci-evidence-dir
+	@echo "== CI GATE PERFORMANCE LEARNING REVIEW =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "perf_learning_source_glob: $(PERF_LEARNING_SOURCE_GLOB)"
+	@PERF_LEARNING_SOURCE_GLOB="$(PERF_LEARNING_SOURCE_GLOB)" \
+		./scripts/ci/gate_performance_learning_review.sh \
+			--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/performance-learning"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-learning/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-learning.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: performance-learning evidence at $(EVIDENCE_RUN_DIR)"
 
 perf-preempt-variance-local:
 	@echo "== LOCAL PREEMPT VARIANCE =="
@@ -2903,6 +3001,8 @@ help:
 	@echo "    (artifacts: observability_routing_separation_report.json, observability_routing_negative_matrix.json, report.json, violations.txt)"
 	@echo "  ci-gate-verification-determinism-contract - Phase13 gate blocking ambient verifier dependencies"
 	@echo "    (artifacts: verification_determinism_contract_report.json, report.json, violations.txt)"
+	@echo "  ci-gate-determinism-replay-consistency - Phase14 proofd replay consistency gate enforcing determinism contract vs internal replay"
+	@echo "    (artifacts: determinism_replay_consistency_report.json, internal_replay_output.json, report.json, violations.txt)"
 	@echo "  ci-gate-verifier-reputation-prohibition - Phase13 boundary gate blocking hidden verifier scoring"
 	@echo "    (artifacts: reputation_prohibition_report.json, report.json, violations.txt)"
 	@echo "  ci-gate-proof-multisig-quorum - P12-15 multisignature / N-of-M quorum gate"
@@ -2934,12 +3034,18 @@ help:
 	@echo "    (authority/digest: PERF_BASELINE_AUTHORITY, PERF_CI_IMAGE_DIGEST)"
 	@echo "    (intentional regression test only: AYKEN_INTENTIONAL_PERF_REGRESSION_MS=<ms>)"
 	@echo "    (scheduler fallback policy: AYKEN_SCHED_FALLBACK=0 for freeze)"
+	@echo "  ci-gate-performance-local - Local performance gate with auto-init local baseline authority"
+	@echo "    (sampling overrides: PERF_LOCAL_SAMPLE_SIZE, PERF_LOCAL_WARMUP_RUNS, PERF_LOCAL_AGGREGATION, PERF_LOCAL_OUTLIER_POLICY)"
+	@echo "  ci-gate-performance-stability - Stability gate over sampled performance-local evidence"
+	@echo "    (contract overrides: PERF_STABILITY_CONTRACT_FILE, PERF_STABILITY_PROFILE)"
+	@echo "  ci-gate-performance-learning-review - Non-authoritative split-metric learning review over clean performance reports"
+	@echo "    (source glob: PERF_LEARNING_SOURCE_GLOB)"
 	@echo "  Linker export policy: KERNEL_EXPORT_POLICY=1 (default, constitutional mode)"
 	@echo "  perf-preempt-variance-local - Local preempt determinism harness (mean/stdev/cv)"
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi help
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S

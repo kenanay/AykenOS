@@ -137,7 +137,8 @@ make ci-gate-alias-proof              # 26. Alias proof runtime check (MUST pass
 # Full CI suite
 make ci                     # Standard CI (enforced gates)
 make ci-freeze              # Strict freeze suite (all gates, fail-closed)
-make ci-freeze-local        # Local freeze (reduced topology: no perf/tooling-isolation/alias-proof/kill-switch)
+make ci-freeze-local        # Local freeze (local perf authority active; no tooling-isolation/alias-proof/kill-switch)
+make ci-gate-performance-local  # Local perf gate with auto-init gitignored baseline
 ```
 
 Authority note:

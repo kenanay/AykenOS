@@ -6,6 +6,9 @@
 **Authority:** ARCHITECTURE_FREEZE.md  
 **Predecessor:** Phase-13 (OFFICIALLY CLOSED, tag: `phase13-official-closure-confirmed`)
 
+**Live Tracking:** `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+**Canonical Workstream Truth:** `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+
 ---
 
 ## 1. Purpose
@@ -20,9 +23,18 @@ Phase-13 delivered:
 - Replicated verification boundary
 
 Phase-14 scales these surfaces with:
+- Read-only external API stabilization
 - Replay determinism stability hardening
 - proofd query/service boundary hardening (authority semantics separation)
 - Cross-node observability graph (non-authoritative diagnostics)
+- Observability UX (human-readable layer)
+
+Phase-14 operates above existing substrate layers:
+- `ABDF` remains the existing data substrate
+- `BCIB` remains the existing execution substrate
+- `Phase-11` remains the existing reality / proof substrate
+
+These substrates are already part of repo truth. They are not new Phase-14 primary workstreams. Phase-14 hardens the `proofd` layer and its derived observability surfaces without re-centering ABDF/BCIB work.
 
 ---
 
@@ -30,11 +42,9 @@ Phase-14 scales these surfaces with:
 
 These invariants MUST be preserved throughout Phase-14:
 
-- `verification != authority`
-- `authority != consensus`
-- `parity = diagnostics`
-- `proofd = service surface`
 - `service != authority`
+- `diagnostics != decision`
+- `parity != consensus`
 - `trust does not affect verdict`
 - `observability does not imply scheduling`
 
@@ -42,7 +52,25 @@ These invariants MUST be preserved throughout Phase-14:
 
 ## 3. Workstreams
 
-### 3.1 Replay Determinism Stability Hardening
+Workstream numbering in this document MUST align with the Phase-14 development tracker. If numbering or state drift appears, the tracker is the authoritative source for workstream IDs and status.
+
+### 3.1 Read-Only External API Stabilization
+
+**Goal:** Stabilize the `/diagnostics/*` surface as a versioned, contract-bound external API.
+
+**Scope:**
+- API versioning header (`X-Ayken-API-Version`)
+- Response schema stability contract
+- Endpoint contract documentation
+- Client-facing error codes standardization
+- `GET /diagnostics/version` — API version surface
+
+**Non-goals:**
+- Write endpoints
+- Authentication/authorization
+- Rate limiting
+
+### 3.2 Replay Determinism Stability Hardening
 
 **Goal:** Strengthen replay determinism guarantees across distributed verification runs.
 
@@ -56,7 +84,7 @@ These invariants MUST be preserved throughout Phase-14:
 - Automatic replay execution
 - Kernel-side trust enforcement
 
-### 3.2 proofd Query/Service Boundary Hardening
+### 3.3 proofd Query/Service Boundary Hardening
 
 **Goal:** Ensure proofd's query surface remains strictly separated from authority semantics.
 
@@ -71,7 +99,7 @@ These invariants MUST be preserved throughout Phase-14:
 - Authority resolution endpoints
 - Consensus-adjacent query patterns
 
-### 3.3 Cross-Node Observability Graph
+### 3.4 Cross-Node Observability Graph
 
 **Goal:** Add derived observability artifacts for cross-node verification topology.
 
@@ -85,6 +113,19 @@ These invariants MUST be preserved throughout Phase-14:
 - Authority topology feedback loop
 - Verifier ordering or routing hints
 - Reputation scoring
+
+### 3.5 Observability UX (Human-Readable Layer)
+
+**Goal:** Make existing diagnostic data human-readable without changing semantics.
+
+**Scope:**
+- `GET /diagnostics/summary` — human-readable system health snapshot
+- Structured text output for CLI consumers
+- Incident severity labeling (display only)
+
+**Non-goals:**
+- Decision-making based on display labels
+- Aggregated scoring
 
 ---
 
@@ -121,5 +162,6 @@ Phase-14 is complete when:
 - `ARCHITECTURE_FREEZE.md` — governing constraints
 - `docs/roadmap/CURRENT_PHASE` — formal phase pointer
 - `docs/roadmap/overview.md` — roadmap truth surface
+- `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md` — live workstream tracker
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — architectural map
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts

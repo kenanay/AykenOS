@@ -109,6 +109,7 @@ The workflow should:
     "qemu_version": "...",
     "marker_contract": {
       "boot_ok_marker": "[K][BOOT_OK] Phase 4.4 minimal boot reached",
+      "preempt_ring3_entry_guard": 1,
       "preempt_sw_count_pattern": "[SW|MARK:SW] count:",
       "preempt_iret_count_pattern": "[IRET markers] count:"
     }
@@ -128,10 +129,23 @@ The workflow should:
   },
   "raw_metrics": {
     "preempt_sw_count": 39508,
-    "preempt_iret_count": 39508
+    "preempt_iret_count": 39508,
+    "entry_latency_ticks": {
+      "ticks": 123456,
+      "available": true
+    },
+    "syscall_latency_ticks_pure": {
+      "ticks": 45678,
+      "available": true
+    }
   }
 }
 ```
+
+Notes:
+- `preempt_ring3_entry_guard` is now part of the marker contract and must be present in renewed CI baselines.
+- Proxy ms metrics remain the baseline-enforced surface for compatibility.
+- Split tick metrics are carried in `raw_metrics` for measurement-model diagnostics and should not be hand-edited into `metrics`.
 
 ## Critical Validations
 
