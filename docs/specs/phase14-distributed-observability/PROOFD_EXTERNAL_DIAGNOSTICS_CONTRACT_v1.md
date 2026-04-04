@@ -6,6 +6,10 @@ This document defines the canonical external diagnostics contract for `proofd`.
 It exists so the public query surface, router behavior, and CI harness
 expectations derive from a single truth surface.
 
+For public diagnostics routing, the v1 execution model is:
+
+`path -> endpoint_id -> handler -> schema`
+
 ## Scope
 
 This contract covers:
@@ -187,6 +191,8 @@ The canonical implementation source for this contract is:
 The following surfaces MUST derive from that module:
 
 - `/diagnostics/version` endpoint declarations
+- public diagnostics route resolution
+- endpoint identifier selection for public diagnostics handlers
 - GET query validation for public diagnostics
 - artifact-backed public route lookup for eligible passthrough endpoints
 - `proofd_gate_harness` endpoint expectations

@@ -36,9 +36,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::api_contract::{
-    allowed_query_keys_for_path, root_endpoint_contract_for_path,
-    run_scoped_endpoint_contract_for_path, scan_forbidden_observability_fields,
-    DiagnosticsEndpointContract, DiagnosticsEndpointId, ALLOWED_INCIDENT_FILTERS,
+    allowed_query_keys_for_path, resolve_public_endpoint, scan_forbidden_observability_fields,
+    DiagnosticsEndpointId, ResolvedDiagnosticsEndpoint, ALLOWED_INCIDENT_FILTERS,
 };
 use crate::api_schema::validate_response_schema_for_path;
 use crate::determinism::artifacts::{
@@ -553,10 +552,8 @@ pub fn route_request_with_body(
                         "mode": "verification_execution_and_read_only_diagnostics",
                     }),
                 )
-            } else if let Some(contract) = root_endpoint_contract_for_path(&target.path) {
-                handle_root_endpoint(contract, &target, evidence_dir)
-            } else if target.path.starts_with("/diagnostics/runs/") {
-                handle_run_endpoint(&target.path, evidence_dir)
+            } else if let Some(resolved) = resolve_public_endpoint(&target.path) {
+                handle_diagnostics_endpoint(resolved, &target, evidence_dir)
             } else {
                 json_response(404, json!({ "error": "not_found" }))
             }
@@ -591,14 +588,15 @@ fn validate_get_query(target: &RequestTarget) -> Result<(), ServiceError> {
     Err(ServiceError::BadRequest("unsupported_query_parameter"))
 }
 
-fn handle_root_endpoint(
-    contract: &DiagnosticsEndpointContract,
+fn handle_diagnostics_endpoint(
+    resolved: ResolvedDiagnosticsEndpoint,
     target: &RequestTarget,
     evidence_dir: &Path,
 ) -> DiagnosticsResponse {
+    let contract = resolved.contract;
     match contract.id {
         DiagnosticsEndpointId::Version => observability_json_response(
-            contract.path_template,
+            &target.path,
             200,
             json!({
                 "api_version": API_VERSION,
@@ -614,75 +612,149 @@ fn handle_root_endpoint(
             }),
         ),
         DiagnosticsEndpointId::Runs => match list_runs(evidence_dir) {
-            Ok(value) => observability_json_response(contract.path_template, 200, value),
+            Ok(value) => observability_json_response(&target.path, 200, value),
             Err(error) => error_response(error),
         },
         DiagnosticsEndpointId::Federation => {
             match build_global_federation_diagnostics(evidence_dir) {
-                Ok(value) => observability_json_response(contract.path_template, 200, value),
+                Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
         DiagnosticsEndpointId::Context => match build_global_context_diagnostics(evidence_dir) {
-            Ok(value) => observability_json_response(contract.path_template, 200, value),
+            Ok(value) => observability_json_response(&target.path, 200, value),
             Err(error) => error_response(error),
         },
         DiagnosticsEndpointId::Trust => match build_global_trust_diagnostics(evidence_dir) {
-            Ok(value) => observability_json_response(contract.path_template, 200, value),
+            Ok(value) => observability_json_response(&target.path, 200, value),
             Err(error) => error_response(error),
         },
         DiagnosticsEndpointId::ParityContextRelation => {
             match build_parity_context_relation(evidence_dir) {
-                Ok(value) => observability_json_response(contract.path_template, 200, value),
+                Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
         DiagnosticsEndpointId::Incidents => {
             match load_incident_report(evidence_dir, target.query.as_deref()) {
-                Ok(value) => observability_json_response(contract.path_template, 200, value),
+                Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
         DiagnosticsEndpointId::IncidentById => {
-            let incident_id = target
-                .path
-                .trim_start_matches("/diagnostics/incidents/")
-                .to_string();
+            let Some(incident_id) = resolved.params.incident_id.as_deref() else {
+                return json_response(404, json!({ "error": "not_found" }));
+            };
             match load_single_incident(evidence_dir, &incident_id) {
                 Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
         DiagnosticsEndpointId::FingerprintBoundary => {
-            let fp = target
-                .path
-                .trim_start_matches("/diagnostics/fingerprints/")
-                .to_string();
-            if fp.is_empty() || fp.contains('/') {
+            let Some(fp) = resolved.params.fp.as_deref() else {
                 return json_response(404, json!({ "error": "not_found" }));
-            }
-            match build_fingerprint_boundary_diagnostics(&fp, evidence_dir) {
+            };
+            match build_fingerprint_boundary_diagnostics(fp, evidence_dir) {
                 Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
         DiagnosticsEndpointId::ReplicatedBoundary => {
             match build_replicated_boundary_status(evidence_dir) {
-                Ok(value) => observability_json_response(contract.path_template, 200, value),
+                Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
-        DiagnosticsEndpointId::Parity
-        | DiagnosticsEndpointId::AuthoritySuppression
-        | DiagnosticsEndpointId::AuthorityTopology
-        | DiagnosticsEndpointId::Graph
-        | DiagnosticsEndpointId::Drift
-        | DiagnosticsEndpointId::Convergence
-        | DiagnosticsEndpointId::FailureMatrix => {
+        DiagnosticsEndpointId::RunSummary => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_summary(run_id, &run_dir) {
+                Ok(summary) => observability_json_response(&target.path, 200, summary),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunArtifactsIndex => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_artifact_index(run_id, &run_dir) {
+                Ok(index) => observability_json_response(&target.path, 200, index),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunArtifactFile => {
+            let (_, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            let Some(artifact_path) = resolved.params.artifact_path.as_deref() else {
+                return json_response(404, json!({ "error": "not_found" }));
+            };
+            let artifact_path = match parse_run_artifact_path(artifact_path) {
+                Ok(path) => path,
+                Err(error) => return error_response(error),
+            };
+            match resolve_run_artifact_path(&run_dir, artifact_path) {
+                Ok(path) => serve_artifact_file(path, artifact_content_type(artifact_path)),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunFederation => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_federation_diagnostics(run_id, &run_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunContext => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_context_diagnostics(run_id, &run_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunRegistry => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_registry_diagnostics(run_id, &run_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunBoundary => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_boundary_diagnostics(run_id, &run_dir, evidence_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
+        _ if contract.artifact_file.is_some() => {
+            let base_dir = if resolved.params.run_id.is_some() {
+                match resolve_run_scope(&resolved, evidence_dir) {
+                    Ok((_, run_dir)) => run_dir,
+                    Err(response) => return response,
+                }
+            } else {
+                evidence_dir.to_path_buf()
+            };
             let artifact = contract
                 .artifact_file
-                .expect("root passthrough artifact missing");
-            serve_observability_json_file(&target.path, evidence_dir.join(artifact))
+                .expect("passthrough artifact missing");
+            serve_observability_json_file(&target.path, base_dir.join(artifact))
         }
         _ => json_response(404, json!({ "error": "not_found" })),
     }
@@ -730,85 +802,17 @@ fn list_runs(evidence_dir: &Path) -> Result<Value, ServiceError> {
     }))
 }
 
-fn handle_run_endpoint(path: &str, evidence_dir: &Path) -> DiagnosticsResponse {
-    let parts = path
-        .split('/')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>();
-    if parts.len() < 3 {
-        return json_response(404, json!({ "error": "invalid_run_path" }));
-    }
-
-    let run_id = parts[2];
-    if !is_safe_path_segment(run_id) {
-        return json_response(404, json!({ "error": "invalid_run_id" }));
-    }
-
-    let run_dir = evidence_dir.join(run_id);
-    let Some(contract) = run_scoped_endpoint_contract_for_path(path) else {
-        return json_response(404, json!({ "error": "not_found" }));
+fn resolve_run_scope<'a>(
+    resolved: &'a ResolvedDiagnosticsEndpoint,
+    evidence_dir: &Path,
+) -> Result<(&'a str, PathBuf), DiagnosticsResponse> {
+    let Some(run_id) = resolved.params.run_id.as_deref() else {
+        return Err(json_response(404, json!({ "error": "not_found" })));
     };
-
-    match contract.id {
-        DiagnosticsEndpointId::RunSummary => match build_run_summary(run_id, &run_dir) {
-            Ok(summary) => observability_json_response(path, 200, summary),
-            Err(error) => error_response(error),
-        },
-        DiagnosticsEndpointId::RunArtifactsIndex => {
-            match build_run_artifact_index(run_id, &run_dir) {
-                Ok(index) => observability_json_response(path, 200, index),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunArtifactFile => {
-            let artifact_path = match parse_run_artifact_path(&parts[4..]) {
-                Ok(path) => path,
-                Err(error) => return error_response(error),
-            };
-            match resolve_run_artifact_path(&run_dir, &artifact_path) {
-                Ok(path) => serve_artifact_file(path, artifact_content_type(&artifact_path)),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunFederation => {
-            match build_run_federation_diagnostics(run_id, &run_dir) {
-                Ok(value) => observability_json_response(path, 200, value),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunContext => {
-            match build_run_context_diagnostics(run_id, &run_dir) {
-                Ok(value) => observability_json_response(path, 200, value),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunRegistry => {
-            match build_run_registry_diagnostics(run_id, &run_dir) {
-                Ok(value) => observability_json_response(path, 200, value),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunBoundary => {
-            match build_run_boundary_diagnostics(run_id, &run_dir, evidence_dir) {
-                Ok(value) => observability_json_response(path, 200, value),
-                Err(error) => error_response(error),
-            }
-        }
-        DiagnosticsEndpointId::RunIncidents
-        | DiagnosticsEndpointId::RunParity
-        | DiagnosticsEndpointId::RunAuthoritySuppression
-        | DiagnosticsEndpointId::RunAuthorityTopology
-        | DiagnosticsEndpointId::RunGraph
-        | DiagnosticsEndpointId::RunDrift
-        | DiagnosticsEndpointId::RunConvergence
-        | DiagnosticsEndpointId::RunFailureMatrix => {
-            let artifact = contract
-                .artifact_file
-                .expect("run-scoped passthrough artifact missing");
-            serve_observability_json_file(path, run_dir.join(artifact))
-        }
-        _ => json_response(404, json!({ "error": "not_found" })),
+    if !is_safe_path_segment(run_id) {
+        return Err(json_response(404, json!({ "error": "invalid_run_id" })));
     }
+    Ok((run_id, evidence_dir.join(run_id)))
 }
 
 fn build_run_summary(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
@@ -3264,18 +3268,18 @@ fn list_run_artifact_descriptors(
         .collect())
 }
 
-fn parse_run_artifact_path(segments: &[&str]) -> Result<String, ServiceError> {
-    if segments.is_empty() {
+fn parse_run_artifact_path<'a>(artifact_path: &'a str) -> Result<&'a str, ServiceError> {
+    if artifact_path.is_empty() {
         return Err(ServiceError::Forbidden("artifact_path_not_allowed"));
     }
     // Task 4.3: ".." and "." segments must be rejected with 403 (path traversal guard)
-    if segments
-        .iter()
+    if artifact_path
+        .split('/')
         .any(|segment| !is_safe_path_segment(segment))
     {
         return Err(ServiceError::Forbidden("artifact_path_not_allowed"));
     }
-    Ok(segments.join("/"))
+    Ok(artifact_path)
 }
 
 fn resolve_run_artifact_path(run_dir: &Path, artifact_path: &str) -> Result<PathBuf, ServiceError> {
