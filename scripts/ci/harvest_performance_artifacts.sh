@@ -30,8 +30,14 @@ for id in "${RUN_IDS[@]}"; do
   if [[ -z "${id}" ]]; then
     continue
   fi
+  artifact_name="$(gh api "repos/:owner/:repo/actions/runs/${id}/artifacts" --jq \
+    ".artifacts[] | select(.name | startswith(\"performance-evidence-${id}-\")) | .name" | head -n1)"
+  if [[ -z "${artifact_name}" ]]; then
+    echo "ERROR: missing performance artifact for run ${id}" >&2
+    exit 1
+  fi
   mkdir -p "${BATCH_DIR}/${id}"
-  gh run download "${id}" --name "performance-evidence-${id}-1" --dir "${BATCH_DIR}/${id}"
+  gh run download "${id}" --name "${artifact_name}" --dir "${BATCH_DIR}/${id}"
 done
 
 scripts/ci/gate_performance_learning_review.sh \
