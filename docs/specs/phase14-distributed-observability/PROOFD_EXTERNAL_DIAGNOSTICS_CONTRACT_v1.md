@@ -21,6 +21,10 @@ This contract covers:
 - forbidden response-field classes for observability payloads
 - service-owned response schema stability for computed/index diagnostics responses
 
+Graph-specific payload shape is further constrained by:
+
+- `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+
 This contract does not cover:
 
 - `POST /verify/bundle`

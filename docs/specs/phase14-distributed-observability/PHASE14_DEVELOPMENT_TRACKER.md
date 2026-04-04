@@ -56,7 +56,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
-| 3.4 | Cross-Node Observability Graph | TODO | Architectural target exists; current graph surface remains Phase-13-derived | Define Phase-14 graph contract and artifact shape |
+| 3.4 | Cross-Node Observability Graph | IN PROGRESS | Canonical graph contract v1 is now drafted; current endpoint surface still remains Phase-13-derived | Bind `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` to the v1 graph contract and artifact shape |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
 ### Status Legend
@@ -89,8 +89,19 @@ This tracker is operational, not historical. Historical closure truth remains in
   - `ci-gate-observability-routing-separation` passed
   - `ci-gate-proofd-observability-boundary` passed
   - `ci-gate-proofd-service` passed
-  - `ci-gate-proofd-schema-coverage` passed
-  - PR `#93` merged after `ci-freeze` passed on the final dispatch-hardening slice
+- `ci-gate-proofd-schema-coverage` passed
+  - PR `#94` merged after `ci-freeze` run `23989067554` passed on the final dispatch-hardening slice
+
+**Workstream 3.4 opened with contract-first scope**
+- Canonical graph contract drafted at `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+- 3.4 remains explicitly non-authoritative:
+  - `graph = derived diagnostics`
+  - `graph != authority`
+  - `graph != routing hint`
+  - `graph != consensus`
+- Current implementation note:
+  - `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` still serve Phase-13-derived graph artifacts
+  - the new document freezes the target field vocabulary, edge model, cluster model, and determinism rules before endpoint implementation
 
 ### 2026-04-03
 
@@ -162,6 +173,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 - Formal phase pointer: `docs/roadmap/CURRENT_PHASE`
 - Phase-14 spec: `docs/specs/phase14-distributed-observability/README.md`
 - Phase-14 architecture map: `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+- Phase-14 graph contract: `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
 - Phase-13 closure confirmation: `reports/phase13_official_closure_candidate/closure_index.json`
 - Active implementation surface:
   - `userspace/proofd/src/lib.rs`
@@ -171,16 +183,17 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ## 7. Open Items
 
-1. Should service-owned response schema coverage expand to artifact-backed passthrough endpoints, or remain intentionally limited to `proofd`-computed/index responses in v1?
-2. Should non-GET diagnostics method rejection eventually move from namespace prefix logic into the same endpoint registry layer, or remain a separate boundary check?
+1. Should the first 3.4 implementation keep the graph payload Phase-13-compatible at the envelope level, or introduce a narrower Phase-14-specific graph envelope immediately?
+2. Should cluster explanations stay embedded inside the graph payload, or remain split across graph, convergence, and authority-topology surfaces in v1?
+3. Should non-GET diagnostics method rejection eventually move from namespace prefix logic into the same endpoint registry layer, or remain a separate boundary check?
 
 ---
 
 ## 8. Next Steps
 
 1. Keep artifact-backed passthrough endpoints intentionally outside structural schema enforcement unless a narrower v2 rule is defined.
-2. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
-3. Open Workstream 3.4 without weakening the 3.3 diagnostics contract boundary.
+2. Implement the first 3.4 slice against `CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md` before expanding graph endpoint behavior.
+3. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
 4. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
 
 ---
