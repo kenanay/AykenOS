@@ -55,6 +55,20 @@ fn read_json_file(path: &Path) -> Result<Value, String> {
         .map_err(|error| format!("invalid json at {}: {error}", path.display()))
 }
 
+fn load_verify_request_snapshot(path: &Path, source_run_id: &str) -> Result<Value, String> {
+    let request = read_json_file(path)?;
+    let run_id = request
+        .get("run_id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("verify request missing run_id at {}", path.display()))?;
+    if run_id != source_run_id {
+        return Err(format!(
+            "verify request run_id mismatch: expected {source_run_id}, found {run_id}"
+        ));
+    }
+    Ok(request)
+}
+
 fn build_internal_replay_request(
     run_dir: &Path,
     verify_request_path: Option<&Path>,
@@ -74,17 +88,9 @@ fn build_internal_replay_request(
     }
 
     let verify_request = if let Some(path) = verify_request_path {
-        let request = read_json_file(path)?;
-        let run_id = request
-            .get("run_id")
-            .and_then(Value::as_str)
-            .ok_or_else(|| format!("verify request missing run_id at {}", path.display()))?;
-        if run_id != source_run_id {
-            return Err(format!(
-                "verify request run_id mismatch: expected {source_run_id}, found {run_id}"
-            ));
-        }
-        request
+        load_verify_request_snapshot(path, source_run_id)?
+    } else if run_dir.join("proofd_verify_request.json").is_file() {
+        load_verify_request_snapshot(&run_dir.join("proofd_verify_request.json"), source_run_id)?
     } else {
         let mut verify_request = Map::new();
         for field in [
@@ -496,6 +502,66 @@ mod tests {
                 .and_then(|value| value.get("verified_at_utc"))
                 .and_then(Value::as_str),
             Some("2026-04-03T00:00:00Z")
+        );
+
+        let _ = fs::remove_dir_all(&evidence_root);
+    }
+
+    #[test]
+    fn internal_replay_request_auto_uses_sibling_verify_request_snapshot() {
+        let evidence_root = temp_dir("proofd-main-replay-request-auto-snapshot");
+        let run_dir = evidence_root.join("run-proofd-main-r1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        fs::write(
+            run_dir.join("proofd_run_manifest.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "run_id": "run-proofd-main-r1",
+                "bundle_path": "/abs/bundle",
+                "policy_path": "/abs/policy.json",
+                "registry_path": "/abs/registry.json",
+                "receipt_mode": "emit_unsigned",
+            }))
+            .expect("serialize manifest"),
+        )
+        .expect("write manifest");
+        fs::write(
+            run_dir.join("proofd_verify_request.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "bundle_path": "/abs/snapshot-bundle",
+                "policy_path": "/abs/snapshot-policy.json",
+                "registry_path": "/abs/snapshot-registry.json",
+                "receipt_mode": "emit_signed",
+                "run_id": "run-proofd-main-r1",
+                "receipt_signer": {
+                    "verifier_node_id": "node-a",
+                    "verifier_key_id": "key-a",
+                    "signature_algorithm": "ed25519",
+                    "private_key": "abc123",
+                    "verified_at_utc": "2026-04-03T00:00:00Z"
+                }
+            }))
+            .expect("serialize request"),
+        )
+        .expect("write request");
+
+        let request_bytes =
+            build_internal_replay_request(&run_dir, None).expect("build replay request");
+        let request: Value = serde_json::from_slice(&request_bytes).expect("parse request");
+
+        assert_eq!(
+            request
+                .get("verify_request")
+                .and_then(|value| value.get("bundle_path"))
+                .and_then(Value::as_str),
+            Some("/abs/snapshot-bundle")
+        );
+        assert_eq!(
+            request
+                .get("verify_request")
+                .and_then(|value| value.get("receipt_signer"))
+                .and_then(|value| value.get("verifier_key_id"))
+                .and_then(Value::as_str),
+            Some("key-a")
         );
 
         let _ = fs::remove_dir_all(&evidence_root);
