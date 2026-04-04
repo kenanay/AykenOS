@@ -197,29 +197,6 @@ void timer_isr_c(void *frame_ptr)
             proc_emit_low_half_kheap_runtime_proof(current_proc, "timer_irq");
         }
 #endif
-        // Defer the very first IRQ-driven reschedule at Ring3 entry RIP so the
-        // user stub can publish epoch/syscall markers before strict IRQ arbitration.
-        // Gate-4 isolated policy proof keeps its original timer behavior.
-#if (!defined(AYKEN_GATE4_POLICY_TEST) || (AYKEN_GATE4_POLICY_TEST == 0))
-        // Keep early Ring3 bootstrap window uninterrupted so the stub can
-        // publish mailbox epoch, perform syscall roundtrip, and hit INT3 proof.
-        // This does not alter Gate-4 isolated policy mode.
-        static uint8_t phase10_entry_irq_defer_marker_emitted = 0;
-        static uint8_t phase10_entry_irq_deferred_once = 0;
-        if (!phase10_entry_irq_deferred_once &&
-            frame->rip >= USER_TEXT_BASE &&
-            frame->rip < (USER_TEXT_BASE + 0x80ULL)) {
-            phase10_entry_irq_deferred_once = 1;
-#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-            if (!phase10_entry_irq_defer_marker_emitted) {
-                phase10_entry_irq_defer_marker_emitted = 1;
-                timer_debugcon_write("P10_IRQ_DEFER_ENTRY\n");
-            }
-#endif
-            return;
-        }
-#endif
-
         current_proc->context.r15 = frame->r15;
         current_proc->context.r14 = frame->r14;
         current_proc->context.r13 = frame->r13;
@@ -277,6 +254,9 @@ void timer_isr_c(void *frame_ptr)
             timer_debugcon_write("P10_SCHED_EVENT_NOTIFY\n");
         }
 #endif
+        if (sched_should_defer_irq_resched_on_ring3_entry(current_proc)) {
+            return;
+        }
         sched_request_resched_irq();
     }
 }

@@ -43,6 +43,8 @@ void sched_yield_irq(void);
 void sched_request_resched(void);
 void sched_request_resched_irq(void);
 uint32_t sched_take_resched(void);
+void sched_arm_ring3_entry_guard_if_ring3(proc_t *proc);
+int sched_should_defer_irq_resched_on_ring3_entry(proc_t *proc);
 
 // Ring0 mechanism: Start scheduler with first mailbox-backed process
 void sched_start(void);

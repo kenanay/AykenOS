@@ -34,6 +34,7 @@ Env controls:
   PERF_PREEMPT_BOOTSTRAP_POLICY=0|1            (default: 1)
   PERF_PREEMPT_MB_SELFTEST=0|1                 (default: 0)
   PERF_PREEMPT_DETERMINISTIC_EXIT=0|1          (default: 1)
+  PERF_PREEMPT_RING3_ENTRY_GUARD=0|1           (default: 1 for syscall-v2-runtime, else 0)
   PERF_PREEMPT_BUILD_DEBUG_SCHED=0|1           (default: make profile)
   PERF_PREEMPT_BUILD_DEBUG_IRQ=0|1             (default: make profile)
   PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET=csv      (default: 0,1)
@@ -69,6 +70,7 @@ PREEMPT_USER_MINIMAL_MODE="${PERF_PREEMPT_USER_MINIMAL_MODE:-syscall-v2-runtime}
 PREEMPT_BOOTSTRAP_POLICY="${PERF_PREEMPT_BOOTSTRAP_POLICY:-1}"
 PREEMPT_MB_SELFTEST="${PERF_PREEMPT_MB_SELFTEST:-0}"
 PREEMPT_DETERMINISTIC_EXIT="${PERF_PREEMPT_DETERMINISTIC_EXIT:-1}"
+PREEMPT_RING3_ENTRY_GUARD="${PERF_PREEMPT_RING3_ENTRY_GUARD:-}"
 PREEMPT_BUILD_DEBUG_SCHED="${PERF_PREEMPT_BUILD_DEBUG_SCHED:-}"
 PREEMPT_BUILD_DEBUG_IRQ="${PERF_PREEMPT_BUILD_DEBUG_IRQ:-}"
 PREEMPT_EXPECTED_QEMU_EXIT_SET="${PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET:-0,1}"
@@ -78,6 +80,14 @@ BOOT_OK_MARKER="[K][BOOT_OK] Phase 4.4 minimal boot reached"
 PREEMPT_SW_COUNT_PATTERN='[SW|MARK:SW] count:'
 PREEMPT_IRET_COUNT_PATTERN='[IRET markers] count:'
 INIT_BASELINE=0
+
+if [[ -z "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  if [[ "${PREEMPT_USER_MINIMAL_MODE}" == "syscall-v2-runtime" ]]; then
+    PREEMPT_RING3_ENTRY_GUARD="1"
+  else
+    PREEMPT_RING3_ENTRY_GUARD="0"
+  fi
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -185,6 +195,15 @@ case "${PREEMPT_DETERMINISTIC_EXIT}" in
     ;;
   *)
     echo "ERROR: PERF_PREEMPT_DETERMINISTIC_EXIT must be 0 or 1" >&2
+    exit 3
+    ;;
+esac
+
+case "${PREEMPT_RING3_ENTRY_GUARD}" in
+  0|1)
+    ;;
+  *)
+    echo "ERROR: PERF_PREEMPT_RING3_ENTRY_GUARD must be 0 or 1" >&2
     exit 3
     ;;
 esac
@@ -388,6 +407,7 @@ PREEMPT_USER_MINIMAL_MODE_ENV="${PREEMPT_USER_MINIMAL_MODE}" \
 PREEMPT_BOOTSTRAP_POLICY_ENV="${PREEMPT_BOOTSTRAP_POLICY}" \
 PREEMPT_MB_SELFTEST_ENV="${PREEMPT_MB_SELFTEST}" \
 PREEMPT_DETERMINISTIC_EXIT_ENV="${PREEMPT_DETERMINISTIC_EXIT}" \
+PREEMPT_RING3_ENTRY_GUARD_ENV="${PREEMPT_RING3_ENTRY_GUARD}" \
 PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV="${PREEMPT_EXPECTED_QEMU_EXIT_SET}" \
 MEASUREMENT_CONTRACT_ENV="${MEASUREMENT_CONTRACT}" \
 ENV_JSON_ENV="${ENV_JSON}" \
@@ -419,6 +439,7 @@ payload = {
         "preempt_bootstrap_policy": int(os.environ["PREEMPT_BOOTSTRAP_POLICY_ENV"]),
         "preempt_mb_selftest": int(os.environ["PREEMPT_MB_SELFTEST_ENV"]),
         "preempt_deterministic_exit": int(os.environ["PREEMPT_DETERMINISTIC_EXIT_ENV"]),
+        "preempt_ring3_entry_guard": int(os.environ["PREEMPT_RING3_ENTRY_GUARD_ENV"]),
         "preempt_expected_qemu_exit_set": os.environ["PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV"],
     },
 }
@@ -448,6 +469,7 @@ PREEMPT_BUILD_ARGS=(
   "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
   "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
   "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
+  "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
 )
 if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
   PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
@@ -462,6 +484,7 @@ fi
   echo "[PERF]   bootstrap_policy=${PREEMPT_BOOTSTRAP_POLICY}"
   echo "[PERF]   mb_selftest=${PREEMPT_MB_SELFTEST}"
   echo "[PERF]   deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
+  echo "[PERF]   ring3_entry_guard=${PREEMPT_RING3_ENTRY_GUARD}"
   echo "[PERF]   debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
   echo "[PERF]   debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
 } >> "${BUILD_LOG}"
@@ -499,6 +522,7 @@ PREEMPT_TEST_ENV=(
   "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
   "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
   "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
+  "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
   "PREEMPT_METRICS_OUT=${PREEMPT_METRICS_TXT}"
   "PREEMPT_ANALYSIS_LOG_OUT=${PREEMPT_ANALYSIS_LOG}"
 )
@@ -536,10 +560,13 @@ PREEMPT_CONTRACT_BUILD_DEBUG_SCHED="$(extract_kv_text "contract_build_debug_sche
 PREEMPT_CONTRACT_BUILD_DEBUG_IRQ="$(extract_kv_text "contract_build_debug_irq" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE="$(extract_kv_text "contract_build_debug_sched_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE="$(extract_kv_text "contract_build_debug_irq_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_ENTRY_GUARD="$(extract_kv_text "contract_ring3_entry_guard" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE="$(extract_kv_text "contract_ring3_entry_guard_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_USER_MODE="$(extract_kv_text "observed_user_minimal_mode" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_BOOTSTRAP="$(extract_kv_text "observed_bootstrap_policy" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_MB_SELFTEST="$(extract_kv_text "observed_mb_selftest" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_DETERMINISTIC_EXIT="$(extract_kv_text "observed_deterministic_exit" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_OBSERVED_RING3_ENTRY_GUARD="$(extract_kv_text "observed_ring3_entry_guard" "${PREEMPT_METRICS_TXT}")"
 PHASE_BOOT_START_TICKS="$(extract_kv_metric "phase_boot_start_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_BOOT_START_TICK_VALID="$(extract_kv_metric "phase_boot_start_tick_valid" "${PREEMPT_METRICS_TXT}")"
 PHASE_CORE_READY_TICKS="$(extract_kv_metric "phase_core_ready_ticks" "${PREEMPT_METRICS_TXT}")"
@@ -626,6 +653,9 @@ fi
 if [[ "${PREEMPT_CONTRACT_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
   record_violation "preempt_contract_not_consumed:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:actual=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
 fi
+if [[ "${PREEMPT_CONTRACT_RING3_ENTRY_GUARD}" != "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  record_violation "preempt_contract_not_consumed:ring3_entry_guard:expected=${PREEMPT_RING3_ENTRY_GUARD}:actual=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
+fi
 if [[ "${PREEMPT_OBSERVED_USER_MODE}" != "${PREEMPT_USER_MINIMAL_MODE}" ]]; then
   record_violation "preempt_observed_mismatch:user_minimal_mode:expected=${PREEMPT_USER_MINIMAL_MODE}:observed=${PREEMPT_OBSERVED_USER_MODE:-missing}"
 fi
@@ -637,6 +667,9 @@ if [[ "${PREEMPT_OBSERVED_MB_SELFTEST}" != "${PREEMPT_MB_SELFTEST}" ]]; then
 fi
 if [[ "${PREEMPT_OBSERVED_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}" ]]; then
   record_violation "preempt_observed_mismatch:deterministic_exit:expected=${PREEMPT_DETERMINISTIC_EXIT}:observed=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
+fi
+if [[ "${PREEMPT_OBSERVED_RING3_ENTRY_GUARD}" != "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
+  record_violation "preempt_observed_mismatch:ring3_entry_guard:expected=${PREEMPT_RING3_ENTRY_GUARD}:observed=${PREEMPT_OBSERVED_RING3_ENTRY_GUARD:-missing}"
 fi
 
 PREEMPT_TIME_MS="${PREEMPT_TIME_MS_WALL}"

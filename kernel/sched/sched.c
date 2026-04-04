@@ -85,6 +85,10 @@ extern volatile uint32_t phase10_ring3_user_code_seen;
 #define AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY 0
 #endif
 
+#ifndef AYKEN_RING3_ENTRY_GUARD
+#define AYKEN_RING3_ENTRY_GUARD 0
+#endif
+
 #ifndef AYKEN_RING3_STERILE_ALT_ROOT
 #define AYKEN_RING3_STERILE_ALT_ROOT 0
 #endif
@@ -192,6 +196,10 @@ void sched_emit_ring3_frame_proof(const uint64_t *frame_rsp);
 static void sched_mask_irq0_before_first_ring3_entry(proc_t *proc);
 static uint8_t phase10_first_entry_irq0_masked = 0;
 static void sched_note_first_user_entry_if_ring3(proc_t *proc);
+static volatile uint8_t ring3_entry_guard_armed = 0;
+static volatile uint8_t ring3_entry_guard_active = 0;
+static uint8_t ring3_entry_guard_defer_marker_emitted = 0;
+static uint8_t ring3_entry_guard_disarm_marker_emitted = 0;
 
 static inline uint64_t ayken_rdtsc(void)
 {
@@ -547,6 +555,15 @@ void sched_perf_note_first_user_entry(void)
 
 void sched_perf_note_first_syscall_gate_entry(void)
 {
+#if AYKEN_RING3_ENTRY_GUARD == 1
+    if (ring3_entry_guard_active) {
+        ring3_entry_guard_active = 0;
+        if (!ring3_entry_guard_disarm_marker_emitted) {
+            ring3_entry_guard_disarm_marker_emitted = 1;
+            sched_emit_marker("P10_RING3_ENTRY_GUARD_DISARM\n");
+        }
+    }
+#endif
     sched_note_perf_phase_once(
         SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY,
         "first_syscall_gate_entry");
@@ -779,6 +796,37 @@ static void sched_note_first_user_entry_if_ring3(proc_t *proc)
     if ((proc->context.cs & 0x3u) == 0x3u) {
         sched_perf_note_first_user_entry();
     }
+}
+
+void sched_arm_ring3_entry_guard_if_ring3(proc_t *proc)
+{
+#if AYKEN_RING3_ENTRY_GUARD == 1
+    if (!proc || ((proc->context.cs & 0x3u) != 0x3u) || ring3_entry_guard_armed) {
+        return;
+    }
+    ring3_entry_guard_armed = 1;
+    ring3_entry_guard_active = 1;
+    sched_emit_marker("P10_RING3_ENTRY_GUARD_ARM\n");
+#else
+    (void)proc;
+#endif
+}
+
+int sched_should_defer_irq_resched_on_ring3_entry(proc_t *proc)
+{
+#if AYKEN_RING3_ENTRY_GUARD == 1
+    if (!ring3_entry_guard_active || !proc || ((proc->context.cs & 0x3u) != 0x3u)) {
+        return 0;
+    }
+    if (!ring3_entry_guard_defer_marker_emitted) {
+        ring3_entry_guard_defer_marker_emitted = 1;
+        sched_emit_marker("P10_RING3_ENTRY_GUARD_DEFER_IRQ\n");
+    }
+    return 1;
+#else
+    (void)proc;
+    return 0;
+#endif
 }
 
 static void sched_mask_irq0_before_first_ring3_entry(proc_t *proc)
@@ -6027,6 +6075,7 @@ static void sched_yield_core(int reenable_if)
             }
 #endif
             sched_note_first_user_entry_if_ring3(current_proc);
+            sched_arm_ring3_entry_guard_if_ring3(current_proc);
             sched_mask_irq0_before_first_ring3_entry(current_proc);
             sched_emit_pre_dispatch_text_walk_proof(current_proc);
             context_switch(&prev->context, &current_proc->context);
@@ -6173,6 +6222,7 @@ static void sched_yield_core(int reenable_if)
             used_mailbox,
             reenable_if ? SCHED_DECISION_SITE_YIELD : SCHED_DECISION_SITE_IRQ);
         sched_note_first_user_entry_if_ring3(current_proc);
+        sched_arm_ring3_entry_guard_if_ring3(current_proc);
         sched_graft_real_user_state_into_sterile_root(current_proc);
         sched_force_ring3_entry_cr3_to_sterile_root(current_proc);
         sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
@@ -6253,6 +6303,7 @@ static void sched_yield_core(int reenable_if)
 
         sched_dbg_mark_iret();
         sched_note_first_user_entry_if_ring3(current_proc);
+        sched_arm_ring3_entry_guard_if_ring3(current_proc);
         sched_mask_irq0_before_first_ring3_entry(current_proc);
         
         switch_to_first(&current_proc->context);
@@ -6352,6 +6403,7 @@ void sched_block_current(void)
         used_mailbox,
         SCHED_DECISION_SITE_BLOCK);
     sched_note_first_user_entry_if_ring3(current_proc);
+    sched_arm_ring3_entry_guard_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     context_switch(&prev->context, &current_proc->context);
@@ -6414,6 +6466,7 @@ void sched_exit_current(void)
     sched_prepare_dispatch_context_or_panic(current_proc);
 
     sched_note_first_user_entry_if_ring3(current_proc);
+    sched_arm_ring3_entry_guard_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     context_switch(&prev->context, &current_proc->context);

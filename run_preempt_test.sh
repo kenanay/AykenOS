@@ -113,10 +113,26 @@ if [[ "${AYKEN_DEBUG_IRQ+x}" == "x" ]]; then
   CONTRACT_BUILD_DEBUG_IRQ_SOURCE="env"
 fi
 
+CONTRACT_RING3_ENTRY_GUARD="<make-default>"
+CONTRACT_RING3_ENTRY_GUARD_SOURCE="make_default"
+if [[ "${AYKEN_RING3_ENTRY_GUARD+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_RING3_ENTRY_GUARD}" ]]; then
+    echo "ERROR: AYKEN_RING3_ENTRY_GUARD is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_RING3_ENTRY_GUARD}" != "0" && "${AYKEN_RING3_ENTRY_GUARD}" != "1" ]]; then
+    echo "ERROR: AYKEN_RING3_ENTRY_GUARD must be 0 or 1 (got '${AYKEN_RING3_ENTRY_GUARD}')"
+    exit 1
+  fi
+  CONTRACT_RING3_ENTRY_GUARD="${AYKEN_RING3_ENTRY_GUARD}"
+  CONTRACT_RING3_ENTRY_GUARD_SOURCE="env"
+fi
+
 OBSERVED_USER_MINIMAL_MODE="<unknown>"
 OBSERVED_BOOTSTRAP_POLICY="<unknown>"
 OBSERVED_MB_SELFTEST="<unknown>"
 OBSERVED_DETERMINISTIC_EXIT="<unknown>"
+OBSERVED_RING3_ENTRY_GUARD="<unknown>"
 
 now_ms() {
   python3 - <<'PY'
@@ -156,10 +172,13 @@ write_preempt_metrics() {
     echo "contract_build_debug_sched_source=${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}"
     echo "contract_build_debug_irq=${CONTRACT_BUILD_DEBUG_IRQ}"
     echo "contract_build_debug_irq_source=${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}"
+    echo "contract_ring3_entry_guard=${CONTRACT_RING3_ENTRY_GUARD}"
+    echo "contract_ring3_entry_guard_source=${CONTRACT_RING3_ENTRY_GUARD_SOURCE}"
     echo "observed_user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE:-<unknown>}"
     echo "observed_bootstrap_policy=${OBSERVED_BOOTSTRAP_POLICY:-<unknown>}"
     echo "observed_mb_selftest=${OBSERVED_MB_SELFTEST:-<unknown>}"
     echo "observed_deterministic_exit=${OBSERVED_DETERMINISTIC_EXIT:-<unknown>}"
+    echo "observed_ring3_entry_guard=${OBSERVED_RING3_ENTRY_GUARD:-<unknown>}"
     echo "strict_markers=${STRICT_MARKERS}"
     echo "preempt_clean_rebuild=${PREEMPT_CLEAN_REBUILD}"
     echo "qemu_run_time_ms=${qemu_run_time_ms:-0}"
@@ -218,6 +237,9 @@ if [[ "${CONTRACT_BUILD_DEBUG_SCHED_SOURCE}" == "env" ]]; then
 fi
 if [[ "${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}" == "env" ]]; then
   MAKE_BUILD_ARGS+=(AYKEN_DEBUG_IRQ="${CONTRACT_BUILD_DEBUG_IRQ}")
+fi
+if [[ "${CONTRACT_RING3_ENTRY_GUARD_SOURCE}" == "env" ]]; then
+  MAKE_BUILD_ARGS+=(AYKEN_RING3_ENTRY_GUARD="${CONTRACT_RING3_ENTRY_GUARD}")
 fi
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
@@ -314,6 +336,14 @@ mark_iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/MARK:IRET/,"&")}END{print c+0}' "$AN
 iret_count="$(awk 'BEGIN{c=0}{c+=gsub(/(ABOUT_TO_IRETQ|MARK:IRET)/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 sched_idle_count="$(awk 'BEGIN{c=0}{c+=gsub(/\[SEL\]\[IDLE\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
 proof_done_seen="$(awk 'BEGIN{c=0}{c+=gsub(/\[\[AYKEN_PROOF_DONE\]\]/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_arm_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_ARM/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_defer_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_DEFER_IRQ/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+ring3_entry_guard_disarm_count="$(awk 'BEGIN{c=0}{c+=gsub(/P10_RING3_ENTRY_GUARD_DISARM/,"&")}END{print c+0}' "$ANALYSIS_LOG")"
+if [[ "${ring3_entry_guard_arm_count}" -gt 0 ]]; then
+  OBSERVED_RING3_ENTRY_GUARD="1"
+else
+  OBSERVED_RING3_ENTRY_GUARD="0"
+fi
 cfg_line="$(grep -E '\[K\]\[CFG\] user_minimal_mode=' "$ANALYSIS_LOG" | tail -n1 || true)"
 if [[ -n "${cfg_line}" ]]; then
   OBSERVED_USER_MINIMAL_MODE="$(printf '%s\n' "${cfg_line}" | sed -n 's/.*user_minimal_mode=\([^[:space:]]*\).*/\1/p')"
@@ -748,6 +778,7 @@ echo "Observed user mode: ${OBSERVED_USER_MINIMAL_MODE}"
 echo "Observed bootstrap: ${OBSERVED_BOOTSTRAP_POLICY}"
 echo "Observed selftest : ${OBSERVED_MB_SELFTEST}"
 echo "Observed det-exit : ${OBSERVED_DETERMINISTIC_EXIT}"
+echo "Observed entry guard: ${OBSERVED_RING3_ENTRY_GUARD}"
 echo "MARK PID2 entries : $mark_pid2_count"
 echo "MARK PID3 entries : $mark_pid3_count"
 echo "MARK alternations : $mark_alt_count"
