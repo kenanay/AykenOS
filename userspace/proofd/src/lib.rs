@@ -742,6 +742,19 @@ fn handle_diagnostics_endpoint(
                 Err(error) => error_response(error),
             }
         }
+        DiagnosticsEndpointId::RunGraph => {
+            let (_, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            let artifact = contract
+                .artifact_file
+                .expect("run graph endpoint missing artifact file");
+            match read_json_file(&run_dir.join(artifact)) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
         _ if contract.artifact_file.is_some() => {
             let base_dir = if resolved.params.run_id.is_some() {
                 match resolve_run_scope(&resolved, evidence_dir) {
@@ -4725,17 +4738,254 @@ mod tests {
         write_artifact(
             &run_dir,
             "parity_incident_graph.json",
-            r#"{"graph":{"node_count":3,"edge_count":2,"incident_count":1}}"#,
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "provenance":{
+                "artifact_set_hash":"sha256:artifact-set",
+                "source_runs":["phase12-cross-node-parity"]
+              },
+              "graph":{
+                "node_count":3,
+                "edge_count":2,
+                "incident_count":1,
+                "nodes":[
+                  {
+                    "id":"node-a",
+                    "node_fingerprint":"sha256:fingerprint-a",
+                    "surface_key":"sha256:surface",
+                    "outcome_key":"sha256:outcome-a",
+                    "verdict":"TRUSTED"
+                  },
+                  {
+                    "id":"node-b",
+                    "node_fingerprint":"sha256:fingerprint-b",
+                    "surface_key":"sha256:surface",
+                    "outcome_key":"sha256:outcome-b",
+                    "verdict":"UNTRUSTED"
+                  },
+                  {
+                    "id":"node-c",
+                    "node_fingerprint":"sha256:fingerprint-c",
+                    "surface_key":"sha256:surface",
+                    "outcome_key":"sha256:outcome-c",
+                    "verdict":"INVALID"
+                  }
+                ],
+                "edges":[
+                  {
+                    "from":"node-a",
+                    "to":"node-b",
+                    "edge_type":"same_outcome",
+                    "incident_id":"sha256:incident-a",
+                    "surface_key":"sha256:surface"
+                  },
+                  {
+                    "from":"node-a",
+                    "to":"node-c",
+                    "edge_type":"incident",
+                    "incident_id":"sha256:incident-a",
+                    "surface_key":"sha256:surface"
+                  }
+                ],
+                "incidents":[
+                  {
+                    "incident_id":"sha256:incident-a",
+                    "surface_key":"sha256:surface",
+                    "severity":"pure_determinism_failure",
+                    "nodes":["node-a","node-b","node-c"],
+                    "node_count":3
+                  }
+                ]
+              }
+            }"#,
         );
 
         let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
         assert_eq!(
+            body.get("graph_version").and_then(|v| v.as_str()),
+            Some("v1")
+        );
+        assert_eq!(
             body.get("graph")
                 .and_then(|v| v.get("edge_count"))
                 .and_then(|v| v.as_u64()),
             Some(2)
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_rejects_missing_graph_version() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:set","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("diagnostics_schema_contract_violation")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_rejects_empty_authority() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "graph_version":"v1",
+              "authority":"",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:set","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("diagnostics_schema_contract_violation")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_rejects_missing_provenance() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("diagnostics_schema_contract_violation")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_rejects_empty_env_hash() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:set","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("diagnostics_schema_contract_violation")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_fail_closes_on_forbidden_field() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "routing_hint":"forbidden",
+              "provenance":{"artifact_set_hash":"sha256:set","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260310-1/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("forbidden_observability_field_exposed")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_scoped_graph_endpoint_rejects_truth_selection_query() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            "parity_incident_graph.json",
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:set","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request(
+            "GET",
+            "/diagnostics/runs/run-20260310-1/graph?select_winner=true",
+            &dir,
+        );
+        assert_eq!(response.status_code, 400);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
         );
         let _ = fs::remove_dir_all(&dir);
     }

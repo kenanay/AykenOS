@@ -10,7 +10,9 @@ use proof_verifier::authority::authority_drift_topology::{
 };
 use proof_verifier::authority::determinism_incident::analyze_determinism_incidents;
 use proof_verifier::authority::drift_attribution::analyze_parity_drift;
-use proof_verifier::authority::incident_graph::build_incident_graph;
+use proof_verifier::authority::incident_graph::{
+    build_incident_graph, build_phase14_incident_graph_envelope, compute_graph_artifact_set_hash,
+};
 use proof_verifier::authority::parity::{
     build_node_parity_outcome, compare_authority_resolution, compare_cross_node_parity,
     CrossNodeParityInput, CrossNodeParityRecord, CrossNodeParityStatus, NodeParityOutcome,
@@ -77,6 +79,9 @@ enum GateMode {
     ReplayAdmissionBoundary,
     ReplicatedVerificationBoundary,
 }
+
+const PHASE14_GRAPH_AUTHORITY: &str = "proof-verifier-cross-node-parity";
+const PHASE14_GRAPH_SOURCE_RUN: &str = "phase12-cross-node-parity";
 
 struct HarnessArgs {
     mode: GateMode,
@@ -2945,47 +2950,21 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "incidents": determinism_incident_report.incidents,
         "suppressed_incidents": determinism_incident_report.suppressed_incidents,
     });
-    write_json(
-        out_dir.join("parity_determinism_incidents.json"),
-        &parity_determinism_incidents,
-    )?;
-    let parity_incident_graph = json!({
-        "gate": "cross-node-parity",
-        "mode": "phase12_cross_node_parity_incident_graph",
-        "status": "PASS",
-        "graph": build_incident_graph(&node_parity_outcomes, &determinism_incident_report),
-    });
-    write_json(
-        out_dir.join("parity_incident_graph.json"),
-        &parity_incident_graph,
-    )?;
     let parity_authority_drift_topology = json!({
         "gate": "cross-node-parity",
         "mode": "phase12_cross_node_parity_authority_drift_topology",
         "status": "PASS",
         "topology": build_authority_drift_topology(&node_parity_outcomes),
     });
-    write_json(
-        out_dir.join("parity_authority_drift_topology.json"),
-        &parity_authority_drift_topology,
-    )?;
     let parity_authority_suppression_report = json!({
         "gate": "cross-node-parity",
         "mode": "phase12_cross_node_parity_authority_suppression",
         "status": "PASS",
         "suppression": analyze_authority_drift_suppressions(&node_parity_outcomes),
     });
-    write_json(
-        out_dir.join("parity_authority_suppression_report.json"),
-        &parity_authority_suppression_report,
-    )?;
 
     let parity_convergence_report =
         build_parity_convergence_report(&node_parity_outcomes, &failure_matrix);
-    write_json(
-        out_dir.join("parity_convergence_report.json"),
-        &parity_convergence_report,
-    )?;
 
     let drift_report = analyze_parity_drift(&node_parity_outcomes);
     let parity_drift_attribution_report = json!({
@@ -3004,6 +2983,55 @@ fn build_cross_node_parity_gate_artifacts(out_dir: &Path) -> Result<i32, String>
         "partition_reports": drift_report.partition_reports,
         "primary_cause_counts": drift_report.primary_cause_counts,
     });
+    let graph_env_hash = build_phase14_graph_env_hash(&node_parity_outcomes)?;
+    let graph_artifact_set_hash = compute_graph_artifact_set_hash(&[
+        ("parity_report.json", &parity_report),
+        ("parity_determinism_incidents.json", &parity_determinism_incidents),
+        ("parity_convergence_report.json", &parity_convergence_report),
+        (
+            "parity_drift_attribution_report.json",
+            &parity_drift_attribution_report,
+        ),
+        (
+            "parity_authority_drift_topology.json",
+            &parity_authority_drift_topology,
+        ),
+    ])
+    .map_err(|error| format!("phase14 graph artifact set hash generation failed: {error}"))?;
+    let parity_incident_graph = serde_json::to_value(
+        build_phase14_incident_graph_envelope(
+            build_incident_graph(&node_parity_outcomes, &determinism_incident_report).map_err(
+                |error| format!("phase14 incident graph generation failed: {error}"),
+            )?,
+            PHASE14_GRAPH_AUTHORITY,
+            &graph_env_hash,
+            "PASS",
+            &graph_artifact_set_hash,
+            &[PHASE14_GRAPH_SOURCE_RUN.to_string()],
+        )
+        .map_err(|error| format!("phase14 incident graph envelope generation failed: {error}"))?,
+    )
+    .map_err(|error| format!("phase14 incident graph envelope serialization failed: {error}"))?;
+    write_json(
+        out_dir.join("parity_determinism_incidents.json"),
+        &parity_determinism_incidents,
+    )?;
+    write_json(
+        out_dir.join("parity_incident_graph.json"),
+        &parity_incident_graph,
+    )?;
+    write_json(
+        out_dir.join("parity_authority_drift_topology.json"),
+        &parity_authority_drift_topology,
+    )?;
+    write_json(
+        out_dir.join("parity_authority_suppression_report.json"),
+        &parity_authority_suppression_report,
+    )?;
+    write_json(
+        out_dir.join("parity_convergence_report.json"),
+        &parity_convergence_report,
+    )?;
     write_json(
         out_dir.join("parity_drift_attribution_report.json"),
         &parity_drift_attribution_report,
@@ -4960,6 +4988,52 @@ fn canonical_json_sha256(value: &Value) -> Result<String, String> {
     let bytes = canonicalize_json_value(value)
         .map_err(|error| format!("verifier core canonicalization failed: {error}"))?;
     Ok(sha256_hex(&bytes))
+}
+
+fn build_phase14_graph_env_hash(node_outcomes: &[NodeParityOutcome]) -> Result<String, String> {
+    let verifier_contract_versions = node_outcomes
+        .iter()
+        .map(|node| node.verifier_contract_version().to_string())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let artifact_forms = node_outcomes
+        .iter()
+        .map(|node| parity_artifact_form_label(node.artifact_form()).to_string())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let evidence_states = node_outcomes
+        .iter()
+        .map(|node| parity_evidence_state_label(node.evidence_state()).to_string())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    let bytes = canonicalize_json_value(&json!({
+        "authority": PHASE14_GRAPH_AUTHORITY,
+        "producer_gate": "cross-node-parity",
+        "mode": "phase12_cross_node_parity_incident_graph",
+        "verifier_contract_versions": verifier_contract_versions,
+        "artifact_forms": artifact_forms,
+        "evidence_states": evidence_states,
+    }))
+    .map_err(|error| format!("phase14 graph env hash canonicalization failed: {error}"))?;
+    Ok(format!("sha256:{}", sha256_hex(&bytes)))
+}
+
+fn parity_artifact_form_label(form: &ParityArtifactForm) -> &'static str {
+    match form {
+        ParityArtifactForm::SignedReceipt => "signed_receipt",
+        ParityArtifactForm::LocalVerificationOutcome => "local_verification_outcome",
+    }
+}
+
+fn parity_evidence_state_label(state: &ParityEvidenceState) -> &'static str {
+    match state {
+        ParityEvidenceState::Sufficient => "sufficient",
+        ParityEvidenceState::Insufficient => "insufficient",
+    }
 }
 
 fn tamper_signature_envelope(root: &Path) -> Result<(), String> {

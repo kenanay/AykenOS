@@ -1,4 +1,5 @@
 use serde_json::{json, Value};
+use std::collections::BTreeSet;
 
 use crate::api_contract::{
     public_endpoint_contract_for_path, DiagnosticsEndpointId, ROOT_DIAGNOSTICS_ENDPOINTS,
@@ -54,6 +55,9 @@ pub enum SchemaValidationError {
     FieldTypeMismatch {
         field: &'static str,
         expected: SchemaValueKind,
+    },
+    InvalidFieldValue {
+        field: &'static str,
     },
 }
 
@@ -457,6 +461,33 @@ const RUN_BOUNDARY_REQUIRED_FIELDS: &[SchemaField] = &[
     },
 ];
 
+const RUN_GRAPH_REQUIRED_FIELDS: &[SchemaField] = &[
+    SchemaField {
+        name: "graph_version",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "env_hash",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "status",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "provenance",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "graph",
+        kind: SchemaValueKind::Object,
+    },
+];
+
 const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
     EndpointSchema {
         endpoint_id: DiagnosticsEndpointId::Version,
@@ -554,6 +585,12 @@ const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
         required_fields: RUN_BOUNDARY_REQUIRED_FIELDS,
         optional_fields: EMPTY_FIELDS,
     },
+    EndpointSchema {
+        endpoint_id: DiagnosticsEndpointId::RunGraph,
+        root_kind: SchemaValueKind::Object,
+        required_fields: RUN_GRAPH_REQUIRED_FIELDS,
+        optional_fields: EMPTY_FIELDS,
+    },
 ];
 
 pub fn schema_for_endpoint_id(
@@ -581,7 +618,8 @@ pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Sc
         | DiagnosticsEndpointId::RunFederation
         | DiagnosticsEndpointId::RunContext
         | DiagnosticsEndpointId::RunRegistry
-        | DiagnosticsEndpointId::RunBoundary => SchemaCoverage::Full,
+        | DiagnosticsEndpointId::RunBoundary
+        | DiagnosticsEndpointId::RunGraph => SchemaCoverage::Full,
         DiagnosticsEndpointId::Parity
         | DiagnosticsEndpointId::AuthoritySuppression
         | DiagnosticsEndpointId::AuthorityTopology
@@ -594,7 +632,6 @@ pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Sc
         | DiagnosticsEndpointId::RunParity
         | DiagnosticsEndpointId::RunAuthoritySuppression
         | DiagnosticsEndpointId::RunAuthorityTopology
-        | DiagnosticsEndpointId::RunGraph
         | DiagnosticsEndpointId::RunDrift
         | DiagnosticsEndpointId::RunConvergence
         | DiagnosticsEndpointId::RunFailureMatrix => SchemaCoverage::None,
@@ -614,10 +651,10 @@ pub fn response_mode_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Resp
         | DiagnosticsEndpointId::RunParity
         | DiagnosticsEndpointId::RunAuthoritySuppression
         | DiagnosticsEndpointId::RunAuthorityTopology
-        | DiagnosticsEndpointId::RunGraph
         | DiagnosticsEndpointId::RunDrift
         | DiagnosticsEndpointId::RunConvergence
         | DiagnosticsEndpointId::RunFailureMatrix => ResponseMode::ArtifactJsonPassthrough,
+        DiagnosticsEndpointId::RunGraph => ResponseMode::ArtifactFiltered,
         DiagnosticsEndpointId::RunArtifactFile => ResponseMode::ArtifactFilePassthrough,
         DiagnosticsEndpointId::Incidents => ResponseMode::ArtifactFiltered,
         _ => ResponseMode::Computed,
@@ -651,7 +688,8 @@ pub fn validate_response_schema_for_path(
         SchemaCoverage::Full => {
             let schema = schema_for_endpoint_id(contract.id)
                 .expect("schema coverage full requires schema declaration");
-            validate_response_schema(schema, value)
+            validate_response_schema(schema, value)?;
+            validate_endpoint_specific_contract(contract.id, value)
         }
     }
 }
@@ -757,6 +795,226 @@ fn validate_response_schema(
     Ok(())
 }
 
+fn validate_endpoint_specific_contract(
+    endpoint_id: DiagnosticsEndpointId,
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    match endpoint_id {
+        DiagnosticsEndpointId::RunGraph => validate_phase14_graph_contract_v1(value),
+        _ => Ok(()),
+    }
+}
+
+pub fn validate_phase14_graph_contract_v1(
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    let graph_version = require_non_empty_string(root, "graph_version")?;
+    if graph_version != "v1" {
+        return Err(SchemaValidationError::InvalidFieldValue {
+            field: "graph_version",
+        });
+    }
+    require_non_empty_string(root, "authority")?;
+    require_non_empty_string(root, "env_hash")?;
+
+    let provenance = require_object(root, "provenance")?;
+    require_non_empty_string(provenance, "artifact_set_hash")?;
+    let source_runs = require_array(provenance, "source_runs")?;
+    validate_source_runs(source_runs)?;
+
+    let graph = require_object(root, "graph")?;
+    let nodes = require_array(graph, "nodes")?;
+    let edges = require_array(graph, "edges")?;
+    let incidents = require_array(graph, "incidents")?;
+
+    require_exact_count(graph, "node_count", nodes.len())?;
+    require_exact_count(graph, "edge_count", edges.len())?;
+    require_exact_count(graph, "incident_count", incidents.len())?;
+
+    let incident_ids = collect_incident_ids(incidents)?;
+    validate_graph_nodes(nodes)?;
+    validate_graph_edges(edges, &incident_ids)?;
+
+    Ok(())
+}
+
+fn require_non_empty_string<'a>(
+    map: &'a serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<&'a str, SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    let Some(value) = value.as_str() else {
+        return Err(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::String,
+        });
+    };
+    if value.trim().is_empty() {
+        return Err(SchemaValidationError::InvalidFieldValue { field });
+    }
+    Ok(value)
+}
+
+fn require_object<'a>(
+    map: &'a serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<&'a serde_json::Map<String, Value>, SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    value.as_object().ok_or(SchemaValidationError::FieldTypeMismatch {
+        field,
+        expected: SchemaValueKind::Object,
+    })
+}
+
+fn require_array<'a>(
+    map: &'a serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<&'a Vec<Value>, SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    value.as_array().ok_or(SchemaValidationError::FieldTypeMismatch {
+        field,
+        expected: SchemaValueKind::Array,
+    })
+}
+
+fn require_exact_count(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+    expected_len: usize,
+) -> Result<(), SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    let Some(value) = value.as_u64() else {
+        return Err(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::Number,
+        });
+    };
+    if value as usize != expected_len {
+        return Err(SchemaValidationError::InvalidFieldValue { field });
+    }
+    Ok(())
+}
+
+fn validate_source_runs(source_runs: &[Value]) -> Result<(), SchemaValidationError> {
+    if source_runs.is_empty() {
+        return Err(SchemaValidationError::InvalidFieldValue {
+            field: "source_runs",
+        });
+    }
+    let mut previous: Option<&str> = None;
+    let mut seen = BTreeSet::new();
+    for value in source_runs {
+        let Some(value) = value.as_str() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "source_runs[]",
+                expected: SchemaValueKind::String,
+            });
+        };
+        if value.trim().is_empty() {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "source_runs",
+            });
+        }
+        if let Some(previous_value) = previous {
+            if value <= previous_value {
+                return Err(SchemaValidationError::InvalidFieldValue {
+                    field: "source_runs",
+                });
+            }
+        }
+        if !seen.insert(value) {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "source_runs",
+            });
+        }
+        previous = Some(value);
+    }
+    Ok(())
+}
+
+fn collect_incident_ids(
+    incidents: &[Value],
+) -> Result<BTreeSet<String>, SchemaValidationError> {
+    let mut incident_ids = BTreeSet::new();
+    for incident in incidents {
+        let Some(incident) = incident.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "incidents[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        let incident_id = require_non_empty_string(incident, "incident_id")?;
+        if !incident_ids.insert(incident_id.to_string()) {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "incident_id",
+            });
+        }
+    }
+    Ok(incident_ids)
+}
+
+fn validate_graph_nodes(nodes: &[Value]) -> Result<(), SchemaValidationError> {
+    for node in nodes {
+        let Some(node) = node.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "nodes[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        require_non_empty_string(node, "id")?;
+        require_non_empty_string(node, "node_fingerprint")?;
+    }
+    Ok(())
+}
+
+fn validate_graph_edges(
+    edges: &[Value],
+    incident_ids: &BTreeSet<String>,
+) -> Result<(), SchemaValidationError> {
+    for edge in edges {
+        let Some(edge) = edge.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "edges[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        require_non_empty_string(edge, "from")?;
+        require_non_empty_string(edge, "to")?;
+        let edge_type = require_non_empty_string(edge, "edge_type")?;
+        match edge_type {
+            "same_outcome" => {}
+            "incident" => {
+                let incident_id = require_non_empty_string(edge, "incident_id")?;
+                if !incident_ids.contains(incident_id) {
+                    return Err(SchemaValidationError::InvalidFieldValue {
+                        field: "incident_id",
+                    });
+                }
+            }
+            _ => {
+                return Err(SchemaValidationError::InvalidFieldValue {
+                    field: "edge_type",
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn schema_value_kind_name(kind: SchemaValueKind) -> &'static str {
     match kind {
         SchemaValueKind::Object => "object",
@@ -855,6 +1113,77 @@ mod tests {
         assert_eq!(
             schema_coverage_for_endpoint_id(DiagnosticsEndpointId::Parity),
             SchemaCoverage::None
+        );
+    }
+
+    #[test]
+    fn coverage_marks_run_graph_as_full() {
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::RunGraph),
+            SchemaCoverage::Full
+        );
+    }
+
+    #[test]
+    fn run_graph_schema_rejects_missing_graph_version() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/runs/run-a/graph",
+            &json!({
+                "authority": "proof-verifier-cross-node-parity",
+                "env_hash": "sha256:env",
+                "status": "PASS",
+                "provenance": {
+                    "artifact_set_hash": "sha256:set",
+                    "source_runs": ["run-a"]
+                },
+                "graph": {
+                    "node_count": 0,
+                    "edge_count": 0,
+                    "incident_count": 0,
+                    "nodes": [],
+                    "edges": [],
+                    "incidents": []
+                }
+            }),
+        )
+        .expect_err("missing graph_version must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::MissingRequiredField {
+                field: "graph_version"
+            }
+        );
+    }
+
+    #[test]
+    fn run_graph_schema_rejects_unsorted_source_runs() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/runs/run-a/graph",
+            &json!({
+                "graph_version": "v1",
+                "authority": "proof-verifier-cross-node-parity",
+                "env_hash": "sha256:env",
+                "status": "PASS",
+                "provenance": {
+                    "artifact_set_hash": "sha256:set",
+                    "source_runs": ["run-b", "run-a"]
+                },
+                "graph": {
+                    "node_count": 0,
+                    "edge_count": 0,
+                    "incident_count": 0,
+                    "nodes": [],
+                    "edges": [],
+                    "incidents": []
+                }
+            }),
+        )
+        .expect_err("unsorted source_runs must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::InvalidFieldValue {
+                field: "source_runs"
+            }
         );
     }
 }
