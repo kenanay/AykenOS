@@ -30,6 +30,31 @@ on:
         description: "Pinned runner image/build digest (required for baseline init, ex: gha-ubuntu22-20260212.1-x64)"
         required: false
         default: ""
+      enable_perf_split_metrics_shadow:
+        description: "Enable non-authoritative split-metric shadow evaluation"
+        type: boolean
+        required: true
+        default: false
+      enable_perf_split_metrics_enforcement:
+        description: "Enable split-metric enforcement scaffold"
+        type: boolean
+        required: true
+        default: false
+      enable_perf_enforce_entry:
+        description: "Enable entry split-metric checks when scaffold enforcement is on"
+        type: boolean
+        required: true
+        default: false
+      enable_perf_enforce_return:
+        description: "Enable return split-metric checks when scaffold enforcement is on"
+        type: boolean
+        required: true
+        default: false
+      enable_perf_enforce_pure:
+        description: "Enable pure syscall split-metric checks when scaffold enforcement is on"
+        type: boolean
+        required: true
+        default: false
 
 jobs:
   freeze:
@@ -46,6 +71,11 @@ jobs:
       PERF_AUTHORITY_SALT: "${{ github.repository }}"  # Fork-safe drift authority namespace
       PERF_ENV_MISMATCH_POLICY: "fail"  # Constitutional mode: strict enforcement
       PERF_REGRESSION_POLICY: "fail"    # Constitutional mode: strict enforcement
+      PERF_SPLIT_METRICS_SHADOW: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enable_perf_split_metrics_shadow == 'true' && '1' || '0' }}
+      PERF_SPLIT_METRICS_ENFORCEMENT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enable_perf_split_metrics_enforcement == 'true' && '1' || '0' }}
+      PERF_ENFORCE_ENTRY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enable_perf_enforce_entry == 'true' && '1' || '0' }}
+      PERF_ENFORCE_RETURN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enable_perf_enforce_return == 'true' && '1' || '0' }}
+      PERF_ENFORCE_PURE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enable_perf_enforce_pure == 'true' && '1' || '0' }}
       GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
       PHASE10C_ENFORCE: "1"
       PHASE10C_C2_STRICT: "1"
