@@ -102,6 +102,9 @@ fn build_internal_replay_request(
             "run_id".to_string(),
             Value::String(manifest_run_id.to_string()),
         );
+        if let Some(receipt_signer) = manifest.get("receipt_signer") {
+            verify_request.insert("receipt_signer".to_string(), receipt_signer.clone());
+        }
         Value::Object(verify_request)
     };
 
@@ -390,6 +393,47 @@ mod tests {
                 .and_then(|value| value.get("run_id"))
                 .and_then(Value::as_str),
             Some("run-proofd-main-r1")
+        );
+
+        let _ = fs::remove_dir_all(&evidence_root);
+    }
+
+    #[test]
+    fn internal_replay_request_fallback_copies_receipt_signer_from_manifest() {
+        let evidence_root = temp_dir("proofd-main-replay-request-signed-fallback");
+        let run_dir = evidence_root.join("run-proofd-main-r1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        fs::write(
+            run_dir.join("proofd_run_manifest.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "run_id": "run-proofd-main-r1",
+                "bundle_path": "/abs/bundle",
+                "policy_path": "/abs/policy.json",
+                "registry_path": "/abs/registry.json",
+                "receipt_mode": "emit_signed",
+                "receipt_signer": {
+                    "verifier_node_id": "node-a",
+                    "verifier_key_id": "key-a",
+                    "signature_algorithm": "ed25519",
+                    "private_key": "abc123",
+                    "verified_at_utc": "2026-04-03T00:00:00Z"
+                }
+            }))
+            .expect("serialize manifest"),
+        )
+        .expect("write manifest");
+
+        let request_bytes =
+            build_internal_replay_request(&run_dir, None).expect("build replay request");
+        let request: Value = serde_json::from_slice(&request_bytes).expect("parse request");
+
+        assert_eq!(
+            request
+                .get("verify_request")
+                .and_then(|value| value.get("receipt_signer"))
+                .and_then(|value| value.get("verifier_key_id"))
+                .and_then(Value::as_str),
+            Some("key-a")
         );
 
         let _ = fs::remove_dir_all(&evidence_root);
