@@ -451,6 +451,7 @@ durations = (
     ("first_sched_activity", "first_user_entry", "first_sched_activity_to_first_user_entry"),
     ("first_user_entry", "first_syscall_gate_entry", "first_user_entry_to_first_syscall_gate_entry"),
     ("first_syscall_gate_entry", "first_syscall_entry", "first_syscall_gate_entry_to_first_syscall_entry"),
+    ("first_syscall_gate_entry", "first_syscall_exit", "first_syscall_gate_entry_to_first_syscall_exit"),
     ("first_syscall_gate_entry", "first_syscall_gate_return", "first_syscall_gate_entry_to_first_syscall_gate_return"),
     ("first_user_entry", "first_syscall_entry", "first_user_entry_to_first_syscall_entry"),
     ("first_user_entry", "first_syscall_exit", "first_user_entry_to_first_syscall_exit"),

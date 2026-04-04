@@ -137,6 +137,8 @@ This separation allows:
 Implementation note:
 - Local comparison explicitly sets `PERF_ALLOW_UNTRACKED_BASELINE=1`.
 - Local gate stores a separate threshold contract (`boot=20%`, `context=15%`, `syscall=15%`).
+- CI/global enforcement still keys off the legacy proxy metrics (`boot_time_ms`, `context_switch_latency_ms_proxy`, `syscall_latency_ms_proxy`).
+- Split latency diagnostics (`entry_latency_ticks`, `syscall_latency_ticks_pure`, `syscall_gate_return_latency_ticks`) are informational until the Linux authority baseline is renewed.
 - Local gate stores a sampling contract (`sample_size=5`, `warmup_runs=1`, `aggregation=median`, `outlier_policy=none` by default).
 - Local gate records jitter visibility in run evidence: `min`, `max`, `range`, `range_percent_of_median`, `median_abs_deviation`, and MAD-based outlier candidates.
 - MAD-based outlier detection is currently diagnostic-only; samples are reported, not discarded.

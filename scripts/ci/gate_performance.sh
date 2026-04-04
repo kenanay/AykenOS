@@ -593,6 +593,8 @@ PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS="$(extract_kv_metric "p
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_gate_entry_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_entry_available" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_exit_ticks" "${PREEMPT_METRICS_TXT}")"
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_exit_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_ticks" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE="$(extract_kv_metric "phase_first_syscall_gate_entry_to_first_syscall_gate_return_available" "${PREEMPT_METRICS_TXT}")"
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS="$(extract_kv_metric "phase_first_user_entry_to_first_syscall_entry_ticks" "${PREEMPT_METRICS_TXT}")"
@@ -763,6 +765,8 @@ PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV="${PHASE_FIRST_USER
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE}" \
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}" \
+PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE}" \
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS}" \
 PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV="${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE}" \
 PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV="${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS}" \
@@ -832,6 +836,51 @@ payload = {
         if os.environ["SYSCALL_LATENCY_MS_PROXY_ENV"] != "INF"
         else None
     ),
+    "entry_latency_ticks": {
+        "ticks": int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE_ENV"])),
+    },
+    "syscall_latency_ticks_pure": {
+        "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV"])),
+    },
+    "syscall_gate_return_latency_ticks": {
+        "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
+        "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE_ENV"])),
+    },
+    "metric_model": {
+        "context_switch_latency_ms_proxy": {
+            "role": "authoritative_proxy",
+            "units": "ms",
+            "source": "preempt_run_time_ms / preempt_sw_count",
+            "enforcement": "baseline_threshold",
+        },
+        "syscall_latency_ms_proxy": {
+            "role": "authoritative_proxy",
+            "units": "ms",
+            "source": "preempt_run_time_ms / preempt_iret_count",
+            "enforcement": "baseline_threshold",
+            "note": "Includes the guarded first-entry window; keep for continuity while split diagnostics expose the pure syscall phase.",
+        },
+        "entry_latency_ticks": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_user_entry -> first_syscall_gate_entry",
+            "enforcement": "informational_only",
+        },
+        "syscall_latency_ticks_pure": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_syscall_gate_entry -> first_syscall_exit",
+            "enforcement": "informational_only",
+        },
+        "syscall_gate_return_latency_ticks": {
+            "role": "diagnostic_split",
+            "units": "ticks",
+            "source": "first_syscall_gate_entry -> first_syscall_gate_return",
+            "enforcement": "informational_only",
+        },
+    },
     "phase_breakdown_ticks": {
         "raw_markers": {
             "boot_start": {
@@ -887,6 +936,10 @@ payload = {
             "first_syscall_gate_entry_to_first_syscall_entry": {
                 "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_TICKS_ENV"]),
                 "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_ENTRY_AVAILABLE_ENV"])),
+            },
+            "first_syscall_gate_entry_to_first_syscall_exit": {
+                "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS_ENV"]),
+                "available": bool(int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE_ENV"])),
             },
             "first_syscall_gate_entry_to_first_syscall_gate_return": {
                 "ticks": int(os.environ["PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS_ENV"]),
@@ -1405,16 +1458,19 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_contract_deterministic_exit=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT:-missing}"
   echo "preempt_contract_build_debug_sched=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED:-missing}"
   echo "preempt_contract_build_debug_irq=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ:-missing}"
+  echo "preempt_contract_ring3_entry_guard=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
   echo "preempt_contract_user_minimal_mode_source=${PREEMPT_CONTRACT_USER_MODE_SOURCE:-missing}"
   echo "preempt_contract_bootstrap_policy_source=${PREEMPT_CONTRACT_BOOTSTRAP_SOURCE:-missing}"
   echo "preempt_contract_mb_selftest_source=${PREEMPT_CONTRACT_MB_SELFTEST_SOURCE:-missing}"
   echo "preempt_contract_deterministic_exit_source=${PREEMPT_CONTRACT_DETERMINISTIC_EXIT_SOURCE:-missing}"
   echo "preempt_contract_build_debug_sched_source=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE:-missing}"
   echo "preempt_contract_build_debug_irq_source=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE:-missing}"
+  echo "preempt_contract_ring3_entry_guard_source=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE:-missing}"
   echo "preempt_observed_user_minimal_mode=${PREEMPT_OBSERVED_USER_MODE:-missing}"
   echo "preempt_observed_bootstrap_policy=${PREEMPT_OBSERVED_BOOTSTRAP:-missing}"
   echo "preempt_observed_mb_selftest=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"
   echo "preempt_observed_deterministic_exit=${PREEMPT_OBSERVED_DETERMINISTIC_EXIT:-missing}"
+  echo "preempt_observed_ring3_entry_guard=${PREEMPT_OBSERVED_RING3_ENTRY_GUARD:-missing}"
   echo "env_hash=${ENV_HASH}"
   echo "drift_authority_hash=${DRIFT_AUTHORITY_HASH}"
   echo "drift_allowlist_file=${DRIFT_ALLOWLIST_FILE}"
@@ -1425,6 +1481,12 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_qemu_run_time_ms=${PREEMPT_QEMU_RUN_TIME_MS}"
   echo "context_switch_latency_ms_proxy=${CONTEXT_SWITCH_LATENCY_MS_PROXY}"
   echo "syscall_latency_ms_proxy=${SYSCALL_LATENCY_MS_PROXY}"
+  echo "entry_latency_ticks=${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_TICKS}"
+  echo "entry_latency_ticks_available=${PHASE_FIRST_USER_ENTRY_TO_FIRST_SYSCALL_GATE_ENTRY_AVAILABLE}"
+  echo "syscall_latency_ticks_pure=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_TICKS}"
+  echo "syscall_latency_ticks_pure_available=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_EXIT_AVAILABLE}"
+  echo "syscall_gate_return_latency_ticks=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_TICKS}"
+  echo "syscall_gate_return_latency_ticks_available=${PHASE_FIRST_SYSCALL_GATE_ENTRY_TO_FIRST_SYSCALL_GATE_RETURN_AVAILABLE}"
   echo "violations_count=${VIOLATIONS_COUNT}"
 } > "${META_TXT}"
 
@@ -1462,6 +1524,7 @@ out = {
     "violations_count": violations_count,
     "measurement_contract": meta.get("measurement_contract", "unknown"),
     "measurement_contract_note": "Deterministic preempt harness scenario is enforced (not constitutional default runtime).",
+    "metric_model_note": "Legacy ms proxy metrics remain the baseline-enforced surface; split tick metrics expose entry-window and pure syscall timing after the ring3 entry guard change.",
     "meta": meta,
     "env": read_json("env.json"),
     "results": read_json("results.json"),
