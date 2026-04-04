@@ -209,51 +209,46 @@ static inline uint64_t ayken_rdtsc(void)
     return ((uint64_t)hi << 32) | (uint64_t)lo;
 }
 
-enum sched_perf_phase_id {
-    SCHED_PERF_PHASE_BOOT_START = 0,
-    SCHED_PERF_PHASE_CORE_READY,
-    SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY,
-    SCHED_PERF_PHASE_FIRST_USER_ENTRY,
-    SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY,
-    SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN,
-    SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY,
-    SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT,
-    SCHED_PERF_PHASE_COUNT,
-};
-
 static uint8_t sched_perf_phase_emitted[SCHED_PERF_PHASE_COUNT];
-
-enum sched_perf_mb_phase_id {
-    SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER = 0,
-    SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT,
-    SCHED_PERF_MB_PHASE_EXTRACT_ENTER,
-    SCHED_PERF_MB_PHASE_EXTRACT_EXIT,
-    SCHED_PERF_MB_PHASE_VALIDATE_ENTER,
-    SCHED_PERF_MB_PHASE_VALIDATE_EXIT,
-    SCHED_PERF_MB_PHASE_ARBITER_ENTER,
-    SCHED_PERF_MB_PHASE_ARBITER_EXIT,
-    SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_ENTER,
-    SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_EXIT,
-    SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_ENTER,
-    SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT,
-    SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK,
-    SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_KEEP_RUNNING,
-    SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_SWITCH,
-    SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_REJECT,
-    SCHED_PERF_MB_PHASE_ARBITER_KEEP_RUNNING_FALLBACK,
-    SCHED_PERF_MB_PHASE_ARBITER_RETURN_NULL,
-    SCHED_PERF_MB_PHASE_ARBITER_READY_HEAD_FALLBACK,
-    SCHED_PERF_MB_PHASE_HANDOFF_ENTER,
-    SCHED_PERF_MB_PHASE_HANDOFF_EXIT,
-    SCHED_PERF_MB_PHASE_COUNT,
-};
-
 static uint8_t sched_perf_mb_phase_emitted[SCHED_PERF_MB_PHASE_COUNT];
+static const char *const sched_perf_phase_names[SCHED_PERF_PHASE_COUNT] = {
+    [SCHED_PERF_PHASE_BOOT_START] = "boot_start",
+    [SCHED_PERF_PHASE_CORE_READY] = "core_ready",
+    [SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY] = "first_sched_activity",
+    [SCHED_PERF_PHASE_FIRST_USER_ENTRY] = "first_user_entry",
+    [SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY] = "first_syscall_gate_entry",
+    [SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN] = "first_syscall_gate_return",
+    [SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY] = "first_syscall_entry",
+    [SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT] = "first_syscall_exit",
+};
+static const char *const sched_perf_mb_phase_names[SCHED_PERF_MB_PHASE_COUNT] = {
+    [SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER] = "snapshot_enter",
+    [SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT] = "snapshot_exit",
+    [SCHED_PERF_MB_PHASE_EXTRACT_ENTER] = "extract_enter",
+    [SCHED_PERF_MB_PHASE_EXTRACT_EXIT] = "extract_exit",
+    [SCHED_PERF_MB_PHASE_VALIDATE_ENTER] = "validate_enter",
+    [SCHED_PERF_MB_PHASE_VALIDATE_EXIT] = "validate_exit",
+    [SCHED_PERF_MB_PHASE_ARBITER_ENTER] = "arbiter_enter",
+    [SCHED_PERF_MB_PHASE_ARBITER_EXIT] = "arbiter_exit",
+    [SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_ENTER] = "arbiter_owner_lookup_enter",
+    [SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_EXIT] = "arbiter_owner_lookup_exit",
+    [SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_ENTER] = "arbiter_candidate_lookup_enter",
+    [SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT] = "arbiter_candidate_lookup_exit",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER] = "arbiter_decision_enter",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT] = "arbiter_decision_exit",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH] = "arbiter_decision_path_switch",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING] = "arbiter_decision_path_keep_running",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT] = "arbiter_decision_path_reject",
+    [SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK] = "arbiter_decision_path_fallback",
+    [SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_KEEP_RUNNING] = "arbiter_candidate_accept_keep_running",
+    [SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_SWITCH] = "arbiter_candidate_accept_switch",
+    [SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_REJECT] = "arbiter_candidate_reject",
+    [SCHED_PERF_MB_PHASE_ARBITER_KEEP_RUNNING_FALLBACK] = "arbiter_keep_running_fallback",
+    [SCHED_PERF_MB_PHASE_ARBITER_RETURN_NULL] = "arbiter_return_null",
+    [SCHED_PERF_MB_PHASE_ARBITER_READY_HEAD_FALLBACK] = "arbiter_ready_head_fallback",
+    [SCHED_PERF_MB_PHASE_HANDOFF_ENTER] = "handoff_enter",
+    [SCHED_PERF_MB_PHASE_HANDOFF_EXIT] = "handoff_exit",
+};
 
 static void sched_emit_marker(const char *text)
 {
@@ -531,32 +526,13 @@ static void sched_note_perf_mb_phase_once(enum sched_perf_mb_phase_id id, const 
     sched_emit_perf_mb_phase_marker(name);
 }
 
-void sched_perf_note_boot_start(void)
+void sched_perf_note_phase(enum sched_perf_phase_id id)
 {
-    sched_note_perf_phase_once(SCHED_PERF_PHASE_BOOT_START, "boot_start");
-}
-
-void sched_perf_note_core_ready(void)
-{
-    sched_note_perf_phase_once(SCHED_PERF_PHASE_CORE_READY, "core_ready");
-}
-
-void sched_perf_note_first_scheduler_activity(void)
-{
-    sched_note_perf_phase_once(
-        SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY,
-        "first_sched_activity");
-}
-
-void sched_perf_note_first_user_entry(void)
-{
-    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_USER_ENTRY, "first_user_entry");
-}
-
-void sched_perf_note_first_syscall_gate_entry(void)
-{
+    if ((uint32_t)id >= (uint32_t)SCHED_PERF_PHASE_COUNT) {
+        return;
+    }
 #if AYKEN_RING3_ENTRY_GUARD == 1
-    if (ring3_entry_guard_active) {
+    if (id == SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY && ring3_entry_guard_active) {
         ring3_entry_guard_active = 0;
         if (!ring3_entry_guard_disarm_marker_emitted) {
             ring3_entry_guard_disarm_marker_emitted = 1;
@@ -564,228 +540,191 @@ void sched_perf_note_first_syscall_gate_entry(void)
         }
     }
 #endif
-    sched_note_perf_phase_once(
-        SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_ENTRY,
-        "first_syscall_gate_entry");
+    sched_note_perf_phase_once(id, sched_perf_phase_names[id]);
 }
 
-void sched_perf_note_first_syscall_gate_return(void)
+void sched_perf_note_mailbox_phase(enum sched_perf_mb_phase_id id)
 {
-    sched_note_perf_phase_once(
-        SCHED_PERF_PHASE_FIRST_SYSCALL_GATE_RETURN,
-        "first_syscall_gate_return");
+    if ((uint32_t)id >= (uint32_t)SCHED_PERF_MB_PHASE_COUNT) {
+        return;
+    }
+    sched_note_perf_mb_phase_once(id, sched_perf_mb_phase_names[id]);
 }
 
-void sched_perf_note_first_syscall_entry(void)
+static void sched_perf_note_first_scheduler_activity(void)
 {
-    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_SYSCALL_ENTRY, "first_syscall_entry");
+    sched_perf_note_phase(SCHED_PERF_PHASE_FIRST_SCHED_ACTIVITY);
 }
 
-void sched_perf_note_first_syscall_exit(void)
+static void sched_perf_note_first_user_entry(void)
 {
-    sched_note_perf_phase_once(SCHED_PERF_PHASE_FIRST_SYSCALL_EXIT, "first_syscall_exit");
+    sched_perf_note_phase(SCHED_PERF_PHASE_FIRST_USER_ENTRY);
 }
 
-void sched_perf_note_mailbox_snapshot_enter(void)
+static void sched_perf_note_mailbox_snapshot_enter(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER, "snapshot_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_SNAPSHOT_ENTER);
 }
 
-void sched_perf_note_mailbox_snapshot_exit(void)
+static void sched_perf_note_mailbox_snapshot_exit(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT, "snapshot_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_SNAPSHOT_EXIT);
 }
 
-void sched_perf_note_mailbox_extract_enter(void)
+static void sched_perf_note_mailbox_extract_enter(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_EXTRACT_ENTER, "extract_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_EXTRACT_ENTER);
 }
 
-void sched_perf_note_mailbox_extract_exit(void)
+static void sched_perf_note_mailbox_extract_exit(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_EXTRACT_EXIT, "extract_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_EXTRACT_EXIT);
 }
 
-void sched_perf_note_mailbox_validate_enter(void)
+static void sched_perf_note_mailbox_arbiter_enter(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_VALIDATE_ENTER, "validate_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_ENTER);
 }
 
-void sched_perf_note_mailbox_validate_exit(void)
+static void sched_perf_note_mailbox_arbiter_exit(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_VALIDATE_EXIT, "validate_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_EXIT);
 }
 
-void sched_perf_note_mailbox_arbiter_enter(void)
+static void sched_perf_note_mailbox_arbiter_owner_lookup_enter(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_ARBITER_ENTER, "arbiter_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_ENTER);
 }
 
-void sched_perf_note_mailbox_arbiter_exit(void)
+static void sched_perf_note_mailbox_arbiter_owner_lookup_exit(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_ARBITER_EXIT, "arbiter_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_EXIT);
 }
 
-void sched_perf_note_mailbox_arbiter_owner_lookup_enter(void)
+static void sched_perf_note_mailbox_arbiter_candidate_lookup_enter(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_ENTER,
-        "arbiter_owner_lookup_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_ENTER);
 }
 
-void sched_perf_note_mailbox_arbiter_owner_lookup_exit(void)
+static void sched_perf_note_mailbox_arbiter_candidate_lookup_exit(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_OWNER_LOOKUP_EXIT,
-        "arbiter_owner_lookup_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT);
 }
 
-void sched_perf_note_mailbox_arbiter_candidate_lookup_enter(void)
+static void sched_perf_note_mailbox_arbiter_decision_enter(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_ENTER,
-        "arbiter_candidate_lookup_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER);
 }
 
-void sched_perf_note_mailbox_arbiter_candidate_lookup_exit(void)
+static void sched_perf_note_mailbox_arbiter_decision_exit(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_LOOKUP_EXIT,
-        "arbiter_candidate_lookup_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT);
 }
 
-void sched_perf_note_mailbox_arbiter_decision_enter(void)
+static void sched_perf_note_mailbox_arbiter_decision_path_switch(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_ENTER,
-        "arbiter_decision_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH);
 }
 
-void sched_perf_note_mailbox_arbiter_decision_exit(void)
+static void sched_perf_note_mailbox_arbiter_decision_path_keep_running(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_EXIT,
-        "arbiter_decision_exit");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING);
 }
 
-void sched_perf_note_mailbox_arbiter_decision_path_switch(void)
+static void sched_perf_note_mailbox_arbiter_decision_path_reject(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_SWITCH,
-        "arbiter_decision_path_switch");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT);
 }
 
-void sched_perf_note_mailbox_arbiter_decision_path_keep_running(void)
+static void sched_perf_note_mailbox_arbiter_decision_path_fallback(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_KEEP_RUNNING,
-        "arbiter_decision_path_keep_running");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK);
 }
 
-void sched_perf_note_mailbox_arbiter_decision_path_reject(void)
-{
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_REJECT,
-        "arbiter_decision_path_reject");
-}
-
-void sched_perf_note_mailbox_arbiter_decision_path_fallback(void)
-{
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_DECISION_PATH_FALLBACK,
-        "arbiter_decision_path_fallback");
-}
-
-void sched_perf_note_mailbox_arbiter_path_switch_enter(void)
+static void sched_perf_note_mailbox_arbiter_path_switch_enter(void)
 {
     sched_emit_perf_mb_path_marker("switch", "enter");
 }
 
-void sched_perf_note_mailbox_arbiter_path_switch_exit(void)
+static void sched_perf_note_mailbox_arbiter_path_switch_exit(void)
 {
     sched_emit_perf_mb_path_marker("switch", "exit");
 }
 
-void sched_perf_note_mailbox_arbiter_path_keep_running_enter(void)
+static void sched_perf_note_mailbox_arbiter_path_keep_running_enter(void)
 {
     sched_emit_perf_mb_path_marker("keep_running", "enter");
 }
 
-void sched_perf_note_mailbox_arbiter_path_keep_running_exit(void)
+static void sched_perf_note_mailbox_arbiter_path_keep_running_exit(void)
 {
     sched_emit_perf_mb_path_marker("keep_running", "exit");
 }
 
-void sched_perf_note_mailbox_arbiter_path_reject_enter(void)
+static void sched_perf_note_mailbox_arbiter_path_reject_enter(void)
 {
     sched_emit_perf_mb_path_marker("reject", "enter");
 }
 
-void sched_perf_note_mailbox_arbiter_path_reject_exit(void)
+static void sched_perf_note_mailbox_arbiter_path_reject_exit(void)
 {
     sched_emit_perf_mb_path_marker("reject", "exit");
 }
 
-void sched_perf_note_mailbox_arbiter_path_fallback_enter(void)
+static void sched_perf_note_mailbox_arbiter_path_fallback_enter(void)
 {
     sched_emit_perf_mb_path_marker("fallback", "enter");
 }
 
-void sched_perf_note_mailbox_arbiter_path_fallback_exit(void)
+static void sched_perf_note_mailbox_arbiter_path_fallback_exit(void)
 {
     sched_emit_perf_mb_path_marker("fallback", "exit");
 }
 
-void sched_perf_note_mailbox_arbiter_candidate_accept_keep_running(void)
+static void sched_perf_note_mailbox_arbiter_candidate_accept_keep_running(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_KEEP_RUNNING,
-        "arbiter_candidate_accept_keep_running");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_KEEP_RUNNING);
 }
 
-void sched_perf_note_mailbox_arbiter_candidate_accept_switch(void)
+static void sched_perf_note_mailbox_arbiter_candidate_accept_switch(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_SWITCH,
-        "arbiter_candidate_accept_switch");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_ACCEPT_SWITCH);
 }
 
-void sched_perf_note_mailbox_arbiter_candidate_reject(void)
+static void sched_perf_note_mailbox_arbiter_candidate_reject(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_REJECT,
-        "arbiter_candidate_reject");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_CANDIDATE_REJECT);
 }
 
-void sched_perf_note_mailbox_arbiter_keep_running_fallback(void)
+static void sched_perf_note_mailbox_arbiter_keep_running_fallback(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_KEEP_RUNNING_FALLBACK,
-        "arbiter_keep_running_fallback");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_KEEP_RUNNING_FALLBACK);
 }
 
-void sched_perf_note_mailbox_arbiter_return_null(void)
+static void sched_perf_note_mailbox_arbiter_return_null(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_RETURN_NULL,
-        "arbiter_return_null");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_ARBITER_RETURN_NULL);
 }
 
-void sched_perf_note_mailbox_arbiter_ready_head_fallback(void)
+static void sched_perf_note_mailbox_arbiter_ready_head_fallback(void)
 {
-    sched_note_perf_mb_phase_once(
-        SCHED_PERF_MB_PHASE_ARBITER_READY_HEAD_FALLBACK,
-        "arbiter_ready_head_fallback");
+    sched_perf_note_mailbox_phase(
+        SCHED_PERF_MB_PHASE_ARBITER_READY_HEAD_FALLBACK);
 }
 
-void sched_perf_note_mailbox_handoff_enter(void)
+static void sched_perf_note_mailbox_handoff_enter(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_HANDOFF_ENTER, "handoff_enter");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_HANDOFF_ENTER);
 }
 
-void sched_perf_note_mailbox_handoff_exit(void)
+static void sched_perf_note_mailbox_handoff_exit(void)
 {
-    sched_note_perf_mb_phase_once(SCHED_PERF_MB_PHASE_HANDOFF_EXIT, "handoff_exit");
+    sched_perf_note_mailbox_phase(SCHED_PERF_MB_PHASE_HANDOFF_EXIT);
 }
 
 static void sched_note_first_user_entry_if_ring3(proc_t *proc)
@@ -798,35 +737,33 @@ static void sched_note_first_user_entry_if_ring3(proc_t *proc)
     }
 }
 
-void sched_arm_ring3_entry_guard_if_ring3(proc_t *proc)
+int sched_ring3_entry_guard_control(proc_t *proc, uint32_t action)
 {
 #if AYKEN_RING3_ENTRY_GUARD == 1
-    if (!proc || ((proc->context.cs & 0x3u) != 0x3u) || ring3_entry_guard_armed) {
-        return;
+    if (action == SCHED_RING3_ENTRY_GUARD_ARM) {
+        if (!proc || ((proc->context.cs & 0x3u) != 0x3u) || ring3_entry_guard_armed) {
+            return 0;
+        }
+        ring3_entry_guard_armed = 1;
+        ring3_entry_guard_active = 1;
+        sched_emit_marker("P10_RING3_ENTRY_GUARD_ARM\n");
+        return 1;
     }
-    ring3_entry_guard_armed = 1;
-    ring3_entry_guard_active = 1;
-    sched_emit_marker("P10_RING3_ENTRY_GUARD_ARM\n");
+    if (action == SCHED_RING3_ENTRY_GUARD_SHOULD_DEFER_IRQ) {
+        if (!ring3_entry_guard_active || !proc || ((proc->context.cs & 0x3u) != 0x3u)) {
+            return 0;
+        }
+        if (!ring3_entry_guard_defer_marker_emitted) {
+            ring3_entry_guard_defer_marker_emitted = 1;
+            sched_emit_marker("P10_RING3_ENTRY_GUARD_DEFER_IRQ\n");
+        }
+        return 1;
+    }
 #else
     (void)proc;
+    (void)action;
 #endif
-}
-
-int sched_should_defer_irq_resched_on_ring3_entry(proc_t *proc)
-{
-#if AYKEN_RING3_ENTRY_GUARD == 1
-    if (!ring3_entry_guard_active || !proc || ((proc->context.cs & 0x3u) != 0x3u)) {
-        return 0;
-    }
-    if (!ring3_entry_guard_defer_marker_emitted) {
-        ring3_entry_guard_defer_marker_emitted = 1;
-        sched_emit_marker("P10_RING3_ENTRY_GUARD_DEFER_IRQ\n");
-    }
-    return 1;
-#else
-    (void)proc;
     return 0;
-#endif
 }
 
 static void sched_mask_irq0_before_first_ring3_entry(proc_t *proc)

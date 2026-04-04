@@ -216,7 +216,6 @@ void timer_isr_c(void *frame_ptr)
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
    ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
     (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
-        extern int sched_mailbox_validate_ring3(proc_t *proc);
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
         // Gate-4/4.5 isolated proofs validate owner authority only.
         if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {

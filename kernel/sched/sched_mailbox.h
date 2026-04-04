@@ -18,9 +18,37 @@
 // Mapping: USER | WRITABLE | PRESENT (per-process, isolated)
 #define SCHED_MAILBOX_VA 0x700000ULL
 
-// Internal functions (not exported from Ring0)
-void sched_mailbox_init(void);
-void sched_mailbox_selftest(void);
-int sched_mailbox_validate_ring3(proc_t *proc); // MVP-1: Ring3 validation
-void sched_mailbox_test_ring3_simulation(proc_t *proc); // MVP-2: Ring3 simulation test
-int sched_mailbox_gate4_epoch1_pending(void);
+enum sched_mailbox_control_op {
+    SCHED_MAILBOX_CONTROL_INIT = 0,
+    SCHED_MAILBOX_CONTROL_VALIDATE_RING3,
+    SCHED_MAILBOX_CONTROL_SELFTEST,
+    SCHED_MAILBOX_CONTROL_TEST_RING3_SIMULATION,
+    SCHED_MAILBOX_CONTROL_GATE4_EPOCH1_PENDING,
+};
+
+int sched_mailbox_control(uint32_t op, proc_t *proc);
+
+static inline void sched_mailbox_init(void)
+{
+    (void)sched_mailbox_control(SCHED_MAILBOX_CONTROL_INIT, NULL);
+}
+
+static inline void sched_mailbox_selftest(void)
+{
+    (void)sched_mailbox_control(SCHED_MAILBOX_CONTROL_SELFTEST, NULL);
+}
+
+static inline int sched_mailbox_validate_ring3(proc_t *proc)
+{
+    return sched_mailbox_control(SCHED_MAILBOX_CONTROL_VALIDATE_RING3, proc);
+}
+
+static inline void sched_mailbox_test_ring3_simulation(proc_t *proc)
+{
+    (void)sched_mailbox_control(SCHED_MAILBOX_CONTROL_TEST_RING3_SIMULATION, proc);
+}
+
+static inline int sched_mailbox_gate4_epoch1_pending(void)
+{
+    return sched_mailbox_control(SCHED_MAILBOX_CONTROL_GATE4_EPOCH1_PENDING, NULL);
+}
