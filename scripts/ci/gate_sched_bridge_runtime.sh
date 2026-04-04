@@ -192,9 +192,14 @@ PY
     fi
     
     # --- Epoch progression validation ---
-    # Extract epoch numbers. Epoch 0 is an idle/no-hint state in runtime path
-    # and should not participate in monotonic contract checks.
-    EPOCHS=$(grep -Eo "epoch=[0-9]+" "${COMBINED_LOG}" | cut -d= -f2 || true)
+    # Use only authoritative scheduler mailbox ACCEPT/REJECT markers for
+    # monotonicity. Broader debug/perf lines also contain epoch= fields and can
+    # legitimately reflect internal mailbox observations or selftest traces that
+    # are not part of the constitutional runtime marker contract.
+    EPOCHS=$(
+        grep -a -E "\[\[AYKEN_SCHED_MB_(ACCEPT|REJECT)\]\]" "${COMBINED_LOG}" | \
+            grep -a -Eo "epoch=[0-9]+" | cut -d= -f2 || true
+    )
     
     if [[ -z "${EPOCHS}" ]]; then
         echo "epoch_missing" >> "${VIOLATIONS}"
