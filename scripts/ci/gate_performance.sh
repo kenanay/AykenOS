@@ -441,8 +441,37 @@ print(json.load(open(sys.argv[1], encoding="utf-8"))["env_hash"])
 PY
 )"
 
-# 2) Build boot image once.
-if ! make -C "${ROOT}" KERNEL_PROFILE="${KERNEL_PROFILE}" efi-img >> "${BUILD_LOG}" 2>&1; then
+# 2) Build the authoritative boot image under the exact preempt contract.
+PREEMPT_BUILD_ARGS=(
+  "KERNEL_PROFILE=${KERNEL_PROFILE}"
+  "USER_MINIMAL_MODE=${PREEMPT_USER_MINIMAL_MODE}"
+  "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
+  "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
+  "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
+)
+if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
+  PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
+fi
+if [[ -n "${PREEMPT_BUILD_DEBUG_IRQ}" ]]; then
+  PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_IRQ=${PREEMPT_BUILD_DEBUG_IRQ}")
+fi
+
+{
+  echo "[PERF] authoritative preempt build contract"
+  echo "[PERF]   user_minimal_mode=${PREEMPT_USER_MINIMAL_MODE}"
+  echo "[PERF]   bootstrap_policy=${PREEMPT_BOOTSTRAP_POLICY}"
+  echo "[PERF]   mb_selftest=${PREEMPT_MB_SELFTEST}"
+  echo "[PERF]   deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
+  echo "[PERF]   debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
+  echo "[PERF]   debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
+} >> "${BUILD_LOG}"
+
+if [[ "${PREEMPT_FORCE_EFI_REBUILD}" == "1" ]]; then
+  if ! make -C "${ROOT}" "${PREEMPT_BUILD_ARGS[@]}" clean >> "${BUILD_LOG}" 2>&1; then
+    record_violation "build_failed:make clean"
+  fi
+fi
+if ! make -C "${ROOT}" "${PREEMPT_BUILD_ARGS[@]}" efi-img >> "${BUILD_LOG}" 2>&1; then
   record_violation "build_failed:make efi-img"
 fi
 cp -f "${BUILD_LOG}" "${RAW_LOG}" 2>/dev/null || true
@@ -463,7 +492,8 @@ PREEMPT_START_MS="$(now_ms)"
 PREEMPT_TEST_ENV=(
   "QEMU_TIMEOUT=${QEMU_TIMEOUT}"
   "STRICT_MARKERS=1"
-  "FORCE_EFI_REBUILD=${PREEMPT_FORCE_EFI_REBUILD}"
+  "FORCE_EFI_REBUILD=0"
+  "PREEMPT_CLEAN_REBUILD=0"
   "KERNEL_PROFILE=${KERNEL_PROFILE}"
   "USER_MINIMAL_MODE=${PREEMPT_USER_MINIMAL_MODE}"
   "AYKEN_SCHED_BOOTSTRAP_POLICY=${PREEMPT_BOOTSTRAP_POLICY}"
