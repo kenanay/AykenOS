@@ -118,6 +118,11 @@ void sched_perf_note_mailbox_arbiter_path_keep_running_enter(void);
 void sched_perf_note_mailbox_arbiter_path_keep_running_exit(void);
 void sched_perf_note_mailbox_arbiter_path_reject_enter(void);
 void sched_perf_note_mailbox_arbiter_path_reject_exit(void);
+void sched_perf_note_mailbox_consume(const char *site,
+                                     uint64_t old_last_epoch,
+                                     uint64_t new_last_epoch,
+                                     uint64_t candidate_epoch,
+                                     const char *reason);
 void sched_perf_note_mailbox_arbiter_path_fallback_enter(void);
 void sched_perf_note_mailbox_arbiter_path_fallback_exit(void);
 void sched_perf_note_mailbox_arbiter_candidate_accept_keep_running(void);

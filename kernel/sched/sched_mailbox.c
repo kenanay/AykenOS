@@ -473,8 +473,23 @@ int sched_mailbox_validate_ring3(proc_t *proc) {
 #if AYKEN_GATE45_PROOF
     // Gate-4.5: leave epoch consume to scheduler decision path so decision->switch
     // proof can consume the first accepted epoch deterministically.
+    sched_perf_note_mailbox_consume(
+        "timer_validate_irq",
+        proc->mailbox_last_epoch,
+        proc->mailbox_last_epoch,
+        e1,
+        "timer_validate_accept_deferred");
 #else
-    proc->mailbox_last_epoch = e1;
+    {
+        uint64_t old_last_epoch = proc->mailbox_last_epoch;
+        proc->mailbox_last_epoch = e1;
+        sched_perf_note_mailbox_consume(
+            "timer_validate_irq",
+            old_last_epoch,
+            proc->mailbox_last_epoch,
+            e1,
+            "timer_validate_accept_consume");
+    }
 #endif
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)

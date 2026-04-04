@@ -338,6 +338,7 @@ RAW_LOG="${EVIDENCE_DIR}/raw.log"
 BOOT_AUDIT_LOG="${EVIDENCE_DIR}/boot-audit.log"
 PREEMPT_LOG="${EVIDENCE_DIR}/preempt.log"
 PREEMPT_METRICS_TXT="${EVIDENCE_DIR}/preempt.metrics.txt"
+PREEMPT_ANALYSIS_LOG="${EVIDENCE_DIR}/preempt.analysis.log"
 ACTUAL_LOCK_JSON="${EVIDENCE_DIR}/actual.lock.json"
 BASELINE_DIFF_TXT="${EVIDENCE_DIR}/baseline.diff.txt"
 VIOLATIONS_TXT="${EVIDENCE_DIR}/violations.txt"
@@ -352,6 +353,7 @@ REPORT_JSON="${EVIDENCE_DIR}/report.json"
 : > "${BOOT_AUDIT_LOG}"
 : > "${PREEMPT_LOG}"
 : > "${PREEMPT_METRICS_TXT}"
+: > "${PREEMPT_ANALYSIS_LOG}"
 : > "${ACTUAL_LOCK_JSON}"
 : > "${BASELINE_DIFF_TXT}"
 : > "${VIOLATIONS_TXT}"
@@ -468,6 +470,7 @@ PREEMPT_TEST_ENV=(
   "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
   "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
   "PREEMPT_METRICS_OUT=${PREEMPT_METRICS_TXT}"
+  "PREEMPT_ANALYSIS_LOG_OUT=${PREEMPT_ANALYSIS_LOG}"
 )
 if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
   PREEMPT_TEST_ENV+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
@@ -914,6 +917,21 @@ mailbox_candidate_visibility_names = (
     "proc_missing",
     "proc_not_schedulable",
 )
+mailbox_consume_reason_names = (
+    "timer_validate_accept_consume",
+    "timer_validate_accept_deferred",
+    "scheduler_keep_running_consume",
+    "scheduler_switch_consume",
+    "gate4_epoch1_pending_bypass",
+    "gate45_self_keep_running_bypass",
+)
+mailbox_consume_site_names = (
+    "timer_validate_irq",
+    "START",
+    "YIELD",
+    "BLOCK",
+    "IRQ",
+)
 
 for name in mailbox_extra_markers:
     payload["mailbox_phase_breakdown_ticks"]["raw_markers"][name] = {
@@ -1001,6 +1019,29 @@ for name in mailbox_extract_reason_names:
 for name in mailbox_candidate_visibility_names:
     payload["mailbox_phase_breakdown_ticks"]["extract_diagnostics"]["candidate_visibility"][name] = int(
         metrics_kv.get(f"mailbox_candidate_visibility_{name}_count", "0")
+    )
+
+payload["mailbox_phase_breakdown_ticks"]["consume_trace"] = {
+    "count": int(metrics_kv.get("mailbox_consume_observation_count", "0")),
+    "latest": {
+        "site": metrics_kv.get("mailbox_consume_latest_site", ""),
+        "old_last_epoch": int(metrics_kv.get("mailbox_consume_latest_old_last_epoch", "0")),
+        "new_last_epoch": int(metrics_kv.get("mailbox_consume_latest_new_last_epoch", "0")),
+        "candidate_epoch": int(metrics_kv.get("mailbox_consume_latest_candidate_epoch", "0")),
+        "reason": metrics_kv.get("mailbox_consume_latest_reason", ""),
+        "ticks": int(metrics_kv.get("mailbox_consume_latest_ticks", "0")),
+        "tick_valid": int(metrics_kv.get("mailbox_consume_latest_tick_valid", "0")),
+    },
+    "reason_counts": {},
+    "site_counts": {},
+}
+for name in mailbox_consume_reason_names:
+    payload["mailbox_phase_breakdown_ticks"]["consume_trace"]["reason_counts"][name] = int(
+        metrics_kv.get(f"mailbox_consume_reason_{name}_count", "0")
+    )
+for name in mailbox_consume_site_names:
+    payload["mailbox_phase_breakdown_ticks"]["consume_trace"]["site_counts"][name] = int(
+        metrics_kv.get(f"mailbox_consume_site_{name}_count", "0")
     )
 
 with open(os.environ["RESULTS_JSON_ENV"], "w", encoding="utf-8") as fh:

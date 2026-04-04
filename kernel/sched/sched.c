@@ -457,6 +457,46 @@ static void sched_emit_perf_mb_candidate_visibility_marker(const char *name, uin
     sched_emit_marker("\n");
 }
 
+void sched_perf_note_mailbox_consume(const char *site,
+                                     uint64_t old_last_epoch,
+                                     uint64_t new_last_epoch,
+                                     uint64_t candidate_epoch,
+                                     const char *reason)
+{
+    uint64_t ticks = 0;
+    uint32_t tick_valid = 0;
+    uint64_t tsc = 0;
+
+    if (!site || !*site || !reason || !*reason) {
+        return;
+    }
+
+    tsc = ayken_rdtsc();
+    if (tsc != 0) {
+        ticks = tsc;
+        tick_valid = 2;
+    } else if (timer_is_initialized() != 0) {
+        ticks = timer_ticks();
+        tick_valid = 1;
+    }
+
+    sched_emit_marker("[[AYKEN_PERF_MB_CONSUME]] site=");
+    sched_emit_marker(site);
+    sched_emit_marker(" old_last_epoch=");
+    sched_emit_u64_dec(old_last_epoch);
+    sched_emit_marker(" new_last_epoch=");
+    sched_emit_u64_dec(new_last_epoch);
+    sched_emit_marker(" candidate_epoch=");
+    sched_emit_u64_dec(candidate_epoch);
+    sched_emit_marker(" reason=");
+    sched_emit_marker(reason);
+    sched_emit_marker(" ticks=");
+    sched_emit_u64_dec(ticks);
+    sched_emit_marker(" tick_valid=");
+    sched_emit_u64_dec((uint64_t)tick_valid);
+    sched_emit_marker("\n");
+}
+
 static void sched_note_perf_phase_once(enum sched_perf_phase_id id, const char *name)
 {
     if ((uint32_t)id >= (uint32_t)SCHED_PERF_PHASE_COUNT) {
@@ -1775,6 +1815,12 @@ static proc_t *sched_select_next_mailbox(
             // consumes that epoch in any decision site.
             if (epoch == 1 && sched_mailbox_gate4_epoch1_pending()) {
                 consume_epoch = 0;
+                sched_perf_note_mailbox_consume(
+                    sched_site_name(site),
+                    owner->mailbox_last_epoch,
+                    owner->mailbox_last_epoch,
+                    epoch,
+                    "gate4_epoch1_pending_bypass");
             }
 #endif
 #if AYKEN_GATE45_PROOF
@@ -1784,6 +1830,12 @@ static proc_t *sched_select_next_mailbox(
                 prev && prev->type == PROC_TYPE_USER &&
                 pid == (uint32_t)prev->pid) {
                 consume_epoch = 0;
+                sched_perf_note_mailbox_consume(
+                    sched_site_name(site),
+                    owner->mailbox_last_epoch,
+                    owner->mailbox_last_epoch,
+                    epoch,
+                    "gate45_self_keep_running_bypass");
             }
 #endif
             SCHED_MB_DECISION_BEGIN();
@@ -1793,7 +1845,14 @@ static proc_t *sched_select_next_mailbox(
                 sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
                 sched_perf_note_mailbox_arbiter_path_keep_running_enter();
                 if (consume_epoch) {
+                    uint64_t old_last_epoch = owner->mailbox_last_epoch;
                     owner->mailbox_last_epoch = epoch;
+                    sched_perf_note_mailbox_consume(
+                        sched_site_name(site),
+                        old_last_epoch,
+                        owner->mailbox_last_epoch,
+                        epoch,
+                        "scheduler_keep_running_consume");
                 }
                 if (decision_id) {
                     *decision_id = epoch;
@@ -1819,7 +1878,14 @@ static proc_t *sched_select_next_mailbox(
                 sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
                 sched_perf_note_mailbox_arbiter_path_switch_enter();
                 if (consume_epoch) {
+                    uint64_t old_last_epoch = owner->mailbox_last_epoch;
                     owner->mailbox_last_epoch = epoch;
+                    sched_perf_note_mailbox_consume(
+                        sched_site_name(site),
+                        old_last_epoch,
+                        owner->mailbox_last_epoch,
+                        epoch,
+                        "scheduler_switch_consume");
                 }
                 if (decision_id) {
                     *decision_id = epoch;

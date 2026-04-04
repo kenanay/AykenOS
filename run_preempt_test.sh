@@ -25,6 +25,7 @@ PREEMPT_MIN_AB_ALT="${PREEMPT_MIN_AB_ALT:-96}"
 STRICT_MARKERS="${STRICT_MARKERS:-0}"
 FORCE_EFI_REBUILD="${FORCE_EFI_REBUILD:-0}"
 PREEMPT_METRICS_OUT="${PREEMPT_METRICS_OUT:-}"
+PREEMPT_ANALYSIS_LOG_OUT="${PREEMPT_ANALYSIS_LOG_OUT:-}"
 PREEMPT_CLEAN_REBUILD="${PREEMPT_CLEAN_REBUILD:-1}"
 USER_MINIMAL_MODE="${USER_MINIMAL_MODE:-}"
 PERF_PHASE_METRICS_KV=""
@@ -296,6 +297,9 @@ fi
 
 cat "$SANITIZED_DEBUG_LOG" "$SANITIZED_SERIAL_LOG" > "$SANITIZED_MERGED_LOG"
 ANALYSIS_LOG="$SANITIZED_MERGED_LOG"
+if [[ -n "${PREEMPT_ANALYSIS_LOG_OUT}" ]]; then
+  cp "$SANITIZED_MERGED_LOG" "${PREEMPT_ANALYSIS_LOG_OUT}"
+fi
 
 debug_size="$(wc -c < "$SANITIZED_DEBUG_LOG" | tr -d ' ')"
 serial_size="$(wc -c < "$SANITIZED_SERIAL_LOG" | tr -d ' ')"
@@ -459,6 +463,7 @@ reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_REASON\]\] name=([a-z0-9_]+) tic
 extract_reason_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_REASON\]\] name=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
 extract_raw_pattern = re.compile(r"\[\[AYKEN_PERF_MB_EXTRACT_RAW\]\] epoch=([0-9]+) candidate_pid=([0-9]+) owner_last_epoch=([0-9]+)")
 visibility_pattern = re.compile(r"\[\[AYKEN_PERF_MB_VISIBLE\]\] name=([a-z_]+) pid=([0-9]+)")
+consume_pattern = re.compile(r"\[\[AYKEN_PERF_MB_CONSUME\]\] site=([A-Za-z0-9_]+) old_last_epoch=([0-9]+) new_last_epoch=([0-9]+) candidate_epoch=([0-9]+) reason=([a-z0-9_]+) ticks=([0-9]+) tick_valid=([0-9]+)")
 phases = (
     "snapshot_enter",
     "snapshot_exit",
@@ -535,12 +540,39 @@ visibility_names = (
     "proc_missing",
     "proc_not_schedulable",
 )
+consume_reason_names = (
+    "timer_validate_accept_consume",
+    "timer_validate_accept_deferred",
+    "scheduler_keep_running_consume",
+    "scheduler_switch_consume",
+    "gate4_epoch1_pending_bypass",
+    "gate45_self_keep_running_bypass",
+)
+consume_site_names = (
+    "timer_validate_irq",
+    "START",
+    "YIELD",
+    "BLOCK",
+    "IRQ",
+)
 
 seen = {}
 path_seen = {name: {"enter": [], "exit": []} for name in path_names}
 reason_counts = {name: 0 for name in reason_names}
 extract_reason_counts = {name: 0 for name in extract_reason_names}
 visibility_counts = {name: 0 for name in visibility_names}
+consume_reason_counts = {name: 0 for name in consume_reason_names}
+consume_site_counts = {name: 0 for name in consume_site_names}
+consume_latest = {
+    "site": "",
+    "old_last_epoch": 0,
+    "new_last_epoch": 0,
+    "candidate_epoch": 0,
+    "reason": "",
+    "ticks": 0,
+    "tick_valid": 0,
+}
+consume_observation_count = 0
 extract_raw_stats = {
     "observation_count": 0,
     "latest_epoch": 0,
@@ -603,6 +635,29 @@ with open(os.environ["ANALYSIS_LOG_ENV"], "r", encoding="utf-8", errors="replace
             name = visibility_match.group(1)
             if name in visibility_counts:
                 visibility_counts[name] += 1
+        consume_match = consume_pattern.search(line)
+        if consume_match:
+            site = consume_match.group(1)
+            old_last_epoch = int(consume_match.group(2))
+            new_last_epoch = int(consume_match.group(3))
+            candidate_epoch = int(consume_match.group(4))
+            reason = consume_match.group(5)
+            ticks = int(consume_match.group(6))
+            tick_valid = int(consume_match.group(7))
+            consume_observation_count += 1
+            consume_latest = {
+                "site": site,
+                "old_last_epoch": old_last_epoch,
+                "new_last_epoch": new_last_epoch,
+                "candidate_epoch": candidate_epoch,
+                "reason": reason,
+                "ticks": ticks,
+                "tick_valid": tick_valid,
+            }
+            if reason in consume_reason_counts:
+                consume_reason_counts[reason] += 1
+            if site in consume_site_counts:
+                consume_site_counts[site] += 1
 
 for phase in phases:
     payload = seen.get(phase, {"ticks": 0, "tick_valid": 0})
@@ -661,6 +716,21 @@ for key, value in extract_raw_stats.items():
 
 for name in visibility_names:
     print(f"mailbox_candidate_visibility_{name}_count={visibility_counts[name]}")
+
+print(f"mailbox_consume_observation_count={consume_observation_count}")
+print(f"mailbox_consume_latest_site={consume_latest['site']}")
+print(f"mailbox_consume_latest_old_last_epoch={consume_latest['old_last_epoch']}")
+print(f"mailbox_consume_latest_new_last_epoch={consume_latest['new_last_epoch']}")
+print(f"mailbox_consume_latest_candidate_epoch={consume_latest['candidate_epoch']}")
+print(f"mailbox_consume_latest_reason={consume_latest['reason']}")
+print(f"mailbox_consume_latest_ticks={consume_latest['ticks']}")
+print(f"mailbox_consume_latest_tick_valid={consume_latest['tick_valid']}")
+
+for name in consume_reason_names:
+    print(f"mailbox_consume_reason_{name}_count={consume_reason_counts[name]}")
+
+for name in consume_site_names:
+    print(f"mailbox_consume_site_{name}_count={consume_site_counts[name]}")
 PY
 )"
 
