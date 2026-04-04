@@ -96,6 +96,7 @@ def main() -> int:
     payload = load_json(summary_path)
 
     authority = payload.get("authority")
+    source_payload = payload.get("source", {})
     metrics = payload.get("metrics", {})
 
     recommendations = {}
@@ -110,6 +111,11 @@ def main() -> int:
         "source": {
             "learning_summary_path": str(summary_path),
             "authority": authority,
+            "eligible_run_count": source_payload.get("eligible_run_count"),
+            "git_sha": source_payload.get("git_sha"),
+            "git_sha_consistent": source_payload.get("git_sha_consistent"),
+            "env_hash": source_payload.get("env_hash"),
+            "env_hash_consistent": source_payload.get("env_hash_consistent"),
         },
         "policy_matrix": {
             metric_name: {

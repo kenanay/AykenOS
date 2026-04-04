@@ -41,6 +41,8 @@ def main() -> int:
         "git_sha": args.git_sha,
         "created_at_utc": args.created_at_utc,
         "authority": threshold_policy.get("source", {}).get("authority"),
+        "policy_git_sha": threshold_policy.get("source", {}).get("git_sha"),
+        "policy_env_hash": threshold_policy.get("source", {}).get("env_hash"),
         "metrics": {},
     }
 

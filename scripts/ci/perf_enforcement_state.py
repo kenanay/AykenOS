@@ -43,6 +43,7 @@ def main() -> int:
     parser.add_argument("--results-json", required=True)
     parser.add_argument("--env-json", required=True)
     parser.add_argument("--policy-json", required=True)
+    parser.add_argument("--policy-verification-json", required=True)
     parser.add_argument("--state-path", required=True)
     parser.add_argument("--output-json", required=True)
     args = parser.parse_args()
@@ -50,6 +51,7 @@ def main() -> int:
     results_path = Path(args.results_json)
     env_path = Path(args.env_json)
     policy_path = Path(args.policy_json)
+    policy_verification_path = Path(args.policy_verification_json)
     state_path = Path(args.state_path)
     output_path = Path(args.output_json)
 
@@ -57,6 +59,7 @@ def main() -> int:
     env_payload = load_json(env_path)
     previous_state = load_optional_json(state_path) or {}
     policy_payload = load_optional_json(policy_path)
+    policy_verification = load_optional_json(policy_verification_path) or {}
 
     shadow_requested = env_flag("PERF_SPLIT_METRICS_SHADOW", "0")
     enforcement_requested = env_flag("PERF_SPLIT_METRICS_ENFORCEMENT", "0")
@@ -71,12 +74,16 @@ def main() -> int:
     policy_authority = None
     if policy_payload is not None:
         policy_authority = policy_payload.get("source", {}).get("authority")
+    policy_trusted = bool(policy_verification.get("trusted", False))
+    policy_trust_reason = str(policy_verification.get("reason", "policy_missing"))
 
     global_disabled_reason = ""
     if previous_state.get("authority") and previous_state.get("authority") != authority:
         global_disabled_reason = "authority_changed"
     elif previous_state.get("env_hash") and previous_state.get("env_hash") != env_hash:
         global_disabled_reason = "env_hash_changed"
+    elif policy_present and not policy_trusted:
+        global_disabled_reason = policy_trust_reason
     elif policy_present and policy_authority and policy_authority != authority:
         global_disabled_reason = "policy_authority_mismatch"
 
@@ -220,6 +227,10 @@ def main() -> int:
         "policy_path": str(policy_path),
         "policy_present": policy_present,
         "policy_authority": policy_authority,
+        "policy_trusted": policy_trusted,
+        "policy_trust_reason": policy_trust_reason,
+        "policy_verification_path": str(policy_verification_path),
+        "policy_verification": policy_verification,
         "current_authority": authority,
         "current_env_hash": env_hash,
         "global": {

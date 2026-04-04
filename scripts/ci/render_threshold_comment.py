@@ -49,14 +49,17 @@ def main() -> int:
 
     policy = load_json(Path(args.threshold_policy))
     recommendations = policy.get("recommendations", {})
-    authority = policy.get("source", {}).get("authority", "unknown")
-    summary_path = policy.get("source", {}).get("learning_summary_path", "unknown")
+    source = policy.get("source", {})
+    authority = source.get("authority", "unknown")
+    summary_path = source.get("learning_summary_path", "unknown")
 
     lines = [
         "## Performance Threshold Recommendation",
         "",
         f"- authority: `{authority}`",
         f"- source: `{summary_path}`",
+        f"- policy git sha: `{source.get('git_sha', 'unknown')}`",
+        f"- policy env hash: `{source.get('env_hash', 'unknown')}`",
         "- note: non-authoritative recommendation only; no baseline or threshold mutation",
         "",
         "| Metric | n | median | MAD | p95 | threshold | variance | enforcement | status |",
