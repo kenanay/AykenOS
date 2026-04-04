@@ -121,6 +121,13 @@ affordances. Forbidden normalized field classes include:
   - `triggerreplayadmission`
   - `commitclusterstate`
 
+## Runtime Enforcement
+
+- public diagnostics responses MUST be checked at runtime for forbidden normalized fields
+- detected forbidden fields MUST fail closed
+- the current fail-closed error is `forbidden_observability_field_exposed`
+- artifact-backed passthrough does not bypass this rule
+
 ## Canonical Source
 
 The canonical implementation source for this contract is:
@@ -131,6 +138,7 @@ The following surfaces MUST derive from that module:
 
 - `/diagnostics/version` endpoint declarations
 - GET query validation for public diagnostics
+- artifact-backed public route lookup for eligible passthrough endpoints
 - `proofd_gate_harness` endpoint expectations
 - forbidden observability field scan mapping
 

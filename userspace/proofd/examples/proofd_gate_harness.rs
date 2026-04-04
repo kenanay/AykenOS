@@ -17,6 +17,7 @@ use proof_verifier::{verify_bundle, VerdictSubject};
 use proofd::api_contract::{
     forbidden_observability_field_tokens, materialize_path_template, public_endpoint_declarations,
     root_passthrough_endpoints, run_scoped_passthrough_endpoints,
+    scan_forbidden_observability_fields,
 };
 use proofd::{route_request, route_request_with_body};
 use serde_json::{json, Value};
@@ -1365,64 +1366,6 @@ fn route_json(target: &str, evidence_root: &Path) -> Result<(u16, Value), String
     let body = serde_json::from_slice::<Value>(&response.body)
         .map_err(|error| format!("invalid json body for {target}: {error}"))?;
     Ok((response.status_code, body))
-}
-
-fn scan_forbidden_observability_fields(endpoint: &str, value: &Value) -> Vec<Value> {
-    let mut hits = Vec::new();
-    scan_forbidden_observability_fields_inner(endpoint, "$", value, &mut hits);
-    hits
-}
-
-fn scan_forbidden_observability_fields_inner(
-    endpoint: &str,
-    path: &str,
-    value: &Value,
-    hits: &mut Vec<Value>,
-) {
-    match value {
-        Value::Object(map) => {
-            for (key, child) in map {
-                let normalized = normalize_field_key(key);
-                if let Some(case_id) = observability_case_for_field(&normalized) {
-                    hits.push(json!({
-                        "case_id": case_id,
-                        "endpoint": endpoint,
-                        "field": key,
-                        "normalized_field": normalized,
-                        "json_path": format!("{path}.{key}"),
-                    }));
-                }
-                scan_forbidden_observability_fields_inner(
-                    endpoint,
-                    &format!("{path}.{key}"),
-                    child,
-                    hits,
-                );
-            }
-        }
-        Value::Array(items) => {
-            for (index, item) in items.iter().enumerate() {
-                scan_forbidden_observability_fields_inner(
-                    endpoint,
-                    &format!("{path}[{index}]"),
-                    item,
-                    hits,
-                );
-            }
-        }
-        _ => {}
-    }
-}
-
-fn normalize_field_key(key: &str) -> String {
-    key.chars()
-        .filter(|ch| ch.is_ascii_alphanumeric())
-        .map(|ch| ch.to_ascii_lowercase())
-        .collect()
-}
-
-fn observability_case_for_field(field: &str) -> Option<&'static str> {
-    proofd::api_contract::observability_case_for_field(field)
 }
 
 fn route_json_with_body(

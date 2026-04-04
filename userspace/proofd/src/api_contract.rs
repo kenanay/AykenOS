@@ -429,6 +429,19 @@ pub fn forbidden_observability_field_tokens() -> Vec<&'static str> {
         .collect()
 }
 
+pub fn normalize_field_key(key: &str) -> String {
+    key.chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .map(|ch| ch.to_ascii_lowercase())
+        .collect()
+}
+
+pub fn scan_forbidden_observability_fields(endpoint: &str, value: &Value) -> Vec<Value> {
+    let mut hits = Vec::new();
+    scan_forbidden_observability_fields_inner(endpoint, "$", value, &mut hits);
+    hits
+}
+
 pub fn allowed_query_keys_for_path(path: &str) -> Option<&'static [&'static str]> {
     if path == "/healthz" {
         return Some(NO_QUERY_KEYS);
@@ -449,6 +462,24 @@ pub fn allowed_query_keys_for_path(path: &str) -> Option<&'static [&'static str]
     }
 
     None
+}
+
+pub fn root_passthrough_contract_for_path(
+    path: &str,
+) -> Option<&'static DiagnosticsEndpointContract> {
+    ROOT_DIAGNOSTICS_ENDPOINTS.iter().find(|endpoint| {
+        endpoint.artifact_file.is_some()
+            && endpoint.allowed_query_keys.is_empty()
+            && path_matches_template(path, endpoint.path_template)
+    })
+}
+
+pub fn run_scoped_passthrough_contract_for_path(
+    path: &str,
+) -> Option<&'static DiagnosticsEndpointContract> {
+    RUN_SCOPED_DIAGNOSTICS_ENDPOINTS.iter().find(|endpoint| {
+        endpoint.artifact_file.is_some() && path_matches_template(path, endpoint.path_template)
+    })
 }
 
 fn path_matches_template(path: &str, path_template: &str) -> bool {
@@ -487,3 +518,45 @@ fn split_segments(path: &str) -> Vec<&str> {
         .filter(|segment| !segment.is_empty())
         .collect()
 }
+
+fn scan_forbidden_observability_fields_inner(
+    endpoint: &str,
+    path: &str,
+    value: &Value,
+    hits: &mut Vec<Value>,
+) {
+    match value {
+        Value::Object(map) => {
+            for (key, child) in map {
+                let normalized = normalize_field_key(key);
+                if let Some(case_id) = observability_case_for_field(&normalized) {
+                    hits.push(json!({
+                        "case_id": case_id,
+                        "endpoint": endpoint,
+                        "field": key,
+                        "normalized_field": normalized,
+                        "json_path": format!("{path}.{key}"),
+                    }));
+                }
+                scan_forbidden_observability_fields_inner(
+                    endpoint,
+                    &format!("{path}.{key}"),
+                    child,
+                    hits,
+                );
+            }
+        }
+        Value::Array(items) => {
+            for (index, item) in items.iter().enumerate() {
+                scan_forbidden_observability_fields_inner(
+                    endpoint,
+                    &format!("{path}[{index}]"),
+                    item,
+                    hits,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+use serde_json::{json, Value};
