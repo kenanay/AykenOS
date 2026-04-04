@@ -1,0 +1,102 @@
+name: perf-learning-comment
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_ids:
+        description: "Comma-separated successful ci-freeze run IDs"
+        required: true
+      post_pr_comment:
+        description: "Post comment to a PR"
+        type: boolean
+        required: true
+        default: false
+      pr_number:
+        description: "PR number for comment posting"
+        required: false
+        default: ""
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq python3
+
+      - name: Make scripts executable
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/threshold_generator.py
+          chmod +x scripts/ci/render_threshold_comment.py
+          chmod +x scripts/ci/update_threshold_timeline.py
+          chmod +x scripts/ci/harvest_performance_artifacts.sh
+
+      - name: Harvest performance artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -r -a RUN_IDS <<< "${{ github.event.inputs.run_ids }}"
+          scripts/ci/harvest_performance_artifacts.sh out "${RUN_IDS[@]}"
+
+      - name: Generate threshold policy
+        run: |
+          set -euo pipefail
+          mkdir -p out/reports
+          python3 scripts/ci/threshold_generator.py \
+            --learning-summary out/evidence/run-learning-batch/gates/performance-learning/summary.json \
+            --output out/reports/threshold_policy.json
+
+      - name: Render PR comment
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/render_threshold_comment.py \
+            --threshold-policy out/reports/threshold_policy.json \
+            --output out/reports/threshold_comment.md
+
+      - name: Update timeline
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/update_threshold_timeline.py \
+            --threshold-policy out/reports/threshold_policy.json \
+            --timeline out/reports/threshold_timeline.json \
+            --run-id "learning-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --git-sha "$(git rev-parse HEAD)" \
+            --created-at-utc "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-learning-outputs-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            out/evidence/run-learning-batch/gates/performance-learning/**
+            out/reports/threshold_policy.json
+            out/reports/threshold_comment.md
+            out/reports/threshold_timeline.json
+
+      - name: Post PR comment
+        if: ${{ github.event.inputs.post_pr_comment == 'true' && github.event.inputs.pr_number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('out/reports/threshold_comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number('${{ github.event.inputs.pr_number }}'),
+              body
+            });
