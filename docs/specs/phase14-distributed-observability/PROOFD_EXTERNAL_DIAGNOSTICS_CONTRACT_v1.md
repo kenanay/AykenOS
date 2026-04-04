@@ -15,6 +15,7 @@ This contract covers:
 - allowed HTTP methods
 - allowed query parameter keys
 - forbidden response-field classes for observability payloads
+- service-owned response schema stability for computed/index diagnostics responses
 
 This contract does not cover:
 
@@ -128,11 +129,48 @@ affordances. Forbidden normalized field classes include:
 - the current fail-closed error is `forbidden_observability_field_exposed`
 - artifact-backed passthrough does not bypass this rule
 
+## Response Schema Contract
+
+Service-owned public diagnostics responses MUST conform to a canonical structural
+schema.
+
+- missing required field => `500 diagnostics_schema_contract_violation`
+- required field type mismatch => `500 diagnostics_schema_contract_violation`
+- unknown field => allowed in v1 for forward compatibility
+
+### Current Coverage
+
+The v1 schema contract currently covers:
+
+- service-computed root diagnostics
+  - `/diagnostics/version`
+  - `/diagnostics/runs`
+  - `/diagnostics/federation`
+  - `/diagnostics/context`
+  - `/diagnostics/trust`
+  - `/diagnostics/parity/context-relation`
+  - `/diagnostics/incidents`
+  - `/diagnostics/incidents/{incident_id}`
+  - `/diagnostics/fingerprints/{fp}`
+  - `/diagnostics/replicated-boundary`
+- service-owned run diagnostics
+  - `/diagnostics/runs/{run_id}`
+  - `/diagnostics/runs/{run_id}/artifacts`
+  - `/diagnostics/runs/{run_id}/federation`
+  - `/diagnostics/runs/{run_id}/context`
+  - `/diagnostics/runs/{run_id}/registry`
+  - `/diagnostics/runs/{run_id}/boundary`
+
+Artifact-backed passthrough endpoints remain governed by their upstream artifact
+contracts in v1. They still receive runtime forbidden-field enforcement, but
+they are not yet structurally frozen by `proofd` schema validation.
+
 ## Canonical Source
 
 The canonical implementation source for this contract is:
 
 - `userspace/proofd/src/api_contract.rs`
+- `userspace/proofd/src/api_schema.rs`
 
 The following surfaces MUST derive from that module:
 
@@ -141,6 +179,8 @@ The following surfaces MUST derive from that module:
 - artifact-backed public route lookup for eligible passthrough endpoints
 - `proofd_gate_harness` endpoint expectations
 - forbidden observability field scan mapping
+- service-owned response schema declarations
+- runtime schema validation for public diagnostics responses
 
 ## Fail-Closed Rules
 

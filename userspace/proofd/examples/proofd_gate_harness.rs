@@ -19,6 +19,7 @@ use proofd::api_contract::{
     root_passthrough_endpoints, run_scoped_passthrough_endpoints,
     scan_forbidden_observability_fields,
 };
+use proofd::api_schema::public_schema_declarations;
 use proofd::{route_request, route_request_with_body};
 use serde_json::{json, Value};
 use std::env;
@@ -126,6 +127,7 @@ fn run_service_contract_gate(evidence_root: &Path, run_id: &str, out_dir: &Path)
                     "run_id": run_id,
                     "endpoint_count": 0,
                     "endpoint_checks": [],
+                    "schema_contracts": [],
                 }),
             );
             write_json(
@@ -264,6 +266,7 @@ fn build_service_contract_artifacts(
 
     let mut violations = Vec::new();
     let mut endpoint_checks = Vec::new();
+    let schema_contracts = public_schema_declarations();
     let mut root_passthrough_ok = true;
     let mut run_scoped_passthrough_ok = true;
     let mut verification_execution_active = false;
@@ -898,6 +901,7 @@ fn build_service_contract_artifacts(
         "run_id": run_id,
         "endpoint_count": endpoint_checks.len(),
         "endpoint_checks": endpoint_checks,
+        "schema_contracts": schema_contracts,
         "verify_request_path": "proofd_verify_request.json",
         "verify_response_path": "proofd_verify_response.json",
     });

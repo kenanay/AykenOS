@@ -4,8 +4,45 @@ pub enum EndpointScope {
     RunScoped,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DiagnosticsEndpointId {
+    Version,
+    Runs,
+    Federation,
+    Context,
+    Trust,
+    Parity,
+    ParityContextRelation,
+    Incidents,
+    IncidentById,
+    FingerprintBoundary,
+    ReplicatedBoundary,
+    AuthoritySuppression,
+    AuthorityTopology,
+    Graph,
+    Drift,
+    Convergence,
+    FailureMatrix,
+    RunSummary,
+    RunArtifactsIndex,
+    RunArtifactFile,
+    RunFederation,
+    RunContext,
+    RunRegistry,
+    RunBoundary,
+    RunIncidents,
+    RunParity,
+    RunAuthoritySuppression,
+    RunAuthorityTopology,
+    RunGraph,
+    RunDrift,
+    RunConvergence,
+    RunFailureMatrix,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DiagnosticsEndpointContract {
+    pub id: DiagnosticsEndpointId,
     pub path_template: &'static str,
     pub methods: &'static [&'static str],
     pub allowed_query_keys: &'static [&'static str],
@@ -51,6 +88,7 @@ pub const PHASE13_FORBIDDEN_FIELDS: &[&str] = &[
 
 pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Version,
         path_template: "/diagnostics/version",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -58,6 +96,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Runs,
         path_template: "/diagnostics/runs",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -65,6 +104,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Federation,
         path_template: "/diagnostics/federation",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -72,6 +112,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Context,
         path_template: "/diagnostics/context",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -79,6 +120,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Trust,
         path_template: "/diagnostics/trust",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -86,6 +128,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Parity,
         path_template: "/diagnostics/parity",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -93,6 +136,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::ParityContextRelation,
         path_template: "/diagnostics/parity/context-relation",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -100,6 +144,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Incidents,
         path_template: "/diagnostics/incidents",
         methods: GET_ONLY,
         allowed_query_keys: ALLOWED_INCIDENT_FILTERS,
@@ -107,6 +152,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::IncidentById,
         path_template: "/diagnostics/incidents/{incident_id}",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -114,6 +160,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::FingerprintBoundary,
         path_template: "/diagnostics/fingerprints/{fp}",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -121,6 +168,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::ReplicatedBoundary,
         path_template: "/diagnostics/replicated-boundary",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -128,6 +176,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::AuthoritySuppression,
         path_template: "/diagnostics/authority-suppression",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -135,6 +184,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::AuthorityTopology,
         path_template: "/diagnostics/authority-topology",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -142,6 +192,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Graph,
         path_template: "/diagnostics/graph",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -149,6 +200,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Drift,
         path_template: "/diagnostics/drift",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -156,6 +208,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Convergence,
         path_template: "/diagnostics/convergence",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -163,6 +216,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::FailureMatrix,
         path_template: "/diagnostics/failure-matrix",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -173,6 +227,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
 
 pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunSummary,
         path_template: "/diagnostics/runs/{run_id}",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -180,6 +235,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunArtifactsIndex,
         path_template: "/diagnostics/runs/{run_id}/artifacts",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -187,6 +243,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunArtifactFile,
         path_template: "/diagnostics/runs/{run_id}/artifacts/{artifact_path}",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -194,6 +251,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunFederation,
         path_template: "/diagnostics/runs/{run_id}/federation",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -201,6 +259,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunContext,
         path_template: "/diagnostics/runs/{run_id}/context",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -208,6 +267,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunRegistry,
         path_template: "/diagnostics/runs/{run_id}/registry",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -215,6 +275,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunBoundary,
         path_template: "/diagnostics/runs/{run_id}/boundary",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -222,6 +283,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunIncidents,
         path_template: "/diagnostics/runs/{run_id}/incidents",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -229,6 +291,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunParity,
         path_template: "/diagnostics/runs/{run_id}/parity",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -236,6 +299,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunAuthoritySuppression,
         path_template: "/diagnostics/runs/{run_id}/authority-suppression",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -243,6 +307,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunAuthorityTopology,
         path_template: "/diagnostics/runs/{run_id}/authority-topology",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -250,6 +315,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunGraph,
         path_template: "/diagnostics/runs/{run_id}/graph",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -257,6 +323,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunDrift,
         path_template: "/diagnostics/runs/{run_id}/drift",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -264,6 +331,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunConvergence,
         path_template: "/diagnostics/runs/{run_id}/convergence",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -271,6 +339,7 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::RunScoped,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunFailureMatrix,
         path_template: "/diagnostics/runs/{run_id}/failure-matrix",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
@@ -447,39 +516,44 @@ pub fn allowed_query_keys_for_path(path: &str) -> Option<&'static [&'static str]
         return Some(NO_QUERY_KEYS);
     }
 
-    if let Some(endpoint) = ROOT_DIAGNOSTICS_ENDPOINTS
-        .iter()
-        .find(|endpoint| path_matches_template(path, endpoint.path_template))
-    {
+    if let Some(endpoint) = public_endpoint_contract_for_path(path) {
         return Some(endpoint.allowed_query_keys);
     }
-
-    if let Some(endpoint) = RUN_SCOPED_DIAGNOSTICS_ENDPOINTS
-        .iter()
-        .find(|endpoint| path_matches_template(path, endpoint.path_template))
-    {
-        return Some(endpoint.allowed_query_keys);
-    }
-
     None
+}
+
+pub fn root_endpoint_contract_for_path(path: &str) -> Option<&'static DiagnosticsEndpointContract> {
+    ROOT_DIAGNOSTICS_ENDPOINTS
+        .iter()
+        .find(|endpoint| path_matches_template(path, endpoint.path_template))
+}
+
+pub fn run_scoped_endpoint_contract_for_path(
+    path: &str,
+) -> Option<&'static DiagnosticsEndpointContract> {
+    RUN_SCOPED_DIAGNOSTICS_ENDPOINTS
+        .iter()
+        .find(|endpoint| path_matches_template(path, endpoint.path_template))
+}
+
+pub fn public_endpoint_contract_for_path(
+    path: &str,
+) -> Option<&'static DiagnosticsEndpointContract> {
+    root_endpoint_contract_for_path(path).or_else(|| run_scoped_endpoint_contract_for_path(path))
 }
 
 pub fn root_passthrough_contract_for_path(
     path: &str,
 ) -> Option<&'static DiagnosticsEndpointContract> {
-    ROOT_DIAGNOSTICS_ENDPOINTS.iter().find(|endpoint| {
-        endpoint.artifact_file.is_some()
-            && endpoint.allowed_query_keys.is_empty()
-            && path_matches_template(path, endpoint.path_template)
+    root_endpoint_contract_for_path(path).filter(|endpoint| {
+        endpoint.artifact_file.is_some() && endpoint.allowed_query_keys.is_empty()
     })
 }
 
 pub fn run_scoped_passthrough_contract_for_path(
     path: &str,
 ) -> Option<&'static DiagnosticsEndpointContract> {
-    RUN_SCOPED_DIAGNOSTICS_ENDPOINTS.iter().find(|endpoint| {
-        endpoint.artifact_file.is_some() && path_matches_template(path, endpoint.path_template)
-    })
+    run_scoped_endpoint_contract_for_path(path).filter(|endpoint| endpoint.artifact_file.is_some())
 }
 
 fn path_matches_template(path: &str, path_template: &str) -> bool {

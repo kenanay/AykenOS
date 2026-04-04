@@ -91,6 +91,8 @@ Workstream numbering in this document MUST align with the Phase-14 development t
 **Scope:**
 - Query parameter validation hardening (bounded, deterministic)
 - Response field audit (PHASE13_FORBIDDEN_FIELDS enforcement)
+- Response schema stability contract for service-owned diagnostics responses
+- Contract-driven dispatch for public computed diagnostics routes
 - Service boundary documentation
 - Read-only contract enforcement tests
 

@@ -75,6 +75,8 @@ These rules are inherited from Phase-13 and MUST be preserved throughout Phase-1
 **Scope:**
 - Query parameter validation hardening (bounded, deterministic)
 - Response field audit (PHASE13_FORBIDDEN_FIELDS enforcement)
+- Response schema stability contract for service-owned diagnostics responses
+- Contract-driven dispatch for public computed diagnostics routes
 - Service boundary documentation
 - Read-only contract enforcement property tests
 
