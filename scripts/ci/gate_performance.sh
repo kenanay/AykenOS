@@ -445,76 +445,29 @@ QEMU_VERSION="$(qemu-system-x86_64 --version 2>/dev/null | head -n1 || echo miss
 HOST_OS="$(uname -s 2>/dev/null || echo unknown)"
 HOST_ARCH="$(uname -m 2>/dev/null || echo unknown)"
 
-CLANG_VERSION_ENV="${CLANG_VERSION}" \
-LD_VERSION_ENV="${LD_VERSION}" \
-NASM_VERSION_ENV="${NASM_VERSION}" \
-QEMU_VERSION_ENV="${QEMU_VERSION}" \
-HOST_OS_ENV="${HOST_OS}" \
-HOST_ARCH_ENV="${HOST_ARCH}" \
-KERNEL_PROFILE_ENV="${KERNEL_PROFILE}" \
-QEMU_TIMEOUT_ENV="${QEMU_TIMEOUT}" \
-BASELINE_AUTHORITY_ENV="${BASELINE_AUTHORITY}" \
-CI_IMAGE_DIGEST_ENV="${CI_IMAGE_DIGEST}" \
-BOOT_OK_MARKER_ENV="${BOOT_OK_MARKER}" \
-PREEMPT_SW_COUNT_PATTERN_ENV="${PREEMPT_SW_COUNT_PATTERN}" \
-PREEMPT_IRET_COUNT_PATTERN_ENV="${PREEMPT_IRET_COUNT_PATTERN}" \
-PREEMPT_USER_MINIMAL_MODE_ENV="${PREEMPT_USER_MINIMAL_MODE}" \
-PREEMPT_BOOTSTRAP_POLICY_ENV="${PREEMPT_BOOTSTRAP_POLICY}" \
-PREEMPT_MB_SELFTEST_ENV="${PREEMPT_MB_SELFTEST}" \
-PREEMPT_DETERMINISTIC_EXIT_ENV="${PREEMPT_DETERMINISTIC_EXIT}" \
-PREEMPT_RING3_ENTRY_GUARD_ENV="${PREEMPT_RING3_ENTRY_GUARD}" \
-PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV="${PREEMPT_EXPECTED_QEMU_EXIT_SET}" \
-MEASUREMENT_CONTRACT_ENV="${MEASUREMENT_CONTRACT}" \
-ENV_JSON_ENV="${ENV_JSON}" \
-python3 - <<'PY'
-import hashlib
-import json
-import os
-
-out = os.environ["ENV_JSON_ENV"]
-payload = {
-    "kernel_profile": os.environ["KERNEL_PROFILE_ENV"],
-    "target_triple": "x86_64-elf",
-    "qemu_timeout_seconds": int(os.environ["QEMU_TIMEOUT_ENV"]),
-    "clang_version": os.environ["CLANG_VERSION_ENV"],
-    "ld_version": os.environ["LD_VERSION_ENV"],
-    "nasm_version": os.environ["NASM_VERSION_ENV"],
-    "qemu_version": os.environ["QEMU_VERSION_ENV"],
-    "host_os": os.environ["HOST_OS_ENV"],
-    "host_arch": os.environ["HOST_ARCH_ENV"],
-    "baseline_authority": os.environ["BASELINE_AUTHORITY_ENV"],
-    "ci_image_digest": os.environ["CI_IMAGE_DIGEST_ENV"],
-    "marker_contract": {
-        "boot_ok_marker": os.environ["BOOT_OK_MARKER_ENV"],
-        "preempt_sw_count_pattern": os.environ["PREEMPT_SW_COUNT_PATTERN_ENV"],
-        "preempt_iret_count_pattern": os.environ["PREEMPT_IRET_COUNT_PATTERN_ENV"],
-        "measurement_contract": os.environ["MEASUREMENT_CONTRACT_ENV"],
-        # Performance gate measures deterministic harness mode, not constitutional default.
-        "preempt_user_minimal_mode": os.environ["PREEMPT_USER_MINIMAL_MODE_ENV"],
-        "preempt_bootstrap_policy": int(os.environ["PREEMPT_BOOTSTRAP_POLICY_ENV"]),
-        "preempt_mb_selftest": int(os.environ["PREEMPT_MB_SELFTEST_ENV"]),
-        "preempt_deterministic_exit": int(os.environ["PREEMPT_DETERMINISTIC_EXIT_ENV"]),
-        "preempt_ring3_entry_guard": int(os.environ["PREEMPT_RING3_ENTRY_GUARD_ENV"]),
-        "preempt_expected_qemu_exit_set": os.environ["PREEMPT_EXPECTED_QEMU_EXIT_SET_ENV"],
-    },
-}
-hash_payload = dict(payload)
-if str(payload.get("baseline_authority", "")).startswith("github-hosted-"):
-    # GitHub-hosted ubuntu labels can rotate between image build digests even
-    # when the effective toolchain surface stays identical. Keep the digest for
-    # audit, but hash the stable authority + explicit tool versions instead.
-    hash_payload.pop("ci_image_digest", None)
-canonical = json.dumps(hash_payload, sort_keys=True, separators=(",", ":"))
-payload["env_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-with open(out, "w", encoding="utf-8") as fh:
-    json.dump(payload, fh, indent=2, sort_keys=True)
-    fh.write("\n")
-PY
-
-ENV_HASH="$(python3 - <<'PY' "${ENV_JSON}"
-import json, sys
-print(json.load(open(sys.argv[1], encoding="utf-8"))["env_hash"])
-PY
+ENV_HASH="$(
+  python3 "${ROOT}/scripts/ci/build_perf_env_manifest.py" \
+    --output "${ENV_JSON}" \
+    --kernel-profile "${KERNEL_PROFILE}" \
+    --qemu-timeout-seconds "${QEMU_TIMEOUT}" \
+    --clang-version "${CLANG_VERSION}" \
+    --ld-version "${LD_VERSION}" \
+    --nasm-version "${NASM_VERSION}" \
+    --qemu-version "${QEMU_VERSION}" \
+    --host-os "${HOST_OS}" \
+    --host-arch "${HOST_ARCH}" \
+    --baseline-authority "${BASELINE_AUTHORITY}" \
+    --ci-image-digest "${CI_IMAGE_DIGEST}" \
+    --boot-ok-marker "${BOOT_OK_MARKER}" \
+    --preempt-sw-count-pattern "${PREEMPT_SW_COUNT_PATTERN}" \
+    --preempt-iret-count-pattern "${PREEMPT_IRET_COUNT_PATTERN}" \
+    --measurement-contract "${MEASUREMENT_CONTRACT}" \
+    --preempt-user-minimal-mode "${PREEMPT_USER_MINIMAL_MODE}" \
+    --preempt-bootstrap-policy "${PREEMPT_BOOTSTRAP_POLICY}" \
+    --preempt-mb-selftest "${PREEMPT_MB_SELFTEST}" \
+    --preempt-deterministic-exit "${PREEMPT_DETERMINISTIC_EXIT}" \
+    --preempt-ring3-entry-guard "${PREEMPT_RING3_ENTRY_GUARD}" \
+    --preempt-expected-qemu-exit-set "${PREEMPT_EXPECTED_QEMU_EXIT_SET}"
 )"
 
 # 2) Build the authoritative boot image under the exact preempt contract.
@@ -1470,9 +1423,9 @@ fi
 # 9) Split-metric policy source verification (default-off, non-authoritative).
 if ! bash "${ROOT}/scripts/ci/verify_perf_policy_source.sh" \
     --policy-json "${SPLIT_POLICY_JSON}" \
-    --env-json "${ENV_JSON}" \
     --expected-authority "${BASELINE_AUTHORITY}" \
     --expected-git-sha "${GIT_SHA}" \
+    --expected-env-hash "${ENV_HASH}" \
     --output-json "${SPLIT_POLICY_VERIFICATION_JSON}" >/dev/null 2>&1
 then
   :
@@ -1482,6 +1435,7 @@ if [[ ! -s "${SPLIT_POLICY_VERIFICATION_JSON}" ]]; then
   SPLIT_POLICY_JSON_ENV="${SPLIT_POLICY_JSON}" \
   BASELINE_AUTHORITY_ENV="${BASELINE_AUTHORITY}" \
   GIT_SHA_ENV="${GIT_SHA}" \
+  ENV_HASH_ENV="${ENV_HASH}" \
   python3 - <<'PY'
 import json
 import os
@@ -1493,7 +1447,8 @@ payload = {
     "expected": {
         "authority": os.environ["BASELINE_AUTHORITY_ENV"],
         "git_sha": os.environ["GIT_SHA_ENV"],
-        "env_hash": None,
+        "env_hash": os.environ["ENV_HASH_ENV"],
+        "env_hash_source": "runtime_computed",
     },
     "actual": {},
 }

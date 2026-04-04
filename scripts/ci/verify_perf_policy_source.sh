@@ -6,17 +6,17 @@ usage() {
 Usage:
   scripts/ci/verify_perf_policy_source.sh \
     --policy-json path/to/threshold_policy.json \
-    --env-json path/to/env.json \
     --expected-authority github-hosted-ubuntu-24.04-x64 \
     --expected-git-sha <git-sha> \
+    --expected-env-hash <runtime-computed-env-hash> \
     --output-json path/to/policy-verification.json
 USAGE
 }
 
 POLICY_JSON=""
-ENV_JSON=""
 EXPECTED_AUTHORITY=""
 EXPECTED_GIT_SHA=""
+EXPECTED_ENV_HASH=""
 OUTPUT_JSON=""
 
 while [[ $# -gt 0 ]]; do
@@ -25,16 +25,16 @@ while [[ $# -gt 0 ]]; do
       POLICY_JSON="$2"
       shift 2
       ;;
-    --env-json)
-      ENV_JSON="$2"
-      shift 2
-      ;;
     --expected-authority)
       EXPECTED_AUTHORITY="$2"
       shift 2
       ;;
     --expected-git-sha)
       EXPECTED_GIT_SHA="$2"
+      shift 2
+      ;;
+    --expected-env-hash)
+      EXPECTED_ENV_HASH="$2"
       shift 2
       ;;
     --output-json)
@@ -53,12 +53,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${POLICY_JSON}" || -z "${ENV_JSON}" || -z "${EXPECTED_AUTHORITY}" || -z "${EXPECTED_GIT_SHA}" || -z "${OUTPUT_JSON}" ]]; then
+if [[ -z "${POLICY_JSON}" || -z "${EXPECTED_AUTHORITY}" || -z "${EXPECTED_GIT_SHA}" || -z "${EXPECTED_ENV_HASH}" || -z "${OUTPUT_JSON}" ]]; then
   usage
   exit 3
 fi
 
-python3 - <<'PY' "${POLICY_JSON}" "${ENV_JSON}" "${EXPECTED_AUTHORITY}" "${EXPECTED_GIT_SHA}" "${OUTPUT_JSON}"
+python3 - <<'PY' "${POLICY_JSON}" "${EXPECTED_AUTHORITY}" "${EXPECTED_GIT_SHA}" "${EXPECTED_ENV_HASH}" "${OUTPUT_JSON}"
 import json
 import sys
 from pathlib import Path
@@ -71,17 +71,12 @@ def load_optional_json(path: Path):
 
 
 policy_path = Path(sys.argv[1])
-env_path = Path(sys.argv[2])
-expected_authority = sys.argv[3]
-expected_git_sha = sys.argv[4]
+expected_authority = sys.argv[2]
+expected_git_sha = sys.argv[3]
+expected_env_hash = sys.argv[4]
 output_path = Path(sys.argv[5])
 
 policy_payload = load_optional_json(policy_path)
-env_payload = load_optional_json(env_path)
-
-expected_env_hash = None
-if isinstance(env_payload, dict):
-    expected_env_hash = env_payload.get("env_hash")
 
 trusted = True
 reason = "ok"
@@ -132,6 +127,7 @@ output = {
         "authority": expected_authority,
         "git_sha": expected_git_sha,
         "env_hash": expected_env_hash,
+        "env_hash_source": "runtime_computed",
     },
     "actual": actual,
 }
