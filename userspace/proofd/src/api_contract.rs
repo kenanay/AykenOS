@@ -21,10 +21,12 @@ pub enum DiagnosticsEndpointId {
     AuthorityTopology,
     Graph,
     GraphOverlay,
+    Summary,
     Drift,
     Convergence,
     FailureMatrix,
     RunSummary,
+    RunScopedSummary,
     RunArtifactsIndex,
     RunArtifactFile,
     RunFederation,
@@ -223,6 +225,14 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::Summary,
+        path_template: "/diagnostics/summary",
+        methods: GET_ONLY,
+        allowed_query_keys: NO_QUERY_KEYS,
+        artifact_file: None,
+        scope: EndpointScope::Root,
+    },
+    DiagnosticsEndpointContract {
         id: DiagnosticsEndpointId::Drift,
         path_template: "/diagnostics/drift",
         methods: GET_ONLY,
@@ -252,6 +262,14 @@ pub const RUN_SCOPED_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
     DiagnosticsEndpointContract {
         id: DiagnosticsEndpointId::RunSummary,
         path_template: "/diagnostics/runs/{run_id}",
+        methods: GET_ONLY,
+        allowed_query_keys: NO_QUERY_KEYS,
+        artifact_file: None,
+        scope: EndpointScope::RunScoped,
+    },
+    DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::RunScopedSummary,
+        path_template: "/diagnostics/runs/{run_id}/summary",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
         artifact_file: None,
@@ -401,6 +419,18 @@ pub const FORBIDDEN_OBSERVABILITY_FIELDS: &[ForbiddenObservabilityField] = &[
         case_id: "P13-NEG-13",
     },
     ForbiddenObservabilityField {
+        normalized_field: "winner",
+        case_id: "P13-NEG-13",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "winningpartition",
+        case_id: "P13-NEG-13",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "resolvedtruth",
+        case_id: "P13-NEG-13",
+    },
+    ForbiddenObservabilityField {
         normalized_field: "elect",
         case_id: "P13-NEG-13",
     },
@@ -433,6 +463,22 @@ pub const FORBIDDEN_OBSERVABILITY_FIELDS: &[ForbiddenObservabilityField] = &[
         case_id: "P13-NEG-14",
     },
     ForbiddenObservabilityField {
+        normalized_field: "preferrednode",
+        case_id: "P13-NEG-14",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "preferredverifier",
+        case_id: "P13-NEG-14",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "trustranking",
+        case_id: "P13-NEG-14",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "score",
+        case_id: "P13-NEG-14",
+    },
+    ForbiddenObservabilityField {
         normalized_field: "mitigation",
         case_id: "P13-NEG-14",
     },
@@ -442,6 +488,10 @@ pub const FORBIDDEN_OBSERVABILITY_FIELDS: &[ForbiddenObservabilityField] = &[
     },
     ForbiddenObservabilityField {
         normalized_field: "nodepriority",
+        case_id: "P13-NEG-14",
+    },
+    ForbiddenObservabilityField {
+        normalized_field: "priority",
         case_id: "P13-NEG-14",
     },
     ForbiddenObservabilityField {
@@ -685,6 +735,10 @@ mod tests {
         let overlay = resolve_public_endpoint("/diagnostics/graph/overlay")
             .expect("graph overlay endpoint should resolve");
         assert_eq!(overlay.contract.id, DiagnosticsEndpointId::GraphOverlay);
+
+        let summary = resolve_public_endpoint("/diagnostics/summary")
+            .expect("summary endpoint should resolve");
+        assert_eq!(summary.contract.id, DiagnosticsEndpointId::Summary);
     }
 
     #[test]
@@ -699,6 +753,14 @@ mod tests {
             resolved.params.artifact_path.as_deref(),
             Some("receipts/verification_receipt.json")
         );
+
+        let run_summary = resolve_public_endpoint("/diagnostics/runs/run-20260310-1/summary")
+            .expect("run scoped summary endpoint should resolve");
+        assert_eq!(
+            run_summary.contract.id,
+            DiagnosticsEndpointId::RunScopedSummary
+        );
+        assert_eq!(run_summary.params.run_id.as_deref(), Some("run-20260310-1"));
     }
 }
 

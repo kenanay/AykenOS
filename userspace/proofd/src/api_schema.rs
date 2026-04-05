@@ -554,6 +554,76 @@ const GRAPH_OVERLAY_REQUIRED_FIELDS: &[SchemaField] = &[
     },
 ];
 
+const SUMMARY_REQUIRED_FIELDS: &[SchemaField] = &[
+    SchemaField {
+        name: "summary_origin",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority_classification",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "display_mode",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "epistemic_boundary",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "snapshot",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "overlay",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "incidents",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "explanation",
+        kind: SchemaValueKind::Array,
+    },
+];
+
+const RUN_SCOPED_SUMMARY_REQUIRED_FIELDS: &[SchemaField] = &[
+    SchemaField {
+        name: "summary_origin",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority_classification",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "display_mode",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "epistemic_boundary",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "run_id",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "snapshot",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "incidents",
+        kind: SchemaValueKind::Object,
+    },
+    SchemaField {
+        name: "explanation",
+        kind: SchemaValueKind::Array,
+    },
+];
+
 const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
     EndpointSchema {
         endpoint_id: DiagnosticsEndpointId::Version,
@@ -628,9 +698,21 @@ const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
         optional_fields: EMPTY_FIELDS,
     },
     EndpointSchema {
+        endpoint_id: DiagnosticsEndpointId::Summary,
+        root_kind: SchemaValueKind::Object,
+        required_fields: SUMMARY_REQUIRED_FIELDS,
+        optional_fields: EMPTY_FIELDS,
+    },
+    EndpointSchema {
         endpoint_id: DiagnosticsEndpointId::RunSummary,
         root_kind: SchemaValueKind::Object,
         required_fields: RUN_SUMMARY_REQUIRED_FIELDS,
+        optional_fields: EMPTY_FIELDS,
+    },
+    EndpointSchema {
+        endpoint_id: DiagnosticsEndpointId::RunScopedSummary,
+        root_kind: SchemaValueKind::Object,
+        required_fields: RUN_SCOPED_SUMMARY_REQUIRED_FIELDS,
         optional_fields: EMPTY_FIELDS,
     },
     EndpointSchema {
@@ -693,7 +775,9 @@ pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Sc
         | DiagnosticsEndpointId::ReplicatedBoundary
         | DiagnosticsEndpointId::Graph
         | DiagnosticsEndpointId::GraphOverlay
+        | DiagnosticsEndpointId::Summary
         | DiagnosticsEndpointId::RunSummary
+        | DiagnosticsEndpointId::RunScopedSummary
         | DiagnosticsEndpointId::RunArtifactsIndex
         | DiagnosticsEndpointId::RunFederation
         | DiagnosticsEndpointId::RunContext
@@ -881,13 +965,65 @@ fn validate_endpoint_specific_contract(
         DiagnosticsEndpointId::RunGraph => validate_phase14_graph_contract_v1(value),
         DiagnosticsEndpointId::Graph => validate_root_graph_contract_v1(value),
         DiagnosticsEndpointId::GraphOverlay => validate_root_graph_overlay_contract_v1(value),
+        DiagnosticsEndpointId::Summary => validate_observability_summary_contract_v1(value),
+        DiagnosticsEndpointId::RunScopedSummary => {
+            validate_run_scoped_observability_summary_contract_v1(value)
+        }
         _ => Ok(()),
     }
 }
 
-pub fn validate_phase14_graph_contract_v1(
+pub fn validate_observability_summary_contract_v1(
     value: &Value,
 ) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    validate_summary_epistemic_boundary(root)?;
+    let snapshot = require_object(root, "snapshot")?;
+    require_number_field(snapshot, "partition_count")?;
+    require_number_field(snapshot, "total_nodes")?;
+    require_number_field(snapshot, "total_incidents")?;
+
+    let overlay = require_object(root, "overlay")?;
+    require_number_field(overlay, "agreements")?;
+    require_number_field(overlay, "conflicts")?;
+    require_number_field(overlay, "islands")?;
+
+    let incidents = require_object(root, "incidents")?;
+    validate_numeric_object_values(incidents, "incidents")?;
+    validate_explanation_array(root, "explanation")?;
+
+    Ok(())
+}
+
+pub fn validate_run_scoped_observability_summary_contract_v1(
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    validate_summary_epistemic_boundary(root)?;
+    require_non_empty_string(root, "run_id")?;
+
+    let snapshot = require_object(root, "snapshot")?;
+    require_number_field(snapshot, "node_count")?;
+    require_number_field(snapshot, "incident_count")?;
+
+    let incidents = require_object(root, "incidents")?;
+    validate_numeric_object_values(incidents, "incidents")?;
+    validate_explanation_array(root, "explanation")?;
+
+    Ok(())
+}
+
+pub fn validate_phase14_graph_contract_v1(value: &Value) -> Result<(), SchemaValidationError> {
     let Some(root) = value.as_object() else {
         return Err(SchemaValidationError::RootKindMismatch {
             expected: SchemaValueKind::Object,
@@ -914,9 +1050,7 @@ pub fn validate_phase14_graph_contract_v1(
     Ok(())
 }
 
-pub fn validate_root_graph_contract_v1(
-    value: &Value,
-) -> Result<(), SchemaValidationError> {
+pub fn validate_root_graph_contract_v1(value: &Value) -> Result<(), SchemaValidationError> {
     let Some(root) = value.as_object() else {
         return Err(SchemaValidationError::RootKindMismatch {
             expected: SchemaValueKind::Object,
@@ -924,11 +1058,7 @@ pub fn validate_root_graph_contract_v1(
     };
 
     require_exact_string(root, "graph_origin", "derived")?;
-    require_exact_string(
-        root,
-        "authority_classification",
-        "non_authoritative",
-    )?;
+    require_exact_string(root, "authority_classification", "non_authoritative")?;
     require_exact_string(root, "aggregation_mode", "overlay_only")?;
 
     let partitions = require_array(root, "partitions")?;
@@ -938,9 +1068,7 @@ pub fn validate_root_graph_contract_v1(
     Ok(())
 }
 
-pub fn validate_root_graph_overlay_contract_v1(
-    value: &Value,
-) -> Result<(), SchemaValidationError> {
+pub fn validate_root_graph_overlay_contract_v1(value: &Value) -> Result<(), SchemaValidationError> {
     let Some(root) = value.as_object() else {
         return Err(SchemaValidationError::RootKindMismatch {
             expected: SchemaValueKind::Object,
@@ -948,11 +1076,7 @@ pub fn validate_root_graph_overlay_contract_v1(
     };
 
     require_exact_string(root, "graph_origin", "derived")?;
-    require_exact_string(
-        root,
-        "authority_classification",
-        "non_authoritative",
-    )?;
+    require_exact_string(root, "authority_classification", "non_authoritative")?;
     require_exact_string(root, "aggregation_mode", "overlay_only")?;
 
     let agreements = require_array(root, "agreements")?;
@@ -970,9 +1094,7 @@ pub fn validate_root_graph_overlay_contract_v1(
     Ok(())
 }
 
-fn validate_graph_partition_entries(
-    partitions: &[Value],
-) -> Result<(), SchemaValidationError> {
+fn validate_graph_partition_entries(partitions: &[Value]) -> Result<(), SchemaValidationError> {
     let mut partition_ids = BTreeSet::new();
     for partition in partitions {
         let Some(partition) = partition.as_object() else {
@@ -1025,9 +1147,7 @@ fn validate_phase14_graph_payload_v1(
     Ok(())
 }
 
-fn validate_graph_overlay_agreements(
-    agreements: &[Value],
-) -> Result<(), SchemaValidationError> {
+fn validate_graph_overlay_agreements(agreements: &[Value]) -> Result<(), SchemaValidationError> {
     for agreement in agreements {
         let Some(agreement) = agreement.as_object() else {
             return Err(SchemaValidationError::FieldTypeMismatch {
@@ -1047,9 +1167,7 @@ fn validate_graph_overlay_agreements(
     Ok(())
 }
 
-fn validate_graph_overlay_conflicts(
-    conflicts: &[Value],
-) -> Result<(), SchemaValidationError> {
+fn validate_graph_overlay_conflicts(conflicts: &[Value]) -> Result<(), SchemaValidationError> {
     for conflict in conflicts {
         let Some(conflict) = conflict.as_object() else {
             return Err(SchemaValidationError::FieldTypeMismatch {
@@ -1070,10 +1188,12 @@ fn validate_graph_overlay_conflicts(
             });
         }
         for verdict in observed_verdicts {
-            let verdict = verdict.as_str().ok_or(SchemaValidationError::FieldTypeMismatch {
-                field: "observed_verdicts[]",
-                expected: SchemaValueKind::String,
-            })?;
+            let verdict = verdict
+                .as_str()
+                .ok_or(SchemaValidationError::FieldTypeMismatch {
+                    field: "observed_verdicts[]",
+                    expected: SchemaValueKind::String,
+                })?;
             if !is_valid_graph_verdict_label(verdict) {
                 return Err(SchemaValidationError::InvalidFieldValue {
                     field: "observed_verdicts",
@@ -1084,9 +1204,7 @@ fn validate_graph_overlay_conflicts(
     Ok(())
 }
 
-fn validate_graph_overlay_islands(
-    islands: &[Value],
-) -> Result<(), SchemaValidationError> {
+fn validate_graph_overlay_islands(islands: &[Value]) -> Result<(), SchemaValidationError> {
     let mut partition_ids = BTreeSet::new();
     for island in islands {
         let Some(island) = island.as_object() else {
@@ -1121,6 +1239,26 @@ fn require_exact_string(
     Ok(())
 }
 
+fn require_exact_bool(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+    expected_value: bool,
+) -> Result<(), SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    let Some(value) = value.as_bool() else {
+        return Err(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::Boolean,
+        });
+    };
+    if value != expected_value {
+        return Err(SchemaValidationError::InvalidFieldValue { field });
+    }
+    Ok(())
+}
+
 fn require_non_empty_string<'a>(
     map: &'a serde_json::Map<String, Value>,
     field: &'static str,
@@ -1147,10 +1285,12 @@ fn require_object<'a>(
     let value = map
         .get(field)
         .ok_or(SchemaValidationError::MissingRequiredField { field })?;
-    value.as_object().ok_or(SchemaValidationError::FieldTypeMismatch {
-        field,
-        expected: SchemaValueKind::Object,
-    })
+    value
+        .as_object()
+        .ok_or(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::Object,
+        })
 }
 
 fn require_array<'a>(
@@ -1160,10 +1300,12 @@ fn require_array<'a>(
     let value = map
         .get(field)
         .ok_or(SchemaValidationError::MissingRequiredField { field })?;
-    value.as_array().ok_or(SchemaValidationError::FieldTypeMismatch {
-        field,
-        expected: SchemaValueKind::Array,
-    })
+    value
+        .as_array()
+        .ok_or(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::Array,
+        })
 }
 
 fn require_exact_count(
@@ -1193,10 +1335,70 @@ fn require_number_field(
     let value = map
         .get(field)
         .ok_or(SchemaValidationError::MissingRequiredField { field })?;
-    value.as_u64().ok_or(SchemaValidationError::FieldTypeMismatch {
-        field,
-        expected: SchemaValueKind::Number,
-    })
+    value
+        .as_u64()
+        .ok_or(SchemaValidationError::FieldTypeMismatch {
+            field,
+            expected: SchemaValueKind::Number,
+        })
+}
+
+fn validate_summary_epistemic_boundary(
+    root: &serde_json::Map<String, Value>,
+) -> Result<(), SchemaValidationError> {
+    require_exact_string(root, "summary_origin", "derived")?;
+    require_exact_string(root, "authority_classification", "non_authoritative")?;
+    require_exact_string(root, "display_mode", "human_readable")?;
+
+    let boundary = require_object(root, "epistemic_boundary")?;
+    require_exact_bool(boundary, "produces_truth", false)?;
+    require_exact_bool(boundary, "produces_decision", false)?;
+    require_exact_bool(boundary, "produces_ranking", false)?;
+    Ok(())
+}
+
+fn validate_numeric_object_values(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<(), SchemaValidationError> {
+    for value in map.values() {
+        if value.as_u64().is_none() {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field,
+                expected: SchemaValueKind::Number,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn validate_explanation_array(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<(), SchemaValidationError> {
+    let values = require_array(map, field)?;
+    if values.is_empty() {
+        return Err(SchemaValidationError::InvalidFieldValue { field });
+    }
+    let mut previous: Option<&str> = None;
+    for value in values {
+        let Some(value) = value.as_str() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field,
+                expected: SchemaValueKind::String,
+            });
+        };
+        if value.trim().is_empty() {
+            return Err(SchemaValidationError::InvalidFieldValue { field });
+        }
+        if let Some(previous_value) = previous {
+            if value <= previous_value {
+                return Err(SchemaValidationError::InvalidFieldValue { field });
+            }
+        }
+        previous = Some(value);
+    }
+    Ok(())
 }
 
 fn validate_sorted_unique_string_array(
@@ -1205,9 +1407,7 @@ fn validate_sorted_unique_string_array(
     require_non_empty: bool,
 ) -> Result<(), SchemaValidationError> {
     if require_non_empty && values.is_empty() {
-        return Err(SchemaValidationError::InvalidFieldValue {
-            field,
-        });
+        return Err(SchemaValidationError::InvalidFieldValue { field });
     }
     let mut previous: Option<&str> = None;
     let mut seen = BTreeSet::new();
@@ -1354,9 +1554,7 @@ fn validate_graph_edges(
                 }
             }
             _ => {
-                return Err(SchemaValidationError::InvalidFieldValue {
-                    field: "edge_type",
-                });
+                return Err(SchemaValidationError::InvalidFieldValue { field: "edge_type" });
             }
         }
     }
@@ -1481,6 +1679,86 @@ mod tests {
         assert_eq!(
             schema_coverage_for_endpoint_id(DiagnosticsEndpointId::GraphOverlay),
             SchemaCoverage::Full
+        );
+    }
+
+    #[test]
+    fn coverage_marks_summary_surfaces_as_full() {
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::Summary),
+            SchemaCoverage::Full
+        );
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::RunScopedSummary),
+            SchemaCoverage::Full
+        );
+    }
+
+    #[test]
+    fn root_summary_schema_rejects_missing_overlay() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/summary",
+            &json!({
+                "summary_origin": "derived",
+                "authority_classification": "non_authoritative",
+                "display_mode": "human_readable",
+                "epistemic_boundary": {
+                    "produces_truth": false,
+                    "produces_decision": false,
+                    "produces_ranking": false
+                },
+                "snapshot": {
+                    "partition_count": 1,
+                    "total_nodes": 2,
+                    "total_incidents": 1
+                },
+                "incidents": {
+                    "pure_determinism_failure": 1
+                },
+                "explanation": [
+                    "A",
+                    "B"
+                ]
+            }),
+        )
+        .expect_err("missing overlay must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::MissingRequiredField { field: "overlay" }
+        );
+    }
+
+    #[test]
+    fn run_scoped_summary_schema_rejects_authoritative_boundary() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/runs/run-a/summary",
+            &json!({
+                "summary_origin": "derived",
+                "authority_classification": "authoritative",
+                "display_mode": "human_readable",
+                "epistemic_boundary": {
+                    "produces_truth": false,
+                    "produces_decision": false,
+                    "produces_ranking": false
+                },
+                "run_id": "run-a",
+                "snapshot": {
+                    "node_count": 1,
+                    "incident_count": 0
+                },
+                "incidents": {},
+                "explanation": [
+                    "A",
+                    "B"
+                ]
+            }),
+        )
+        .expect_err("authoritative classification must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::InvalidFieldValue {
+                field: "authority_classification"
+            }
         );
     }
 
