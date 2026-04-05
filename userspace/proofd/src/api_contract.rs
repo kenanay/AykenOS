@@ -75,6 +75,7 @@ pub struct ForbiddenObservabilityField {
 
 const GET_ONLY: &[&str] = &["GET"];
 const NO_QUERY_KEYS: &[&str] = &[];
+const SUMMARY_QUERY_KEYS: &[&str] = &["display_mode"];
 
 pub const API_VERSION: u16 = 1;
 pub const ALLOWED_INCIDENT_FILTERS: &[&str] = &["severity", "surface_key", "node_id"];
@@ -228,7 +229,7 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         id: DiagnosticsEndpointId::Summary,
         path_template: "/diagnostics/summary",
         methods: GET_ONLY,
-        allowed_query_keys: NO_QUERY_KEYS,
+        allowed_query_keys: SUMMARY_QUERY_KEYS,
         artifact_file: None,
         scope: EndpointScope::Root,
     },

@@ -451,7 +451,44 @@ const GRAPH_AGGREGATION_MODE_OVERLAY_ONLY: &str = "overlay_only";
 const SUMMARY_ORIGIN_DERIVED: &str = "derived";
 const SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE: &str = "non_authoritative";
 const SUMMARY_DISPLAY_MODE_HUMAN_READABLE: &str = "human_readable";
+const SUMMARY_DISPLAY_MODE_MACHINE_STRUCTURED: &str = "machine_structured";
 const PARITY_INCIDENT_GRAPH_FILE: &str = "parity_incident_graph.json";
+
+/// Type-safe projection mode for `/diagnostics/summary`.
+/// Parsed once at the API boundary; all internal code uses this enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SummaryDisplayMode {
+    HumanReadable,
+    MachineStructured,
+}
+
+impl SummaryDisplayMode {
+    /// Parse from the raw `display_mode` query parameter value.
+    /// Returns `Ok(HumanReadable)` when the parameter is absent.
+    fn from_query(raw_query: Option<&str>) -> Result<Self, ServiceError> {
+        let value = raw_query
+            .and_then(|q| {
+                q.split('&').find_map(|part| {
+                    let (k, v) = part.split_once('=')?;
+                    if k == "display_mode" { Some(v) } else { None }
+                })
+            })
+            .unwrap_or(SUMMARY_DISPLAY_MODE_HUMAN_READABLE);
+        match value {
+            SUMMARY_DISPLAY_MODE_HUMAN_READABLE => Ok(Self::HumanReadable),
+            SUMMARY_DISPLAY_MODE_MACHINE_STRUCTURED => Ok(Self::MachineStructured),
+            _ => Err(ServiceError::BadRequest("invalid_display_mode")),
+        }
+    }
+
+    /// Canonical string representation used in JSON output.
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::HumanReadable => SUMMARY_DISPLAY_MODE_HUMAN_READABLE,
+            Self::MachineStructured => SUMMARY_DISPLAY_MODE_MACHINE_STRUCTURED,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PartitionableRunGraph {
@@ -569,6 +606,34 @@ struct RootDiagnosticsSummaryBody {
     overlay: RootSummaryOverlay,
     incidents: BTreeMap<String, usize>,
     explanation: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MachineSummaryCounts {
+    partition_count: usize,
+    total_nodes: usize,
+    total_incidents: usize,
+    agreement_count: usize,
+    conflict_count: usize,
+    island_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MachineSummaryFlags {
+    produces_truth: bool,
+    produces_decision: bool,
+    produces_ranking: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MachineSummaryBody {
+    summary_origin: &'static str,
+    authority_classification: &'static str,
+    display_mode: &'static str,
+    epistemic_boundary: SummaryEpistemicBoundary,
+    counts: MachineSummaryCounts,
+    flags: MachineSummaryFlags,
+    incident_groups: BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -824,10 +889,16 @@ fn handle_diagnostics_endpoint(
                 Err(error) => error_response(error),
             }
         }
-        DiagnosticsEndpointId::Summary => match build_root_summary_diagnostics(evidence_dir) {
-            Ok(value) => observability_json_response(&target.path, 200, value),
-            Err(error) => error_response(error),
-        },
+        DiagnosticsEndpointId::Summary => {
+            let display_mode = match SummaryDisplayMode::from_query(target.query.as_deref()) {
+                Ok(mode) => mode,
+                Err(error) => return error_response(error),
+            };
+            match build_root_summary_diagnostics(evidence_dir, display_mode) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
         DiagnosticsEndpointId::RunSummary => {
             let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
                 Ok(parts) => parts,
@@ -1291,7 +1362,7 @@ fn graph_count_field(graph: &Value, field: &'static str) -> Result<usize, Servic
         ))
 }
 
-fn build_root_summary_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+fn build_root_summary_diagnostics(evidence_dir: &Path, display_mode: SummaryDisplayMode) -> Result<Value, ServiceError> {
     let version = observability_version_payload();
     validate_response_schema_for_path("/diagnostics/version", &version)
         .map_err(|_| ServiceError::Runtime("summary_version_dependency_invalid"))?;
@@ -1364,33 +1435,59 @@ fn build_root_summary_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceE
         .map(|value| value as usize)
         .ok_or(ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
 
-    let summary = RootDiagnosticsSummaryBody {
-        summary_origin: SUMMARY_ORIGIN_DERIVED,
-        authority_classification: SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
-        display_mode: SUMMARY_DISPLAY_MODE_HUMAN_READABLE,
-        epistemic_boundary: summary_epistemic_boundary(),
-        snapshot: RootSummarySnapshot {
-            partition_count,
-            total_nodes,
-            total_incidents,
-        },
-        overlay: RootSummaryOverlay {
-            agreements,
-            conflicts,
-            islands,
-        },
-        incidents: incident_distribution_from_report(&incidents)?,
-        explanation: derive_root_summary_explanations(
-            api_version,
-            partition_count,
-            agreements,
-            conflicts,
-            islands,
-            total_incidents,
-        ),
-    };
-
-    serde_json::to_value(summary).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+    match display_mode {
+        SummaryDisplayMode::HumanReadable => {
+            let summary = RootDiagnosticsSummaryBody {
+                summary_origin: SUMMARY_ORIGIN_DERIVED,
+                authority_classification: SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+                display_mode: display_mode.as_str(),
+                epistemic_boundary: summary_epistemic_boundary(),
+                snapshot: RootSummarySnapshot {
+                    partition_count,
+                    total_nodes,
+                    total_incidents,
+                },
+                overlay: RootSummaryOverlay {
+                    agreements,
+                    conflicts,
+                    islands,
+                },
+                incidents: incident_distribution_from_report(&incidents)?,
+                explanation: derive_root_summary_explanations(
+                    api_version,
+                    partition_count,
+                    agreements,
+                    conflicts,
+                    islands,
+                    total_incidents,
+                ),
+            };
+            serde_json::to_value(summary).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+        }
+        SummaryDisplayMode::MachineStructured => {
+            let body = MachineSummaryBody {
+                summary_origin: SUMMARY_ORIGIN_DERIVED,
+                authority_classification: SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+                display_mode: display_mode.as_str(),
+                epistemic_boundary: summary_epistemic_boundary(),
+                counts: MachineSummaryCounts {
+                    partition_count,
+                    total_nodes,
+                    total_incidents,
+                    agreement_count: agreements,
+                    conflict_count: conflicts,
+                    island_count: islands,
+                },
+                flags: MachineSummaryFlags {
+                    produces_truth: false,
+                    produces_decision: false,
+                    produces_ranking: false,
+                },
+                incident_groups: incident_distribution_from_report(&incidents)?,
+            };
+            serde_json::to_value(body).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+        }
+    }
 }
 
 fn build_run_scoped_summary_diagnostics(
@@ -9301,6 +9398,378 @@ mod tests {
             );
         }
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ─── Task 6: machine_structured display_mode tests ───────────────────────
+
+    /// Shared helper: write the graph fixture used by root_summary tests.
+    fn write_summary_graph_fixture(dir: &PathBuf) {
+        let run_dir_a = dir.join("run-20260405-a");
+        let run_dir_b = dir.join("run-20260405-b");
+        fs::create_dir_all(&run_dir_a).expect("create run dir a");
+        fs::create_dir_all(&run_dir_b).expect("create run dir b");
+        let graph_artifact = r#"{
+          "graph_version":"v1",
+          "authority":"proof-verifier-cross-node-parity",
+          "env_hash":"sha256:env-a",
+          "status":"PASS",
+          "provenance":{
+            "artifact_set_hash":"sha256:artifact-set-a",
+            "source_runs":["phase12-cross-node-parity"]
+          },
+          "graph":{
+            "node_count":2,
+            "edge_count":1,
+            "incident_count":1,
+            "nodes":[
+              {"id":"node-a","node_fingerprint":"sha256:fingerprint-a","surface_key":"sha256:surface","outcome_key":"sha256:outcome-a","verdict":"TRUSTED"},
+              {"id":"node-b","node_fingerprint":"sha256:fingerprint-b","surface_key":"sha256:surface","outcome_key":"sha256:outcome-b","verdict":"UNTRUSTED"}
+            ],
+            "edges":[
+              {"from":"node-a","to":"node-b","edge_type":"incident","incident_id":"sha256:incident-a","surface_key":"sha256:surface"}
+            ],
+            "incidents":[
+              {"incident_id":"sha256:incident-a","surface_key":"sha256:surface","severity":"pure_determinism_failure","nodes":["node-a","node-b"],"node_count":2}
+            ]
+          }
+        }"#;
+        write_artifact(&run_dir_a, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(&run_dir_b, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(
+            dir,
+            "parity_determinism_incidents.json",
+            r#"{"determinism_incident_count":1,"severity_counts":{"pure_determinism_failure":1},"incidents":[{"incident_id":"sha256:incident-a","surface_key":"sha256:surface","severity":"pure_determinism_failure","nodes":["node-a","node-b"]}]}"#,
+        );
+    }
+
+    #[test]
+    fn machine_structured_display_mode_absent_returns_human_readable() {
+        let dir = temp_dir();
+        write_summary_graph_fixture(&dir);
+        let response = route_request("GET", "/diagnostics/summary", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("display_mode").and_then(|v| v.as_str()),
+            Some("human_readable")
+        );
+        assert!(
+            body.get("explanation")
+                .and_then(|v| v.as_array())
+                .is_some(),
+            "explanation array must be present"
+        );
+        assert!(body.get("counts").is_none(), "counts must not be present");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_explicit_human_readable_equals_absent() {
+        let dir = temp_dir();
+        write_summary_graph_fixture(&dir);
+        let absent = body_json(route_request("GET", "/diagnostics/summary", &dir));
+        let explicit = body_json(route_request(
+            "GET",
+            "/diagnostics/summary?display_mode=human_readable",
+            &dir,
+        ));
+        assert_eq!(absent, explicit);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_display_mode_returns_correct_structure() {
+        let dir = temp_dir();
+        write_summary_graph_fixture(&dir);
+        let response = route_request(
+            "GET",
+            "/diagnostics/summary?display_mode=machine_structured",
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+
+        assert_eq!(
+            body.get("display_mode").and_then(|v| v.as_str()),
+            Some("machine_structured")
+        );
+        assert_eq!(
+            body.get("authority_classification").and_then(|v| v.as_str()),
+            Some("non_authoritative")
+        );
+        assert_eq!(
+            body.get("summary_origin").and_then(|v| v.as_str()),
+            Some("derived")
+        );
+
+        // counts object with 6 integer fields
+        let counts = body.get("counts").expect("counts object present");
+        for field in &[
+            "partition_count",
+            "total_nodes",
+            "total_incidents",
+            "agreement_count",
+            "conflict_count",
+            "island_count",
+        ] {
+            assert!(
+                counts.get(field).and_then(|v| v.as_u64()).is_some(),
+                "counts.{field} must be an integer"
+            );
+        }
+
+        // flags object with 3 false booleans
+        let flags = body.get("flags").expect("flags object present");
+        for field in &["produces_truth", "produces_decision", "produces_ranking"] {
+            assert_eq!(
+                flags.get(field).and_then(|v| v.as_bool()),
+                Some(false),
+                "flags.{field} must be false"
+            );
+        }
+
+        // incident_groups object present
+        assert!(
+            body.get("incident_groups").and_then(|v| v.as_object()).is_some(),
+            "incident_groups must be an object"
+        );
+
+        // no explanation field
+        assert!(
+            body.get("explanation").is_none(),
+            "explanation must not be present in machine_structured"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_unknown_display_mode_returns_400() {
+        let dir = temp_dir();
+        write_summary_graph_fixture(&dir);
+        let response = route_request("GET", "/diagnostics/summary?display_mode=xyz", &dir);
+        assert_eq!(response.status_code, 400);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_extra_query_param_returns_400() {
+        let dir = temp_dir();
+        write_summary_graph_fixture(&dir);
+        let response = route_request(
+            "GET",
+            "/diagnostics/summary?display_mode=machine_structured&winner=true",
+            &dir,
+        );
+        assert_eq!(response.status_code, 400);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_empty_evidence_dir_returns_200_zero_counts() {
+        // Need at least one run dir with a valid graph for the summary to work.
+        // Use a single run with an empty graph (0 nodes, 0 incidents).
+        // With one run, partition_count=1 and island_count=1 (single isolated partition).
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260405-a");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        let graph_artifact = r#"{
+          "graph_version":"v1",
+          "authority":"proof-verifier-cross-node-parity",
+          "env_hash":"sha256:env-a",
+          "status":"PASS",
+          "provenance":{
+            "artifact_set_hash":"sha256:artifact-set-a",
+            "source_runs":["phase12-cross-node-parity"]
+          },
+          "graph":{
+            "node_count":0,
+            "edge_count":0,
+            "incident_count":0,
+            "nodes":[],
+            "edges":[],
+            "incidents":[]
+          }
+        }"#;
+        write_artifact(&run_dir, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(
+            &dir,
+            "parity_determinism_incidents.json",
+            r#"{"determinism_incident_count":0,"severity_counts":{},"incidents":[]}"#,
+        );
+        let response = route_request(
+            "GET",
+            "/diagnostics/summary?display_mode=machine_structured",
+            &dir,
+        );
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let counts = body.get("counts").expect("counts present");
+        // With one run dir containing an empty graph: 1 partition, 0 nodes, 0 incidents,
+        // 0 agreements, 0 conflicts, 1 island (the single isolated partition).
+        assert_eq!(
+            counts.get("total_nodes").and_then(|v| v.as_u64()),
+            Some(0),
+            "total_nodes must be 0"
+        );
+        assert_eq!(
+            counts.get("total_incidents").and_then(|v| v.as_u64()),
+            Some(0),
+            "total_incidents must be 0"
+        );
+        assert_eq!(
+            counts.get("agreement_count").and_then(|v| v.as_u64()),
+            Some(0),
+            "agreement_count must be 0"
+        );
+        assert_eq!(
+            counts.get("conflict_count").and_then(|v| v.as_u64()),
+            Some(0),
+            "conflict_count must be 0"
+        );
+        let incident_groups = body
+            .get("incident_groups")
+            .and_then(|v| v.as_object())
+            .expect("incident_groups object");
+        assert!(incident_groups.is_empty(), "incident_groups must be empty");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_missing_evidence_dir_returns_non_200() {
+        let dir = temp_dir().join("does-not-exist");
+        let response = route_request(
+            "GET",
+            "/diagnostics/summary?display_mode=machine_structured",
+            &dir,
+        );
+        assert_ne!(response.status_code, 200);
+    }
+
+    #[test]
+    fn machine_structured_allowed_query_keys_for_summary_path() {
+        let keys = super::api_contract::allowed_query_keys_for_path("/diagnostics/summary")
+            .expect("summary path must have allowed query keys");
+        assert_eq!(keys, &["display_mode"]);
+    }
+
+    #[test]
+    fn machine_structured_schema_rejects_float_in_counts() {
+        use super::api_schema::validate_response_schema_for_path;
+        let value = serde_json::json!({
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "counts": {
+                "partition_count": 1.5,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        });
+        let result = validate_response_schema_for_path("/diagnostics/summary", &value);
+        assert!(result.is_err(), "schema must reject float in counts");
+    }
+
+    #[test]
+    fn machine_structured_schema_valid_without_explanation() {
+        use super::api_schema::validate_response_schema_for_path;
+        let value = serde_json::json!({
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "counts": {
+                "partition_count": 1,
+                "total_nodes": 2,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 1
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        });
+        let result = validate_response_schema_for_path("/diagnostics/summary", &value);
+        assert!(
+            result.is_ok(),
+            "valid machine_structured response without explanation must pass schema"
+        );
+    }
+
+    #[test]
+    fn machine_structured_schema_rejects_authoritative_classification() {
+        use super::api_schema::{validate_machine_structured_summary_contract_v1, SchemaValidationError};
+        let value = serde_json::json!({
+            "summary_origin": "derived",
+            "authority_classification": "authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "counts": {
+                "partition_count": 0,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        });
+        let result = validate_machine_structured_summary_contract_v1(&value);
+        assert!(
+            matches!(result, Err(SchemaValidationError::InvalidFieldValue { field: "authority_classification" })),
+            "must return Err(InvalidFieldValue) for authoritative classification"
+        );
+    }
+
+    #[test]
+    fn machine_structured_non_get_methods_return_405() {
+        let dir = temp_dir();
+        let response = route_request_with_body("POST", "/diagnostics/summary", None, &dir);
+        assert_eq!(response.status_code, 405);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn machine_structured_no_new_url_paths() {
+        assert!(
+            super::resolve_public_endpoint("/diagnostics/summary/machine").is_none(),
+            "/diagnostics/summary/machine must not be registered"
+        );
+        assert!(
+            super::resolve_public_endpoint("/diagnostics/machine-summary").is_none(),
+            "/diagnostics/machine-summary must not be registered"
+        );
     }
 }
 
