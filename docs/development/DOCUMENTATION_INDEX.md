@@ -62,6 +62,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 6. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
 7. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 8. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+9. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
 
 ## Phase-11 Reference Set
 1. `docs/specs/phase11-verification-substrate/design.md`

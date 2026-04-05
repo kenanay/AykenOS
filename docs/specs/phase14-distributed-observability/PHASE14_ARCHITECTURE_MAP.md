@@ -108,12 +108,18 @@ These rules are inherited from Phase-13 and MUST be preserved throughout Phase-1
 
 **Scope:**
 - `GET /diagnostics/summary` — human-readable system health snapshot
+- `GET /diagnostics/runs/{run_id}/summary` — human-readable run-scoped projection
 - Structured text output for CLI consumers
 - Incident severity labeling (display only)
+- Explicit epistemic boundary:
+  - `summary_origin = derived`
+  - `authority_classification = non_authoritative`
+  - `display_mode = human_readable`
 
 **Non-goals:**
 - Decision-making based on display labels
 - Aggregated scoring
+- Ranking, winner selection, or routing hints
 
 ---
 
