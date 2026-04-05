@@ -2,7 +2,7 @@
 
 **Phase:** 14  
 **Workstream:** 3.4  
-**Status:** VALIDATED_LOCAL
+**Status:** MERGED
 **Authority:** `ARCHITECTURE_FREEZE.md`  
 **Related Surface:** `GET /diagnostics/graph`, `GET /diagnostics/graph/overlay`, `GET /diagnostics/runs/{run_id}/graph`
 
@@ -27,7 +27,7 @@ declared truth surface instead of growing route-first.
 
 ## 2. Current Status Boundary
 
-Current branch state:
+Current `main` state:
 
 - `GET /diagnostics/runs/{run_id}/graph` serves a contract-bound Phase-14
   envelope backed by `parity_incident_graph.json`
@@ -40,8 +40,7 @@ That means this document is:
 
 - canonical for 3.4 field vocabulary and shape intent
 - authoritative for 3.4 design direction
-- aligned to the locally validated implementation slice on this branch
-- not yet `main` truth until remote CI confirmation and merge
+- aligned to the merged implementation slice on `main`
 
 This document MUST NOT be read as:
 
