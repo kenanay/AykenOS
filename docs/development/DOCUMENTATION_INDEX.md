@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-03
+**Last Updated:** 2026-04-05
 **Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
 
 ## Current Status
@@ -59,6 +59,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 5. `docs/specs/phase14-distributed-observability/README.md`
 6. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
 7. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+8. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
 
 ## Phase-11 Reference Set
 1. `docs/specs/phase11-verification-substrate/design.md`

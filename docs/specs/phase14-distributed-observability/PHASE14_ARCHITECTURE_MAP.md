@@ -90,6 +90,7 @@ These rules are inherited from Phase-13 and MUST be preserved throughout Phase-1
 **Objective:** Add derived observability artifacts for cross-node verification topology.
 
 **Scope:**
+- Canonical graph contract and artifact shape
 - `GET /diagnostics/graph` — cross-node verification relationship graph
 - Node participation topology (derived, non-authoritative)
 - Convergence partition visibility
@@ -182,4 +183,5 @@ Phase-14 is complete when:
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — predecessor map
 - `docs/specs/phase14-distributed-observability/README.md` — phase spec
 - `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md` — canonical external diagnostics contract
+- `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md` — canonical cross-node graph contract
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts

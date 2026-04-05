@@ -107,6 +107,7 @@ Workstream numbering in this document MUST align with the Phase-14 development t
 **Goal:** Add derived observability artifacts for cross-node verification topology.
 
 **Scope:**
+- Canonical graph contract and artifact shape
 - `GET /diagnostics/graph` — cross-node verification relationship graph
 - Node participation topology (derived, non-authoritative)
 - Convergence partition visibility
@@ -167,5 +168,6 @@ Phase-14 is complete when:
 - `docs/roadmap/overview.md` — roadmap truth surface
 - `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md` — live workstream tracker
 - `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md` — canonical external diagnostics contract
+- `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md` — canonical cross-node graph contract
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — architectural map
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts
