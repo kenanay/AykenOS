@@ -1,7 +1,7 @@
 # AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-04-03
-**Status:** Phase-10 / Phase-11 / Phase-12 / Phase-13 Official Closure Confirmed + CURRENT_PHASE=14 + Phase-14 ACTIVE
+**Date:** 2026-04-05
+**Status:** Phase-10 / Phase-11 / Phase-12 / Phase-13 Official Closure Confirmed + CURRENT_PHASE=14 + Phase-14 ACTIVE (`3.1`/`3.2`/`3.3`/`3.4` merged)
 **Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`, `run-local-p13-kill-switch-20260315T000051Z`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b`
 **Evidence Git SHA (Phase-12C):** `01d1cb5c`
@@ -15,7 +15,7 @@
 **Official Closure Tag (Phase-13):** `phase13-official-closure-confirmed` at `8b23fe0d`
 **Phase-13 Kill-Switch Tag:** `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 **CURRENT_PHASE:** `14` (formal transition at `8b23fe0d`)
-**Performance Baseline:** `gha-ubuntu24-20260323.65.1-X64` (updated PR #83)
+**Performance Baseline:** `gha-ubuntu24-20260329.72.1-X64` (updated PR #90)
 
 ## Executive Summary
 Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerinden guncel durumu ozetler.
@@ -25,8 +25,10 @@ Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerin
 - `Phase-12` trust layer normative gate seti remote `ci-freeze` ile official closure seviyesine tasindi
 - `Phase-13` kill-switch gates 6/6 PASS, Architecture Map §4 workstreams COMPLETE, official closure confirmed
 - `CURRENT_PHASE=14` formal transition tamamlandi
-- Phase-14 spec acildi: `docs/specs/phase14-distributed-observability/README.md`
-- Performance baseline guncellendi: `gha-ubuntu24-20260323.65.1-X64`
+- Phase-14 spec ve tracker aktif truth surface olarak yerlesmis durumda
+- Phase-14 workstream `3.1`, `3.2`, `3.3`, `3.4` `main` uzerinde merge edildi
+- Root graph yuzeyi artik partitioned derived + overlay-only modele gecti
+- Performance baseline guncellendi: `gha-ubuntu24-20260329.72.1-X64`
 
 ## 1) Evidence Basis
 
@@ -129,7 +131,9 @@ Current classification:
 Meaning:
 1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
 2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
-3. Active workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
+3. Merged workstreams on `main`: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph
+4. Remaining open workstream: 3.5 observability UX
+5. Phase-14 graph surface is now explicitly `derived`, `non_authoritative`, and `overlay_only`
 
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
@@ -141,19 +145,18 @@ Meaning:
 7. `ABDF` and `BCIB` remain existing substrates; Phase-14 does not re-center them as primary workstreams.
 
 ## 4) Current Risk Surface
-1. En kritik teknik risk replay stability altinda `interrupt ordering nondeterminism` olarak kalir — Phase-14 workstream 3.1.
-2. Phase-14 boundary hardening without widening diagnostics into consensus-like semantics.
-3. `proofd` MUST still not drift into authority, majority, or control-plane semantics.
-4. Phase-14 graph / observability growth MUST remain derived-only.
+1. En kritik teknik risk root partitioning ve overlay-only graph yuzeyinin post-merge stabilitesidir; bu yuzey authority, majority veya routing semantics'e kaymamalidir.
+2. `proofd` MUST still not drift into authority, majority, truth-election, or control-plane semantics.
+3. Deeper graph validation henuz acik konudur: `node_fingerprint` uniqueness ve partition integrity v2 kararlari bilincli olarak ertelenmistir.
+4. Replay stability ve interrupt-order nondeterminism hala izlenmesi gereken altyapisal risk olarak kalir.
 
 ## 5) Next Steps
-1. Phase-14 workstream 3.1: Read-only external API stabilization
-2. Phase-14 workstream 3.2: Replay determinism stability hardening
-3. Phase-14 workstream 3.3: `proofd` query/service boundary hardening
-4. Phase-14 workstream 3.4: Cross-node observability graph (`GET /diagnostics/graph`)
-5. Phase-14 workstream 3.5: Observability UX (human-readable layer)
-6. Keep monitoring replay stability under interrupt ordering nondeterminism
-7. Preserve `service != authority`, `diagnostics != decision`, and `parity != consensus`
+1. Observe post-merge stability of root `/diagnostics/graph` partitioning and `/diagnostics/graph/overlay` diagnostics.
+2. Decide whether deeper graph-structure validation should expand into `node_fingerprint` uniqueness and partition-integrity checks.
+3. Decide whether non-GET diagnostics rejection should move from namespace logic into the endpoint registry layer.
+4. Open Phase-14 workstream 3.5 without introducing scoring, authority, or truth-election semantics.
+5. Keep monitoring replay stability under interrupt ordering nondeterminism.
+6. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
 
 ## References
 - `README.md`

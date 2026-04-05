@@ -11,7 +11,9 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Distributed Observability:** `Phase-13` officially closed — `ci-freeze` run `23706742211` (PR #81)
 - **Formal Governance Pointer:** `CURRENT_PHASE=14` (formal transition at `8b23fe0d`)
 - **Active Phase:** Phase-14 — `docs/specs/phase14-distributed-observability/README.md`
-- **Performance Baseline:** `gha-ubuntu24-20260323.65.1-X64` (PR #83)
+- **Merged Phase-14 Workstreams:** `3.1`, `3.2`, `3.3`, `3.4` — tracker-authoritative on `main`
+- **Phase-14 Graph Surface:** root graph is partitioned derived; overlay is descriptive-only and non-authoritative
+- **Performance Baseline:** `gha-ubuntu24-20260329.72.1-X64` (PR #90)
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -149,6 +151,6 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
 
 ## Note
-Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`) ve yukaridaki primary truth kaynaklari kullanilmalidir.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`), Phase-14 tracker truth ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
 
-**Son Guncelleme:** 2026-04-03
+**Son Guncelleme:** 2026-04-05
