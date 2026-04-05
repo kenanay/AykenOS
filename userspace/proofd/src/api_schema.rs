@@ -837,9 +837,9 @@ pub fn validate_phase14_graph_contract_v1(
     require_exact_count(graph, "edge_count", edges.len())?;
     require_exact_count(graph, "incident_count", incidents.len())?;
 
-    let incident_ids = collect_incident_ids(incidents)?;
-    validate_graph_nodes(nodes)?;
-    validate_graph_edges(edges, &incident_ids)?;
+    let node_ids = validate_graph_nodes(nodes)?;
+    let incident_ids = validate_graph_incidents(incidents, &node_ids)?;
+    validate_graph_edges(edges, &node_ids, &incident_ids)?;
 
     Ok(())
 }
@@ -946,8 +946,9 @@ fn validate_source_runs(source_runs: &[Value]) -> Result<(), SchemaValidationErr
     Ok(())
 }
 
-fn collect_incident_ids(
+fn validate_graph_incidents(
     incidents: &[Value],
+    node_ids: &BTreeSet<String>,
 ) -> Result<BTreeSet<String>, SchemaValidationError> {
     let mut incident_ids = BTreeSet::new();
     for incident in incidents {
@@ -963,11 +964,47 @@ fn collect_incident_ids(
                 field: "incident_id",
             });
         }
+        require_non_empty_string(incident, "surface_key")?;
+        let severity = require_non_empty_string(incident, "severity")?;
+        if !matches!(
+            severity,
+            "pure_determinism_failure"
+                | "authority_drift"
+                | "context_drift"
+                | "subject_drift"
+                | "mixed"
+        ) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "severity" });
+        }
+        let incident_nodes = require_array(incident, "nodes")?;
+        require_exact_count(incident, "node_count", incident_nodes.len())?;
+        if incident_nodes.is_empty() {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "nodes" });
+        }
+        let mut seen_node_ids = BTreeSet::new();
+        for incident_node in incident_nodes {
+            let Some(incident_node_id) = incident_node.as_str() else {
+                return Err(SchemaValidationError::FieldTypeMismatch {
+                    field: "nodes[]",
+                    expected: SchemaValueKind::String,
+                });
+            };
+            if incident_node_id.trim().is_empty() {
+                return Err(SchemaValidationError::InvalidFieldValue { field: "nodes" });
+            }
+            if !seen_node_ids.insert(incident_node_id) {
+                return Err(SchemaValidationError::InvalidFieldValue { field: "nodes" });
+            }
+            if !node_ids.contains(incident_node_id) {
+                return Err(SchemaValidationError::InvalidFieldValue { field: "nodes" });
+            }
+        }
     }
     Ok(incident_ids)
 }
 
-fn validate_graph_nodes(nodes: &[Value]) -> Result<(), SchemaValidationError> {
+fn validate_graph_nodes(nodes: &[Value]) -> Result<BTreeSet<String>, SchemaValidationError> {
+    let mut node_ids = BTreeSet::new();
     for node in nodes {
         let Some(node) = node.as_object() else {
             return Err(SchemaValidationError::FieldTypeMismatch {
@@ -975,14 +1012,27 @@ fn validate_graph_nodes(nodes: &[Value]) -> Result<(), SchemaValidationError> {
                 expected: SchemaValueKind::Object,
             });
         };
-        require_non_empty_string(node, "id")?;
+        let node_id = require_non_empty_string(node, "id")?;
+        if !node_ids.insert(node_id.to_string()) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "id" });
+        }
         require_non_empty_string(node, "node_fingerprint")?;
+        require_non_empty_string(node, "surface_key")?;
+        require_non_empty_string(node, "outcome_key")?;
+        let verdict = require_non_empty_string(node, "verdict")?;
+        if !matches!(
+            verdict,
+            "TRUSTED" | "UNTRUSTED" | "INVALID" | "REJECTED_BY_POLICY"
+        ) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "verdict" });
+        }
     }
-    Ok(())
+    Ok(node_ids)
 }
 
 fn validate_graph_edges(
     edges: &[Value],
+    node_ids: &BTreeSet<String>,
     incident_ids: &BTreeSet<String>,
 ) -> Result<(), SchemaValidationError> {
     for edge in edges {
@@ -992,8 +1042,14 @@ fn validate_graph_edges(
                 expected: SchemaValueKind::Object,
             });
         };
-        require_non_empty_string(edge, "from")?;
-        require_non_empty_string(edge, "to")?;
+        let from = require_non_empty_string(edge, "from")?;
+        let to = require_non_empty_string(edge, "to")?;
+        if !node_ids.contains(from) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "from" });
+        }
+        if !node_ids.contains(to) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "to" });
+        }
         let edge_type = require_non_empty_string(edge, "edge_type")?;
         match edge_type {
             "same_outcome" => {}
@@ -1184,6 +1240,84 @@ mod tests {
             SchemaValidationError::InvalidFieldValue {
                 field: "source_runs"
             }
+        );
+    }
+
+    #[test]
+    fn run_graph_schema_rejects_nodes_missing_required_contract_fields() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/runs/run-a/graph",
+            &json!({
+                "graph_version": "v1",
+                "authority": "proof-verifier-cross-node-parity",
+                "env_hash": "sha256:env",
+                "status": "PASS",
+                "provenance": {
+                    "artifact_set_hash": "sha256:set",
+                    "source_runs": ["run-a"]
+                },
+                "graph": {
+                    "node_count": 1,
+                    "edge_count": 0,
+                    "incident_count": 0,
+                    "nodes": [{
+                        "id": "node-a",
+                        "node_fingerprint": "sha256:fingerprint-a",
+                        "surface_key": "sha256:surface",
+                        "verdict": "TRUSTED"
+                    }],
+                    "edges": [],
+                    "incidents": []
+                }
+            }),
+        )
+        .expect_err("node objects missing outcome_key must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::MissingRequiredField {
+                field: "outcome_key"
+            }
+        );
+    }
+
+    #[test]
+    fn run_graph_schema_rejects_incidents_missing_required_contract_fields() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/runs/run-a/graph",
+            &json!({
+                "graph_version": "v1",
+                "authority": "proof-verifier-cross-node-parity",
+                "env_hash": "sha256:env",
+                "status": "PASS",
+                "provenance": {
+                    "artifact_set_hash": "sha256:set",
+                    "source_runs": ["run-a"]
+                },
+                "graph": {
+                    "node_count": 1,
+                    "edge_count": 0,
+                    "incident_count": 1,
+                    "nodes": [{
+                        "id": "node-a",
+                        "node_fingerprint": "sha256:fingerprint-a",
+                        "surface_key": "sha256:surface",
+                        "outcome_key": "sha256:outcome-a",
+                        "verdict": "TRUSTED"
+                    }],
+                    "edges": [],
+                    "incidents": [{
+                        "incident_id": "sha256:incident-a",
+                        "surface_key": "sha256:surface",
+                        "nodes": ["node-a"],
+                        "node_count": 1
+                    }]
+                }
+            }),
+        )
+        .expect_err("incident objects missing severity must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::MissingRequiredField { field: "severity" }
         );
     }
 }
