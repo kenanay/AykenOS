@@ -56,7 +56,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
-| 3.4 | Cross-Node Observability Graph | VALIDATED_LOCAL | Run-scoped graph artifacts now carry the Phase-14 envelope; root `/diagnostics/graph` now returns partitioned derived graphs and `/diagnostics/graph/overlay` returns overlay-only diagnostics, all validated locally | Remote `ci-freeze` confirmation and merge of the first graph aggregation slice |
+| 3.4 | Cross-Node Observability Graph | MERGED | Run-scoped graph artifacts carry the Phase-14 envelope on `main`; root `/diagnostics/graph` returns partitioned derived graphs and `/diagnostics/graph/overlay` returns overlay-only diagnostics on `main` | Preserve the non-authoritative boundary while observing post-merge partition and overlay stability |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
 ### Status Legend
@@ -108,7 +108,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 - Current implementation note:
   - the contract froze the field vocabulary, edge model, cluster model, partition semantics, and determinism rules before endpoint implementation
 
-**Workstream 3.4 first implementation slice validated locally**
+**Workstream 3.4 first implementation slice merged to `main`**
 - `parity_incident_graph.json` now carries the Phase-14 run-scoped graph envelope:
   - `graph_version`
   - `authority`
@@ -131,7 +131,7 @@ This tracker is operational, not historical. Historical closure truth remains in
   - no resolved verdict
   - no routing hint
   - no authority selection
-- Local validation observed:
+- Local and remote validation observed:
   - `cargo test -p proof-verifier` passed
   - `cargo test -p proofd` passed
   - `ci-gate-proofd-service` passed
@@ -140,6 +140,7 @@ This tracker is operational, not historical. Historical closure truth remains in
   - `ci-gate-observability-routing-separation` passed
   - `ci-gate-graph-non-authoritative-contract` passed
   - `ci-gate-diagnostics-consumer-non-authoritative-contract` passed
+  - PR `#96` merged after `ci-freeze` run `23999026616` passed
 
 ### 2026-04-03
 
@@ -211,6 +212,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-routing-root-graph-v2c` | PASS | Root graph promotion did not regress observability/scheduling boundary separation |
 | 2026-04-05 | `bash scripts/ci/gate_graph_non_authoritative_contract.sh --evidence-dir /tmp/graph-non-authoritative-root-graph-v2c` | PASS | Partitioned graph and overlay surfaces remained descriptive-only and non-authoritative |
 | 2026-04-05 | `bash scripts/ci/gate_diagnostics_consumer_non_authoritative_contract.sh --evidence-dir /tmp/diag-consumer-root-graph-v2c` | PASS | New graph surfaces did not regress into execution-bearing consumer misuse |
+| 2026-04-05 | `ci-freeze` run `23999026616` | PASS | PR `#96` remote confirmation for the first root partitioning and overlay-only graph slice |
 
 ---
 
@@ -237,8 +239,8 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ## 8. Next Steps
 
-1. Get remote `ci-freeze` confirmation for the first 3.4 graph aggregation slice and merge it without weakening the non-authoritative boundary.
-2. Observe post-merge stability of root partitioning and overlay-only diagnostics before considering any v2 graph semantics.
+1. Observe post-merge stability of root partitioning and overlay-only diagnostics before considering any v2 graph semantics.
+2. Decide whether deeper graph-structure validation should expand into node-fingerprint uniqueness and partition-integrity checks.
 3. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
 4. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
 
