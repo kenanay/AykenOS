@@ -61,6 +61,7 @@ This contract does not cover:
 - `GET /diagnostics/authority-suppression`
 - `GET /diagnostics/authority-topology`
 - `GET /diagnostics/graph`
+- `GET /diagnostics/graph/overlay`
 - `GET /diagnostics/drift`
 - `GET /diagnostics/convergence`
 - `GET /diagnostics/failure-matrix`
@@ -173,6 +174,8 @@ The v1 schema contract currently covers:
   - `/diagnostics/incidents/{incident_id}`
   - `/diagnostics/fingerprints/{fp}`
   - `/diagnostics/replicated-boundary`
+  - `/diagnostics/graph`
+  - `/diagnostics/graph/overlay`
 - service-owned run diagnostics
   - `/diagnostics/runs/{run_id}`
   - `/diagnostics/runs/{run_id}/artifacts`
@@ -180,10 +183,20 @@ The v1 schema contract currently covers:
   - `/diagnostics/runs/{run_id}/context`
   - `/diagnostics/runs/{run_id}/registry`
   - `/diagnostics/runs/{run_id}/boundary`
+  - `/diagnostics/runs/{run_id}/graph`
 
 Artifact-backed passthrough endpoints remain governed by their upstream artifact
 contracts in v1. They still receive runtime forbidden-field enforcement, but
 they are not yet structurally frozen by `proofd` schema validation.
+
+Graph-specific note:
+
+- `/diagnostics/runs/{run_id}/graph` is artifact-backed but structurally frozen by
+  the Phase-14 run-scoped graph contract
+- `/diagnostics/graph` is service-computed and returns a partitioned derived
+  surface
+- `/diagnostics/graph/overlay` is service-computed and returns overlay-only
+  aggregation diagnostics
 
 ## Canonical Source
 

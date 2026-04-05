@@ -488,6 +488,72 @@ const RUN_GRAPH_REQUIRED_FIELDS: &[SchemaField] = &[
     },
 ];
 
+const ROOT_GRAPH_REQUIRED_FIELDS: &[SchemaField] = &[
+    SchemaField {
+        name: "graph_origin",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority_classification",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "aggregation_mode",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "partition_count",
+        kind: SchemaValueKind::Number,
+    },
+    SchemaField {
+        name: "partitions",
+        kind: SchemaValueKind::Array,
+    },
+];
+
+const GRAPH_OVERLAY_REQUIRED_FIELDS: &[SchemaField] = &[
+    SchemaField {
+        name: "graph_origin",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority_classification",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "aggregation_mode",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "partition_count",
+        kind: SchemaValueKind::Number,
+    },
+    SchemaField {
+        name: "agreement_count",
+        kind: SchemaValueKind::Number,
+    },
+    SchemaField {
+        name: "conflict_count",
+        kind: SchemaValueKind::Number,
+    },
+    SchemaField {
+        name: "island_count",
+        kind: SchemaValueKind::Number,
+    },
+    SchemaField {
+        name: "agreements",
+        kind: SchemaValueKind::Array,
+    },
+    SchemaField {
+        name: "conflicts",
+        kind: SchemaValueKind::Array,
+    },
+    SchemaField {
+        name: "islands",
+        kind: SchemaValueKind::Array,
+    },
+];
+
 const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
     EndpointSchema {
         endpoint_id: DiagnosticsEndpointId::Version,
@@ -547,6 +613,18 @@ const PUBLIC_ENDPOINT_SCHEMAS: &[EndpointSchema] = &[
         endpoint_id: DiagnosticsEndpointId::ReplicatedBoundary,
         root_kind: SchemaValueKind::Object,
         required_fields: REPLICATED_BOUNDARY_REQUIRED_FIELDS,
+        optional_fields: EMPTY_FIELDS,
+    },
+    EndpointSchema {
+        endpoint_id: DiagnosticsEndpointId::Graph,
+        root_kind: SchemaValueKind::Object,
+        required_fields: ROOT_GRAPH_REQUIRED_FIELDS,
+        optional_fields: EMPTY_FIELDS,
+    },
+    EndpointSchema {
+        endpoint_id: DiagnosticsEndpointId::GraphOverlay,
+        root_kind: SchemaValueKind::Object,
+        required_fields: GRAPH_OVERLAY_REQUIRED_FIELDS,
         optional_fields: EMPTY_FIELDS,
     },
     EndpointSchema {
@@ -613,6 +691,8 @@ pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Sc
         | DiagnosticsEndpointId::IncidentById
         | DiagnosticsEndpointId::FingerprintBoundary
         | DiagnosticsEndpointId::ReplicatedBoundary
+        | DiagnosticsEndpointId::Graph
+        | DiagnosticsEndpointId::GraphOverlay
         | DiagnosticsEndpointId::RunSummary
         | DiagnosticsEndpointId::RunArtifactsIndex
         | DiagnosticsEndpointId::RunFederation
@@ -623,7 +703,6 @@ pub fn schema_coverage_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Sc
         DiagnosticsEndpointId::Parity
         | DiagnosticsEndpointId::AuthoritySuppression
         | DiagnosticsEndpointId::AuthorityTopology
-        | DiagnosticsEndpointId::Graph
         | DiagnosticsEndpointId::Drift
         | DiagnosticsEndpointId::Convergence
         | DiagnosticsEndpointId::FailureMatrix
@@ -643,7 +722,6 @@ pub fn response_mode_for_endpoint_id(endpoint_id: DiagnosticsEndpointId) -> Resp
         DiagnosticsEndpointId::Parity
         | DiagnosticsEndpointId::AuthoritySuppression
         | DiagnosticsEndpointId::AuthorityTopology
-        | DiagnosticsEndpointId::Graph
         | DiagnosticsEndpointId::Drift
         | DiagnosticsEndpointId::Convergence
         | DiagnosticsEndpointId::FailureMatrix
@@ -801,6 +879,8 @@ fn validate_endpoint_specific_contract(
 ) -> Result<(), SchemaValidationError> {
     match endpoint_id {
         DiagnosticsEndpointId::RunGraph => validate_phase14_graph_contract_v1(value),
+        DiagnosticsEndpointId::Graph => validate_root_graph_contract_v1(value),
+        DiagnosticsEndpointId::GraphOverlay => validate_root_graph_overlay_contract_v1(value),
         _ => Ok(()),
     }
 }
@@ -826,9 +906,110 @@ pub fn validate_phase14_graph_contract_v1(
     let provenance = require_object(root, "provenance")?;
     require_non_empty_string(provenance, "artifact_set_hash")?;
     let source_runs = require_array(provenance, "source_runs")?;
-    validate_source_runs(source_runs)?;
+    validate_sorted_unique_string_array(source_runs, "source_runs", true)?;
 
     let graph = require_object(root, "graph")?;
+    validate_phase14_graph_payload_v1(graph)?;
+
+    Ok(())
+}
+
+pub fn validate_root_graph_contract_v1(
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    require_exact_string(root, "graph_origin", "derived")?;
+    require_exact_string(
+        root,
+        "authority_classification",
+        "non_authoritative",
+    )?;
+    require_exact_string(root, "aggregation_mode", "overlay_only")?;
+
+    let partitions = require_array(root, "partitions")?;
+    require_exact_count(root, "partition_count", partitions.len())?;
+    validate_graph_partition_entries(partitions)?;
+
+    Ok(())
+}
+
+pub fn validate_root_graph_overlay_contract_v1(
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    require_exact_string(root, "graph_origin", "derived")?;
+    require_exact_string(
+        root,
+        "authority_classification",
+        "non_authoritative",
+    )?;
+    require_exact_string(root, "aggregation_mode", "overlay_only")?;
+
+    let agreements = require_array(root, "agreements")?;
+    let conflicts = require_array(root, "conflicts")?;
+    let islands = require_array(root, "islands")?;
+
+    require_exact_count(root, "agreement_count", agreements.len())?;
+    require_exact_count(root, "conflict_count", conflicts.len())?;
+    require_exact_count(root, "island_count", islands.len())?;
+
+    validate_graph_overlay_agreements(agreements)?;
+    validate_graph_overlay_conflicts(conflicts)?;
+    validate_graph_overlay_islands(islands)?;
+
+    Ok(())
+}
+
+fn validate_graph_partition_entries(
+    partitions: &[Value],
+) -> Result<(), SchemaValidationError> {
+    let mut partition_ids = BTreeSet::new();
+    for partition in partitions {
+        let Some(partition) = partition.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "partitions[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        let partition_id = require_non_empty_string(partition, "partition_id")?;
+        if !partition_ids.insert(partition_id.to_string()) {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "partition_id",
+            });
+        }
+        let partition_key = require_object(partition, "partition_key")?;
+        require_exact_string(partition_key, "graph_version", "v1")?;
+        require_non_empty_string(partition_key, "authority")?;
+        require_non_empty_string(partition_key, "env_hash")?;
+        require_non_empty_string(partition_key, "artifact_set_hash")?;
+
+        let run_ids = require_array(partition, "run_ids")?;
+        validate_sorted_unique_string_array(run_ids, "run_ids", true)?;
+        require_exact_count(partition, "run_count", run_ids.len())?;
+
+        let source_runs = require_array(partition, "source_runs")?;
+        validate_sorted_unique_string_array(source_runs, "source_runs", true)?;
+
+        let graph = require_object(partition, "graph")?;
+        validate_phase14_graph_payload_v1(graph)?;
+    }
+
+    Ok(())
+}
+
+fn validate_phase14_graph_payload_v1(
+    graph: &serde_json::Map<String, Value>,
+) -> Result<(), SchemaValidationError> {
     let nodes = require_array(graph, "nodes")?;
     let edges = require_array(graph, "edges")?;
     let incidents = require_array(graph, "incidents")?;
@@ -841,6 +1022,102 @@ pub fn validate_phase14_graph_contract_v1(
     let incident_ids = validate_graph_incidents(incidents, &node_ids)?;
     validate_graph_edges(edges, &node_ids, &incident_ids)?;
 
+    Ok(())
+}
+
+fn validate_graph_overlay_agreements(
+    agreements: &[Value],
+) -> Result<(), SchemaValidationError> {
+    for agreement in agreements {
+        let Some(agreement) = agreement.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "agreements[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        require_non_empty_string(agreement, "node_fingerprint")?;
+        let verdict = require_non_empty_string(agreement, "verdict")?;
+        if !is_valid_graph_verdict_label(verdict) {
+            return Err(SchemaValidationError::InvalidFieldValue { field: "verdict" });
+        }
+        let partitions = require_array(agreement, "partitions")?;
+        validate_sorted_unique_string_array(partitions, "partitions", true)?;
+        require_exact_count(agreement, "partition_count", partitions.len())?;
+    }
+    Ok(())
+}
+
+fn validate_graph_overlay_conflicts(
+    conflicts: &[Value],
+) -> Result<(), SchemaValidationError> {
+    for conflict in conflicts {
+        let Some(conflict) = conflict.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "conflicts[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        require_non_empty_string(conflict, "node_fingerprint")?;
+        let partitions = require_array(conflict, "partitions")?;
+        validate_sorted_unique_string_array(partitions, "partitions", true)?;
+        require_exact_count(conflict, "partition_count", partitions.len())?;
+
+        let observed_verdicts = require_array(conflict, "observed_verdicts")?;
+        validate_sorted_unique_string_array(observed_verdicts, "observed_verdicts", true)?;
+        if observed_verdicts.len() < 2 {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "observed_verdicts",
+            });
+        }
+        for verdict in observed_verdicts {
+            let verdict = verdict.as_str().ok_or(SchemaValidationError::FieldTypeMismatch {
+                field: "observed_verdicts[]",
+                expected: SchemaValueKind::String,
+            })?;
+            if !is_valid_graph_verdict_label(verdict) {
+                return Err(SchemaValidationError::InvalidFieldValue {
+                    field: "observed_verdicts",
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_graph_overlay_islands(
+    islands: &[Value],
+) -> Result<(), SchemaValidationError> {
+    let mut partition_ids = BTreeSet::new();
+    for island in islands {
+        let Some(island) = island.as_object() else {
+            return Err(SchemaValidationError::FieldTypeMismatch {
+                field: "islands[]",
+                expected: SchemaValueKind::Object,
+            });
+        };
+        let partition_id = require_non_empty_string(island, "partition_id")?;
+        if !partition_ids.insert(partition_id.to_string()) {
+            return Err(SchemaValidationError::InvalidFieldValue {
+                field: "partition_id",
+            });
+        }
+        require_number_field(island, "run_count")?;
+        require_number_field(island, "node_count")?;
+        require_number_field(island, "edge_count")?;
+        require_number_field(island, "incident_count")?;
+    }
+    Ok(())
+}
+
+fn require_exact_string(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+    expected_value: &'static str,
+) -> Result<(), SchemaValidationError> {
+    let value = require_non_empty_string(map, field)?;
+    if value != expected_value {
+        return Err(SchemaValidationError::InvalidFieldValue { field });
+    }
     Ok(())
 }
 
@@ -909,41 +1186,59 @@ fn require_exact_count(
     Ok(())
 }
 
-fn validate_source_runs(source_runs: &[Value]) -> Result<(), SchemaValidationError> {
-    if source_runs.is_empty() {
+fn require_number_field(
+    map: &serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<u64, SchemaValidationError> {
+    let value = map
+        .get(field)
+        .ok_or(SchemaValidationError::MissingRequiredField { field })?;
+    value.as_u64().ok_or(SchemaValidationError::FieldTypeMismatch {
+        field,
+        expected: SchemaValueKind::Number,
+    })
+}
+
+fn validate_sorted_unique_string_array(
+    values: &[Value],
+    field: &'static str,
+    require_non_empty: bool,
+) -> Result<(), SchemaValidationError> {
+    if require_non_empty && values.is_empty() {
         return Err(SchemaValidationError::InvalidFieldValue {
-            field: "source_runs",
+            field,
         });
     }
     let mut previous: Option<&str> = None;
     let mut seen = BTreeSet::new();
-    for value in source_runs {
+    for value in values {
         let Some(value) = value.as_str() else {
             return Err(SchemaValidationError::FieldTypeMismatch {
-                field: "source_runs[]",
+                field,
                 expected: SchemaValueKind::String,
             });
         };
         if value.trim().is_empty() {
-            return Err(SchemaValidationError::InvalidFieldValue {
-                field: "source_runs",
-            });
+            return Err(SchemaValidationError::InvalidFieldValue { field });
         }
         if let Some(previous_value) = previous {
             if value <= previous_value {
-                return Err(SchemaValidationError::InvalidFieldValue {
-                    field: "source_runs",
-                });
+                return Err(SchemaValidationError::InvalidFieldValue { field });
             }
         }
         if !seen.insert(value) {
-            return Err(SchemaValidationError::InvalidFieldValue {
-                field: "source_runs",
-            });
+            return Err(SchemaValidationError::InvalidFieldValue { field });
         }
         previous = Some(value);
     }
     Ok(())
+}
+
+fn is_valid_graph_verdict_label(verdict: &str) -> bool {
+    matches!(
+        verdict,
+        "TRUSTED" | "UNTRUSTED" | "INVALID" | "REJECTED_BY_POLICY"
+    )
 }
 
 fn validate_graph_incidents(
@@ -1020,10 +1315,7 @@ fn validate_graph_nodes(nodes: &[Value]) -> Result<BTreeSet<String>, SchemaValid
         require_non_empty_string(node, "surface_key")?;
         require_non_empty_string(node, "outcome_key")?;
         let verdict = require_non_empty_string(node, "verdict")?;
-        if !matches!(
-            verdict,
-            "TRUSTED" | "UNTRUSTED" | "INVALID" | "REJECTED_BY_POLICY"
-        ) {
+        if !is_valid_graph_verdict_label(verdict) {
             return Err(SchemaValidationError::InvalidFieldValue { field: "verdict" });
         }
     }
@@ -1181,6 +1473,18 @@ mod tests {
     }
 
     #[test]
+    fn coverage_marks_root_graph_surfaces_as_full() {
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::Graph),
+            SchemaCoverage::Full
+        );
+        assert_eq!(
+            schema_coverage_for_endpoint_id(DiagnosticsEndpointId::GraphOverlay),
+            SchemaCoverage::Full
+        );
+    }
+
+    #[test]
     fn run_graph_schema_rejects_missing_graph_version() {
         let error = validate_response_schema_for_path(
             "/diagnostics/runs/run-a/graph",
@@ -1318,6 +1622,66 @@ mod tests {
         assert_eq!(
             error,
             SchemaValidationError::MissingRequiredField { field: "severity" }
+        );
+    }
+
+    #[test]
+    fn root_graph_schema_rejects_missing_partition_key() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/graph",
+            &json!({
+                "graph_origin": "derived",
+                "authority_classification": "non_authoritative",
+                "aggregation_mode": "overlay_only",
+                "partition_count": 1,
+                "partitions": [{
+                    "partition_id": "sha256:partition-a",
+                    "run_count": 1,
+                    "run_ids": ["run-a"],
+                    "source_runs": ["phase12-cross-node-parity"],
+                    "graph": {
+                        "node_count": 0,
+                        "edge_count": 0,
+                        "incident_count": 0,
+                        "nodes": [],
+                        "edges": [],
+                        "incidents": []
+                    }
+                }]
+            }),
+        )
+        .expect_err("missing partition_key must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::MissingRequiredField {
+                field: "partition_key"
+            }
+        );
+    }
+
+    #[test]
+    fn graph_overlay_schema_rejects_invalid_aggregation_mode() {
+        let error = validate_response_schema_for_path(
+            "/diagnostics/graph/overlay",
+            &json!({
+                "graph_origin": "derived",
+                "authority_classification": "non_authoritative",
+                "aggregation_mode": "majority",
+                "partition_count": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0,
+                "agreements": [],
+                "conflicts": [],
+                "islands": []
+            }),
+        )
+        .expect_err("non overlay aggregation mode must fail");
+        assert_eq!(
+            error,
+            SchemaValidationError::InvalidFieldValue {
+                field: "aggregation_mode"
+            }
         );
     }
 }

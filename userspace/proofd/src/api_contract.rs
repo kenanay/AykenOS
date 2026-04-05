@@ -20,6 +20,7 @@ pub enum DiagnosticsEndpointId {
     AuthoritySuppression,
     AuthorityTopology,
     Graph,
+    GraphOverlay,
     Drift,
     Convergence,
     FailureMatrix,
@@ -210,7 +211,15 @@ pub const ROOT_DIAGNOSTICS_ENDPOINTS: &[DiagnosticsEndpointContract] = &[
         path_template: "/diagnostics/graph",
         methods: GET_ONLY,
         allowed_query_keys: NO_QUERY_KEYS,
-        artifact_file: Some("parity_incident_graph.json"),
+        artifact_file: None,
+        scope: EndpointScope::Root,
+    },
+    DiagnosticsEndpointContract {
+        id: DiagnosticsEndpointId::GraphOverlay,
+        path_template: "/diagnostics/graph/overlay",
+        methods: GET_ONLY,
+        allowed_query_keys: NO_QUERY_KEYS,
+        artifact_file: None,
         scope: EndpointScope::Root,
     },
     DiagnosticsEndpointContract {
@@ -672,6 +681,10 @@ mod tests {
             fingerprint.params.fp.as_deref(),
             Some("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         );
+
+        let overlay = resolve_public_endpoint("/diagnostics/graph/overlay")
+            .expect("graph overlay endpoint should resolve");
+        assert_eq!(overlay.contract.id, DiagnosticsEndpointId::GraphOverlay);
     }
 
     #[test]

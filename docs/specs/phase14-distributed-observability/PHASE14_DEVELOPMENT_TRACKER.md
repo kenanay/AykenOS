@@ -56,7 +56,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.1 | Read-Only External API Stabilization | MERGED | Versioned diagnostics discovery/header surface and canonical external contract doc are on `main` | Keep contract and tracker surfaces aligned as 3.3 hardening expands |
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
-| 3.4 | Cross-Node Observability Graph | IN PROGRESS | Canonical graph contract v1 is drafted and security-bounded; current endpoint surface still remains Phase-13-derived | Bind `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` to the v1 graph contract and artifact shape without introducing authority or routing semantics |
+| 3.4 | Cross-Node Observability Graph | VALIDATED_LOCAL | Run-scoped graph artifacts now carry the Phase-14 envelope; root `/diagnostics/graph` now returns partitioned derived graphs and `/diagnostics/graph/overlay` returns overlay-only diagnostics, all validated locally | Remote `ci-freeze` confirmation and merge of the first graph aggregation slice |
 | 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
 
 ### Status Legend
@@ -106,8 +106,40 @@ This tracker is operational, not historical. Historical closure truth remains in
   - graph endpoints remain queryless in v1
   - bounded graph generation is required before endpoint promotion
 - Current implementation note:
-  - `/diagnostics/graph` and `/diagnostics/runs/{run_id}/graph` still serve Phase-13-derived graph artifacts
-  - the new document freezes the target field vocabulary, edge model, cluster model, and determinism rules before endpoint implementation
+  - the contract froze the field vocabulary, edge model, cluster model, partition semantics, and determinism rules before endpoint implementation
+
+**Workstream 3.4 first implementation slice validated locally**
+- `parity_incident_graph.json` now carries the Phase-14 run-scoped graph envelope:
+  - `graph_version`
+  - `authority`
+  - `env_hash`
+  - `provenance.artifact_set_hash`
+  - `provenance.source_runs`
+  - `graph.nodes[*].node_fingerprint`
+- `GET /diagnostics/runs/{run_id}/graph` now enforces the Phase-14 graph contract at runtime
+- `GET /diagnostics/graph` now returns a partitioned derived root surface:
+  - `graph_origin = derived`
+  - `authority_classification = non_authoritative`
+  - `aggregation_mode = overlay_only`
+  - `partitions[]` keyed by `graph_version + authority + env_hash + artifact_set_hash`
+- `GET /diagnostics/graph/overlay` now returns overlay-only diagnostics:
+  - `agreements[]`
+  - `conflicts[]`
+  - `islands[]`
+- root graph aggregation remains descriptive-only:
+  - no majority semantics
+  - no resolved verdict
+  - no routing hint
+  - no authority selection
+- Local validation observed:
+  - `cargo test -p proof-verifier` passed
+  - `cargo test -p proofd` passed
+  - `ci-gate-proofd-service` passed
+  - `ci-gate-proofd-schema-coverage` passed
+  - `ci-gate-proofd-observability-boundary` passed
+  - `ci-gate-observability-routing-separation` passed
+  - `ci-gate-graph-non-authoritative-contract` passed
+  - `ci-gate-diagnostics-consumer-non-authoritative-contract` passed
 
 ### 2026-04-03
 
@@ -171,6 +203,14 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-boundary-final-dispatch` | PASS | Runtime forbidden-field enforcement remained intact after route hardening |
 | 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-routing-separation-final-dispatch` | PASS | Contract-driven routing preserved observability/scheduling separation |
 | 2026-04-05 | `bash scripts/ci/gate_diagnostics_consumer_non_authoritative_contract.sh --evidence-dir /tmp/diag-consumer-final-dispatch` | PASS | Canonical diagnostics registry remained boundary-only and did not regress into consumer misuse |
+| 2026-04-05 | `cargo test -p proof-verifier` | PASS | Run-scoped graph envelope producer and incident graph helpers passed locally |
+| 2026-04-05 | `cargo test -p proofd` | PASS | Root partitioned graph and overlay-only diagnostics slice passed locally (`187` lib tests + `6` main tests) |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-root-graph-v2c` | PASS | Root graph and overlay endpoint contract declarations aligned with service harness expectations |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-root-graph-v2c --source-gate-dir /tmp/proofd-service-root-graph-v2c` | PASS | Root graph moved from passthrough to full computed schema coverage without drift |
+| 2026-04-05 | `bash scripts/ci/gate_proofd_observability_boundary.sh --evidence-dir /tmp/proofd-observability-root-graph-v2c` | PASS | Root graph and overlay remained read-only and fail-closed under forbidden-field enforcement |
+| 2026-04-05 | `bash scripts/ci/gate_observability_routing_separation.sh --evidence-dir /tmp/proofd-routing-root-graph-v2c` | PASS | Root graph promotion did not regress observability/scheduling boundary separation |
+| 2026-04-05 | `bash scripts/ci/gate_graph_non_authoritative_contract.sh --evidence-dir /tmp/graph-non-authoritative-root-graph-v2c` | PASS | Partitioned graph and overlay surfaces remained descriptive-only and non-authoritative |
+| 2026-04-05 | `bash scripts/ci/gate_diagnostics_consumer_non_authoritative_contract.sh --evidence-dir /tmp/diag-consumer-root-graph-v2c` | PASS | New graph surfaces did not regress into execution-bearing consumer misuse |
 
 ---
 
@@ -189,16 +229,16 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ## 7. Open Items
 
-1. Should the first 3.4 implementation keep the graph payload Phase-13-compatible at the envelope level, or introduce a narrower Phase-14-specific graph envelope immediately?
-2. Should cluster explanations stay embedded inside the graph payload, or remain split across graph, convergence, and authority-topology surfaces in v1?
+1. Should root `/diagnostics/graph` remain strictly queryless in v1, or should any bounded filter surface be considered only in a later non-authoritative v2?
+2. Should deeper graph-structure validation expand beyond current referential integrity into explicit node-fingerprint uniqueness and partition integrity rules?
 3. Should non-GET diagnostics method rejection eventually move from namespace prefix logic into the same endpoint registry layer, or remain a separate boundary check?
 
 ---
 
 ## 8. Next Steps
 
-1. Keep artifact-backed passthrough endpoints intentionally outside structural schema enforcement unless a narrower v2 rule is defined.
-2. Implement the first 3.4 slice against `CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md` before expanding graph endpoint behavior.
+1. Get remote `ci-freeze` confirmation for the first 3.4 graph aggregation slice and merge it without weakening the non-authoritative boundary.
+2. Observe post-merge stability of root partitioning and overlay-only diagnostics before considering any v2 graph semantics.
 3. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
 4. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
 

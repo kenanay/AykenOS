@@ -2,9 +2,9 @@
 
 **Phase:** 14  
 **Workstream:** 3.4  
-**Status:** CONTRACT-FIRST  
+**Status:** VALIDATED_LOCAL
 **Authority:** `ARCHITECTURE_FREEZE.md`  
-**Related Surface:** `GET /diagnostics/graph`, `GET /diagnostics/runs/{run_id}/graph`
+**Related Surface:** `GET /diagnostics/graph`, `GET /diagnostics/graph/overlay`, `GET /diagnostics/runs/{run_id}/graph`
 
 ---
 
@@ -20,20 +20,28 @@ The shortest correct sentence is:
 
 `graph explains divergence; graph does not decide truth`
 
-This contract exists before full 3.4 implementation so endpoint behavior can be
-built against one declared truth surface instead of growing route-first.
+This contract exists so endpoint behavior can be built and reviewed against one
+declared truth surface instead of growing route-first.
 
 ---
 
 ## 2. Current Status Boundary
 
-Current `proofd` graph endpoints still expose Phase-13-derived graph artifacts.
+Current branch state:
+
+- `GET /diagnostics/runs/{run_id}/graph` serves a contract-bound Phase-14
+  envelope backed by `parity_incident_graph.json`
+- `GET /diagnostics/graph` serves a partitioned derived surface grouped by
+  `graph_version + authority + env_hash + artifact_set_hash`
+- `GET /diagnostics/graph/overlay` serves overlay-only agreement/conflict/island
+  diagnostics derived from those partitions
 
 That means this document is:
 
 - canonical for 3.4 field vocabulary and shape intent
 - authoritative for 3.4 design direction
-- not yet runtime-authoritative until the 3.4 implementation slice lands
+- aligned to the locally validated implementation slice on this branch
+- not yet `main` truth until remote CI confirmation and merge
 
 This document MUST NOT be read as:
 
@@ -62,6 +70,7 @@ If any 3.4 implementation violates those rules, it is not Phase-14 observability
 This contract covers:
 
 - `GET /diagnostics/graph`
+- `GET /diagnostics/graph/overlay`
 - `GET /diagnostics/runs/{run_id}/graph`
 - the graph payload shape carried by `parity_incident_graph.json`
 - cluster/drift vocabulary used to explain multi-node divergence
@@ -118,10 +127,14 @@ them as policy or authority.
 
 The public response root MUST be a JSON object.
 
-The current v1 target envelope is:
+### 7.1 Run-Scoped Envelope
+
+`GET /diagnostics/runs/{run_id}/graph` serves the Phase-14 run-scoped graph
+envelope:
 
 ```json
 {
+  "graph_version": "v1",
   "authority": "github-hosted-ubuntu-24.04-x64",
   "env_hash": "sha256...",
   "status": "PASS",
@@ -141,26 +154,140 @@ The current v1 target envelope is:
 }
 ```
 
-### Root Rules
+Run-scoped required top-level fields:
 
-- `authority` is required
-- `env_hash` is required
-- `provenance` is required
-- `graph` is required
-- `status` is allowed and remains descriptive-only
+- `graph_version`
+- `authority`
+- `env_hash`
+- `status`
+- `provenance`
+- `graph`
+
+Run-scoped rules:
+
+- `graph_version` MUST equal `v1`
+- `authority` MUST be non-empty
+- `env_hash` MUST be non-empty
+- `provenance.artifact_set_hash` MUST be non-empty
+- `provenance.source_runs` MUST be a sorted, unique, non-empty string array
 - unknown top-level fields are allowed in v1 if they remain non-authoritative
 
-### Authority and Provenance Rules
+### 7.2 Root Partitioned Envelope
+
+`GET /diagnostics/graph` serves a partitioned derived surface:
+
+```json
+{
+  "graph_origin": "derived",
+  "authority_classification": "non_authoritative",
+  "aggregation_mode": "overlay_only",
+  "partition_count": 1,
+  "partitions": [
+    {
+      "partition_id": "sha256...",
+      "partition_key": {
+        "graph_version": "v1",
+        "authority": "github-hosted-ubuntu-24.04-x64",
+        "env_hash": "sha256...",
+        "artifact_set_hash": "sha256..."
+      },
+      "run_count": 2,
+      "run_ids": ["run-20260405-a", "run-20260405-b"],
+      "source_runs": ["phase12-cross-node-parity"],
+      "graph": {
+        "node_count": 3,
+        "edge_count": 2,
+        "incident_count": 1,
+        "nodes": [],
+        "edges": [],
+        "incidents": []
+      }
+    }
+  ]
+}
+```
+
+Root partitioned required top-level fields:
+
+- `graph_origin`
+- `authority_classification`
+- `aggregation_mode`
+- `partition_count`
+- `partitions`
+
+Root partitioned rules:
+
+- `graph_origin` MUST equal `derived`
+- `authority_classification` MUST equal `non_authoritative`
+- `aggregation_mode` MUST equal `overlay_only`
+- `partition_count == len(partitions)`
+- each `partition_id` MUST be unique
+- each `partition_key.graph_version` MUST equal `v1`
+- each `partition_key.authority`, `partition_key.env_hash`, and
+  `partition_key.artifact_set_hash` MUST be non-empty
+- `run_ids` and `source_runs` MUST each be sorted, unique string arrays
+- `run_count == len(run_ids)`
+- `graph` MUST satisfy the shared graph object contract from this document
+
+Partitioning rule:
+
+- incompatible execution classes MUST be represented as separate partitions, not
+  one merged graph
+
+### 7.3 Root Overlay Envelope
+
+`GET /diagnostics/graph/overlay` serves overlay-only aggregation diagnostics:
+
+```json
+{
+  "graph_origin": "derived",
+  "authority_classification": "non_authoritative",
+  "aggregation_mode": "overlay_only",
+  "partition_count": 2,
+  "agreement_count": 1,
+  "conflict_count": 1,
+  "island_count": 2,
+  "agreements": [],
+  "conflicts": [],
+  "islands": []
+}
+```
+
+Root overlay required top-level fields:
+
+- `graph_origin`
+- `authority_classification`
+- `aggregation_mode`
+- `partition_count`
+- `agreement_count`
+- `conflict_count`
+- `island_count`
+- `agreements`
+- `conflicts`
+- `islands`
+
+Root overlay rules:
+
+- `graph_origin` MUST equal `derived`
+- `authority_classification` MUST equal `non_authoritative`
+- `aggregation_mode` MUST equal `overlay_only`
+- `agreement_count == len(agreements)`
+- `conflict_count == len(conflicts)`
+- `island_count == len(islands)`
+- overlay explains agreements, conflicts, and isolation only
+- overlay MUST NOT expose selected truth, winning cluster, or resolved verdict
+
+### 7.4 Authority and Provenance Rules
 
 - `authority` identifies the execution class that produced the graph inputs
 - `env_hash` binds the graph to a deterministic execution fingerprint
 - `provenance.artifact_set_hash` binds the graph to a specific artifact set
 - `provenance.source_runs` lists the contributing run ids
 
-Mixed authority or mixed `env_hash` inputs are forbidden in one v1 graph.
+Mixed authority or mixed `env_hash` inputs are forbidden inside one partition.
 
 If inputs come from incompatible execution classes, they MUST be represented as
-separate graphs, not one merged graph.
+separate partitions, not one merged graph.
 
 ---
 
@@ -359,16 +486,24 @@ The graph surface MUST remain deterministic.
 
 ### Sorting Rules
 
+- root `partitions` sorted by `partition_id`
 - `nodes` sorted by `id`
 - `edges` sorted by `from`, then `to`, then `edge_type`, then `incident_id`
 - `incidents` sorted by `incident_id`
 - `clusters` sorted by `node_count` descending, then `cluster_id`
+- overlay `agreements` sorted by `node_fingerprint`
+- overlay `conflicts` sorted by `node_fingerprint`
+- overlay `islands` sorted by `partition_id`
 
 ### Counting Rules
 
 - `node_count == len(nodes)`
 - `edge_count == len(edges)`
 - `incident_count == len(incidents)`
+- `partition_count == len(partitions)` for root partitioned responses
+- `agreement_count == len(agreements)` for root overlay responses
+- `conflict_count == len(conflicts)` for root overlay responses
+- `island_count == len(islands)` for root overlay responses
 
 If a cluster array exists, `node_count` still refers to graph nodes, not summed
 cluster sizes.
@@ -432,6 +567,7 @@ In v1, graph endpoints are queryless by default.
 That means:
 
 - `GET /diagnostics/graph` accepts no query parameters
+- `GET /diagnostics/graph/overlay` accepts no query parameters
 - `GET /diagnostics/runs/{run_id}/graph` accepts no query parameters
 
 No 3.4 graph surface may mutate artifacts or execution state.
