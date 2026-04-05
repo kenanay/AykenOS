@@ -554,6 +554,8 @@ const GRAPH_OVERLAY_REQUIRED_FIELDS: &[SchemaField] = &[
     },
 ];
 
+// Common required fields present in ALL summary projections (human_readable and machine_structured).
+// Projection-specific fields are validated in validate_endpoint_specific_contract.
 const SUMMARY_REQUIRED_FIELDS: &[SchemaField] = &[
     SchemaField {
         name: "summary_origin",
@@ -571,21 +573,36 @@ const SUMMARY_REQUIRED_FIELDS: &[SchemaField] = &[
         name: "epistemic_boundary",
         kind: SchemaValueKind::Object,
     },
+];
+
+const MACHINE_SUMMARY_REQUIRED_FIELDS: &[SchemaField] = &[
     SchemaField {
-        name: "snapshot",
+        name: "summary_origin",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "authority_classification",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "display_mode",
+        kind: SchemaValueKind::String,
+    },
+    SchemaField {
+        name: "epistemic_boundary",
         kind: SchemaValueKind::Object,
     },
     SchemaField {
-        name: "overlay",
+        name: "counts",
         kind: SchemaValueKind::Object,
     },
     SchemaField {
-        name: "incidents",
+        name: "flags",
         kind: SchemaValueKind::Object,
     },
     SchemaField {
-        name: "explanation",
-        kind: SchemaValueKind::Array,
+        name: "incident_groups",
+        kind: SchemaValueKind::Object,
     },
 ];
 
@@ -965,7 +982,17 @@ fn validate_endpoint_specific_contract(
         DiagnosticsEndpointId::RunGraph => validate_phase14_graph_contract_v1(value),
         DiagnosticsEndpointId::Graph => validate_root_graph_contract_v1(value),
         DiagnosticsEndpointId::GraphOverlay => validate_root_graph_overlay_contract_v1(value),
-        DiagnosticsEndpointId::Summary => validate_observability_summary_contract_v1(value),
+        DiagnosticsEndpointId::Summary => {
+            let display_mode = value
+                .get("display_mode")
+                .and_then(Value::as_str)
+                .unwrap_or("human_readable");
+            match display_mode {
+                "human_readable" => validate_observability_summary_contract_v1(value),
+                "machine_structured" => validate_machine_structured_summary_contract_v1(value),
+                _ => Err(SchemaValidationError::InvalidFieldValue { field: "display_mode" }),
+            }
+        }
         DiagnosticsEndpointId::RunScopedSummary => {
             validate_run_scoped_observability_summary_contract_v1(value)
         }
@@ -996,6 +1023,43 @@ pub fn validate_observability_summary_contract_v1(
     let incidents = require_object(root, "incidents")?;
     validate_numeric_object_values(incidents, "incidents")?;
     validate_explanation_array(root, "explanation")?;
+
+    Ok(())
+}
+
+pub fn validate_machine_structured_summary_contract_v1(
+    value: &Value,
+) -> Result<(), SchemaValidationError> {
+    let Some(root) = value.as_object() else {
+        return Err(SchemaValidationError::RootKindMismatch {
+            expected: SchemaValueKind::Object,
+        });
+    };
+
+    require_exact_string(root, "summary_origin", "derived")?;
+    require_exact_string(root, "authority_classification", "non_authoritative")?;
+    require_exact_string(root, "display_mode", "machine_structured")?;
+
+    let boundary = require_object(root, "epistemic_boundary")?;
+    require_exact_bool(boundary, "produces_truth", false)?;
+    require_exact_bool(boundary, "produces_decision", false)?;
+    require_exact_bool(boundary, "produces_ranking", false)?;
+
+    let counts = require_object(root, "counts")?;
+    require_number_field(counts, "partition_count")?;
+    require_number_field(counts, "total_nodes")?;
+    require_number_field(counts, "total_incidents")?;
+    require_number_field(counts, "agreement_count")?;
+    require_number_field(counts, "conflict_count")?;
+    require_number_field(counts, "island_count")?;
+
+    let flags = require_object(root, "flags")?;
+    require_exact_bool(flags, "produces_truth", false)?;
+    require_exact_bool(flags, "produces_decision", false)?;
+    require_exact_bool(flags, "produces_ranking", false)?;
+
+    let incident_groups = require_object(root, "incident_groups")?;
+    validate_numeric_object_values(incident_groups, "incident_groups")?;
 
     Ok(())
 }
