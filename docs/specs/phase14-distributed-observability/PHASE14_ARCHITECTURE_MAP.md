@@ -91,7 +91,9 @@ These rules are inherited from Phase-13 and MUST be preserved throughout Phase-1
 
 **Scope:**
 - Canonical graph contract and artifact shape
-- `GET /diagnostics/graph` — cross-node verification relationship graph
+- `GET /diagnostics/runs/{run_id}/graph` — run-scoped contract-bound graph artifact
+- `GET /diagnostics/graph` — partitioned derived cross-run graph surface
+- `GET /diagnostics/graph/overlay` — overlay-only agreement/conflict/island diagnostics
 - Node participation topology (derived, non-authoritative)
 - Convergence partition visibility
 

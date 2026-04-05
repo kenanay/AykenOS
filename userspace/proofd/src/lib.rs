@@ -29,6 +29,7 @@ use proof_verifier::{verify_bundle, RegistrySnapshot, TrustPolicy};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -39,7 +40,7 @@ use crate::api_contract::{
     allowed_query_keys_for_path, resolve_public_endpoint, scan_forbidden_observability_fields,
     DiagnosticsEndpointId, ResolvedDiagnosticsEndpoint, ALLOWED_INCIDENT_FILTERS,
 };
-use crate::api_schema::validate_response_schema_for_path;
+use crate::api_schema::{validate_phase14_graph_contract_v1, validate_response_schema_for_path};
 use crate::determinism::artifacts::{
     write_canonical_json_file_if_absent_or_same, write_canonical_json_value_if_absent_or_same,
 };
@@ -444,6 +445,96 @@ struct RunHashEntry {
     hash: String,
 }
 
+const GRAPH_ORIGIN_DERIVED: &str = "derived";
+const GRAPH_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE: &str = "non_authoritative";
+const GRAPH_AGGREGATION_MODE_OVERLAY_ONLY: &str = "overlay_only";
+const PARITY_INCIDENT_GRAPH_FILE: &str = "parity_incident_graph.json";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PartitionableRunGraph {
+    run_id: String,
+    graph_version: String,
+    authority: String,
+    env_hash: String,
+    artifact_set_hash: String,
+    source_runs: Vec<String>,
+    graph: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+struct RootGraphPartitionKey {
+    graph_version: String,
+    authority: String,
+    env_hash: String,
+    artifact_set_hash: String,
+}
+
+#[derive(Debug, Clone)]
+struct RootGraphPartitionAccumulator {
+    key: RootGraphPartitionKey,
+    run_ids: Vec<String>,
+    source_runs: BTreeSet<String>,
+    graph: Value,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RootGraphPartition {
+    partition_id: String,
+    partition_key: RootGraphPartitionKey,
+    run_count: usize,
+    run_ids: Vec<String>,
+    source_runs: Vec<String>,
+    graph: Value,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RootGraphResponseBody {
+    graph_origin: &'static str,
+    authority_classification: &'static str,
+    aggregation_mode: &'static str,
+    partition_count: usize,
+    partitions: Vec<RootGraphPartition>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct GraphOverlayAgreement {
+    node_fingerprint: String,
+    verdict: String,
+    partition_count: usize,
+    partitions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct GraphOverlayConflict {
+    node_fingerprint: String,
+    partition_count: usize,
+    partitions: Vec<String>,
+    observed_verdicts: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct GraphOverlayIsland {
+    partition_id: String,
+    run_count: usize,
+    node_count: usize,
+    edge_count: usize,
+    incident_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct GraphOverlayResponseBody {
+    graph_origin: &'static str,
+    authority_classification: &'static str,
+    aggregation_mode: &'static str,
+    partition_count: usize,
+    agreement_count: usize,
+    conflict_count: usize,
+    island_count: usize,
+    agreements: Vec<GraphOverlayAgreement>,
+    conflicts: Vec<GraphOverlayConflict>,
+    islands: Vec<GraphOverlayIsland>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct AuthoritySinkholeCompanionSourceDocument {
     source_version: u32,
@@ -665,6 +756,17 @@ fn handle_diagnostics_endpoint(
                 Err(error) => error_response(error),
             }
         }
+        DiagnosticsEndpointId::Graph => match build_partitioned_root_graph_diagnostics(evidence_dir)
+        {
+            Ok(value) => observability_json_response(&target.path, 200, value),
+            Err(error) => error_response(error),
+        },
+        DiagnosticsEndpointId::GraphOverlay => {
+            match build_root_graph_overlay_diagnostics(evidence_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
         DiagnosticsEndpointId::RunSummary => {
             let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
                 Ok(parts) => parts,
@@ -826,6 +928,280 @@ fn resolve_run_scope<'a>(
         return Err(json_response(404, json!({ "error": "invalid_run_id" })));
     }
     Ok((run_id, evidence_dir.join(run_id)))
+}
+
+fn build_partitioned_root_graph_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let partitions = build_root_graph_partitions(evidence_dir)?;
+    serde_json::to_value(RootGraphResponseBody {
+        graph_origin: GRAPH_ORIGIN_DERIVED,
+        authority_classification: GRAPH_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+        aggregation_mode: GRAPH_AGGREGATION_MODE_OVERLAY_ONLY,
+        partition_count: partitions.len(),
+        partitions,
+    })
+    .map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_root_graph_overlay_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let partitions = build_root_graph_partitions(evidence_dir)?;
+    let overlay = build_graph_overlay(&partitions)?;
+    serde_json::to_value(overlay).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_root_graph_partitions(
+    evidence_dir: &Path,
+) -> Result<Vec<RootGraphPartition>, ServiceError> {
+    let observations = load_partitionable_run_graphs(evidence_dir)?;
+    let mut partitions = BTreeMap::<RootGraphPartitionKey, RootGraphPartitionAccumulator>::new();
+
+    for observation in observations {
+        let key = RootGraphPartitionKey {
+            graph_version: observation.graph_version,
+            authority: observation.authority,
+            env_hash: observation.env_hash,
+            artifact_set_hash: observation.artifact_set_hash,
+        };
+
+        let entry = partitions.entry(key.clone()).or_insert_with(|| RootGraphPartitionAccumulator {
+            key,
+            run_ids: Vec::new(),
+            source_runs: BTreeSet::new(),
+            graph: observation.graph.clone(),
+        });
+
+        if entry.graph != observation.graph {
+            return Err(ServiceError::MalformedArtifact(
+                "graph_partition_graph_mismatch",
+            ));
+        }
+
+        entry.run_ids.push(observation.run_id);
+        for source_run in observation.source_runs {
+            entry.source_runs.insert(source_run);
+        }
+    }
+
+    let mut materialized = Vec::new();
+    for accumulator in partitions.into_values() {
+        let partition_id = canonical_hash_value_prefixed(
+            &json!({
+                "graph_version": accumulator.key.graph_version,
+                "authority": accumulator.key.authority,
+                "env_hash": accumulator.key.env_hash,
+                "artifact_set_hash": accumulator.key.artifact_set_hash,
+            }),
+            "graph_partition_id_serialize_failed",
+        )?;
+        let run_ids = unique_sorted_strings(accumulator.run_ids);
+        let source_runs = accumulator.source_runs.into_iter().collect::<Vec<_>>();
+        materialized.push(RootGraphPartition {
+            partition_id,
+            partition_key: accumulator.key,
+            run_count: run_ids.len(),
+            run_ids,
+            source_runs,
+            graph: accumulator.graph,
+        });
+    }
+    materialized.sort_by(|left, right| left.partition_id.cmp(&right.partition_id));
+    Ok(materialized)
+}
+
+fn load_partitionable_run_graphs(
+    evidence_dir: &Path,
+) -> Result<Vec<PartitionableRunGraph>, ServiceError> {
+    let entries =
+        fs::read_dir(evidence_dir).map_err(|_| ServiceError::NotFound("evidence_dir_not_found"))?;
+    let mut run_dirs = entries
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if !path.is_dir() {
+                return None;
+            }
+            let run_id = entry.file_name().to_string_lossy().to_string();
+            is_safe_path_segment(&run_id).then_some((run_id, path))
+        })
+        .collect::<Vec<_>>();
+    run_dirs.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let mut graphs = Vec::new();
+    for (run_id, run_dir) in run_dirs {
+        let graph_path = run_dir.join(PARITY_INCIDENT_GRAPH_FILE);
+        if !graph_path.is_file() {
+            continue;
+        }
+        let value = read_json_file(&graph_path)?;
+        validate_phase14_graph_contract_v1(&value)
+            .map_err(|_| ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+        graphs.push(extract_partitionable_run_graph(run_id, value)?);
+    }
+    Ok(graphs)
+}
+
+fn extract_partitionable_run_graph(
+    run_id: String,
+    value: Value,
+) -> Result<PartitionableRunGraph, ServiceError> {
+    let root = value
+        .as_object()
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+    let graph_version = root
+        .get("graph_version")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .to_string();
+    let authority = root
+        .get("authority")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .to_string();
+    let env_hash = root
+        .get("env_hash")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .to_string();
+    let provenance = root
+        .get("provenance")
+        .and_then(Value::as_object)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+    let artifact_set_hash = provenance
+        .get("artifact_set_hash")
+        .and_then(Value::as_str)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .to_string();
+    let source_runs = provenance
+        .get("source_runs")
+        .and_then(Value::as_array)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .map(|value| value.to_string())
+                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let graph = root
+        .get("graph")
+        .cloned()
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+
+    Ok(PartitionableRunGraph {
+        run_id,
+        graph_version,
+        authority,
+        env_hash,
+        artifact_set_hash,
+        source_runs,
+        graph,
+    })
+}
+
+fn build_graph_overlay(
+    partitions: &[RootGraphPartition],
+) -> Result<GraphOverlayResponseBody, ServiceError> {
+    let mut fingerprint_observations =
+        BTreeMap::<String, Vec<(String, String)>>::new();
+
+    for partition in partitions {
+        let nodes = partition
+            .graph
+            .get("nodes")
+            .and_then(Value::as_array)
+            .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+        for node in nodes {
+            let node = node
+                .as_object()
+                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+            let fingerprint = node
+                .get("node_fingerprint")
+                .and_then(Value::as_str)
+                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+            let verdict = node
+                .get("verdict")
+                .and_then(Value::as_str)
+                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+            fingerprint_observations
+                .entry(fingerprint.to_string())
+                .or_default()
+                .push((partition.partition_id.clone(), verdict.to_string()));
+        }
+    }
+
+    let mut agreements = Vec::new();
+    let mut conflicts = Vec::new();
+
+    for (node_fingerprint, observations) in fingerprint_observations {
+        let partitions = unique_sorted_strings(
+            observations
+                .iter()
+                .map(|(partition_id, _)| partition_id.clone())
+                .collect::<Vec<_>>(),
+        );
+        let observed_verdicts = unique_sorted_strings(
+            observations
+                .iter()
+                .map(|(_, verdict)| verdict.clone())
+                .collect::<Vec<_>>(),
+        );
+
+        if observed_verdicts.len() > 1 {
+            conflicts.push(GraphOverlayConflict {
+                node_fingerprint,
+                partition_count: partitions.len(),
+                partitions,
+                observed_verdicts,
+            });
+        } else if partitions.len() > 1 {
+            agreements.push(GraphOverlayAgreement {
+                node_fingerprint,
+                verdict: observed_verdicts
+                    .first()
+                    .cloned()
+                    .ok_or(ServiceError::Runtime("graph_overlay_missing_verdict"))?,
+                partition_count: partitions.len(),
+                partitions,
+            });
+        }
+    }
+
+    agreements.sort_by(|left, right| left.node_fingerprint.cmp(&right.node_fingerprint));
+    conflicts.sort_by(|left, right| left.node_fingerprint.cmp(&right.node_fingerprint));
+
+    let mut islands = partitions
+        .iter()
+        .map(|partition| {
+            Ok(GraphOverlayIsland {
+                partition_id: partition.partition_id.clone(),
+                run_count: partition.run_count,
+                node_count: graph_count_field(&partition.graph, "node_count")?,
+                edge_count: graph_count_field(&partition.graph, "edge_count")?,
+                incident_count: graph_count_field(&partition.graph, "incident_count")?,
+            })
+        })
+        .collect::<Result<Vec<_>, ServiceError>>()?;
+    islands.sort_by(|left, right| left.partition_id.cmp(&right.partition_id));
+
+    Ok(GraphOverlayResponseBody {
+        graph_origin: GRAPH_ORIGIN_DERIVED,
+        authority_classification: GRAPH_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+        aggregation_mode: GRAPH_AGGREGATION_MODE_OVERLAY_ONLY,
+        partition_count: partitions.len(),
+        agreement_count: agreements.len(),
+        conflict_count: conflicts.len(),
+        island_count: islands.len(),
+        agreements,
+        conflicts,
+        islands,
+    })
+}
+
+fn graph_count_field(graph: &Value, field: &'static str) -> Result<usize, ServiceError> {
+    graph.get(field)
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))
 }
 
 fn build_run_summary(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
@@ -3569,7 +3945,8 @@ mod tests {
     use super::{
         compute_verify_bundle_request_fingerprint, create_run_manifest_atomically,
         observability_json_response, parse_verify_bundle_request, route_request,
-        route_request_with_body, DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        route_request_with_body, DiagnosticsResponse, ServiceError,
+        PARITY_INCIDENT_GRAPH_FILE, MAX_VERIFY_BUNDLE_BODY_BYTES,
     };
     use proof_verifier::canonical::jcs::canonicalize_json_value;
     use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
@@ -3949,23 +4326,87 @@ mod tests {
     }
 
     #[test]
-    fn graph_endpoint_serves_raw_artifact() {
+    fn graph_endpoint_returns_partitioned_root_surface() {
         let dir = temp_dir();
-        write_artifact(
-            &dir,
-            "parity_incident_graph.json",
-            r#"{"status":"PASS","graph":{"node_count":2,"edge_count":1,"incident_count":1}}"#,
-        );
+        let run_dir_a = dir.join("run-20260310-a");
+        let run_dir_b = dir.join("run-20260310-b");
+        fs::create_dir_all(&run_dir_a).expect("create run dir");
+        fs::create_dir_all(&run_dir_b).expect("create run dir");
+        let graph_artifact = r#"{
+          "graph_version":"v1",
+          "authority":"proof-verifier-cross-node-parity",
+          "env_hash":"sha256:env-a",
+          "status":"PASS",
+          "provenance":{
+            "artifact_set_hash":"sha256:artifact-set-a",
+            "source_runs":["phase12-cross-node-parity"]
+          },
+          "graph":{
+            "node_count":2,
+            "edge_count":1,
+            "incident_count":1,
+            "nodes":[
+              {
+                "id":"node-a",
+                "node_fingerprint":"sha256:fingerprint-a",
+                "surface_key":"sha256:surface",
+                "outcome_key":"sha256:outcome-a",
+                "verdict":"TRUSTED"
+              },
+              {
+                "id":"node-b",
+                "node_fingerprint":"sha256:fingerprint-b",
+                "surface_key":"sha256:surface",
+                "outcome_key":"sha256:outcome-b",
+                "verdict":"UNTRUSTED"
+              }
+            ],
+            "edges":[
+              {
+                "from":"node-a",
+                "to":"node-b",
+                "edge_type":"incident",
+                "incident_id":"sha256:incident-a",
+                "surface_key":"sha256:surface"
+              }
+            ],
+            "incidents":[
+              {
+                "incident_id":"sha256:incident-a",
+                "surface_key":"sha256:surface",
+                "severity":"pure_determinism_failure",
+                "nodes":["node-a","node-b"],
+                "node_count":2
+              }
+            ]
+          }
+        }"#;
+        write_artifact(&run_dir_a, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(&run_dir_b, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
 
         let response = route_request("GET", "/diagnostics/graph", &dir);
         assert_eq!(response.status_code, 200);
         let body = body_json(response);
-        assert_eq!(body.get("status").and_then(|v| v.as_str()), Some("PASS"));
         assert_eq!(
-            body.get("graph")
-                .and_then(|v| v.get("incident_count"))
-                .and_then(|v| v.as_u64()),
+            body.get("graph_origin").and_then(|v| v.as_str()),
+            Some("derived")
+        );
+        assert_eq!(
+            body.get("authority_classification")
+                .and_then(|v| v.as_str()),
+            Some("non_authoritative")
+        );
+        assert_eq!(
+            body.get("partition_count").and_then(|v| v.as_u64()),
             Some(1)
+        );
+        assert_eq!(
+            body.get("partitions")
+                .and_then(|v| v.as_array())
+                .and_then(|v| v.first())
+                .and_then(|v| v.get("run_count"))
+                .and_then(|v| v.as_u64()),
+            Some(2)
         );
         let _ = fs::remove_dir_all(&dir);
     }
@@ -3985,6 +4426,102 @@ mod tests {
         assert_eq!(
             body.get("error").and_then(|v| v.as_str()),
             Some("unsupported_query_parameter")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn graph_overlay_endpoint_reports_conflicts_without_resolution_semantics() {
+        let dir = temp_dir();
+        let run_dir_a = dir.join("run-20260310-a");
+        let run_dir_b = dir.join("run-20260310-b");
+        fs::create_dir_all(&run_dir_a).expect("create run dir");
+        fs::create_dir_all(&run_dir_b).expect("create run dir");
+        write_artifact(
+            &run_dir_a,
+            PARITY_INCIDENT_GRAPH_FILE,
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env-a",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:artifact-set-a","source_runs":["phase12-cross-node-parity"]},
+              "graph":{
+                "node_count":1,
+                "edge_count":0,
+                "incident_count":0,
+                "nodes":[{"id":"node-a","node_fingerprint":"sha256:fingerprint-shared","surface_key":"sha256:surface","outcome_key":"sha256:outcome-a","verdict":"TRUSTED"}],
+                "edges":[],
+                "incidents":[]
+              }
+            }"#,
+        );
+        write_artifact(
+            &run_dir_b,
+            PARITY_INCIDENT_GRAPH_FILE,
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env-b",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:artifact-set-b","source_runs":["phase12-cross-node-parity"]},
+              "graph":{
+                "node_count":1,
+                "edge_count":0,
+                "incident_count":0,
+                "nodes":[{"id":"node-b","node_fingerprint":"sha256:fingerprint-shared","surface_key":"sha256:surface","outcome_key":"sha256:outcome-b","verdict":"UNTRUSTED"}],
+                "edges":[],
+                "incidents":[]
+              }
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/graph/overlay", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("aggregation_mode").and_then(|v| v.as_str()),
+            Some("overlay_only")
+        );
+        assert_eq!(
+            body.get("conflict_count").and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            body.get("agreement_count").and_then(|v| v.as_u64()),
+            Some(0)
+        );
+        assert_eq!(
+            body.get("island_count").and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert!(body.get("selected_truth").is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn graph_endpoint_fail_closes_on_malformed_run_graph_artifact() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260310-a");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &run_dir,
+            PARITY_INCIDENT_GRAPH_FILE,
+            r#"{
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env-a",
+              "status":"PASS",
+              "provenance":{"artifact_set_hash":"sha256:artifact-set-a","source_runs":["phase12-cross-node-parity"]},
+              "graph":{"node_count":0,"edge_count":0,"incident_count":0,"nodes":[],"edges":[],"incidents":[]}
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/graph", &dir);
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("invalid_phase14_graph_artifact")
         );
         let _ = fs::remove_dir_all(&dir);
     }
