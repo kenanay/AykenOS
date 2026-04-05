@@ -382,6 +382,72 @@ fn build_service_contract_artifacts(
         "status": pass_fail(runs_ok),
     }));
 
+    let (graph_status, graph_body) = route_json("/diagnostics/graph", evidence_root)?;
+    let (overlay_status, overlay_body) = route_json("/diagnostics/graph/overlay", evidence_root)?;
+    let (incidents_status, incidents_body) = route_json("/diagnostics/incidents", evidence_root)?;
+    let (summary_status, summary_body) = route_json("/diagnostics/summary", evidence_root)?;
+    let root_summary_ok = graph_status == 200
+        && overlay_status == 200
+        && incidents_status == 200
+        && summary_status == 200
+        && summary_body
+            .get("summary_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "derived")
+        && summary_body
+            .get("authority_classification")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "non_authoritative")
+        && summary_body
+            .get("display_mode")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "human_readable")
+        && summary_body
+            .get("epistemic_boundary")
+            .and_then(Value::as_object)
+            .is_some_and(|boundary| {
+                boundary.get("produces_truth").and_then(Value::as_bool) == Some(false)
+                    && boundary.get("produces_decision").and_then(Value::as_bool) == Some(false)
+                    && boundary.get("produces_ranking").and_then(Value::as_bool) == Some(false)
+            })
+        && summary_body
+            .get("snapshot")
+            .and_then(Value::as_object)
+            .is_some_and(|snapshot| {
+                snapshot.get("partition_count").and_then(Value::as_u64)
+                    == graph_body.get("partition_count").and_then(Value::as_u64)
+                    && snapshot.get("total_incidents").and_then(Value::as_u64)
+                        == incidents_body
+                            .get("determinism_incident_count")
+                            .and_then(Value::as_u64)
+            })
+        && summary_body
+            .get("overlay")
+            .and_then(Value::as_object)
+            .is_some_and(|overlay| {
+                overlay.get("agreements").and_then(Value::as_u64)
+                    == overlay_body.get("agreement_count").and_then(Value::as_u64)
+                    && overlay.get("conflicts").and_then(Value::as_u64)
+                        == overlay_body.get("conflict_count").and_then(Value::as_u64)
+                    && overlay.get("islands").and_then(Value::as_u64)
+                        == overlay_body.get("island_count").and_then(Value::as_u64)
+            })
+        && summary_body
+            .get("explanation")
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty())
+        && summary_body.get("score").is_none()
+        && summary_body.get("winner").is_none()
+        && summary_body.get("routing_hint").is_none();
+    if !root_summary_ok {
+        violations.push("root_summary_contract_mismatch".to_string());
+    }
+    endpoint_checks.push(json!({
+        "endpoint": "/diagnostics/summary",
+        "scope": "root",
+        "status": pass_fail(root_summary_ok),
+    }));
+
     let expected_artifacts = list_json_artifacts(&run_dir)?;
     let (run_summary_status, run_summary_body) =
         route_json(&format!("/diagnostics/runs/{run_id}"), evidence_root)?;
@@ -411,6 +477,68 @@ fn build_service_contract_artifacts(
         "endpoint": format!("/diagnostics/runs/{run_id}"),
         "scope": "run",
         "status": pass_fail(run_summary_ok),
+    }));
+
+    let (run_graph_status, run_graph_body) =
+        route_json(&format!("/diagnostics/runs/{run_id}/graph"), evidence_root)?;
+    let (run_scoped_summary_status, run_scoped_summary_body) = route_json(
+        &format!("/diagnostics/runs/{run_id}/summary"),
+        evidence_root,
+    )?;
+    let run_scoped_summary_ok = run_graph_status == 200
+        && run_scoped_summary_status == 200
+        && run_scoped_summary_body
+            .get("summary_origin")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "derived")
+        && run_scoped_summary_body
+            .get("authority_classification")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "non_authoritative")
+        && run_scoped_summary_body
+            .get("display_mode")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == "human_readable")
+        && run_scoped_summary_body
+            .get("run_id")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value == run_id)
+        && run_scoped_summary_body
+            .get("epistemic_boundary")
+            .and_then(Value::as_object)
+            .is_some_and(|boundary| {
+                boundary.get("produces_truth").and_then(Value::as_bool) == Some(false)
+                    && boundary.get("produces_decision").and_then(Value::as_bool) == Some(false)
+                    && boundary.get("produces_ranking").and_then(Value::as_bool) == Some(false)
+            })
+        && run_scoped_summary_body
+            .get("snapshot")
+            .and_then(Value::as_object)
+            .is_some_and(|snapshot| {
+                let run_graph = run_graph_body.get("graph").and_then(Value::as_object);
+                snapshot.get("node_count").and_then(Value::as_u64)
+                    == run_graph
+                        .and_then(|graph| graph.get("node_count"))
+                        .and_then(Value::as_u64)
+                    && snapshot.get("incident_count").and_then(Value::as_u64)
+                        == run_graph
+                            .and_then(|graph| graph.get("incident_count"))
+                            .and_then(Value::as_u64)
+            })
+        && run_scoped_summary_body
+            .get("explanation")
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty())
+        && run_scoped_summary_body.get("score").is_none()
+        && run_scoped_summary_body.get("winner").is_none()
+        && run_scoped_summary_body.get("routing_hint").is_none();
+    if !run_scoped_summary_ok {
+        violations.push("run_scoped_summary_contract_mismatch".to_string());
+    }
+    endpoint_checks.push(json!({
+        "endpoint": format!("/diagnostics/runs/{run_id}/summary"),
+        "scope": "run",
+        "status": pass_fail(run_scoped_summary_ok),
     }));
 
     let (_, first_parity) = route_json("/diagnostics/parity", evidence_root)?;

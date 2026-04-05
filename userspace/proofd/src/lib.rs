@@ -448,6 +448,9 @@ struct RunHashEntry {
 const GRAPH_ORIGIN_DERIVED: &str = "derived";
 const GRAPH_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE: &str = "non_authoritative";
 const GRAPH_AGGREGATION_MODE_OVERLAY_ONLY: &str = "overlay_only";
+const SUMMARY_ORIGIN_DERIVED: &str = "derived";
+const SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE: &str = "non_authoritative";
+const SUMMARY_DISPLAY_MODE_HUMAN_READABLE: &str = "human_readable";
 const PARITY_INCIDENT_GRAPH_FILE: &str = "parity_incident_graph.json";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -533,6 +536,57 @@ struct GraphOverlayResponseBody {
     agreements: Vec<GraphOverlayAgreement>,
     conflicts: Vec<GraphOverlayConflict>,
     islands: Vec<GraphOverlayIsland>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SummaryEpistemicBoundary {
+    produces_truth: bool,
+    produces_decision: bool,
+    produces_ranking: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RootSummarySnapshot {
+    partition_count: usize,
+    total_nodes: usize,
+    total_incidents: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RootSummaryOverlay {
+    agreements: usize,
+    conflicts: usize,
+    islands: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RootDiagnosticsSummaryBody {
+    summary_origin: &'static str,
+    authority_classification: &'static str,
+    display_mode: &'static str,
+    epistemic_boundary: SummaryEpistemicBoundary,
+    snapshot: RootSummarySnapshot,
+    overlay: RootSummaryOverlay,
+    incidents: BTreeMap<String, usize>,
+    explanation: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RunScopedSummarySnapshot {
+    node_count: usize,
+    incident_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RunScopedDiagnosticsSummaryBody {
+    summary_origin: &'static str,
+    authority_classification: &'static str,
+    display_mode: &'static str,
+    epistemic_boundary: SummaryEpistemicBoundary,
+    run_id: String,
+    snapshot: RunScopedSummarySnapshot,
+    incidents: BTreeMap<String, usize>,
+    explanation: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -679,6 +733,21 @@ fn validate_get_query(target: &RequestTarget) -> Result<(), ServiceError> {
     Err(ServiceError::BadRequest("unsupported_query_parameter"))
 }
 
+fn observability_version_payload() -> Value {
+    json!({
+        "api_version": API_VERSION,
+        "service": "proofd",
+        "contract": "read-only diagnostics surface",
+        "invariants": [
+            "service != authority",
+            "diagnostics != decision",
+            "parity != consensus",
+            "trust does not affect verdict"
+        ],
+        "endpoints": crate::api_contract::public_endpoint_declarations()
+    })
+}
+
 fn handle_diagnostics_endpoint(
     resolved: ResolvedDiagnosticsEndpoint,
     target: &RequestTarget,
@@ -686,22 +755,9 @@ fn handle_diagnostics_endpoint(
 ) -> DiagnosticsResponse {
     let contract = resolved.contract;
     match contract.id {
-        DiagnosticsEndpointId::Version => observability_json_response(
-            &target.path,
-            200,
-            json!({
-                "api_version": API_VERSION,
-                "service": "proofd",
-                "contract": "read-only diagnostics surface",
-                "invariants": [
-                    "service != authority",
-                    "diagnostics != decision",
-                    "parity != consensus",
-                    "trust does not affect verdict"
-                ],
-                "endpoints": crate::api_contract::public_endpoint_declarations()
-            }),
-        ),
+        DiagnosticsEndpointId::Version => {
+            observability_json_response(&target.path, 200, observability_version_payload())
+        }
         DiagnosticsEndpointId::Runs => match list_runs(evidence_dir) {
             Ok(value) => observability_json_response(&target.path, 200, value),
             Err(error) => error_response(error),
@@ -756,23 +812,38 @@ fn handle_diagnostics_endpoint(
                 Err(error) => error_response(error),
             }
         }
-        DiagnosticsEndpointId::Graph => match build_partitioned_root_graph_diagnostics(evidence_dir)
-        {
-            Ok(value) => observability_json_response(&target.path, 200, value),
-            Err(error) => error_response(error),
-        },
+        DiagnosticsEndpointId::Graph => {
+            match build_partitioned_root_graph_diagnostics(evidence_dir) {
+                Ok(value) => observability_json_response(&target.path, 200, value),
+                Err(error) => error_response(error),
+            }
+        }
         DiagnosticsEndpointId::GraphOverlay => {
             match build_root_graph_overlay_diagnostics(evidence_dir) {
                 Ok(value) => observability_json_response(&target.path, 200, value),
                 Err(error) => error_response(error),
             }
         }
+        DiagnosticsEndpointId::Summary => match build_root_summary_diagnostics(evidence_dir) {
+            Ok(value) => observability_json_response(&target.path, 200, value),
+            Err(error) => error_response(error),
+        },
         DiagnosticsEndpointId::RunSummary => {
             let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
                 Ok(parts) => parts,
                 Err(response) => return response,
             };
             match build_run_summary(run_id, &run_dir) {
+                Ok(summary) => observability_json_response(&target.path, 200, summary),
+                Err(error) => error_response(error),
+            }
+        }
+        DiagnosticsEndpointId::RunScopedSummary => {
+            let (run_id, run_dir) = match resolve_run_scope(&resolved, evidence_dir) {
+                Ok(parts) => parts,
+                Err(response) => return response,
+            };
+            match build_run_scoped_summary_diagnostics(run_id, &run_dir) {
                 Ok(summary) => observability_json_response(&target.path, 200, summary),
                 Err(error) => error_response(error),
             }
@@ -962,12 +1033,15 @@ fn build_root_graph_partitions(
             artifact_set_hash: observation.artifact_set_hash,
         };
 
-        let entry = partitions.entry(key.clone()).or_insert_with(|| RootGraphPartitionAccumulator {
-            key,
-            run_ids: Vec::new(),
-            source_runs: BTreeSet::new(),
-            graph: observation.graph.clone(),
-        });
+        let entry =
+            partitions
+                .entry(key.clone())
+                .or_insert_with(|| RootGraphPartitionAccumulator {
+                    key,
+                    run_ids: Vec::new(),
+                    source_runs: BTreeSet::new(),
+                    graph: observation.graph.clone(),
+                });
 
         if entry.graph != observation.graph {
             return Err(ServiceError::MalformedArtifact(
@@ -1043,49 +1117,60 @@ fn extract_partitionable_run_graph(
     run_id: String,
     value: Value,
 ) -> Result<PartitionableRunGraph, ServiceError> {
-    let root = value
-        .as_object()
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+    let root = value.as_object().ok_or(ServiceError::MalformedArtifact(
+        "invalid_phase14_graph_artifact",
+    ))?;
     let graph_version = root
         .get("graph_version")
         .and_then(Value::as_str)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))?
         .to_string();
     let authority = root
         .get("authority")
         .and_then(Value::as_str)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))?
         .to_string();
     let env_hash = root
         .get("env_hash")
         .and_then(Value::as_str)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))?
         .to_string();
-    let provenance = root
-        .get("provenance")
-        .and_then(Value::as_object)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+    let provenance = root.get("provenance").and_then(Value::as_object).ok_or(
+        ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"),
+    )?;
     let artifact_set_hash = provenance
         .get("artifact_set_hash")
         .and_then(Value::as_str)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))?
         .to_string();
-    let source_runs = provenance
-        .get("source_runs")
-        .and_then(Value::as_array)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?
-        .iter()
-        .map(|value| {
-            value
-                .as_str()
-                .map(|value| value.to_string())
-                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let source_runs =
+        provenance
+            .get("source_runs")
+            .and_then(Value::as_array)
+            .ok_or(ServiceError::MalformedArtifact(
+                "invalid_phase14_graph_artifact",
+            ))?
+            .iter()
+            .map(|value| {
+                value.as_str().map(|value| value.to_string()).ok_or(
+                    ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"),
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
     let graph = root
         .get("graph")
         .cloned()
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))?;
 
     Ok(PartitionableRunGraph {
         run_id,
@@ -1101,27 +1186,26 @@ fn extract_partitionable_run_graph(
 fn build_graph_overlay(
     partitions: &[RootGraphPartition],
 ) -> Result<GraphOverlayResponseBody, ServiceError> {
-    let mut fingerprint_observations =
-        BTreeMap::<String, Vec<(String, String)>>::new();
+    let mut fingerprint_observations = BTreeMap::<String, Vec<(String, String)>>::new();
 
     for partition in partitions {
         let nodes = partition
             .graph
             .get("nodes")
             .and_then(Value::as_array)
-            .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+            .ok_or(ServiceError::MalformedArtifact(
+                "invalid_phase14_graph_artifact",
+            ))?;
         for node in nodes {
-            let node = node
-                .as_object()
-                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
-            let fingerprint = node
-                .get("node_fingerprint")
-                .and_then(Value::as_str)
-                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
-            let verdict = node
-                .get("verdict")
-                .and_then(Value::as_str)
-                .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))?;
+            let node = node.as_object().ok_or(ServiceError::MalformedArtifact(
+                "invalid_phase14_graph_artifact",
+            ))?;
+            let fingerprint = node.get("node_fingerprint").and_then(Value::as_str).ok_or(
+                ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"),
+            )?;
+            let verdict = node.get("verdict").and_then(Value::as_str).ok_or(
+                ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"),
+            )?;
             fingerprint_observations
                 .entry(fingerprint.to_string())
                 .or_default()
@@ -1198,10 +1282,297 @@ fn build_graph_overlay(
 }
 
 fn graph_count_field(graph: &Value, field: &'static str) -> Result<usize, ServiceError> {
-    graph.get(field)
+    graph
+        .get(field)
         .and_then(Value::as_u64)
         .map(|value| value as usize)
-        .ok_or(ServiceError::MalformedArtifact("invalid_phase14_graph_artifact"))
+        .ok_or(ServiceError::MalformedArtifact(
+            "invalid_phase14_graph_artifact",
+        ))
+}
+
+fn build_root_summary_diagnostics(evidence_dir: &Path) -> Result<Value, ServiceError> {
+    let version = observability_version_payload();
+    validate_response_schema_for_path("/diagnostics/version", &version)
+        .map_err(|_| ServiceError::Runtime("summary_version_dependency_invalid"))?;
+    let api_version = version
+        .get("api_version")
+        .and_then(Value::as_u64)
+        .ok_or(ServiceError::Runtime("summary_version_dependency_invalid"))?;
+
+    let incidents = load_incident_report(evidence_dir, None)?;
+    validate_response_schema_for_path("/diagnostics/incidents", &incidents)
+        .map_err(|_| ServiceError::Runtime("summary_incidents_dependency_invalid"))?;
+
+    let graph = build_partitioned_root_graph_diagnostics(evidence_dir)?;
+    validate_response_schema_for_path("/diagnostics/graph", &graph)
+        .map_err(|_| ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+
+    let overlay = build_root_graph_overlay_diagnostics(evidence_dir)?;
+    validate_response_schema_for_path("/diagnostics/graph/overlay", &overlay)
+        .map_err(|_| ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
+
+    let graph_root = graph
+        .as_object()
+        .ok_or(ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+    let partitions = graph_root
+        .get("partitions")
+        .and_then(Value::as_array)
+        .ok_or(ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+    let partition_count = graph_root
+        .get("partition_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+    let total_nodes = partitions.iter().try_fold(0usize, |acc, partition| {
+        let partition = partition
+            .as_object()
+            .ok_or(ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+        let graph = partition
+            .get("graph")
+            .ok_or(ServiceError::Runtime("summary_graph_dependency_invalid"))?;
+        graph_count_field(graph, "node_count").map(|count| acc + count)
+    })?;
+
+    let incidents_root = incidents.as_object().ok_or(ServiceError::Runtime(
+        "summary_incidents_dependency_invalid",
+    ))?;
+    let total_incidents = incidents_root
+        .get("determinism_incident_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime(
+            "summary_incidents_dependency_invalid",
+        ))?;
+
+    let overlay_root = overlay
+        .as_object()
+        .ok_or(ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
+    let agreements = overlay_root
+        .get("agreement_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
+    let conflicts = overlay_root
+        .get("conflict_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
+    let islands = overlay_root
+        .get("island_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("summary_overlay_dependency_invalid"))?;
+
+    let summary = RootDiagnosticsSummaryBody {
+        summary_origin: SUMMARY_ORIGIN_DERIVED,
+        authority_classification: SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+        display_mode: SUMMARY_DISPLAY_MODE_HUMAN_READABLE,
+        epistemic_boundary: summary_epistemic_boundary(),
+        snapshot: RootSummarySnapshot {
+            partition_count,
+            total_nodes,
+            total_incidents,
+        },
+        overlay: RootSummaryOverlay {
+            agreements,
+            conflicts,
+            islands,
+        },
+        incidents: incident_distribution_from_report(&incidents)?,
+        explanation: derive_root_summary_explanations(
+            api_version,
+            partition_count,
+            agreements,
+            conflicts,
+            islands,
+            total_incidents,
+        ),
+    };
+
+    serde_json::to_value(summary).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn build_run_scoped_summary_diagnostics(
+    run_id: &str,
+    run_dir: &Path,
+) -> Result<Value, ServiceError> {
+    let run_summary = build_run_summary(run_id, run_dir)?;
+    let run_summary_path = format!("/diagnostics/runs/{run_id}");
+    validate_response_schema_for_path(&run_summary_path, &run_summary)
+        .map_err(|_| ServiceError::Runtime("run_summary_dependency_invalid"))?;
+    let artifact_count = run_summary
+        .get("artifacts")
+        .and_then(Value::as_array)
+        .map(|artifacts| artifacts.len())
+        .ok_or(ServiceError::Runtime("run_summary_dependency_invalid"))?;
+
+    let graph = read_json_file(&run_dir.join(PARITY_INCIDENT_GRAPH_FILE))?;
+    let graph_path = format!("/diagnostics/runs/{run_id}/graph");
+    validate_response_schema_for_path(&graph_path, &graph)
+        .map_err(|_| ServiceError::Runtime("run_graph_dependency_invalid"))?;
+
+    let graph_root = graph
+        .as_object()
+        .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?;
+    let graph_payload = graph_root
+        .get("graph")
+        .and_then(Value::as_object)
+        .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?;
+    let node_count = graph_payload
+        .get("node_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?;
+    let incident_count = graph_payload
+        .get("incident_count")
+        .and_then(Value::as_u64)
+        .map(|value| value as usize)
+        .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?;
+
+    let summary = RunScopedDiagnosticsSummaryBody {
+        summary_origin: SUMMARY_ORIGIN_DERIVED,
+        authority_classification: SUMMARY_AUTHORITY_CLASSIFICATION_NON_AUTHORITATIVE,
+        display_mode: SUMMARY_DISPLAY_MODE_HUMAN_READABLE,
+        epistemic_boundary: summary_epistemic_boundary(),
+        run_id: run_id.to_string(),
+        snapshot: RunScopedSummarySnapshot {
+            node_count,
+            incident_count,
+        },
+        incidents: incident_distribution_from_graph_payload(graph_payload)?,
+        explanation: derive_run_scoped_summary_explanations(
+            run_id,
+            artifact_count,
+            node_count,
+            incident_count,
+        ),
+    };
+
+    serde_json::to_value(summary).map_err(|_| ServiceError::Runtime("response_serialize_failed"))
+}
+
+fn summary_epistemic_boundary() -> SummaryEpistemicBoundary {
+    SummaryEpistemicBoundary {
+        produces_truth: false,
+        produces_decision: false,
+        produces_ranking: false,
+    }
+}
+
+fn incident_distribution_from_report(
+    incidents: &Value,
+) -> Result<BTreeMap<String, usize>, ServiceError> {
+    let Some(root) = incidents.as_object() else {
+        return Err(ServiceError::Runtime(
+            "summary_incidents_dependency_invalid",
+        ));
+    };
+
+    if let Some(severity_counts) = root.get("severity_counts").and_then(Value::as_object) {
+        let mut distribution = BTreeMap::new();
+        for (severity, value) in severity_counts {
+            let count = value.as_u64().ok_or(ServiceError::Runtime(
+                "summary_incidents_dependency_invalid",
+            ))?;
+            distribution.insert(severity.clone(), count as usize);
+        }
+        return Ok(distribution);
+    }
+
+    let incidents =
+        root.get("incidents")
+            .and_then(Value::as_array)
+            .ok_or(ServiceError::Runtime(
+                "summary_incidents_dependency_invalid",
+            ))?;
+    let mut distribution = BTreeMap::new();
+    for incident in incidents {
+        let severity = incident
+            .get("severity")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown")
+            .to_string();
+        *distribution.entry(severity).or_insert(0) += 1;
+    }
+    Ok(distribution)
+}
+
+fn incident_distribution_from_graph_payload(
+    graph: &serde_json::Map<String, Value>,
+) -> Result<BTreeMap<String, usize>, ServiceError> {
+    let incidents = graph
+        .get("incidents")
+        .and_then(Value::as_array)
+        .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?;
+    let mut distribution = BTreeMap::new();
+    for incident in incidents {
+        let severity = incident
+            .get("severity")
+            .and_then(Value::as_str)
+            .ok_or(ServiceError::Runtime("run_graph_dependency_invalid"))?
+            .to_string();
+        *distribution.entry(severity).or_insert(0) += 1;
+    }
+    Ok(distribution)
+}
+
+fn derive_root_summary_explanations(
+    api_version: u64,
+    partition_count: usize,
+    agreements: usize,
+    conflicts: usize,
+    islands: usize,
+    total_incidents: usize,
+) -> Vec<String> {
+    let mut explanation = vec![
+        format!(
+            "Diagnostics API version {api_version} surfaces were projected into a human-readable summary."
+        ),
+        format!(
+            "{partition_count} derived graph partitions are visible without truth selection."
+        ),
+        format!(
+            "{total_incidents} incidents are described by the current diagnostics surfaces."
+        ),
+        "This summary is descriptive only and does not emit ranking, winner, or routing semantics."
+            .to_string(),
+    ];
+
+    if agreements > 0 {
+        explanation.push(format!(
+            "{agreements} agreement groups are visible in the overlay surface."
+        ));
+    }
+    if conflicts > 0 {
+        explanation.push(format!(
+            "{conflicts} conflict groups remain localized in the overlay surface."
+        ));
+    }
+    if islands > 0 {
+        explanation.push(format!(
+            "{islands} isolated partition groups remain visible without authority selection."
+        ));
+    }
+
+    explanation.sort();
+    explanation
+}
+
+fn derive_run_scoped_summary_explanations(
+    run_id: &str,
+    artifact_count: usize,
+    node_count: usize,
+    incident_count: usize,
+) -> Vec<String> {
+    let mut explanation = vec![
+        format!("Run {run_id} exposes {artifact_count} read-only artifacts."),
+        format!("Run {run_id} exposes {node_count} graph nodes."),
+        format!("Run {run_id} includes {incident_count} graph-scoped incidents."),
+        "This run-scoped summary remains descriptive and non-authoritative.".to_string(),
+    ];
+    explanation.sort();
+    explanation
 }
 
 fn build_run_summary(run_id: &str, run_dir: &Path) -> Result<Value, ServiceError> {
@@ -3945,8 +4316,8 @@ mod tests {
     use super::{
         compute_verify_bundle_request_fingerprint, create_run_manifest_atomically,
         observability_json_response, parse_verify_bundle_request, route_request,
-        route_request_with_body, DiagnosticsResponse, ServiceError,
-        PARITY_INCIDENT_GRAPH_FILE, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        route_request_with_body, DiagnosticsResponse, ServiceError, MAX_VERIFY_BUNDLE_BODY_BYTES,
+        PARITY_INCIDENT_GRAPH_FILE,
     };
     use proof_verifier::canonical::jcs::canonicalize_json_value;
     use proof_verifier::crypto::ed25519::sign_ed25519_bytes;
@@ -4483,18 +4854,12 @@ mod tests {
             body.get("aggregation_mode").and_then(|v| v.as_str()),
             Some("overlay_only")
         );
-        assert_eq!(
-            body.get("conflict_count").and_then(|v| v.as_u64()),
-            Some(1)
-        );
+        assert_eq!(body.get("conflict_count").and_then(|v| v.as_u64()), Some(1));
         assert_eq!(
             body.get("agreement_count").and_then(|v| v.as_u64()),
             Some(0)
         );
-        assert_eq!(
-            body.get("island_count").and_then(|v| v.as_u64()),
-            Some(2)
-        );
+        assert_eq!(body.get("island_count").and_then(|v| v.as_u64()), Some(2));
         assert!(body.get("selected_truth").is_none());
         let _ = fs::remove_dir_all(&dir);
     }
@@ -4523,6 +4888,369 @@ mod tests {
             body.get("error").and_then(|v| v.as_str()),
             Some("invalid_phase14_graph_artifact")
         );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn root_summary_endpoint_returns_non_authoritative_projection() {
+        let dir = temp_dir();
+        let run_dir_a = dir.join("run-20260405-a");
+        let run_dir_b = dir.join("run-20260405-b");
+        fs::create_dir_all(&run_dir_a).expect("create run dir");
+        fs::create_dir_all(&run_dir_b).expect("create run dir");
+        let graph_artifact = r#"{
+          "graph_version":"v1",
+          "authority":"proof-verifier-cross-node-parity",
+          "env_hash":"sha256:env-a",
+          "status":"PASS",
+          "provenance":{
+            "artifact_set_hash":"sha256:artifact-set-a",
+            "source_runs":["phase12-cross-node-parity"]
+          },
+          "graph":{
+            "node_count":2,
+            "edge_count":1,
+            "incident_count":1,
+            "nodes":[
+              {
+                "id":"node-a",
+                "node_fingerprint":"sha256:fingerprint-a",
+                "surface_key":"sha256:surface",
+                "outcome_key":"sha256:outcome-a",
+                "verdict":"TRUSTED"
+              },
+              {
+                "id":"node-b",
+                "node_fingerprint":"sha256:fingerprint-b",
+                "surface_key":"sha256:surface",
+                "outcome_key":"sha256:outcome-b",
+                "verdict":"UNTRUSTED"
+              }
+            ],
+            "edges":[
+              {
+                "from":"node-a",
+                "to":"node-b",
+                "edge_type":"incident",
+                "incident_id":"sha256:incident-a",
+                "surface_key":"sha256:surface"
+              }
+            ],
+            "incidents":[
+              {
+                "incident_id":"sha256:incident-a",
+                "surface_key":"sha256:surface",
+                "severity":"pure_determinism_failure",
+                "nodes":["node-a","node-b"],
+                "node_count":2
+              }
+            ]
+          }
+        }"#;
+        write_artifact(&run_dir_a, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(&run_dir_b, PARITY_INCIDENT_GRAPH_FILE, graph_artifact);
+        write_artifact(
+            &dir,
+            "parity_determinism_incidents.json",
+            r#"{
+              "determinism_incident_count": 1,
+              "severity_counts": {
+                "pure_determinism_failure": 1
+              },
+              "incidents": [
+                {
+                  "incident_id":"sha256:incident-a",
+                  "surface_key":"sha256:surface",
+                  "severity":"pure_determinism_failure",
+                  "nodes":["node-a","node-b"]
+                }
+              ]
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/summary", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("summary_origin").and_then(|v| v.as_str()),
+            Some("derived")
+        );
+        assert_eq!(
+            body.get("authority_classification")
+                .and_then(|v| v.as_str()),
+            Some("non_authoritative")
+        );
+        assert_eq!(
+            body.get("display_mode").and_then(|v| v.as_str()),
+            Some("human_readable")
+        );
+        assert_eq!(
+            body.get("snapshot")
+                .and_then(|v| v.get("partition_count"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            body.get("snapshot")
+                .and_then(|v| v.get("total_nodes"))
+                .and_then(|v| v.as_u64()),
+            Some(2)
+        );
+        assert_eq!(
+            body.get("snapshot")
+                .and_then(|v| v.get("total_incidents"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            body.get("overlay")
+                .and_then(|v| v.get("agreements"))
+                .and_then(|v| v.as_u64()),
+            Some(0)
+        );
+        assert_eq!(
+            body.get("overlay")
+                .and_then(|v| v.get("conflicts"))
+                .and_then(|v| v.as_u64()),
+            Some(0)
+        );
+        assert_eq!(
+            body.get("overlay")
+                .and_then(|v| v.get("islands"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert!(body.get("score").is_none());
+        let explanation = body
+            .get("explanation")
+            .and_then(|v| v.as_array())
+            .expect("explanation array");
+        let mut sorted = explanation
+            .iter()
+            .map(|item| item.as_str().unwrap_or_default().to_string())
+            .collect::<Vec<_>>();
+        let actual = sorted.clone();
+        sorted.sort();
+        assert_eq!(actual, sorted);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn root_summary_is_queryless() {
+        let dir = temp_dir();
+        let response = route_request("GET", "/diagnostics/summary?winner=true", &dir);
+        assert_eq!(response.status_code, 400);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("unsupported_query_parameter")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn root_summary_rejects_forbidden_field_score() {
+        let response = observability_json_response(
+            "/diagnostics/summary",
+            200,
+            json!({
+                "summary_origin": "derived",
+                "authority_classification": "non_authoritative",
+                "display_mode": "human_readable",
+                "epistemic_boundary": {
+                    "produces_truth": false,
+                    "produces_decision": false,
+                    "produces_ranking": false
+                },
+                "snapshot": {
+                    "partition_count": 1,
+                    "total_nodes": 2,
+                    "total_incidents": 1
+                },
+                "overlay": {
+                    "agreements": 0,
+                    "conflicts": 0,
+                    "islands": 1
+                },
+                "incidents": {
+                    "pure_determinism_failure": 1
+                },
+                "explanation": [
+                    "A",
+                    "B"
+                ],
+                "score": 1
+            }),
+        );
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("forbidden_observability_field_exposed")
+        );
+    }
+
+    #[test]
+    fn root_summary_schema_fails_closed_when_overlay_missing() {
+        let response = observability_json_response(
+            "/diagnostics/summary",
+            200,
+            json!({
+                "summary_origin": "derived",
+                "authority_classification": "non_authoritative",
+                "display_mode": "human_readable",
+                "epistemic_boundary": {
+                    "produces_truth": false,
+                    "produces_decision": false,
+                    "produces_ranking": false
+                },
+                "snapshot": {
+                    "partition_count": 1,
+                    "total_nodes": 2,
+                    "total_incidents": 1
+                },
+                "incidents": {
+                    "pure_determinism_failure": 1
+                },
+                "explanation": [
+                    "A",
+                    "B"
+                ]
+            }),
+        );
+        assert_eq!(response.status_code, 500);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("error").and_then(|v| v.as_str()),
+            Some("diagnostics_schema_contract_violation")
+        );
+    }
+
+    #[test]
+    fn run_scoped_summary_endpoint_is_non_authoritative() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260405-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(&run_dir, "parity_report.json", r#"{"status":"PASS"}"#);
+        write_artifact(
+            &run_dir,
+            PARITY_INCIDENT_GRAPH_FILE,
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env-a",
+              "status":"PASS",
+              "provenance":{
+                "artifact_set_hash":"sha256:artifact-set-a",
+                "source_runs":["phase12-cross-node-parity"]
+              },
+              "graph":{
+                "node_count":1,
+                "edge_count":0,
+                "incident_count":1,
+                "nodes":[
+                  {
+                    "id":"node-a",
+                    "node_fingerprint":"sha256:fingerprint-a",
+                    "surface_key":"sha256:surface",
+                    "outcome_key":"sha256:outcome-a",
+                    "verdict":"TRUSTED"
+                  }
+                ],
+                "edges":[],
+                "incidents":[
+                  {
+                    "incident_id":"sha256:incident-a",
+                    "surface_key":"sha256:surface",
+                    "severity":"pure_determinism_failure",
+                    "nodes":["node-a"],
+                    "node_count":1
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let response = route_request("GET", "/diagnostics/runs/run-20260405-1/summary", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        assert_eq!(
+            body.get("summary_origin").and_then(|v| v.as_str()),
+            Some("derived")
+        );
+        assert_eq!(
+            body.get("authority_classification")
+                .and_then(|v| v.as_str()),
+            Some("non_authoritative")
+        );
+        assert_eq!(
+            body.get("run_id").and_then(|v| v.as_str()),
+            Some("run-20260405-1")
+        );
+        assert_eq!(
+            body.get("snapshot")
+                .and_then(|v| v.get("node_count"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            body.get("snapshot")
+                .and_then(|v| v.get("incident_count"))
+                .and_then(|v| v.as_u64()),
+            Some(1)
+        );
+        assert!(body.get("winner").is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn summary_explanation_order_is_deterministic() {
+        let dir = temp_dir();
+        let run_dir = dir.join("run-20260405-1");
+        fs::create_dir_all(&run_dir).expect("create run dir");
+        write_artifact(
+            &dir,
+            "parity_determinism_incidents.json",
+            r#"{
+              "determinism_incident_count": 0,
+              "severity_counts": {},
+              "incidents": []
+            }"#,
+        );
+        write_artifact(
+            &run_dir,
+            PARITY_INCIDENT_GRAPH_FILE,
+            r#"{
+              "graph_version":"v1",
+              "authority":"proof-verifier-cross-node-parity",
+              "env_hash":"sha256:env-a",
+              "status":"PASS",
+              "provenance":{
+                "artifact_set_hash":"sha256:artifact-set-a",
+                "source_runs":["phase12-cross-node-parity"]
+              },
+              "graph":{
+                "node_count":1,
+                "edge_count":0,
+                "incident_count":0,
+                "nodes":[
+                  {
+                    "id":"node-a",
+                    "node_fingerprint":"sha256:fingerprint-a",
+                    "surface_key":"sha256:surface",
+                    "outcome_key":"sha256:outcome-a",
+                    "verdict":"TRUSTED"
+                  }
+                ],
+                "edges":[],
+                "incidents":[]
+              }
+            }"#,
+        );
+
+        let first = body_json(route_request("GET", "/diagnostics/summary", &dir));
+        let second = body_json(route_request("GET", "/diagnostics/summary", &dir));
+        assert_eq!(first.get("explanation"), second.get("explanation"));
         let _ = fs::remove_dir_all(&dir);
     }
 
