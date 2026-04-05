@@ -57,7 +57,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
 | 3.4 | Cross-Node Observability Graph | MERGED | Run-scoped graph artifacts carry the Phase-14 envelope on `main`; root `/diagnostics/graph` returns partitioned derived graphs and `/diagnostics/graph/overlay` returns overlay-only diagnostics on `main` | Preserve the non-authoritative boundary while observing post-merge partition and overlay stability |
-| 3.5 | Observability UX (Human-Readable Layer) | TODO | No implementation started | Define read-only summary surface without introducing scoring or authority semantics |
+| 3.5 | Observability UX (Human-Readable Layer) | IN PROGRESS | Canonical UX contract drafted; runtime implementation not started | Bind `GET /diagnostics/summary` to the UX contract without introducing scoring, ranking, or authority semantics |
 
 ### Status Legend
 
@@ -141,6 +141,24 @@ This tracker is operational, not historical. Historical closure truth remains in
   - `ci-gate-graph-non-authoritative-contract` passed
   - `ci-gate-diagnostics-consumer-non-authoritative-contract` passed
   - PR `#96` merged after `ci-freeze` run `23999026616` passed
+
+**Workstream 3.5 opened with contract-first scope**
+- Canonical UX contract drafted at `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+- 3.5 remains explicitly non-authoritative:
+  - `summary = derived diagnostics`
+  - `summary != authority`
+  - `summary != decision input`
+  - `summary != ranking`
+- Explicit epistemic boundary added to the contract target:
+  - `summary_origin = derived`
+  - `authority_classification = non_authoritative`
+  - `display_mode = human_readable`
+  - `produces_truth = false`
+  - `produces_decision = false`
+  - `produces_ranking = false`
+- Current implementation note:
+  - no runtime summary endpoint is on `main` yet
+  - the contract freezes allowed summary content before endpoint implementation
 
 ### 2026-04-03
 
@@ -240,9 +258,10 @@ This tracker is operational, not historical. Historical closure truth remains in
 ## 8. Next Steps
 
 1. Observe post-merge stability of root partitioning and overlay-only diagnostics before considering any v2 graph semantics.
-2. Decide whether deeper graph-structure validation should expand into node-fingerprint uniqueness and partition-integrity checks.
-3. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
-4. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
+2. Bind `GET /diagnostics/summary` to `OBSERVABILITY_UX_CONTRACT_v1.md` without introducing scoring, ranking, or authority semantics.
+3. Decide whether deeper graph-structure validation should expand into node-fingerprint uniqueness and partition-integrity checks.
+4. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
+5. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
 
 ---
 
