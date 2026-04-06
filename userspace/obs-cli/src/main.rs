@@ -4,6 +4,7 @@ mod formatter;
 mod models;
 mod parser;
 mod printer;
+mod threshold;
 
 use std::process;
 
