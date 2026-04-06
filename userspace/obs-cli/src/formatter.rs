@@ -14,6 +14,15 @@ pub const FORBIDDEN: &[&str] = &[
 ];
 
 pub fn format_snapshot(snapshot: &Snapshot) -> String {
+    // Defense-in-depth: formatter should only render derived, non-authoritative snapshots.
+    // Parser enforces this, but guard here catches any future bypass path.
+    if snapshot.summary_origin != "derived" {
+        return "[invalid snapshot: non-derived summary_origin]".to_string();
+    }
+    if snapshot.authority_classification != "non_authoritative" {
+        return "[invalid snapshot: non-authoritative classification]".to_string();
+    }
+
     let mut out = String::new();
 
     // Header block
@@ -87,7 +96,7 @@ mod tests {
 
     fn make_snapshot(incident_groups: BTreeMap<String, usize>) -> Snapshot {
         Snapshot {
-            summary_origin: "test".to_string(),
+            summary_origin: "derived".to_string(),
             authority_classification: "non_authoritative".to_string(),
             display_mode: "machine_structured".to_string(),
             counts: Counts {
