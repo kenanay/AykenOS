@@ -2,6 +2,7 @@ mod error;
 mod formatter;
 mod models;
 mod parser;
+mod printer;
 
 use std::process;
 
