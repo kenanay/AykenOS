@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-05
+**Last Updated:** 2026-04-06
 **Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
 
 ## Current Status
@@ -63,6 +63,21 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 7. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 8. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
 9. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+
+## Phase-14 Reference Set
+### Architecture and Observability Surfaces
+1. `docs/specs/phase14-distributed-observability/README.md`
+2. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+3. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+4. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+5. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+6. `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md`
+
+### obs-cli Consumer (Workstream 3.5 CLI Layer)
+1. `.kiro/specs/obs-cli-consumer/requirements.md`
+2. `.kiro/specs/obs-cli-consumer/design.md`
+3. `.kiro/specs/obs-cli-consumer/tasks.md`
+4. `userspace/obs-cli/` — implementation crate (all modules complete)
 
 ## Phase-11 Reference Set
 1. `docs/specs/phase11-verification-substrate/design.md`
@@ -154,4 +169,4 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 ## Note
 Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`), Phase-14 tracker truth ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
 
-**Son Guncelleme:** 2026-04-05
+**Son Guncelleme:** 2026-04-06

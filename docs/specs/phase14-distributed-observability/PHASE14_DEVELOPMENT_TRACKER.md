@@ -3,7 +3,7 @@
 **Phase:** 14  
 **Status:** ACTIVE  
 **Tracker State:** LIVE  
-**Last Updated:** 2026-04-05
+**Last Updated:** 2026-04-07
 **Authority:** `ARCHITECTURE_FREEZE.md`  
 **Formal Pointer:** `docs/roadmap/CURRENT_PHASE` = `CURRENT_PHASE=14`  
 **Primary Spec:** `docs/specs/phase14-distributed-observability/README.md`  
@@ -57,7 +57,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 3.2 | Replay Determinism Stability Hardening | MERGED | Canonical request fingerprint, determinism contract artifacts, internal replay route, and replay consistency gate are on `main` | Preserve replay determinism boundary while 3.3 hardening continues |
 | 3.3 | `proofd` Query/Service Boundary Hardening | MERGED | Canonical diagnostics contract registry, runtime forbidden-field enforcement, response schema contract, explicit schema coverage governance, and unified contract-driven public diagnostics dispatch are on `main` | Preserve the boundary contract while 3.4 graph and UX work expand adjacent read-only surfaces |
 | 3.4 | Cross-Node Observability Graph | MERGED | Run-scoped graph artifacts carry the Phase-14 envelope on `main`; root `/diagnostics/graph` returns partitioned derived graphs and `/diagnostics/graph/overlay` returns overlay-only diagnostics on `main` | Preserve the non-authoritative boundary while observing post-merge partition and overlay stability |
-| 3.5 | Observability UX (Human-Readable Layer) | IN PROGRESS | Canonical UX contract drafted; runtime implementation not started | Bind `GET /diagnostics/summary` to the UX contract without introducing scoring, ranking, or authority semantics |
+| 3.5 | Observability UX (Human-Readable Layer) | MERGED | `GET /diagnostics/summary` (human_readable + machine_structured) and `GET /diagnostics/runs/{run_id}/summary` bound to UX contract on `main`; schema validation, forbidden-field enforcement, epistemic boundary, and `obs-cli` consumer crate all complete | Observe post-merge stability; no further 3.5 implementation required |
 
 ### Status Legend
 
@@ -71,6 +71,25 @@ This tracker is operational, not historical. Historical closure truth remains in
 ---
 
 ## 4. Activity Log
+
+### 2026-04-07
+
+**Workstream 3.5 validated as complete**
+- `GET /diagnostics/summary` is bound to `OBSERVABILITY_UX_CONTRACT_v1.md` on `main`:
+  - `human_readable` display mode: `RootDiagnosticsSummaryBody` with `snapshot`, `overlay`, `incidents`, `explanation`
+  - `machine_structured` display mode: `MachineSummaryBody` with `counts`, `flags`, `incident_groups`
+  - queryless in v1 (unsupported query parameters return `400 unsupported_query_parameter`)
+  - forbidden-field enforcement active (`score`, `winner`, etc. → `500 forbidden_observability_field_exposed`)
+  - schema validation active (`Full` coverage, fail-closed on missing required fields)
+  - epistemic boundary declared: `produces_truth=false`, `produces_decision=false`, `produces_ranking=false`
+- `GET /diagnostics/runs/{run_id}/summary` is bound to the run-scoped UX contract on `main`:
+  - `RunScopedDiagnosticsSummaryBody` with `run_id`, `snapshot`, `incidents`, `explanation`
+  - same epistemic boundary and forbidden-field enforcement
+- `obs-cli` consumer crate (`userspace/obs-cli/`) is complete and ready to consume `machine_structured` projection
+- Local validation observed:
+  - `cargo test -p proofd` passed (`210` lib tests + `6` main tests)
+  - `cargo test -p obs-cli` passed (`63` tests)
+- All Phase-14 workstreams (3.1–3.5) are now MERGED
 
 ### 2026-04-05
 
@@ -160,6 +179,19 @@ This tracker is operational, not historical. Historical closure truth remains in
   - no runtime summary endpoint is on `main` yet
   - the contract freezes allowed summary content before endpoint implementation
 
+**obs-cli consumer crate fully implemented**
+- `userspace/obs-cli/` crate is complete — all modules implemented: `error`, `models`, `parser`, `formatter`, `printer`, `fetcher`, `threshold`, `cli`, `diff`, `main`
+- Spec: `.kiro/specs/obs-cli-consumer/` (requirements, design, tasks)
+- The crate is a pure read-only CLI consumer for the `machine_structured` projection from `GET /diagnostics/summary`
+- Key design properties preserved:
+  - no `f32`/`f64` anywhere — all counts are `usize`, all deltas are `i64`
+  - no `unwrap()`/`expect()` in non-test code — all errors propagate via `AppError`
+  - `BTreeMap<String, usize>` for `incident_groups` — lexicographic key order is a type-level guarantee
+  - exit codes: 0=success, 1=usage, 2=I/O, 3=schema/parse, 4=threshold violation
+  - `authority_classification == "non_authoritative"` enforced at parse time
+  - all three epistemic flags (`produces_truth`, `produces_decision`, `produces_ranking`) must be `false`
+- The `obs-cli` crate is the CLI consumer layer for workstream 3.5; it will consume `GET /diagnostics/summary?display_mode=machine_structured` once the runtime endpoint lands
+
 ### 2026-04-03
 
 **Phase-14 opened and architecture anchored**
@@ -216,6 +248,8 @@ This tracker is operational, not historical. Historical closure truth remains in
 | 2026-04-03 | `make ci-gate-determinism-replay-consistency RUN_ID=local-determinism-gate-pure` | PASS | Makefile wiring validated through `proofd-service`, verification-contract, and pure replay-consistency gate |
 | 2026-04-03 | `bash scripts/ci/gate_determinism_replay_consistency.sh --evidence-dir out/evidence/run-local-determinism-gate-direct/gates/determinism-replay-consistency --source-gate-dir out/evidence/run-local-determinism-gate-pure/gates/proofd-service` | PASS | Direct gate run validated existing `proofd-service` artifacts without bootstrapping a new run |
 | 2026-04-03 | `bash scripts/ci/pre_ci_discipline.sh` | FAIL-CLOSED | Stopped at hygiene because tracked files were modified in worktree |
+| 2026-04-07 | `cargo test -p proofd` | PASS | Workstream 3.5 validation: `210` lib tests + `6` main tests passed; summary endpoints, schema validation, forbidden-field enforcement all confirmed |
+| 2026-04-07 | `cargo test -p obs-cli` | PASS | `obs-cli` consumer crate: `63` tests passed; `machine_structured` projection consumer ready |
 | 2026-04-05 | `cargo test -p proofd` | PASS | Final dispatch-hardening slice passed locally (`171` lib tests + `6` main tests) |
 | 2026-04-05 | `bash scripts/ci/gate_proofd_service.sh --evidence-dir /tmp/proofd-service-final-dispatch` | PASS | Unified public resolver preserved service contract expectations |
 | 2026-04-05 | `bash scripts/ci/gate_proofd_schema_coverage.sh --evidence-dir /tmp/proofd-schema-coverage-final-dispatch --source-gate-dir /tmp/proofd-service-final-dispatch` | PASS | Explicit coverage declarations remained complete after dispatch unification |
@@ -257,11 +291,10 @@ This tracker is operational, not historical. Historical closure truth remains in
 
 ## 8. Next Steps
 
-1. Observe post-merge stability of root partitioning and overlay-only diagnostics before considering any v2 graph semantics.
-2. Bind `GET /diagnostics/summary` to `OBSERVABILITY_UX_CONTRACT_v1.md` without introducing scoring, ranking, or authority semantics.
-3. Decide whether deeper graph-structure validation should expand into node-fingerprint uniqueness and partition-integrity checks.
-4. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
-5. Only after adjacent read-only surfaces settle, evaluate whether another proofd boundary gate is necessary.
+1. All Phase-14 workstreams (3.1–3.5) are MERGED. Observe post-merge stability across all surfaces.
+2. Decide whether deeper graph-structure validation should expand into node-fingerprint uniqueness and partition-integrity checks.
+3. Decide whether non-GET diagnostics method rejection should be folded into endpoint-registry-driven dispatch or remain an explicit namespace boundary.
+4. Evaluate Phase-14 closure readiness: local evidence basis + remote `ci-freeze` confirmation path.
 
 ---
 
