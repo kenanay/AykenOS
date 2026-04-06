@@ -2,7 +2,9 @@
 members = [
     "ai-runtime",
     "bcib-runtime",
-    "dsl-parser", "orchestration",
+    "dsl-parser",
+    "obs-cli",
+    "orchestration",
     "proofd",
     "semantic-cli",
 ]
