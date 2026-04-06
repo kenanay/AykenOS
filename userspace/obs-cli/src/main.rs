@@ -1,4 +1,5 @@
 mod error;
+mod fetcher;
 mod formatter;
 mod models;
 mod parser;
