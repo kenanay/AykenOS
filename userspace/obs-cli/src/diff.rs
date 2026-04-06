@@ -118,16 +118,22 @@ pub fn format_diff(diff: &Diff) -> String {
     } else {
         // BTreeMap guarantees lexicographic order — no sort needed
         for (key, delta) in &diff.incident_groups {
+            // Format: prefix shows state change, count shows observed value.
+            // Prefixes are structural markers, not semantic judgments:
+            //   [+] = key present in current only
+            //   [-] = key present in baseline only
+            //   [~] = key present in both, count changed
+            //   [=] = key present in both, count unchanged
             let line = match delta {
                 IncidentGroupDelta::Added(count) => {
-                    format!("  {}: added ({})\n", key, count)
+                    format!("  [+] {}: {}\n", key, count)
                 }
                 IncidentGroupDelta::Removed(count) => {
-                    format!("  {}: removed ({})\n", key, count)
+                    format!("  [-] {}: {}\n", key, count)
                 }
                 IncidentGroupDelta::Changed { baseline, current, delta: d } => {
                     format!(
-                        "  {}: {} -> {} ({})\n",
+                        "  [~] {}: {} -> {} ({})\n",
                         key,
                         baseline,
                         current,
@@ -135,7 +141,7 @@ pub fn format_diff(diff: &Diff) -> String {
                     )
                 }
                 IncidentGroupDelta::Unchanged(count) => {
-                    format!("  {}: {} (unchanged)\n", key, count)
+                    format!("  [=] {}: {}\n", key, count)
                 }
             };
             out.push_str(&line);
