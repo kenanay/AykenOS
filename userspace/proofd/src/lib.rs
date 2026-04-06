@@ -9771,6 +9771,44 @@ mod tests {
             "/diagnostics/machine-summary must not be registered"
         );
     }
+
+    // ── Task 6.13: no new URL paths registered for machine_structured ─────────
+    // Requirements: 7.1, 7.2
+    #[test]
+    fn no_new_url_paths_registered_for_machine_structured() {
+        let dir = temp_dir();
+
+        let response = route_request("GET", "/diagnostics/version", &dir);
+        assert_eq!(response.status_code, 200);
+        let body = body_json(response);
+        let endpoints: Vec<&str> = body
+            .get("endpoints")
+            .and_then(|v| v.as_array())
+            .expect("endpoints array must be present")
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+
+        for endpoint in &endpoints {
+            let path_part = endpoint
+                .trim_start_matches("GET ")
+                .trim_start_matches("POST ");
+            for segment in path_part.split('/') {
+                assert_ne!(
+                    segment, "machine_structured",
+                    "registered endpoint '{endpoint}' must not contain 'machine_structured' as a path segment"
+                );
+            }
+        }
+
+        let r = route_request("GET", "/diagnostics/machine_structured", &dir);
+        assert_eq!(
+            r.status_code, 404,
+            "GET /diagnostics/machine_structured must return 404 (no such path is registered)"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
 
 #[cfg(test)]
