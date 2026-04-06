@@ -97,6 +97,14 @@ pub fn parse_snapshot(raw: &[u8]) -> Result<Snapshot, AppError> {
         ));
     }
 
+    // Step 4b: Assert summary_origin == "derived"
+    let origin = value["summary_origin"]
+        .as_str()
+        .ok_or_else(|| AppError::Parse("summary_origin must be a string".into()))?;
+    if origin != "derived" {
+        return Err(AppError::Schema("summary_origin must be derived".into()));
+    }
+
     // Step 5: Assert display_mode == "machine_structured"
     let display = value["display_mode"]
         .as_str()
