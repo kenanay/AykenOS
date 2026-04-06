@@ -65,16 +65,17 @@ fn main() {
         }
     }
 
-    // Step 5: Threshold enforcement — runs BEFORE output
-    // Violations are reported to stderr; output is still produced on stdout.
-    // Exit code 4 signals threshold violation to CI.
-    let threshold_result = threshold::evaluate_all(&flags.fail_if, &snapshot);
+    // Step 5: Threshold enforcement — hard gate, fail-fast
+    // If any condition is violated: report to stderr, produce NO stdout output, exit 4.
+    if let Err(e) = threshold::evaluate_all(&flags.fail_if, &snapshot) {
+        eprintln!("{}", e);
+        process::exit(e.exit_code());
+    }
 
-    // Step 6: Produce output (format or JSON)
+    // Step 6: Produce output ONLY if threshold passed (format or JSON)
     if flags.json_output {
         match printer::to_canonical_json(&snapshot) {
             Ok(json_bytes) => {
-                // Write raw bytes to stdout
                 use std::io::Write;
                 if let Err(e) = std::io::stdout().write_all(&json_bytes) {
                     eprintln!("error writing output: {}", e);
@@ -89,11 +90,5 @@ fn main() {
     } else {
         let output = formatter::format_snapshot(&snapshot);
         print!("{}", output);
-    }
-
-    // Step 7: Exit with threshold result (after output is written)
-    if let Err(e) = threshold_result {
-        eprintln!("{}", e);
-        process::exit(e.exit_code());
     }
 }
