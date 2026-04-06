@@ -20,7 +20,9 @@ pub struct SnapshotFlags {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub summary_origin: String,
     pub authority_classification: String,
+    pub display_mode: String,
     pub counts: Counts,
     pub flags: SnapshotFlags,
     pub incident_groups: BTreeMap<String, usize>,
@@ -28,6 +30,7 @@ pub struct Snapshot {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CountsDiff {
+    // NOTE: counts are expected to be within i64 bounds (safe for current domain)
     pub partition_count: i64,
     pub total_nodes: i64,
     pub total_incidents: i64,
