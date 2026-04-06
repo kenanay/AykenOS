@@ -97,13 +97,18 @@ fn main() {
             }
         };
         let d = diff::compute_diff(&baseline, &snapshot);
-        print!("{}", diff::format_diff(&d));
+        println!("{}", diff::format_diff(&d));
     } else if flags.json_output {
         // JSON mode: canonical JSON to stdout
         match printer::to_canonical_json(&snapshot) {
             Ok(json_bytes) => {
                 use std::io::Write;
+                // JSON output: write bytes + trailing newline for pipe compatibility
                 if let Err(e) = std::io::stdout().write_all(&json_bytes) {
+                    eprintln!("error writing output: {}", e);
+                    process::exit(2);
+                }
+                if let Err(e) = std::io::stdout().write_all(b"\n") {
                     eprintln!("error writing output: {}", e);
                     process::exit(2);
                 }
@@ -116,6 +121,6 @@ fn main() {
     } else {
         // Default: human-readable formatted output
         let output = formatter::format_snapshot(&snapshot);
-        print!("{}", output);
+        println!("{}", output.trim_end_matches('\n'));
     }
 }
