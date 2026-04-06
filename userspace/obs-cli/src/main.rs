@@ -1,4 +1,5 @@
 mod cli;
+mod diff;
 mod error;
 mod fetcher;
 mod formatter;
