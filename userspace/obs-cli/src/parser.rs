@@ -43,32 +43,47 @@ pub fn parse_snapshot(raw: &[u8]) -> Result<Snapshot, AppError> {
         .as_object()
         .ok_or_else(|| AppError::Parse("counts must be a JSON object".into()))?;
 
+    // Step 3a: counts completeness check
     for &field in COUNT_FIELDS {
-        if let Some(v) = counts_obj.get(field) {
-            if let Some(n) = v.as_number() {
-                if !n.is_i64() && !n.is_u64() {
-                    return Err(AppError::Schema(format!(
-                        "float value not permitted in field: {}",
-                        field
-                    )));
-                }
-            }
+        if !counts_obj.contains_key(field) {
+            return Err(AppError::Parse(format!(
+                "missing required counts field: {}",
+                field
+            )));
         }
     }
 
-    // Step 3 (continued): Float rejection — incident_groups values
+    // Step 3b: float rejection in counts
+    for &field in COUNT_FIELDS {
+        let v = &counts_obj[field];
+        let n = v.as_number().ok_or_else(|| {
+            AppError::Schema(format!("counts field must be a number: {}", field))
+        })?;
+        if !n.is_i64() && !n.is_u64() {
+            return Err(AppError::Schema(format!(
+                "float value not permitted in field: {}",
+                field
+            )));
+        }
+    }
+
+    // Step 3c: Float rejection — incident_groups values (must be numbers, not floats)
     let groups_obj = value["incident_groups"]
         .as_object()
         .ok_or_else(|| AppError::Parse("incident_groups must be a JSON object".into()))?;
 
     for (key, v) in groups_obj {
-        if let Some(n) = v.as_number() {
-            if !n.is_i64() && !n.is_u64() {
-                return Err(AppError::Schema(format!(
-                    "float value not permitted in field: {}",
-                    key
-                )));
-            }
+        let n = v.as_number().ok_or_else(|| {
+            AppError::Schema(format!(
+                "incident_groups value must be a number: {}",
+                key
+            ))
+        })?;
+        if !n.is_i64() && !n.is_u64() {
+            return Err(AppError::Schema(format!(
+                "float value not permitted in field: {}",
+                key
+            )));
         }
     }
 
@@ -107,6 +122,26 @@ pub fn parse_snapshot(raw: &[u8]) -> Result<Snapshot, AppError> {
         }
     }
 
+    // Step 6b: Validate epistemic_boundary object and its flags
+    let eb_obj = value["epistemic_boundary"]
+        .as_object()
+        .ok_or_else(|| AppError::Schema("epistemic_boundary must be a JSON object".into()))?;
+
+    for &flag in FLAG_FIELDS {
+        let v = eb_obj
+            .get(flag)
+            .and_then(|v| v.as_bool())
+            .ok_or_else(|| {
+                AppError::Schema(format!("epistemic_boundary missing field: {}", flag))
+            })?;
+        if v {
+            return Err(AppError::Schema(format!(
+                "epistemic_boundary {} must be false",
+                flag
+            )));
+        }
+    }
+
     // Step 7: Validate incident_groups keys
     for key in groups_obj.keys() {
         if key.is_empty() {
@@ -136,10 +171,14 @@ mod tests {
 
     fn valid_json() -> &'static [u8] {
         br#"{
-            "summary_origin": "proofd",
+            "summary_origin": "derived",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
             "counts": {
                 "partition_count": 3,
                 "total_nodes": 10,
@@ -185,7 +224,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 3,
                 "total_nodes": 10,
@@ -211,7 +250,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -237,7 +276,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "non_authoritative",
             "display_mode": "human_readable",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -263,7 +302,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -289,7 +328,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -323,7 +362,7 @@ mod tests {
             "summary_origin": "proofd",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -348,10 +387,10 @@ mod tests {
     #[test]
     fn test_numeric_string_key_in_incident_groups_returns_schema_error() {
         let raw = br#"{
-            "summary_origin": "proofd",
+            "summary_origin": "derived",
             "authority_classification": "non_authoritative",
             "display_mode": "machine_structured",
-            "epistemic_boundary": "observational",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
             "counts": {
                 "partition_count": 0,
                 "total_nodes": 0,
@@ -371,5 +410,113 @@ mod tests {
         }"#;
         let result = parse_snapshot(raw);
         assert!(matches!(result, Err(AppError::Schema(_))), "expected Schema error, got {:?}", result);
+    }
+
+    #[test]
+    fn test_incident_groups_string_value_returns_schema_error() {
+        let raw = br#"{
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
+            "counts": {
+                "partition_count": 0,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {
+                "alpha": "oops"
+            }
+        }"#;
+        let result = parse_snapshot(raw);
+        assert!(matches!(result, Err(AppError::Schema(_))), "expected Schema error, got {:?}", result);
+    }
+
+    #[test]
+    fn test_epistemic_boundary_not_object_returns_schema_error() {
+        let raw = br#"{
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": "I AM AUTHORITY",
+            "counts": {
+                "partition_count": 0,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        }"#;
+        let result = parse_snapshot(raw);
+        assert!(matches!(result, Err(AppError::Schema(_))), "expected Schema error, got {:?}", result);
+    }
+
+    #[test]
+    fn test_epistemic_boundary_produces_truth_true_returns_schema_error() {
+        let raw = br#"{
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {"produces_truth": true, "produces_decision": false, "produces_ranking": false},
+            "counts": {
+                "partition_count": 0,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "conflict_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        }"#;
+        let result = parse_snapshot(raw);
+        assert!(matches!(result, Err(AppError::Schema(_))), "expected Schema error, got {:?}", result);
+    }
+
+    #[test]
+    fn test_missing_counts_field_returns_parse_error() {
+        let raw = br#"{
+            "summary_origin": "derived",
+            "authority_classification": "non_authoritative",
+            "display_mode": "machine_structured",
+            "epistemic_boundary": {"produces_truth": false, "produces_decision": false, "produces_ranking": false},
+            "counts": {
+                "partition_count": 0,
+                "total_nodes": 0,
+                "total_incidents": 0,
+                "agreement_count": 0,
+                "island_count": 0
+            },
+            "flags": {
+                "produces_truth": false,
+                "produces_decision": false,
+                "produces_ranking": false
+            },
+            "incident_groups": {}
+        }"#;
+        let result = parse_snapshot(raw);
+        assert!(
+            matches!(&result, Err(AppError::Parse(msg)) if msg.contains("conflict_count")),
+            "expected Parse error mentioning conflict_count, got {:?}", result
+        );
     }
 }
