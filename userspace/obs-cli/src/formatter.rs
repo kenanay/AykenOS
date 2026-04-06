@@ -13,6 +13,29 @@ pub const FORBIDDEN: &[&str] = &[
     "recommendation",
 ];
 
+/// Returns true if `word` appears as a standalone token in `haystack` (case-insensitive).
+/// Word boundaries: not preceded/followed by `[a-z0-9_]`.
+/// Used both in the runtime forbidden guard and in tests.
+pub fn contains_forbidden_word(haystack: &str, word: &str) -> bool {
+    let lower = haystack.to_lowercase();
+    let mut start = 0;
+    while let Some(pos) = lower[start..].find(word) {
+        let abs = start + pos;
+        let before_ok = abs == 0
+            || (!lower.as_bytes()[abs - 1].is_ascii_alphanumeric()
+                && lower.as_bytes()[abs - 1] != b'_');
+        let end = abs + word.len();
+        let after_ok = end >= lower.len()
+            || (!lower.as_bytes()[end].is_ascii_alphanumeric()
+                && lower.as_bytes()[end] != b'_');
+        if before_ok && after_ok {
+            return true;
+        }
+        start = abs + 1;
+    }
+    false
+}
+
 pub fn format_snapshot(snapshot: &Snapshot) -> String {
     // Defense-in-depth: formatter should only render derived, non-authoritative snapshots.
     // Parser enforces this, but guard here catches any future bypass path.
@@ -82,6 +105,14 @@ pub fn format_snapshot(snapshot: &Snapshot) -> String {
         // BTreeMap guarantees lexicographic order — no sort needed
         for (key, count) in &snapshot.incident_groups {
             out.push_str(&format!("  {}: {}\n", key, count));
+        }
+    }
+
+    // Runtime forbidden semantics guard — catches any future regression
+    // where a forbidden word leaks into the output path.
+    for &word in FORBIDDEN {
+        if contains_forbidden_word(&out, word) {
+            return format!("[invalid output: forbidden semantics detected: {}]", word);
         }
     }
 
@@ -185,52 +216,15 @@ mod tests {
     #[test]
     fn output_does_not_contain_forbidden_words() {
         let snap = make_snapshot(BTreeMap::new());
-        let out = format_snapshot(&snap).to_lowercase();
-        for word in FORBIDDEN {
-            // Check that the forbidden word does not appear as a standalone token.
-            // We look for the word surrounded by non-alphanumeric/non-underscore
-            // boundaries so that e.g. "ranking" inside "produces_ranking" is not
-            // a false positive.
-            let pattern = format!(r"(?:^|[^a-z0-9_]){}(?:[^a-z0-9_]|$)", word);
-            let re = regex_lite_check(&out, &pattern);
+        let out = format_snapshot(&snap);
+        for &word in FORBIDDEN {
             assert!(
-                !re,
+                !contains_forbidden_word(&out, word),
                 "forbidden word '{}' found as standalone token in output:\n{}",
                 word,
                 out
             );
         }
-    }
-
-    /// Simple manual boundary check without pulling in a regex crate.
-    fn regex_lite_check(haystack: &str, pattern: &str) -> bool {
-        // Extract the word from the pattern (between the two (?:...) groups)
-        // Pattern format: r"(?:^|[^a-z0-9_])<word>(?:[^a-z0-9_]|$)"
-        let prefix = "(?:^|[^a-z0-9_])";
-        let suffix = "(?:[^a-z0-9_]|$)";
-        let word = pattern
-            .strip_prefix(prefix)
-            .and_then(|s| s.strip_suffix(suffix))
-            .unwrap_or("");
-        if word.is_empty() {
-            return false;
-        }
-        let mut start = 0;
-        while let Some(pos) = haystack[start..].find(word) {
-            let abs = start + pos;
-            let before_ok = abs == 0
-                || !haystack.as_bytes()[abs - 1].is_ascii_alphanumeric()
-                    && haystack.as_bytes()[abs - 1] != b'_';
-            let end = abs + word.len();
-            let after_ok = end >= haystack.len()
-                || !haystack.as_bytes()[end].is_ascii_alphanumeric()
-                    && haystack.as_bytes()[end] != b'_';
-            if before_ok && after_ok {
-                return true;
-            }
-            start = abs + 1;
-        }
-        false
     }
 
     #[test]
