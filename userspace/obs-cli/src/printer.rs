@@ -4,7 +4,23 @@ use crate::models::Snapshot;
 /// Serialize a Snapshot to canonical JSON bytes.
 /// Uses serde_json::to_vec — BTreeMap in Snapshot guarantees lexicographic key order.
 /// This is the single source of truth for --json output and --save-snapshot files.
+///
+/// Defense-in-depth: rejects snapshots that violate the epistemic boundary,
+/// even if parser and formatter already enforce this.
 pub fn to_canonical_json(snapshot: &Snapshot) -> Result<Vec<u8>, AppError> {
+    if snapshot.flags.produces_truth
+        || snapshot.flags.produces_decision
+        || snapshot.flags.produces_ranking
+    {
+        return Err(AppError::Schema(
+            "epistemic violation: snapshot flags must all be false".into(),
+        ));
+    }
+    if snapshot.authority_classification != "non_authoritative" {
+        return Err(AppError::Schema(
+            "epistemic violation: authority_classification must be non_authoritative".into(),
+        ));
+    }
     serde_json::to_vec(snapshot)
         .map_err(|e| AppError::Io(format!("failed to serialize snapshot: {}", e)))
 }
