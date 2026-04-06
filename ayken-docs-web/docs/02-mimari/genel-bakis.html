@@ -71,7 +71,7 @@
                         </ul>
                     </div>
 
-                    <p>Güncel dokümantasyon setinde Core OS temeli Phase 4.4 seviyesinde korunurken, proje teknik olarak Phase 4.5 stabilizasyon/integrasyon aşamasında ilerliyor.</p>
+                    <p>10 Mart 2026 itibarıyla AykenOS, <strong>Phase 10 (Runtime)</strong> ve <strong>Phase 11 (Verification Substrate)</strong>'i resmi olarak kapatmıştır. Evidence chain tam olarak doğrulanmış, official CI onayı alınmıştır. Proje şu an Architecture Freeze modunda olup Phase 12 (Distributed Verification) yerel olarak devam etmektedir.</p>
                 </section>
 
                 <section class="docs-section">
@@ -80,17 +80,19 @@
                     <div class="arch-overview">
                         <div class="arch-layer">
                             <h3>Anayasal Yönetişim Katmanı</h3>
-                            <p><strong>Çapraz katman denetim</strong> - CI gate zinciri ve branch politikalarıyla sistem davranışı sınırlandırılır.</p>
+                            <p><strong>Çapraz katman denetim</strong> — 21 CI gate zinciri ve branch politikalarıyla sistem davranışı sınırlandırılır.</p>
                             <ul>
                                 <li><code>ci-gate-abi</code></li>
                                 <li><code>ci-gate-boundary</code></li>
                                 <li><code>ci-gate-ring0-exports</code></li>
                                 <li><code>ci-gate-hygiene</code></li>
-                                <li><code>ci-gate-tooling-isolation</code></li>
                                 <li><code>ci-gate-constitutional</code></li>
-                                <li><code>ci-gate-workspace</code></li>
-                                <li><code>ci-gate-syscall-v2-runtime</code></li>
-                                <li><code>ci-gate-performance</code></li>
+                                <li><code>ci-gate-ring3-execution-phase10a2</code></li>
+                                <li><code>ci-gate-syscall-semantics-phase10b</code></li>
+                                <li><code>ci-gate-scheduler-mailbox-phase10c</code></li>
+                                <li><code>ci-gate-abdf-snapshot-identity</code></li>
+                                <li><code>ci-gate-kpl-proof-verify</code></li>
+                                <li>... ve 11 gate daha (toplam 21)</li>
                             </ul>
                         </div>
 
@@ -178,7 +180,7 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                             <div class="step-number">1</div>
                             <div class="step-content">
                                 <h3>Freeze Zinciri</h3>
-                                <p><code>make ci-freeze</code> 9 gate'i tek zincirde çalıştırır. Bu zincir proje içi teknik otorite olarak kullanılır.</p>
+                                <p><code>make ci-freeze</code> 21 gate'i tek zincirde çalıştırır. Bu zincir proje içi teknik otorite olarak kullanılır. Phase 10/11 closure bu zincirle resmi olarak onaylanmıştır.</p>
                             </div>
                         </div>
 
@@ -255,44 +257,57 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                 </section>
 
                 <section class="docs-section">
-                    <h2>Performans ve Ölçeklenebilirlik</h2>
+                    <h2>Proje Durumu (10 Mart 2026)</h2>
 
                     <div class="concept-grid">
                         <div class="concept-card">
-                            <h4>Runtime Gate Özeti</h4>
+                            <h4>Phase 10 — OFFICIALLY CLOSED ✅</h4>
                             <ul>
-                                <li><strong>Run:</strong> <code>run-20260221T221223Z-3adee991</code></li>
-                                <li><strong>Veri zamanı:</strong> 2026-02-21T22:14:01Z</li>
-                                <li><strong>Kernel profile:</strong> <code>validation</code></li>
-                                <li><strong>Ölçüm:</strong> 5/5 başarılı, timeout 0</li>
+                                <li>Real CPL3 entry doğrulandı</li>
+                                <li>Syscall boundary yerel olarak doğrulandı</li>
+                                <li>Scheduler/mailbox runtime kontratı doğrulandı</li>
+                                <li>Evidence SHA: <code>9cb2171b</code></li>
                             </ul>
                         </div>
 
                         <div class="concept-card">
-                            <h4>Doğrulanan Sinyaller</h4>
+                            <h4>Phase 11 — OFFICIALLY CLOSED ✅</h4>
                             <ul>
-                                <li><code>debug_putchar</code> marker eşleşmesi</li>
-                                <li><code>time_query</code> dispatch sinyali</li>
-                                <li><code>capability_bind</code> grant/deny döngüsü</li>
-                                <li><code>capability_revoke</code> grant/deny döngüsü</li>
+                                <li>ABDF snapshot identity doğrulandı</li>
+                                <li>Replay determinism doğrulandı</li>
+                                <li>KPL proof manifest doğrulandı</li>
+                                <li>Portable proof bundle çalışıyor</li>
                             </ul>
                         </div>
 
                         <div class="concept-card">
-                            <h4>Başarı Oranı</h4>
+                            <h4>Phase 12 — IN PROGRESS 🔄</h4>
                             <ul>
-                                <li><strong>Gereken:</strong> %100</li>
-                                <li><strong>Gerçekleşen:</strong> %100.00</li>
-                                <li><strong>Violations:</strong> 0</li>
-                                <li><strong>Freeze status:</strong> <code>kernel_runtime_verified</code></li>
+                                <li>P12-01..P12-13 yerel olarak tamamlandı</li>
+                                <li>P12-14: Parity diagnostics devam ediyor</li>
+                                <li>Island analysis framework hazır</li>
+                                <li>CURRENT_PHASE=10 pointer korunuyor</li>
+                            </ul>
+                        </div>
+
+                        <div class="concept-card">
+                            <h4>Teknik Metrikler</h4>
+                            <ul>
+                                <li>Toplam LOC: ~49,000</li>
+                                <li>Constitutional Tests: 350+</li>
+                                <li>CI Gates: 21 aktif</li>
+                                <li>Boot Time: ~200ms</li>
+                                <li>Syscall Latency: ~500ns-1μs</li>
+                                <li>Context Switch: ~1-2μs</li>
                             </ul>
                         </div>
                     </div>
 
-                    <h3>Rapor Kaynakları</h3>
-                    <div class="code-block">
-                        <pre><code>cat evidence/run-20260221T221223Z-3adee991/reports/summary.json
-cat evidence/run-20260221T221223Z-3adee991/gates/syscall-v2-runtime/report.json</code></pre>
+                    <div class="highlight-box">
+                        <h3>Official CI Onayı</h3>
+                        <p>Evidence git SHA: <code>9cb2171b</code> — Closure sync SHA: <code>fe9031d7</code></p>
+                        <p>Official CI: <code>ci-freeze</code> run <code>#22797401328</code> — <strong>success</strong></p>
+                        <p>Evidence chain: <code>execution → trace → replay → proof → portable bundle</code></p>
                     </div>
                 </section>
 
@@ -301,23 +316,36 @@ cat evidence/run-20260221T221223Z-3adee991/gates/syscall-v2-runtime/report.json<
 
                     <div class="step-by-step">
                         <div class="step">
-                            <div class="step-number">Phase 4.5</div>
+                            <div class="step-number">Q1 2026</div>
                             <div class="step-content">
-                                <h3>Stabilizasyon ve Uyumlandırma</h3>
+                                <h3>Phase 12 Tamamlama</h3>
                                 <ul>
-                                    <li>Scheduler bridge modelini runtime kodla hizalama</li>
-                                    <li><code>syscall_v2.c</code> TODO alanlarını production semantiğe tamamlama</li>
-                                    <li>9 gate freeze zincirinde tek run-id altında tutarlı PASS</li>
-                                    <li>Constitutional/provisional operasyon netliğini sadeleştirme</li>
+                                    <li>P12-14: Parity diagnostics</li>
+                                    <li>P12-15..P12-18 tamamlama</li>
+                                    <li>Normatif Phase-12C gate set</li>
+                                    <li>Full Phase-12 closure</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div class="step">
-                            <div class="step-number">Sonraki</div>
+                            <div class="step-number">Q2 2026</div>
                             <div class="step-content">
-                                <h3>AI ve Genişleme Başlıkları</h3>
-                                <p>Phase 3 AI entegrasyonu, çekirdek teknik borç kapanışlarından sonra ana milestone olarak öne alınır.</p>
+                                <h3>Phase 5.0: AI Runtime Integration</h3>
+                                <ul>
+                                    <li>BCIB execution engine entegrasyonu</li>
+                                    <li>ABDF data format implementasyonu</li>
+                                    <li>Ring3 AI runtime servisleri</li>
+                                    <li>Multi-agent orchestration temeli</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">Q3-Q4 2026</div>
+                            <div class="step-content">
+                                <h3>Phase 6.0: Multi-Architecture</h3>
+                                <p>ARM64, RISC-V, Raspberry Pi ve MCU desteği.</p>
                             </div>
                         </div>
                     </div>
