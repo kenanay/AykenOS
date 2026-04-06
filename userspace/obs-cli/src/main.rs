@@ -22,6 +22,12 @@ fn main() {
         }
     };
 
+    // Step 1b: Reject --json + --diff combination (ambiguous output mode)
+    if flags.json_output && flags.diff_baseline.is_some() {
+        eprintln!("error: --json and --diff cannot be used together");
+        process::exit(1);
+    }
+
     // Step 2: Fetch or read snapshot bytes
     let bytes = if let Some(ref path) = flags.snapshot_file {
         match fetcher::read_snapshot_file(path) {
@@ -50,7 +56,7 @@ fn main() {
         }
     };
 
-    // Step 4: Save snapshot if requested (before threshold — save regardless of policy)
+    // Step 4: Save snapshot if requested (before threshold — save raw evidence regardless of policy)
     if let Some(ref save_path) = flags.save_snapshot {
         match printer::to_canonical_json(&snapshot) {
             Ok(json_bytes) => {
@@ -67,14 +73,33 @@ fn main() {
     }
 
     // Step 5: Threshold enforcement — hard gate, fail-fast
-    // If any condition is violated: report to stderr, produce NO stdout output, exit 4.
+    // Violations → stderr only, NO stdout output, exit 4.
     if let Err(e) = threshold::evaluate_all(&flags.fail_if, &snapshot) {
         eprintln!("{}", e);
         process::exit(e.exit_code());
     }
 
-    // Step 6: Produce output ONLY if threshold passed (format or JSON)
-    if flags.json_output {
+    // Step 6: Produce output ONLY if threshold passed
+    if let Some(ref baseline_path) = flags.diff_baseline {
+        // Diff mode: load baseline, compute diff, format
+        let baseline_bytes = match fetcher::read_snapshot_file(baseline_path) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("{}", e);
+                process::exit(e.exit_code());
+            }
+        };
+        let baseline = match parser::parse_snapshot(&baseline_bytes) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("{}", e);
+                process::exit(e.exit_code());
+            }
+        };
+        let d = diff::compute_diff(&baseline, &snapshot);
+        print!("{}", diff::format_diff(&d));
+    } else if flags.json_output {
+        // JSON mode: canonical JSON to stdout
         match printer::to_canonical_json(&snapshot) {
             Ok(json_bytes) => {
                 use std::io::Write;
@@ -89,6 +114,7 @@ fn main() {
             }
         }
     } else {
+        // Default: human-readable formatted output
         let output = formatter::format_snapshot(&snapshot);
         print!("{}", output);
     }
