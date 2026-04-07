@@ -605,6 +605,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-13 OFFICIALLY CLOSED (CI run `23706742211`, PR #81, tag: `phase13-official-closure-confirmed`)
 - ✅ `CURRENT_PHASE=14` formal transition completed (`8b23fe0d`)
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
+- ✅ Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run `ci-freeze#23999026616`, tag: `phase14-official-closure-confirmed`)
 
 ---
 
@@ -807,9 +808,32 @@ This document is **binding** and **enforceable** through CI gates.
 
 ---
 
+## 15.1 Phase-14 Post-Closure Immutability Lock
+
+**Effective:** 2026-04-08 | **Authority:** CI run `24106883657` | **HEAD SHA:** `97fd3cde83d28bc3d978e22326761fcaa50ab895`
+
+Phase-14 (Distributed Observability Hardening) resmi olarak KAPALI. Aşağıdaki sözleşme dosyaları **değiştirilemez (IMMUTABLE)**:
+
+- `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+- `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+- `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md`
+
+**Kapanış Sonrası Değişmezler:**
+- `service != authority` — geriye dönük olarak değiştirilemez
+- `diagnostics != decision` — geriye dönük olarak değiştirilemez
+- `parity != consensus` — geriye dönük olarak değiştirilemez
+- `non_authoritative` sınıflandırması — geriye dönük olarak değiştirilemez
+- Sıralama/puanlama semantiği eklenemez
+
+**Etiket Koruması:** `phase14-official-closure-confirmed` etiketi korumalıdır; force-push yasaktır. Yeni bir kapanış iddiası yeni bir etiket gerektirir.
+
+**Kapsam Dondurma:** Bu faz kapsamına yeni endpoint, yeni şema alanı veya yeni sözleşme semantiği eklenemez. Yeni özellikler Phase-15 veya sonraki bir faz gerektirir.
+
+---
+
 ## 16. Document Control
 
-**Version:** 1.8  
+**Version:** 2.0  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
@@ -821,6 +845,7 @@ This document is **binding** and **enforceable** through CI gates.
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.0 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616, tag: phase14-official-closure-confirmed) |
 | 1.9 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14; perf baseline updated (PR #83) |
 | 1.8 | 2026-03-29 | Kenan AY | Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71-#77); closure prep pending |
 | 1.7 | 2026-03-28 | Kenan AY | Phase-13 formal transition COMPLETE (PR #68, CI run #23694185775); CURRENT_PHASE=13 |
