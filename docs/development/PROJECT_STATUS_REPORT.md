@@ -1,7 +1,7 @@
 # AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-04-05
-**Status:** Phase-10 / Phase-11 / Phase-12 / Phase-13 Official Closure Confirmed + CURRENT_PHASE=14 + Phase-14 ACTIVE (`3.1`/`3.2`/`3.3`/`3.4` merged)
+**Date:** 2026-04-06
+**Status:** Phase-10 / Phase-11 / Phase-12 / Phase-13 Official Closure Confirmed + CURRENT_PHASE=14 + Phase-14 ACTIVE (`3.1`/`3.2`/`3.3`/`3.4` merged, `3.5` IN PROGRESS) + `obs-cli` consumer crate COMPLETE
 **Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`, `run-local-p13-kill-switch-20260315T000051Z`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b`
 **Evidence Git SHA (Phase-12C):** `01d1cb5c`
@@ -27,6 +27,8 @@ Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerin
 - `CURRENT_PHASE=14` formal transition tamamlandi
 - Phase-14 spec ve tracker aktif truth surface olarak yerlesmis durumda
 - Phase-14 workstream `3.1`, `3.2`, `3.3`, `3.4` `main` uzerinde merge edildi
+- Phase-14 workstream `3.5` (observability UX) IN PROGRESS — canonical UX contract mevcut, runtime implementation devam ediyor
+- `obs-cli` consumer crate tamamlandi: `userspace/obs-cli/` — tum moduller implement edildi (spec: `.kiro/specs/obs-cli-consumer/`)
 - Root graph yuzeyi artik partitioned derived + overlay-only modele gecti
 - Performance baseline guncellendi: `gha-ubuntu24-20260329.72.1-X64`
 
@@ -132,8 +134,9 @@ Meaning:
 1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
 2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 3. Merged workstreams on `main`: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph
-4. Remaining open workstream: 3.5 observability UX
+4. Remaining open workstream: 3.5 observability UX — canonical UX contract drafted (`OBSERVABILITY_UX_CONTRACT_v1.md`), runtime implementation in progress
 5. Phase-14 graph surface is now explicitly `derived`, `non_authoritative`, and `overlay_only`
+6. `obs-cli` consumer crate fully implemented: `userspace/obs-cli/` — all modules complete (`error`, `models`, `parser`, `formatter`, `printer`, `fetcher`, `threshold`, `cli`, `diff`, `main`); spec: `.kiro/specs/obs-cli-consumer/`
 
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
@@ -154,9 +157,10 @@ Meaning:
 1. Observe post-merge stability of root `/diagnostics/graph` partitioning and `/diagnostics/graph/overlay` diagnostics.
 2. Decide whether deeper graph-structure validation should expand into `node_fingerprint` uniqueness and partition-integrity checks.
 3. Decide whether non-GET diagnostics rejection should move from namespace logic into the endpoint registry layer.
-4. Open Phase-14 workstream 3.5 without introducing scoring, authority, or truth-election semantics.
-5. Keep monitoring replay stability under interrupt ordering nondeterminism.
-6. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
+4. Implement Phase-14 workstream 3.5: bind `GET /diagnostics/summary` and `GET /diagnostics/runs/{run_id}/summary` to `OBSERVABILITY_UX_CONTRACT_v1.md` without introducing scoring, authority, or truth-election semantics.
+5. `obs-cli` consumer (`userspace/obs-cli/`) is fully implemented and ready to consume the `machine_structured` projection from `GET /diagnostics/summary`; remaining optional property tests can be added incrementally.
+6. Keep monitoring replay stability under interrupt ordering nondeterminism.
+7. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
 
 ## References
 - `README.md`

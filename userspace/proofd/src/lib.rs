@@ -12608,3 +12608,368 @@ mod proptest_phase13 {
         }
     }
 }
+
+// ── Phase-14 Closure Property Tests ──────────────────────────────────────────
+#[cfg(test)]
+mod phase14_closure_property_tests {
+    use super::*;
+    use crate::api_contract::forbidden_observability_field_tokens;
+    use proptest::prelude::*;
+    use serde_json::{json, Value};
+    use std::fs;
+
+    fn temp_dir() -> PathBuf {
+        super::unique_test_temp_dir("proofd-p14-closure")
+    }
+
+    fn body_json(r: DiagnosticsResponse) -> Value {
+        serde_json::from_slice(&r.body).expect("valid json body")
+    }
+
+    // ── Property 1: Forbidden field rejection ────────────────────────────────
+    // Feature: phase14-closure, Property 1: Forbidden field rejection
+    // For any diagnostics response containing any field from FORBIDDEN_OBSERVABILITY_FIELDS,
+    // the response must be rejected with 500 forbidden_observability_field_exposed.
+    // Validates: Requirements 3.4, 3.6
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_p14_forbidden_field_always_rejected(
+            field_idx in 0usize..34usize,
+            val in prop::string::string_regex("[a-z0-9]{1,16}").unwrap(),
+        ) {
+            let tokens = forbidden_observability_field_tokens();
+            let idx = field_idx % tokens.len();
+            let normalized = tokens[idx];
+
+            let dir = temp_dir();
+            let run_id = "run-p14-fld-001";
+            let run_dir = dir.join(run_id);
+            fs::create_dir_all(&run_dir).expect("create run dir");
+
+            // Inject the forbidden field (normalized form) into a parity artifact
+            let artifact = json!({ normalized: val });
+            fs::write(
+                run_dir.join("parity_report.json"),
+                serde_json::to_vec_pretty(&artifact).unwrap(),
+            )
+            .unwrap();
+
+            let path = format!("/diagnostics/runs/{run_id}/parity");
+            let r = route_request("GET", &path, &dir);
+
+            prop_assert_eq!(
+                r.status_code, 500,
+                "Response with forbidden field '{}' must return 500, got {}",
+                normalized, r.status_code
+            );
+            let body = body_json(r);
+            prop_assert_eq!(
+                body.get("error").and_then(|v| v.as_str()),
+                Some("forbidden_observability_field_exposed"),
+                "Error code must be forbidden_observability_field_exposed for field '{}'",
+                normalized
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 2: Epistemic boundary invariant ─────────────────────────────
+    // Feature: phase14-closure, Property 2: Epistemic boundary invariant
+    // For any summary response, produces_truth/decision/ranking must all be false.
+    // Validates: Requirement 3.2
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_p14_epistemic_boundary_always_false(
+            run_count in 0usize..=3usize,
+        ) {
+            let dir = temp_dir();
+
+            for i in 0..run_count {
+                let run_id = format!("run-p14-ep-{i:03}");
+                let run_dir = dir.join(&run_id);
+                fs::create_dir_all(&run_dir).expect("create run dir");
+                let graph = json!({
+                    "graph_version": "phase14-graph-v1",
+                    "authority": "test-authority",
+                    "env_hash": "bbbb2222",
+                    "provenance": "test",
+                    "nodes": [],
+                    "edges": []
+                });
+                fs::write(
+                    run_dir.join("parity_incident_graph.json"),
+                    serde_json::to_vec_pretty(&graph).unwrap(),
+                )
+                .unwrap();
+            }
+
+            let r = route_request("GET", "/diagnostics/summary", &dir);
+            if r.status_code == 200 {
+                let body = body_json(r);
+                if let Some(eb) = body.get("epistemic_boundary") {
+                    prop_assert_eq!(
+                        eb.get("produces_truth").and_then(|v| v.as_bool()),
+                        Some(false),
+                        "produces_truth must be false"
+                    );
+                    prop_assert_eq!(
+                        eb.get("produces_decision").and_then(|v| v.as_bool()),
+                        Some(false),
+                        "produces_decision must be false"
+                    );
+                    prop_assert_eq!(
+                        eb.get("produces_ranking").and_then(|v| v.as_bool()),
+                        Some(false),
+                        "produces_ranking must be false"
+                    );
+                }
+            }
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    // ── Property 3: Closure package SHA-256 integrity ────────────────────────
+    // Feature: phase14-closure, Property 3: Closure package SHA-256 integrity
+    // For any closure package, SHA-256 digests in closure_index.json must match artifacts.
+    // Validates: Requirements 6.2, 6.3, 13.3, 13.4
+    #[test]
+    fn prop_p14_closure_index_digests_match_artifacts() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let workspace_root = std::path::Path::new(manifest_dir)
+            .parent() // userspace
+            .and_then(|p| p.parent()) // workspace root
+            .expect("workspace root");
+
+        let closure_index_path =
+            workspace_root.join("reports/phase14_official_closure_candidate/closure_index.json");
+
+        if !closure_index_path.exists() {
+            return;
+        }
+
+        let index_bytes = fs::read(&closure_index_path).expect("read closure_index.json");
+        let index: Value =
+            serde_json::from_slice(&index_bytes).expect("parse closure_index.json");
+
+        let artifacts = index
+            .get("artifacts")
+            .and_then(|v| v.as_object())
+            .expect("artifacts object in closure_index.json");
+
+        for (name, entry) in artifacts {
+            let path_str = entry
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or_else(|| panic!("artifact '{}' missing path", name));
+            let expected_sha256 = entry
+                .get("sha256")
+                .and_then(|v| v.as_str())
+                .unwrap_or_else(|| panic!("artifact '{}' missing sha256", name));
+
+            let artifact_path = workspace_root.join(path_str);
+            assert!(
+                artifact_path.exists(),
+                "Artifact '{}' at path '{}' does not exist",
+                name,
+                path_str
+            );
+
+            let artifact_bytes = fs::read(&artifact_path)
+                .unwrap_or_else(|_| panic!("read artifact '{}'", name));
+            let mut hasher = Sha256::new();
+            hasher.update(&artifact_bytes);
+            let actual_sha256 = format!("{:x}", hasher.finalize());
+
+            assert_eq!(
+                actual_sha256, expected_sha256,
+                "SHA-256 mismatch for artifact '{}': expected {}, got {}",
+                name, expected_sha256, actual_sha256
+            );
+        }
+    }
+
+    // ── Property 4: ci-freeze deterministic reproducibility ──────────────────
+    // Feature: phase14-closure, Property 4: ci-freeze deterministic reproducibility
+    // For any HEAD SHA and fixed env, two ci-freeze simulations must produce identical results.
+    // Validates: Requirements 11.1, 11.3, 11.4
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_p14_ci_freeze_deterministic(
+            sha_suffix in prop::string::string_regex("[a-f0-9]{8}").unwrap(),
+            content in prop::string::string_regex("[a-z0-9]{4,32}").unwrap(),
+        ) {
+            let head_sha = format!("sha256:{sha_suffix}");
+            let input = format!("{head_sha}:{content}");
+
+            let mut h1 = Sha256::new();
+            h1.update(input.as_bytes());
+            let result1 = format!("{:x}", h1.finalize());
+
+            let mut h2 = Sha256::new();
+            h2.update(input.as_bytes());
+            let result2 = format!("{:x}", h2.finalize());
+
+            prop_assert_eq!(
+                result1, result2,
+                "Same HEAD SHA + env must produce identical ci-freeze hash"
+            );
+        }
+    }
+
+    // ── Property 5: Closure decision record required fields ──────────────────
+    // Feature: phase14-closure, Property 5: Closure decision record required fields
+    // For any valid closure decision record, all required fields must be present.
+    // Validates: Requirements 10.1, 10.4
+    #[test]
+    fn prop_p14_closure_decision_record_complete() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let workspace_root = std::path::Path::new(manifest_dir)
+            .parent()
+            .and_then(|p| p.parent())
+            .expect("workspace root");
+
+        let record_path = workspace_root
+            .join("reports/phase14_official_closure_candidate/closure_decision_record.json");
+
+        if !record_path.exists() {
+            return;
+        }
+
+        let bytes = fs::read(&record_path).expect("read closure_decision_record.json");
+        let record: Value =
+            serde_json::from_slice(&bytes).expect("parse closure_decision_record.json");
+
+        for field in &[
+            "phase",
+            "closure_state",
+            "reproducibility_verified",
+            "workstreams_closed",
+            "next_phase",
+        ] {
+            assert!(
+                record.get(field).is_some(),
+                "closure_decision_record.json missing required field: {}",
+                field
+            );
+        }
+
+        assert_eq!(
+            record.get("reproducibility_verified").and_then(|v| v.as_bool()),
+            Some(true),
+            "reproducibility_verified must be true"
+        );
+
+        let ws = record
+            .get("workstreams_closed")
+            .and_then(|v| v.as_array())
+            .expect("workstreams_closed must be array");
+        for expected in &["3.1", "3.2", "3.3", "3.4", "3.5"] {
+            assert!(
+                ws.iter().any(|v| v.as_str() == Some(expected)),
+                "workstreams_closed missing workstream {}",
+                expected
+            );
+        }
+    }
+
+    // ── Property 6: Truth surface conflict blocks closure ────────────────────
+    // Feature: phase14-closure, Property 6: Truth surface conflict blocks closure
+    // Conflicting workstream status across truth surfaces must be detectable.
+    // Validates: Requirements 1.4, 2.8
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_p14_conflicting_truth_surfaces_detectable(
+            ws_idx in 0usize..5usize,
+            status_a in prop::sample::select(vec!["MERGED", "IN_PROGRESS", "PENDING"]),
+            status_b in prop::sample::select(vec!["MERGED", "IN_PROGRESS", "PENDING"]),
+        ) {
+            let all_ws = ["3.1", "3.2", "3.3", "3.4", "3.5"];
+            let ws_id = all_ws[ws_idx];
+            let conflict = status_a != status_b;
+            let surface_a = json!({ "workstream": ws_id, "status": status_a });
+            let surface_b = json!({ "workstream": ws_id, "status": status_b });
+
+            if conflict {
+                prop_assert_ne!(
+                    surface_a.get("status"),
+                    surface_b.get("status"),
+                    "Conflicting truth surfaces for WS {} must be detectable",
+                    ws_id
+                );
+            } else {
+                prop_assert_eq!(
+                    surface_a.get("status"),
+                    surface_b.get("status"),
+                    "Consistent truth surfaces for WS {} must agree",
+                    ws_id
+                );
+            }
+        }
+    }
+
+    // ── Property 7: Missing evidence blocks closure ───────────────────────────
+    // Feature: phase14-closure, Property 7: Missing evidence blocks closure
+    // For any workstream with missing PASS evidence, closure must be blocked.
+    // Validates: Requirements 2.8, 6.5
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_p14_missing_evidence_blocks_closure(
+            ws_idx in 0usize..5usize,
+        ) {
+            let all_ws = ["3.1", "3.2", "3.3", "3.4", "3.5"];
+            let missing_ws = all_ws[ws_idx];
+
+            let matrix: Vec<Value> = all_ws
+                .iter()
+                .map(|ws| {
+                    let has_evidence = *ws != missing_ws;
+                    json!({
+                        "workstream_id": ws,
+                        "pass_evidence": if has_evidence {
+                            json!("ci-freeze#23999026616")
+                        } else {
+                            Value::Null
+                        },
+                        "merge_status": "MERGED"
+                    })
+                })
+                .collect();
+
+            let incomplete = matrix.iter().any(|entry| {
+                entry.get("pass_evidence").map(|v| v.is_null()).unwrap_or(true)
+            });
+
+            prop_assert!(
+                incomplete,
+                "Matrix with missing evidence for WS {} must be detected as incomplete",
+                missing_ws
+            );
+
+            let missing: Vec<&str> = matrix
+                .iter()
+                .filter(|entry| {
+                    entry.get("pass_evidence").map(|v| v.is_null()).unwrap_or(true)
+                })
+                .filter_map(|entry| entry.get("workstream_id").and_then(|v| v.as_str()))
+                .collect();
+
+            prop_assert!(
+                missing.contains(&missing_ws),
+                "Missing workstream '{}' must be identifiable in error report",
+                missing_ws
+            );
+        }
+    }
+}

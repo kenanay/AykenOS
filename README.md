@@ -13,7 +13,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 03.04.2026
+**Son Güncelleme:** 06.04.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -31,7 +31,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
 **Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62)
 **Phase 13 Status:** OFFICIALLY CLOSED ✅ | tag `phase13-official-closure-confirmed` at `8b23fe0d` | remote `ci-freeze` run `23706742211` (PR #81) | Architecture Map §4 workstreams COMPLETE
-**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | tracker-authoritative workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
+**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | tracker-authoritative workstreams: 3.1 API stabilization ✅ MERGED, 3.2 replay determinism ✅ MERGED, 3.3 `proofd` boundary hardening ✅ MERGED, 3.4 cross-node observability graph ✅ MERGED, 3.5 observability UX 🔄 IN PROGRESS | `obs-cli` consumer crate: `userspace/obs-cli/` — full implementation complete (spec: `.kiro/specs/obs-cli-consumer/`)
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
