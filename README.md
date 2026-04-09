@@ -13,25 +13,28 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 06.04.2026
-**Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
-**Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350`
+**Son Güncelleme:** 09.04.2026
+**Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
+**Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
 **Remote CI (Phase-12):** `ci-freeze#23099070483 = success` (PR #62)
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
-**CURRENT_PHASE:** `14` (`Phase-13 OFFICIALLY CLOSED — CURRENT_PHASE=14 — Phase-14 ACTIVE`)
+**Remote CI (Phase-15):** `ci-freeze#24213727039 = success` (PR #104) | tag `phase15-official-closure`
+**CURRENT_PHASE:** `15` (`Phase-15 OFFICIALLY CLOSED — CURRENT_PHASE=15 — Phase-16 PENDING`)
 **Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite with local performance authority
 **Acil Blocker:** `yok`
-**Yakın Hedef:** Phase-14 workstreams (`tracker`-authoritative: API stabilization, replay determinism, `proofd` boundary hardening, cross-node observability graph, observability UX)
+**Yakın Hedef:** Phase-16 (Ayken CLI Faz B + BCIB toolchain surface)
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
+**Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64`
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase 13 distributed observability OFFICIALLY CLOSED ✅ | CURRENT_PHASE=14 ✅ | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase 13 distributed observability OFFICIALLY CLOSED ✅ | Phase 14 observability hardening OFFICIALLY CLOSED ✅ | Phase 15 BCIB Execution Engine v3 OFFICIALLY CLOSED ✅ | CURRENT_PHASE=15 ✅ | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
 **Phase 12 Status:** OFFICIALLY CLOSED ✅ | tag `phase12-official-closure-confirmed` at `1d79d4b1` | remote `ci-freeze` run `23099070483` (PR #62)
 **Phase 13 Status:** OFFICIALLY CLOSED ✅ | tag `phase13-official-closure-confirmed` at `8b23fe0d` | remote `ci-freeze` run `23706742211` (PR #81) | Architecture Map §4 workstreams COMPLETE
-**Phase 14 Status:** ACTIVE 🔄 | spec: `docs/specs/phase14-distributed-observability/README.md` | tracker-authoritative workstreams: 3.1 API stabilization ✅ MERGED, 3.2 replay determinism ✅ MERGED, 3.3 `proofd` boundary hardening ✅ MERGED, 3.4 cross-node observability graph ✅ MERGED, 3.5 observability UX 🔄 IN PROGRESS | `obs-cli` consumer crate: `userspace/obs-cli/` — full implementation complete (spec: `.kiro/specs/obs-cli-consumer/`)
+**Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
+**Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
