@@ -71,6 +71,15 @@
         "notes": "14/14 tests PASS (cargo test -p ai-runtime -- --test-threads=1); 3 property tests (200 cases each): ai_never_produces_authority_output — arbitrary input never produces authority/decision/scheduling terms; ai_always_denied_without_capability — no capability bypass possible; boundary_validator_rejects_all_authority_terms — all 7 FORBIDDEN_AUTHORITY_TERMS rejected; AI runtime Ring3-isolated, suggestion-only surface (Req 10.1, 10.2); capability-gated: AiCapabilitySet::none() → CapabilityDenied (Req 10.4); advisory_only=true on all outputs (Req 10.6); no scheduling/routing decision produced; cargo check clean; DETERMINISM.GLOBAL verified; no Box::leak / mem::forget violations"
       },
       {
+        "gate": "ci-gate-workspace",
+        "workstream": "WS 3.4",
+        "verdict": "PASS",
+        "scope": "workspace-authority-boundary",
+        "timestamp": "2026-04-09T19:05:43Z",
+        "notes": "make ci-gate-workspace PASS; git state clean; generated ABI include deterministic; kernel reproducibility verified (build1 SHA == build2 SHA); no userspace objects in kernel linkset; no libayken objects; no test objects linked; strict_mode=1; requirements 11.1, 11.2, 11.3 satisfied — workspace operates only through execution layer, no direct syscall/kernel access, no authority surface",
+        "requirements": ["11.1", "11.2", "11.3"]
+      },
+      {
         "gate": "ci-gate-data-runtime-bcib",
         "workstream": "WS 3.5",
         "verdict": "PASS",
