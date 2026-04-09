@@ -1,0 +1,131 @@
+{
+  "schema": "ayken-closure-manifest/1.0",
+  "phase": 15,
+  "generated_at": "2026-04-09T00:00:00Z",
+  "closure_state": "LOCAL_CLOSURE_READY",
+  "current_phase_pointer": "15",
+  "evidence_index_path": "reports/phase15_closure_candidate/evidence_index.json",
+  "evidence_root_algorithm": "sha256_path_digest_tree_v1",
+  "workstreams": [
+    {
+      "id": "3.1",
+      "name": "BCIB Execution Engine v3",
+      "contract": "userspace/bcib-runtime/src/",
+      "ci_gate": "ci-gate-bcib-v3-core",
+      "pass_evidence": "LOCAL_PASS — ci-freeze PASS required for official closure",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "core_implementation_complete",
+      "dependency": null,
+      "requirements": ["1.x","2.x","3.x","3b.x","4.x","16.x","17.x","18.x","19.x","20.x"]
+    },
+    {
+      "id": "3.2",
+      "name": "System DSL",
+      "contract": "userspace/dsl-parser/",
+      "ci_gate": "ci-gate-dsl-bcib-contract",
+      "pass_evidence": "LOCAL_PASS — 11 golden fixture tests PASS",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "downstream, production-ready deferred until WS 3.1 PASS",
+      "dependency": "3.1",
+      "requirements": ["7.1","7.2","7.3"]
+    },
+    {
+      "id": "3.3",
+      "name": "Semantic CLI",
+      "contract": "userspace/semantic-cli/",
+      "ci_gate": "ci-gate-semantic-cli-contract",
+      "pass_evidence": "LOCAL_PASS — 864 lib tests PASS",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "downstream, production-ready deferred until WS 3.2 PASS",
+      "dependency": "3.1, 3.2",
+      "requirements": ["8.1","8.2","8.3"]
+    },
+    {
+      "id": "3.4",
+      "name": "Workspace",
+      "contract": "ci-gate-workspace (existing)",
+      "ci_gate": "ci-gate-workspace",
+      "pass_evidence": "LOCAL_PASS — make ci-gate-workspace PASS",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "non-blocking for core engine completion",
+      "dependency": "3.1 (non-blocking)",
+      "requirements": ["11.1","11.2","11.3"]
+    },
+    {
+      "id": "3.5",
+      "name": "Data Runtime",
+      "contract": "userspace/bcib-runtime/ (ABDF boundary + data path)",
+      "ci_gate": "ci-gate-data-runtime-bcib",
+      "pass_evidence": "LOCAL_PASS — 12 data tests PASS",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "downstream, production-ready deferred until WS 3.1 PASS",
+      "dependency": "3.1",
+      "requirements": ["9.1","9.2","9.3"]
+    },
+    {
+      "id": "3.6",
+      "name": "AI Runtime",
+      "contract": "userspace/ai-runtime/",
+      "ci_gate": "ci-gate-ai-runtime-boundary",
+      "pass_evidence": "LOCAL_PASS — 14 tests PASS (3 property tests, 200 cases each)",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "downstream, production-ready deferred until WS 3.1 PASS",
+      "dependency": "3.1",
+      "requirements": ["10.1","10.2","10.3","10.4"]
+    },
+    {
+      "id": "3.7",
+      "name": "Capability/Security",
+      "contract": "userspace/bcib-runtime/src/capability_manager.rs",
+      "ci_gate": "ci-gate-capability-manager",
+      "pass_evidence": "LOCAL_PASS — CapabilityManager: bind/revoke/check/transfer; KERNEL.CAPABILITY.BYPASS NON_OVERRIDABLE verified",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "implemented alongside WS 3.1",
+      "dependency": "3.1",
+      "requirements": ["5.1","5.2","5.3","5.4","14.x","15.x","21.1"]
+    },
+    {
+      "id": "3.8",
+      "name": "Observability Integration",
+      "contract": "userspace/bcib-runtime/src/diagnostics.rs",
+      "ci_gate": "ci-gate-proofd-observability-boundary",
+      "pass_evidence": "LOCAL_PASS — Phase-14 non-regression PASS; epistemic boundary enforced; FORBIDDEN_OBSERVABILITY_FIELDS enforced",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "implemented alongside WS 3.1",
+      "dependency": "3.1",
+      "requirements": ["6.1","6.2","6.3","6.4","6.5"]
+    },
+    {
+      "id": "3.9",
+      "name": "Toolchain/Extensibility",
+      "contract": "userspace/bcib-runtime/src/opcode_registry.rs + binary_format.rs + compat.rs",
+      "ci_gate": "ci-gate-toolchain-opcode-registry",
+      "pass_evidence": "LOCAL_PASS — opcode ID lock PASS; v0.2 golden fixtures parse PASS; version compat check PASS",
+      "merge_status": "IN_PROGRESS",
+      "closure_state": "implemented alongside WS 3.1",
+      "dependency": "3.1",
+      "requirements": ["12.1","12.2","12.3","12.4","12.5","12.6","12.7"]
+    },
+    {
+      "id": "3.10",
+      "name": "Governance Gates",
+      "contract": ".kiro/specs/phase15-bcib-execution-engine/",
+      "ci_gate": "ci-freeze",
+      "pass_evidence": "PENDING — requires remote GitHub Actions ci-freeze PASS + HEAD SHA",
+      "merge_status": "PENDING",
+      "closure_state": "awaiting_remote_ci_freeze",
+      "dependency": "3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9",
+      "requirements": ["13.1","13.2","13.3","13.4","13.5"]
+    }
+  ],
+  "non_overridable_checks": {
+    "DETERMINISM.GLOBAL": "PASS",
+    "MEMORY.CONTRACT.VIOLATION": "PASS",
+    "MEMORY.LEAK.INTENTIONAL": "PASS — no Box::leak / mem::forget",
+    "KERNEL.RING0.POLICY": "PASS — all policy in Ring3",
+    "KERNEL.CAPABILITY.BYPASS": "PASS — no bypass path",
+    "ERROR.PANIC": "PASS — no panic! in production paths",
+    "SECURITY.BOUNDARY.VIOLATION": "PASS"
+  },
+  "closure_authority_note": "LOCAL_CLOSURE_READY state does not constitute official closure. Official closure requires remote GitHub Actions ci-freeze PASS result and associated HEAD SHA. Local runs do not grant closure authority (Requirement 13.4)."
+}
