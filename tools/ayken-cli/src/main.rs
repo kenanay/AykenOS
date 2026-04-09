@@ -14,6 +14,7 @@ fn main() {
         Command::Test(args) => commands::test::run(args, cli.json),
         Command::Gate(args) => commands::gate::run(args, cli.json),
         Command::Closure(args) => commands::closure::run(args, cli.json),
+        Command::Bcib(args) => commands::bcib::run(args, cli.json),
     };
 
     if let Err(err) = result {

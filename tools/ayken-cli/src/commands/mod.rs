@@ -1,3 +1,4 @@
+pub mod bcib;
 pub mod check;
 pub mod closure;
 pub mod doctor;

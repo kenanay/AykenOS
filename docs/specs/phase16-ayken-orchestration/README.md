@@ -8,6 +8,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 
 - `ayken gate all`
 - `ayken closure status --json`
+- `ayken closure verify`
 - `ayken bcib verify`
 - `ayken bcib hash`
 - `ayken bcib inspect`
@@ -19,7 +20,9 @@ Provide a controlled orchestration surface for build, verification, and closure 
 
 ## Constraints
 
-- fail-closed policy enforcement on all commands
+- `closure verify` and `gate all` are fail-closed
+- `gate all --json` emits normalized per-gate result summaries suitable for pipeline input
+- `closure status`, `bcib hash`, and `bcib inspect` are advisory observation surfaces
 - no authority override from local tools
 - no mutation of closure artifacts without CI confirmation
 - reuse existing `proof-verifier`, `semantic-cli`, and `bcib-runtime` surfaces instead of copying logic

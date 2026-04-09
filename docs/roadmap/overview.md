@@ -199,7 +199,7 @@ Interpretation:
 10. ✅ `CURRENT_PHASE=15` formal transition tamamlandi
 
 ### 5.2 Near Term (Phase-16)
-1. Ayken CLI Faz B: `gate all`, `closure status --json`, JSON çıktı zenginleştirme
+1. Ayken CLI Faz B: `gate all`, `closure status --json` (advisory), `closure verify` (binding)
 2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect`
 3. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
 4. Governance: ayrı spec ile onay gerekli

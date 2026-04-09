@@ -292,7 +292,8 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 **Kısa Vadeli (Phase-16):**
 - Ayken CLI Faz B: `ayken gate all`
-- Ayken CLI Faz B: `ayken closure status --json`
+- Ayken CLI Faz B: `ayken closure status --json` (advisory)
+- Ayken CLI Faz B: `ayken closure verify` (binding, fail-closed)
 - Ayken CLI Faz C: `ayken bcib verify`
 - Ayken CLI Faz C: `ayken bcib hash`
 - Ayken CLI Faz C: `ayken bcib inspect`
