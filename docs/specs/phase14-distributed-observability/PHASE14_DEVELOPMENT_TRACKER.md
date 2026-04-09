@@ -1,5 +1,7 @@
 # Phase-14 Development Tracker
 
+> ⚠️ OBSOLETE — Superseded by Phase-15 official closure. This tracker is retained as a historical workstream record; current authoritative closure truth is `reports/phase15_official_closure/closure_index.json`.
+
 **Phase:** 14  
 **Status:** CLOSED (official closure confirmed)  
 **Tracker State:** IMMUTABLE  
@@ -14,11 +16,11 @@
 
 ## 1. Purpose
 
-This file records the active development flow of Phase-14.
+This file records the completed development flow of Phase-14.
 
 For Phase-14 workstream IDs and state labels, this tracker is authoritative. The spec README, architecture map, and related status surfaces MUST align to this file.
 
-It exists to answer four questions at any given time:
+It exists to answer four historical questions:
 
 1. Which Phase-14 workstream is active?
 2. What is already implemented?
@@ -32,7 +34,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 ## 2. Current Snapshot
 
 - `Phase-13`: OFFICIALLY CLOSED
-- `Phase-14`: ACTIVE
+- `Phase-14`: CLOSED (official closure confirmed)
 - Current theme: distributed observability hardening
 - Entry rule: externalization without violating Phase-13 invariants
 - Existing substrate note:
@@ -195,7 +197,7 @@ This tracker is operational, not historical. Historical closure truth remains in
 ### 2026-04-03
 
 **Phase-14 opened and architecture anchored**
-- `CURRENT_PHASE=14` formal transition already executed in repo truth surfaces
+- Historical note: `CURRENT_PHASE=14` was the formal pointer when Phase-14 opened; current repo truth has since advanced to `CURRENT_PHASE=15`
 - Phase-14 spec is active
 - Architecture map created and merged through PR `#87`
 - Reference: `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`

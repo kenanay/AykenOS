@@ -1,7 +1,9 @@
 # Phase-14 Architecture Map
 
+> ⚠️ OBSOLETE — Superseded by Phase-15 official closure. Use `reports/phase15_official_closure/closure_index.json` for current authoritative closure truth.
+
 **Version:** 1.0  
-**Status:** ACTIVE  
+**Status:** HISTORICAL REFERENCE (Phase-14 officially closed)  
 **Date:** 2026-04-03  
 **Phase:** 14 — Distributed Observability Hardening  
 **Authority:** ARCHITECTURE_FREEZE.md  
@@ -178,7 +180,7 @@ Phase-14 is complete when:
 3. proofd query boundary property tests passing
 4. Cross-node observability graph endpoint operational
 5. All Phase-14 gates PASS in `ci-freeze`
-6. Official closure tag minted: `phase14-official-closure`
+6. Official closure tag minted: `phase14-official-closure-confirmed`
 7. Remote CI confirmation obtained
 8. `CURRENT_PHASE=15` formal transition executed
 
@@ -187,7 +189,7 @@ Phase-14 is complete when:
 ## 8. References
 
 - `ARCHITECTURE_FREEZE.md` — governing constraints
-- `docs/roadmap/CURRENT_PHASE` — formal phase pointer (`CURRENT_PHASE=14`)
+- `docs/roadmap/CURRENT_PHASE` — formal phase pointer (`CURRENT_PHASE=15`)
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — predecessor map
 - `docs/specs/phase14-distributed-observability/README.md` — phase spec
 - `docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md` — canonical external diagnostics contract

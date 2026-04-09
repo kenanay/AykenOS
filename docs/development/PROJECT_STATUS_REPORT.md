@@ -131,39 +131,47 @@ Meaning:
 
 ### 2.5 Phase-14
 Current classification:
-`Phase-14 = ACTIVE`
+`Phase-14 = CLOSED (official closure confirmed)`
 
 Meaning:
-1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
-2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
-3. Merged workstreams on `main`: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph
-4. Remaining open workstream: 3.5 observability UX — canonical UX contract drafted (`OBSERVABILITY_UX_CONTRACT_v1.md`), runtime implementation in progress
-5. Phase-14 graph surface is now explicitly `derived`, `non_authoritative`, and `overlay_only`
-6. `obs-cli` consumer crate fully implemented: `userspace/obs-cli/` — all modules complete (`error`, `models`, `parser`, `formatter`, `printer`, `fetcher`, `threshold`, `cli`, `diff`, `main`); spec: `.kiro/specs/obs-cli-consumer/`
+1. All Phase-14 workstreams (3.1–3.5) merged to `main`
+2. `obs-cli` consumer crate fully implemented: `userspace/obs-cli/`
+3. Remote `ci-freeze` confirmation obtained before the Phase-15 closure train
+4. Observability boundary invariants preserved: `service != authority`, `diagnostics != decision`, `parity != consensus`
+5. Phase-14 surfaces remain historical/reference-only after Phase-15 official closure
+
+### 2.6 Phase-15
+Current classification:
+`Phase-15 = CLOSED (official closure confirmed)`
+
+Meaning:
+1. BCIB Execution Engine v3 official closure confirmed by `ci-freeze` run `24213727039` (PR #104)
+2. Three-layer architecture shipped: `BcibVerifierPlanner`, `BcibExecutionRuntime`, `SchedulerSubmitBridge`
+3. 293 unit/integration tests PASS, 12 property tests PASS
+4. `ayken-cli` v0.1 (Faz A wrapper) shipped under `tools/ayken-cli/`
+5. Formal phase pointer remains `CURRENT_PHASE=15`; Phase-16 is pending governance/spec activation
 
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
-2. `CURRENT_PHASE=14` — formal transition executed at `8b23fe0d`.
-3. Phase-10/11/12/13 all OFFICIALLY CLOSED.
-4. Phase-14 workstream truth is tracker-authoritative; README/spec and architecture surfaces must align to the tracker.
-5. `proofd` MUST NOT drift into authority, majority, or control-plane semantics.
-6. Phase-14 graph / observability growth MUST remain derived-only and MUST NOT become authority arbitration or truth election.
-7. `ABDF` and `BCIB` remain existing substrates; Phase-14 does not re-center them as primary workstreams.
+2. `CURRENT_PHASE=15` — formal transition executed at `48970cd0`.
+3. Phase-10/11/12/13/14/15 all OFFICIALLY CLOSED.
+4. Phase-15 official closure truth is anchored at `reports/phase15_official_closure/closure_index.json`.
+5. Historical Phase-14 tracker/spec surfaces remain reference-only and MUST NOT override Phase-15 closure truth.
+6. `proofd` MUST NOT drift into authority, majority, or control-plane semantics.
+7. `ABDF` and `BCIB` remain existing substrates; Phase-16 may orchestrate them but may not redefine their authority boundaries.
 
 ## 4) Current Risk Surface
-1. En kritik teknik risk root partitioning ve overlay-only graph yuzeyinin post-merge stabilitesidir; bu yuzey authority, majority veya routing semantics'e kaymamalidir.
+1. En kritik authority riski truth surface drift'tir; human-readable reports ile machine-readable closure artifacts ayni closure verdict'i korumalidir.
 2. `proofd` MUST still not drift into authority, majority, truth-election, or control-plane semantics.
-3. Deeper graph validation henuz acik konudur: `node_fingerprint` uniqueness ve partition integrity v2 kararlari bilincli olarak ertelenmistir.
-4. Replay stability ve interrupt-order nondeterminism hala izlenmesi gereken altyapisal risk olarak kalir.
+3. Replay stability ve interrupt-order nondeterminism hala izlenmesi gereken altyapisal risk olarak kalir.
+4. Phase-16 orchestration layer mevcut authority modelini by-pass edemez; local tooling sadece advisory olabilir.
 
 ## 5) Next Steps
-1. Observe post-merge stability of root `/diagnostics/graph` partitioning and `/diagnostics/graph/overlay` diagnostics.
-2. Decide whether deeper graph-structure validation should expand into `node_fingerprint` uniqueness and partition-integrity checks.
-3. Decide whether non-GET diagnostics rejection should move from namespace logic into the endpoint registry layer.
-4. Implement Phase-14 workstream 3.5: bind `GET /diagnostics/summary` and `GET /diagnostics/runs/{run_id}/summary` to `OBSERVABILITY_UX_CONTRACT_v1.md` without introducing scoring, authority, or truth-election semantics.
-5. `obs-cli` consumer (`userspace/obs-cli/`) is fully implemented and ready to consume the `machine_structured` projection from `GET /diagnostics/summary`; remaining optional property tests can be added incrementally.
-6. Keep monitoring replay stability under interrupt ordering nondeterminism.
-7. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
+1. Keep `reports/phase15_official_closure/` as the canonical Phase-15 authority package.
+2. Finalize Phase-16 orchestration spec before expanding `ayken-cli` beyond Faz A wrapper scope.
+3. Implement Phase-16 commands in thin orchestration form only: `gate all`, `closure status --json`, `bcib verify`, `bcib hash`, `bcib inspect`.
+4. Keep monitoring replay stability under interrupt ordering nondeterminism.
+5. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
 
 ## References
 - `README.md`

@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-09
+**Last Updated:** 2026-04-10
 **Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
 
 ## Current Status
@@ -22,12 +22,13 @@ Current repo truth icin once su dosyalari referans alin:
 2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
 3. `docs/roadmap/overview.md`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `reports/phase15_closure_candidate/PHASE15_CLOSURE_REPORT.md`
-6. `reports/phase13_official_closure_candidate/closure_index.json`
-7. `reports/phase12_official_closure_candidate/closure_manifest.json`
-8. `reports/phase10_phase11_official_closure_index.json`
-9. `Makefile`
-10. `.github/workflows/ci-freeze.yml`
+5. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+6. `reports/phase15_official_closure/closure_index.json`
+7. `reports/phase13_official_closure_candidate/closure_index.json`
+8. `reports/phase12_official_closure_candidate/closure_manifest.json`
+9. `reports/phase10_phase11_official_closure_index.json`
+10. `Makefile`
+11. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -56,7 +57,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
 2. `docs/roadmap/overview.md`
-3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=14`
+3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
 5. `docs/specs/phase14-distributed-observability/README.md`
 6. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
@@ -167,6 +168,6 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
 
 ## Note
-Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`), Phase-14 tracker truth ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-15 official closure truth (`reports/phase15_official_closure/closure_index.json`) ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
 
-**Son Guncelleme:** 2026-04-09
+**Son Guncelleme:** 2026-04-10

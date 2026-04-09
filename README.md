@@ -13,7 +13,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 **Oluşturan:** Kenan AY
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 09.04.2026
+**Son Güncelleme:** 10.04.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -39,6 +39,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
+
+---
+
+## Phase Status
+
+- **Current Phase:** `15`
+- **Status:** `OFFICIALLY CLOSED`
+- **Closure Index:** `reports/phase15_official_closure/closure_index.json`
+- **Next Phase:** `16` (`pending` — Ayken CLI Faz B + BCIB toolchain surface)
 
 ---
 
@@ -205,7 +214,8 @@ cd ayken && cargo build && ./target/debug/ayken check
 | Phase 11 — Verification | ✅ OFFICIALLY CLOSED | Ledger, ETI, replay, proof bundle |
 | Phase 12 — Trust Layer | ✅ OFFICIALLY CLOSED | tag `phase12-official-closure-confirmed`, remote CI run `23099070483` (PR #62) |
 | Phase 13 — Distributed Observability | ✅ OFFICIALLY CLOSED | tag `phase13-official-closure-confirmed`, remote CI run `23706742211` (PR #81) |
-| Phase 14 — Distributed Observability Hardening | 🔄 ACTIVE | Replay determinism, proofd boundary, cross-node graph |
+| Phase 14 — Distributed Observability Hardening | ✅ OFFICIALLY CLOSED | Replay determinism, proofd boundary, cross-node graph, observability UX |
+| Phase 15 — BCIB Execution Engine v3 | ✅ OFFICIALLY CLOSED | Three-layer BCIB runtime, 293 tests PASS, 12 property tests PASS |
 
 ### Phase 12 Detayı
 
@@ -280,13 +290,13 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ## 🎯 Sonraki Hedefler
 
-**Kısa Vadeli (Phase-14):**
-- Read-only external API stabilization
-- Replay determinism stability hardening
-- proofd query/service boundary hardening
-- Cross-node observability graph (`GET /diagnostics/graph`)
-- Observability UX (human-readable layer)
-- Phase-14 official closure prep
+**Kısa Vadeli (Phase-16):**
+- Ayken CLI Faz B: `ayken gate all`
+- Ayken CLI Faz B: `ayken closure status --json`
+- Ayken CLI Faz C: `ayken bcib verify`
+- Ayken CLI Faz C: `ayken bcib hash`
+- Ayken CLI Faz C: `ayken bcib inspect`
+- Authority modeli: `ci-freeze` authoritative, local tooling advisory
 
 **Orta Vadeli:**
 - ARM64 + RISC-V kernel portları
@@ -301,6 +311,6 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 03 Nisan 2026 — Phase-13 OFFICIALLY CLOSED (ci-freeze#23706742211, PR #81); CURRENT_PHASE=14; Phase-14 spec açıldı.
+**Son Güncelleme:** 10 Nisan 2026 — Phase-15 OFFICIALLY CLOSED (ci-freeze#24213727039, PR #104); CURRENT_PHASE=15; Phase-16 pending.
 
 **© 2026 Kenan AY — AykenOS Project**

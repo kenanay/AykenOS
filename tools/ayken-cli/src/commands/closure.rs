@@ -5,6 +5,7 @@ use std::path::Path;
 
 #[derive(Serialize)]
 struct ClosureStatus {
+    base_path: &'static str,
     evidence_index_exists: bool,
     closure_manifest_exists: bool,
     closure_index_exists: bool,
@@ -21,12 +22,13 @@ pub fn run(args: ClosureArgs, json: bool) -> Result<(), AykenError> {
         )));
     }
 
-    let base = Path::new("reports/phase15_closure_candidate");
+    let base = Path::new("reports/phase15_official_closure");
     let evidence = base.join("evidence_index.json").exists();
     let manifest = base.join("closure_manifest.json").exists();
     let index = base.join("closure_index.json").exists();
 
     let status = ClosureStatus {
+        base_path: "reports/phase15_official_closure",
         evidence_index_exists: evidence,
         closure_manifest_exists: manifest,
         closure_index_exists: index,
@@ -39,6 +41,7 @@ pub fn run(args: ClosureArgs, json: bool) -> Result<(), AykenError> {
         output::print_json(&status)
     } else {
         println!("ayken closure status");
+        println!("  base_path            : {}", status.base_path);
         println!("  evidence_index.json  : {}", status.evidence_index_exists);
         println!("  closure_manifest.json: {}", status.closure_manifest_exists);
         println!("  closure_index.json   : {}", status.closure_index_exists);

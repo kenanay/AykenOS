@@ -1,5 +1,7 @@
 # Phase-14 Official Closure Candidate
 
+> ⚠️ OBSOLETE — Superseded by Phase-15 official closure. Current authoritative closure truth is `reports/phase15_official_closure/closure_index.json`.
+
 - Generated at: `2026-04-07T00:00:00Z`
 - Closure state: `LOCAL_CLOSURE_READY`
 - Current phase pointer: `14`
