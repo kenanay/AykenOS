@@ -285,7 +285,7 @@ impl AbdfHandle {
     ///
     /// When `true`, `run_slice()` MUST transition `Running → Waiting` and
     /// call `yield_slice()` before proceeding — ABDF latency spikes MUST NOT
-    /// block the execution thread.
+    /// block the execution context.
     pub fn is_blocking(&self) -> bool {
         if self.revoked {
             return false; // revoked handles don't block — they just error
