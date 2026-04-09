@@ -1,2 +1,6 @@
 [build]
 target-dir = "out/cargo"
+
+# Default C compiler: clang (stable, CI-verified)
+# Ayken toolchain: experimental, parked — see ayken/STATUS.md
+# To use ayken locally (not in CI): cd ayken && cargo build
