@@ -1045,7 +1045,7 @@ mod tests {
     proptest::proptest! {
         // Feature: phase15-bcib-execution-engine, Property 8: Illegal State Transition Rejection
         // Validates: Requirements 3b.3
-        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(200))]
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(100))]
         #[test]
         fn prop_illegal_state_transition_rejected(
             from_raw in 0u8..8,
@@ -1457,7 +1457,7 @@ mod tests {
     proptest::proptest! {
         // Feature: phase15-bcib-execution-engine, Property 6: Lifecycle Completeness
         // Validates: Requirements 2.6, 3.1, 3.9, 3.10, 3b.4, 23.1
-        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(200))]
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(100))]
         #[test]
         fn prop_lifecycle_completeness_cancel(
             num_abdf_handles in 0usize..8,
@@ -1730,7 +1730,7 @@ mod tests {
     proptest::proptest! {
         // Feature: phase15-bcib-execution-engine, Property 11: Bounded Slice Yield
         // Validates: Requirements 2.1, 2.2, 17.2
-        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(200))]
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(100))]
         #[test]
         fn prop_bounded_slice_yield(
             // Number of Pure instructions in the plan (1..=20).

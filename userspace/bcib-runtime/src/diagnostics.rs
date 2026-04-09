@@ -4,7 +4,7 @@
 /// (Requirements 6.1, 6.2). All responses carry the Phase-14 epistemic
 /// boundary declaration:
 ///
-/// ```
+/// ```text
 /// produces_truth:    false
 /// produces_decision: false
 /// produces_ranking:  false

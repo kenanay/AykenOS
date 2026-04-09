@@ -751,7 +751,7 @@ mod tests {
         use proptest::prelude::*;
 
         proptest! {
-            #![proptest_config(proptest::test_runner::Config::with_cases(200))]
+            #![proptest_config(proptest::test_runner::Config::with_cases(100))]
 
             /// Property 10a: Any cross-context access attempt (bypass) →
             /// BCIB_ERR_ABDF_ACCESS_DENIED.

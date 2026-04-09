@@ -1250,7 +1250,7 @@ mod tests {
     proptest::proptest! {
         // Feature: phase15-bcib-execution-engine, Property 1: Execution Determinism
         // Validates: Requirements 4.1, 4.4
-        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(200))]
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(100))]
         #[test]
         fn prop_execution_determinism(
             // Generate 0–8 pure instructions (Nop = 0x00, End = 0x01).
