@@ -3,8 +3,10 @@
 //! LRU cache with TTL for efficient context data access.
 
 use crate::context::CacheStats;
+use lru::LruCache;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
 /// Context data with metadata
@@ -89,39 +91,45 @@ impl CacheEntry {
 
 /// LRU cache with TTL for context data
 pub struct ContextCache {
-    entries: HashMap<String, CacheEntry>,
+    entries: LruCache<String, CacheEntry>,
     capacity: usize,
-    access_order: Vec<String>, // LRU tracking
     stats: CacheStats,
 }
 
 impl ContextCache {
     /// Create new cache with specified capacity
     pub fn new(capacity: usize) -> Self {
+        let normalized_capacity = capacity.max(1);
         Self {
-            entries: HashMap::new(),
-            capacity,
-            access_order: Vec::new(),
+            entries: LruCache::new(
+                NonZeroUsize::new(normalized_capacity).expect("cache capacity must be non-zero"),
+            ),
+            capacity: normalized_capacity,
             stats: CacheStats::default(),
         }
     }
 
     /// Get data from cache (returns None if expired or not found)
     pub fn get(&mut self, key: &str) -> Option<ContextData> {
-        // Check if entry exists
-        if let Some(entry) = self.entries.get_mut(key) {
-            // Check if expired
-            if entry.is_expired() {
-                // Remove expired entry
-                self.entries.remove(key);
-                self.access_order.retain(|k| k != key);
-                self.stats.misses += 1;
-                return None;
+        let mut expired = false;
+        let data = match self.entries.get_mut(key) {
+            Some(entry) => {
+                if entry.is_expired() {
+                    expired = true;
+                    None
+                } else {
+                    Some(entry.access().clone())
+                }
             }
+            None => None,
+        };
 
-            // Update access tracking
-            let data = entry.access().clone();
-            self.update_access_order(key);
+        if expired {
+            let _ = self.entries.pop(key);
+            self.stats.size = self.entries.len();
+            self.stats.misses += 1;
+            None
+        } else if let Some(data) = data {
             self.stats.hits += 1;
             Some(data)
         } else {
@@ -132,22 +140,13 @@ impl ContextCache {
 
     /// Insert data into cache
     pub fn insert(&mut self, key: String, data: ContextData) {
-        // Check if we need to evict
-        if self.entries.len() >= self.capacity && !self.entries.contains_key(&key) {
-            self.evict_lru();
-        }
-
-        // Insert or update entry
-        let entry = CacheEntry::new(data);
-        self.entries.insert(key.clone(), entry);
-        self.update_access_order(&key);
+        self.entries.put(key, CacheEntry::new(data));
         self.stats.size = self.entries.len();
     }
 
     /// Remove entry from cache
     pub fn remove(&mut self, key: &str) -> Option<ContextData> {
-        if let Some(entry) = self.entries.remove(key) {
-            self.access_order.retain(|k| k != key);
+        if let Some(entry) = self.entries.pop(key) {
             self.stats.size = self.entries.len();
             Some(entry.data)
         } else {
@@ -158,7 +157,6 @@ impl ContextCache {
     /// Clear all entries
     pub fn clear(&mut self) {
         self.entries.clear();
-        self.access_order.clear();
         self.stats.size = 0;
     }
 
@@ -181,8 +179,7 @@ impl ContextCache {
             .collect();
 
         for key in expired_keys {
-            self.entries.remove(&key);
-            self.access_order.retain(|k| k != &key);
+            let _ = self.entries.pop(&key);
         }
         
         self.stats.size = self.entries.len();
@@ -206,22 +203,6 @@ impl ContextCache {
     /// Get cache capacity
     pub fn capacity(&self) -> usize {
         self.capacity
-    }
-
-    /// Update access order for LRU tracking
-    fn update_access_order(&mut self, key: &str) {
-        // Remove key from current position
-        self.access_order.retain(|k| k != key);
-        // Add to end (most recently used)
-        self.access_order.push(key.to_string());
-    }
-
-    /// Evict least recently used entry
-    fn evict_lru(&mut self) {
-        if let Some(lru_key) = self.access_order.first().cloned() {
-            self.entries.remove(&lru_key);
-            self.access_order.remove(0);
-        }
     }
 
     /// Get detailed cache information for debugging

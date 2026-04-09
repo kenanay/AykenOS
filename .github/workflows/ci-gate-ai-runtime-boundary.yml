@@ -1,0 +1,67 @@
+# CI Gate: ai-runtime-boundary (WS 3.6)
+#
+# Scope: AI Runtime boundary contract
+#   - Suggestion-only surface
+#   - Capability-gated behavior
+#   - No routing/scheduling/authority decisions
+#
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-ai-runtime-boundary
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ai-runtime-boundary:
+    name: "WS 3.6 — AI Runtime Boundary (suggestion-only, capability-gated)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-ai-runtime-boundary-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-ai-runtime-boundary-
+
+      - id: tests
+        name: Run ai-runtime tests (suggestion-only, capability-gated)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p ai-runtime -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/ai-runtime-boundary
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"ai-runtime-boundary","workstream":"WS3.6","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"suggestion-only+capability-gated"}' \
+            > evidence/gates/ai-runtime-boundary/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-ai-runtime-boundary-${{ github.run_id }}
+          path: evidence/gates/ai-runtime-boundary/
+          if-no-files-found: warn

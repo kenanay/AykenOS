@@ -1,0 +1,71 @@
+# CI Gate: proofd-observability-boundary (WS 3.8 / Phase-14 non-regression)
+#
+# Scope: Phase-14 proofd observability boundary must remain intact while
+# Phase-15 BCIB workstreams land.
+#   - proofd stays read-only / non-authoritative
+#   - diagnostics namespace remains outside routing/scheduling authority
+#   - harness artifacts remain internally consistent
+#
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-proofd-observability-boundary
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  proofd-observability-boundary:
+    name: "WS 3.8 — proofd Observability Boundary (Phase-14 non-regression)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ayken-core/target
+            userspace/target
+          key: ${{ runner.os }}-cargo-proofd-observability-${{ hashFiles('ayken-core/Cargo.lock', 'userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-proofd-observability-
+
+      - id: gate
+        name: Run proofd observability boundary gate
+        run: |
+          set -euo pipefail
+          bash scripts/ci/gate_proofd_observability_boundary.sh \
+            --evidence-dir evidence/gates/proofd-observability-boundary
+
+      - name: Normalize gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/proofd-observability-boundary
+          if [ ! -f evidence/gates/proofd-observability-boundary/report.json ]; then
+            verdict="FAIL"
+            if [ "${{ steps.gate.outcome }}" = "success" ]; then
+              verdict="PASS"
+            fi
+            echo '{"gate":"proofd-observability-boundary","workstream":"WS3.8","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"phase14-non-regression"}' \
+              > evidence/gates/proofd-observability-boundary/report.json
+          fi
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-proofd-observability-boundary-${{ github.run_id }}
+          path: evidence/gates/proofd-observability-boundary/
+          if-no-files-found: warn

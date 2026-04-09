@@ -12,9 +12,13 @@ pub mod abdf_boundary;
 pub mod binary_format;
 pub mod capability_manager;
 pub mod compat;
+pub mod cost_tracker;
+pub mod diagnostics;
 pub mod executor;
 pub mod execution_runtime;
 pub mod opcode_registry;
+pub mod pools;
+pub mod program_cache;
 pub mod scheduler_bridge;
 pub mod types;
 pub mod verifier_planner;
@@ -31,8 +35,8 @@ pub use executor::{
 // v3 public API re-exports
 // ---------------------------------------------------------------------------
 pub use types::{
-    BcibError, BcibInstruction, CapabilitySet, CostBudget, CostUnit, ExecutionContextId,
-    ExecutionPlan, ResourceLimits, SideEffectClass, SliceResult,
+    BcibError, BcibInstruction, CapabilitySet, CostBudget, CostTracker, CostUnit,
+    ExecutionContextId, ExecutionPlan, ResourceLimits, SideEffectClass, SliceResult,
     COST_DATA_MUTATING, COST_EXTERNAL, COST_PURE,
 };
 
@@ -41,13 +45,16 @@ pub use verifier_planner::BcibVerifierPlanner;
 pub use capability_manager::{CapabilityCheck, CapabilityResource, NoopCapabilityManager};
 
 pub use execution_runtime::{
-    BcibExecutionRuntime, EventDescriptor, EventKind, ExecutionResult as RuntimeExecutionResult,
-    ExecutionState, IsolatedHandleSpace, IsolatedSlotSpace, ResumeToken,
+    BcibExecutionRuntime, EventDescriptor, EventKind,
+    ExecutionResult as RuntimeExecutionResult,
+    ExecutionState, ResumeToken,
 };
 
 pub use scheduler_bridge::{ExecutionId, ExecutionResult as BridgeExecutionResult, SchedulerSubmitBridge};
 
 pub use abdf_boundary::AbdfHandle;
+
+pub use pools::{BoundedPool, ExecutionSlot, HandleEntry, IsolatedHandleSpace, IsolatedSlotSpace};
 
 pub use binary_format::{
     parse_header, parse_section_table, BcibHeader, SectionEntry, SectionId,
@@ -57,3 +64,11 @@ pub use binary_format::{
 pub use opcode_registry::{lookup_opcode, is_reserved_v02, OpcodeClass, OpcodeDescriptor, RESERVED_V02};
 
 pub use compat::{check_version_compatibility, validate_opcode_no_conflict, CompatResult};
+
+pub use program_cache::{ProgramCache, ProgramCacheKey};
+
+pub use diagnostics::{
+    BcibDiagnostics, CostDiagnosticsResponse, CostDiagnosticsSnapshot,
+    EpistemicBoundary, ExecutionDiagnosticsResponse, ExecutionStateSnapshot,
+    LifecycleDiagnosticsResponse, LifecycleTransitionRecord,
+};

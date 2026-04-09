@@ -1,0 +1,65 @@
+# CI Gate: workspace (WS 3.4)
+#
+# Scope: Workspace authority boundary and repository hygiene
+#   - Clean tracked/untracked/staged state on CI checkout
+#   - Generated ABI include determinism
+#   - Kernel reproducibility across repeated builds
+#   - Kernel linkset excludes userspace/test objects
+#
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-workspace
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  workspace:
+    name: "WS 3.4 — Workspace Authority Boundary"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      WORKSPACE_STRICT: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - id: gate
+        name: Run workspace gate
+        run: |
+          set -euo pipefail
+          make ci-gate-workspace RUN_ID="${RUN_ID}" EVIDENCE_ROOT="${EVIDENCE_ROOT}"
+
+      - name: Normalize gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "${EVIDENCE_ROOT}/run-${RUN_ID}/gates/workspace"
+          report_path="${EVIDENCE_ROOT}/run-${RUN_ID}/gates/workspace/report.json"
+          if [ ! -f "${report_path}" ]; then
+            verdict="FAIL"
+            if [ "${{ steps.gate.outcome }}" = "success" ]; then
+              verdict="PASS"
+            fi
+            echo '{"gate":"workspace","workstream":"WS3.4","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"workspace-authority-boundary"}' \
+              > "${report_path}"
+          fi
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-workspace-${{ github.run_id }}
+          path: evidence/run-${{ env.RUN_ID }}/gates/workspace/
+          if-no-files-found: warn

@@ -18,7 +18,6 @@
 use crate::bcib::Value;
 use crate::execution_plan::IRInstruction;
 use crate::parallelism::ParallelismResult;
-use rayon::prelude::*;
 
 /// Classification of reduction operations based on commutativity.
 ///
@@ -141,6 +140,93 @@ impl DefaultReductionHandler {
     pub fn new() -> Self {
         Self
     }
+
+    fn canonicalize_value(&self, value: Value) -> Value {
+        match value {
+            Value::Number(number) => Value::Number(self.canonicalize_number(number)),
+            Value::Array(items) => Value::Array(
+                items
+                    .into_iter()
+                    .map(|item| self.canonicalize_value(item))
+                    .collect(),
+            ),
+            Value::List(items) => Value::List(
+                items
+                    .into_iter()
+                    .map(|item| self.canonicalize_value(item))
+                    .collect(),
+            ),
+            Value::SortedMap(map) => Value::SortedMap(
+                map.into_iter()
+                    .map(|(key, value)| (key, self.canonicalize_value(value)))
+                    .collect(),
+            ),
+            other => other,
+        }
+    }
+
+    fn canonicalize_number(&self, value: f64) -> f64 {
+        if value.is_nan() {
+            f64::from_bits(0x7FF8_0000_0000_0000)
+        } else if value == 0.0 {
+            0.0
+        } else {
+            value
+        }
+    }
+
+    fn canonical_sort_key(&self, value: &Value) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        self.append_canonical_bytes(value, &mut bytes);
+        bytes
+    }
+
+    fn append_canonical_bytes(&self, value: &Value, bytes: &mut Vec<u8>) {
+        match value {
+            Value::String(text) => {
+                bytes.push(0x01);
+                bytes.extend_from_slice(&(text.len() as u32).to_le_bytes());
+                bytes.extend_from_slice(text.as_bytes());
+            }
+            Value::Number(number) => {
+                bytes.push(0x02);
+                bytes.extend_from_slice(&self.canonicalize_number(*number).to_le_bytes());
+            }
+            Value::Boolean(flag) => {
+                bytes.push(0x03);
+                bytes.push(u8::from(*flag));
+            }
+            Value::Array(items) => {
+                bytes.push(0x04);
+                bytes.extend_from_slice(&(items.len() as u32).to_le_bytes());
+                for item in items {
+                    let item_key = self.canonical_sort_key(item);
+                    bytes.extend_from_slice(&(item_key.len() as u32).to_le_bytes());
+                    bytes.extend_from_slice(&item_key);
+                }
+            }
+            Value::List(items) => {
+                bytes.push(0x05);
+                bytes.extend_from_slice(&(items.len() as u32).to_le_bytes());
+                for item in items {
+                    let item_key = self.canonical_sort_key(item);
+                    bytes.extend_from_slice(&(item_key.len() as u32).to_le_bytes());
+                    bytes.extend_from_slice(&item_key);
+                }
+            }
+            Value::SortedMap(map) => {
+                bytes.push(0x06);
+                bytes.extend_from_slice(&(map.len() as u32).to_le_bytes());
+                for (key, value) in map {
+                    bytes.extend_from_slice(&(key.len() as u32).to_le_bytes());
+                    bytes.extend_from_slice(key.as_bytes());
+                    let value_key = self.canonical_sort_key(value);
+                    bytes.extend_from_slice(&(value_key.len() as u32).to_le_bytes());
+                    bytes.extend_from_slice(&value_key);
+                }
+            }
+        }
+    }
     
     /// Checks if a value represents a numeric operation.
     fn is_numeric_operation(&self, _operation: &IRInstruction) -> bool {
@@ -188,15 +274,28 @@ impl ReductionHandler for DefaultReductionHandler {
         F: Fn(Value, Value) -> Value + Sync + Send,
     {
         if values.is_empty() {
-            return Ok(identity);
+            return Ok(self.canonicalize_value(identity));
         }
-        
-        // Use Rayon's parallel reduction for optimal performance
-        // The order of combination doesn't matter for commutative operations
-        let result = values
-            .into_par_iter()
-            .reduce(|| identity.clone(), |a, b| combine(a, b));
-        
+
+        // Determinism is constitutional. Canonicalize and sort inputs so the
+        // merge order is independent from caller order and worker scheduling.
+        let mut ordered_values: Vec<(Vec<u8>, Value)> = values
+            .into_iter()
+            .map(|value| {
+                let canonical = self.canonicalize_value(value);
+                let key = self.canonical_sort_key(&canonical);
+                (key, canonical)
+            })
+            .collect();
+        ordered_values.sort_by(|left, right| left.0.cmp(&right.0));
+
+        let result = ordered_values
+            .into_iter()
+            .map(|(_, value)| value)
+            .fold(self.canonicalize_value(identity), |acc, value| {
+                self.canonicalize_value(combine(acc, value))
+            });
+
         Ok(result)
     }
     
@@ -498,6 +597,32 @@ mod tests {
         
         let result = operations::sum(&handler, values).unwrap();
         assert_eq!(result, Value::Number(6.0));
+    }
+
+    #[test]
+    fn test_sum_operation_extreme_magnitudes_is_deterministic() {
+        let handler = DefaultReductionHandler::new();
+        let values1 = vec![
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(1.671_359_021_813_273_5e298),
+            Value::Number(2.876_743_867_543_314_6e302),
+            Value::Number(0.0),
+            Value::Number(-8.678_323_354_081_092e304),
+        ];
+        let mut values2 = values1.clone();
+        values2.reverse();
+
+        let result1 = operations::sum(&handler, values1).unwrap();
+        let result2 = operations::sum(&handler, values2).unwrap();
+
+        assert_eq!(result1, result2);
     }
 
     #[test]

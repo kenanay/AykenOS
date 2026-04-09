@@ -1,0 +1,75 @@
+# CI Gate: toolchain-opcode-registry (WS 3.9)
+#
+# Scope: Toolchain / Opcode Registry
+#   - Opcode ID lock: v0.2 reserved IDs cannot be reused
+#   - Golden fixture: opcode registry canonical state
+#   - Version compatibility: v0.2 → v3 migration corpus
+#
+# Requirements: 12.1, 12.5, 12.6, 17.1
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-toolchain-opcode-registry
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  toolchain-opcode-registry:
+    name: "WS 3.9 — Toolchain / Opcode Registry (opcode ID lock + golden fixture)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-toolchain-opcode-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-toolchain-opcode-
+
+      - id: opcode_tests
+        name: Run opcode registry tests
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p bcib-runtime opcode -- --test-threads=1
+
+      - id: compat_tests
+        name: Run version compatibility tests
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p bcib-runtime compat -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/toolchain-opcode-registry
+          verdict="FAIL"
+          if [ "${{ steps.opcode_tests.outcome }}" = "success" ] && [ "${{ steps.compat_tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"toolchain-opcode-registry","workstream":"WS3.9","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"opcode-id-lock+golden-fixture"}' \
+            > evidence/gates/toolchain-opcode-registry/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-toolchain-opcode-registry-${{ github.run_id }}
+          path: evidence/gates/toolchain-opcode-registry/
+          if-no-files-found: warn

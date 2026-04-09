@@ -1299,10 +1299,11 @@ impl BCIBMetadata {
     /// Create new metadata
     pub fn new() -> Self {
         Self {
-            // DETERMINISM FIX: Use deterministic sequence ID based on content
-            sequence_id: crate::gate_c::deterministic::deterministic_id_from_plan("bcib_seq", "default"),
-            // DETERMINISM FIX: Use fixed logical timestamp for deterministic behavior
-            created_at: crate::gate_c::deterministic::fixed_logical_timestamp(),
+            sequence_id: uuid::Uuid::new_v4().to_string(),
+            created_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             phase: "3.5.1".to_string(),
             determinism: DeterminismLevel::Deterministic,
         }

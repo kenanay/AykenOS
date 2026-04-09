@@ -1,0 +1,78 @@
+# CI Gate: bcib-v3-core (WS 3.1)
+#
+# Scope: BCIB Execution Engine v3 core tests
+#   - Execution determinism (Property 1)
+#   - Fail-closed semantics (Property 2)
+#   - Memory model / bounded pool (Property 3)
+#   - Lifecycle state machine (Property 8)
+#   - Bounded slice yield (Property 11)
+#
+# Phase matrix (P4.4 Dev):
+#   DETERMINISM.GLOBAL: ERROR
+#   MEMORY.CONTRACT.VIOLATION: ERROR
+#   KERNEL.CAPABILITY.BYPASS: ERROR (NON_OVERRIDABLE)
+#   ERROR.PANIC: ERROR
+#
+# Closure authority: only remote GitHub Actions ci-freeze PASS + HEAD SHA.
+# Local runs do NOT grant closure authority.
+#
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-bcib-v3-core
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bcib-v3-core:
+    name: "WS 3.1 — BCIB v3 Core (determinism + fail-closed + memory model)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-bcib-v3-core-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bcib-v3-core-
+
+      - id: tests
+        name: Run bcib-runtime tests (determinism + fail-closed + memory model)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p bcib-runtime --lib -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/bcib-v3-core
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"bcib-v3-core","workstream":"WS3.1","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"determinism+fail-closed+memory-model"}' \
+            > evidence/gates/bcib-v3-core/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-bcib-v3-core-${{ github.run_id }}
+          path: evidence/gates/bcib-v3-core/
+          if-no-files-found: warn

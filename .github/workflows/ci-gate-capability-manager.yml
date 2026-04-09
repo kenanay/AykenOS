@@ -1,0 +1,70 @@
+# CI Gate: capability-manager (WS 3.7)
+#
+# Scope: Capability / Security
+#   - Token-based capability enforcement
+#   - No kernel bypass (KERNEL.CAPABILITY.BYPASS NON_OVERRIDABLE)
+#   - Context-bound tokens, non-forgeable, non-escalatable
+#   - Revocation semantics
+#
+# Requirements: 5.1, 5.2, 5.3, 14.1–14.6
+# Phase matrix: KERNEL.CAPABILITY.BYPASS = ERROR (NON_OVERRIDABLE)
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-capability-manager
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  capability-manager:
+    name: "WS 3.7 — Capability Manager (token-based, no bypass)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-capability-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-capability-
+
+      - id: tests
+        name: Run capability manager tests (token-based, no bypass)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p bcib-runtime capability -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/capability-manager
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"capability-manager","workstream":"WS3.7","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"token-based+no-bypass","non_overridable":"KERNEL.CAPABILITY.BYPASS"}' \
+            > evidence/gates/capability-manager/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-capability-manager-${{ github.run_id }}
+          path: evidence/gates/capability-manager/
+          if-no-files-found: warn

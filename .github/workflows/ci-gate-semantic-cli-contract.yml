@@ -1,0 +1,69 @@
+# CI Gate: semantic-cli-contract (WS 3.3)
+#
+# Scope: Semantic CLI → DSL regression contract
+#   - CLI produces deterministic DSL output for same input
+#   - Regression: same CLI command → same DSL string
+#   - Error messages are user-friendly (no raw error codes exposed)
+#
+# Requirements: 8.1, 8.2, 8.3
+# Dependency: WS 3.2 (dsl-bcib-contract) must pass first
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-semantic-cli-contract
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  semantic-cli-contract:
+    name: "WS 3.3 — Semantic CLI → DSL regression"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-semantic-cli-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-semantic-cli-
+
+      - id: tests
+        name: Run semantic-cli tests (CLI → DSL regression)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p semantic-cli -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/semantic-cli-contract
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"semantic-cli-contract","workstream":"WS3.3","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"cli-to-dsl-regression"}' \
+            > evidence/gates/semantic-cli-contract/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-semantic-cli-contract-${{ github.run_id }}
+          path: evidence/gates/semantic-cli-contract/
+          if-no-files-found: warn

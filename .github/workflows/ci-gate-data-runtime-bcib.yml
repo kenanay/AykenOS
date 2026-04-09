@@ -1,0 +1,69 @@
+# CI Gate: data-runtime-bcib (WS 3.5)
+#
+# Scope: Data Runtime via BCIB execution engine
+#   - Data queries executed through BCIB_Executor (no direct syscall)
+#   - BCIB v3 memory model compliance (slot-based transient, handle-based long-lived)
+#   - ABDF handle lifecycle correctness
+#   - Blocking ABDF access yields to scheduler
+#
+# Requirements: 9.1, 9.2, 9.4, 9.5
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-data-runtime-bcib
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  data-runtime-bcib:
+    name: "WS 3.5 — Data Runtime via BCIB (data query PASS)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-data-runtime-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-data-runtime-
+
+      - id: tests
+        name: Run data runtime tests (BCIB-mediated data query)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p bcib-runtime data -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/data-runtime-bcib
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"data-runtime-bcib","workstream":"WS3.5","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"bcib-data-query"}' \
+            > evidence/gates/data-runtime-bcib/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-data-runtime-bcib-${{ github.run_id }}
+          path: evidence/gates/data-runtime-bcib/
+          if-no-files-found: warn

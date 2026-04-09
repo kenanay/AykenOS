@@ -1468,8 +1468,8 @@ phase13-official-closure-prep:
 	@echo "OK: closure candidate at $(PHASE13_CLOSURE_OUTPUT_DIR)"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
@@ -2793,6 +2793,118 @@ perf-preempt-variance-local:
 		--strict-markers "$(PERF_VARIANCE_STRICT_MARKERS)" \
 		--force-efi-rebuild "$(PERF_VARIANCE_FORCE_EFI_REBUILD)"
 
+# ============================================================
+# Phase-15 BCIB Execution Engine v3 — Per-Workstream CI Gates
+# Requirements: 13.3
+# Each gate is independently runnable; PASS required before merge.
+# Closure authority: only remote GitHub Actions ci-freeze PASS + HEAD SHA.
+# ============================================================
+
+# WS 3.1 — BCIB v3 Core: determinism + fail-closed + memory model
+ci-gate-bcib-v3-core: ci-evidence-dir
+	@echo "== CI GATE BCIB V3 CORE (WS 3.1) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: determinism + fail-closed + memory model + state machine + lifecycle"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/bcib-v3-core"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p bcib-runtime --lib -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/bcib-v3-core/test.log"'
+	@echo '{"gate":"bcib-v3-core","workstream":"WS3.1","verdict":"PASS","scope":"determinism+fail-closed+memory-model"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/bcib-v3-core/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/bcib-v3-core/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-v3-core.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: bcib-v3-core evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.9 — Toolchain/Opcode Registry: opcode ID lock + golden fixture
+ci-gate-toolchain-opcode-registry: ci-evidence-dir
+	@echo "== CI GATE TOOLCHAIN OPCODE REGISTRY (WS 3.9) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: opcode ID lock + golden fixture + version compatibility"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/toolchain-opcode-registry"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p bcib-runtime opcode -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/toolchain-opcode-registry/opcode.log"'
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p bcib-runtime compat -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/toolchain-opcode-registry/compat.log"'
+	@echo '{"gate":"toolchain-opcode-registry","workstream":"WS3.9","verdict":"PASS","scope":"opcode-id-lock+golden-fixture"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/toolchain-opcode-registry/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/toolchain-opcode-registry/report.json" "$(EVIDENCE_RUN_DIR)/reports/toolchain-opcode-registry.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: toolchain-opcode-registry evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.7 — Capability Manager: token-based, no bypass
+ci-gate-capability-manager: ci-evidence-dir
+	@echo "== CI GATE CAPABILITY MANAGER (WS 3.7) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: token-based capability enforcement, no kernel bypass"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/capability-manager"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p bcib-runtime capability -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/capability-manager/test.log"'
+	@echo '{"gate":"capability-manager","workstream":"WS3.7","verdict":"PASS","scope":"token-based+no-bypass"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/capability-manager/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/capability-manager/report.json" "$(EVIDENCE_RUN_DIR)/reports/capability-manager.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: capability-manager evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.2 — DSL → BCIB IR golden fixture contract
+ci-gate-dsl-bcib-contract: ci-evidence-dir
+	@echo "== CI GATE DSL BCIB CONTRACT (WS 3.2) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: DSL -> BCIB IR golden fixture"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/dsl-bcib-contract"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p dsl-parser -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/dsl-bcib-contract/test.log"'
+	@echo '{"gate":"dsl-bcib-contract","workstream":"WS3.2","verdict":"PASS","scope":"dsl-to-bcib-ir-golden-fixture"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/dsl-bcib-contract/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/dsl-bcib-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/dsl-bcib-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: dsl-bcib-contract evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.3 — Semantic CLI → DSL regression contract
+ci-gate-semantic-cli-contract: ci-evidence-dir
+	@echo "== CI GATE SEMANTIC CLI CONTRACT (WS 3.3) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: CLI -> DSL regression"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/semantic-cli-contract"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p semantic-cli -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/semantic-cli-contract/test.log"'
+	@echo '{"gate":"semantic-cli-contract","workstream":"WS3.3","verdict":"PASS","scope":"cli-to-dsl-regression"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/semantic-cli-contract/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/semantic-cli-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/semantic-cli-contract.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: semantic-cli-contract evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.5 — Data Runtime: BCIB-mediated data query
+ci-gate-data-runtime-bcib: ci-evidence-dir
+	@echo "== CI GATE DATA RUNTIME BCIB (WS 3.5) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: data query via BCIB execution engine"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/data-runtime-bcib"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p bcib-runtime data -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/data-runtime-bcib/test.log"'
+	@echo '{"gate":"data-runtime-bcib","workstream":"WS3.5","verdict":"PASS","scope":"bcib-data-query"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/data-runtime-bcib/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/data-runtime-bcib/report.json" "$(EVIDENCE_RUN_DIR)/reports/data-runtime-bcib.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: data-runtime-bcib evidence at $(EVIDENCE_RUN_DIR)"
+
+# WS 3.6 — AI Runtime: suggestion-only, capability-gated boundary
+ci-gate-ai-runtime-boundary: ci-evidence-dir
+	@echo "== CI GATE AI RUNTIME BOUNDARY (WS 3.6) =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "scope: suggestion-only, capability-gated, no decision authority"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ai-runtime-boundary"
+	@bash -lc 'set -euo pipefail; cd "$(CURDIR)/$(USERSPACE_RUST_DIR)" && cargo test -p ai-runtime -- --test-threads=1 2>&1 | tee "$(abspath $(EVIDENCE_RUN_DIR))/gates/ai-runtime-boundary/test.log"'
+	@echo '{"gate":"ai-runtime-boundary","workstream":"WS3.6","verdict":"PASS","scope":"suggestion-only+capability-gated"}' \
+		> "$(EVIDENCE_RUN_DIR)/gates/ai-runtime-boundary/report.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ai-runtime-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/ai-runtime-boundary.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: ai-runtime-boundary evidence at $(EVIDENCE_RUN_DIR)"
+
+# Phase-15 workstream gate suite (all WS gates, excluding ci-freeze governance)
+ci-gate-phase15-workstreams: \
+	ci-gate-bcib-v3-core \
+	ci-gate-toolchain-opcode-registry \
+	ci-gate-capability-manager \
+	ci-gate-proofd-observability-boundary \
+	ci-gate-dsl-bcib-contract \
+	ci-gate-semantic-cli-contract \
+	ci-gate-data-runtime-bcib \
+	ci-gate-ai-runtime-boundary \
+	ci-gate-workspace
+	@echo "== Phase-15 workstream gates: ALL PASS =="
+
 # Stability and safety targets
 freeze-stable:
 	@echo "Creating stable checkpoint..."
@@ -3059,7 +3171,7 @@ help:
 	@echo "    (overrides: PERF_VARIANCE_* vars, PERF_KERNEL_PROFILE)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi help
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi help ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-phase15-workstreams
 
 # UEFI bootloader assembly sources (.S)
 $(BOOTLOADER_DIR)/%.efi.o: $(BOOTLOADER_DIR)/%.S
