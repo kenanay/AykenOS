@@ -3,7 +3,7 @@
 **STATUS:** experimental
 **CI:** disabled
 **DEFAULT:** no
-**PHASE:** parked (Phase-15 dışı)
+**PHASE:** parked (Phase-15 kapandı — Phase-16 Faz B bekliyor)
 
 ---
 
@@ -12,7 +12,8 @@
 `ayken/` crate'i AykenOS ana build zincirine dahil değildir.
 Workspace Cargo.toml'a üye değildir. CI gate'lerinde çalıştırılmaz.
 
-Şu an için: sandbox'ta bekleyen experimental toolchain.
+`tools/ayken-cli/` altında Faz A wrapper CLI implement edildi (2026-04-09).
+Faz B ve sonrası Phase-15 kapanışından sonra başlatılacak — **Phase-15 OFFICIALLY CLOSED** (2026-04-09).
 
 ---
 
@@ -20,7 +21,7 @@ Workspace Cargo.toml'a üye değildir. CI gate'lerinde çalıştırılmaz.
 
 - Ana build zinciri `KERNEL_CC = clang` kullanıyor (Makefile:15)
 - `ayken/` crate'i native dependency build ekosistemiyle tam uyumlu değil
-- Phase-15 kapsamı `userspace/bcib-runtime/` çekirdeğine odaklı
+- Phase-15 kapsamı `userspace/bcib-runtime/` çekirdeğine odaklıydı
 - Erken production'a almak determinism ve CI stability riskidir
 
 ---
@@ -47,10 +48,10 @@ Ayken ileride şu rollere evrilebilir:
 
 Ayken'i production'a almak için:
 
+- [x] Phase-15 kapanışı tamamlanmış olmalı ✅ (2026-04-09, ci-freeze#24213727039)
 - [ ] Native dependency build ekosistemiyle tam uyum (cc-rs, blake3, vb.)
 - [ ] CI gate'lerinde deterministic davranış kanıtı
-- [ ] Phase-15 kapanışı tamamlanmış olmalı
-- [ ] Ayrı bir spec ile governance onayı
+- [ ] Ayrı bir spec ile governance onayı (Phase-16)
 
 ---
 

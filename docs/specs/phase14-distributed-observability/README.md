@@ -1,7 +1,9 @@
 # Phase-14: Distributed Observability Hardening
 
+> ⚠️ OBSOLETE — Superseded by Phase-15 official closure. Current authoritative closure surface is `reports/phase15_official_closure/closure_index.json`.
+
 **Phase:** 14  
-**Status:** ACTIVE  
+**Status:** CLOSED (historical planning surface)  
 **Opened:** 2026-04-03  
 **Authority:** ARCHITECTURE_FREEZE.md  
 **Predecessor:** Phase-13 (OFFICIALLY CLOSED, tag: `phase13-official-closure-confirmed`)
@@ -163,7 +165,7 @@ Phase-14 is complete when:
 2. proofd query boundary tests passing (property-based)
 3. Cross-node observability graph endpoint operational
 4. All Phase-14 gates PASS in `ci-freeze`
-5. Official closure tag minted: `phase14-official-closure`
+5. Official closure tag minted: `phase14-official-closure-confirmed`
 6. Remote CI confirmation obtained
 7. `CURRENT_PHASE=15` formal transition executed
 
@@ -179,3 +181,4 @@ Phase-14 is complete when:
 - `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md` — canonical cross-node graph contract
 - `docs/specs/phase12-trust-layer/PHASE13_ARCHITECTURE_MAP.md` — architectural map
 - `reports/phase13_official_closure_candidate/` — Phase-13 closure artifacts
+- `reports/phase15_official_closure/closure_index.json` — current authoritative closure surface

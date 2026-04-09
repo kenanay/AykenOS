@@ -2,9 +2,15 @@
 
 **Oluşturan:** Kenan AY  
 **Proje:** AykenOS  
-**Son Güncelleme:** 15 Ocak 2026
+**Son Güncelleme:** 09 Nisan 2026
 
 AykenOS'un Rust tabanlı AI core sistemi. Yapay zeka modelleri için veri formatları, builder araçları ve runtime bileşenlerini içerir.
+
+**Güncel Durum:**
+- Phase-15 OFFICIALLY CLOSED (2026-04-09) — BCIB Execution Engine v3 tamamlandı
+- `ayken-core/crates/bcib/` — BCIB v0.2 format (frozen, backward-compatible)
+- BCIB v3 runtime: `userspace/bcib-runtime/` (Phase-15 deliverable)
+- `ayken-core` ayrı gate'e tabi: `ayken-core/` ve `ayken/` Phase-15 kapsamı dışındadır
 
 ---
 
