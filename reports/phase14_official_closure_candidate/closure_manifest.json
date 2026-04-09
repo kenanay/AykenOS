@@ -1,0 +1,62 @@
+{
+  "schema": "ayken-closure-manifest/1.0",
+  "phase": 14,
+  "generated_at": "2026-04-07T00:00:00Z",
+  "workstreams": [
+    {
+      "id": "3.1",
+      "name": "Read-Only External API Stabilization",
+      "contract": "docs/specs/phase14-distributed-observability/PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md",
+      "endpoints": ["GET /diagnostics/version"],
+      "schema_coverage": "full",
+      "negative_test": "diagnostics_version_schema_violation_fails_closed",
+      "pass_evidence": "ci-freeze#23989067554",
+      "merge_status": "MERGED",
+      "dependency": null
+    },
+    {
+      "id": "3.2",
+      "name": "Replay Determinism Stability Hardening",
+      "contract": "userspace/proofd/src/determinism/contract.rs",
+      "endpoints": ["POST /internal/replay"],
+      "schema_coverage": "full",
+      "negative_test": "internal_replay_endpoint_emits_determinism_incident_on_hash_mismatch",
+      "pass_evidence": "ci-freeze#23989067554",
+      "merge_status": "MERGED",
+      "dependency": null
+    },
+    {
+      "id": "3.3",
+      "name": "proofd Query/Service Boundary Hardening",
+      "contract": "userspace/proofd/src/api_contract.rs",
+      "endpoints": ["all public diagnostics endpoints"],
+      "schema_coverage": "full",
+      "negative_test": "root_summary_rejects_forbidden_field_score",
+      "pass_evidence": "ci-freeze#23989067554",
+      "merge_status": "MERGED",
+      "dependency": null
+    },
+    {
+      "id": "3.4",
+      "name": "Cross-Node Observability Graph",
+      "contract": "docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md",
+      "endpoints": ["GET /diagnostics/graph", "GET /diagnostics/graph/overlay"],
+      "schema_coverage": "full",
+      "negative_test": "graph_endpoint_rejects_truth_selection_query",
+      "pass_evidence": "ci-freeze#23999026616",
+      "merge_status": "MERGED",
+      "dependency": "3.3"
+    },
+    {
+      "id": "3.5",
+      "name": "Observability UX (Human-Readable Layer)",
+      "contract": "docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md",
+      "endpoints": ["GET /diagnostics/summary", "GET /diagnostics/runs/{run_id}/summary"],
+      "schema_coverage": "full",
+      "negative_test": "root_summary_is_queryless",
+      "pass_evidence": "210 lib + 6 main proofd tests PASS, 63 obs-cli tests PASS (2026-04-07)",
+      "merge_status": "MERGED",
+      "dependency": "3.3, 3.4"
+    }
+  ]
+}
