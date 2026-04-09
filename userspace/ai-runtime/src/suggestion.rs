@@ -1,7 +1,9 @@
 use crate::ai_stub::AiError;
 use crate::capability_gate::AiCapabilitySet;
 
-const FORBIDDEN_AUTHORITY_TERMS: &[&str] = &[
+/// Authority terms that MUST NEVER appear in AI output.
+/// Presence of any of these in a suggestion = AuthorityBoundaryViolation.
+pub const FORBIDDEN_AUTHORITY_TERMS: &[&str] = &[
     "execute",
     "schedule",
     "route",
@@ -130,5 +132,97 @@ mod tests {
             suggestion.content(),
             "Consider collecting diagnostics and asking a human operator to review the issue."
         );
+    }
+}
+
+// Feature: phase15-bcib-execution-engine, WS 3.6 AI Runtime Boundary
+// Property tests: AI NEVER produces authority, decision, or scheduling output.
+#[cfg(test)]
+mod property_tests {
+    use super::{suggest, validate_boundary, FORBIDDEN_AUTHORITY_TERMS};
+    use crate::capability_gate::AiCapabilitySet;
+    use proptest::prelude::*;
+
+    // Property: for any non-empty input with Suggest capability,
+    // the output is always advisory_only=true and contains no forbidden authority terms.
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(200))]
+
+        #[test]
+        fn ai_never_produces_authority_output(input in "[a-zA-Z0-9 .,!?]{1,128}") {
+            let caps = AiCapabilitySet::suggestion_only();
+            match suggest(&input, &caps) {
+                Ok(suggestion) => {
+                    // advisory_only MUST always be true — no exceptions
+                    prop_assert!(
+                        suggestion.is_advisory_only(),
+                        "suggestion.advisory_only must be true, got false for input: {:?}",
+                        input
+                    );
+                    // output MUST NOT contain any forbidden authority term
+                    let lower = suggestion.content().to_ascii_lowercase();
+                    for term in FORBIDDEN_AUTHORITY_TERMS {
+                        prop_assert!(
+                            !lower.contains(term),
+                            "forbidden authority term {:?} found in output for input: {:?}",
+                            term,
+                            input
+                        );
+                    }
+                }
+                // InvalidPrompt is acceptable (empty/whitespace after trim)
+                Err(crate::ai_stub::AiError::InvalidPrompt) => {}
+                // Any other error is a contract violation
+                Err(e) => {
+                    prop_assert!(
+                        false,
+                        "unexpected error {:?} for non-empty input with valid capability",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Property: without Suggest capability, AI MUST always deny — no capability bypass.
+        #[test]
+        fn ai_always_denied_without_capability(input in "[a-zA-Z0-9 .,!?]{1,128}") {
+            let caps = AiCapabilitySet::none();
+            match suggest(&input, &caps) {
+                Err(crate::ai_stub::AiError::CapabilityDenied) => {}
+                Err(crate::ai_stub::AiError::InvalidPrompt) => {}
+                Ok(_) => {
+                    prop_assert!(
+                        false,
+                        "AI produced output without capability for input: {:?}",
+                        input
+                    );
+                }
+                Err(e) => {
+                    prop_assert!(
+                        false,
+                        "unexpected error {:?} — expected CapabilityDenied",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Property: validate_boundary rejects any content containing a forbidden term.
+        #[test]
+        fn boundary_validator_rejects_all_authority_terms(
+            prefix in "[a-z ]{0,20}",
+            suffix in "[a-z ]{0,20}",
+            term_idx in 0usize..7usize,
+        ) {
+            let term = FORBIDDEN_AUTHORITY_TERMS[term_idx];
+            let content = format!("{}{}{}", prefix, term, suffix);
+            let result = validate_boundary(&content);
+            prop_assert!(
+                result.is_err(),
+                "boundary validator must reject content containing {:?}: {:?}",
+                term,
+                content
+            );
+        }
     }
 }
