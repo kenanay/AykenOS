@@ -16,6 +16,7 @@ pub mod cost_tracker;
 pub mod diagnostics;
 pub mod executor;
 pub mod execution_runtime;
+pub mod integration_tests;
 pub mod opcode_registry;
 pub mod pools;
 pub mod program_cache;

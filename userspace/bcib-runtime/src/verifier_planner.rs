@@ -1234,5 +1234,70 @@ mod tests {
             .verify_and_plan(&buf, &caps, &limits)
             .expect("all limits satisfied must pass");
     }
+
+    // -----------------------------------------------------------------------
+    // Task 41.1 — Property 1: Execution Determinism
+    // Feature: phase15-bcib-execution-engine, Property 1: Execution Determinism
+    // Validates: Requirements 4.1, 4.4
+    // -----------------------------------------------------------------------
+    //
+    // Generator: random valid BCIB graph (pure-only instructions, no capability
+    //            required) + fixed environment conditions (empty caps, default limits).
+    // Assertion: verify_and_plan() called twice with identical inputs produces
+    //            identical ExecutionPlan::canonical_hash() values.
+    //            Divergence → DETERMINISM.GLOBAL violation.
+
+    proptest::proptest! {
+        // Feature: phase15-bcib-execution-engine, Property 1: Execution Determinism
+        // Validates: Requirements 4.1, 4.4
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(200))]
+        #[test]
+        fn prop_execution_determinism(
+            // Generate 0–8 pure instructions (Nop = 0x00, End = 0x01).
+            // Using only pure opcodes avoids capability requirements so the
+            // graph is always valid with an empty CapabilitySet.
+            opcodes in proptest::collection::vec(
+                proptest::strategy::Just(0x00u8), // Nop — always Pure, always valid
+                0usize..=8,
+            ),
+        ) {
+            let mut instr_bytes = Vec::new();
+            for opcode in &opcodes {
+                instr_bytes.extend(encode_instr(*opcode, &[]));
+            }
+            // Always append End (0x01) so the graph has a proper terminator.
+            instr_bytes.extend(encode_instr(0x01 /* End */, &[]));
+
+            let buf = build_v3_buffer(&instr_bytes);
+            let caps = empty_caps();
+            let limits = default_limits();
+            let p = planner();
+
+            // First call
+            let plan_a = p.verify_and_plan(&buf, &caps, &limits)
+                .expect("valid graph must produce a plan");
+
+            // Second call — identical inputs, fixed environment
+            let plan_b = p.verify_and_plan(&buf, &caps, &limits)
+                .expect("second call with same inputs must also succeed");
+
+            // Both plans must produce the same canonical hash (DETERMINISM.GLOBAL).
+            proptest::prop_assert_eq!(
+                plan_a.canonical_hash(),
+                plan_b.canonical_hash(),
+                "DETERMINISM.GLOBAL violation: same graph produced different canonical_hash \
+                 ({} vs {})",
+                plan_a.canonical_hash(),
+                plan_b.canonical_hash(),
+            );
+
+            // Also verify instruction count is identical.
+            proptest::prop_assert_eq!(
+                plan_a.instructions().len(),
+                plan_b.instructions().len(),
+                "instruction count must be identical across two calls with same input",
+            );
+        }
+    }
 }
 

@@ -190,7 +190,7 @@ pub struct ExecutionContext {
 
 /// Manages the lifecycle of all active BCIB execution contexts.
 pub struct BcibExecutionRuntime {
-    contexts: HashMap<ExecutionContextId, ExecutionContext>,
+    pub(crate) contexts: HashMap<ExecutionContextId, ExecutionContext>,
     next_id: ExecutionContextId,
     /// Scheduler bridge — held as a field so starvation counters persist
     /// across multiple yield_slice() calls for the same context.
