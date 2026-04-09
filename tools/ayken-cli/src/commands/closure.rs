@@ -70,29 +70,53 @@ pub fn run(args: ClosureArgs, json: bool) -> Result<(), AykenError> {
         note: "Official closure requires OFFICIAL_CLOSURE_CONFIRMED + integrity_verified + remote GitHub Actions ci-freeze PASS + HEAD SHA match",
     };
 
-    if index {
-        let closure_index_path = base.join("closure_index.json");
-        let closure_index: ClosureIndex =
-            serde_json::from_str(&fs::read_to_string(&closure_index_path)?)?;
-        let git_head_sha = read_git_head_sha()?;
-
-        status.official_closure_state =
-            closure_index.closure_state == "OFFICIAL_CLOSURE_CONFIRMED";
-        status.integrity_verified = closure_index.integrity_verified;
-        status.remote_ci_run_id = Some(closure_index.remote_ci_confirmation.run_id.clone());
-        status.remote_ci_pass = closure_index.remote_ci_confirmation.result == "PASS";
-        status.git_head_sha = Some(git_head_sha.clone());
-        status.indexed_head_sha = Some(closure_index.remote_ci_confirmation.head_sha.clone());
-        status.head_sha_match = git_head_sha == closure_index.remote_ci_confirmation.head_sha;
-        status.authority_confirmed = status.local_closure_ready
-            && status.official_closure_state
-            && status.integrity_verified
-            && status.remote_ci_pass
-            && status.head_sha_match;
+    if !index {
+        emit_status(&status, json)?;
+        return Err(AykenError::Policy(
+            "closure_index.json missing (fail-closed)".to_string(),
+        ));
     }
 
+    let closure_index_path = base.join("closure_index.json");
+    let closure_index_text = fs::read_to_string(&closure_index_path).map_err(|err| {
+        AykenError::Policy(format!(
+            "failed to read closure_index.json (fail-closed): {err}"
+        ))
+    })?;
+    let closure_index: ClosureIndex = serde_json::from_str(&closure_index_text).map_err(|err| {
+        AykenError::Policy(format!(
+            "failed to parse closure_index.json (fail-closed): {err}"
+        ))
+    })?;
+    let git_head_sha = read_git_head_sha()?;
+
+    status.official_closure_state =
+        closure_index.closure_state == "OFFICIAL_CLOSURE_CONFIRMED";
+    status.integrity_verified = closure_index.integrity_verified;
+    status.remote_ci_run_id = Some(closure_index.remote_ci_confirmation.run_id.clone());
+    status.remote_ci_pass = closure_index.remote_ci_confirmation.result == "PASS";
+    status.git_head_sha = Some(git_head_sha.clone());
+    status.indexed_head_sha = Some(closure_index.remote_ci_confirmation.head_sha.clone());
+    status.head_sha_match = git_head_sha == closure_index.remote_ci_confirmation.head_sha;
+    status.authority_confirmed = status.local_closure_ready
+        && status.official_closure_state
+        && status.integrity_verified
+        && status.remote_ci_pass
+        && status.head_sha_match;
+
+    emit_status(&status, json)?;
+    if !status.authority_confirmed {
+        Err(AykenError::Policy(
+            "closure authority not confirmed (fail-closed)".to_string(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn emit_status(status: &ClosureStatus, json: bool) -> Result<(), AykenError> {
     if json {
-        output::print_json(&status)
+        output::print_json(status)
     } else {
         println!("ayken closure status");
         println!("  base_path            : {}", status.base_path);
