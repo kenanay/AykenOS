@@ -1,0 +1,46 @@
+{
+  "schema": "ayken-evidence-index/1.0",
+  "phase": 14,
+  "generated_at": "2026-04-07T00:00:00Z",
+  "ci_runs": [
+    {
+      "run_id": "ci-freeze#23989067554",
+      "result": "PASS",
+      "workstreams_covered": ["3.1", "3.2", "3.3"],
+      "date": "2026-04-05",
+      "gates_passed": [
+        "ci-gate-proofd-service",
+        "ci-gate-proofd-schema-coverage",
+        "ci-gate-proofd-observability-boundary",
+        "ci-gate-observability-routing-separation",
+        "ci-gate-determinism-replay-consistency"
+      ]
+    },
+    {
+      "run_id": "ci-freeze#23999026616",
+      "result": "PASS",
+      "workstreams_covered": ["3.4"],
+      "date": "2026-04-05",
+      "gates_passed": [
+        "ci-gate-graph-non-authoritative-contract",
+        "ci-gate-diagnostics-consumer-non-authoritative-contract",
+        "ci-gate-proofd-service",
+        "ci-gate-proofd-schema-coverage"
+      ]
+    }
+  ],
+  "local_validation": {
+    "date": "2026-04-07",
+    "proofd_lib_tests": 210,
+    "proofd_main_tests": 6,
+    "obs_cli_tests": 63,
+    "pre_ci_gates": [
+      "ci-gate-abi",
+      "ci-gate-boundary",
+      "ci-gate-hygiene",
+      "ci-gate-constitutional",
+      "ci-gate-determinism-replay-consistency"
+    ],
+    "pre_ci_result": "PASS"
+  }
+}

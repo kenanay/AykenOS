@@ -53,6 +53,10 @@ pub struct ShapeFingerprint {
     pub loop_id: u64,
     /// Type of loop (While, For, ForEach)
     pub loop_type: LoopType,
+    /// Stable signature of loop configuration semantics.
+    pub metadata_signature: u64,
+    /// Stable signature of loop body semantics.
+    pub body_signature: u64,
     /// Total iteration count
     pub iteration_count: u64,
     /// Positions where break statements occurred
@@ -429,6 +433,8 @@ impl Blake3Computer {
         
         data.extend_from_slice(&shape.loop_id.to_le_bytes());
         data.push(shape.loop_type as u8);
+        data.extend_from_slice(&shape.metadata_signature.to_le_bytes());
+        data.extend_from_slice(&shape.body_signature.to_le_bytes());
         data.extend_from_slice(&shape.iteration_count.to_le_bytes());
         
         // Encode break positions
@@ -842,6 +848,8 @@ impl Fingerprint {
         let shape = ShapeFingerprint {
             loop_id: Self::hash_string(&context.loop_id.0),
             loop_type: LoopType::While, // Default, could be determined from context
+            metadata_signature: 0,
+            body_signature: Self::hash_string(&context.loop_body),
             iteration_count,
             break_positions: Vec::new(), // Would be populated during execution
             continue_positions: Vec::new(), // Would be populated during execution
@@ -906,6 +914,8 @@ impl Fingerprint {
         let shape = ShapeFingerprint {
             loop_id: Self::hash_string(&context.loop_id.0),
             loop_type,
+            metadata_signature: 0,
+            body_signature: Self::hash_string(&context.loop_body),
             iteration_count: control_flow.get_iteration_count() as u64,
             break_positions: control_flow.get_break_positions().to_vec(),
             continue_positions: control_flow.get_continue_positions().to_vec(),
@@ -973,6 +983,8 @@ impl Fingerprint {
         let shape = ShapeFingerprint {
             loop_id: Self::hash_string(&context.loop_id.0),
             loop_type,
+            metadata_signature: 0,
+            body_signature: Self::hash_string(&context.loop_body),
             iteration_count: control_flow.get_iteration_count() as u64,
             break_positions: control_flow.get_break_positions().to_vec(),
             continue_positions: control_flow.get_continue_positions().to_vec(),
@@ -1176,6 +1188,8 @@ impl Fingerprint {
         let shape = ShapeFingerprint {
             loop_id: Self::hash_string(loop_id),
             loop_type,
+            metadata_signature: Self::compute_loop_config_signature(loop_config)?,
+            body_signature: Self::compute_body_signature(loop_body, collection_determinism),
             iteration_count,
             break_positions: Self::extract_break_positions(control_decisions),
             continue_positions: Self::extract_continue_positions(control_decisions),
@@ -1228,6 +1242,88 @@ impl Fingerprint {
             })
             .collect()
     }
+
+    fn compute_loop_config_signature(loop_config: &crate::bcib::LoopConfig) -> Result<u64> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&loop_config.iteration_limit.to_le_bytes());
+        bytes.extend_from_slice(&loop_config.budget_timeout.to_le_bytes());
+
+        match loop_config.budget_measurement {
+            crate::bcib::BudgetMeasurement::IterationCount => bytes.push(0),
+            crate::bcib::BudgetMeasurement::InstructionCount { weight } => {
+                bytes.push(1);
+                bytes.extend_from_slice(&weight.to_le_bytes());
+            }
+            crate::bcib::BudgetMeasurement::Hybrid { multiplier } => {
+                bytes.push(2);
+                bytes.extend_from_slice(&multiplier.to_bits().to_le_bytes());
+            }
+        }
+
+        let accumulator_type = match loop_config.accumulator_type {
+            crate::bcib::ValueType::String => 0u8,
+            crate::bcib::ValueType::Number => 1u8,
+            crate::bcib::ValueType::Boolean => 2u8,
+            crate::bcib::ValueType::Array => 3u8,
+            crate::bcib::ValueType::List => 4u8,
+            crate::bcib::ValueType::SortedMap => 5u8,
+        };
+        bytes.push(accumulator_type);
+
+        match loop_config.error_recovery {
+            crate::bcib::ErrorRecoveryPolicy::Abort => bytes.push(0),
+            crate::bcib::ErrorRecoveryPolicy::RetryWithIncreasedLimit {
+                new_limit,
+                max_retries,
+            } => {
+                bytes.push(1);
+                bytes.extend_from_slice(&new_limit.to_le_bytes());
+                bytes.extend_from_slice(&max_retries.to_le_bytes());
+            }
+            crate::bcib::ErrorRecoveryPolicy::ReturnPartialResults { include_error_info } => {
+                bytes.push(2);
+                bytes.push(u8::from(include_error_info));
+            }
+        }
+
+        let accumulator = CanonicalEncoder::encode_value(&loop_config.initial_accumulator)?;
+        bytes.extend_from_slice(&(accumulator.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&accumulator);
+
+        Ok(Self::hash_bytes_to_u64(&bytes))
+    }
+
+    fn compute_body_signature(
+        loop_body: &str,
+        collection_determinism: Option<&CollectionDeterminism>,
+    ) -> u64 {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(loop_body.as_bytes());
+        match collection_determinism {
+            Some(determinism) => {
+                bytes.push(1);
+                bytes.push(determinism.collection_type as u8);
+                bytes.push(determinism.iteration_order as u8);
+                match &determinism.canonical_ordering {
+                    Some(ordering) => {
+                        bytes.push(1);
+                        bytes.extend_from_slice(ordering.as_bytes());
+                    }
+                    None => bytes.push(0),
+                }
+            }
+            None => bytes.push(0),
+        }
+        Self::hash_bytes_to_u64(&bytes)
+    }
+
+    fn hash_bytes_to_u64(bytes: &[u8]) -> u64 {
+        let digest = blake3::hash(bytes);
+        let mut truncated = [0u8; 8];
+        truncated.copy_from_slice(&digest.as_bytes()[..8]);
+        u64::from_le_bytes(truncated)
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.version == 0 {
             return Err(SemanticCLIError::validation_error(

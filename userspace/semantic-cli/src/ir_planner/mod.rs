@@ -256,6 +256,9 @@ impl IRExecutor {
         plan.validate().map_err(|e| ExecutionError::InvalidExecutionPlan { 
             reason: e.to_string() 
         })?;
+
+        let replay_enabled = self.replay_recorder.is_recording();
+        let plan_fingerprint = plan.compute_determinism_fingerprint();
         
         // Reset execution state using pooling (Phase 4.3.3.1)
         let mut new_execution_state = self.pools.borrow_execution_state();
@@ -266,8 +269,13 @@ impl IRExecutor {
         self.register_file = self.pools.borrow_register_file();
         
         // Initialize replay recorder using pooling (Phase 4.3.3.1)
-        self.replay_recorder = self.pools.borrow_replay_recorder();
-        self.replay_recorder.initialize(plan.compute_determinism_fingerprint());
+        if replay_enabled {
+            self.replay_recorder.initialize(plan_fingerprint);
+            self.replay_recorder.enable_recording();
+        } else {
+            self.replay_recorder = self.pools.borrow_replay_recorder();
+            self.replay_recorder.initialize(plan_fingerprint);
+        }
         
         Ok(())
     }

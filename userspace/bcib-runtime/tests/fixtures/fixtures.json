@@ -1,0 +1,90 @@
+{
+  "version": "1.0",
+  "description": "BCIB v0.2 golden fixture manifest — CI validation (Requirements 12.3, 12.4)",
+  "fixtures": [
+    {
+      "file": "nop_end.bcib",
+      "description": "Minimal v0.2 program: Nop + End",
+      "bcib_version": "0x0002",
+      "opcodes": ["0x00 Nop", "0x01 End"],
+      "requires_capability": false,
+      "expected": {
+        "parse": "ok",
+        "plan": "ok",
+        "error": null
+      }
+    },
+    {
+      "file": "data_create_query.bcib",
+      "description": "v0.2 data operations: DataCreate + DataQuery + End",
+      "bcib_version": "0x0002",
+      "opcodes": ["0x10 DataCreate", "0x12 DataQuery", "0x01 End"],
+      "requires_capability": true,
+      "expected": {
+        "parse": "ok",
+        "plan": "ok",
+        "error": null
+      }
+    },
+    {
+      "file": "data_add.bcib",
+      "description": "v0.2 data mutation: DataCreate + DataAdd + End",
+      "bcib_version": "0x0002",
+      "opcodes": ["0x10 DataCreate", "0x11 DataAdd", "0x01 End"],
+      "requires_capability": true,
+      "expected": {
+        "parse": "ok",
+        "plan": "ok",
+        "error": null
+      }
+    },
+    {
+      "file": "ui_render.bcib",
+      "description": "v0.2 UI operation: UiRender + End",
+      "bcib_version": "0x0002",
+      "opcodes": ["0x20 UiRender", "0x01 End"],
+      "requires_capability": true,
+      "expected": {
+        "parse": "ok",
+        "plan": "ok",
+        "error": null
+      }
+    },
+    {
+      "file": "ai_ask.bcib",
+      "description": "v0.2 AI operation: AiAsk + End",
+      "bcib_version": "0x0002",
+      "opcodes": ["0x30 AiAsk", "0x01 End"],
+      "requires_capability": true,
+      "expected": {
+        "parse": "ok",
+        "plan": "ok",
+        "error": null
+      }
+    },
+    {
+      "file": "invalid_magic.bcib",
+      "description": "Negative test: invalid magic bytes (XBIB instead of BCIB)",
+      "bcib_version": "0x0002",
+      "opcodes": [],
+      "requires_capability": false,
+      "expected": {
+        "parse": "err",
+        "plan": null,
+        "error": "BCIB_ERR_INVALID_GRAPH"
+      }
+    },
+    {
+      "file": "unsupported_version.bcib",
+      "description": "Negative test: future version 0x0004 (not supported)",
+      "bcib_version": "0x0004",
+      "opcodes": [],
+      "requires_capability": false,
+      "expected": {
+        "parse": "err",
+        "plan": null,
+        "error": "BCIB_ERR_UNSUPPORTED_VERSION"
+      }
+    }
+  ]
+}

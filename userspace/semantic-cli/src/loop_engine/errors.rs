@@ -5,7 +5,7 @@
 //!
 //! # Constitutional Error Taxonomy (LOCKED)
 //!
-//! ```
+//! ```text
 //! LoopError
 //! ├── IterationLimitExceeded
 //! ├── BudgetTimeoutExceeded

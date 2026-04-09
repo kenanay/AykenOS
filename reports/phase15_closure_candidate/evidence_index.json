@@ -1,0 +1,140 @@
+{
+  "schema": "ayken-evidence-index/1.0",
+  "phase": 15,
+  "generated_at": "2026-04-09T00:00:00Z",
+  "ci_runs": [],
+  "local_validation": {
+    "date": "2026-04-09",
+    "gates": [
+      {
+        "gate": "ci-gate-bcib-v3-core",
+        "workstream": "WS 3.1",
+        "verdict": "PASS",
+        "scope": "determinism+fail-closed+memory-model+lifecycle+scheduler+abdf+security+performance",
+        "notes": "BCIB Execution Engine v3 core: three-layer split (BcibVerifierPlanner, BcibExecutionRuntime, SchedulerSubmitBridge); four-phase verification pipeline (structural, control-flow, capability, bounds); ExecutionPlan immutability enforced at compile time; state machine VALID_TRANSITIONS table; bounded pool (BoundedPool<T>); IsolatedSlotSpace/IsolatedHandleSpace; teardown contract (ters bağımlılık sırası); cost-based slice execution; yield/resume signaling via SYS_V2_SUBMIT_EXECUTION (1003); ABDF boundary enforcement; CapabilityManager (bind/revoke/check/transfer, constant-time); ProgramCache (LRU, bounded, three-part key); CostTracker (COST_PURE=1, COST_DATA_MUTATING=10, COST_EXTERNAL=100); Property 8 (illegal state transition) PASS; DETERMINISM.GLOBAL verified; no Box::leak / mem::forget violations; cargo check clean; cargo test --lib PASS",
+        "requirements": ["1.1","1.2","1.3","1.4","1.5","1.6","1.7","2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.1","3.2","3.3","3.4","3.5","3.6","3.7","3.8","3.9","3.10","3b.1","3b.2","3b.3","3b.4","4.1","4.2","4.3","4.4","4.5"]
+      },
+      {
+        "gate": "ci-gate-toolchain-opcode-registry",
+        "workstream": "WS 3.9",
+        "verdict": "PASS",
+        "scope": "opcode-id-lock+golden-fixture+version-compat",
+        "notes": "Opcode registry single source of truth (opcode_registry.rs); six opcode classes (control 0x00-0x0F, memory 0x10-0x1F, data 0x20-0x2F, ai 0x30-0x3F, ui 0x40-0x4F, diagnostics 0x50-0x5F); v0.2 reserved opcodes locked in RESERVED_V02 list; lookup_opcode() O(1) dispatch; unknown opcode → BCIB_ERR_INVALID_GRAPH; binary_format.rs: BcibHeader (16 byte), SectionEntry, SectionId; parse_header() + parse_section_table(); compat.rs: check_version_compatibility() + validate_opcode_no_conflict(); v0.2 golden fixtures parse PASS; opcode ID conflict → CI FAIL; DETERMINISM.GLOBAL verified; cargo check clean",
+        "requirements": ["12.1","12.2","12.3","12.4","12.5","12.6","12.7"]
+      },
+      {
+        "gate": "ci-gate-capability-manager",
+        "workstream": "WS 3.7",
+        "verdict": "PASS",
+        "scope": "token-based-no-bypass",
+        "notes": "CapabilityManager: bind/revoke/check/transfer over BoundedPool<CapabilityToken>; non-forgeable (external production forbidden); non-escalatable (scope-bound); revocable (fail-closed on revocation); context-bound (ctx_id validation in check()); constant-time check (no timing side-channel); explicit inheritance only (no auto-propagation); cross-context transfer via transfer(); IsolatedSlotSpace/IsolatedHandleSpace cross-context enforcement; KERNEL.CAPABILITY.BYPASS NON_OVERRIDABLE verified; cargo check clean; cargo test --lib PASS",
+        "requirements": ["5.1","5.2","5.3","5.4","14.1","14.2","14.3","14.4","14.5","14.6","15.1","15.2","15.3","15.4","21.1"]
+      },
+      {
+        "gate": "ci-gate-proofd-observability-boundary",
+        "workstream": "WS 3.8",
+        "verdict": "PASS",
+        "scope": "phase14-non-regression+bcib-diagnostics",
+        "notes": "Phase-14 immutable contracts (OBSERVABILITY_UX_CONTRACT_v1.md, CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md, PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1.md) not mutated; BCIB diagnostics endpoints: GET /diagnostics/bcib/execution/{ctx_id}, GET /diagnostics/bcib/lifecycle/{ctx_id}, GET /diagnostics/bcib/cost/{ctx_id}; epistemic boundary: produces_truth=false, produces_decision=false, produces_ranking=false on every response; FORBIDDEN_OBSERVABILITY_FIELDS enforced — violation → 500 forbidden_observability_field_exposed; Phase-14 non-regression PASS; service != authority, diagnostics != decision, parity != consensus invariants preserved",
+        "requirements": ["6.1","6.2","6.3","6.4","6.5"]
+      },
+      {
+        "gate": "ci-gate-dsl-bcib-contract",
+        "workstream": "WS 3.2",
+        "verdict": "PASS",
+        "scope": "dsl-to-bcib-ir-golden-fixture",
+        "test_count": 11,
+        "notes": "11 golden fixture tests: all DSL commands produce deterministic BCIB IR; fail-closed on invalid input; DETERMINISM.GLOBAL verified"
+      },
+      {
+        "gate": "ci-gate-semantic-cli-contract",
+        "workstream": "WS 3.3",
+        "verdict": "PASS",
+        "scope": "cli-dsl-regression",
+        "timestamp": "2026-04-09T18:31:40Z",
+        "test_count": 864,
+        "test_suites": [
+          "lib (864 tests: lexer, parser, validator, transformer, bcib, normalizer, loop_engine, parallelism, ir_planner, repl, types)",
+          "bcib_tests (22 tests)",
+          "bcib_operand_property_tests (8 tests)",
+          "determinism_validation (9 tests)",
+          "gate_a_validation (3 tests)",
+          "gate_c_determinism (15 tests)",
+          "gate_c_performance (9 tests)",
+          "lexer_property_tests (18 tests)",
+          "lexer_tests (15 tests)",
+          "parser_property_tests (12 tests)",
+          "parser_tests (15 tests)",
+          "transformer_tests (16 tests)",
+          "types_tests (16 tests)",
+          "validator_tests (9 tests)",
+          "task_3_2_validation_test (6 tests)",
+          "loop_property_tests (19 tests)",
+          "parallelism_properties (12 tests)",
+          "parallelism_partitioner_properties (12 tests)"
+        ],
+        "requirements": ["8.1", "8.2", "8.3"],
+        "notes": "864 lib tests PASS; all CLI scenarios produce same DSL output (regression PASS); semantic validation applied before DSL_Parser forwarding (Req 8.1); descriptive error messages returned on failure, no raw error codes exposed (Req 8.3); WS 3.2 dependency noted — production-ready status deferred until WS 3.2 DSL_Parser completes (Req 8.2); cargo check clean; DETERMINISM.GLOBAL verified; no Box::leak / mem::forget violations"
+      },
+      {
+        "gate": "ci-gate-data-runtime-bcib",
+        "workstream": "WS 3.5",
+        "verdict": "PASS",
+        "scope": "bcib-data-query",
+        "timestamp": "2026-04-09T20:00:00Z",
+        "test_count": 12,
+        "test_suites": [
+          "abdf_boundary::tests::access_data_cross_context_denied_before_capability_check",
+          "abdf_boundary::tests::access_data_data_mutating_denied_when_capability_fails",
+          "abdf_boundary::tests::access_data_data_mutating_succeeds_when_capability_passes",
+          "abdf_boundary::tests::access_data_external_denied_when_capability_fails",
+          "abdf_boundary::tests::access_data_external_succeeds_when_capability_passes",
+          "abdf_boundary::tests::access_data_pure_no_capability_check_required",
+          "abdf_boundary::tests::access_data_revoked_handle_denied_before_capability_check",
+          "binary_format::tests::parse_section_table_section_data_out_of_bounds",
+          "execution_runtime::tests::run_slice_data_mutating_denied_when_capability_fails",
+          "execution_runtime::tests::run_slice_data_mutating_succeeds_with_noop_capability_manager",
+          "verifier_planner::tests::verify_capabilities_data_mutating_empty_caps_denied",
+          "verifier_planner::tests::verify_capabilities_data_mutating_with_token_ok"
+        ],
+        "requirements": ["9.1", "9.2", "9.3"],
+        "notes": "12/12 data tests PASS (cargo test -p bcib-runtime data -- --test-threads=1); data queries routed through BCIB_Executor — no direct syscall usage (Req 9.1); BCIB v3 memory model enforced: slot-based transient + handle-based long-lived access via IsolatedSlotSpace/IsolatedHandleSpace (Req 9.2); WS 3.1 dependency noted — production-ready status deferred until WS 3.1 BCIB core completes (Req 9.3); cargo check clean; DETERMINISM.GLOBAL verified; no Box::leak / mem::forget violations; no direct syscall in data path"
+      },
+      {
+        "gate": "ci-gate-ai-runtime-boundary",
+        "workstream": "WS 3.6",
+        "verdict": "PASS",
+        "scope": "suggestion-only+capability-gated",
+        "timestamp": "2026-04-09T21:00:00Z",
+        "test_count": 14,
+        "test_suites": [
+          "ai_stub::tests::test_ai_stub_ask",
+          "ai_stub::tests::test_ai_stub_empty_prompt",
+          "ai_stub::tests::test_ai_stub_requires_capability_in_explicit_path",
+          "capability_gate::tests::empty_set_denies_ai_access",
+          "capability_gate::tests::grant_adds_capability",
+          "capability_gate::tests::suggestion_only_grants_ai_access",
+          "suggestion::property_tests::ai_never_produces_authority_output (200 cases)",
+          "suggestion::property_tests::ai_always_denied_without_capability (200 cases)",
+          "suggestion::property_tests::boundary_validator_rejects_all_authority_terms (200 cases)",
+          "suggestion::tests::dangerous_terms_are_rejected_by_boundary_validator",
+          "suggestion::tests::empty_prompt_is_rejected",
+          "suggestion::tests::error_prompts_stay_advisory",
+          "suggestion::tests::suggestion_is_advisory_only",
+          "suggestion::tests::suggestion_is_capability_gated"
+        ],
+        "requirements": ["10.1", "10.2", "10.3", "10.4"],
+        "notes": "14/14 tests PASS (cargo test -p ai-runtime -- --test-threads=1); 3 property tests (200 cases each): ai_never_produces_authority_output — arbitrary input never produces authority/decision/scheduling terms; ai_always_denied_without_capability — no capability bypass possible; boundary_validator_rejects_all_authority_terms — all 7 FORBIDDEN_AUTHORITY_TERMS rejected; AI runtime Ring3-isolated, suggestion-only surface (Req 10.1, 10.2); capability-gated: AiCapabilitySet::none() → CapabilityDenied (Req 10.4); advisory_only=true on all outputs (Req 10.6); no scheduling/routing decision produced; cargo check clean; DETERMINISM.GLOBAL verified; no Box::leak / mem::forget violations"
+      },
+      {
+        "gate": "ci-gate-workspace",
+        "workstream": "WS 3.4",
+        "verdict": "PASS",
+        "scope": "workspace-authority-boundary",
+        "timestamp": "2026-04-09T19:05:43Z",
+        "notes": "make ci-gate-workspace PASS; git state clean; generated ABI include deterministic; kernel reproducibility verified (build1 SHA == build2 SHA); no userspace objects in kernel linkset; no libayken objects; no test objects linked; strict_mode=1; requirements 11.1, 11.2, 11.3 satisfied — workspace operates only through execution layer, no direct syscall/kernel access, no authority surface",
+        "requirements": ["11.1", "11.2", "11.3"]
+      }
+    ]
+  }
+}

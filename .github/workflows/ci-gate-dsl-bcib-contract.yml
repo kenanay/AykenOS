@@ -1,0 +1,68 @@
+# CI Gate: dsl-bcib-contract (WS 3.2)
+#
+# Scope: System DSL → BCIB IR contract
+#   - DSL parser produces valid BCIB v3 graph
+#   - Golden fixture: same DSL input → same BCIB IR output
+#   - Fail-closed on invalid DSL input
+#
+# Requirements: 7.1, 7.2, 7.3
+# Branch protection: this gate MUST PASS before merge is allowed.
+
+name: ci-gate-dsl-bcib-contract
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  dsl-bcib-contract:
+    name: "WS 3.2 — DSL → BCIB IR golden fixture"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            userspace/target
+          key: ${{ runner.os }}-cargo-dsl-bcib-${{ hashFiles('userspace/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-dsl-bcib-
+
+      - id: tests
+        name: Run DSL parser tests (DSL → BCIB IR golden fixture)
+        working-directory: userspace
+        run: |
+          set -euo pipefail
+          cargo test -p dsl-parser -- --test-threads=1
+
+      - name: Emit gate evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/gates/dsl-bcib-contract
+          verdict="FAIL"
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            verdict="PASS"
+          fi
+          echo '{"gate":"dsl-bcib-contract","workstream":"WS3.2","head_sha":"${{ github.sha }}","verdict":"'"${verdict}"'","scope":"dsl-to-bcib-ir-golden-fixture"}' \
+            > evidence/gates/dsl-bcib-contract/report.json
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-dsl-bcib-contract-${{ github.run_id }}
+          path: evidence/gates/dsl-bcib-contract/
+          if-no-files-found: warn

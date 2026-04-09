@@ -49,7 +49,6 @@ impl ReplayRecorder {
     pub fn initialize(&mut self, fingerprint: String) {
         self.execution_plan_fingerprint = fingerprint;
         self.steps.clear();
-        self.context_snapshots.clear();
     }
     
     /// Set context snapshots for deterministic replay

@@ -1,5 +1,8 @@
 use std::fmt;
 
+use crate::capability_gate::AiCapabilitySet;
+use crate::suggestion::suggest;
+
 /// Logger for AI stub operations
 pub struct Logger;
 
@@ -13,6 +16,8 @@ impl Logger {
 #[derive(Debug)]
 pub enum AiError {
     InvalidPrompt,
+    CapabilityDenied,
+    AuthorityBoundaryViolation,
     RuntimeError(String),
 }
 
@@ -20,6 +25,10 @@ impl fmt::Display for AiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AiError::InvalidPrompt => write!(f, "Invalid prompt provided"),
+            AiError::CapabilityDenied => write!(f, "AI capability denied"),
+            AiError::AuthorityBoundaryViolation => {
+                write!(f, "AI authority boundary violation")
+            }
             AiError::RuntimeError(msg) => write!(f, "Runtime error: {}", msg),
         }
     }
@@ -43,9 +52,19 @@ impl AiStub {
 
     /// Process an AI query - Phase 2 implementation logs only
     pub fn ask(&self, prompt: &str) -> Result<String, AiError> {
-        // Phase 2: log only
         self.logger.log(&format!("AI query: {}", prompt));
-        Ok("AI response placeholder".to_string())
+        Ok(suggest(prompt, &AiCapabilitySet::suggestion_only())?
+            .content()
+            .to_string())
+    }
+
+    pub fn ask_with_capabilities(
+        &self,
+        prompt: &str,
+        capabilities: &AiCapabilitySet,
+    ) -> Result<String, AiError> {
+        self.logger.log(&format!("AI query: {}", prompt));
+        Ok(suggest(prompt, capabilities)?.content().to_string())
     }
 }
 
@@ -65,7 +84,10 @@ mod tests {
         let result = ai_stub.ask("What is the weather today?");
         
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "AI response placeholder");
+        assert_eq!(
+            result.unwrap(),
+            "Consider documenting the request and asking a human operator to choose the next step."
+        );
     }
 
     #[test]
@@ -73,7 +95,14 @@ mod tests {
         let ai_stub = AiStub::new();
         let result = ai_stub.ask("");
         
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "AI response placeholder");
+        assert!(matches!(result, Err(AiError::InvalidPrompt)));
+    }
+
+    #[test]
+    fn test_ai_stub_requires_capability_in_explicit_path() {
+        let ai_stub = AiStub::new();
+        let result = ai_stub.ask_with_capabilities("review security policy", &AiCapabilitySet::none());
+
+        assert!(matches!(result, Err(AiError::CapabilityDenied)));
     }
 }

@@ -62,6 +62,8 @@ pub mod bcib;
 pub mod normalizer;
 pub mod execution_plan;
 pub mod ir_planner;
+pub mod memory;
+pub mod performance_management;
 
 // Parallelism module (D2 Parallelism Architecture) - Gate D
 pub mod parallelism;
@@ -83,6 +85,12 @@ pub mod gate_c;
 
 // REPL (interactive interface)
 pub mod repl;
+
+pub mod ir_executor {
+    pub use crate::ir_planner::{ExecutionError, ExecutionResult, ExecutionState, IRExecutor};
+    pub use crate::ir_planner::register_file::{RegisterFile, RegisterValue};
+    pub use crate::ir_planner::replay::{ReplayRecorder, ReplayTrace};
+}
 
 // Re-exports for convenience
 pub use error::{SemanticCLIError, Result};

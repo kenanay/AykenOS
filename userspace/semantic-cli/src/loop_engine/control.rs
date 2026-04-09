@@ -409,6 +409,8 @@ impl ControlFlow {
         crate::loop_engine::fingerprint::ShapeFingerprint {
             loop_id,
             loop_type,
+            metadata_signature: 0,
+            body_signature: 0,
             iteration_count: self.iteration_count as u64,
             break_positions: self.break_positions.clone(),
             continue_positions: self.continue_positions.clone(),

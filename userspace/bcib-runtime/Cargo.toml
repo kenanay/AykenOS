@@ -8,6 +8,9 @@ authors = ["AykenOS"]
 bcib = { path = "../../ayken-core/crates/bcib" }
 dsl-parser = { path = "../dsl-parser" }
 
+[dev-dependencies]
+proptest = "1"
+
 [[example]]
 name = "submit_execution_demo"
 path = "examples/submit_execution_demo.rs"
