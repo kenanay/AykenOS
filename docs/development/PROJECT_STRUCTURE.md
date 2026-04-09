@@ -2,14 +2,18 @@
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 **Oluşturan:** Kenan AY  
-**Son Güncelleme:** 24 Şubat 2026
+**Son Güncelleme:** 09 Nisan 2026
 
 Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detaylı olarak açıklar.
 
-**Güncel Durum:** 
-- **Core OS:** Phase 4.4 TAMAMLANDI ✅ (Ring3 execution model operational)
-- **Ayken CLI:** Phase 11 (ARRE) tamamlandı ✅, Phase 12 (ARH + Governance Closure) tamamlandı ✅
-- **Not:** Phase 11-12 Ayken CLI geliştirme sürecinde oluşturulan paralel görevlerdir, Phase 4.4'ün devamı değildir
+**Güncel Durum:**
+- **Core OS:** Phase 4.5 TAMAMLANDI ✅
+- **Phase 10–13:** OFFICIALLY CLOSED ✅
+- **Phase 14:** OFFICIALLY CLOSED ✅ (distributed observability, 5 workstream)
+- **Phase 15:** OFFICIALLY CLOSED ✅ (BCIB Execution Engine v3, ci-freeze#24213727039, PR #104)
+- **CURRENT_PHASE:** 15
+- **Ayken CLI:** `tools/ayken-cli/` v0.1 (Faz A wrapper) — CC=clang enforcement, fail-closed
+- **ayken/:** experimental/parked — `ayken/STATUS.md`
 
 ---
 
@@ -57,7 +61,14 @@ AykenOS/
 │   ├── architecture-board/        # Mimari karar kayıtları
 │   └── roadmap/                   # Roadmap + freeze workflow
 ├── tools/                         # Geliştirme araçları
-├── build/                         # Derleme çıktıları
+│   ├── ayken-cli/                 # 🆕 AykenOS controlled toolchain entrypoint (v0.1, Faz A)
+│   │   ├── src/
+│   │   │   ├── main.rs            # CLI entrypoint
+│   │   │   ├── cli.rs             # Arg parse + command routing
+│   │   │   ├── commands/          # doctor, check, test, gate, closure
+│   │   │   └── core/              # env, policy, process, output, error
+│   │   └── Cargo.toml
+│   ├── build/                     # EFI image, USB boot creators
 ├── evidence/                      # CI gate kanıt çıktıları (run bazlı)
 ├── ayken/                         # 🔒 Constitutional Rule System (Development Tool)
 │   ├── ahs/                       # Architectural Health Score system

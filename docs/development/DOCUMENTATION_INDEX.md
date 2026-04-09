@@ -1,31 +1,31 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-06
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
+**Last Updated:** 2026-04-09
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
 
 ## Current Status
 - **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
 - **Verification Substrate:** `Phase-11` officially closed — `ci-freeze` run `22797401328`
 - **Trust Layer:** `Phase-12` officially closed — `ci-freeze` run `23099070483` (PR #62)
 - **Distributed Observability:** `Phase-13` officially closed — `ci-freeze` run `23706742211` (PR #81)
-- **Formal Governance Pointer:** `CURRENT_PHASE=14` (formal transition at `8b23fe0d`)
-- **Active Phase:** Phase-14 — `docs/specs/phase14-distributed-observability/README.md`
-- **Merged Phase-14 Workstreams:** `3.1`, `3.2`, `3.3`, `3.4` — tracker-authoritative on `main`
-- **Phase-14 Graph Surface:** root graph is partitioned derived; overlay is descriptive-only and non-authoritative
-- **Performance Baseline:** `gha-ubuntu24-20260329.72.1-X64` (PR #90)
+- **Observability Hardening:** `Phase-14` officially closed — all 5 workstreams merged
+- **BCIB Execution Engine v3:** `Phase-15` officially closed — `ci-freeze` run `24213727039` (PR #104)
+- **Formal Governance Pointer:** `CURRENT_PHASE=15` (formal transition at `48970cd0`)
+- **Active Phase:** Phase-16 pending — Ayken CLI Faz B + BCIB toolchain surface
+- **Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64` (PR #104)
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
 
 1. `README.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=14`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
 3. `docs/roadmap/overview.md`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `reports/phase13_official_closure_candidate/closure_index.json`
-6. `reports/phase12_official_closure_candidate/closure_manifest.json`
-7. `reports/phase10_phase11_official_closure_index.json`
-8. `docs/specs/phase14-distributed-observability/README.md`
+5. `reports/phase15_closure_candidate/PHASE15_CLOSURE_REPORT.md`
+6. `reports/phase13_official_closure_candidate/closure_index.json`
+7. `reports/phase12_official_closure_candidate/closure_manifest.json`
+8. `reports/phase10_phase11_official_closure_index.json`
 9. `Makefile`
 10. `.github/workflows/ci-freeze.yml`
 
@@ -169,4 +169,4 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 ## Note
 Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-13 official closure truth (`phase13-official-closure-confirmed`), Phase-14 tracker truth ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
 
-**Son Guncelleme:** 2026-04-06
+**Son Guncelleme:** 2026-04-09

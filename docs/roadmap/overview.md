@@ -1,26 +1,30 @@
-# AykenOS Roadmap - Code and Evidence Status (2026-04-03)
+# AykenOS Roadmap - Code and Evidence Status (2026-04-09)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## Scope
 Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence run'lari ve remote `ci-freeze` confirmation uzerinden ozetler.
 
-- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z`
+- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
 - Evidence git SHA (Phase-10/11): `9cb2171b`
 - Evidence git SHA (Phase-12C): `01d1cb5c`
 - Evidence git SHA (Phase-13): `40158350`
+- Evidence git SHA (Phase-15): `48970cd0`
 - Closure sync SHA (Phase-10/11): `fe9031d7`
 - Official CI (Phase-10/11): `ci-freeze` run `22797401328` (`success`)
 - Official CI (Phase-12): `ci-freeze` run `23099070483` (`success`) — PR #62
 - Official CI (Phase-13): `ci-freeze` run `23706742211` (`success`) — PR #81
+- Official CI (Phase-15): `ci-freeze` run `24213727039` (`success`) — PR #104
 - Official closure tag (Phase-10/11): `phase10-phase11-official-closure`
 - Official closure tag (Phase-12): `phase12-official-closure-confirmed` at `1d79d4b1`
 - Official closure tag (Phase-13): `phase13-official-closure-confirmed` at `8b23fe0d`
+- Official closure tag (Phase-15): `phase15-official-closure` at `48970cd0`
 - Phase-13 kill-switch tag: `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 - Phase-13 formal transition tag: `phase13-formal-transition` at `7088fd71`
-- Formal phase pointer: `CURRENT_PHASE=14`
+- Formal phase pointer: `CURRENT_PHASE=15`
 - Phase-12 closure state: `CLOSED (official closure confirmed)`
 - Phase-13 closure state: `CLOSED (official closure confirmed)`
-- Phase-14 state: `ACTIVE (spec opened, workstreams defined)`
+- Phase-14 closure state: `CLOSED (official closure confirmed)`
+- Phase-15 closure state: `CLOSED (official closure confirmed)`
 
 ## 1) Architectural Baseline
 
@@ -137,15 +141,27 @@ Interpretation:
 6. `CURRENT_PHASE=14` formal transition executed
 
 ### 3.5 Phase-14
-`Phase-14 = ACTIVE (spec opened, workstreams defined)`
+`Phase-14 = CLOSED (official closure confirmed)`
 
 Interpretation:
-1. Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
-2. Canonical workstream numbering is tracked in `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
-3. Active workstreams: 3.1 API stabilization, 3.2 replay determinism, 3.3 `proofd` boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
-4. All Phase-13 invariants inherited and preserved
+1. All 5 workstreams merged: 3.1 API stabilization, 3.2 replay determinism, 3.3 proofd boundary hardening, 3.4 cross-node observability graph, 3.5 observability UX
+2. `obs-cli` consumer crate complete: `userspace/obs-cli/`
+3. Phase-14 observability invariants preserved: `service != authority`, `diagnostics != decision`, `parity != consensus`
+4. `CURRENT_PHASE=15` formal transition executed
 
-### 3.5 Official Closure Basis
+### 3.6 Phase-15
+`Phase-15 = CLOSED (official closure confirmed)`
+
+Interpretation:
+1. BCIB Execution Engine v3: three-layer architecture (BcibVerifierPlanner, BcibExecutionRuntime, SchedulerSubmitBridge)
+2. 293 unit/integration tests PASS, 12 property tests PASS (min 100 iterations)
+3. 9 workstream CI gates PASS (WS 3.1–3.9)
+4. v0.2 golden fixtures PASS, Phase-14 non-regression PASS
+5. `ayken-cli` v0.1 (Faz A wrapper) shipped: `tools/ayken-cli/`
+6. Official closure tag: `phase15-official-closure` at `48970cd0`
+7. Remote `ci-freeze` run `24213727039` confirmed (PR #104, success)
+
+### 3.7 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
 2. Phase-10/11 remote confirmation: `ci-freeze` run `22797401328` on `fe9031d7` (success).
 3. Phase-10/11 official closure tag: `phase10-phase11-official-closure` at `fe9031d7`.
@@ -155,7 +171,10 @@ Interpretation:
 7. Phase-13 kill-switch evidence: `run-local-p13-kill-switch-20260315T000051Z` at `40158350` (6/6 PASS).
 8. Phase-13 remote confirmation: `ci-freeze` run `23706742211` on PR #81 (success).
 9. Phase-13 official closure tag: `phase13-official-closure-confirmed` at `8b23fe0d`.
-10. `CURRENT_PHASE=14` — formal transition executed at `8b23fe0d` (PR #82).
+10. Phase-15 evidence: `phase15-official-closure` at `48970cd0` (BCIB v3, 293 tests, 12 property tests, 9 WS gates PASS).
+11. Phase-15 remote confirmation: `ci-freeze` run `24213727039` on PR #104 (success).
+12. Phase-15 official closure tag: `phase15-official-closure` at `48970cd0`.
+13. `CURRENT_PHASE=15` — formal transition executed at `48970cd0` (PR #104).
 
 ## 4) Current Risk Concentration
 1. Executable user-leaf rule current tree'de artik live local deterministic gate ile korunur.
@@ -172,16 +191,18 @@ Interpretation:
 2. ✅ `CURRENT_PHASE=14` formal transition tamamlandi
 3. ✅ Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71–#77)
 4. ✅ Phase-13 OFFICIALLY CLOSED (CI run `23706742211`, PR #81)
-5. ✅ Performance baseline updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
-6. ✅ Phase-14 spec opened: `docs/specs/phase14-distributed-observability/README.md`
+5. ✅ Performance baseline updated (gha-ubuntu24-20260406.80.1-X64, PR #104)
+6. ✅ Phase-14 all workstreams merged (3.1–3.5), obs-cli complete
+7. ✅ Phase-14 OFFICIALLY CLOSED
+8. ✅ Phase-15 BCIB Execution Engine v3 OFFICIALLY CLOSED (CI run `24213727039`, PR #104)
+9. ✅ `ayken-cli` v0.1 (Faz A wrapper) shipped: `tools/ayken-cli/`
+10. ✅ `CURRENT_PHASE=15` formal transition tamamlandi
 
-### 5.2 Near Term (Phase-14)
-1. Read-only external API stabilization
-2. Replay determinism stability hardening
-3. `proofd` query/service boundary hardening (authority semantics separation)
-4. Cross-node observability graph (`GET /diagnostics/graph`)
-5. Observability UX (human-readable layer)
-6. Phase-14 official closure prep
+### 5.2 Near Term (Phase-16)
+1. Ayken CLI Faz B: `gate all`, `closure status --json`, JSON çıktı zenginleştirme
+2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect`
+3. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
+4. Governance: ayrı spec ile onay gerekli
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
@@ -228,5 +249,5 @@ Phase-13 official closure icin saglananlar:
 - `docs/specs/phase14-distributed-observability/README.md`
 
 ---
-**Son Guncelleme:** 2026-04-03
-**Guncelleme Yontemi:** Phase-13 OFFICIALLY CLOSED + CURRENT_PHASE=14 + Phase-14 spec opened
+**Son Guncelleme:** 2026-04-09
+**Guncelleme Yontemi:** Phase-15 OFFICIALLY CLOSED + CURRENT_PHASE=15 + Phase-16 pending
