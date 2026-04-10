@@ -57,6 +57,7 @@ pub mod validator;
 // Transformer module (AST → BCIB)
 pub mod bcib;
 pub mod bcib_simple; // Simplified BCIB for Phase-16A
+pub mod bcib_serialization; // BCIB serialization for kernel submission
 pub mod transformer;
 
 // Normalizer module (BCIB → NormalizedBCIB) - Gate C
