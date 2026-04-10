@@ -69,7 +69,10 @@ impl DefaultSafetyAnalyzer {
     /// Control flow operations (Branch, Return) are safe in themselves,
     /// but their safety depends on the operations they control.
     fn is_control_flow(&self, op: &IRInstruction) -> bool {
-        matches!(op, IRInstruction::Branch { .. } | IRInstruction::Return { .. })
+        matches!(
+            op,
+            IRInstruction::Branch { .. } | IRInstruction::Return { .. }
+        )
     }
 }
 
@@ -130,7 +133,7 @@ impl ParallelSafetyAnalyzer for DefaultSafetyAnalyzer {
         // - IO operations (file read/write, network)
         // - Mutable state operations (variable assignment)
         // - Non-deterministic operations (random number generation, timestamps)
-        
+
         match op {
             // All current operations are pure
             IRInstruction::LoadContext { .. } => false,
@@ -154,11 +157,7 @@ mod tests {
     // ===== Helper Functions =====
 
     fn create_test_block(instructions: Vec<IRInstruction>) -> IRBlock {
-        IRBlock::new(
-            0,
-            instructions,
-            BlockTerminator::Return { register: 0 },
-        )
+        IRBlock::new(0, instructions, BlockTerminator::Return { register: 0 })
     }
 
     // ===== Pure Operation Tests =====
@@ -261,9 +260,7 @@ mod tests {
     #[test]
     fn test_return_is_control_flow() {
         let analyzer = DefaultSafetyAnalyzer::new();
-        let instruction = IRInstruction::Return {
-            source_register: 0,
-        };
+        let instruction = IRInstruction::Return { source_register: 0 };
 
         assert!(analyzer.is_pure_operation(&instruction));
         assert!(!analyzer.has_side_effects(&instruction));
@@ -377,12 +374,10 @@ mod tests {
     #[test]
     fn test_analyzer_trait_implementation() {
         let analyzer = DefaultSafetyAnalyzer::new();
-        let block = create_test_block(vec![
-            IRInstruction::LoadContext {
-                context_id: "users".to_string(),
-                target_register: 0,
-            },
-        ]);
+        let block = create_test_block(vec![IRInstruction::LoadContext {
+            context_id: "users".to_string(),
+            target_register: 0,
+        }]);
 
         // Test that the trait methods work correctly
         let _: &dyn ParallelSafetyAnalyzer = &analyzer;
@@ -393,12 +388,10 @@ mod tests {
     #[test]
     fn test_default_trait_implementation() {
         let analyzer = DefaultSafetyAnalyzer::default();
-        let block = create_test_block(vec![
-            IRInstruction::LoadLiteral {
-                value: Value::Number(42.0),
-                target_register: 0,
-            },
-        ]);
+        let block = create_test_block(vec![IRInstruction::LoadLiteral {
+            value: Value::Number(42.0),
+            target_register: 0,
+        }]);
 
         let safety = analyzer.analyze_block(&block);
         assert_eq!(safety, ParallelSafety::Safe);

@@ -26,38 +26,39 @@ use std::time::{Duration, Instant};
 pub const HOT_LOOP_THRESHOLD: u32 = 1_000;
 
 /// Monitoring API trait for exposing loop performance metrics (Requirements 9.2)
-/// 
+///
 /// This trait provides a standardized interface for accessing loop performance
 /// metrics, enabling integration with monitoring dashboards, alerting systems,
 /// and performance analysis tools.
 pub trait LoopMonitoringAPI {
     /// Get real-time metrics for an active loop
     fn get_active_loop_metrics(&self, loop_id: &LoopID) -> Option<&LoopExecutionStats>;
-    
+
     /// Get all currently active loop IDs
     fn get_all_active_loops(&self) -> Vec<LoopID>;
-    
+
     /// Get historical metrics for a completed loop
     fn get_completed_loop_metrics(&self, loop_id: &LoopID) -> Option<&LoopExecutionStats>;
-    
+
     /// Get recent completed loops (up to specified count)
     fn get_recent_completed_loops(&self, count: usize) -> Vec<&LoopExecutionStats>;
-    
+
     /// Get global monitoring statistics
     fn get_global_stats(&self) -> &GlobalMonitoringStats;
-    
+
     /// Get performance summary for a time window
     fn get_performance_summary(&self, time_window: Duration) -> PerformanceSummary;
-    
+
     /// Query loops by specific criteria
     fn query_loops_by_criteria(&self, criteria: &LoopQueryCriteria) -> Vec<&LoopExecutionStats>;
-    
+
     /// Get top loops by a specific metric
-    fn get_top_loops_by_metric(&self, metric: MetricType, count: usize) -> Vec<&LoopExecutionStats>;
-    
+    fn get_top_loops_by_metric(&self, metric: MetricType, count: usize)
+        -> Vec<&LoopExecutionStats>;
+
     /// Get current alerts for timeout and iteration limit violations (Requirements 9.4)
     fn get_current_alerts(&self) -> Vec<LoopAlert>;
-    
+
     /// Check if a loop has any active alerts
     fn has_alerts(&self, loop_id: &LoopID) -> bool;
 }
@@ -374,7 +375,11 @@ impl LoopMonitor {
     }
 
     /// Record the start of a loop execution
-    pub fn record_loop_start(&mut self, loop_id: &LoopID, _instruction: &LoopInstruction) -> LoopExecutionTracker {
+    pub fn record_loop_start(
+        &mut self,
+        loop_id: &LoopID,
+        _instruction: &LoopInstruction,
+    ) -> LoopExecutionTracker {
         // Update global stats
         self.global_stats.total_loop_executions += 1;
 
@@ -416,11 +421,18 @@ impl LoopMonitor {
         if let Some(stats) = self.loop_stats.get_mut(loop_id) {
             stats.total_iterations += iterations_completed as u64;
             stats.total_execution_time += execution_time;
-            stats.max_iterations_per_execution = stats.max_iterations_per_execution.max(iterations_completed);
-            stats.avg_iterations_per_execution = stats.total_iterations as f64 / stats.execution_count as f64;
+            stats.max_iterations_per_execution =
+                stats.max_iterations_per_execution.max(iterations_completed);
+            stats.avg_iterations_per_execution =
+                stats.total_iterations as f64 / stats.execution_count as f64;
 
             // Update profiling data (Requirements 9.5) - separate method to avoid borrow issues
-            Self::update_profiling_data_static(&mut stats.profiling_data, execution_time, iterations_completed, stats.execution_count);
+            Self::update_profiling_data_static(
+                &mut stats.profiling_data,
+                execution_time,
+                iterations_completed,
+                stats.execution_count,
+            );
 
             // Update global stats
             self.global_stats.total_iterations += iterations_completed as u64;
@@ -433,7 +445,7 @@ impl LoopMonitor {
                 // Mark as hot first
                 stats.is_hot_loop = true;
                 stats.jit_compilation_status = JITCompilationStatus::Eligible;
-                
+
                 // Now handle hot loop detection
                 self.handle_hot_loop_detection(loop_id_clone, iterations_completed)?;
             }
@@ -465,7 +477,7 @@ impl LoopMonitor {
                 // In a real implementation, this would be passed from the execution context
                 let alert = LoopAlert::BudgetTimeoutViolation {
                     loop_id: loop_id.clone(),
-                    budget: 0, // Would be filled from execution context
+                    budget: 0,   // Would be filled from execution context
                     consumed: 0, // Would be filled from execution context
                     iterations_completed,
                     timestamp: Instant::now(),
@@ -503,40 +515,53 @@ impl LoopMonitor {
             let iteration_time_ns = execution_time.as_nanos() / iterations_completed as u128;
             profiling.average_iteration_time_ns = iteration_time_ns as u64;
         }
-        
+
         // Update execution time statistics
         profiling.total_execution_time += execution_time;
-        
-        if profiling.min_execution_time == Duration::ZERO || execution_time < profiling.min_execution_time {
+
+        if profiling.min_execution_time == Duration::ZERO
+            || execution_time < profiling.min_execution_time
+        {
             profiling.min_execution_time = execution_time;
         }
-        
+
         if execution_time > profiling.max_execution_time {
             profiling.max_execution_time = execution_time;
         }
-        
+
         // Update performance trend (simplified implementation)
-        profiling.performance_trend = Self::calculate_performance_trend_static(execution_count, execution_time);
-        
+        profiling.performance_trend =
+            Self::calculate_performance_trend_static(execution_count, execution_time);
+
         // Update memory stats (placeholder - would integrate with actual memory tracking)
-        profiling.memory_stats.peak_memory_bytes = profiling.memory_stats.peak_memory_bytes.max(1024 * iterations_completed as u64);
+        profiling.memory_stats.peak_memory_bytes = profiling
+            .memory_stats
+            .peak_memory_bytes
+            .max(1024 * iterations_completed as u64);
         profiling.memory_stats.avg_memory_bytes = profiling.memory_stats.peak_memory_bytes / 2;
         profiling.memory_stats.allocations_count += iterations_completed as u64;
     }
 
     /// Calculate performance trend for a loop - static version
-    fn calculate_performance_trend_static(execution_count: u64, execution_time: Duration) -> PerformanceTrend {
+    fn calculate_performance_trend_static(
+        execution_count: u64,
+        execution_time: Duration,
+    ) -> PerformanceTrend {
         if execution_count < 3 {
             return PerformanceTrend::Insufficient;
         }
-        
+
         // Simplified trend calculation based on execution time
         let time_ms = execution_time.as_millis() as f64;
-        
+
         if time_ms < 100.0 {
-            PerformanceTrend::Improving { improvement_rate: 0.1 }
+            PerformanceTrend::Improving {
+                improvement_rate: 0.1,
+            }
         } else if time_ms > 1000.0 {
-            PerformanceTrend::Degrading { degradation_rate: 0.1 }
+            PerformanceTrend::Degrading {
+                degradation_rate: 0.1,
+            }
         } else {
             PerformanceTrend::Stable
         }
@@ -546,15 +571,15 @@ impl LoopMonitor {
     fn add_alert(&mut self, alert: LoopAlert) {
         // Add to active alerts
         self.active_alerts.push(alert.clone());
-        
+
         // Add to history
         self.alert_history.push(alert);
-        
+
         // Limit history size
         if self.alert_history.len() > self.max_alert_history {
             self.alert_history.remove(0);
         }
-        
+
         // Log the alert if logging is enabled
         if self.config.enable_hot_loop_logging {
             self.log_alert(&self.alert_history.last().unwrap());
@@ -564,25 +589,45 @@ impl LoopMonitor {
     /// Log an alert
     fn log_alert(&self, alert: &LoopAlert) {
         match alert {
-            LoopAlert::IterationLimitViolation { loop_id, limit, completed, severity, .. } => {
+            LoopAlert::IterationLimitViolation {
+                loop_id,
+                limit,
+                completed,
+                severity,
+                ..
+            } => {
                 println!(
                     "[ALERT_{:?}] Loop {} exceeded iteration limit: {}/{} iterations",
                     severity, loop_id.0, completed, limit
                 );
             }
-            LoopAlert::BudgetTimeoutViolation { loop_id, budget, consumed, iterations_completed, severity, .. } => {
+            LoopAlert::BudgetTimeoutViolation {
+                loop_id,
+                budget,
+                consumed,
+                iterations_completed,
+                severity,
+                ..
+            } => {
                 println!(
                     "[ALERT_{:?}] Loop {} exceeded budget timeout: {}/{} budget units ({} iterations)",
                     severity, loop_id.0, consumed, budget, iterations_completed
                 );
             }
-            LoopAlert::HotLoopDetected { loop_id, iteration_count, jit_triggered, .. } => {
+            LoopAlert::HotLoopDetected {
+                loop_id,
+                iteration_count,
+                jit_triggered,
+                ..
+            } => {
                 println!(
                     "[ALERT_INFO] Hot loop detected: {} with {} iterations (JIT triggered: {})",
                     loop_id.0, iteration_count, jit_triggered
                 );
             }
-            LoopAlert::JITCompilationFailed { loop_id, reason, .. } => {
+            LoopAlert::JITCompilationFailed {
+                loop_id, reason, ..
+            } => {
                 println!(
                     "[ALERT_CRITICAL] JIT compilation failed for loop {}: {}",
                     loop_id.0, reason
@@ -623,7 +668,7 @@ impl LoopMonitor {
     }
 
     /// Trigger JIT compilation for a hot loop (Phase 6.2 Integration)
-    /// 
+    ///
     /// This method now serves as a bridge between monitoring and JIT integration.
     /// The actual JIT compilation is handled by the JITIntegration system.
     pub fn trigger_jit_compilation(&mut self, loop_id: &LoopID) -> Result<()> {
@@ -668,12 +713,10 @@ impl LoopMonitor {
                     compilation_time: *compilation_time,
                 }
             }
-            JITCompilationResult::Failure { reason } => {
-                JITCompilationStatus::Failed {
-                    failed_at: std::time::Instant::now(),
-                    reason: reason.clone(),
-                }
-            }
+            JITCompilationResult::Failure { reason } => JITCompilationStatus::Failed {
+                failed_at: std::time::Instant::now(),
+                reason: reason.clone(),
+            },
         };
 
         // Update hot loop info
@@ -692,15 +735,13 @@ impl LoopMonitor {
                 JITCompilationResult::Success { compilation_time } => {
                     println!(
                         "[JIT_COMPILATION_SUCCESS] Loop {} compiled in {:?}",
-                        loop_id.0,
-                        compilation_time
+                        loop_id.0, compilation_time
                     );
                 }
                 JITCompilationResult::Failure { reason } => {
                     println!(
                         "[JIT_COMPILATION_FAILED] Loop {} compilation failed: {}",
-                        loop_id.0,
-                        reason
+                        loop_id.0, reason
                     );
                 }
             }
@@ -711,7 +752,11 @@ impl LoopMonitor {
 
     /// Trigger JIT compilation with integration callback
     /// This method allows the LoopEngine to provide a callback for actual JIT compilation
-    pub fn trigger_jit_compilation_with_callback<F>(&mut self, loop_id: &LoopID, jit_callback: F) -> Result<()> 
+    pub fn trigger_jit_compilation_with_callback<F>(
+        &mut self,
+        loop_id: &LoopID,
+        jit_callback: F,
+    ) -> Result<()>
     where
         F: FnOnce(&LoopID) -> Result<()>,
     {
@@ -748,9 +793,7 @@ impl LoopMonitor {
         // For now, we'll use println! for demonstration
         println!(
             "[HOT_LOOP_DETECTED] Loop {} exceeded threshold with {} iterations (threshold: {})",
-            loop_id.0,
-            iteration_count,
-            self.config.hot_loop_threshold
+            loop_id.0, iteration_count, self.config.hot_loop_threshold
         );
 
         // TODO: Integrate with proper logging system
@@ -816,7 +859,8 @@ impl LoopMonitor {
             jit_compilations_triggered: self.global_stats.jit_compilations_triggered,
             successful_jit_compilations: self.global_stats.successful_jit_compilations,
             average_iterations_per_execution: if self.global_stats.total_loop_executions > 0 {
-                self.global_stats.total_iterations as f64 / self.global_stats.total_loop_executions as f64
+                self.global_stats.total_iterations as f64
+                    / self.global_stats.total_loop_executions as f64
             } else {
                 0.0
             },
@@ -832,77 +876,92 @@ impl LoopMonitoringAPI for LoopMonitor {
         // In a real implementation, we'd track which loops are currently executing
         self.loop_stats.get(loop_id)
     }
-    
+
     fn get_all_active_loops(&self) -> Vec<LoopID> {
         // Return all loop IDs that have been executed
         // In a real implementation, this would only return currently executing loops
         self.loop_stats.keys().cloned().collect()
     }
-    
+
     fn get_completed_loop_metrics(&self, loop_id: &LoopID) -> Option<&LoopExecutionStats> {
         self.loop_stats.get(loop_id)
     }
-    
+
     fn get_recent_completed_loops(&self, count: usize) -> Vec<&LoopExecutionStats> {
         let mut loops: Vec<&LoopExecutionStats> = self.loop_stats.values().collect();
-        
+
         // Sort by last execution time (most recent first)
-        loops.sort_by(|a, b| {
-            match (a.last_execution, b.last_execution) {
-                (Some(a_time), Some(b_time)) => b_time.cmp(&a_time),
-                (Some(_), None) => std::cmp::Ordering::Less,
-                (None, Some(_)) => std::cmp::Ordering::Greater,
-                (None, None) => std::cmp::Ordering::Equal,
-            }
+        loops.sort_by(|a, b| match (a.last_execution, b.last_execution) {
+            (Some(a_time), Some(b_time)) => b_time.cmp(&a_time),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
         });
-        
+
         loops.into_iter().take(count).collect()
     }
-    
+
     fn get_global_stats(&self) -> &GlobalMonitoringStats {
         &self.global_stats
     }
-    
+
     fn get_performance_summary(&self, time_window: Duration) -> PerformanceSummary {
         let cutoff_time = Instant::now() - time_window;
-        
+
         // Filter loops executed within the time window
-        let recent_loops: Vec<&LoopExecutionStats> = self.loop_stats.values()
+        let recent_loops: Vec<&LoopExecutionStats> = self
+            .loop_stats
+            .values()
             .filter(|stats| {
-                stats.last_execution
+                stats
+                    .last_execution
                     .map(|time| time >= cutoff_time)
                     .unwrap_or(false)
             })
             .collect();
-        
+
         let total_loops = recent_loops.len() as u64;
-        let hot_loops_count = recent_loops.iter()
+        let hot_loops_count = recent_loops
+            .iter()
             .filter(|stats| stats.is_hot_loop)
             .count() as u64;
-        
-        let jit_success_count = recent_loops.iter()
-            .filter(|stats| matches!(stats.jit_compilation_status, JITCompilationStatus::Compiled { .. }))
+
+        let jit_success_count = recent_loops
+            .iter()
+            .filter(|stats| {
+                matches!(
+                    stats.jit_compilation_status,
+                    JITCompilationStatus::Compiled { .. }
+                )
+            })
             .count() as u64;
-        
-        let jit_attempted_count = recent_loops.iter()
-            .filter(|stats| !matches!(stats.jit_compilation_status, JITCompilationStatus::NotEligible))
+
+        let jit_attempted_count = recent_loops
+            .iter()
+            .filter(|stats| {
+                !matches!(
+                    stats.jit_compilation_status,
+                    JITCompilationStatus::NotEligible
+                )
+            })
             .count() as u64;
-        
+
         let average_execution_time_ms = if total_loops > 0 {
-            recent_loops.iter()
+            recent_loops
+                .iter()
                 .map(|stats| stats.avg_execution_time().as_millis() as f64)
-                .sum::<f64>() / total_loops as f64
+                .sum::<f64>()
+                / total_loops as f64
         } else {
             0.0
         };
-        
+
         // Get top 5 slowest loops
-        let mut top_slow_loops: Vec<LoopExecutionStats> = recent_loops.iter()
-            .map(|&stats| stats.clone())
-            .collect();
+        let mut top_slow_loops: Vec<LoopExecutionStats> =
+            recent_loops.iter().map(|&stats| stats.clone()).collect();
         top_slow_loops.sort_by(|a, b| b.avg_execution_time().cmp(&a.avg_execution_time()));
         top_slow_loops.truncate(5);
-        
+
         PerformanceSummary {
             time_window,
             total_loops,
@@ -921,9 +980,10 @@ impl LoopMonitoringAPI for LoopMonitor {
             top_slow_loops,
         }
     }
-    
+
     fn query_loops_by_criteria(&self, criteria: &LoopQueryCriteria) -> Vec<&LoopExecutionStats> {
-        self.loop_stats.values()
+        self.loop_stats
+            .values()
             .filter(|stats| {
                 // Apply iteration count filters
                 if let Some(min_iterations) = criteria.min_iteration_count {
@@ -931,35 +991,37 @@ impl LoopMonitoringAPI for LoopMonitor {
                         return false;
                     }
                 }
-                
+
                 if let Some(max_iterations) = criteria.max_iteration_count {
                     if stats.total_iterations > max_iterations as u64 {
                         return false;
                     }
                 }
-                
+
                 // Apply execution time filters
                 let avg_time_ms = stats.avg_execution_time().as_millis() as u64;
-                
+
                 if let Some(min_time) = criteria.min_execution_time_ms {
                     if avg_time_ms < min_time {
                         return false;
                     }
                 }
-                
+
                 if let Some(max_time) = criteria.max_execution_time_ms {
                     if avg_time_ms > max_time {
                         return false;
                     }
                 }
-                
+
                 // Apply JIT status filter
                 if let Some(ref jit_status) = criteria.jit_status {
-                    if std::mem::discriminant(&stats.jit_compilation_status) != std::mem::discriminant(jit_status) {
+                    if std::mem::discriminant(&stats.jit_compilation_status)
+                        != std::mem::discriminant(jit_status)
+                    {
                         return false;
                     }
                 }
-                
+
                 // Apply time range filter
                 if let Some((start_time, end_time)) = criteria.time_range {
                     if let Some(last_exec) = stats.last_execution {
@@ -970,29 +1032,41 @@ impl LoopMonitoringAPI for LoopMonitor {
                         return false;
                     }
                 }
-                
+
                 true
             })
             .collect()
     }
-    
-    fn get_top_loops_by_metric(&self, metric: MetricType, count: usize) -> Vec<&LoopExecutionStats> {
+
+    fn get_top_loops_by_metric(
+        &self,
+        metric: MetricType,
+        count: usize,
+    ) -> Vec<&LoopExecutionStats> {
         let mut loops: Vec<&LoopExecutionStats> = self.loop_stats.values().collect();
-        
+
         // Sort by the specified metric
         loops.sort_by(|a, b| {
             match metric {
                 MetricType::ExecutionTime => b.total_execution_time.cmp(&a.total_execution_time),
                 MetricType::IterationCount => b.total_iterations.cmp(&a.total_iterations),
-                MetricType::AverageIterationTime => b.avg_time_per_iteration().cmp(&a.avg_time_per_iteration()),
+                MetricType::AverageIterationTime => {
+                    b.avg_time_per_iteration().cmp(&a.avg_time_per_iteration())
+                }
                 MetricType::ExecutionCount => b.execution_count.cmp(&a.execution_count),
                 MetricType::JITCompilationTime => {
                     // Compare JIT compilation times if available
                     match (&a.jit_compilation_status, &b.jit_compilation_status) {
-                        (JITCompilationStatus::Compiled { compilation_time: a_time, .. },
-                         JITCompilationStatus::Compiled { compilation_time: b_time, .. }) => {
-                            b_time.cmp(a_time)
-                        }
+                        (
+                            JITCompilationStatus::Compiled {
+                                compilation_time: a_time,
+                                ..
+                            },
+                            JITCompilationStatus::Compiled {
+                                compilation_time: b_time,
+                                ..
+                            },
+                        ) => b_time.cmp(a_time),
                         (JITCompilationStatus::Compiled { .. }, _) => std::cmp::Ordering::Less,
                         (_, JITCompilationStatus::Compiled { .. }) => std::cmp::Ordering::Greater,
                         _ => std::cmp::Ordering::Equal,
@@ -1000,24 +1074,32 @@ impl LoopMonitoringAPI for LoopMonitor {
                 }
             }
         });
-        
+
         loops.into_iter().take(count).collect()
     }
-    
+
     fn get_current_alerts(&self) -> Vec<LoopAlert> {
         self.active_alerts.clone()
     }
-    
+
     fn has_alerts(&self, loop_id: &LoopID) -> bool {
-        self.active_alerts.iter().any(|alert| {
-            match alert {
-                LoopAlert::IterationLimitViolation { loop_id: alert_loop_id, .. } |
-                LoopAlert::BudgetTimeoutViolation { loop_id: alert_loop_id, .. } |
-                LoopAlert::HotLoopDetected { loop_id: alert_loop_id, .. } |
-                LoopAlert::JITCompilationFailed { loop_id: alert_loop_id, .. } => {
-                    alert_loop_id == loop_id
-                }
+        self.active_alerts.iter().any(|alert| match alert {
+            LoopAlert::IterationLimitViolation {
+                loop_id: alert_loop_id,
+                ..
             }
+            | LoopAlert::BudgetTimeoutViolation {
+                loop_id: alert_loop_id,
+                ..
+            }
+            | LoopAlert::HotLoopDetected {
+                loop_id: alert_loop_id,
+                ..
+            }
+            | LoopAlert::JITCompilationFailed {
+                loop_id: alert_loop_id,
+                ..
+            } => alert_loop_id == loop_id,
         })
     }
 }
@@ -1034,7 +1116,10 @@ pub struct LoopExecutionTracker {
 impl LoopExecutionTracker {
     /// Create a new execution tracker
     pub fn new(loop_id: LoopID, start_time: Instant) -> Self {
-        Self { loop_id, start_time }
+        Self {
+            loop_id,
+            start_time,
+        }
     }
 }
 
@@ -1283,11 +1368,13 @@ mod tests {
         thread::sleep(Duration::from_millis(1));
 
         // Record loop completion
-        monitor.record_loop_completion(
-            tracker,
-            500, // iterations completed
-            LoopExecutionResult::Success,
-        ).unwrap();
+        monitor
+            .record_loop_completion(
+                tracker,
+                500, // iterations completed
+                LoopExecutionResult::Success,
+            )
+            .unwrap();
 
         // Check statistics
         let stats = monitor.get_loop_stats(&loop_id).unwrap();
@@ -1297,7 +1384,10 @@ mod tests {
         assert!(!stats.is_hot_loop); // Below threshold
 
         // Check profiling data
-        assert_eq!(stats.profiling_data.total_execution_time, stats.total_execution_time);
+        assert_eq!(
+            stats.profiling_data.total_execution_time,
+            stats.total_execution_time
+        );
         assert!(stats.profiling_data.average_iteration_time_ns > 0);
 
         // Check global stats
@@ -1315,18 +1405,23 @@ mod tests {
 
         // Record loop execution that exceeds hot loop threshold
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(
-            tracker,
-            1500, // Exceeds HOT_LOOP_THRESHOLD (1000)
-            LoopExecutionResult::Success,
-        ).unwrap();
+        monitor
+            .record_loop_completion(
+                tracker,
+                1500, // Exceeds HOT_LOOP_THRESHOLD (1000)
+                LoopExecutionResult::Success,
+            )
+            .unwrap();
 
         // Check that loop was detected as hot
         assert!(monitor.is_hot_loop(&loop_id));
-        
+
         let stats = monitor.get_loop_stats(&loop_id).unwrap();
         assert!(stats.is_hot_loop);
-        assert_eq!(stats.jit_compilation_status, JITCompilationStatus::Compiling);
+        assert_eq!(
+            stats.jit_compilation_status,
+            JITCompilationStatus::Compiling
+        );
 
         let hot_loop_info = monitor.get_hot_loop_info(&loop_id).unwrap();
         assert_eq!(hot_loop_info.detection_iteration_count, 1500);
@@ -1348,11 +1443,13 @@ mod tests {
 
         // Test exactly at threshold
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(
-            tracker,
-            HOT_LOOP_THRESHOLD, // Exactly at threshold
-            LoopExecutionResult::Success,
-        ).unwrap();
+        monitor
+            .record_loop_completion(
+                tracker,
+                HOT_LOOP_THRESHOLD, // Exactly at threshold
+                LoopExecutionResult::Success,
+            )
+            .unwrap();
 
         // Should be detected as hot
         assert!(monitor.is_hot_loop(&loop_id));
@@ -1361,11 +1458,13 @@ mod tests {
         // Test just below threshold
         let loop_id2 = LoopID::new("below-threshold-loop".to_string());
         let tracker2 = monitor.record_loop_start(&loop_id2, &instruction);
-        monitor.record_loop_completion(
-            tracker2,
-            HOT_LOOP_THRESHOLD - 1, // Just below threshold
-            LoopExecutionResult::Success,
-        ).unwrap();
+        monitor
+            .record_loop_completion(
+                tracker2,
+                HOT_LOOP_THRESHOLD - 1, // Just below threshold
+                LoopExecutionResult::Success,
+            )
+            .unwrap();
 
         // Should NOT be detected as hot
         assert!(!monitor.is_hot_loop(&loop_id2));
@@ -1384,11 +1483,13 @@ mod tests {
 
         // Record hot loop execution
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(
-            tracker,
-            2000, // Hot loop
-            LoopExecutionResult::Success,
-        ).unwrap();
+        monitor
+            .record_loop_completion(
+                tracker,
+                2000, // Hot loop
+                LoopExecutionResult::Success,
+            )
+            .unwrap();
 
         // Check that JIT compilation was triggered
         let hot_loop_info = monitor.get_hot_loop_info(&loop_id).unwrap();
@@ -1407,23 +1508,29 @@ mod tests {
 
         // First record a hot loop execution to create the hot loop info
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(tracker, 1500, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker, 1500, LoopExecutionResult::Success)
+            .unwrap();
 
         // Manually trigger JIT compilation
         monitor.trigger_jit_compilation(&loop_id).unwrap();
 
         // Record successful compilation
-        monitor.record_jit_compilation_result(
-            &loop_id,
-            JITCompilationResult::Success {
-                compilation_time: Duration::from_millis(100),
-            },
-        ).unwrap();
+        monitor
+            .record_jit_compilation_result(
+                &loop_id,
+                JITCompilationResult::Success {
+                    compilation_time: Duration::from_millis(100),
+                },
+            )
+            .unwrap();
 
         // Check compilation status
         let hot_loop_info = monitor.get_hot_loop_info(&loop_id).unwrap();
         match &hot_loop_info.jit_status {
-            JITCompilationStatus::Compiled { compilation_time, .. } => {
+            JITCompilationStatus::Compiled {
+                compilation_time, ..
+            } => {
                 assert_eq!(*compilation_time, Duration::from_millis(100));
             }
             _ => panic!("Expected Compiled status"),
@@ -1441,18 +1548,22 @@ mod tests {
 
         // First record a hot loop execution to create the hot loop info
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(tracker, 1500, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker, 1500, LoopExecutionResult::Success)
+            .unwrap();
 
         // Manually trigger JIT compilation
         monitor.trigger_jit_compilation(&loop_id).unwrap();
 
         // Record failed compilation
-        monitor.record_jit_compilation_result(
-            &loop_id,
-            JITCompilationResult::Failure {
-                reason: "Compilation error".to_string(),
-            },
-        ).unwrap();
+        monitor
+            .record_jit_compilation_result(
+                &loop_id,
+                JITCompilationResult::Failure {
+                    reason: "Compilation error".to_string(),
+                },
+            )
+            .unwrap();
 
         // Check compilation status
         let hot_loop_info = monitor.get_hot_loop_info(&loop_id).unwrap();
@@ -1477,11 +1588,13 @@ mod tests {
         // Execute loop multiple times
         for i in 1..=5 {
             let tracker = monitor.record_loop_start(&loop_id, &instruction);
-            monitor.record_loop_completion(
-                tracker,
-                i * 200, // Increasing iterations: 200, 400, 600, 800, 1000
-                LoopExecutionResult::Success,
-            ).unwrap();
+            monitor
+                .record_loop_completion(
+                    tracker,
+                    i * 200, // Increasing iterations: 200, 400, 600, 800, 1000
+                    LoopExecutionResult::Success,
+                )
+                .unwrap();
         }
 
         // Check accumulated statistics
@@ -1504,10 +1617,14 @@ mod tests {
 
         // Execute multiple loops
         let tracker1 = monitor.record_loop_start(&loop_id1, &instruction);
-        monitor.record_loop_completion(tracker1, 1200, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker1, 1200, LoopExecutionResult::Success)
+            .unwrap();
 
         let tracker2 = monitor.record_loop_start(&loop_id2, &instruction);
-        monitor.record_loop_completion(tracker2, 800, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker2, 800, LoopExecutionResult::Success)
+            .unwrap();
 
         // Get monitoring summary
         let summary = monitor.get_monitoring_summary();
@@ -1545,13 +1662,16 @@ mod tests {
 
         // Test calculations
         assert_eq!(stats.avg_execution_time(), Duration::from_millis(100));
-        assert_eq!(stats.avg_time_per_iteration(), Duration::from_nanos(200_000));
+        assert_eq!(
+            stats.avg_time_per_iteration(),
+            Duration::from_nanos(200_000)
+        );
     }
 
     #[test]
     fn test_global_stats_calculations() {
         let mut stats = GlobalMonitoringStats::new();
-        
+
         // Simulate monitoring data
         stats.total_loops_monitored = 10;
         stats.total_loop_executions = 25;
@@ -1561,7 +1681,10 @@ mod tests {
         stats.successful_jit_compilations = 1;
 
         // Test calculations
-        assert_eq!(stats.avg_execution_time_per_loop(), Duration::from_millis(200));
+        assert_eq!(
+            stats.avg_execution_time_per_loop(),
+            Duration::from_millis(200)
+        );
         assert_eq!(stats.hot_loop_detection_rate(), 30.0);
         assert_eq!(stats.jit_success_rate(), 50.0);
     }
@@ -1574,7 +1697,9 @@ mod tests {
 
         // Add some data
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(tracker, 1500, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker, 1500, LoopExecutionResult::Success)
+            .unwrap();
 
         // Verify data exists
         assert!(monitor.is_hot_loop(&loop_id));
@@ -1599,14 +1724,18 @@ mod tests {
 
         // Execute some loops
         let tracker1 = monitor.record_loop_start(&loop_id1, &instruction);
-        monitor.record_loop_completion(tracker1, 1200, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker1, 1200, LoopExecutionResult::Success)
+            .unwrap();
 
         let tracker2 = monitor.record_loop_start(&loop_id2, &instruction);
-        monitor.record_loop_completion(tracker2, 800, LoopExecutionResult::Success).unwrap();
+        monitor
+            .record_loop_completion(tracker2, 800, LoopExecutionResult::Success)
+            .unwrap();
 
         // Test monitoring API methods
         let api: &dyn LoopMonitoringAPI = &monitor;
-        
+
         // Test get_completed_loop_metrics
         let stats1 = api.get_completed_loop_metrics(&loop_id1);
         assert!(stats1.is_some());
@@ -1653,17 +1782,21 @@ mod tests {
 
         // Test iteration limit violation alert
         let tracker = monitor.record_loop_start(&loop_id, &instruction);
-        monitor.record_loop_completion(
-            tracker,
-            1000,
-            LoopExecutionResult::IterationLimitExceeded,
-        ).unwrap();
+        monitor
+            .record_loop_completion(tracker, 1000, LoopExecutionResult::IterationLimitExceeded)
+            .unwrap();
 
         // Check that alert was created
         let alerts = monitor.get_current_alerts();
         assert_eq!(alerts.len(), 1);
         match &alerts[0] {
-            LoopAlert::IterationLimitViolation { loop_id: alert_loop_id, limit, completed, severity, .. } => {
+            LoopAlert::IterationLimitViolation {
+                loop_id: alert_loop_id,
+                limit,
+                completed,
+                severity,
+                ..
+            } => {
                 assert_eq!(alert_loop_id, &loop_id);
                 assert_eq!(*limit, 1000);
                 assert_eq!(*completed, 1000);
@@ -1674,7 +1807,7 @@ mod tests {
 
         // Test has_alerts method
         assert!(monitor.has_alerts(&loop_id));
-        
+
         let other_loop_id = LoopID::new("other-loop".to_string());
         assert!(!monitor.has_alerts(&other_loop_id));
     }
@@ -1689,25 +1822,30 @@ mod tests {
         for i in 1..=3 {
             let tracker = monitor.record_loop_start(&loop_id, &instruction);
             thread::sleep(Duration::from_millis(i)); // Variable execution time
-            monitor.record_loop_completion(
-                tracker,
-                i as u32 * 100, // Variable iteration count
-                LoopExecutionResult::Success,
-            ).unwrap();
+            monitor
+                .record_loop_completion(
+                    tracker,
+                    i as u32 * 100, // Variable iteration count
+                    LoopExecutionResult::Success,
+                )
+                .unwrap();
         }
 
         // Check profiling data
         let stats = monitor.get_loop_stats(&loop_id).unwrap();
         let profiling = &stats.profiling_data;
-        
+
         assert!(profiling.average_iteration_time_ns > 0);
         assert!(profiling.total_execution_time > Duration::ZERO);
         assert!(profiling.min_execution_time > Duration::ZERO);
         assert!(profiling.max_execution_time >= profiling.min_execution_time);
         assert!(profiling.memory_stats.peak_memory_bytes > 0);
         assert!(profiling.memory_stats.allocations_count > 0);
-        
+
         // Performance trend should be calculated after 3 executions
-        assert!(!matches!(profiling.performance_trend, PerformanceTrend::Insufficient));
+        assert!(!matches!(
+            profiling.performance_trend,
+            PerformanceTrend::Insufficient
+        ));
     }
 }

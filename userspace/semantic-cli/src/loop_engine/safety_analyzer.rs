@@ -23,8 +23,8 @@
 
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use sha2::{Sha256, Digest};
 
 /// Safety classification for loop bodies
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -174,7 +174,7 @@ impl SafetyAnalyzer {
             cache_metrics: CacheMetrics::new(),
             cache_config: CacheConfig::default(),
         };
-        
+
         // Initialize with known safe/unsafe functions
         analyzer.initialize_function_knowledge();
         analyzer
@@ -189,14 +189,14 @@ impl SafetyAnalyzer {
             cache_metrics: CacheMetrics::new(),
             cache_config,
         };
-        
+
         // Initialize with known safe/unsafe functions
         analyzer.initialize_function_knowledge();
         analyzer
     }
 
     /// Analyze loop body safety for parallelization
-    /// 
+    ///
     /// Requirements 10.1, 10.2, 10.3: Detect I/O, mutation, external calls
     /// Requirement 10.5: Cache results by complete semantic fingerprint
     pub fn analyze_loop_safety(
@@ -205,49 +205,50 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<SafetyAnalysisResult> {
         use std::time::Instant;
-        
+
         let analysis_start = Instant::now();
-        
+
         // 1. Compute comprehensive cache key
         let cache_key = self.compute_analysis_cache_key(loop_body, loop_context)?;
-        
+
         // 2. Check cache first
         if let Some(cached_result) = self.analysis_cache.get(&cache_key) {
             let time_saved_ms = analysis_start.elapsed().as_millis() as u64;
             self.cache_metrics.record_hit(time_saved_ms);
             return Ok(cached_result.clone());
         }
-        
+
         // 3. Perform analysis if not cached
         let mut side_effects = Vec::new();
         let mut dependencies = Vec::new();
-        
+
         // Phase 4.1: Basic side effect detection
         // In a real implementation, this would parse the loop body IR
         // For now, we'll implement pattern-based detection
-        
+
         // Detect I/O operations
         side_effects.extend(self.detect_io_operations(loop_body)?);
-        
+
         // Detect external mutations
         side_effects.extend(self.detect_external_mutations(loop_body, loop_context)?);
-        
+
         // Detect external calls
         side_effects.extend(self.detect_external_calls(loop_body)?);
-        
+
         // Phase 4.2: Loop-carried dependency detection (placeholder)
         // This would require full data flow analysis in a real implementation
         dependencies.extend(self.detect_loop_carried_dependencies(loop_body, loop_context)?);
-        
+
         // 4. Determine safety classification
         let classification = if side_effects.is_empty() && dependencies.is_empty() {
             SafetyClass::Safe
         } else {
             SafetyClass::Unsafe
         };
-        
-        let reason = self.generate_classification_reason(classification, &side_effects, &dependencies);
-        
+
+        let reason =
+            self.generate_classification_reason(classification, &side_effects, &dependencies);
+
         // 5. Create analysis result
         let result = SafetyAnalysisResult {
             classification,
@@ -256,14 +257,14 @@ impl SafetyAnalyzer {
             dependencies,
             cache_key: cache_key.clone(),
         };
-        
+
         // 6. Record cache miss and analysis time
         let analysis_time_ms = analysis_start.elapsed().as_millis() as u64;
         self.cache_metrics.record_miss(analysis_time_ms);
-        
+
         // 7. Cache the result (with eviction if needed)
         self.insert_with_eviction(cache_key, result.clone());
-        
+
         Ok(result)
     }
 
@@ -271,55 +272,68 @@ impl SafetyAnalyzer {
     /// Requirement 10.1: Detect I/O operations (file, network, console)
     fn detect_io_operations(&self, loop_body: &str) -> Result<Vec<SideEffect>> {
         let mut io_effects = Vec::new();
-        
+
         // Pattern-based detection for Phase 4.1
         // In a real implementation, this would analyze the IR instructions
-        
+
         // File system operations
-        if loop_body.contains("file_read") || loop_body.contains("file_write") || 
-           loop_body.contains("open") || loop_body.contains("close") {
+        if loop_body.contains("file_read")
+            || loop_body.contains("file_write")
+            || loop_body.contains("open")
+            || loop_body.contains("close")
+        {
             io_effects.push(SideEffect::IOOperation {
                 operation_type: IOOperationType::FileSystem,
                 location: "loop_body".to_string(),
             });
         }
-        
+
         // Network operations
-        if loop_body.contains("http_request") || loop_body.contains("tcp_connect") ||
-           loop_body.contains("udp_send") || loop_body.contains("socket") {
+        if loop_body.contains("http_request")
+            || loop_body.contains("tcp_connect")
+            || loop_body.contains("udp_send")
+            || loop_body.contains("socket")
+        {
             io_effects.push(SideEffect::IOOperation {
                 operation_type: IOOperationType::Network,
                 location: "loop_body".to_string(),
             });
         }
-        
+
         // Console operations
-        if loop_body.contains("print") || loop_body.contains("println") ||
-           loop_body.contains("console_write") || loop_body.contains("stdout") {
+        if loop_body.contains("print")
+            || loop_body.contains("println")
+            || loop_body.contains("console_write")
+            || loop_body.contains("stdout")
+        {
             io_effects.push(SideEffect::IOOperation {
                 operation_type: IOOperationType::Console,
                 location: "loop_body".to_string(),
             });
         }
-        
+
         // Database operations
-        if loop_body.contains("db_query") || loop_body.contains("sql_execute") ||
-           loop_body.contains("database") {
+        if loop_body.contains("db_query")
+            || loop_body.contains("sql_execute")
+            || loop_body.contains("database")
+        {
             io_effects.push(SideEffect::IOOperation {
                 operation_type: IOOperationType::Database,
                 location: "loop_body".to_string(),
             });
         }
-        
+
         // System calls
-        if loop_body.contains("system_call") || loop_body.contains("exec") ||
-           loop_body.contains("spawn") {
+        if loop_body.contains("system_call")
+            || loop_body.contains("exec")
+            || loop_body.contains("spawn")
+        {
             io_effects.push(SideEffect::IOOperation {
                 operation_type: IOOperationType::SystemCall,
                 location: "loop_body".to_string(),
             });
         }
-        
+
         Ok(io_effects)
     }
 
@@ -331,15 +345,16 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<Vec<SideEffect>> {
         let mut mutation_effects = Vec::new();
-        
+
         // Pattern-based detection for Phase 4.1
         // In a real implementation, this would analyze variable scopes in IR
-        
+
         // Check for assignment operations to external variables
         for external_var in &loop_context.external_variables {
-            if loop_body.contains(&format!("{} =", external_var)) ||
-               loop_body.contains(&format!("{}=", external_var)) ||
-               loop_body.contains(&format!("set_{}", external_var)) {
+            if loop_body.contains(&format!("{} =", external_var))
+                || loop_body.contains(&format!("{}=", external_var))
+                || loop_body.contains(&format!("set_{}", external_var))
+            {
                 mutation_effects.push(SideEffect::ExternalMutation {
                     variable: external_var.clone(),
                     scope: VariableScope::External,
@@ -347,7 +362,7 @@ impl SafetyAnalyzer {
                 });
             }
         }
-        
+
         // Check for global variable mutations
         if loop_body.contains("global.") || loop_body.contains("GLOBAL_") {
             mutation_effects.push(SideEffect::ExternalMutation {
@@ -356,7 +371,7 @@ impl SafetyAnalyzer {
                 location: "loop_body".to_string(),
             });
         }
-        
+
         Ok(mutation_effects)
     }
 
@@ -364,10 +379,10 @@ impl SafetyAnalyzer {
     /// Requirement 10.3: Detect external calls (functions with unknown side effects)
     fn detect_external_calls(&self, loop_body: &str) -> Result<Vec<SideEffect>> {
         let mut call_effects = Vec::new();
-        
+
         // Pattern-based detection for Phase 4.1
         // In a real implementation, this would analyze function call instructions
-        
+
         // Extract function calls (simplified pattern matching)
         let call_patterns = [
             "call_function",
@@ -377,7 +392,7 @@ impl SafetyAnalyzer {
             "external_api",
             "unknown_function", // Add this pattern for the test
         ];
-        
+
         for pattern in &call_patterns {
             if loop_body.contains(pattern) {
                 // Check if function is known to be safe or unsafe
@@ -389,7 +404,7 @@ impl SafetyAnalyzer {
                     // Unknown function - assume unsafe for safety
                     true
                 };
-                
+
                 call_effects.push(SideEffect::ExternalCall {
                     function_name: pattern.to_string(),
                     known_side_effects,
@@ -397,7 +412,7 @@ impl SafetyAnalyzer {
                 });
             }
         }
-        
+
         Ok(call_effects)
     }
 
@@ -410,65 +425,69 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<Vec<LoopCarriedDependency>> {
         let mut dependencies = Vec::new();
-        
+
         // Phase 4.2: Enhanced data flow analysis for loop-carried dependency detection
         // This implements a simplified data flow analysis to detect when iteration N
         // reads values written by iteration N-1
-        
+
         // 1. Parse the loop body to extract variable operations
         let operations = self.parse_variable_operations(loop_body)?;
-        
+
         // 2. Analyze data flow patterns for each variable
         for var in &loop_context.loop_variables {
-            if let Some(dependency) = self.analyze_variable_dependency(var, &operations, loop_context)? {
+            if let Some(dependency) =
+                self.analyze_variable_dependency(var, &operations, loop_context)?
+            {
                 dependencies.push(dependency);
             }
         }
-        
+
         // 3. Check external variables for cross-iteration dependencies
         for var in &loop_context.external_variables {
-            if let Some(dependency) = self.analyze_external_variable_dependency(var, &operations, loop_context)? {
+            if let Some(dependency) =
+                self.analyze_external_variable_dependency(var, &operations, loop_context)?
+            {
                 dependencies.push(dependency);
             }
         }
-        
+
         // 4. Detect accumulator patterns (common loop-carried dependency)
         dependencies.extend(self.detect_accumulator_patterns(loop_body, loop_context)?);
-        
+
         // 5. Detect sequence generation patterns
         dependencies.extend(self.detect_sequence_patterns(loop_body, loop_context)?);
-        
+
         // 6. Detect recursive computation patterns
         dependencies.extend(self.detect_recursive_patterns(loop_body, loop_context)?);
-        
+
         Ok(dependencies)
     }
 
     /// Parse variable operations from loop body for data flow analysis
     fn parse_variable_operations(&self, loop_body: &str) -> Result<Vec<VariableOperation>> {
         let mut operations = Vec::new();
-        
+
         // Simple pattern-based parsing for Phase 4.2
         // In a real implementation, this would parse the actual IR instructions
-        
+
         // Split loop body into statements (simplified)
         let statements: Vec<&str> = loop_body.split(';').collect();
-        
+
         for (index, statement) in statements.iter().enumerate() {
             let statement = statement.trim();
             if statement.is_empty() {
                 continue;
             }
-            
+
             // Detect assignment operations (write)
             if let Some(eq_pos) = statement.find('=') {
                 let left_side = statement[..eq_pos].trim();
                 let right_side = statement[eq_pos + 1..].trim();
-                
+
                 // Extract variable being written to
                 if let Some(var_name) = self.extract_variable_name(left_side) {
                     let dependencies = self.extract_dependencies(right_side);
-                    
+
                     operations.push(VariableOperation {
                         variable: var_name.clone(),
                         operation_type: OperationType::Write,
@@ -476,7 +495,7 @@ impl SafetyAnalyzer {
                         depends_on: dependencies.clone(),
                     });
                 }
-                
+
                 // Extract variables being read from
                 for dep_var in self.extract_dependencies(right_side) {
                     operations.push(VariableOperation {
@@ -487,7 +506,7 @@ impl SafetyAnalyzer {
                     });
                 }
             }
-            
+
             // Detect function calls that might read variables
             if statement.contains('(') && statement.contains(')') {
                 for var in self.extract_function_arguments(statement) {
@@ -500,7 +519,7 @@ impl SafetyAnalyzer {
                 }
             }
         }
-        
+
         Ok(operations)
     }
 
@@ -508,12 +527,12 @@ impl SafetyAnalyzer {
     fn extract_variable_name(&self, left_side: &str) -> Option<String> {
         // Handle simple variable assignments
         let var_name = left_side.trim();
-        
+
         // Skip array/object access for now (simplified)
         if var_name.contains('[') || var_name.contains('.') {
             return None;
         }
-        
+
         // Return the variable name if it looks valid
         if var_name.chars().all(|c| c.is_alphanumeric() || c == '_') && !var_name.is_empty() {
             Some(var_name.to_string())
@@ -525,40 +544,44 @@ impl SafetyAnalyzer {
     /// Extract variable dependencies from expression
     fn extract_dependencies(&self, expression: &str) -> Vec<String> {
         let mut dependencies = Vec::new();
-        
+
         // Simple pattern matching for variable names
         // In a real implementation, this would parse the expression AST
-        
+
         let words: Vec<&str> = expression.split_whitespace().collect();
         for word in words {
             // Clean up operators and punctuation
             let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '_');
-            
+
             // Skip operators, numbers, and keywords
-            if clean_word.is_empty() || 
-               clean_word.chars().all(|c| c.is_numeric()) ||
-               matches!(clean_word, "+" | "-" | "*" | "/" | "(" | ")" | "=" | "if" | "then" | "else") {
+            if clean_word.is_empty()
+                || clean_word.chars().all(|c| c.is_numeric())
+                || matches!(
+                    clean_word,
+                    "+" | "-" | "*" | "/" | "(" | ")" | "=" | "if" | "then" | "else"
+                )
+            {
                 continue;
             }
-            
+
             // Add as dependency if it looks like a variable name
             if clean_word.chars().all(|c| c.is_alphanumeric() || c == '_') {
                 dependencies.push(clean_word.to_string());
             }
         }
-        
+
         dependencies
     }
 
     /// Extract function arguments that might be variables
     fn extract_function_arguments(&self, statement: &str) -> Vec<String> {
         let mut arguments = Vec::new();
-        
+
         // Find function call pattern
         if let Some(paren_start) = statement.find('(') {
             if let Some(paren_end) = statement.rfind(')') {
                 let args_str = &statement[paren_start + 1..paren_end];
-                
+
                 // Split by comma and extract variable names
                 for arg in args_str.split(',') {
                     let arg = arg.trim();
@@ -568,7 +591,7 @@ impl SafetyAnalyzer {
                 }
             }
         }
-        
+
         arguments
     }
 
@@ -584,16 +607,16 @@ impl SafetyAnalyzer {
             .iter()
             .filter(|op| op.variable == variable)
             .collect();
-        
+
         // Check if this is the official loop accumulator (part of loop semantics)
         // Only the main "accumulator" variable is considered safe by design
         let is_official_accumulator = variable == "accumulator";
-        
+
         // Check for read-after-write pattern within the same iteration
         let mut has_read = false;
         let mut has_write = false;
         let mut write_depends_on_self = false;
-        
+
         for op in &var_operations {
             match op.operation_type {
                 OperationType::Read => {
@@ -608,7 +631,7 @@ impl SafetyAnalyzer {
                 }
             }
         }
-        
+
         // Check for loop-carried dependency patterns
         if has_read && has_write && !is_official_accumulator {
             // This variable is both read and written in the same iteration
@@ -622,7 +645,7 @@ impl SafetyAnalyzer {
                 ),
             }));
         }
-        
+
         // Check for direct self-dependency (accumulator pattern)
         if write_depends_on_self && !is_official_accumulator {
             return Ok(Some(LoopCarriedDependency {
@@ -634,7 +657,7 @@ impl SafetyAnalyzer {
                 ),
             }));
         }
-        
+
         Ok(None)
     }
 
@@ -650,10 +673,12 @@ impl SafetyAnalyzer {
             .iter()
             .filter(|op| op.variable == variable)
             .collect();
-        
+
         // External variables that are written to create dependencies
-        let has_write = var_operations.iter().any(|op| matches!(op.operation_type, OperationType::Write));
-        
+        let has_write = var_operations
+            .iter()
+            .any(|op| matches!(op.operation_type, OperationType::Write));
+
         if has_write {
             return Ok(Some(LoopCarriedDependency {
                 variable: variable.to_string(),
@@ -664,7 +689,7 @@ impl SafetyAnalyzer {
                 ),
             }));
         }
-        
+
         Ok(None)
     }
 
@@ -675,25 +700,25 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<Vec<LoopCarriedDependency>> {
         let mut dependencies = Vec::new();
-        
+
         // Only the official "accumulator" variable is considered safe by design
         // All other accumulator-like patterns are still loop-carried dependencies
-        
+
         // Generic accumulator pattern: var = var + something
         for var in &loop_context.loop_variables {
             // Skip the main accumulator variable - it's Safe by design
             if var == "accumulator" {
                 continue;
             }
-            
+
             let self_assignment_pattern = format!("{} = {} +", var, var);
             let self_assignment_pattern2 = format!("{} = {} -", var, var);
             let self_assignment_pattern3 = format!("{} = {} *", var, var);
-            
-            if loop_body.contains(&self_assignment_pattern) ||
-               loop_body.contains(&self_assignment_pattern2) ||
-               loop_body.contains(&self_assignment_pattern3) {
-                
+
+            if loop_body.contains(&self_assignment_pattern)
+                || loop_body.contains(&self_assignment_pattern2)
+                || loop_body.contains(&self_assignment_pattern3)
+            {
                 dependencies.push(LoopCarriedDependency {
                     variable: var.clone(),
                     dependency_type: DependencyType::ReadAfterWrite,
@@ -704,21 +729,21 @@ impl SafetyAnalyzer {
                 });
             }
         }
-        
+
         // Check for compound assignment operators (+=, *=, etc.)
         for var in &loop_context.loop_variables {
             // Skip the main accumulator variable
             if var == "accumulator" {
                 continue;
             }
-            
-            if loop_body.contains(&format!("{} +=", var)) ||
-               loop_body.contains(&format!("{}+=", var)) ||
-               loop_body.contains(&format!("{} *=", var)) ||
-               loop_body.contains(&format!("{}*=", var)) ||
-               loop_body.contains(&format!("{} -=", var)) ||
-               loop_body.contains(&format!("{}-=", var)) {
-                
+
+            if loop_body.contains(&format!("{} +=", var))
+                || loop_body.contains(&format!("{}+=", var))
+                || loop_body.contains(&format!("{} *=", var))
+                || loop_body.contains(&format!("{}*=", var))
+                || loop_body.contains(&format!("{} -=", var))
+                || loop_body.contains(&format!("{}-=", var))
+            {
                 dependencies.push(LoopCarriedDependency {
                     variable: var.clone(),
                     dependency_type: DependencyType::ReadAfterWrite,
@@ -729,7 +754,7 @@ impl SafetyAnalyzer {
                 });
             }
         }
-        
+
         Ok(dependencies)
     }
 
@@ -740,12 +765,13 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<Vec<LoopCarriedDependency>> {
         let mut dependencies = Vec::new();
-        
+
         // Sequence generation patterns
         for var in &loop_context.loop_variables {
             // Fibonacci-like patterns: var = prev1 + prev2
-            if loop_body.contains(&format!("prev_{}", var)) ||
-               loop_body.contains(&format!("{}_prev", var)) {
+            if loop_body.contains(&format!("prev_{}", var))
+                || loop_body.contains(&format!("{}_prev", var))
+            {
                 dependencies.push(LoopCarriedDependency {
                     variable: var.clone(),
                     dependency_type: DependencyType::ReadAfterWrite,
@@ -755,22 +781,20 @@ impl SafetyAnalyzer {
                     ),
                 });
             }
-            
+
             // Array/list building patterns
-            if loop_body.contains(&format!("{}.push", var)) ||
-               loop_body.contains(&format!("{}.append", var)) ||
-               loop_body.contains(&format!("{}[", var)) {
+            if loop_body.contains(&format!("{}.push", var))
+                || loop_body.contains(&format!("{}.append", var))
+                || loop_body.contains(&format!("{}[", var))
+            {
                 dependencies.push(LoopCarriedDependency {
                     variable: var.clone(),
                     dependency_type: DependencyType::WriteAfterRead,
-                    description: format!(
-                        "Variable '{}' builds sequence by appending values",
-                        var
-                    ),
+                    description: format!("Variable '{}' builds sequence by appending values", var),
                 });
             }
         }
-        
+
         Ok(dependencies)
     }
 
@@ -781,26 +805,25 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<Vec<LoopCarriedDependency>> {
         let mut dependencies = Vec::new();
-        
+
         // Recursive computation patterns
         for var in &loop_context.loop_variables {
             // State machine patterns
-            if loop_body.contains(&format!("{}_state", var)) ||
-               loop_body.contains(&format!("state_{}", var)) {
+            if loop_body.contains(&format!("{}_state", var))
+                || loop_body.contains(&format!("state_{}", var))
+            {
                 dependencies.push(LoopCarriedDependency {
                     variable: var.clone(),
                     dependency_type: DependencyType::ReadAfterWrite,
-                    description: format!(
-                        "Variable '{}' maintains state across iterations",
-                        var
-                    ),
+                    description: format!("Variable '{}' maintains state across iterations", var),
                 });
             }
-            
+
             // Conditional accumulation based on previous value
-            if loop_body.contains(&format!("if {} >", var)) ||
-               loop_body.contains(&format!("if {} <", var)) ||
-               loop_body.contains(&format!("if {} ==", var)) {
+            if loop_body.contains(&format!("if {} >", var))
+                || loop_body.contains(&format!("if {} <", var))
+                || loop_body.contains(&format!("if {} ==", var))
+            {
                 // Check if the variable is also assigned in the same body
                 if loop_body.contains(&format!("{} =", var)) {
                     dependencies.push(LoopCarriedDependency {
@@ -814,7 +837,7 @@ impl SafetyAnalyzer {
                 }
             }
         }
-        
+
         Ok(dependencies)
     }
 
@@ -826,24 +849,24 @@ impl SafetyAnalyzer {
         loop_context: &LoopAnalysisContext,
     ) -> Result<String> {
         let mut hasher = Sha256::new();
-        
+
         // Include loop body fingerprint
         hasher.update(loop_body.as_bytes());
-        
+
         // Include variable type information
         for (var, var_type) in &loop_context.variable_types {
             hasher.update(var.as_bytes());
             hasher.update(format!("{:?}", var_type).as_bytes());
         }
-        
+
         // Include external function signatures
         for func in &loop_context.external_functions {
             hasher.update(func.as_bytes());
         }
-        
+
         // Include analysis configuration
         hasher.update(format!("{:?}", loop_context.analysis_config).as_bytes());
-        
+
         let hash = hasher.finalize();
         Ok(format!("{:x}", hash))
     }
@@ -861,17 +884,20 @@ impl SafetyAnalyzer {
             }
             SafetyClass::Unsafe => {
                 let mut reasons = Vec::new();
-                
+
                 if !side_effects.is_empty() {
                     let effect_count = side_effects.len();
                     reasons.push(format!("{} side effect(s) detected", effect_count));
                 }
-                
+
                 if !dependencies.is_empty() {
                     let dep_count = dependencies.len();
-                    reasons.push(format!("{} loop-carried dependenc(ies) detected", dep_count));
+                    reasons.push(format!(
+                        "{} loop-carried dependenc(ies) detected",
+                        dep_count
+                    ));
                 }
-                
+
                 format!("Unsafe for parallelization: {}", reasons.join(", "))
             }
         }
@@ -885,7 +911,7 @@ impl SafetyAnalyzer {
         self.safe_functions.insert("string_concat".to_string());
         self.safe_functions.insert("array_length".to_string());
         self.safe_functions.insert("pure_function".to_string());
-        
+
         // Known unsafe functions (has side effects)
         self.unsafe_functions.insert("file_write".to_string());
         self.unsafe_functions.insert("network_request".to_string());
@@ -942,10 +968,10 @@ impl SafetyAnalyzer {
         if self.analysis_cache.len() >= self.cache_config.max_entries {
             self.evict_entry();
         }
-        
+
         // Insert the new entry
         self.analysis_cache.insert(key, result);
-        
+
         // Update cache size estimate
         let estimated_size = self.estimate_cache_size();
         self.cache_metrics.update_cache_size(estimated_size);
@@ -962,7 +988,7 @@ impl SafetyAnalyzer {
             EvictionPolicy::LFU => self.evict_lfu(),
             EvictionPolicy::FIFO => self.evict_fifo(),
         }
-        
+
         self.cache_metrics.record_eviction();
     }
 
@@ -1003,7 +1029,7 @@ impl SafetyAnalyzer {
     /// Check cache health and return alerts
     pub fn check_cache_health(&self) -> Vec<CacheAlert> {
         let mut alerts = Vec::new();
-        
+
         // Check hit rate
         let hit_rate = self.cache_metrics.hit_rate();
         if hit_rate < self.cache_config.min_hit_rate_threshold {
@@ -1012,7 +1038,7 @@ impl SafetyAnalyzer {
                 threshold: self.cache_config.min_hit_rate_threshold,
             });
         }
-        
+
         // Check cache size
         let cache_size_mb = self.cache_metrics.cache_size_bytes / (1024 * 1024);
         if cache_size_mb > self.cache_config.max_cache_size_mb {
@@ -1021,16 +1047,17 @@ impl SafetyAnalyzer {
                 threshold_mb: self.cache_config.max_cache_size_mb,
             });
         }
-        
+
         // Check for unusually high analysis times
         let avg_analysis_time = self.cache_metrics.avg_analysis_time_ms();
-        if avg_analysis_time > 1000.0 { // Alert if average analysis time > 1 second
+        if avg_analysis_time > 1000.0 {
+            // Alert if average analysis time > 1 second
             alerts.push(CacheAlert::HighAnalysisTime {
                 current_ms: avg_analysis_time as u64,
                 threshold_ms: 1000,
             });
         }
-        
+
         alerts
     }
 
@@ -1038,11 +1065,11 @@ impl SafetyAnalyzer {
     pub fn cache_efficiency_report(&self) -> String {
         let stats = self.cache_stats();
         let total_requests = stats.hit_count + stats.miss_count;
-        
+
         if total_requests == 0 {
             return "No cache requests yet".to_string();
         }
-        
+
         format!(
             "Cache Efficiency Report:\n\
              - Total Requests: {}\n\
@@ -1301,7 +1328,10 @@ pub enum CacheAlert {
     /// Cache hit rate is below threshold
     LowHitRate { current: f64, threshold: f64 },
     /// Cache size exceeds threshold
-    CacheSizeExceeded { current_mb: usize, threshold_mb: usize },
+    CacheSizeExceeded {
+        current_mb: usize,
+        threshold_mb: usize,
+    },
     /// Analysis time is unusually high
     HighAnalysisTime { current_ms: u64, threshold_ms: u64 },
 }
@@ -1329,12 +1359,12 @@ mod tests {
     fn test_safe_loop_body_analysis() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Safe loop body - only pure computations
         let safe_body = "accumulator = accumulator + i * 2";
-        
+
         let result = analyzer.analyze_loop_safety(safe_body, &context).unwrap();
-        
+
         assert_eq!(result.classification, SafetyClass::Safe);
         assert!(result.side_effects.is_empty());
         assert!(result.dependencies.is_empty());
@@ -1345,19 +1375,25 @@ mod tests {
     fn test_unsafe_loop_body_io_operations() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Unsafe loop body - contains I/O operations
         let unsafe_body = "file_write('output.txt', data); accumulator = accumulator + i";
-        
+
         let result = analyzer.analyze_loop_safety(unsafe_body, &context).unwrap();
-        
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.side_effects.is_empty());
         assert!(result.reason.contains("side effect"));
-        
+
         // Check that file I/O was detected
         let has_file_io = result.side_effects.iter().any(|effect| {
-            matches!(effect, SideEffect::IOOperation { operation_type: IOOperationType::FileSystem, .. })
+            matches!(
+                effect,
+                SideEffect::IOOperation {
+                    operation_type: IOOperationType::FileSystem,
+                    ..
+                }
+            )
         });
         assert!(has_file_io);
     }
@@ -1366,15 +1402,15 @@ mod tests {
     fn test_unsafe_loop_body_external_mutation() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Unsafe loop body - mutates external variable
         let unsafe_body = "global_counter = global_counter + 1; accumulator = accumulator + i";
-        
+
         let result = analyzer.analyze_loop_safety(unsafe_body, &context).unwrap();
-        
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.side_effects.is_empty());
-        
+
         // Check that external mutation was detected
         let has_external_mutation = result.side_effects.iter().any(|effect| {
             matches!(effect, SideEffect::ExternalMutation { variable, .. } if variable == "global_counter")
@@ -1386,15 +1422,16 @@ mod tests {
     fn test_unsafe_loop_body_external_calls() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Unsafe loop body - calls external function
-        let unsafe_body = "result = call_function('unknown_func', i); accumulator = accumulator + result";
-        
+        let unsafe_body =
+            "result = call_function('unknown_func', i); accumulator = accumulator + result";
+
         let result = analyzer.analyze_loop_safety(unsafe_body, &context).unwrap();
-        
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.side_effects.is_empty());
-        
+
         // Check that external call was detected
         let has_external_call = result.side_effects.iter().any(|effect| {
             matches!(effect, SideEffect::ExternalCall { function_name, .. } if function_name == "call_function")
@@ -1407,18 +1444,21 @@ mod tests {
         let mut analyzer = SafetyAnalyzer::new();
         let mut context = create_test_context();
         context.add_loop_variable("prev_value".to_string(), "number".to_string());
-        
+
         // Loop body with dependency - reads previous iteration value
         let dependent_body = "current = prev_value + i; prev_value = current";
-        
-        let result = analyzer.analyze_loop_safety(dependent_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(dependent_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.dependencies.is_empty());
-        
+
         // Check that dependency was detected
         let has_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "prev_value" && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
+            dep.variable == "prev_value"
+                && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
         });
         assert!(has_dependency);
     }
@@ -1429,23 +1469,26 @@ mod tests {
         let mut context = create_test_context();
         context.add_loop_variable("sum".to_string(), "number".to_string());
         context.add_loop_variable("product".to_string(), "number".to_string());
-        
+
         // Loop body with accumulator patterns
         let accumulator_body = "sum = sum + i; product *= i";
-        
-        let result = analyzer.analyze_loop_safety(accumulator_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(accumulator_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.dependencies.is_empty());
-        
+
         // Check that accumulator dependencies were detected
         let has_sum_dependency = result.dependencies.iter().any(|dep| {
             dep.variable == "sum" && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
         });
         let has_product_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "product" && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
+            dep.variable == "product"
+                && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
         });
-        
+
         assert!(has_sum_dependency);
         assert!(has_product_dependency);
     }
@@ -1456,23 +1499,28 @@ mod tests {
         let mut context = create_test_context();
         context.add_loop_variable("fibonacci".to_string(), "number".to_string());
         context.add_loop_variable("sequence".to_string(), "array".to_string());
-        
+
         // Loop body with sequence generation patterns
-        let sequence_body = "fibonacci = prev_fibonacci + prev_prev_fibonacci; sequence.push(fibonacci)";
-        
-        let result = analyzer.analyze_loop_safety(sequence_body, &context).unwrap();
-        
+        let sequence_body =
+            "fibonacci = prev_fibonacci + prev_prev_fibonacci; sequence.push(fibonacci)";
+
+        let result = analyzer
+            .analyze_loop_safety(sequence_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.dependencies.is_empty());
-        
+
         // Check that sequence dependencies were detected
         let has_fibonacci_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "fibonacci" && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
+            dep.variable == "fibonacci"
+                && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
         });
         let has_sequence_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "sequence" && matches!(dep.dependency_type, DependencyType::WriteAfterRead)
+            dep.variable == "sequence"
+                && matches!(dep.dependency_type, DependencyType::WriteAfterRead)
         });
-        
+
         assert!(has_fibonacci_dependency);
         assert!(has_sequence_dependency);
     }
@@ -1482,18 +1530,22 @@ mod tests {
         let mut analyzer = SafetyAnalyzer::new();
         let mut context = create_test_context();
         context.add_external_variable("shared_state".to_string(), "object".to_string());
-        
+
         // Loop body that modifies external variable
-        let external_body = "shared_state = update_state(shared_state, i); accumulator = accumulator + i";
-        
-        let result = analyzer.analyze_loop_safety(external_body, &context).unwrap();
-        
+        let external_body =
+            "shared_state = update_state(shared_state, i); accumulator = accumulator + i";
+
+        let result = analyzer
+            .analyze_loop_safety(external_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.dependencies.is_empty());
-        
+
         // Check that external variable dependency was detected
         let has_external_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "shared_state" && matches!(dep.dependency_type, DependencyType::WriteAfterRead)
+            dep.variable == "shared_state"
+                && matches!(dep.dependency_type, DependencyType::WriteAfterRead)
         });
         assert!(has_external_dependency);
     }
@@ -1503,18 +1555,21 @@ mod tests {
         let mut analyzer = SafetyAnalyzer::new();
         let mut context = create_test_context();
         context.add_loop_variable("max_value".to_string(), "number".to_string());
-        
+
         // Loop body with conditional update based on previous value
         let conditional_body = "if max_value < i { max_value = i }; accumulator = accumulator + i";
-        
-        let result = analyzer.analyze_loop_safety(conditional_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(conditional_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(!result.dependencies.is_empty());
-        
+
         // Check that conditional dependency was detected
         let has_conditional_dependency = result.dependencies.iter().any(|dep| {
-            dep.variable == "max_value" && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
+            dep.variable == "max_value"
+                && matches!(dep.dependency_type, DependencyType::ReadAfterWrite)
         });
         assert!(has_conditional_dependency);
     }
@@ -1527,7 +1582,7 @@ mod tests {
         context.add_loop_variable("prev_value".to_string(), "number".to_string());
         context.add_loop_variable("result_array".to_string(), "array".to_string());
         context.add_external_variable("global_counter".to_string(), "number".to_string());
-        
+
         // Complex loop body with multiple dependency types
         let complex_body = r#"
             running_sum = running_sum + i;
@@ -1537,14 +1592,17 @@ mod tests {
             global_counter = global_counter + 1;
             if running_sum > 100 { running_sum = 0 }
         "#;
-        
-        let result = analyzer.analyze_loop_safety(complex_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(complex_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(result.dependencies.len() >= 4); // Multiple dependencies detected
-        
+
         // Check for various dependency types
-        let dependency_variables: Vec<&String> = result.dependencies.iter().map(|d| &d.variable).collect();
+        let dependency_variables: Vec<&String> =
+            result.dependencies.iter().map(|d| &d.variable).collect();
         assert!(dependency_variables.contains(&&"running_sum".to_string()));
         assert!(dependency_variables.contains(&&"prev_value".to_string()));
         assert!(dependency_variables.contains(&&"result_array".to_string()));
@@ -1555,12 +1613,14 @@ mod tests {
     fn test_no_false_positive_dependencies() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Loop body with no actual dependencies - just independent computations
         let independent_body = "temp = i * 2; result = temp + 5; accumulator = result";
-        
-        let result = analyzer.analyze_loop_safety(independent_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(independent_body, &context)
+            .unwrap();
+
         // Should be safe - no loop-carried dependencies
         assert_eq!(result.classification, SafetyClass::Safe);
         assert!(result.dependencies.is_empty());
@@ -1570,17 +1630,29 @@ mod tests {
     #[test]
     fn test_variable_operation_parsing() {
         let analyzer = SafetyAnalyzer::new();
-        
+
         // Test parsing of variable operations
         let loop_body = "sum = sum + i; temp = i * 2; result = temp + sum";
         let operations = analyzer.parse_variable_operations(loop_body).unwrap();
-        
+
         // Should detect reads and writes
-        let sum_writes = operations.iter().filter(|op| op.variable == "sum" && matches!(op.operation_type, OperationType::Write)).count();
-        let sum_reads = operations.iter().filter(|op| op.variable == "sum" && matches!(op.operation_type, OperationType::Read)).count();
-        let temp_writes = operations.iter().filter(|op| op.variable == "temp" && matches!(op.operation_type, OperationType::Write)).count();
-        let temp_reads = operations.iter().filter(|op| op.variable == "temp" && matches!(op.operation_type, OperationType::Read)).count();
-        
+        let sum_writes = operations
+            .iter()
+            .filter(|op| op.variable == "sum" && matches!(op.operation_type, OperationType::Write))
+            .count();
+        let sum_reads = operations
+            .iter()
+            .filter(|op| op.variable == "sum" && matches!(op.operation_type, OperationType::Read))
+            .count();
+        let temp_writes = operations
+            .iter()
+            .filter(|op| op.variable == "temp" && matches!(op.operation_type, OperationType::Write))
+            .count();
+        let temp_reads = operations
+            .iter()
+            .filter(|op| op.variable == "temp" && matches!(op.operation_type, OperationType::Read))
+            .count();
+
         assert_eq!(sum_writes, 1); // sum = sum + i (write)
         assert_eq!(sum_reads, 2); // sum + i (read) and temp + sum (read)
         assert_eq!(temp_writes, 1); // temp = i * 2 (write)
@@ -1592,22 +1664,26 @@ mod tests {
         let mut analyzer = SafetyAnalyzer::new();
         let mut context = create_test_context();
         context.add_loop_variable("counter".to_string(), "number".to_string());
-        
+
         let dependent_body = "counter = counter + 1; accumulator = accumulator + counter";
-        
+
         // First analysis
-        let result1 = analyzer.analyze_loop_safety(dependent_body, &context).unwrap();
+        let result1 = analyzer
+            .analyze_loop_safety(dependent_body, &context)
+            .unwrap();
         let cache_stats1 = analyzer.cache_stats();
-        
+
         // Second analysis - should use cache
-        let result2 = analyzer.analyze_loop_safety(dependent_body, &context).unwrap();
+        let result2 = analyzer
+            .analyze_loop_safety(dependent_body, &context)
+            .unwrap();
         let cache_stats2 = analyzer.cache_stats();
-        
+
         // Results should be identical
         assert_eq!(result1, result2);
         assert_eq!(result1.classification, SafetyClass::Unsafe);
         assert!(!result1.dependencies.is_empty());
-        
+
         // Cache should have one entry
         assert_eq!(cache_stats1.entries, 1);
         assert_eq!(cache_stats2.entries, 1);
@@ -1617,24 +1693,24 @@ mod tests {
     fn test_analysis_caching() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         let loop_body = "accumulator = accumulator + i";
-        
+
         // First analysis
         let result1 = analyzer.analyze_loop_safety(loop_body, &context).unwrap();
         let cache_stats1 = analyzer.cache_stats();
-        
+
         // Second analysis - should use cache
         let result2 = analyzer.analyze_loop_safety(loop_body, &context).unwrap();
         let cache_stats2 = analyzer.cache_stats();
-        
+
         // Results should be identical
         assert_eq!(result1, result2);
-        
+
         // Cache should have one entry
         assert_eq!(cache_stats1.entries, 1);
         assert_eq!(cache_stats2.entries, 1);
-        
+
         // Should have one hit and one miss
         assert_eq!(cache_stats2.hit_count, 1);
         assert_eq!(cache_stats2.miss_count, 1);
@@ -1645,19 +1721,19 @@ mod tests {
     fn test_cache_key_uniqueness() {
         let mut analyzer = SafetyAnalyzer::new();
         let context1 = create_test_context();
-        
+
         let mut context2 = create_test_context();
         context2.add_external_variable("different_var".to_string(), "string".to_string());
-        
+
         let loop_body = "accumulator = accumulator + i";
-        
+
         // Analyze with different contexts
         let result1 = analyzer.analyze_loop_safety(loop_body, &context1).unwrap();
         let result2 = analyzer.analyze_loop_safety(loop_body, &context2).unwrap();
-        
+
         // Cache keys should be different
         assert_ne!(result1.cache_key, result2.cache_key);
-        
+
         // Should have two cache entries
         assert_eq!(analyzer.cache_stats().entries, 2);
     }
@@ -1666,21 +1742,45 @@ mod tests {
     fn test_multiple_side_effects() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Loop body with multiple side effects
         let complex_body = "file_write('log.txt', i); print('Processing:', i); global_counter = global_counter + 1; call_function('external', i)";
-        
-        let result = analyzer.analyze_loop_safety(complex_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(complex_body, &context)
+            .unwrap();
+
         assert_eq!(result.classification, SafetyClass::Unsafe);
         assert!(result.side_effects.len() >= 4); // File I/O, console, mutation, external call
-        
+
         // Check for different types of side effects
-        let has_file_io = result.side_effects.iter().any(|e| matches!(e, SideEffect::IOOperation { operation_type: IOOperationType::FileSystem, .. }));
-        let has_console = result.side_effects.iter().any(|e| matches!(e, SideEffect::IOOperation { operation_type: IOOperationType::Console, .. }));
-        let has_mutation = result.side_effects.iter().any(|e| matches!(e, SideEffect::ExternalMutation { .. }));
-        let has_call = result.side_effects.iter().any(|e| matches!(e, SideEffect::ExternalCall { .. }));
-        
+        let has_file_io = result.side_effects.iter().any(|e| {
+            matches!(
+                e,
+                SideEffect::IOOperation {
+                    operation_type: IOOperationType::FileSystem,
+                    ..
+                }
+            )
+        });
+        let has_console = result.side_effects.iter().any(|e| {
+            matches!(
+                e,
+                SideEffect::IOOperation {
+                    operation_type: IOOperationType::Console,
+                    ..
+                }
+            )
+        });
+        let has_mutation = result
+            .side_effects
+            .iter()
+            .any(|e| matches!(e, SideEffect::ExternalMutation { .. }));
+        let has_call = result
+            .side_effects
+            .iter()
+            .any(|e| matches!(e, SideEffect::ExternalCall { .. }));
+
         assert!(has_file_io);
         assert!(has_console);
         assert!(has_mutation);
@@ -1691,12 +1791,14 @@ mod tests {
     fn test_conservative_mode() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Loop body with unknown function call
         let unknown_body = "result = unknown_function(i); accumulator = accumulator + result";
-        
-        let result = analyzer.analyze_loop_safety(unknown_body, &context).unwrap();
-        
+
+        let result = analyzer
+            .analyze_loop_safety(unknown_body, &context)
+            .unwrap();
+
         // In conservative mode, unknown functions should be treated as unsafe
         assert_eq!(result.classification, SafetyClass::Unsafe);
     }
@@ -1705,12 +1807,12 @@ mod tests {
     fn test_known_safe_functions() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Loop body with known safe function
         let safe_body = "result = math_add(accumulator, i); accumulator = result";
-        
+
         let result = analyzer.analyze_loop_safety(safe_body, &context).unwrap();
-        
+
         // Known safe functions should not cause unsafe classification
         assert_eq!(result.classification, SafetyClass::Safe);
     }
@@ -1719,13 +1821,13 @@ mod tests {
     fn test_cache_clearing() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         let loop_body = "accumulator = accumulator + i";
-        
+
         // Analyze to populate cache
         analyzer.analyze_loop_safety(loop_body, &context).unwrap();
         assert_eq!(analyzer.cache_stats().entries, 1);
-        
+
         // Clear cache
         analyzer.clear_cache();
         assert_eq!(analyzer.cache_stats().entries, 0);
@@ -1737,23 +1839,23 @@ mod tests {
     fn test_enhanced_cache_metrics() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         let loop_body1 = "accumulator = accumulator + i";
         let loop_body2 = "accumulator = accumulator * 2";
-        
+
         // First analysis - cache miss
         analyzer.analyze_loop_safety(loop_body1, &context).unwrap();
         let stats1 = analyzer.cache_stats();
         assert_eq!(stats1.miss_count, 1);
         assert_eq!(stats1.hit_count, 0);
-        
+
         // Second analysis of same body - cache hit
         analyzer.analyze_loop_safety(loop_body1, &context).unwrap();
         let stats2 = analyzer.cache_stats();
         assert_eq!(stats2.miss_count, 1);
         assert_eq!(stats2.hit_count, 1);
         assert_eq!(stats2.hit_rate, 0.5);
-        
+
         // Third analysis of different body - cache miss
         analyzer.analyze_loop_safety(loop_body2, &context).unwrap();
         let stats3 = analyzer.cache_stats();
@@ -1766,20 +1868,20 @@ mod tests {
     fn test_cache_health_monitoring() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Perform at least one analysis to establish baseline
         analyzer.analyze_loop_safety("baseline", &context).unwrap();
-        
+
         // Create a scenario with low hit rate
         let mut config = CacheConfig::default();
         config.min_hit_rate_threshold = 0.9; // Very high threshold
         analyzer.update_cache_config(config);
-        
+
         // Perform some cache misses
         analyzer.analyze_loop_safety("body1", &context).unwrap();
         analyzer.analyze_loop_safety("body2", &context).unwrap();
         analyzer.analyze_loop_safety("body3", &context).unwrap();
-        
+
         // Should trigger low hit rate alert
         let alerts = analyzer.check_cache_health();
         assert!(!alerts.is_empty());
@@ -1790,16 +1892,16 @@ mod tests {
     fn test_cache_efficiency_report() {
         let mut analyzer = SafetyAnalyzer::new();
         let context = create_test_context();
-        
+
         // Initially no requests
         let report = analyzer.cache_efficiency_report();
         assert!(report.contains("No cache requests yet"));
-        
+
         // Perform some analyses
         analyzer.analyze_loop_safety("body1", &context).unwrap();
         analyzer.analyze_loop_safety("body1", &context).unwrap(); // Cache hit
         analyzer.analyze_loop_safety("body2", &context).unwrap();
-        
+
         // Should have detailed report
         let report = analyzer.cache_efficiency_report();
         assert!(report.contains("Cache Efficiency Report"));
@@ -1812,19 +1914,19 @@ mod tests {
     fn test_cache_eviction_policy() {
         let mut config = CacheConfig::default();
         config.max_entries = 2; // Small cache for testing eviction
-        
+
         let mut analyzer = SafetyAnalyzer::with_cache_config(config);
         let context = create_test_context();
-        
+
         // Fill cache to capacity
         analyzer.analyze_loop_safety("body1", &context).unwrap();
         analyzer.analyze_loop_safety("body2", &context).unwrap();
         assert_eq!(analyzer.cache_stats().entries, 2);
-        
+
         // Add one more - should trigger eviction
         analyzer.analyze_loop_safety("body3", &context).unwrap();
         assert_eq!(analyzer.cache_stats().entries, 2); // Still at max capacity
-        
+
         // Should have recorded eviction
         let metrics = analyzer.detailed_cache_metrics();
         assert!(metrics.eviction_count > 0);

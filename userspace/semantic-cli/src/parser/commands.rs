@@ -6,7 +6,7 @@
 //! - Debug operations: `explain`, `dry-run`, `history`
 
 use crate::ast::{CommandNode, Expr};
-use crate::error::{Result};
+use crate::error::Result;
 use crate::lexer::TokenKind;
 use crate::parser::{ExpressionParser, Parser};
 

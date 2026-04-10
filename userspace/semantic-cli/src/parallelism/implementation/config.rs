@@ -14,10 +14,10 @@
 //! lifecycle. The pool size is determined by the number of available CPU cores, with
 //! configurable overrides for testing and tuning.
 
+use crate::parallelism::error::{ParallelismError, ParallelismResult};
+use rayon::ThreadPoolBuilder;
 use std::num::NonZeroUsize;
 use std::sync::OnceLock;
-use rayon::ThreadPoolBuilder;
-use crate::parallelism::error::{ParallelismError, ParallelismResult};
 
 /// Global thread pool configuration
 static THREAD_POOL_CONFIG: OnceLock<ThreadPoolConfig> = OnceLock::new();
@@ -28,10 +28,10 @@ pub struct ThreadPoolConfig {
     /// Number of worker threads in the pool
     /// If None, uses the number of available CPU cores
     pub num_threads: Option<NonZeroUsize>,
-    
+
     /// Thread name prefix for debugging
     pub thread_name_prefix: String,
-    
+
     /// Stack size per thread (in bytes)
     /// If None, uses Rayon's default
     pub stack_size: Option<usize>,
@@ -52,7 +52,7 @@ impl ThreadPoolConfig {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Set the number of worker threads
     ///
     /// If not set, the thread pool will use the number of available CPU cores.
@@ -60,28 +60,26 @@ impl ThreadPoolConfig {
         self.num_threads = Some(num_threads);
         self
     }
-    
+
     /// Set the thread name prefix for debugging
     pub fn with_thread_name_prefix(mut self, prefix: impl Into<String>) -> Self {
         self.thread_name_prefix = prefix.into();
         self
     }
-    
+
     /// Set the stack size per thread
     pub fn with_stack_size(mut self, stack_size: usize) -> Self {
         self.stack_size = Some(stack_size);
         self
     }
-    
+
     /// Get the effective number of threads
     ///
     /// Returns the configured number of threads, or the number of CPU cores if not configured.
     pub fn effective_num_threads(&self) -> usize {
-        self.num_threads
-            .map(|n| n.get())
-            .unwrap_or_else(num_cpus)
+        self.num_threads.map(|n| n.get()).unwrap_or_else(num_cpus)
     }
-    
+
     /// Initialize the global Rayon thread pool with this configuration
     ///
     /// This should be called once at application startup. Subsequent calls will
@@ -100,7 +98,7 @@ impl ThreadPoolConfig {
     /// - **Validates: Requirement 5.4** - Graceful error handling
     pub fn initialize_global_pool(&self) -> ParallelismResult<()> {
         let mut builder = ThreadPoolBuilder::new();
-        
+
         // Configure number of threads based on CPU cores
         if let Some(num_threads) = self.num_threads {
             builder = builder.num_threads(num_threads.get());
@@ -108,21 +106,20 @@ impl ThreadPoolConfig {
             // Use number of CPU cores (Rayon's default behavior)
             builder = builder.num_threads(num_cpus());
         }
-        
+
         // Configure thread naming for debugging
         // Clone the prefix to move into the closure (required for 'static lifetime)
         let thread_name_prefix = self.thread_name_prefix.clone();
-        builder = builder.thread_name(move |idx| {
-            format!("{}-{}", thread_name_prefix, idx)
-        });
-        
+        builder = builder.thread_name(move |idx| format!("{}-{}", thread_name_prefix, idx));
+
         // Configure stack size if specified
         if let Some(stack_size) = self.stack_size {
             builder = builder.stack_size(stack_size);
         }
-        
+
         // Build and install the global thread pool
-        builder.build_global()
+        builder
+            .build_global()
             .map_err(|e| ParallelismError::ThreadPoolInitialization {
                 reason: format!("Failed to initialize Rayon thread pool: {}", e),
             })
@@ -199,7 +196,7 @@ pub fn current_num_threads() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_config() {
         let config = ThreadPoolConfig::default();
@@ -207,32 +204,31 @@ mod tests {
         assert!(config.num_threads.is_none());
         assert!(config.stack_size.is_none());
     }
-    
+
     #[test]
     fn test_config_builder() {
         let config = ThreadPoolConfig::new()
             .with_num_threads(NonZeroUsize::new(4).unwrap())
             .with_thread_name_prefix("test-worker")
             .with_stack_size(2 * 1024 * 1024);
-        
+
         assert_eq!(config.num_threads.unwrap().get(), 4);
         assert_eq!(config.thread_name_prefix, "test-worker");
         assert_eq!(config.stack_size.unwrap(), 2 * 1024 * 1024);
     }
-    
+
     #[test]
     fn test_effective_num_threads() {
         // With explicit configuration
-        let config = ThreadPoolConfig::new()
-            .with_num_threads(NonZeroUsize::new(8).unwrap());
+        let config = ThreadPoolConfig::new().with_num_threads(NonZeroUsize::new(8).unwrap());
         assert_eq!(config.effective_num_threads(), 8);
-        
+
         // With default (CPU cores)
         let config = ThreadPoolConfig::default();
         let num_threads = config.effective_num_threads();
         assert!(num_threads >= 1, "Should have at least 1 thread");
     }
-    
+
     #[test]
     fn test_num_cpus() {
         let cpus = num_cpus();

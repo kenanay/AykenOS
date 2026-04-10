@@ -10,17 +10,17 @@
 //! **Phase:** 3.5 Gate C
 
 use crate::gate_c::{
-    error::{SubmissionError, GateCResult},
+    error::{GateCResult, SubmissionError},
     types::{ExecutionPlan, SubmissionId},
 };
 
 /// Submission bridge trait for submitting plans to orchestrator
 pub trait SubmissionBridge {
     /// Submit execution plan to orchestrator
-    /// 
+    ///
     /// Returns SubmissionId on success, SubmissionError on failure.
     /// This operation is idempotent - same plan produces same behavior.
-    /// 
+    ///
     /// Note: No wait_result, poll_status, or async completion methods.
     fn submit_plan(&self, plan: ExecutionPlan) -> GateCResult<SubmissionId>;
 }
@@ -47,20 +47,20 @@ impl SubmissionBridgeImpl {
 impl SubmissionBridge for SubmissionBridgeImpl {
     fn submit_plan(&self, plan: ExecutionPlan) -> GateCResult<SubmissionId> {
         // Validate capabilities first
-        self.capability_validator.validate_plan(&plan)
+        self.capability_validator
+            .validate_plan(&plan)
             .map_err(|e| SubmissionError::CapabilityDenied(e.to_string()))?;
-        
+
         // Submit to orchestrator
-        self.orchestrator_endpoint.submit(plan)
-            .map_err(|e| {
-                let submission_error = match e {
-                    OrchestratorError::Unavailable => SubmissionError::OrchestratorUnavailable,
-                    OrchestratorError::InvalidPlan(msg) => SubmissionError::InvalidPlan(msg),
-                    OrchestratorError::Network(msg) => SubmissionError::NetworkError(msg),
-                    OrchestratorError::Serialization(msg) => SubmissionError::SerializationError(msg),
-                };
-                crate::gate_c::error::GateCError::Submission(submission_error)
-            })
+        self.orchestrator_endpoint.submit(plan).map_err(|e| {
+            let submission_error = match e {
+                OrchestratorError::Unavailable => SubmissionError::OrchestratorUnavailable,
+                OrchestratorError::InvalidPlan(msg) => SubmissionError::InvalidPlan(msg),
+                OrchestratorError::Network(msg) => SubmissionError::NetworkError(msg),
+                OrchestratorError::Serialization(msg) => SubmissionError::SerializationError(msg),
+            };
+            crate::gate_c::error::GateCError::Submission(submission_error)
+        })
     }
 }
 
@@ -78,27 +78,29 @@ impl OrchestratorEndpoint {
             timeout_ms,
         }
     }
-    
+
     /// Submit plan to orchestrator
     pub fn submit(&self, plan: ExecutionPlan) -> Result<SubmissionId, OrchestratorError> {
         // TODO: Implement actual HTTP submission to orchestrator
         // This is a placeholder implementation
-        
+
         // Validate plan is not empty
         if plan.steps.is_empty() {
-            return Err(OrchestratorError::InvalidPlan("Plan has no steps".to_string()));
+            return Err(OrchestratorError::InvalidPlan(
+                "Plan has no steps".to_string(),
+            ));
         }
-        
+
         // Generate deterministic submission ID from plan content
         // DETERMINISM FIX: Use simple deterministic approach without Hash trait
         use crate::gate_c::deterministic::deterministic_id_from_plan;
-        
+
         let submission_id = SubmissionId {
             id: deterministic_id_from_plan("plan", &plan.id),
             timestamp: 0, // DETERMINISTIC: No timestamp in submission ID
             fingerprint: Some(format!("plan-{}", plan.id)), // Simple fingerprint based on plan ID
         };
-        
+
         Ok(submission_id)
     }
 }
@@ -113,7 +115,7 @@ impl CapabilityValidator {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     /// Validate plan against capabilities
     pub fn validate_plan(&self, _plan: &ExecutionPlan) -> Result<(), CapabilityError> {
         // TODO: Implement capability validation
@@ -168,7 +170,7 @@ impl std::error::Error for CapabilityError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate_c::types::{PlanStep, PlanMetadata, Operation};
+    use crate::gate_c::types::{Operation, PlanMetadata, PlanStep};
     use std::collections::HashMap;
 
     fn create_test_plan() -> ExecutionPlan {
@@ -199,9 +201,12 @@ mod tests {
         let endpoint = OrchestratorEndpoint::new("http://localhost:8080".to_string(), 5000);
         let validator = CapabilityValidator::new();
         let bridge = SubmissionBridgeImpl::new(endpoint, validator);
-        
+
         // Test that bridge was created successfully
-        assert_eq!(bridge.orchestrator_endpoint.endpoint_url, "http://localhost:8080");
+        assert_eq!(
+            bridge.orchestrator_endpoint.endpoint_url,
+            "http://localhost:8080"
+        );
         assert_eq!(bridge.orchestrator_endpoint.timeout_ms, 5000);
     }
 
@@ -210,10 +215,10 @@ mod tests {
         let endpoint = OrchestratorEndpoint::new("http://localhost:8080".to_string(), 5000);
         let validator = CapabilityValidator::new();
         let bridge = SubmissionBridgeImpl::new(endpoint, validator);
-        
+
         let plan = create_test_plan();
         let result = bridge.submit_plan(plan);
-        
+
         assert!(result.is_ok());
         let submission_id = result.unwrap();
         // Check that ID contains the plan prefix and hash
@@ -224,7 +229,7 @@ mod tests {
     #[test]
     fn test_empty_plan_rejection() {
         let endpoint = OrchestratorEndpoint::new("http://localhost:8080".to_string(), 5000);
-        
+
         let empty_plan = ExecutionPlan {
             id: "empty-plan".to_string(),
             steps: vec![], // Empty steps
@@ -237,10 +242,10 @@ mod tests {
             },
             dependencies: vec![],
         };
-        
+
         let result = endpoint.submit(empty_plan);
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             OrchestratorError::InvalidPlan(msg) => {
                 assert!(msg.contains("no steps"));
@@ -254,16 +259,16 @@ mod tests {
         let endpoint = OrchestratorEndpoint::new("http://localhost:8080".to_string(), 5000);
         let validator = CapabilityValidator::new();
         let bridge = SubmissionBridgeImpl::new(endpoint, validator);
-        
+
         let plan1 = create_test_plan();
         let plan2 = create_test_plan();
-        
+
         let result1 = bridge.submit_plan(plan1);
         let result2 = bridge.submit_plan(plan2);
-        
+
         assert!(result1.is_ok());
         assert!(result2.is_ok());
-        
+
         // Same plan should produce same submission ID format (deterministic hash)
         let id1 = result1.unwrap();
         let id2 = result2.unwrap();

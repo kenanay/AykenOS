@@ -182,13 +182,13 @@ impl Parser {
             TokenKind::Ge => Some(BinaryOp::Ge),
             TokenKind::And => Some(BinaryOp::And),
             TokenKind::Or => Some(BinaryOp::Or),
-            
+
             // RULE 8 ENFORCEMENT: Extended DSL operators are not supported
             TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
                 // These will be handled as errors in parse_expression_with_precedence
                 None
             }
-            
+
             _ => None,
         }
     }
@@ -314,7 +314,9 @@ mod tests {
                 left,
                 ..
             } => match left.as_ref() {
-                Expr::Binary { op: BinaryOp::Gt, .. } => {}
+                Expr::Binary {
+                    op: BinaryOp::Gt, ..
+                } => {}
                 _ => panic!("Expected Gt as left operand of And"),
             },
             _ => panic!("Expected And expression"),
@@ -325,7 +327,9 @@ mod tests {
     fn test_complex_expression() {
         let expr = parse_expression("age > 18 and name == \"Alice\" or not active").unwrap();
         match expr {
-            Expr::Binary { op: BinaryOp::Or, .. } => {}
+            Expr::Binary {
+                op: BinaryOp::Or, ..
+            } => {}
             _ => panic!("Expected Or as top-level operator"),
         }
     }

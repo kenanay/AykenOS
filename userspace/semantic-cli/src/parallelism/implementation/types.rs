@@ -30,11 +30,11 @@ use std::time::Duration;
 pub struct DataPartition<'a> {
     /// Borrowed slice of input data to be processed by this partition
     pub data: &'a [Value],
-    
+
     /// Starting index in the original dataset (inclusive)
     /// Used for stable index mapping during deterministic merge
     pub start_index: usize,
-    
+
     /// Ending index in the original dataset (exclusive)
     /// Used for stable index mapping during deterministic merge
     pub end_index: usize,
@@ -46,7 +46,7 @@ impl<'a> DataPartition<'a> {
     pub fn size(&self) -> usize {
         self.end_index - self.start_index
     }
-    
+
     /// Converts a local index (within this partition) to a logical index
     /// (in the original dataset).
     ///
@@ -58,7 +58,7 @@ impl<'a> DataPartition<'a> {
     pub fn logical_index(&self, local_index: usize) -> usize {
         self.start_index + local_index
     }
-    
+
     /// Validates that the partition is well-formed
     pub fn is_valid(&self) -> bool {
         self.start_index <= self.end_index && self.data.len() == self.size()
@@ -84,16 +84,16 @@ impl<'a> DataPartition<'a> {
 pub struct ExecutionMetrics {
     /// Time taken for sequential execution (baseline for comparison)
     pub sequential_time: Duration,
-    
+
     /// Time taken for parallel computation (excluding overhead)
     pub parallel_time: Duration,
-    
+
     /// Overhead from maintaining stable index mapping for deterministic ordering
     pub ordering_overhead: Duration,
-    
+
     /// Cost of thread synchronization (barriers, locks, etc.)
     pub sync_cost: Duration,
-    
+
     /// Cost of merging parallel results into final output
     pub merge_cost: Duration,
 }
@@ -103,19 +103,17 @@ impl ExecutionMetrics {
     ///
     /// **Validates: Requirements 12.5, 4.1 (Net Speedup Calculation)**
     pub fn net_speedup(&self) -> f64 {
-        let total_parallel = self.parallel_time 
-            + self.ordering_overhead 
-            + self.sync_cost 
-            + self.merge_cost;
-        
+        let total_parallel =
+            self.parallel_time + self.ordering_overhead + self.sync_cost + self.merge_cost;
+
         // Avoid division by zero
         if total_parallel.as_secs_f64() == 0.0 {
             return 0.0;
         }
-        
+
         self.sequential_time.as_secs_f64() / total_parallel.as_secs_f64()
     }
-    
+
     /// Calculates the ratio of ordering overhead to parallel execution time.
     ///
     /// **Validates: Requirement 4.7 (Ordering Overhead Protection)**
@@ -124,10 +122,10 @@ impl ExecutionMetrics {
         if self.parallel_time.as_secs_f64() == 0.0 {
             return 0.0;
         }
-        
+
         self.ordering_overhead.as_secs_f64() / self.parallel_time.as_secs_f64()
     }
-    
+
     /// Returns the total parallel execution time including all overhead.
     pub fn total_parallel_time(&self) -> Duration {
         self.parallel_time + self.ordering_overhead + self.sync_cost + self.merge_cost
@@ -145,7 +143,7 @@ impl ExecutionMetrics {
 pub struct ImmutableContext {
     /// The execution plan containing IR blocks and metadata
     pub execution_plan: ExecutionPlan,
-    
+
     /// Execution configuration (timeouts, limits, etc.)
     pub config: ExecutionConfig,
 }
@@ -155,13 +153,13 @@ pub struct ImmutableContext {
 pub struct ExecutionConfig {
     /// Maximum execution time before timeout
     pub max_execution_time: Option<Duration>,
-    
+
     /// Maximum number of iterations for loops
     pub max_iterations: Option<usize>,
-    
+
     /// Whether to enable verification mode (compare parallel vs sequential)
     pub verification_mode: bool,
-    
+
     /// Whether replay mode is active (forces sequential execution)
     pub replay_mode: bool,
 }
@@ -188,7 +186,7 @@ impl Default for ExecutionConfig {
 pub struct LocalState {
     /// Intermediate computation results stored during execution
     pub intermediate_values: Vec<Value>,
-    
+
     /// Local performance metrics for this worker
     pub local_metrics: LocalMetrics,
 }
@@ -201,7 +199,7 @@ impl LocalState {
             local_metrics: LocalMetrics::default(),
         }
     }
-    
+
     /// Clears all intermediate values and resets metrics.
     pub fn clear(&mut self) {
         self.intermediate_values.clear();
@@ -220,10 +218,10 @@ impl Default for LocalState {
 pub struct LocalMetrics {
     /// Number of values processed by this worker
     pub values_processed: usize,
-    
+
     /// Number of operations executed by this worker
     pub operations_executed: usize,
-    
+
     /// Time spent in computation (excluding synchronization)
     pub computation_time: Duration,
 }
@@ -245,13 +243,13 @@ mod tests {
             Value::Number(4.0),
             Value::Number(5.0),
         ];
-        
+
         let partition = DataPartition {
             data: &data[0..3],
             start_index: 0,
             end_index: 3,
         };
-        
+
         assert_eq!(partition.size(), 3);
     }
 
@@ -264,13 +262,13 @@ mod tests {
             Value::Number(4.0),
             Value::Number(5.0),
         ];
-        
+
         let partition = DataPartition {
             data: &data[2..5],
             start_index: 2,
             end_index: 5,
         };
-        
+
         assert_eq!(partition.logical_index(0), 2);
         assert_eq!(partition.logical_index(1), 3);
         assert_eq!(partition.logical_index(2), 4);
@@ -278,19 +276,15 @@ mod tests {
 
     #[test]
     fn test_data_partition_is_valid() {
-        let data = vec![
-            Value::Number(1.0),
-            Value::Number(2.0),
-            Value::Number(3.0),
-        ];
-        
+        let data = vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)];
+
         let valid_partition = DataPartition {
             data: &data[0..2],
             start_index: 0,
             end_index: 2,
         };
         assert!(valid_partition.is_valid());
-        
+
         let invalid_partition = DataPartition {
             data: &data[0..2],
             start_index: 0,
@@ -310,7 +304,7 @@ mod tests {
             sync_cost: Duration::from_millis(20),
             merge_cost: Duration::from_millis(30),
         };
-        
+
         let speedup = metrics.net_speedup();
         assert!((speedup - 2.5).abs() < 0.01);
         assert!(speedup >= 2.0);
@@ -325,7 +319,7 @@ mod tests {
             sync_cost: Duration::from_millis(50),
             merge_cost: Duration::from_millis(50),
         };
-        
+
         let speedup = metrics.net_speedup();
         assert!((speedup - 1.666).abs() < 0.01);
         assert!(speedup < 2.0);
@@ -340,7 +334,7 @@ mod tests {
             sync_cost: Duration::from_millis(0),
             merge_cost: Duration::from_millis(0),
         };
-        
+
         let ratio = metrics.ordering_overhead_ratio();
         assert!((ratio - 0.625).abs() < 0.01);
         assert!(ratio > 0.5);
@@ -360,9 +354,9 @@ mod tests {
         let mut state = LocalState::new();
         state.intermediate_values.push(Value::Number(42.0));
         state.local_metrics.values_processed = 10;
-        
+
         state.clear();
-        
+
         assert_eq!(state.intermediate_values.len(), 0);
         assert_eq!(state.local_metrics.values_processed, 0);
     }

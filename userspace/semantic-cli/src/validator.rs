@@ -33,8 +33,8 @@
 
 // BCIB-only imports (AR-4: Single source of truth for capabilities)
 use crate::bcib::{
-    BCIBSequence, BCIBInstruction, ContextInstruction, QueryInstruction, SystemInstruction, 
-    DebugInstruction, OperandRef, FilterExpression, Capability, SystemScope
+    BCIBInstruction, BCIBSequence, Capability, ContextInstruction, DebugInstruction,
+    FilterExpression, OperandRef, QueryInstruction, SystemInstruction, SystemScope,
 };
 use crate::error::{ErrorCode, Result, SemanticCLIError};
 use crate::types::SourceLocation;
@@ -44,7 +44,7 @@ use std::collections::{HashMap, HashSet};
 use crate::ast::{AstNode, CommandNode};
 
 /// BCIB-based validator for semantic analysis with contextual capabilities (AR-4)
-/// 
+///
 /// This is the PRIMARY validator for Gate B. It works exclusively with BCIB instructions
 /// and uses contextual capabilities for fine-grained access control.
 pub struct BCIBValidator {
@@ -81,7 +81,11 @@ impl BCIBValidator {
     }
 
     /// Validate a single BCIB instruction
-    fn validate_instruction(&self, instruction: &BCIBInstruction, register_tracker: &mut RegisterTracker) -> Result<()> {
+    fn validate_instruction(
+        &self,
+        instruction: &BCIBInstruction,
+        register_tracker: &mut RegisterTracker,
+    ) -> Result<()> {
         match instruction {
             BCIBInstruction::Context(inst) => self.validate_context_instruction(inst),
             BCIBInstruction::Query(inst) => self.validate_query_instruction(inst, register_tracker),
@@ -90,11 +94,11 @@ impl BCIBValidator {
             BCIBInstruction::Loop(_inst) => {
                 // TODO: Phase 1 - Loop instruction validation not implemented yet
                 Ok(())
-            },
+            }
             BCIBInstruction::ControlFlow(_inst) => {
                 // TODO: Phase 2.3 - Control flow instruction validation not implemented yet
                 Ok(())
-            },
+            }
         }
     }
 
@@ -106,16 +110,24 @@ impl BCIBValidator {
                 if !self.context_registry.exists(path) {
                     return Err(SemanticCLIError::validation_error(
                         format!("Context '{}' does not exist", path),
-                        format!("Available contexts: {}", self.context_registry.list_available().join(", ")),
+                        format!(
+                            "Available contexts: {}",
+                            self.context_registry.list_available().join(", ")
+                        ),
                         ErrorCode::E200,
                     ));
                 }
 
                 // Check contextual capability (AR-4: Single source of truth)
-                let required_capability = Capability::Read { context: path.clone() };
+                let required_capability = Capability::Read {
+                    context: path.clone(),
+                };
                 if !self.capability_checker.has_capability(&required_capability) {
                     return Err(SemanticCLIError::security_error(
-                        format!("Permission denied: cannot read context '{}' - missing capability {:?}", path, required_capability),
+                        format!(
+                            "Permission denied: cannot read context '{}' - missing capability {:?}",
+                            path, required_capability
+                        ),
                         ErrorCode::E601,
                     ));
                 }
@@ -127,9 +139,17 @@ impl BCIBValidator {
     }
 
     /// Validate query instruction with register tracking (AR-1: Flat instruction graph)
-    fn validate_query_instruction(&self, instruction: &QueryInstruction, register_tracker: &mut RegisterTracker) -> Result<()> {
+    fn validate_query_instruction(
+        &self,
+        instruction: &QueryInstruction,
+        register_tracker: &mut RegisterTracker,
+    ) -> Result<()> {
         match instruction {
-            QueryInstruction::LoadField { field, target_register, .. } => {
+            QueryInstruction::LoadField {
+                field,
+                target_register,
+                ..
+            } => {
                 if field.is_empty() {
                     return Err(SemanticCLIError::validation_error(
                         "Field name cannot be empty",
@@ -141,7 +161,11 @@ impl BCIBValidator {
                 register_tracker.assign_register(*target_register)?;
                 Ok(())
             }
-            QueryInstruction::LoadLiteral { value, target_register, .. } => {
+            QueryInstruction::LoadLiteral {
+                value,
+                target_register,
+                ..
+            } => {
                 value.validate()?;
                 register_tracker.assign_register(*target_register)?;
                 Ok(())
@@ -150,17 +174,28 @@ impl BCIBValidator {
                 self.validate_filter_expression(expression)?;
                 Ok(())
             }
-            QueryInstruction::ApplyFilterBool { filter_register, .. } => {
+            QueryInstruction::ApplyFilterBool {
+                filter_register, ..
+            } => {
                 register_tracker.validate_register_used(*filter_register)?;
                 Ok(())
             }
-            QueryInstruction::Compare { left, right, target_register, .. } => {
+            QueryInstruction::Compare {
+                left,
+                right,
+                target_register,
+                ..
+            } => {
                 self.validate_operand_ref(left, register_tracker)?;
                 self.validate_operand_ref(right, register_tracker)?;
                 register_tracker.assign_register(*target_register)?;
                 Ok(())
             }
-            QueryInstruction::LogicalOp { operands, target_register, .. } => {
+            QueryInstruction::LogicalOp {
+                operands,
+                target_register,
+                ..
+            } => {
                 for operand in operands {
                     self.validate_operand_ref(operand, register_tracker)?;
                 }
@@ -174,20 +209,30 @@ impl BCIBValidator {
     fn validate_system_instruction(&self, instruction: &SystemInstruction) -> Result<()> {
         match instruction {
             SystemInstruction::SystemStatus { .. } => {
-                let required_capability = Capability::System { scope: SystemScope::Status };
+                let required_capability = Capability::System {
+                    scope: SystemScope::Status,
+                };
                 if !self.capability_checker.has_capability(&required_capability) {
                     return Err(SemanticCLIError::security_error(
-                        format!("Permission denied: missing capability {:?}", required_capability),
+                        format!(
+                            "Permission denied: missing capability {:?}",
+                            required_capability
+                        ),
                         ErrorCode::E601,
                     ));
                 }
                 Ok(())
             }
             SystemInstruction::ListAgents { .. } => {
-                let required_capability = Capability::System { scope: SystemScope::Agents };
+                let required_capability = Capability::System {
+                    scope: SystemScope::Agents,
+                };
                 if !self.capability_checker.has_capability(&required_capability) {
                     return Err(SemanticCLIError::security_error(
-                        format!("Permission denied: missing capability {:?}", required_capability),
+                        format!(
+                            "Permission denied: missing capability {:?}",
+                            required_capability
+                        ),
                         ErrorCode::E601,
                     ));
                 }
@@ -199,8 +244,12 @@ impl BCIBValidator {
     /// Validate debug instruction with debug capability
     fn validate_debug_instruction(&self, instruction: &DebugInstruction) -> Result<()> {
         match instruction {
-            DebugInstruction::Explain { target_sequence_id, .. } |
-            DebugInstruction::DryRun { target_sequence_id, .. } => {
+            DebugInstruction::Explain {
+                target_sequence_id, ..
+            }
+            | DebugInstruction::DryRun {
+                target_sequence_id, ..
+            } => {
                 if target_sequence_id.is_empty() {
                     return Err(SemanticCLIError::validation_error(
                         "Debug instruction requires a valid sequence ID",
@@ -212,7 +261,10 @@ impl BCIBValidator {
                 let required_capability = Capability::Debug;
                 if !self.capability_checker.has_capability(&required_capability) {
                     return Err(SemanticCLIError::security_error(
-                        format!("Permission denied: missing capability {:?}", required_capability),
+                        format!(
+                            "Permission denied: missing capability {:?}",
+                            required_capability
+                        ),
                         ErrorCode::E601,
                     ));
                 }
@@ -223,7 +275,10 @@ impl BCIBValidator {
                 let required_capability = Capability::Debug;
                 if !self.capability_checker.has_capability(&required_capability) {
                     return Err(SemanticCLIError::security_error(
-                        format!("Permission denied: missing capability {:?}", required_capability),
+                        format!(
+                            "Permission denied: missing capability {:?}",
+                            required_capability
+                        ),
                         ErrorCode::E601,
                     ));
                 }
@@ -233,7 +288,11 @@ impl BCIBValidator {
     }
 
     /// Validate operand reference (AR-1: OperandRef model)
-    fn validate_operand_ref(&self, operand: &OperandRef, register_tracker: &RegisterTracker) -> Result<()> {
+    fn validate_operand_ref(
+        &self,
+        operand: &OperandRef,
+        register_tracker: &RegisterTracker,
+    ) -> Result<()> {
         match operand {
             OperandRef::Field(field) => {
                 if field.is_empty() {
@@ -245,9 +304,7 @@ impl BCIBValidator {
                 }
                 Ok(())
             }
-            OperandRef::Literal(value) => {
-                value.validate()
-            }
+            OperandRef::Literal(value) => value.validate(),
             OperandRef::TempRegister(register) => {
                 register_tracker.validate_register_used(*register)
             }
@@ -296,7 +353,7 @@ impl Default for BCIBValidator {
 }
 
 /// Legacy AST-based validator (DEPRECATED - will be moved to separate module)
-/// 
+///
 /// This validator is kept for backward compatibility but should not be used
 /// for new Gate B functionality. Use BCIBValidator instead.
 #[deprecated(note = "Use BCIBValidator for Gate B functionality")]
@@ -336,7 +393,10 @@ impl Validator {
                 if !self.context_registry.exists(&path_str) {
                     return Err(SemanticCLIError::validation_error(
                         format!("Context '{}' does not exist", path_str),
-                        format!("Available contexts: {}", self.context_registry.list_available().join(", ")),
+                        format!(
+                            "Available contexts: {}",
+                            self.context_registry.list_available().join(", ")
+                        ),
                         ErrorCode::E200,
                     ));
                 }
@@ -347,7 +407,10 @@ impl Validator {
                 if !self.context_registry.exists(&path_str) {
                     return Err(SemanticCLIError::validation_error(
                         format!("Context '{}' does not exist", path_str),
-                        format!("Available contexts: {}", self.context_registry.list_available().join(", ")),
+                        format!(
+                            "Available contexts: {}",
+                            self.context_registry.list_available().join(", ")
+                        ),
                         ErrorCode::E200,
                     ));
                 }
@@ -358,7 +421,10 @@ impl Validator {
                 if !self.context_registry.exists(&path_str) {
                     return Err(SemanticCLIError::validation_error(
                         format!("Context '{}' does not exist", path_str),
-                        format!("Available contexts: {}", self.context_registry.list_available().join(", ")),
+                        format!(
+                            "Available contexts: {}",
+                            self.context_registry.list_available().join(", ")
+                        ),
                         ErrorCode::E200,
                     ));
                 }
@@ -371,12 +437,19 @@ impl Validator {
 
     /// Legacy context path validation (DEPRECATED)
     #[deprecated(note = "Use BCIBValidator for contextual capability validation")]
-    fn validate_context_path(&self, context_path: &[String], _location: SourceLocation) -> Result<()> {
+    fn validate_context_path(
+        &self,
+        context_path: &[String],
+        _location: SourceLocation,
+    ) -> Result<()> {
         let path_str = context_path.join(".");
         if !self.context_registry.exists(&path_str) {
             return Err(SemanticCLIError::validation_error(
                 format!("Context '{}' does not exist", path_str),
-                format!("Available contexts: {}", self.context_registry.list_available().join(", ")),
+                format!(
+                    "Available contexts: {}",
+                    self.context_registry.list_available().join(", ")
+                ),
                 ErrorCode::E200,
             ));
         }
@@ -457,7 +530,7 @@ impl ContextRegistry {
     /// Create a new context registry with default contexts
     pub fn new() -> Self {
         let mut contexts = HashMap::new();
-        
+
         // Add default contexts for Phase 3.5.1
         contexts.insert("data.users".to_string(), ContextSchema::users());
         contexts.insert("data.logs".to_string(), ContextSchema::logs());
@@ -604,10 +677,10 @@ impl std::fmt::Display for ExprType {
 }
 
 /// Capability checker for contextual capabilities (AR-4: Single source of truth)
-/// 
+///
 /// Uses BCIB::Capability as the single source of truth for all capability definitions.
 /// No duplicate capability enums - everything goes through BCIB model.
-/// 
+///
 /// # TODO (Gate C):
 /// This will evolve to CapabilityStore with subject, scope, context, and constraints
 /// for more granular permission management.
@@ -621,23 +694,29 @@ impl CapabilityChecker {
     /// Create a new capability checker with default contextual capabilities
     pub fn new() -> Self {
         let mut capabilities = HashSet::new();
-        
+
         // Add contextual read capabilities (AR-4)
         let read_contexts = vec![
             "data.users",
-            "data.logs", 
+            "data.logs",
             "fs.logs",
             "system.processes",
             "system.agents",
         ];
 
         for context in read_contexts {
-            capabilities.insert(Capability::Read { context: context.to_string() });
+            capabilities.insert(Capability::Read {
+                context: context.to_string(),
+            });
         }
 
         // Add system capabilities with scopes (AR-4)
-        capabilities.insert(Capability::System { scope: SystemScope::Status });
-        capabilities.insert(Capability::System { scope: SystemScope::Agents });
+        capabilities.insert(Capability::System {
+            scope: SystemScope::Status,
+        });
+        capabilities.insert(Capability::System {
+            scope: SystemScope::Agents,
+        });
 
         // Add debug capability
         capabilities.insert(Capability::Debug);
@@ -667,7 +746,9 @@ impl CapabilityChecker {
 
     /// Legacy method: Check if user can read from a context (BRIDGE METHOD)
     pub fn can_read(&self, context: &str) -> bool {
-        let capability = Capability::Read { context: context.to_string() };
+        let capability = Capability::Read {
+            context: context.to_string(),
+        };
         self.has_capability(&capability)
     }
 
@@ -688,13 +769,11 @@ impl Default for CapabilityChecker {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bcib::{ComparisonOp, Value};
     use crate::types::SourceLocation;
-    use crate::bcib::{Value, ComparisonOp};
 
     fn create_test_location() -> SourceLocation {
         SourceLocation::new(1, 1, 0)
@@ -714,7 +793,7 @@ mod tests {
     #[test]
     fn test_bcib_sequence_validation_success() {
         let validator = BCIBValidator::new();
-        
+
         // Create a valid BCIB sequence with flat instruction graph (AR-1)
         let instructions = vec![
             BCIBInstruction::Context(ContextInstruction::LoadContext {
@@ -751,19 +830,17 @@ mod tests {
     #[test]
     fn test_bcib_sequence_validation_invalid_context() {
         let validator = BCIBValidator::new();
-        
+
         // Create BCIB sequence with invalid context
-        let instructions = vec![
-            BCIBInstruction::Context(ContextInstruction::LoadContext {
-                path: "invalid.context".to_string(),
-                location: create_test_location(),
-            }),
-        ];
+        let instructions = vec![BCIBInstruction::Context(ContextInstruction::LoadContext {
+            path: "invalid.context".to_string(),
+            location: create_test_location(),
+        })];
 
         let sequence = BCIBSequence::new(instructions);
         let result = validator.validate_sequence(&sequence);
         assert!(result.is_err());
-        
+
         if let Err(SemanticCLIError::ValidationError { code, .. }) = result {
             assert_eq!(code, ErrorCode::E200);
         } else {
@@ -774,7 +851,7 @@ mod tests {
     #[test]
     fn test_register_tracking_success() {
         let validator = BCIBValidator::new();
-        
+
         // Create sequence with proper register usage (AR-1: Flat instruction graph)
         let instructions = vec![
             BCIBInstruction::Context(ContextInstruction::LoadContext {
@@ -803,7 +880,7 @@ mod tests {
     #[test]
     fn test_register_tracking_use_before_assign() {
         let validator = BCIBValidator::new();
-        
+
         // Create sequence with register used before assignment
         let instructions = vec![
             BCIBInstruction::Context(ContextInstruction::LoadContext {
@@ -827,7 +904,7 @@ mod tests {
     #[test]
     fn test_register_tracking_double_assignment() {
         let validator = BCIBValidator::new();
-        
+
         // Create sequence with double register assignment
         let instructions = vec![
             BCIBInstruction::Context(ContextInstruction::LoadContext {
@@ -854,7 +931,7 @@ mod tests {
     #[test]
     fn test_contextual_capabilities_validation() {
         let validator = BCIBValidator::new();
-        
+
         // Test system status capability (AR-4: Contextual capabilities)
         let system_instruction = SystemInstruction::SystemStatus {
             location: create_test_location(),
@@ -873,7 +950,7 @@ mod tests {
     #[test]
     fn test_debug_instruction_validation() {
         let validator = BCIBValidator::new();
-        
+
         // Valid debug instruction (AR-3: Sequence references)
         let debug_instruction = DebugInstruction::Explain {
             target_sequence_id: "test-sequence-123".to_string(),
@@ -894,7 +971,7 @@ mod tests {
     #[test]
     fn test_filter_expression_validation() {
         let validator = BCIBValidator::new();
-        
+
         // Valid filter expression (AR-2: Normalization flag)
         let filter = FilterExpression::new(
             "age".to_string(),
@@ -940,38 +1017,54 @@ mod tests {
     fn test_operand_ref_validation() {
         let validator = BCIBValidator::new();
         let register_tracker = RegisterTracker::new();
-        
+
         // Valid operand references (AR-1: OperandRef model)
         let field_ref = OperandRef::Field("age".to_string());
-        assert!(validator.validate_operand_ref(&field_ref, &register_tracker).is_ok());
+        assert!(validator
+            .validate_operand_ref(&field_ref, &register_tracker)
+            .is_ok());
 
         let literal_ref = OperandRef::Literal(Value::Number(42.0));
-        assert!(validator.validate_operand_ref(&literal_ref, &register_tracker).is_ok());
+        assert!(validator
+            .validate_operand_ref(&literal_ref, &register_tracker)
+            .is_ok());
 
         // Invalid operand references
         let empty_field = OperandRef::Field("".to_string());
-        assert!(validator.validate_operand_ref(&empty_field, &register_tracker).is_err());
+        assert!(validator
+            .validate_operand_ref(&empty_field, &register_tracker)
+            .is_err());
 
         let invalid_literal = OperandRef::Literal(Value::Number(f64::NAN));
-        assert!(validator.validate_operand_ref(&invalid_literal, &register_tracker).is_err());
+        assert!(validator
+            .validate_operand_ref(&invalid_literal, &register_tracker)
+            .is_err());
     }
 
     #[test]
     fn test_capability_checker_contextual() {
         let checker = CapabilityChecker::new();
-        
+
         // Test contextual read capabilities (AR-4: Single source of truth)
-        let read_users = Capability::Read { context: "data.users".to_string() };
+        let read_users = Capability::Read {
+            context: "data.users".to_string(),
+        };
         assert!(checker.has_capability(&read_users));
 
-        let read_invalid = Capability::Read { context: "invalid.context".to_string() };
+        let read_invalid = Capability::Read {
+            context: "invalid.context".to_string(),
+        };
         assert!(!checker.has_capability(&read_invalid));
 
         // Test system capabilities
-        let system_status = Capability::System { scope: SystemScope::Status };
+        let system_status = Capability::System {
+            scope: SystemScope::Status,
+        };
         assert!(checker.has_capability(&system_status));
 
-        let system_agents = Capability::System { scope: SystemScope::Agents };
+        let system_agents = Capability::System {
+            scope: SystemScope::Agents,
+        };
         assert!(checker.has_capability(&system_agents));
 
         // Test debug capability
@@ -981,19 +1074,19 @@ mod tests {
     #[test]
     fn test_register_tracker() {
         let mut tracker = RegisterTracker::new();
-        
+
         // Test successful assignment
         assert!(tracker.assign_register(0).is_ok());
         assert!(tracker.assign_register(1).is_ok());
-        
+
         // Test double assignment error
         assert!(tracker.assign_register(0).is_err());
-        
+
         // Test validation of used registers
         assert!(tracker.validate_register_used(0).is_ok());
         assert!(tracker.validate_register_used(1).is_ok());
         assert!(tracker.validate_register_used(2).is_err()); // Not assigned
-        
+
         // Test final state validation
         assert!(tracker.validate_final_state().is_ok());
     }
@@ -1026,7 +1119,7 @@ mod tests {
         let context = vec!["invalid".to_string(), "context".to_string()];
         let result = validator.validate_context_path(&context, create_test_location());
         assert!(result.is_err());
-        
+
         if let Err(SemanticCLIError::ValidationError { code, .. }) = result {
             assert_eq!(code, ErrorCode::E200);
         } else {
@@ -1050,12 +1143,12 @@ mod tests {
     #[test]
     fn test_context_schema() {
         let schema = ContextSchema::users();
-        
+
         assert!(schema.has_field("name"));
         assert!(schema.has_field("age"));
         assert!(schema.has_field("email"));
         assert!(!schema.has_field("invalid_field"));
-        
+
         assert_eq!(schema.get_field_type("name"), Some(ExprType::String));
         assert_eq!(schema.get_field_type("age"), Some(ExprType::Number));
         assert_eq!(schema.get_field_type("active"), Some(ExprType::Boolean));
@@ -1064,12 +1157,12 @@ mod tests {
     #[test]
     fn test_capability_checker_legacy_methods() {
         let checker = CapabilityChecker::new();
-        
+
         // Legacy bridge methods still work
         assert!(checker.can_read("data.users"));
         assert!(!checker.can_write("data.users")); // Write not allowed in Phase 3.5.1
         assert!(!checker.can_delete("data.users")); // Delete not allowed in Phase 3.5.1
-        
+
         assert!(!checker.can_read("invalid.context"));
     }
 }

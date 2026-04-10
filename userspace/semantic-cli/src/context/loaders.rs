@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 pub trait ContextLoader: Send + Sync {
     /// Load context data
     fn load(&self) -> Result<ContextData>;
-    
+
     /// Get loader name for debugging
     fn name(&self) -> &str;
 }
@@ -46,7 +46,7 @@ impl ContextLoader for MockUserLoader {
                 "roles": ["admin", "developer"]
             }),
             json!({
-                "id": "user_002", 
+                "id": "user_002",
                 "name": "Bob Smith",
                 "age": 34,
                 "email": "bob@example.com",
@@ -57,7 +57,7 @@ impl ContextLoader for MockUserLoader {
                 "id": "user_003",
                 "name": "Carol Davis",
                 "age": 29,
-                "email": "carol@example.com", 
+                "email": "carol@example.com",
                 "active": false,
                 "roles": ["analyst"]
             }),
@@ -120,7 +120,7 @@ impl ContextLoader for MockLogLoader {
             }),
             json!({
                 "id": "log_002",
-                "timestamp": "2026-01-15T10:31:15Z", 
+                "timestamp": "2026-01-15T10:31:15Z",
                 "level": "WARN",
                 "message": "High memory usage detected",
                 "source": "memory_manager",
@@ -283,7 +283,7 @@ impl ContextLoader for MockAgentLoader {
             }),
             json!({
                 "id": "agent_002",
-                "name": "NetworkAgent", 
+                "name": "NetworkAgent",
                 "status": "active",
                 "active": true,
                 "load": 42.8,
@@ -331,14 +331,14 @@ mod tests {
     fn test_mock_user_loader() {
         let loader = MockUserLoader::new();
         assert_eq!(loader.name(), "MockUserLoader");
-        
+
         let result = loader.load();
         assert!(result.is_ok());
-        
+
         let data = result.unwrap();
         assert!(!data.items.is_empty());
         assert_eq!(data.items.len(), 5);
-        
+
         // Check first user structure
         let first_user = &data.items[0];
         assert!(first_user.get("id").is_some());
@@ -352,14 +352,14 @@ mod tests {
     fn test_mock_log_loader() {
         let loader = MockLogLoader::new();
         assert_eq!(loader.name(), "MockLogLoader");
-        
+
         let result = loader.load();
         assert!(result.is_ok());
-        
+
         let data = result.unwrap();
         assert!(!data.items.is_empty());
         assert_eq!(data.items.len(), 5);
-        
+
         // Check first log structure
         let first_log = &data.items[0];
         assert!(first_log.get("id").is_some());
@@ -374,14 +374,14 @@ mod tests {
     fn test_mock_process_loader() {
         let loader = MockProcessLoader::new();
         assert_eq!(loader.name(), "MockProcessLoader");
-        
+
         let result = loader.load();
         assert!(result.is_ok());
-        
+
         let data = result.unwrap();
         assert!(!data.items.is_empty());
         assert_eq!(data.items.len(), 6);
-        
+
         // Check first process structure
         let first_process = &data.items[0];
         assert!(first_process.get("pid").is_some());
@@ -396,14 +396,14 @@ mod tests {
     fn test_mock_agent_loader() {
         let loader = MockAgentLoader::new();
         assert_eq!(loader.name(), "MockAgentLoader");
-        
+
         let result = loader.load();
         assert!(result.is_ok());
-        
+
         let data = result.unwrap();
         assert!(!data.items.is_empty());
         assert_eq!(data.items.len(), 5);
-        
+
         // Check first agent structure
         let first_agent = &data.items[0];
         assert!(first_agent.get("id").is_some());
@@ -420,20 +420,20 @@ mod tests {
         let log_loader = MockLogLoader::new();
         let process_loader = MockProcessLoader::new();
         let agent_loader = MockAgentLoader::new();
-        
+
         // Test that all loaders complete within reasonable time (< 100ms each)
         let start = Instant::now();
         let _ = user_loader.load();
         assert!(start.elapsed().as_millis() < 100);
-        
+
         let start = Instant::now();
         let _ = log_loader.load();
         assert!(start.elapsed().as_millis() < 100);
-        
+
         let start = Instant::now();
         let _ = process_loader.load();
         assert!(start.elapsed().as_millis() < 100);
-        
+
         let start = Instant::now();
         let _ = agent_loader.load();
         assert!(start.elapsed().as_millis() < 100);
@@ -442,14 +442,14 @@ mod tests {
     #[test]
     fn test_data_consistency() {
         let loader = MockUserLoader::new();
-        
+
         // Load data multiple times and verify consistency
         let data1 = loader.load().unwrap();
         let data2 = loader.load().unwrap();
-        
+
         // Should have same structure (though values may vary due to randomness)
         assert_eq!(data1.items.len(), data2.items.len());
-        
+
         // Check that all required fields are present in both loads
         for (item1, item2) in data1.items.iter().zip(data2.items.iter()) {
             assert!(item1.get("id").is_some());

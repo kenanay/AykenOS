@@ -37,7 +37,10 @@ impl IndexedRegisterAllocator {
         let allocation = self.inner.allocate_for_sequence(bcib)?;
         self.stats = IndexedRegisterAllocationStats {
             total_registers: allocation.allocated_registers.len(),
-            capacity: bcib.instructions.len().max(allocation.allocated_registers.len()),
+            capacity: bcib
+                .instructions
+                .len()
+                .max(allocation.allocated_registers.len()),
         };
         Ok(IndexedRegisterAllocation {
             allocated_registers: allocation.allocated_registers,

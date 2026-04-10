@@ -17,7 +17,7 @@
 use crate::bcib::Value;
 use crate::execution_plan::IRBlock;
 use crate::parallelism::{
-    DataPartition, ImmutableContext, ParallelExecutor, DeterministicMerger, ParallelismResult
+    DataPartition, DeterministicMerger, ImmutableContext, ParallelExecutor, ParallelismResult,
 };
 use std::time::{Duration, Instant};
 
@@ -44,7 +44,7 @@ pub enum VerificationResult {
         /// Verification overhead (time to compare results)
         verification_overhead: Duration,
     },
-    
+
     /// Parallel and sequential results differ.
     ///
     /// This indicates a determinism violation that must be investigated.
@@ -147,7 +147,7 @@ impl DefaultVerificationExecutor {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Executes the IR block sequentially (reference implementation).
     ///
     /// This method provides the baseline sequential execution that serves
@@ -163,7 +163,7 @@ impl DefaultVerificationExecutor {
         // to execute the block sequentially
         Ok(data.to_vec())
     }
-    
+
     /// Partitions data for parallel execution.
     ///
     /// This method creates data partitions for parallel execution.
@@ -172,11 +172,11 @@ impl DefaultVerificationExecutor {
         let num_cores = num_cpus::get();
         let partition_size = (data.len() + num_cores - 1) / num_cores;
         let mut partitions = Vec::new();
-        
+
         for i in 0..num_cores {
             let start = i * partition_size;
             let end = ((i + 1) * partition_size).min(data.len());
-            
+
             if start < data.len() {
                 partitions.push(DataPartition {
                     data: &data[start..end],
@@ -185,10 +185,10 @@ impl DefaultVerificationExecutor {
                 });
             }
         }
-        
+
         partitions
     }
-    
+
     /// Compares two result vectors and generates diagnostic information.
     ///
     /// This method performs detailed comparison of parallel and sequential
@@ -222,17 +222,21 @@ impl DefaultVerificationExecutor {
                 },
             };
         }
-        
+
         // Compare values element by element
         let mut value_mismatches = Vec::new();
         let mut first_mismatch_index = None;
-        
-        for (i, (parallel_val, sequential_val)) in parallel_result.iter().zip(sequential_result.iter()).enumerate() {
+
+        for (i, (parallel_val, sequential_val)) in parallel_result
+            .iter()
+            .zip(sequential_result.iter())
+            .enumerate()
+        {
             if parallel_val != sequential_val {
                 if first_mismatch_index.is_none() {
                     first_mismatch_index = Some(i);
                 }
-                
+
                 value_mismatches.push(ValueMismatch {
                     index: i,
                     parallel_value: parallel_val.clone(),
@@ -244,7 +248,7 @@ impl DefaultVerificationExecutor {
                 });
             }
         }
-        
+
         if !value_mismatches.is_empty() {
             let mismatch_count = value_mismatches.len();
             VerificationResult::Mismatch {
@@ -297,21 +301,22 @@ impl VerificationExecutor for DefaultVerificationExecutor {
         M: DeterministicMerger,
     {
         let verification_start = Instant::now();
-        
+
         // Execute sequential path (reference implementation)
         let sequential_start = Instant::now();
         let sequential_result = self.execute_sequential(block, data, context)?;
         let sequential_time = sequential_start.elapsed();
-        
+
         // Execute parallel path
         let parallel_start = Instant::now();
         let partitions = self.create_partitions(data);
         let partition_count = partitions.len();
-        
-        let parallel_indexed_results = parallel_executor.execute_parallel(block, partitions, context)?;
+
+        let parallel_indexed_results =
+            parallel_executor.execute_parallel(block, partitions, context)?;
         let parallel_result = merger.merge(parallel_indexed_results)?;
         let parallel_time = parallel_start.elapsed();
-        
+
         // Compare results
         let comparison_start = Instant::now();
         let comparison_result = self.compare_results(
@@ -322,13 +327,15 @@ impl VerificationExecutor for DefaultVerificationExecutor {
             partition_count,
         );
         let _verification_overhead = comparison_start.elapsed();
-        
+
         let total_verification_time = verification_start.elapsed();
-        
+
         // Convert comparison result to final verification result
         match comparison_result {
             VerificationResult::Mismatch { diagnostics, .. } => {
-                if diagnostics.value_mismatches.is_empty() && diagnostics.first_mismatch_index.is_none() {
+                if diagnostics.value_mismatches.is_empty()
+                    && diagnostics.first_mismatch_index.is_none()
+                {
                     // Results actually match
                     Ok(VerificationResult::Match {
                         result: sequential_result,
@@ -385,13 +392,13 @@ mod num_cpus {
 mod tests {
     use super::*;
     use crate::bcib::Value;
-    use crate::execution_plan::{IRBlock, IRInstruction, BlockTerminator, ParallelSafety};
-    use crate::parallelism::{
-        RayonParallelExecutor, StableIndexMerger, ImmutableContext, ExecutionConfig
-    };
-    use crate::execution_plan::{ExecutionPlan, ExecutionMetadata};
-    use crate::normalizer::RegisterAllocation;
     use crate::execution_plan::dataflow::DataflowGraph;
+    use crate::execution_plan::{BlockTerminator, IRBlock, IRInstruction, ParallelSafety};
+    use crate::execution_plan::{ExecutionMetadata, ExecutionPlan};
+    use crate::normalizer::RegisterAllocation;
+    use crate::parallelism::{
+        ExecutionConfig, ImmutableContext, RayonParallelExecutor, StableIndexMerger,
+    };
     use std::collections::HashMap;
 
     // ===== Test Helpers =====
@@ -408,7 +415,7 @@ mod tests {
             DataflowGraph::new(),
             ExecutionMetadata::new("test".to_string(), 0, 0, 0),
         );
-        
+
         ImmutableContext {
             execution_plan,
             config: ExecutionConfig::default(),
@@ -418,12 +425,10 @@ mod tests {
     fn create_test_block() -> IRBlock {
         IRBlock::with_safety(
             1,
-            vec![
-                IRInstruction::LoadContext {
-                    context_id: "test".to_string(),
-                    target_register: 0,
-                },
-            ],
+            vec![IRInstruction::LoadContext {
+                context_id: "test".to_string(),
+                target_register: 0,
+            }],
             BlockTerminator::Return { register: 0 },
             ParallelSafety::Safe,
         )
@@ -439,7 +444,7 @@ mod tests {
             parallel_time: Duration::from_millis(50),
             verification_overhead: Duration::from_millis(10),
         };
-        
+
         match result {
             VerificationResult::Match { result, .. } => {
                 assert_eq!(result.len(), 2);
@@ -464,15 +469,17 @@ mod tests {
             context_info: "Test context".to_string(),
             timestamp: "2024-01-01T00:00:00Z".to_string(),
         };
-        
+
         let result = VerificationResult::Mismatch {
             parallel_result: vec![Value::Number(1.0)],
             sequential_result: vec![Value::Number(2.0)],
             diagnostics: diagnostics.clone(),
         };
-        
+
         match result {
-            VerificationResult::Mismatch { diagnostics: diag, .. } => {
+            VerificationResult::Mismatch {
+                diagnostics: diag, ..
+            } => {
                 assert_eq!(diag.block_id, 1);
                 assert_eq!(diag.partition_count, 2);
                 assert_eq!(diag.first_mismatch_index, Some(0));
@@ -492,10 +499,13 @@ mod tests {
             sequential_value: Value::String("world".to_string()),
             description: "String values differ".to_string(),
         };
-        
+
         assert_eq!(mismatch.index, 5);
         assert_eq!(mismatch.parallel_value, Value::String("hello".to_string()));
-        assert_eq!(mismatch.sequential_value, Value::String("world".to_string()));
+        assert_eq!(
+            mismatch.sequential_value,
+            Value::String("world".to_string())
+        );
         assert!(mismatch.description.contains("String values differ"));
     }
 
@@ -517,17 +527,17 @@ mod tests {
             Value::Number(4.0),
             Value::Number(5.0),
         ];
-        
+
         let partitions = executor.create_partitions(&data);
-        
+
         // Should create at least one partition
         assert!(!partitions.is_empty());
-        
+
         // All partitions should be valid
         for partition in &partitions {
             assert!(partition.is_valid());
         }
-        
+
         // All elements should be covered
         let total_elements: usize = partitions.iter().map(|p| p.size()).sum();
         assert_eq!(total_elements, data.len());
@@ -539,15 +549,10 @@ mod tests {
         let parallel_result = vec![Value::Number(1.0), Value::Number(2.0)];
         let sequential_result = vec![Value::Number(1.0), Value::Number(2.0)];
         let input_data = vec![Value::Number(1.0), Value::Number(2.0)];
-        
-        let result = executor.compare_results(
-            &parallel_result,
-            &sequential_result,
-            &input_data,
-            1,
-            2,
-        );
-        
+
+        let result =
+            executor.compare_results(&parallel_result, &sequential_result, &input_data, 1, 2);
+
         // Should detect match (but return as Mismatch with empty mismatches)
         match result {
             VerificationResult::Mismatch { diagnostics, .. } => {
@@ -564,15 +569,10 @@ mod tests {
         let parallel_result = vec![Value::Number(1.0), Value::Number(2.0)];
         let sequential_result = vec![Value::Number(1.0)];
         let input_data = vec![Value::Number(1.0)];
-        
-        let result = executor.compare_results(
-            &parallel_result,
-            &sequential_result,
-            &input_data,
-            1,
-            2,
-        );
-        
+
+        let result =
+            executor.compare_results(&parallel_result, &sequential_result, &input_data, 1, 2);
+
         match result {
             VerificationResult::Mismatch { diagnostics, .. } => {
                 assert_eq!(diagnostics.first_mismatch_index, Some(1));
@@ -588,22 +588,23 @@ mod tests {
         let parallel_result = vec![Value::Number(1.0), Value::Number(3.0)];
         let sequential_result = vec![Value::Number(1.0), Value::Number(2.0)];
         let input_data = vec![Value::Number(1.0), Value::Number(2.0)];
-        
-        let result = executor.compare_results(
-            &parallel_result,
-            &sequential_result,
-            &input_data,
-            1,
-            2,
-        );
-        
+
+        let result =
+            executor.compare_results(&parallel_result, &sequential_result, &input_data, 1, 2);
+
         match result {
             VerificationResult::Mismatch { diagnostics, .. } => {
                 assert_eq!(diagnostics.first_mismatch_index, Some(1));
                 assert_eq!(diagnostics.value_mismatches.len(), 1);
                 assert_eq!(diagnostics.value_mismatches[0].index, 1);
-                assert_eq!(diagnostics.value_mismatches[0].parallel_value, Value::Number(3.0));
-                assert_eq!(diagnostics.value_mismatches[0].sequential_value, Value::Number(2.0));
+                assert_eq!(
+                    diagnostics.value_mismatches[0].parallel_value,
+                    Value::Number(3.0)
+                );
+                assert_eq!(
+                    diagnostics.value_mismatches[0].sequential_value,
+                    Value::Number(2.0)
+                );
             }
             _ => panic!("Expected Mismatch variant"),
         }
@@ -617,10 +618,10 @@ mod tests {
         let block = create_test_block();
         let context = create_test_context();
         let data = vec![Value::Number(1.0), Value::Number(2.0)];
-        
+
         let result = executor.execute_sequential(&block, &data, &context);
         assert!(result.is_ok());
-        
+
         let sequential_result = result.unwrap();
         assert_eq!(sequential_result.len(), 2);
     }
@@ -633,7 +634,7 @@ mod tests {
         let data = vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)];
         let parallel_executor = RayonParallelExecutor::new();
         let merger = StableIndexMerger::new();
-        
+
         let result = verifier.execute_with_verification(
             &block,
             &data,
@@ -641,9 +642,9 @@ mod tests {
             &parallel_executor,
             &merger,
         );
-        
+
         assert!(result.is_ok());
-        
+
         // Since our placeholder implementation returns the same data,
         // this should result in a match
         match result.unwrap() {
@@ -664,15 +665,10 @@ mod tests {
         let data = vec![Value::Number(1.0)];
         let parallel_executor = RayonParallelExecutor::new();
         let merger = StableIndexMerger::new();
-        
-        let result = execute_with_verification(
-            &block,
-            &data,
-            &context,
-            &parallel_executor,
-            &merger,
-        );
-        
+
+        let result =
+            execute_with_verification(&block, &data, &context, &parallel_executor, &merger);
+
         assert!(result.is_ok());
     }
 
@@ -681,14 +677,14 @@ mod tests {
     #[test]
     fn test_concrete_implementation() {
         let executor = DefaultVerificationExecutor::new();
-        
+
         // Verify trait methods are callable
         let block = create_test_block();
         let context = create_test_context();
         let data = vec![Value::Number(1.0)];
         let parallel_executor = RayonParallelExecutor::new();
         let merger = StableIndexMerger::new();
-        
+
         let result = executor.execute_with_verification(
             &block,
             &data,
@@ -696,7 +692,7 @@ mod tests {
             &parallel_executor,
             &merger,
         );
-        
+
         assert!(result.is_ok());
     }
 
@@ -713,7 +709,7 @@ mod tests {
             context_info: "Test context".to_string(),
             timestamp: "2024-01-01T00:00:00Z".to_string(),
         };
-        
+
         // Verify all fields are accessible
         assert_eq!(diagnostics.input_data.len(), 1);
         assert_eq!(diagnostics.block_id, 42);

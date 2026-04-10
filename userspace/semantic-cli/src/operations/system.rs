@@ -8,18 +8,16 @@
 //! - Agent list query with System{scope: "agents"}
 //! - NO orchestration (Phase 3.5.1.b)
 
-use crate::bcib::{
-    BCIBInstruction, SystemInstruction, ContextInstruction
-};
+use crate::bcib::{BCIBInstruction, ContextInstruction, SystemInstruction};
 use crate::context::ContextManager;
-use crate::operations::{OperationResult, OperationExecutor};
 use crate::error::{ErrorCode, Result, SemanticCLIError};
-use serde_json::{Value as JsonValue, json};
+use crate::operations::{OperationExecutor, OperationResult};
+use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;
 use std::time::Instant;
 
 /// System executor for BCIB-based system operations
-/// 
+///
 /// **CRITICAL:** This executor ONLY consumes BCIB instructions from Transformer.
 /// It does NOT generate BCIB instructions - that's Transformer's job.
 pub struct SystemExecutor {
@@ -53,17 +51,15 @@ impl SystemExecutor {
 
     /// Create system executor with custom context manager
     pub fn with_context_manager(context_manager: ContextManager) -> Self {
-        Self {
-            context_manager,
-        }
+        Self { context_manager }
     }
 
     /// Execute BCIB sequence from Transformer
-    /// 
+    ///
     /// **GATE B COMPLIANCE:** Only consumes BCIB, never generates it
     pub fn execute_bcib_sequence(&mut self, input: SystemInput) -> Result<SystemResult> {
         let start_time = Instant::now();
-        
+
         // Validate input
         if input.instructions.is_empty() {
             return Err(SemanticCLIError::validation_error(
@@ -162,12 +158,12 @@ impl SystemExecutor {
     }
 
     /// Get system status information
-    /// 
+    ///
     /// **AR-4 COMPLIANCE:** Uses System{scope: "status"} capability
     fn get_system_status(&self) -> Result<JsonValue> {
         // Simulate system status collection
         // In a real implementation, this would gather actual system metrics
-        
+
         let status = json!({
             "system": {
                 "uptime_seconds": 3600,
@@ -201,18 +197,20 @@ impl SystemExecutor {
     }
 
     /// Get active agent list
-    /// 
+    ///
     /// **AR-4 COMPLIANCE:** Uses Read{context: "system.agents"} capability for context access
     fn get_agent_list(&mut self) -> Result<JsonValue> {
         // Load agent information from system.agents context
         // Use Read capability for context access (not System capability)
-        
-        let capability = crate::bcib::Capability::Read { 
-            context: "system.agents".to_string()
+
+        let capability = crate::bcib::Capability::Read {
+            context: "system.agents".to_string(),
         };
-        
-        let agents_data = self.context_manager.load_context("system.agents", &capability)?;
-        
+
+        let agents_data = self
+            .context_manager
+            .load_context("system.agents", &capability)?;
+
         // Format agent data for system operation result
         let agents = json!({
             "agents": agents_data,
@@ -271,7 +269,10 @@ impl OperationResult for SystemResult {
     fn metadata(&self) -> HashMap<String, JsonValue> {
         let mut metadata = HashMap::new();
         metadata.insert("operation_type".to_string(), json!(self.operation_type));
-        metadata.insert("execution_time_ms".to_string(), json!(self.execution_time_ms));
+        metadata.insert(
+            "execution_time_ms".to_string(),
+            json!(self.execution_time_ms),
+        );
         metadata.insert("success".to_string(), json!(self.success));
         if let Some(ref error) = self.error_message {
             metadata.insert("error_message".to_string(), json!(error));
@@ -288,9 +289,9 @@ impl SystemResult {
     /// Format system status for display
     fn format_system_status(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("=== System Status ===\n\n");
-        
+
         if let Some(system) = self.data.get("system") {
             output.push_str("System:\n");
             if let Some(uptime) = system.get("uptime_seconds").and_then(|u| u.as_u64()) {
@@ -298,26 +299,29 @@ impl SystemResult {
                 let minutes = (uptime % 3600) / 60;
                 output.push_str(&format!("  Uptime: {}h {}m\n", hours, minutes));
             }
-            
+
             if let Some(memory) = system.get("memory_usage") {
                 if let (Some(used), Some(total)) = (
                     memory.get("used_mb").and_then(|u| u.as_u64()),
-                    memory.get("total_mb").and_then(|t| t.as_u64())
+                    memory.get("total_mb").and_then(|t| t.as_u64()),
                 ) {
                     let usage_percent = (used as f64 / total as f64) * 100.0;
-                    output.push_str(&format!("  Memory: {} MB / {} MB ({:.1}%)\n", used, total, usage_percent));
+                    output.push_str(&format!(
+                        "  Memory: {} MB / {} MB ({:.1}%)\n",
+                        used, total, usage_percent
+                    ));
                 }
             }
-            
+
             if let Some(cpu) = system.get("cpu_usage") {
                 if let Some(usage) = cpu.get("usage_percent").and_then(|u| u.as_f64()) {
                     output.push_str(&format!("  CPU Usage: {:.1}%\n", usage));
                 }
             }
         }
-        
+
         output.push('\n');
-        
+
         if let Some(cli) = self.data.get("semantic_cli") {
             output.push_str("Semantic CLI:\n");
             if let Some(version) = cli.get("version").and_then(|v| v.as_str()) {
@@ -333,9 +337,9 @@ impl SystemResult {
                 output.push_str(&format!("  Status: {}\n", status));
             }
         }
-        
+
         output.push('\n');
-        
+
         if let Some(context_mgr) = self.data.get("context_manager") {
             output.push_str("Context Manager:\n");
             if let Some(contexts) = context_mgr.get("contexts_loaded").and_then(|c| c.as_u64()) {
@@ -345,18 +349,18 @@ impl SystemResult {
                 output.push_str(&format!("  Cache Hit Rate: {:.1}%\n", hit_rate * 100.0));
             }
         }
-        
+
         output.push_str(&format!("\nExecution time: {}ms", self.execution_time_ms));
-        
+
         output
     }
 
     /// Format agent list for display
     fn format_agent_list(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("=== Active Agents ===\n\n");
-        
+
         if let Some(agents_data) = self.data.get("agents").and_then(|a| a.as_array()) {
             if agents_data.is_empty() {
                 output.push_str("No agents currently active.\n");
@@ -366,15 +370,18 @@ impl SystemResult {
                 }
             }
         }
-        
+
         if let Some(total) = self.data.get("total_count").and_then(|t| t.as_u64()) {
             if let Some(active) = self.data.get("active_count").and_then(|a| a.as_u64()) {
-                output.push_str(&format!("\nSummary: {} active agents (of {} total)\n", active, total));
+                output.push_str(&format!(
+                    "\nSummary: {} active agents (of {} total)\n",
+                    active, total
+                ));
             }
         }
-        
+
         output.push_str(&format!("Execution time: {}ms", self.execution_time_ms));
-        
+
         output
     }
 
@@ -382,10 +389,19 @@ impl SystemResult {
     fn format_agent(&self, agent: &JsonValue) -> String {
         if let Some(obj) = agent.as_object() {
             let id = obj.get("id").and_then(|i| i.as_str()).unwrap_or("unknown");
-            let name = obj.get("name").and_then(|n| n.as_str()).unwrap_or("unnamed");
-            let status = obj.get("status").and_then(|s| s.as_str()).unwrap_or("unknown");
-            let agent_type = obj.get("type").and_then(|t| t.as_str()).unwrap_or("unknown");
-            
+            let name = obj
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or("unnamed");
+            let status = obj
+                .get("status")
+                .and_then(|s| s.as_str())
+                .unwrap_or("unknown");
+            let agent_type = obj
+                .get("type")
+                .and_then(|t| t.as_str())
+                .unwrap_or("unknown");
+
             format!("{} ({}) - {} [{}]", name, id, status, agent_type)
         } else {
             "Invalid agent data".to_string()
@@ -418,7 +434,7 @@ impl SystemResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{SystemInstruction, ContextInstruction};
+    use crate::bcib::{ContextInstruction, SystemInstruction};
     use crate::types::SourceLocation;
 
     fn create_status_bcib_sequence() -> Vec<BCIBInstruction> {
@@ -455,15 +471,15 @@ mod tests {
         let input = SystemInput {
             instructions: create_status_bcib_sequence(),
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_ok());
-        
+
         let system_result = result.unwrap();
         assert!(system_result.is_success());
         assert_eq!(system_result.operation_type, "status");
         assert!(system_result.execution_time_ms < 50); // Performance target
-        
+
         // Verify status data structure
         assert!(system_result.data.get("system").is_some());
         assert!(system_result.data.get("semantic_cli").is_some());
@@ -476,15 +492,15 @@ mod tests {
         let input = SystemInput {
             instructions: create_agents_bcib_sequence(),
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_ok());
-        
+
         let system_result = result.unwrap();
         assert!(system_result.is_success());
         assert_eq!(system_result.operation_type, "agents");
         assert!(system_result.execution_time_ms < 100); // Performance target (relaxed for test environment)
-        
+
         // Verify agents data structure
         assert!(system_result.data.get("agents").is_some());
         assert!(system_result.data.get("total_count").is_some());
@@ -497,7 +513,7 @@ mod tests {
         let input = SystemInput {
             instructions: Vec::new(),
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
     }
@@ -506,18 +522,20 @@ mod tests {
     fn test_invalid_instruction_type() {
         let mut executor = SystemExecutor::new();
         let input = SystemInput {
-            instructions: vec![
-                BCIBInstruction::Query(crate::bcib::QueryInstruction::ApplyFilter {
+            instructions: vec![BCIBInstruction::Query(
+                crate::bcib::QueryInstruction::ApplyFilter {
                     expression: crate::bcib::FilterExpression::new(
                         "test".to_string(),
                         crate::bcib::ComparisonOp::Equal,
-                        crate::bcib::OperandRef::Literal(crate::bcib::Value::String("test".to_string())),
+                        crate::bcib::OperandRef::Literal(crate::bcib::Value::String(
+                            "test".to_string(),
+                        )),
                     ),
                     location: SourceLocation::default(),
-                }),
-            ],
+                },
+            )],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
     }
@@ -548,7 +566,7 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let formatted = result.format();
         assert!(formatted.contains("=== System Status ==="));
         assert!(formatted.contains("Uptime: 2h 0m"));
@@ -571,7 +589,7 @@ mod tests {
                         "type": "query"
                     },
                     {
-                        "id": "agent_002", 
+                        "id": "agent_002",
                         "name": "System Agent",
                         "status": "active",
                         "type": "system"
@@ -584,7 +602,7 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let formatted = result.format();
         assert!(formatted.contains("=== Active Agents ==="));
         assert!(formatted.contains("Query Agent (agent_001) - active [query]"));
@@ -602,21 +620,23 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let metadata = result.metadata();
-        assert_eq!(metadata.get("operation_type").unwrap().as_str().unwrap(), "status");
-        assert_eq!(metadata.get("execution_time_ms").unwrap().as_u64().unwrap(), 30);
+        assert_eq!(
+            metadata.get("operation_type").unwrap().as_str().unwrap(),
+            "status"
+        );
+        assert_eq!(
+            metadata.get("execution_time_ms").unwrap().as_u64().unwrap(),
+            30
+        );
         assert_eq!(metadata.get("success").unwrap().as_bool().unwrap(), true);
     }
 
     #[test]
     fn test_error_result() {
-        let result = SystemResult::error(
-            "status".to_string(),
-            "Test error".to_string(),
-            5,
-        );
-        
+        let result = SystemResult::error("status".to_string(), "Test error".to_string(), 5);
+
         assert!(!result.is_success());
         assert_eq!(result.error_message.as_ref().unwrap(), "Test error");
         assert!(result.format().contains("Error: Test error"));
@@ -625,7 +645,7 @@ mod tests {
     #[test]
     fn test_empty_result() {
         let result = SystemResult::empty("status".to_string(), 10);
-        
+
         assert!(result.is_success());
         assert_eq!(result.operation_type, "status");
         assert_eq!(result.execution_time_ms, 10);
@@ -637,14 +657,14 @@ mod tests {
         let input = SystemInput {
             instructions: create_status_bcib_sequence(),
         };
-        
+
         let start = Instant::now();
         let result = executor.execute_bcib_sequence(input);
         let duration = start.elapsed();
-        
+
         assert!(result.is_ok());
         assert!(duration.as_millis() < 50); // Performance target: < 50ms
-        
+
         let system_result = result.unwrap();
         assert!(system_result.execution_time_ms < 50);
     }
@@ -665,10 +685,10 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
-        
+
         if let Err(error) = result {
             assert!(error.to_string().contains("Multiple system operations"));
         }
@@ -678,16 +698,14 @@ mod tests {
     fn test_no_system_operation_rejected() {
         let mut executor = SystemExecutor::new();
         let input = SystemInput {
-            instructions: vec![
-                BCIBInstruction::Context(ContextInstruction::Return {
-                    location: SourceLocation::default(),
-                }),
-            ],
+            instructions: vec![BCIBInstruction::Context(ContextInstruction::Return {
+                location: SourceLocation::default(),
+            })],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
-        
+
         if let Err(error) = result {
             assert!(error.to_string().contains("No system operation found"));
         }

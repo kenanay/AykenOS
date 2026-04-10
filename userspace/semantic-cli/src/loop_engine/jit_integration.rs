@@ -19,15 +19,15 @@
 //! 3. Type safety (accumulator type validation in native code)
 //! 4. Semantic equivalence (JIT and interpreter produce identical results)
 
-use crate::bcib::{LoopInstruction, LoopID, Value, ValueType};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
-use crate::loop_engine::{LoopContext, LoopBodyResult};
+use crate::bcib::{LoopID, LoopInstruction, Value, ValueType};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 use crate::loop_engine::monitoring::JITCompilationResult;
+use crate::loop_engine::{LoopBodyResult, LoopContext};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
-use sha2::{Sha256, Digest};
 
 /// D1 JIT integration system for hot loop compilation
 #[derive(Debug)]
@@ -60,7 +60,7 @@ pub struct JITConfig {
 }
 
 /// Comprehensive cache key for JIT compilation (Requirements 6.3)
-/// 
+///
 /// This key includes all semantic factors that affect compilation:
 /// - Loop body fingerprint (IR structure)
 /// - Semantic configuration affecting native code generation
@@ -90,7 +90,7 @@ pub struct CompiledLoopBody {
 }
 
 /// Native code representation (placeholder for actual native code)
-/// 
+///
 /// In a real D1 JIT implementation, this would contain:
 /// - Machine code bytes
 /// - Entry point addresses
@@ -179,7 +179,7 @@ impl JITIntegration {
     }
 
     /// Compile a hot loop body using D1 JIT pipeline (Requirements 6.2)
-    /// 
+    ///
     /// This method implements the core JIT compilation workflow:
     /// 1. Compute comprehensive cache key (Requirements 6.3)
     /// 2. Check cache for existing compilation
@@ -192,7 +192,7 @@ impl JITIntegration {
         loop_context: &LoopContext,
     ) -> Result<JITCompilationResult> {
         let start_time = Instant::now();
-        
+
         // Update stats
         {
             let mut stats = self.stats.write().unwrap();
@@ -209,7 +209,7 @@ impl JITIntegration {
                 let mut stats = self.stats.write().unwrap();
                 stats.cache_hits += 1;
             }
-            
+
             return Ok(JITCompilationResult::Success {
                 compilation_time: cached_body.compilation_time,
             });
@@ -223,25 +223,26 @@ impl JITIntegration {
 
         // 4. Compile using D1 JIT pipeline with constitutional guarantees
         let compiled_body = self.perform_jit_compilation(instruction, loop_context, cache_key)?;
-        
+
         // 5. Cache compiled body
         self.cache_compiled_body(compiled_body.clone())?;
 
         let compilation_time = start_time.elapsed();
-        
+
         // Update stats
         {
             let mut stats = self.stats.write().unwrap();
             stats.successful_compilations += 1;
             stats.total_compilation_time += compilation_time;
-            stats.avg_compilation_time = stats.total_compilation_time / stats.successful_compilations as u32;
+            stats.avg_compilation_time =
+                stats.total_compilation_time / stats.successful_compilations as u32;
         }
 
         Ok(JITCompilationResult::Success { compilation_time })
     }
 
     /// Compute comprehensive cache key including all semantic factors (Requirements 6.3)
-    /// 
+    ///
     /// The cache key MUST include all factors that affect native code generation:
     /// - Loop body fingerprint (IR structure)
     /// - Iteration limit (affects bounds checking in native code)
@@ -261,7 +262,7 @@ impl JITIntegration {
         // Include semantic configuration affecting native code generation
         hasher.update(loop_context.iteration_limit.to_le_bytes());
         hasher.update(loop_context.budget_timeout.to_le_bytes());
-        
+
         // Include budget measurement method (affects native code generation)
         let budget_method_bytes = match &loop_context.budget_measurement {
             crate::bcib::BudgetMeasurement::IterationCount => "iteration_count".as_bytes(),
@@ -321,12 +322,19 @@ impl JITIntegration {
 
         // Include loop-specific structure
         match instruction {
-            LoopInstruction::While { condition, body, .. } => {
+            LoopInstruction::While {
+                condition, body, ..
+            } => {
                 hasher.update(b"while_loop");
                 hasher.update(format!("{:?}", condition).as_bytes());
                 hasher.update(body.as_bytes());
             }
-            LoopInstruction::For { range, iterator_var, body, .. } => {
+            LoopInstruction::For {
+                range,
+                iterator_var,
+                body,
+                ..
+            } => {
                 hasher.update(b"for_loop");
                 hasher.update(range.start.to_le_bytes());
                 hasher.update(range.end.to_le_bytes());
@@ -334,7 +342,13 @@ impl JITIntegration {
                 hasher.update(iterator_var.as_bytes());
                 hasher.update(body.as_bytes());
             }
-            LoopInstruction::ForEach { collection, collection_type, iterator_var, body, .. } => {
+            LoopInstruction::ForEach {
+                collection,
+                collection_type,
+                iterator_var,
+                body,
+                ..
+            } => {
                 hasher.update(b"foreach_loop");
                 hasher.update(format!("{:?}", collection).as_bytes());
                 hasher.update(format!("{:?}", collection_type).as_bytes());
@@ -353,7 +367,7 @@ impl JITIntegration {
     }
 
     /// Perform actual JIT compilation using D1 pipeline (Requirements 6.2, 6.4)
-    /// 
+    ///
     /// This method integrates with the D1 JIT compilation system to generate
     /// native code with embedded constitutional guarantees:
     /// - Bounds checking for security (Requirements 6.5)
@@ -417,7 +431,7 @@ impl JITIntegration {
     }
 
     /// Generate native code with embedded constitutional guarantees (Requirements 6.4, 6.5)
-    /// 
+    ///
     /// This method generates native code that enforces:
     /// - Iteration limit checking (never exceed constitutional bounds)
     /// - Budget timeout enforcement (deterministic budget measurement)
@@ -526,7 +540,7 @@ impl JITIntegration {
         };
 
         let mut compilation_flags = Vec::new();
-        
+
         if self.config.enable_bounds_checking {
             compilation_flags.push("bounds_checking".to_string());
         }
@@ -555,15 +569,17 @@ impl JITIntegration {
     /// Cache compiled body with comprehensive key (Requirements 6.3)
     fn cache_compiled_body(&mut self, compiled_body: CompiledLoopBody) -> Result<()> {
         let mut cache = self.compiled_cache.write().unwrap();
-        
+
         // Check cache size limits
         if cache.len() >= self.config.max_cache_entries {
             // Evict oldest entry (simple LRU approximation)
-            if let Some((oldest_key, _)) = cache.iter()
+            if let Some((oldest_key, _)) = cache
+                .iter()
                 .min_by_key(|(_, body)| body.compiled_at)
-                .map(|(k, v)| (k.clone(), v.clone())) {
+                .map(|(k, v)| (k.clone(), v.clone()))
+            {
                 cache.remove(&oldest_key);
-                
+
                 // Update stats
                 let mut stats = self.stats.write().unwrap();
                 stats.cache_evictions += 1;
@@ -572,7 +588,7 @@ impl JITIntegration {
 
         // Insert compiled body
         cache.insert(compiled_body.cache_key.clone(), compiled_body);
-        
+
         // Update stats
         {
             let mut stats = self.stats.write().unwrap();
@@ -583,7 +599,7 @@ impl JITIntegration {
     }
 
     /// Execute compiled loop body (placeholder for actual native execution)
-    /// 
+    ///
     /// In a real implementation, this would:
     /// 1. Set up native execution context
     /// 2. Call compiled native code
@@ -627,7 +643,7 @@ impl JITIntegration {
     pub fn clear_cache(&mut self) {
         let mut cache = self.compiled_cache.write().unwrap();
         cache.clear();
-        
+
         let mut stats = self.stats.write().unwrap();
         stats.cached_entries = 0;
     }
@@ -720,7 +736,7 @@ impl Default for JITIntegration {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopConfig, LoopRange, Value, ValueType, BudgetMeasurement};
+    use crate::bcib::{BudgetMeasurement, LoopConfig, LoopRange, Value, ValueType};
     use crate::types::SourceLocation;
 
     fn create_test_for_loop() -> LoopInstruction {
@@ -756,9 +772,9 @@ mod tests {
     fn test_jit_eligibility_check() {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
-        
+
         assert!(jit.is_jit_eligible(&instruction));
-        
+
         // Test with disabled JIT
         let disabled_config = JITConfig {
             enabled: false,
@@ -773,18 +789,24 @@ mod tests {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
-        let cache_key1 = jit.compute_comprehensive_cache_key(&instruction, &context).unwrap();
-        let cache_key2 = jit.compute_comprehensive_cache_key(&instruction, &context).unwrap();
-        
+
+        let cache_key1 = jit
+            .compute_comprehensive_cache_key(&instruction, &context)
+            .unwrap();
+        let cache_key2 = jit
+            .compute_comprehensive_cache_key(&instruction, &context)
+            .unwrap();
+
         // Same inputs should produce same cache key
         assert_eq!(cache_key1, cache_key2);
-        
+
         // Different contexts should produce different cache keys
         let mut different_context = context.clone();
         different_context.iteration_limit = 5000;
-        let cache_key3 = jit.compute_comprehensive_cache_key(&instruction, &different_context).unwrap();
-        
+        let cache_key3 = jit
+            .compute_comprehensive_cache_key(&instruction, &different_context)
+            .unwrap();
+
         assert_ne!(cache_key1, cache_key3);
     }
 
@@ -792,23 +814,23 @@ mod tests {
     fn test_loop_body_fingerprint_computation() {
         let jit = JITIntegration::new();
         let instruction1 = create_test_for_loop();
-        
+
         let fingerprint1 = jit.compute_loop_body_fingerprint(&instruction1).unwrap();
         let fingerprint2 = jit.compute_loop_body_fingerprint(&instruction1).unwrap();
-        
+
         // Same instruction should produce same fingerprint
         assert_eq!(fingerprint1, fingerprint2);
-        
+
         // Different instruction should produce different fingerprint
         let instruction2 = LoopInstruction::For {
             id: LoopID::new("different-loop".to_string()),
-            range: LoopRange::new(0, 500, 1), // Different range
-            iterator_var: "j".to_string(), // Different iterator
+            range: LoopRange::new(0, 500, 1),   // Different range
+            iterator_var: "j".to_string(),      // Different iterator
             body: "different-body".to_string(), // Different body
             config: LoopConfig::new(Value::Number(0.0), ValueType::Number),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let fingerprint3 = jit.compute_loop_body_fingerprint(&instruction2).unwrap();
         assert_ne!(fingerprint1, fingerprint3);
     }
@@ -818,9 +840,11 @@ mod tests {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
-        let d1_context = jit.prepare_d1_compilation_context(&instruction, &context).unwrap();
-        
+
+        let d1_context = jit
+            .prepare_d1_compilation_context(&instruction, &context)
+            .unwrap();
+
         assert_eq!(d1_context.loop_type, crate::bcib::LoopType::For);
         assert_eq!(d1_context.iteration_limit, context.iteration_limit);
         assert_eq!(d1_context.budget_timeout, context.budget_timeout);
@@ -835,10 +859,14 @@ mod tests {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
-        let d1_context = jit.prepare_d1_compilation_context(&instruction, &context).unwrap();
-        let native_code = jit.generate_native_code_with_guarantees(&d1_context).unwrap();
-        
+
+        let d1_context = jit
+            .prepare_d1_compilation_context(&instruction, &context)
+            .unwrap();
+        let native_code = jit
+            .generate_native_code_with_guarantees(&d1_context)
+            .unwrap();
+
         // Verify constitutional guarantees are embedded
         assert!(native_code.has_bounds_checking);
         assert!(native_code.has_budget_enforcement);
@@ -853,16 +881,24 @@ mod tests {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
-        let metadata = jit.create_compilation_metadata(&instruction, &context).unwrap();
-        
+
+        let metadata = jit
+            .create_compilation_metadata(&instruction, &context)
+            .unwrap();
+
         assert_eq!(metadata.loop_type, crate::bcib::LoopType::For);
         assert_eq!(metadata.iteration_limit, context.iteration_limit);
         assert_eq!(metadata.budget_timeout, context.budget_timeout);
         assert_eq!(metadata.accumulator_type, context.accumulator_type);
-        assert!(metadata.compilation_flags.contains(&"bounds_checking".to_string()));
-        assert!(metadata.compilation_flags.contains(&"budget_enforcement".to_string()));
-        assert!(metadata.compilation_flags.contains(&"type_safety".to_string()));
+        assert!(metadata
+            .compilation_flags
+            .contains(&"bounds_checking".to_string()));
+        assert!(metadata
+            .compilation_flags
+            .contains(&"budget_enforcement".to_string()));
+        assert!(metadata
+            .compilation_flags
+            .contains(&"type_safety".to_string()));
         assert_eq!(metadata.compiler_version, "d1-jit-v1.0.0");
     }
 
@@ -871,7 +907,7 @@ mod tests {
         let mut jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
+
         // First compilation should be a cache miss
         let result1 = jit.compile_loop_body(&instruction, &context).unwrap();
         match result1 {
@@ -882,13 +918,13 @@ mod tests {
                 panic!("Expected successful compilation");
             }
         }
-        
+
         let stats1 = jit.get_stats();
         assert_eq!(stats1.compilation_attempts, 1);
         assert_eq!(stats1.successful_compilations, 1);
         assert_eq!(stats1.cache_misses, 1);
         assert_eq!(stats1.cached_entries, 1);
-        
+
         // Second compilation should be a cache hit
         let result2 = jit.compile_loop_body(&instruction, &context).unwrap();
         match result2 {
@@ -899,7 +935,7 @@ mod tests {
                 panic!("Expected successful compilation");
             }
         }
-        
+
         let stats2 = jit.get_stats();
         assert_eq!(stats2.compilation_attempts, 2);
         assert_eq!(stats2.successful_compilations, 1); // Only one actual compilation
@@ -915,7 +951,7 @@ mod tests {
             ..JITConfig::default()
         };
         let mut jit = JITIntegration::with_config(config);
-        
+
         // Create three different instructions
         let instruction1 = LoopInstruction::For {
             id: LoopID::new("loop1".to_string()),
@@ -925,7 +961,7 @@ mod tests {
             config: LoopConfig::new(Value::Number(0.0), ValueType::Number),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let instruction2 = LoopInstruction::For {
             id: LoopID::new("loop2".to_string()),
             range: LoopRange::new(0, 200, 1),
@@ -934,7 +970,7 @@ mod tests {
             config: LoopConfig::new(Value::Number(0.0), ValueType::Number),
             location: SourceLocation::new(2, 1, 0),
         };
-        
+
         let instruction3 = LoopInstruction::For {
             id: LoopID::new("loop3".to_string()),
             range: LoopRange::new(0, 300, 1),
@@ -943,20 +979,20 @@ mod tests {
             config: LoopConfig::new(Value::Number(0.0), ValueType::Number),
             location: SourceLocation::new(3, 1, 0),
         };
-        
+
         let context = create_test_loop_context();
-        
+
         // Compile first two instructions (fill cache)
         jit.compile_loop_body(&instruction1, &context).unwrap();
         jit.compile_loop_body(&instruction2, &context).unwrap();
-        
+
         let stats_before = jit.get_stats();
         assert_eq!(stats_before.cached_entries, 2);
         assert_eq!(stats_before.cache_evictions, 0);
-        
+
         // Compile third instruction (should trigger eviction)
         jit.compile_loop_body(&instruction3, &context).unwrap();
-        
+
         let stats_after = jit.get_stats();
         assert_eq!(stats_after.cached_entries, 2); // Still at max
         assert_eq!(stats_after.cache_evictions, 1); // One eviction occurred
@@ -965,18 +1001,18 @@ mod tests {
     #[test]
     fn test_jit_stats_calculations() {
         let mut stats = JITStats::new();
-        
+
         // Test initial state
         assert_eq!(stats.success_rate(), 0.0);
         assert_eq!(stats.cache_hit_rate(), 0.0);
-        
+
         // Add some data
         stats.compilation_attempts = 10;
         stats.successful_compilations = 8;
         stats.failed_compilations = 2;
         stats.cache_hits = 15;
         stats.cache_misses = 5;
-        
+
         // Test calculations
         assert_eq!(stats.success_rate(), 80.0);
         assert_eq!(stats.cache_hit_rate(), 75.0);
@@ -986,21 +1022,27 @@ mod tests {
     fn test_cache_key_sensitivity_to_budget_measurement() {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
-        
+
         // Create contexts with different budget measurements
         let mut context1 = create_test_loop_context();
         context1.budget_measurement = BudgetMeasurement::IterationCount;
-        
+
         let mut context2 = create_test_loop_context();
         context2.budget_measurement = BudgetMeasurement::InstructionCount { weight: 10 };
-        
+
         let mut context3 = create_test_loop_context();
         context3.budget_measurement = BudgetMeasurement::Hybrid { multiplier: 1.5 };
-        
-        let key1 = jit.compute_comprehensive_cache_key(&instruction, &context1).unwrap();
-        let key2 = jit.compute_comprehensive_cache_key(&instruction, &context2).unwrap();
-        let key3 = jit.compute_comprehensive_cache_key(&instruction, &context3).unwrap();
-        
+
+        let key1 = jit
+            .compute_comprehensive_cache_key(&instruction, &context1)
+            .unwrap();
+        let key2 = jit
+            .compute_comprehensive_cache_key(&instruction, &context2)
+            .unwrap();
+        let key3 = jit
+            .compute_comprehensive_cache_key(&instruction, &context3)
+            .unwrap();
+
         // All keys should be different
         assert_ne!(key1, key2);
         assert_ne!(key2, key3);
@@ -1011,21 +1053,27 @@ mod tests {
     fn test_cache_key_sensitivity_to_accumulator_type() {
         let jit = JITIntegration::new();
         let instruction = create_test_for_loop();
-        
+
         // Create contexts with different accumulator types
         let mut context1 = create_test_loop_context();
         context1.accumulator_type = ValueType::Number;
-        
+
         let mut context2 = create_test_loop_context();
         context2.accumulator_type = ValueType::String;
-        
+
         let mut context3 = create_test_loop_context();
         context3.accumulator_type = ValueType::Boolean;
-        
-        let key1 = jit.compute_comprehensive_cache_key(&instruction, &context1).unwrap();
-        let key2 = jit.compute_comprehensive_cache_key(&instruction, &context2).unwrap();
-        let key3 = jit.compute_comprehensive_cache_key(&instruction, &context3).unwrap();
-        
+
+        let key1 = jit
+            .compute_comprehensive_cache_key(&instruction, &context1)
+            .unwrap();
+        let key2 = jit
+            .compute_comprehensive_cache_key(&instruction, &context2)
+            .unwrap();
+        let key3 = jit
+            .compute_comprehensive_cache_key(&instruction, &context3)
+            .unwrap();
+
         // All keys should be different
         assert_ne!(key1, key2);
         assert_ne!(key2, key3);
@@ -1041,7 +1089,7 @@ mod tests {
         assert!(default_config.enable_budget_enforcement);
         assert!(default_config.enable_type_safety);
         assert!(!default_config.enable_debug_info);
-        
+
         // Test custom config
         let custom_config = JITConfig {
             enabled: false,
@@ -1052,7 +1100,7 @@ mod tests {
             enable_type_safety: false,
             enable_debug_info: true,
         };
-        
+
         let jit = JITIntegration::with_config(custom_config.clone());
         assert_eq!(jit.get_config(), &custom_config);
     }
@@ -1062,16 +1110,16 @@ mod tests {
         let mut jit = JITIntegration::new();
         let instruction = create_test_for_loop();
         let context = create_test_loop_context();
-        
+
         // Add something to cache
         jit.compile_loop_body(&instruction, &context).unwrap();
-        
+
         let stats_before = jit.get_stats();
         assert_eq!(stats_before.cached_entries, 1);
-        
+
         // Clear cache
         jit.clear_cache();
-        
+
         let stats_after = jit.get_stats();
         assert_eq!(stats_after.cached_entries, 0);
     }

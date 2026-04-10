@@ -21,35 +21,35 @@
 //!
 //! **Requirements:** 7.1, 7.4, 7.5, 15.1, 15.2, 15.3, 15.6
 
-use crate::bcib::{LoopInstruction, LoopType, Value, LoopRange, ControlFlowType};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
-use crate::loop_engine::{
-    LoopResult, SafetyAnalysisResult, SafetyClass,
-    IterationPartition, ParallelizationDecision, 
-};
-use crate::loop_engine::executor::{PartitionExecutionResult, PartitionResultType, IterationExecutionResult};
-use crate::parallelism::{
-    DataPartition, ImmutableContext, ParallelExecutor, RayonParallelExecutor,
-    ContiguousPartitioner, DataPartitioner, StableIndexMerger, DeterministicMerger,
-    ParallelismError
-};
-use crate::execution_plan::{IRBlock, IRInstruction, BlockTerminator, ParallelSafety};
 use super::core::LoopBodyFn;
 use super::stable_index_mapping::StableIndexMapper;
+use crate::bcib::{ControlFlowType, LoopInstruction, LoopRange, LoopType, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
+use crate::execution_plan::{BlockTerminator, IRBlock, IRInstruction, ParallelSafety};
+use crate::loop_engine::executor::{
+    IterationExecutionResult, PartitionExecutionResult, PartitionResultType,
+};
+use crate::loop_engine::{
+    IterationPartition, LoopResult, ParallelizationDecision, SafetyAnalysisResult, SafetyClass,
+};
+use crate::parallelism::{
+    ContiguousPartitioner, DataPartition, DataPartitioner, DeterministicMerger, ImmutableContext,
+    ParallelExecutor, ParallelismError, RayonParallelExecutor, StableIndexMerger,
+};
 
 /// D2 Parallelism Integration for D3 Loop Support
-/// 
+///
 /// This struct provides the integration layer between the D3 Loop Support system
 /// and the D2 Parallelism Architecture. It implements the constitutional requirements
 /// for safe parallel loop execution while maintaining deterministic semantics.
-/// 
+///
 /// # Design Principles
-/// 
+///
 /// 1. **Safety First**: Only Safe loop bodies are parallelized
 /// 2. **Deterministic Partitioning**: Same iteration count → same partitions
 /// 3. **Stable Index Mapping**: Iteration i always processes same input data
 /// 4. **Constitutional Compliance**: All constitutional rules are enforced
-/// 
+///
 /// **Requirements:** 7.1, 7.4, 7.5, 15.1, 15.2, 15.3, 15.6
 pub struct D2LoopIntegration {
     /// D2 parallel executor for executing partitions
@@ -74,13 +74,13 @@ impl D2LoopIntegration {
     }
 
     /// Determine if a loop should be parallelized (Phase 7.1 - Parallelization trigger logic)
-    /// 
+    ///
     /// This method implements the complete parallelization decision system:
     /// 1. Check loop type eligibility (Constitutional: While loops NEVER parallelized)
     /// 2. Verify safety classification (only Safe loops can be parallelized)
     /// 3. Ensure static iteration count is available
     /// 4. Check minimum threshold for parallelization benefit
-    /// 
+    ///
     /// **Requirements 7.1**: Only parallelize Safe loop bodies, exclude While loops,
     /// support For and ForEach loops with statically known iteration counts,
     /// fall back to sequential execution for Unsafe loops.
@@ -93,7 +93,9 @@ impl D2LoopIntegration {
         match instruction.loop_type() {
             LoopType::While => {
                 return ParallelizationDecision::Sequential {
-                    reason: "While loops are excluded from parallelization (non-static iteration count)".to_string(),
+                    reason:
+                        "While loops are excluded from parallelization (non-static iteration count)"
+                            .to_string(),
                 };
             }
             LoopType::For | LoopType::ForEach => {
@@ -116,7 +118,8 @@ impl D2LoopIntegration {
             Some(count) => count,
             None => {
                 return ParallelizationDecision::Sequential {
-                    reason: "Dynamic iteration count - cannot determine parallelization benefit".to_string(),
+                    reason: "Dynamic iteration count - cannot determine parallelization benefit"
+                        .to_string(),
                 };
             }
         };
@@ -141,7 +144,7 @@ impl D2LoopIntegration {
     }
 
     /// Get static iteration count for a loop instruction (Phase 7.1)
-    /// 
+    ///
     /// Returns Some(count) if the iteration count can be determined statically,
     /// None if the iteration count is dynamic or unknown.
     pub fn get_static_iteration_count(&self, instruction: &LoopInstruction) -> Option<u32> {
@@ -153,12 +156,14 @@ impl D2LoopIntegration {
             LoopInstruction::For { range, config, .. } => {
                 // For loops have static iteration count if range is known
                 let iteration_count = self.calculate_for_loop_iterations(range);
-                
+
                 // Ensure we don't exceed the iteration limit
                 let limited_count = iteration_count.min(config.iteration_limit);
                 Some(limited_count)
             }
-            LoopInstruction::ForEach { collection, config, .. } => {
+            LoopInstruction::ForEach {
+                collection, config, ..
+            } => {
                 // ForEach loops have static iteration count if collection size is known
                 match self.get_collection_size_hint(collection) {
                     Some(size) => {
@@ -176,22 +181,22 @@ impl D2LoopIntegration {
     }
 
     /// Partition iterations deterministically for parallel execution (Phase 7.2)
-    /// 
+    ///
     /// This method implements the constitutional requirement for deterministic partitioning:
     /// - Same iteration count → same partitions (always)
     /// - Available parallelism (core count) is optimization hint, not semantic input
     /// - Fixed chunk size algorithm ensures reproducible partition boundaries
-    /// 
+    ///
     /// **Requirements 7.5, 15.1, 15.3**: Partition iterations based on iteration count only,
     /// use fixed chunk size algorithm, treat available parallelism as upper bound.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `total_iterations` - Total number of iterations to partition
     /// * `available_parallelism` - Available parallel workers (upper bound only)
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Vector of `IterationPartition` structs defining deterministic partition boundaries
     pub fn partition_iterations_deterministic(
         &self,
@@ -202,7 +207,7 @@ impl D2LoopIntegration {
         if total_iterations == 0 {
             return Vec::new();
         }
-        
+
         if available_parallelism == 0 {
             return Vec::new();
         }
@@ -210,17 +215,17 @@ impl D2LoopIntegration {
         // Phase 7.2: Deterministic chunk size calculation
         // Constitutional rule: Based on iteration count only, not machine-dependent factors
         let chunk_size = self.calculate_deterministic_chunk_size(total_iterations);
-        
+
         // Calculate number of partitions needed
         let num_partitions = ((total_iterations + chunk_size - 1) / chunk_size) as usize;
-        
+
         // Treat available parallelism as upper bound (optimization, not semantic)
         let effective_partitions = num_partitions.min(available_parallelism);
-        
+
         // Create deterministic partitions using fixed chunk size
         let mut partitions = Vec::with_capacity(effective_partitions);
         let mut start_iteration = 0;
-        
+
         for partition_id in 0..effective_partitions {
             // Calculate partition boundaries deterministically
             let end_iteration = if partition_id == effective_partitions - 1 {
@@ -230,7 +235,7 @@ impl D2LoopIntegration {
                 // Regular partition gets fixed chunk size
                 (start_iteration + chunk_size).min(total_iterations)
             };
-            
+
             if start_iteration < end_iteration {
                 partitions.push(IterationPartition {
                     partition_id,
@@ -239,25 +244,25 @@ impl D2LoopIntegration {
                     iteration_count: end_iteration - start_iteration,
                 });
             }
-            
+
             start_iteration = end_iteration;
-            
+
             // Stop if we've covered all iterations
             if start_iteration >= total_iterations {
                 break;
             }
         }
-        
+
         partitions
     }
 
     /// Execute loop with deterministic parallel partitioning (Phase 7.3)
-    /// 
+    ///
     /// This method implements the complete parallel loop execution workflow:
     /// 1. Partition iterations deterministically
     /// 2. Execute partitions in parallel using D2 system with stable index mapping
     /// 3. Collect results in deterministic order (partition 0, 1, 2, ...)
-    /// 
+    ///
     /// **Requirements 7.4, 15.2, 15.6**: Stable index mapping, deterministic partitioning,
     /// deterministic result collection order
     pub fn execute_loop_parallel(
@@ -268,8 +273,9 @@ impl D2LoopIntegration {
         available_parallelism: usize,
     ) -> Result<LoopResult> {
         // Phase 7.3: Create deterministic partitions
-        let partitions = self.partition_iterations_deterministic(iteration_count, available_parallelism);
-        
+        let partitions =
+            self.partition_iterations_deterministic(iteration_count, available_parallelism);
+
         if partitions.is_empty() {
             // No partitions - return empty result
             return Ok(LoopResult::success(
@@ -277,30 +283,27 @@ impl D2LoopIntegration {
                 0,
             ));
         }
-        
+
         if partitions.len() == 1 {
             // Single partition - execute sequentially for efficiency
             return self.execute_single_partition_sequential(instruction, &body_fn, &partitions[0]);
         }
-        
+
         // Phase 7.3: Execute partitions with stable index mapping using D2 system
-        let partition_results = self.execute_partitions_with_d2_system(
-            instruction,
-            &body_fn,
-            &partitions,
-        )?;
-        
+        let partition_results =
+            self.execute_partitions_with_d2_system(instruction, &body_fn, &partitions)?;
+
         // Phase 7.3: Collect results in deterministic order (partition 0, 1, 2, ...)
         let final_result = self.collect_partition_results_deterministic(partition_results)?;
-        
+
         Ok(final_result)
     }
 
     /// Execute partitions using the D2 parallelism system (Phase 7.3)
-    /// 
+    ///
     /// This method integrates with the D2 parallelism architecture to execute
     /// loop partitions in parallel while maintaining stable index mapping.
-    /// 
+    ///
     /// **Requirements 7.4, 15.2**: Stable index mapping, deterministic data access
     fn execute_partitions_with_d2_system(
         &mut self,
@@ -311,31 +314,30 @@ impl D2LoopIntegration {
         // Convert loop partitions to D2 data partitions
         let input_data = self.create_input_data_for_partitions(instruction, partitions)?;
         let data_partitions = self.convert_to_d2_partitions(&input_data, partitions);
-        
+
         // Create immutable context for D2 execution
         let context = self.create_d2_execution_context(instruction)?;
-        
+
         // Create IR block for loop body execution
         let ir_block = self.create_ir_block_for_loop_body(instruction, body_fn)?;
-        
+
         // Execute partitions in parallel using D2 system
-        let d2_results = self.parallel_executor.execute_parallel(
-            &ir_block,
-            data_partitions,
-            &context,
-        ).map_err(|e| self.convert_parallelism_error(e))?;
-        
+        let d2_results = self
+            .parallel_executor
+            .execute_parallel(&ir_block, data_partitions, &context)
+            .map_err(|e| self.convert_parallelism_error(e))?;
+
         // Convert D2 results back to loop partition results with stable index mapping
         self.convert_d2_results_to_partition_results(d2_results, partitions)
     }
 
     /// Collect partition results in deterministic order (Phase 7.3)
-    /// 
+    ///
     /// This method implements deterministic result collection using the D2 merger:
     /// - Results collected in partition order (0, 1, 2, ...)
     /// - Within each partition, results ordered by iteration index
     /// - Final result identical to sequential execution
-    /// 
+    ///
     /// **Requirements 15.6**: Deterministic result collection order
     fn collect_partition_results_deterministic(
         &self,
@@ -344,11 +346,15 @@ impl D2LoopIntegration {
         // Phase 7.3: Sort partition results by partition ID (deterministic order)
         let mut sorted_results = partition_results;
         sorted_results.sort_by_key(|result| result.partition_id);
-        
+
         // Check for early termination (break or error) in any partition
         for partition_result in &sorted_results {
             match &partition_result.result_type {
-                PartitionResultType::Break { final_accumulator, iterations_completed, .. } => {
+                PartitionResultType::Break {
+                    final_accumulator,
+                    iterations_completed,
+                    ..
+                } => {
                     return Ok(LoopResult::break_result(
                         final_accumulator.clone(),
                         *iterations_completed,
@@ -362,15 +368,20 @@ impl D2LoopIntegration {
                 }
             }
         }
-        
+
         // All partitions completed successfully - collect iteration results
         let mut all_iteration_results = Vec::new();
         let mut total_iterations = 0;
         let mut final_accumulator = Value::Number(0.0); // Will be updated
-        
+
         // Phase 7.3: Collect results in partition order (0, 1, 2, ...)
         for partition_result in sorted_results {
-            if let PartitionResultType::Success { iteration_results, final_accumulator: acc, iterations_completed } = partition_result.result_type {
+            if let PartitionResultType::Success {
+                iteration_results,
+                final_accumulator: acc,
+                iterations_completed,
+            } = partition_result.result_type
+            {
                 // Add iteration results with stable index mapping
                 for iteration_result in iteration_results {
                     all_iteration_results.push((
@@ -378,19 +389,20 @@ impl D2LoopIntegration {
                         iteration_result.result_value,
                     ));
                 }
-                
+
                 total_iterations += iterations_completed;
                 final_accumulator = acc; // Use the last partition's accumulator
             }
         }
-        
+
         // Phase 7.3: Use D2 stable index merger for deterministic result ordering
-        let _ordered_results = self.merger.merge(all_iteration_results)
-            .map_err(|e| SemanticCLIError::execution_error(
+        let _ordered_results = self.merger.merge(all_iteration_results).map_err(|e| {
+            SemanticCLIError::execution_error(
                 &format!("Failed to merge parallel results: {}", e),
                 ErrorCode::E500,
-            ))?;
-        
+            )
+        })?;
+
         // Reconstruct final accumulator from ordered results
         // In a real implementation, this would use the accumulator pattern
         // For Phase 7.3, we'll use the last partition's accumulator
@@ -451,9 +463,9 @@ impl D2LoopIntegration {
         // - Available CPU cores
         // - Memory access patterns
         // - Historical performance data
-        
+
         const MAX_BENEFIT_THRESHOLD: u32 = 10000;
-        
+
         if iteration_count >= MAX_BENEFIT_THRESHOLD {
             1.0 // Maximum benefit for large loops
         } else {
@@ -461,27 +473,29 @@ impl D2LoopIntegration {
             let min_threshold = 100.0; // MIN_PARALLEL_ITERATIONS as f64
             let max_threshold = MAX_BENEFIT_THRESHOLD as f64;
             let current = iteration_count as f64;
-            
-            ((current - min_threshold) / (max_threshold - min_threshold)).min(1.0).max(0.0)
+
+            ((current - min_threshold) / (max_threshold - min_threshold))
+                .min(1.0)
+                .max(0.0)
         }
     }
 
     /// Calculate deterministic chunk size for iteration partitioning (Phase 7.2)
-    /// 
+    ///
     /// This method implements the fixed chunk size algorithm required for deterministic
     /// partitioning. The chunk size is calculated based solely on iteration count,
     /// ensuring the same input always produces the same partitions.
-    /// 
+    ///
     /// **Requirements 15.1**: Partition iterations based on iteration count only
     fn calculate_deterministic_chunk_size(&self, total_iterations: u32) -> u32 {
         // Phase 7.2: Fixed chunk size algorithm
         // Constitutional rule: Deterministic calculation based on iteration count only
-        
+
         // Use a fixed chunk size that scales with iteration count
         // This ensures deterministic partitioning while providing reasonable parallelism
-        const MIN_CHUNK_SIZE: u32 = 100;  // Minimum chunk size for overhead amortization
+        const MIN_CHUNK_SIZE: u32 = 100; // Minimum chunk size for overhead amortization
         const MAX_CHUNK_SIZE: u32 = 1000; // Maximum chunk size for load balancing
-        
+
         if total_iterations <= MIN_CHUNK_SIZE {
             // Small loops: single chunk
             total_iterations
@@ -506,11 +520,11 @@ impl D2LoopIntegration {
         // to the core loop executor
         let mut accumulator = instruction.get_config().initial_accumulator.clone();
         let mut iterations_completed = 0;
-        
+
         for global_iteration in partition.start_iteration..partition.end_iteration {
             // Execute iteration body
             let body_result = body_fn(&accumulator, global_iteration)?;
-            
+
             match body_result {
                 crate::loop_engine::core::LoopBodyResult::Break(new_accumulator) => {
                     accumulator = new_accumulator;
@@ -528,7 +542,7 @@ impl D2LoopIntegration {
                 }
             }
         }
-        
+
         Ok(LoopResult::success(accumulator, iterations_completed))
     }
 
@@ -539,11 +553,13 @@ impl D2LoopIntegration {
         partitions: &[IterationPartition],
     ) -> Result<Vec<Value>> {
         // Use stable index mapper for deterministic input data creation
-        let input_mapping = self.index_mapper.create_stable_input_mapping(instruction, partitions)?;
-        
+        let input_mapping = self
+            .index_mapper
+            .create_stable_input_mapping(instruction, partitions)?;
+
         // Extract values in deterministic order
         let input_data: Vec<Value> = input_mapping.into_iter().map(|(_, value)| value).collect();
-        
+
         Ok(input_data)
     }
 
@@ -554,7 +570,8 @@ impl D2LoopIntegration {
         global_iteration: u32,
     ) -> Result<Value> {
         // Use stable index mapper for deterministic input data access
-        self.index_mapper.get_input_data_for_iteration(instruction, global_iteration)
+        self.index_mapper
+            .get_input_data_for_iteration(instruction, global_iteration)
     }
 
     /// Convert loop partitions to D2 data partitions
@@ -567,7 +584,10 @@ impl D2LoopIntegration {
     }
 
     /// Create D2 execution context for parallel execution
-    fn create_d2_execution_context(&self, instruction: &LoopInstruction) -> Result<ImmutableContext> {
+    fn create_d2_execution_context(
+        &self,
+        instruction: &LoopInstruction,
+    ) -> Result<ImmutableContext> {
         // Create a basic execution plan for D2 context
         let execution_plan = crate::execution_plan::ExecutionPlan::new(
             vec![],
@@ -585,14 +605,14 @@ impl D2LoopIntegration {
                 0,
             ),
         );
-        
+
         let config = crate::parallelism::types::ExecutionConfig {
             max_execution_time: None,
             max_iterations: Some(instruction.get_config().iteration_limit as usize),
             verification_mode: false,
             replay_mode: false,
         };
-        
+
         Ok(ImmutableContext {
             execution_plan,
             config,
@@ -610,12 +630,10 @@ impl D2LoopIntegration {
         // to IR instructions for D2 execution
         Ok(IRBlock::with_safety(
             0,
-            vec![
-                IRInstruction::LoadContext {
-                    context_id: "loop-body".to_string(),
-                    target_register: 0,
-                },
-            ],
+            vec![IRInstruction::LoadContext {
+                context_id: "loop-body".to_string(),
+                target_register: 0,
+            }],
             BlockTerminator::Return { register: 0 },
             ParallelSafety::Safe,
         ))
@@ -628,15 +646,18 @@ impl D2LoopIntegration {
         partitions: &[IterationPartition],
     ) -> Result<Vec<PartitionExecutionResult>> {
         let mut partition_results = Vec::with_capacity(partitions.len());
-        
+
         // Group D2 results by partition
         for (partition_idx, partition) in partitions.iter().enumerate() {
             let mut iteration_results = Vec::new();
             let mut iterations_completed = 0;
-            
+
             // Collect results for this partition
             for global_iteration in partition.start_iteration..partition.end_iteration {
-                if let Some((_, value)) = d2_results.iter().find(|(idx, _)| *idx == global_iteration as usize) {
+                if let Some((_, value)) = d2_results
+                    .iter()
+                    .find(|(idx, _)| *idx == global_iteration as usize)
+                {
                     iteration_results.push(IterationExecutionResult {
                         global_iteration_index: global_iteration,
                         result_value: value.clone(),
@@ -645,14 +666,14 @@ impl D2LoopIntegration {
                     iterations_completed += 1;
                 }
             }
-            
+
             // Create partition result
             let final_accumulator = if let Some(last_result) = iteration_results.last() {
                 last_result.result_value.clone()
             } else {
                 Value::Number(0.0) // Default accumulator
             };
-            
+
             partition_results.push(PartitionExecutionResult::success(
                 partition_idx,
                 iteration_results,
@@ -660,7 +681,7 @@ impl D2LoopIntegration {
                 iterations_completed,
             ));
         }
-        
+
         Ok(partition_results)
     }
 
@@ -670,20 +691,27 @@ impl D2LoopIntegration {
             ParallelismError::ExecutionError { message, .. } => {
                 SemanticCLIError::execution_error(&message, ErrorCode::E500)
             }
-            ParallelismError::SafetyViolation { reason, .. } => {
-                SemanticCLIError::validation_error(reason, "Check loop safety analysis", ErrorCode::E400)
-            }
-            ParallelismError::DeterminismViolation { .. } => {
-                SemanticCLIError::execution_error("Determinism violation in parallel execution", ErrorCode::E500)
-            }
-            ParallelismError::PerformanceDegradation { .. } => {
-                SemanticCLIError::execution_error("Performance degradation detected", ErrorCode::E500)
-            }
+            ParallelismError::SafetyViolation { reason, .. } => SemanticCLIError::validation_error(
+                reason,
+                "Check loop safety analysis",
+                ErrorCode::E400,
+            ),
+            ParallelismError::DeterminismViolation { .. } => SemanticCLIError::execution_error(
+                "Determinism violation in parallel execution",
+                ErrorCode::E500,
+            ),
+            ParallelismError::PerformanceDegradation { .. } => SemanticCLIError::execution_error(
+                "Performance degradation detected",
+                ErrorCode::E500,
+            ),
             ParallelismError::ThreadPoolInitialization { reason } => {
                 SemanticCLIError::execution_error(&reason, ErrorCode::E500)
             }
             ParallelismError::ConstitutionalViolation { principle, .. } => {
-                SemanticCLIError::execution_error(&format!("Constitutional violation: {}", principle), ErrorCode::E500)
+                SemanticCLIError::execution_error(
+                    &format!("Constitutional violation: {}", principle),
+                    ErrorCode::E500,
+                )
             }
             ParallelismError::SecurityError { message } => {
                 SemanticCLIError::execution_error(&message, ErrorCode::E500)
@@ -692,21 +720,22 @@ impl D2LoopIntegration {
     }
 
     /// Verify stable index mapping for a loop instruction (Phase 7.3)
-    /// 
+    ///
     /// This method verifies that the stable index mapping is working correctly
     /// for the given loop instruction by testing multiple iterations.
-    /// 
+    ///
     /// **Requirements 15.2**: Verify stable index mapping correctness
     pub fn verify_stable_mapping(
         &self,
         instruction: &LoopInstruction,
         test_iterations: u32,
     ) -> Result<crate::loop_engine::stable_index_mapping::StableMappingVerification> {
-        self.index_mapper.verify_stable_mapping(instruction, test_iterations)
+        self.index_mapper
+            .verify_stable_mapping(instruction, test_iterations)
     }
 
     /// Analyze the index mapping strategy for a loop instruction (Phase 7.3)
-    /// 
+    ///
     /// This method analyzes the index mapping strategy that will be used
     /// for the given loop instruction, providing insights for optimization.
     pub fn analyze_mapping_strategy(
@@ -717,7 +746,7 @@ impl D2LoopIntegration {
     }
 
     /// Create a mapping cache for efficient repeated access (Phase 7.3)
-    /// 
+    ///
     /// This method creates a cache of input data mappings for efficient
     /// repeated access during parallel execution.
     pub fn create_mapping_cache(
@@ -725,7 +754,8 @@ impl D2LoopIntegration {
         instruction: &LoopInstruction,
         max_iterations: u32,
     ) -> Result<crate::loop_engine::stable_index_mapping::IndexMappingCache> {
-        self.index_mapper.create_mapping_cache(instruction, max_iterations)
+        self.index_mapper
+            .create_mapping_cache(instruction, max_iterations)
     }
 }
 
@@ -762,7 +792,9 @@ impl LoopInstructionExt for LoopInstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopID, LoopConfig, LoopRange, Value, ValueType, BudgetMeasurement, ErrorRecoveryPolicy};
+    use crate::bcib::{
+        BudgetMeasurement, ErrorRecoveryPolicy, LoopConfig, LoopID, LoopRange, Value, ValueType,
+    };
     use crate::types::SourceLocation;
 
     fn create_test_loop_config() -> LoopConfig {
@@ -799,9 +831,12 @@ mod tests {
         let safety_result = create_test_safety_result(SafetyClass::Safe);
 
         let decision = integration.should_parallelize_loop(&instruction, &safety_result);
-        
+
         assert!(decision.is_sequential());
-        assert!(decision.sequential_reason().unwrap().contains("While loops are excluded"));
+        assert!(decision
+            .sequential_reason()
+            .unwrap()
+            .contains("While loops are excluded"));
     }
 
     #[test]
@@ -818,9 +853,12 @@ mod tests {
         let safety_result = create_test_safety_result(SafetyClass::Unsafe);
 
         let decision = integration.should_parallelize_loop(&instruction, &safety_result);
-        
+
         assert!(decision.is_sequential());
-        assert!(decision.sequential_reason().unwrap().contains("Unsafe for parallelization"));
+        assert!(decision
+            .sequential_reason()
+            .unwrap()
+            .contains("Unsafe for parallelization"));
     }
 
     #[test]
@@ -837,9 +875,12 @@ mod tests {
         let safety_result = create_test_safety_result(SafetyClass::Safe);
 
         let decision = integration.should_parallelize_loop(&instruction, &safety_result);
-        
+
         assert!(decision.is_sequential());
-        assert!(decision.sequential_reason().unwrap().contains("below minimum threshold"));
+        assert!(decision
+            .sequential_reason()
+            .unwrap()
+            .contains("below minimum threshold"));
     }
 
     #[test]
@@ -856,7 +897,7 @@ mod tests {
         let safety_result = create_test_safety_result(SafetyClass::Safe);
 
         let decision = integration.should_parallelize_loop(&instruction, &safety_result);
-        
+
         assert!(decision.is_parallel());
         assert_eq!(decision.iteration_count(), Some(1000));
         assert!(decision.parallel_benefit().unwrap() > 0.0);
@@ -917,15 +958,15 @@ mod tests {
     #[test]
     fn test_deterministic_partitioning() {
         let integration = D2LoopIntegration::new();
-        
+
         // Test deterministic partitioning with same inputs
         let partitions1 = integration.partition_iterations_deterministic(1000, 4);
         let partitions2 = integration.partition_iterations_deterministic(1000, 4);
-        
+
         // Should produce identical partitions
         assert_eq!(partitions1, partitions2);
         assert!(!partitions1.is_empty());
-        
+
         // Verify partition properties
         let mut total_iterations = 0;
         for partition in &partitions1 {
@@ -938,13 +979,13 @@ mod tests {
     #[test]
     fn test_deterministic_chunk_size_calculation() {
         let integration = D2LoopIntegration::new();
-        
+
         // Small loops: single chunk
         assert_eq!(integration.calculate_deterministic_chunk_size(50), 50);
-        
+
         // Medium loops: divide into 4 chunks
         assert_eq!(integration.calculate_deterministic_chunk_size(400), 100);
-        
+
         // Large loops: use maximum chunk size
         assert_eq!(integration.calculate_deterministic_chunk_size(10000), 1000);
     }
@@ -952,19 +993,19 @@ mod tests {
     #[test]
     fn test_for_loop_iteration_calculation() {
         let integration = D2LoopIntegration::new();
-        
+
         // Forward iteration
         let range1 = LoopRange::new(0, 10, 1);
         assert_eq!(integration.calculate_for_loop_iterations(&range1), 10);
-        
+
         // Forward iteration with step 2
         let range2 = LoopRange::new(0, 10, 2);
         assert_eq!(integration.calculate_for_loop_iterations(&range2), 5);
-        
+
         // Backward iteration
         let range3 = LoopRange::new(10, 0, -1);
         assert_eq!(integration.calculate_for_loop_iterations(&range3), 10);
-        
+
         // Zero iterations
         let range4 = LoopRange::new(10, 0, 1);
         assert_eq!(integration.calculate_for_loop_iterations(&range4), 0);
@@ -973,15 +1014,15 @@ mod tests {
     #[test]
     fn test_parallelization_benefit_estimation() {
         let integration = D2LoopIntegration::new();
-        
+
         // Small iteration count: low benefit
         let benefit1 = integration.estimate_parallelization_benefit(100);
         assert_eq!(benefit1, 0.0);
-        
+
         // Medium iteration count: scaled benefit
         let benefit2 = integration.estimate_parallelization_benefit(5000);
         assert!(benefit2 > 0.0 && benefit2 < 1.0);
-        
+
         // Large iteration count: maximum benefit
         let benefit3 = integration.estimate_parallelization_benefit(10000);
         assert_eq!(benefit3, 1.0);

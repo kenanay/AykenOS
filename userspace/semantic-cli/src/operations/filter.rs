@@ -3,9 +3,7 @@
 //! This module implements filter evaluation using the OperandRef model with normalization flags.
 //! Supports comparison operations, logical operations, and field access.
 
-use crate::bcib::{
-    FilterExpression, OperandRef, Value, ComparisonOp, LogicalOperator
-};
+use crate::bcib::{ComparisonOp, FilterExpression, LogicalOperator, OperandRef, Value};
 use crate::error::{ErrorCode, Result, SemanticCLIError};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -16,7 +14,7 @@ pub struct FilterEvaluator {
     // NOTE: Registers are reserved for Gate C (normalized BCIB execution)
     // In Phase 3.5.1, filters use direct field evaluation without registers
     _registers_placeholder: HashMap<u16, JsonValue>, // Gate C placeholder
-    _next_register_placeholder: u16, // Gate C placeholder
+    _next_register_placeholder: u16,                 // Gate C placeholder
 }
 
 /// Filter evaluation result
@@ -34,7 +32,7 @@ impl FilterEvaluator {
     pub fn new() -> Self {
         Self {
             _registers_placeholder: HashMap::new(), // Gate C placeholder
-            _next_register_placeholder: 1, // Gate C placeholder
+            _next_register_placeholder: 1,          // Gate C placeholder
         }
     }
 
@@ -99,16 +97,15 @@ impl FilterEvaluator {
     /// Resolve operand value (canonical operand resolution)
     fn resolve_operand_value(&self, operand: &OperandRef, item: &JsonValue) -> Result<JsonValue> {
         match operand {
-            OperandRef::Field(field_name) => {
-                Ok(self.get_field_value(field_name, item))
-            }
-            OperandRef::Literal(literal) => {
-                self.bcib_value_to_json(literal)
-            }
+            OperandRef::Field(field_name) => Ok(self.get_field_value(field_name, item)),
+            OperandRef::Literal(literal) => self.bcib_value_to_json(literal),
             OperandRef::TempRegister(register_id) => {
                 // In Phase 3.5.1, temp registers in filters are not allowed
                 Err(SemanticCLIError::validation_error(
-                    format!("Temp register {} not allowed in Phase 3.5.1 filters", register_id),
+                    format!(
+                        "Temp register {} not allowed in Phase 3.5.1 filters",
+                        register_id
+                    ),
                     "Use Field or Literal operands in Phase 3.5.1 filters",
                     ErrorCode::E400,
                 ))
@@ -120,7 +117,9 @@ impl FilterEvaluator {
     fn bcib_value_to_json(&self, value: &Value) -> Result<JsonValue> {
         match value {
             Value::String(s) => Ok(JsonValue::String(s.clone())),
-            Value::Number(n) => Ok(JsonValue::Number(serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0)))),
+            Value::Number(n) => Ok(JsonValue::Number(
+                serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0)),
+            )),
             Value::Boolean(b) => Ok(JsonValue::Bool(*b)),
             // Collections are not supported in filter operations (Phase 3.1)
             Value::Array(_) | Value::List(_) | Value::SortedMap(_) => {
@@ -165,12 +164,14 @@ impl FilterEvaluator {
             (JsonValue::Bool(l), JsonValue::Bool(r)) => l == r,
             (JsonValue::Null, JsonValue::Null) => true,
             // Type coercion for mixed comparisons
-            (JsonValue::String(s), JsonValue::Number(n)) => {
-                s.parse::<f64>().map(|parsed| parsed == n.as_f64().unwrap_or(0.0)).unwrap_or(false)
-            }
-            (JsonValue::Number(n), JsonValue::String(s)) => {
-                s.parse::<f64>().map(|parsed| parsed == n.as_f64().unwrap_or(0.0)).unwrap_or(false)
-            }
+            (JsonValue::String(s), JsonValue::Number(n)) => s
+                .parse::<f64>()
+                .map(|parsed| parsed == n.as_f64().unwrap_or(0.0))
+                .unwrap_or(false),
+            (JsonValue::Number(n), JsonValue::String(s)) => s
+                .parse::<f64>()
+                .map(|parsed| parsed == n.as_f64().unwrap_or(0.0))
+                .unwrap_or(false),
             _ => false,
         }
     }
@@ -184,26 +185,22 @@ impl FilterEvaluator {
             }
             (JsonValue::Bool(l), JsonValue::Bool(r)) => Ok(l < r), // false < true
             // Type coercion for mixed comparisons
-            (JsonValue::String(s), JsonValue::Number(n)) => {
-                match s.parse::<f64>() {
-                    Ok(parsed) => Ok(parsed < n.as_f64().unwrap_or(0.0)),
-                    Err(_) => Err(SemanticCLIError::validation_error(
-                        format!("Cannot compare string '{}' with number", s),
-                        "Use compatible types for comparison",
-                        ErrorCode::E400,
-                    )),
-                }
-            }
-            (JsonValue::Number(n), JsonValue::String(s)) => {
-                match s.parse::<f64>() {
-                    Ok(parsed) => Ok(n.as_f64().unwrap_or(0.0) < parsed),
-                    Err(_) => Err(SemanticCLIError::validation_error(
-                        format!("Cannot compare number with string '{}'", s),
-                        "Use compatible types for comparison",
-                        ErrorCode::E400,
-                    )),
-                }
-            }
+            (JsonValue::String(s), JsonValue::Number(n)) => match s.parse::<f64>() {
+                Ok(parsed) => Ok(parsed < n.as_f64().unwrap_or(0.0)),
+                Err(_) => Err(SemanticCLIError::validation_error(
+                    format!("Cannot compare string '{}' with number", s),
+                    "Use compatible types for comparison",
+                    ErrorCode::E400,
+                )),
+            },
+            (JsonValue::Number(n), JsonValue::String(s)) => match s.parse::<f64>() {
+                Ok(parsed) => Ok(n.as_f64().unwrap_or(0.0) < parsed),
+                Err(_) => Err(SemanticCLIError::validation_error(
+                    format!("Cannot compare number with string '{}'", s),
+                    "Use compatible types for comparison",
+                    ErrorCode::E400,
+                )),
+            },
             _ => Err(SemanticCLIError::validation_error(
                 format!("Cannot compare {:?} with {:?}", left, right),
                 "Use compatible types for comparison",
@@ -353,7 +350,7 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 2); // Bob (34) and David (42)
-        
+
         for item in &filter_result.items {
             let age = item["age"].as_f64().unwrap();
             assert!(age > 30.0);
@@ -376,7 +373,7 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 3); // Alice, Bob, David
-        
+
         for item in &filter_result.items {
             assert_eq!(item["active"].as_bool().unwrap(), true);
         }
@@ -398,7 +395,7 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 3); // Bob, Carol, David
-        
+
         for item in &filter_result.items {
             assert_ne!(item["name"].as_str().unwrap(), "Alice");
         }
@@ -420,7 +417,7 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 2); // Alice (28) and Carol (29)
-        
+
         for item in &filter_result.items {
             let age = item["age"].as_f64().unwrap();
             assert!(age <= 29.0);
@@ -458,7 +455,7 @@ mod tests {
 
         let result = evaluator.evaluate_filter(&filter, &data);
         assert!(result.is_err());
-        
+
         if let Err(SemanticCLIError::ValidationError { .. }) = result {
             // Expected validation error
         } else {
@@ -480,7 +477,7 @@ mod tests {
 
         let result = evaluator.evaluate_filter(&filter, &data);
         assert!(result.is_err());
-        
+
         if let Err(SemanticCLIError::ValidationError { .. }) = result {
             // Expected validation error
         } else {
@@ -515,7 +512,7 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 2); // Bob and David (active AND age > 30)
-        
+
         for item in &filter_result.items {
             assert_eq!(item["active"].as_bool().unwrap(), true);
             assert!(item["age"].as_f64().unwrap() > 30.0);
@@ -549,8 +546,10 @@ mod tests {
 
         let filter_result = result.unwrap();
         assert_eq!(filter_result.matched_count, 2); // Alice OR Carol
-        
-        let names: Vec<&str> = filter_result.items.iter()
+
+        let names: Vec<&str> = filter_result
+            .items
+            .iter()
             .map(|item| item["name"].as_str().unwrap())
             .collect();
         assert!(names.contains(&"Alice"));
@@ -605,7 +604,7 @@ mod tests {
     #[test]
     fn test_filter_performance() {
         let mut evaluator = FilterEvaluator::new();
-        
+
         // Create larger dataset
         let mut data = Vec::new();
         for i in 0..1000 {

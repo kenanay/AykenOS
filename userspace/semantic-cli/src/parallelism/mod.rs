@@ -32,33 +32,33 @@ compile_error!(
 mod implementation {
 
     // Module declarations will be added as submodules are implemented
-    pub mod types;
-    pub mod error;
+    pub mod adaptive;
     pub mod config;
     pub mod constitutional;
-    pub mod safety_analyzer;
-    pub mod partitioner;
-    pub mod merger;
+    pub mod error;
     pub mod executor;
+    pub mod merger;
     pub mod metrics;
-    pub mod adaptive;
+    pub mod partitioner;
     pub mod reduction;
+    pub mod safety_analyzer;
+    pub mod types;
     pub mod verification;
 
     // Re-exports will be added as components are implemented
-    pub use types::*;
-    pub use error::*;
+    pub use adaptive::*;
     pub use config::*;
     pub use constitutional::*;
-    pub use safety_analyzer::*;
-    pub use partitioner::*;
-    pub use merger::*;
+    pub use error::*;
     pub use executor::*;
+    pub use merger::*;
     pub use metrics::*;
-    pub use adaptive::*;
+    pub use partitioner::*;
     pub use reduction::*;
+    pub use safety_analyzer::*;
+    pub use types::*;
     pub use verification::*;
-    
+
     // Test modules
     #[cfg(test)]
     pub mod tests;
@@ -72,9 +72,9 @@ pub use implementation::*;
 #[cfg(feature = "phase3-hardening")]
 pub mod hardening {
     //! Phase 3: Hardening, replay, and verification features
-    //! 
+    //!
     //! This module contains advanced features for system hardening,
     //! comprehensive replay capabilities, and verification modes.
-    
+
     // Hardening features will be implemented in Phase 3
 }

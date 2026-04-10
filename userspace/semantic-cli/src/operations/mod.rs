@@ -23,25 +23,25 @@
 //! 4. **Error handling**: Clear, actionable error messages
 //! 5. **Result formatting**: Human-readable output
 
-pub mod query;
-pub mod filter;
-pub mod system;
 pub mod debug;
+pub mod filter;
+pub mod query;
+pub mod system;
 
 // Re-exports for convenience
-pub use query::{QueryExecutor, QueryResult};
-pub use filter::{FilterEvaluator, FilterResult};
-pub use system::{SystemExecutor, SystemResult};
 pub use debug::{DebugExecutor, DebugResult};
+pub use filter::{FilterEvaluator, FilterResult};
+pub use query::{QueryExecutor, QueryResult};
+pub use system::{SystemExecutor, SystemResult};
 
 /// Operation result trait for consistent result handling
 pub trait OperationResult {
     /// Format result for display
     fn format(&self) -> String;
-    
+
     /// Get result metadata
     fn metadata(&self) -> std::collections::HashMap<String, serde_json::Value>;
-    
+
     /// Check if operation was successful
     fn is_success(&self) -> bool;
 }
@@ -51,7 +51,7 @@ pub trait OperationExecutor {
     type Input;
     type Output: OperationResult;
     type Error;
-    
+
     /// Execute operation with given input
     fn execute(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
 }

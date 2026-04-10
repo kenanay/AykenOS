@@ -4,24 +4,24 @@
 //! Execution layer ONLY consumes BCIB, never produces it.
 
 use crate::bcib::{
-    BCIBInstruction, BCIBSequence, BCIBMetadata, ContextInstruction, QueryInstruction, FilterExpression, 
-    OperandRef, Value, ComparisonOp
+    BCIBInstruction, BCIBMetadata, BCIBSequence, ComparisonOp, ContextInstruction,
+    FilterExpression, OperandRef, QueryInstruction, Value,
 };
 use crate::context::ContextManager;
-use crate::operations::{OperationResult, OperationExecutor, FilterEvaluator};
 use crate::error::{ErrorCode, Result, SemanticCLIError};
-use crate::normalizer::BCIBNormalizer;
 use crate::execution_plan::builder::IRBuilder;
-use crate::ir_planner::{IRExecutor, ExecutionResult};
-use serde_json::{Value as JsonValue, json};
+use crate::ir_planner::{ExecutionResult, IRExecutor};
+use crate::normalizer::BCIBNormalizer;
+use crate::operations::{FilterEvaluator, OperationExecutor, OperationResult};
+use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;
 use std::time::Instant;
 
 /// Query executor for BCIB-based query operations
-/// 
+///
 /// **CRITICAL:** This executor ONLY consumes BCIB instructions from Transformer.
 /// It does NOT generate BCIB instructions - that's Transformer's job.
-/// 
+///
 /// **C8 REFACTOR:** Uses IR pipeline exclusively (BCIB → Normalizer → ExecutionPlan → IRExecutor)
 pub struct QueryExecutor {
     context_manager: ContextManager,
@@ -85,12 +85,12 @@ impl QueryExecutor {
     }
 
     /// Execute BCIB sequence from Transformer
-    /// 
+    ///
     /// **GATE B COMPLIANCE:** Only consumes BCIB, never generates it
     /// **C8 REFACTOR:** Uses IR pipeline exclusively
     pub fn execute_bcib_sequence(&mut self, input: QueryInput) -> Result<QueryResult> {
         let start_time = Instant::now();
-        
+
         // Validate input
         if input.instructions.is_empty() {
             return Err(SemanticCLIError::validation_error(
@@ -103,55 +103,63 @@ impl QueryExecutor {
         // C8: Execute via IR pipeline
         self.execute_via_ir(input, start_time)
     }
-    
+
     /// **C8 NEW:** Execute BCIB via IR pipeline
-    /// 
+    ///
     /// Pipeline: BCIB → Normalizer → ExecutionPlan(IR) → IRExecutor → QueryResult
     fn execute_via_ir(&mut self, input: QueryInput, start_time: Instant) -> Result<QueryResult> {
         // Extract context path from BCIB instructions (for result metadata)
         let context_path = self.extract_context_path(&input.instructions);
-        
+
         // Step 1: Create BCIB sequence
         let bcib_sequence = BCIBSequence {
             instructions: input.instructions.clone(),
             metadata: BCIBMetadata::default(),
         };
-        
+
         // Step 2: Normalize BCIB
-        let normalized_bcib = self.normalizer.normalize(bcib_sequence)
-            .map_err(|e| SemanticCLIError::execution_error(
+        let normalized_bcib = self.normalizer.normalize(bcib_sequence).map_err(|e| {
+            SemanticCLIError::execution_error(
                 format!("BCIB normalization failed: {}", e),
                 ErrorCode::E500,
-            ))?;
-        
+            )
+        })?;
+
         // Step 3: Build execution plan (IR)
-        let execution_plan = self.ir_builder.build_execution_plan(normalized_bcib)
-            .map_err(|e| SemanticCLIError::execution_error(
-                format!("IR generation failed: {}", e),
-                ErrorCode::E500,
-            ))?;
-        
+        let execution_plan = self
+            .ir_builder
+            .build_execution_plan(normalized_bcib)
+            .map_err(|e| {
+                SemanticCLIError::execution_error(
+                    format!("IR generation failed: {}", e),
+                    ErrorCode::E500,
+                )
+            })?;
+
         // Step 4: Execute IR
-        let execution_result = self.ir_executor.execute(execution_plan)
-            .map_err(|e| SemanticCLIError::execution_error(
+        let execution_result = self.ir_executor.execute(execution_plan).map_err(|e| {
+            SemanticCLIError::execution_error(
                 format!("IR execution failed: {}", e),
                 ErrorCode::E500,
-            ))?;
-        
+            )
+        })?;
+
         // Step 5: Adapt IR result to QueryResult
         self.adapt_ir_result_to_query_result(execution_result, context_path, start_time)
     }
-    
+
     /// **C8 NEW:** Extract context path from BCIB instructions
     fn extract_context_path(&self, instructions: &[BCIBInstruction]) -> String {
         for instruction in instructions {
-            if let BCIBInstruction::Context(ContextInstruction::LoadContext { path, .. }) = instruction {
+            if let BCIBInstruction::Context(ContextInstruction::LoadContext { path, .. }) =
+                instruction
+            {
                 return path.clone();
             }
         }
         "unknown".to_string()
     }
-    
+
     /// **C8 NEW:** Adapt IRExecutor output to QueryResult
     fn adapt_ir_result_to_query_result(
         &self,
@@ -163,15 +171,15 @@ impl QueryExecutor {
         let items = match &ir_result.value {
             crate::ir_planner::register_file::RegisterValue::ContextData(context_data) => {
                 context_data.items.clone()
-            },
+            }
             _ => {
                 // For non-context results, wrap in array
                 vec![self.register_value_to_json(&ir_result.value)?]
             }
         };
-        
+
         let execution_time_ms = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(QueryResult {
             items: items.clone(),
             total_count: items.len(),
@@ -183,11 +191,14 @@ impl QueryExecutor {
             error_message: None,
         })
     }
-    
+
     /// **C8 NEW:** Convert RegisterValue to JsonValue
-    fn register_value_to_json(&self, value: &crate::ir_planner::register_file::RegisterValue) -> Result<JsonValue> {
+    fn register_value_to_json(
+        &self,
+        value: &crate::ir_planner::register_file::RegisterValue,
+    ) -> Result<JsonValue> {
         use crate::ir_planner::register_file::RegisterValue;
-        
+
         match value {
             RegisterValue::String(s) => Ok(JsonValue::String(s.clone())),
             RegisterValue::Number(n) => Ok(json!(n)),
@@ -196,41 +207,44 @@ impl QueryExecutor {
             RegisterValue::ContextData(context_data) => {
                 // Return first item or empty object
                 Ok(context_data.items.first().cloned().unwrap_or(json!({})))
-            },
+            }
             RegisterValue::Array(arr) => {
-                let json_arr: Result<Vec<_>> = arr.iter()
-                    .map(|v| self.register_value_to_json(v))
-                    .collect();
+                let json_arr: Result<Vec<_>> =
+                    arr.iter().map(|v| self.register_value_to_json(v)).collect();
                 Ok(JsonValue::Array(json_arr?))
-            },
+            }
             RegisterValue::Object(obj) => {
                 let mut json_obj = serde_json::Map::new();
                 for (k, v) in obj {
                     json_obj.insert(k.clone(), self.register_value_to_json(v)?);
                 }
                 Ok(JsonValue::Object(json_obj))
-            },
+            }
             RegisterValue::ContextReference(ctx_ref) => {
                 // For Gate C, return context reference as string
                 Ok(JsonValue::String(format!("@context:{}", ctx_ref)))
-            },
+            }
             RegisterValue::FilterExpression(filter_expr) => {
                 // For Gate C, return filter expression as string
                 Ok(JsonValue::String(format!("@filter:{}", filter_expr)))
-            },
+            }
             RegisterValue::FilterResult(result) => {
                 // Return filter result as boolean
                 Ok(JsonValue::Bool(*result))
-            },
+            }
         }
     }
-    
+
     /// **C8 LEGACY:** Direct BCIB execution (for golden testing only)
-    /// 
+    ///
     /// **DEPRECATED:** This will be removed after golden tests pass.
     /// Only used for equivalence testing between legacy and IR execution.
     #[allow(dead_code)]
-    fn execute_bcib_legacy(&mut self, input: QueryInput, start_time: Instant) -> Result<QueryResult> {
+    fn execute_bcib_legacy(
+        &mut self,
+        input: QueryInput,
+        start_time: Instant,
+    ) -> Result<QueryResult> {
         let mut context_data: Option<Vec<JsonValue>> = None;
         let mut context_path = String::new();
         let mut cache_hit = false;
@@ -242,17 +256,18 @@ impl QueryExecutor {
                     match ctx_inst {
                         ContextInstruction::LoadContext { path, .. } => {
                             // Get capability from instruction (AR-4: Contextual capabilities)
-                            let capability = ctx_inst.required_capability()
-                                .ok_or_else(|| SemanticCLIError::execution_error(
+                            let capability = ctx_inst.required_capability().ok_or_else(|| {
+                                SemanticCLIError::execution_error(
                                     "LoadContext instruction missing required capability",
                                     ErrorCode::E500,
-                                ))?;
+                                )
+                            })?;
 
                             // Load context data with capability checking
                             let data = self.context_manager.load_context(path, &capability)?;
                             context_data = Some(data);
                             context_path = path.clone();
-                            
+
                             // Check if this was a cache hit (heuristic: < 10ms = likely cache hit)
                             cache_hit = start_time.elapsed().as_millis() < 10;
                         }
@@ -319,7 +334,7 @@ impl QueryExecutor {
     }
 
     /// Execute query instruction on context data (bulk operation)
-    /// 
+    ///
     /// **CRITICAL FIX:** Proper item-level execution instead of first() hack
     fn execute_query_instruction_on_context(
         &mut self,
@@ -330,16 +345,18 @@ impl QueryExecutor {
             QueryInstruction::ApplyFilter { expression, .. } => {
                 // **GATE B FIX:** Proper bulk filter evaluation
                 let mut filtered_items = Vec::new();
-                
+
                 for item in context_data.iter() {
                     if self.evaluate_filter_expression_for_item(expression, item)? {
                         filtered_items.push(item.clone());
                     }
                 }
-                
+
                 *context_data = filtered_items;
             }
-            QueryInstruction::ApplyFilterBool { filter_register, .. } => {
+            QueryInstruction::ApplyFilterBool {
+                filter_register, ..
+            } => {
                 // **GATE B CONSTRAINT:** ApplyFilterBool only for single-item contexts
                 if context_data.len() != 1 {
                     return Err(SemanticCLIError::execution_error(
@@ -347,19 +364,20 @@ impl QueryExecutor {
                         ErrorCode::E501,
                     ));
                 }
-                
+
                 // For single item, create execution state and check register
                 if let Some(item) = context_data.first() {
                     let state = ExecutionState {
                         item,
                         registers: HashMap::new(),
                     };
-                    
-                    let filter_result = state.registers.get(filter_register)
-                        .ok_or_else(|| SemanticCLIError::execution_error(
+
+                    let filter_result = state.registers.get(filter_register).ok_or_else(|| {
+                        SemanticCLIError::execution_error(
                             format!("Filter register {} not found", filter_register),
                             ErrorCode::E500,
-                        ))?;
+                        )
+                    })?;
 
                     let is_match = filter_result.as_bool().unwrap_or(false);
                     if !is_match {
@@ -367,10 +385,10 @@ impl QueryExecutor {
                     }
                 }
             }
-            QueryInstruction::LoadField { .. } |
-            QueryInstruction::LoadLiteral { .. } |
-            QueryInstruction::Compare { .. } |
-            QueryInstruction::LogicalOp { .. } => {
+            QueryInstruction::LoadField { .. }
+            | QueryInstruction::LoadLiteral { .. }
+            | QueryInstruction::Compare { .. }
+            | QueryInstruction::LogicalOp { .. } => {
                 // **GATE B CONSTRAINT:** These instructions only for single-item contexts
                 if context_data.len() != 1 {
                     return Err(SemanticCLIError::execution_error(
@@ -378,24 +396,24 @@ impl QueryExecutor {
                         ErrorCode::E501,
                     ));
                 }
-                
+
                 // Execute on single item
                 if let Some(item) = context_data.first() {
                     let mut state = ExecutionState {
                         item,
                         registers: HashMap::new(),
                     };
-                    
+
                     self.execute_single_instruction(&mut state, instruction)?;
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Evaluate filter expression for a single item
-    /// 
+    ///
     /// **CRITICAL FIX:** Item-level evaluation instead of global first()
     fn evaluate_filter_expression_for_item(
         &mut self,
@@ -432,28 +450,52 @@ impl QueryExecutor {
         instruction: &QueryInstruction,
     ) -> Result<()> {
         match instruction {
-            QueryInstruction::LoadField { field, target_register, .. } => {
+            QueryInstruction::LoadField {
+                field,
+                target_register,
+                ..
+            } => {
                 let field_value = self.resolve_field_for_item(field, state)?;
                 state.registers.insert(*target_register, field_value);
             }
-            QueryInstruction::LoadLiteral { value, target_register, .. } => {
+            QueryInstruction::LoadLiteral {
+                value,
+                target_register,
+                ..
+            } => {
                 let json_value = self.bcib_value_to_json(value)?;
                 state.registers.insert(*target_register, json_value);
             }
-            QueryInstruction::Compare { left, operator, right, target_register, .. } => {
+            QueryInstruction::Compare {
+                left,
+                operator,
+                right,
+                target_register,
+                ..
+            } => {
                 let left_value = self.resolve_operand_for_item(left, state)?;
                 let right_value = self.resolve_operand_for_item(right, state)?;
                 let comparison_result = self.compare_values(&left_value, operator, &right_value)?;
-                state.registers.insert(*target_register, JsonValue::Bool(comparison_result));
+                state
+                    .registers
+                    .insert(*target_register, JsonValue::Bool(comparison_result));
             }
-            QueryInstruction::LogicalOp { operator, operands, target_register, .. } => {
-                let operand_values: Result<Vec<JsonValue>> = operands.iter()
+            QueryInstruction::LogicalOp {
+                operator,
+                operands,
+                target_register,
+                ..
+            } => {
+                let operand_values: Result<Vec<JsonValue>> = operands
+                    .iter()
                     .map(|op| self.resolve_operand_for_item(op, state))
                     .collect();
                 let values = operand_values?;
-                
+
                 let logical_result = self.apply_logical_operator(operator, &values)?;
-                state.registers.insert(*target_register, JsonValue::Bool(logical_result));
+                state
+                    .registers
+                    .insert(*target_register, JsonValue::Bool(logical_result));
             }
             _ => {
                 return Err(SemanticCLIError::execution_error(
@@ -466,30 +508,42 @@ impl QueryExecutor {
     }
 
     /// Resolve field reference for specific item
-    /// 
+    ///
     /// **CRITICAL FIX:** Item-specific field resolution
-    fn resolve_field_for_item(&self, field_name: &str, state: &ExecutionState) -> Result<JsonValue> {
-        Ok(state.item.get(field_name).cloned().unwrap_or(JsonValue::Null))
+    fn resolve_field_for_item(
+        &self,
+        field_name: &str,
+        state: &ExecutionState,
+    ) -> Result<JsonValue> {
+        Ok(state
+            .item
+            .get(field_name)
+            .cloned()
+            .unwrap_or(JsonValue::Null))
     }
 
     /// Resolve OperandRef for specific item
-    /// 
+    ///
     /// **CRITICAL FIX:** Item-specific operand resolution
-    fn resolve_operand_for_item(&self, operand: &OperandRef, state: &mut ExecutionState) -> Result<JsonValue> {
+    fn resolve_operand_for_item(
+        &self,
+        operand: &OperandRef,
+        state: &mut ExecutionState,
+    ) -> Result<JsonValue> {
         match operand {
-            OperandRef::Field(field_name) => {
-                Ok(state.item.get(field_name).cloned().unwrap_or(JsonValue::Null))
-            }
-            OperandRef::Literal(literal) => {
-                self.bcib_value_to_json(literal)
-            }
+            OperandRef::Field(field_name) => Ok(state
+                .item
+                .get(field_name)
+                .cloned()
+                .unwrap_or(JsonValue::Null)),
+            OperandRef::Literal(literal) => self.bcib_value_to_json(literal),
             OperandRef::TempRegister(register_id) => {
-                state.registers.get(register_id)
-                    .cloned()
-                    .ok_or_else(|| SemanticCLIError::execution_error(
+                state.registers.get(register_id).cloned().ok_or_else(|| {
+                    SemanticCLIError::execution_error(
                         format!("Register {} not found", register_id),
                         ErrorCode::E500,
-                    ))
+                    )
+                })
             }
         }
     }
@@ -499,7 +553,7 @@ impl QueryExecutor {
         match value {
             Value::String(s) => Ok(JsonValue::String(s.clone())),
             Value::Number(n) => Ok(JsonValue::Number(
-                serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0))
+                serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0)),
             )),
             Value::Boolean(b) => Ok(JsonValue::Bool(*b)),
             // Collections are not supported in query operations (Phase 3.1)
@@ -545,12 +599,14 @@ impl QueryExecutor {
             (JsonValue::Bool(l), JsonValue::Bool(r)) => l == r,
             (JsonValue::Null, JsonValue::Null) => true,
             // Type coercion for mixed comparisons
-            (JsonValue::String(s), JsonValue::Number(n)) => {
-                s.parse::<f64>().map(|parsed| parsed == n.as_f64().unwrap_or(0.0)).unwrap_or(false)
-            }
-            (JsonValue::Number(n), JsonValue::String(s)) => {
-                s.parse::<f64>().map(|parsed| parsed == n.as_f64().unwrap_or(0.0)).unwrap_or(false)
-            }
+            (JsonValue::String(s), JsonValue::Number(n)) => s
+                .parse::<f64>()
+                .map(|parsed| parsed == n.as_f64().unwrap_or(0.0))
+                .unwrap_or(false),
+            (JsonValue::Number(n), JsonValue::String(s)) => s
+                .parse::<f64>()
+                .map(|parsed| parsed == n.as_f64().unwrap_or(0.0))
+                .unwrap_or(false),
             _ => false,
         }
     }
@@ -564,26 +620,22 @@ impl QueryExecutor {
             }
             (JsonValue::Bool(l), JsonValue::Bool(r)) => Ok(l < r), // false < true
             // Type coercion for mixed comparisons
-            (JsonValue::String(s), JsonValue::Number(n)) => {
-                match s.parse::<f64>() {
-                    Ok(parsed) => Ok(parsed < n.as_f64().unwrap_or(0.0)),
-                    Err(_) => Err(SemanticCLIError::validation_error(
-                        format!("Cannot compare string '{}' with number", s),
-                        "Use compatible types for comparison",
-                        ErrorCode::E400,
-                    )),
-                }
-            }
-            (JsonValue::Number(n), JsonValue::String(s)) => {
-                match s.parse::<f64>() {
-                    Ok(parsed) => Ok(n.as_f64().unwrap_or(0.0) < parsed),
-                    Err(_) => Err(SemanticCLIError::validation_error(
-                        format!("Cannot compare number with string '{}'", s),
-                        "Use compatible types for comparison",
-                        ErrorCode::E400,
-                    )),
-                }
-            }
+            (JsonValue::String(s), JsonValue::Number(n)) => match s.parse::<f64>() {
+                Ok(parsed) => Ok(parsed < n.as_f64().unwrap_or(0.0)),
+                Err(_) => Err(SemanticCLIError::validation_error(
+                    format!("Cannot compare string '{}' with number", s),
+                    "Use compatible types for comparison",
+                    ErrorCode::E400,
+                )),
+            },
+            (JsonValue::Number(n), JsonValue::String(s)) => match s.parse::<f64>() {
+                Ok(parsed) => Ok(n.as_f64().unwrap_or(0.0) < parsed),
+                Err(_) => Err(SemanticCLIError::validation_error(
+                    format!("Cannot compare number with string '{}'", s),
+                    "Use compatible types for comparison",
+                    ErrorCode::E400,
+                )),
+            },
             _ => Err(SemanticCLIError::validation_error(
                 format!("Cannot compare {:?} with {:?}", left, right),
                 "Use compatible types for comparison",
@@ -693,18 +745,18 @@ impl OperationResult for QueryResult {
         }
 
         let mut output = String::new();
-        
+
         // Header
         output.push_str(&format!(
             "Results from '{}' ({} of {} items):\n",
             self.context_path, self.filtered_count, self.total_count
         ));
-        
+
         // Items
         for (index, item) in self.items.iter().enumerate() {
             output.push_str(&format!("{}. {}\n", index + 1, self.format_item(item)));
         }
-        
+
         // Footer
         output.push_str(&format!(
             "\nExecution time: {}ms{}",
@@ -720,7 +772,10 @@ impl OperationResult for QueryResult {
         metadata.insert("total_count".to_string(), json!(self.total_count));
         metadata.insert("filtered_count".to_string(), json!(self.filtered_count));
         metadata.insert("context_path".to_string(), json!(self.context_path));
-        metadata.insert("execution_time_ms".to_string(), json!(self.execution_time_ms));
+        metadata.insert(
+            "execution_time_ms".to_string(),
+            json!(self.execution_time_ms),
+        );
         metadata.insert("cache_hit".to_string(), json!(self.cache_hit));
         metadata.insert("success".to_string(), json!(self.success));
         if let Some(ref error) = self.error_message {
@@ -742,14 +797,15 @@ impl QueryResult {
                 // Try to find key fields for compact display
                 if let Some(id) = obj.get("id") {
                     if let Some(name) = obj.get("name") {
-                        return format!("{}: {}", 
-                            id.as_str().unwrap_or("?"), 
+                        return format!(
+                            "{}: {}",
+                            id.as_str().unwrap_or("?"),
                             name.as_str().unwrap_or("?")
                         );
                     }
                     return format!("ID: {}", id.as_str().unwrap_or("?"));
                 }
-                
+
                 // Fallback to JSON representation
                 serde_json::to_string_pretty(item).unwrap_or_else(|_| "Invalid JSON".to_string())
             }
@@ -789,7 +845,9 @@ impl QueryResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{ContextInstruction, QueryInstruction, FilterExpression, ComparisonOp, OperandRef, Value};
+    use crate::bcib::{
+        ComparisonOp, ContextInstruction, FilterExpression, OperandRef, QueryInstruction, Value,
+    };
     use crate::types::SourceLocation;
 
     fn create_test_bcib_sequence() -> Vec<BCIBInstruction> {
@@ -837,18 +895,18 @@ mod tests {
         let input = QueryInput {
             instructions: create_test_bcib_sequence(),
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         if let Err(ref e) = result {
             eprintln!("ERROR: {:?}", e);
         }
         assert!(result.is_ok());
-        
+
         let query_result = result.unwrap();
         eprintln!("query_result.success: {}", query_result.success);
         eprintln!("query_result.items.len(): {}", query_result.items.len());
         eprintln!("query_result.context_path: {}", query_result.context_path);
-        
+
         assert!(query_result.is_success());
         assert!(!query_result.items.is_empty());
         assert_eq!(query_result.context_path, "data.users");
@@ -858,7 +916,7 @@ mod tests {
     #[test]
     fn test_bulk_filter_execution() {
         let mut executor = QueryExecutor::new();
-        
+
         // Test that filter works on ALL items, not just first()
         let input = QueryInput {
             instructions: vec![
@@ -879,27 +937,33 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         if let Err(ref e) = result {
             eprintln!("BULK FILTER ERROR: {:?}", e);
         }
         assert!(result.is_ok());
-        
+
         let query_result = result.unwrap();
         assert!(query_result.is_success());
-        
+
         // **CRITICAL TEST:** All returned users should be active
         // This tests that filter works on ALL items, not just first()
         for item in &query_result.items {
             if let Some(active) = item.get("active") {
-                assert_eq!(active.as_bool().unwrap_or(false), true, 
-                    "Filter should work on ALL items, not just first()");
+                assert_eq!(
+                    active.as_bool().unwrap_or(false),
+                    true,
+                    "Filter should work on ALL items, not just first()"
+                );
             }
         }
-        
+
         // Should have filtered out inactive users
-        assert!(query_result.items.len() < 5, "Should filter out some inactive users");
+        assert!(
+            query_result.items.len() < 5,
+            "Should filter out some inactive users"
+        );
     }
 
     #[test]
@@ -908,7 +972,7 @@ mod tests {
         let input = QueryInput {
             instructions: Vec::new(),
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
     }
@@ -917,14 +981,12 @@ mod tests {
     fn test_invalid_context_path() {
         let mut executor = QueryExecutor::new();
         let input = QueryInput {
-            instructions: vec![
-                BCIBInstruction::Context(ContextInstruction::LoadContext {
-                    path: "invalid.context".to_string(),
-                    location: SourceLocation::default(),
-                }),
-            ],
+            instructions: vec![BCIBInstruction::Context(ContextInstruction::LoadContext {
+                path: "invalid.context".to_string(),
+                location: SourceLocation::default(),
+            })],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         assert!(result.is_err());
     }
@@ -944,7 +1006,7 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let formatted = result.format();
         assert!(formatted.contains("Results from 'data.users' (2 of 5 items)"));
         assert!(formatted.contains("user_001: Alice Johnson"));
@@ -964,24 +1026,26 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let metadata = result.metadata();
         assert_eq!(metadata.get("total_count").unwrap().as_u64().unwrap(), 1);
         assert_eq!(metadata.get("filtered_count").unwrap().as_u64().unwrap(), 1);
-        assert_eq!(metadata.get("context_path").unwrap().as_str().unwrap(), "data.test");
-        assert_eq!(metadata.get("execution_time_ms").unwrap().as_u64().unwrap(), 10);
+        assert_eq!(
+            metadata.get("context_path").unwrap().as_str().unwrap(),
+            "data.test"
+        );
+        assert_eq!(
+            metadata.get("execution_time_ms").unwrap().as_u64().unwrap(),
+            10
+        );
         assert_eq!(metadata.get("cache_hit").unwrap().as_bool().unwrap(), false);
         assert_eq!(metadata.get("success").unwrap().as_bool().unwrap(), true);
     }
 
     #[test]
     fn test_error_result() {
-        let result = QueryResult::error(
-            "data.test".to_string(),
-            "Test error".to_string(),
-            5,
-        );
-        
+        let result = QueryResult::error("data.test".to_string(), "Test error".to_string(), 5);
+
         assert!(!result.is_success());
         assert_eq!(result.error_message.as_ref().unwrap(), "Test error");
         assert!(result.format().contains("Error: Test error"));
@@ -990,7 +1054,7 @@ mod tests {
     #[test]
     fn test_empty_result() {
         let result = QueryResult::empty("data.test".to_string(), 10, true);
-        
+
         assert!(result.is_success());
         assert!(result.items.is_empty());
         assert!(result.format().contains("No results found"));
@@ -1003,14 +1067,14 @@ mod tests {
         let input = QueryInput {
             instructions: create_test_bcib_sequence(),
         };
-        
+
         let start = Instant::now();
         let result = executor.execute_bcib_sequence(input);
         let duration = start.elapsed();
-        
+
         assert!(result.is_ok());
         assert!(duration.as_millis() < 100); // Performance target: < 100ms
-        
+
         let query_result = result.unwrap();
         assert!(query_result.execution_time_ms < 100);
     }
@@ -1018,7 +1082,7 @@ mod tests {
     #[test]
     fn test_register_operations() {
         let mut executor = QueryExecutor::new();
-        
+
         // **C9 TEST:** Filter + single-item context operations
         let input = QueryInput {
             instructions: vec![
@@ -1040,18 +1104,21 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute_bcib_sequence(input);
         if let Err(ref e) = result {
             eprintln!("REGISTER OPS ERROR: {:?}", e);
         }
         assert!(result.is_ok());
-        
+
         let query_result = result.unwrap();
         assert!(query_result.is_success());
-        
+
         // Should have exactly 1 item (Alice)
         assert_eq!(query_result.items.len(), 1);
-        assert_eq!(query_result.items[0].get("name").and_then(|v| v.as_str()), Some("Alice"));
+        assert_eq!(
+            query_result.items[0].get("name").and_then(|v| v.as_str()),
+            Some("Alice")
+        );
     }
 }

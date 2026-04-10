@@ -1,7 +1,7 @@
 //! Context Management System
 //!
 //! This module implements context loading, caching, and access management for Phase 3.5.1.a.
-//! 
+//!
 //! # Design Principles
 //!
 //! 1. **Read-only:** No mutation operations in Phase 3.5.1.a
@@ -33,13 +33,15 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-pub mod registry;
-pub mod loaders;
 pub mod cache;
+pub mod loaders;
+pub mod registry;
 
-pub use registry::ContextRegistry;
-pub use loaders::{ContextLoader, MockUserLoader, MockLogLoader, MockProcessLoader, MockAgentLoader};
 pub use cache::{ContextCache, ContextData};
+pub use loaders::{
+    ContextLoader, MockAgentLoader, MockLogLoader, MockProcessLoader, MockUserLoader,
+};
+pub use registry::ContextRegistry;
 
 /// Context Manager - Main interface for context operations
 pub struct ContextManager {
@@ -52,7 +54,7 @@ impl ContextManager {
     pub fn new() -> Self {
         let registry = Arc::new(ContextRegistry::new());
         let cache = Arc::new(Mutex::new(ContextCache::new(100))); // 100 item LRU cache
-        
+
         Self { registry, cache }
     }
 
@@ -70,7 +72,7 @@ impl ContextManager {
 
         // Load from registry
         let data = self.registry.load_context(path)?;
-        
+
         // Cache the result
         if let Ok(mut cache) = self.cache.lock() {
             cache.insert(path.to_string(), data.clone());
@@ -107,12 +109,10 @@ impl ContextManager {
                     ))
                 }
             }
-            _ => {
-                Err(SemanticCLIError::security_error(
-                    format!("Invalid capability for context access: {:?}", capability),
-                    ErrorCode::E601,
-                ))
-            }
+            _ => Err(SemanticCLIError::security_error(
+                format!("Invalid capability for context access: {:?}", capability),
+                ErrorCode::E601,
+            )),
         }
     }
 
@@ -180,11 +180,13 @@ mod tests {
     #[test]
     fn test_context_loading_with_capability() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.users".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.users".to_string(),
+        };
+
         let result = manager.load_context("data.users", &capability);
         assert!(result.is_ok());
-        
+
         let data = result.unwrap();
         assert!(!data.is_empty());
     }
@@ -192,11 +194,13 @@ mod tests {
     #[test]
     fn test_capability_mismatch() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.logs".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.logs".to_string(),
+        };
+
         let result = manager.load_context("data.users", &capability);
         assert!(result.is_err());
-        
+
         if let Err(SemanticCLIError::SecurityError { .. }) = result {
             // Expected security error
         } else {
@@ -207,23 +211,25 @@ mod tests {
     #[test]
     fn test_context_caching() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.users".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.users".to_string(),
+        };
+
         // First load (cache miss)
         let start = Instant::now();
         let result1 = manager.load_context("data.users", &capability);
         let first_duration = start.elapsed();
         assert!(result1.is_ok());
-        
+
         // Second load (cache hit)
         let start = Instant::now();
         let result2 = manager.load_context("data.users", &capability);
         let second_duration = start.elapsed();
         assert!(result2.is_ok());
-        
+
         // Cache hit should be faster
         assert!(second_duration < first_duration);
-        
+
         // Data should be identical
         assert_eq!(result1.unwrap(), result2.unwrap());
     }
@@ -232,7 +238,7 @@ mod tests {
     fn test_list_contexts() {
         let manager = ContextManager::new();
         let contexts = manager.list_contexts();
-        
+
         assert!(contexts.contains(&"data.users".to_string()));
         assert!(contexts.contains(&"fs.logs".to_string()));
         assert!(contexts.contains(&"system.processes".to_string()));
@@ -241,14 +247,16 @@ mod tests {
     #[test]
     fn test_cache_invalidation() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.users".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.users".to_string(),
+        };
+
         // Load data to cache
         let _ = manager.load_context("data.users", &capability);
-        
+
         // Invalidate cache
         manager.invalidate_cache("data.users");
-        
+
         // Next load should be fresh
         let result = manager.load_context("data.users", &capability);
         assert!(result.is_ok());
@@ -257,19 +265,21 @@ mod tests {
     #[test]
     fn test_cache_stats() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.users".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.users".to_string(),
+        };
+
         // Initial stats
         let stats = manager.cache_stats();
         assert_eq!(stats.hits, 0);
         assert_eq!(stats.misses, 0);
-        
+
         // Load data (should be cache miss)
         let _ = manager.load_context("data.users", &capability);
-        
+
         // Load again (should be cache hit)
         let _ = manager.load_context("data.users", &capability);
-        
+
         let stats = manager.cache_stats();
         assert!(stats.hits > 0 || stats.misses > 0);
     }
@@ -277,18 +287,28 @@ mod tests {
     #[test]
     fn test_performance_targets() {
         let manager = ContextManager::new();
-        let capability = Capability::Read { context: "data.users".to_string() };
-        
+        let capability = Capability::Read {
+            context: "data.users".to_string(),
+        };
+
         // First load (uncached) - should be < 100ms
         let start = Instant::now();
         let _ = manager.load_context("data.users", &capability);
         let uncached_duration = start.elapsed();
-        assert!(uncached_duration.as_millis() < 100, "Uncached load took {}ms", uncached_duration.as_millis());
-        
+        assert!(
+            uncached_duration.as_millis() < 100,
+            "Uncached load took {}ms",
+            uncached_duration.as_millis()
+        );
+
         // Second load (cached) - should be < 20ms
         let start = Instant::now();
         let _ = manager.load_context("data.users", &capability);
         let cached_duration = start.elapsed();
-        assert!(cached_duration.as_millis() < 20, "Cached load took {}ms", cached_duration.as_millis());
+        assert!(
+            cached_duration.as_millis() < 20,
+            "Cached load took {}ms",
+            cached_duration.as_millis()
+        );
     }
 }

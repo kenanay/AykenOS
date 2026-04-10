@@ -29,20 +29,20 @@ use crate::parallelism::ParallelismResult;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReductionType {
     /// Order-independent operations (sum, max, min, logical AND/OR)
-    /// 
+    ///
     /// These operations can be executed in any order without affecting the result:
     /// - `a + b + c = (a + b) + c = a + (b + c)`
     /// - `max(a, b, c) = max(max(a, b), c) = max(a, max(b, c))`
-    /// 
+    ///
     /// **Optimization**: Can skip ordering overhead and use parallel reduction
     Commutative,
-    
+
     /// Order-dependent operations (fold, string concatenation, list construction)
-    /// 
+    ///
     /// These operations depend on the order of operands:
     /// - `"a" + "b" + "c" = "abc"` but `"c" + "a" + "b" = "cab"`
     /// - `fold(list, init, f)` depends on left-to-right evaluation
-    /// 
+    ///
     /// **Requirement**: Must preserve left-to-right merge order using Stable Index Map
     NonCommutative,
 }
@@ -67,7 +67,7 @@ pub trait ReductionHandler {
     ///
     /// **Validates: Requirement 10.3**
     fn classify_reduction(&self, operation: &IRInstruction) -> ReductionType;
-    
+
     /// Performs parallel reduction for commutative operations.
     ///
     /// This method uses Rayon's parallel reduction to efficiently combine
@@ -85,10 +85,15 @@ pub trait ReductionHandler {
     /// The reduced result
     ///
     /// **Validates: Requirement 10.1**
-    fn reduce_commutative<F>(&self, values: Vec<Value>, identity: Value, combine: F) -> ParallelismResult<Value>
+    fn reduce_commutative<F>(
+        &self,
+        values: Vec<Value>,
+        identity: Value,
+        combine: F,
+    ) -> ParallelismResult<Value>
     where
         F: Fn(Value, Value) -> Value + Sync + Send;
-    
+
     /// Performs ordered reduction for non-commutative operations.
     ///
     /// This method preserves left-to-right order using the Stable Index Map.
@@ -107,10 +112,10 @@ pub trait ReductionHandler {
     ///
     /// **Validates: Requirement 10.2**
     fn reduce_non_commutative<F>(
-        &self, 
-        indexed_values: Vec<(usize, Value)>, 
-        identity: Value, 
-        combine: F
+        &self,
+        indexed_values: Vec<(usize, Value)>,
+        identity: Value,
+        combine: F,
     ) -> ParallelismResult<Value>
     where
         F: Fn(Value, Value) -> Value;
@@ -227,23 +232,23 @@ impl DefaultReductionHandler {
             }
         }
     }
-    
+
     /// Checks if a value represents a numeric operation.
     fn is_numeric_operation(&self, _operation: &IRInstruction) -> bool {
         // In a real implementation, this would analyze the IR instruction
         // to determine if it performs numeric operations like addition,
         // multiplication, etc.
-        
+
         // For now, we'll be conservative and assume most operations
         // are non-commutative unless explicitly known to be commutative
         false
     }
-    
+
     /// Checks if a value represents a comparison operation.
     fn is_comparison_operation(&self, operation: &IRInstruction) -> bool {
         matches!(operation, IRInstruction::Compare { .. })
     }
-    
+
     /// Checks if a value represents a logical operation.
     fn is_logical_operation(&self, operation: &IRInstruction) -> bool {
         matches!(operation, IRInstruction::LogicalOp { .. })
@@ -268,8 +273,13 @@ impl ReductionHandler for DefaultReductionHandler {
             ReductionType::NonCommutative
         }
     }
-    
-    fn reduce_commutative<F>(&self, values: Vec<Value>, identity: Value, combine: F) -> ParallelismResult<Value>
+
+    fn reduce_commutative<F>(
+        &self,
+        values: Vec<Value>,
+        identity: Value,
+        combine: F,
+    ) -> ParallelismResult<Value>
     where
         F: Fn(Value, Value) -> Value + Sync + Send,
     {
@@ -298,12 +308,12 @@ impl ReductionHandler for DefaultReductionHandler {
 
         Ok(result)
     }
-    
+
     fn reduce_non_commutative<F>(
-        &self, 
-        mut indexed_values: Vec<(usize, Value)>, 
-        identity: Value, 
-        combine: F
+        &self,
+        mut indexed_values: Vec<(usize, Value)>,
+        identity: Value,
+        combine: F,
     ) -> ParallelismResult<Value>
     where
         F: Fn(Value, Value) -> Value,
@@ -311,17 +321,17 @@ impl ReductionHandler for DefaultReductionHandler {
         if indexed_values.is_empty() {
             return Ok(identity);
         }
-        
+
         // Sort by index to preserve left-to-right order
         // This is the key difference from commutative reduction
         indexed_values.sort_by_key(|(idx, _)| *idx);
-        
+
         // Perform sequential reduction in correct order
         let result = indexed_values
             .into_iter()
             .map(|(_, value)| value)
             .fold(identity, |acc, value| combine(acc, value));
-        
+
         Ok(result)
     }
 }
@@ -332,7 +342,7 @@ impl ReductionHandler for DefaultReductionHandler {
 /// operations like sum, product, max, min, etc.
 pub mod operations {
     use super::*;
-    
+
     /// Reduces values by addition (commutative).
     ///
     /// # Example
@@ -347,57 +357,60 @@ pub mod operations {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0), // Error case, should be handled properly
         };
-        
+
         handler.reduce_commutative(values, identity, combine)
     }
-    
+
     /// Reduces values by multiplication (commutative).
-    pub fn product(handler: &DefaultReductionHandler, values: Vec<Value>) -> ParallelismResult<Value> {
+    pub fn product(
+        handler: &DefaultReductionHandler,
+        values: Vec<Value>,
+    ) -> ParallelismResult<Value> {
         let identity = Value::Number(1.0);
         let combine = |a: Value, b: Value| match (a, b) {
             (Value::Number(x), Value::Number(y)) => Value::Number(x * y),
             _ => Value::Number(1.0), // Error case
         };
-        
+
         handler.reduce_commutative(values, identity, combine)
     }
-    
+
     /// Reduces values by finding maximum (commutative).
     pub fn max(handler: &DefaultReductionHandler, values: Vec<Value>) -> ParallelismResult<Value> {
         if values.is_empty() {
             return Ok(Value::Number(f64::NEG_INFINITY));
         }
-        
+
         let identity = Value::Number(f64::NEG_INFINITY);
         let combine = |a: Value, b: Value| match (&a, &b) {
             (Value::Number(x), Value::Number(y)) => Value::Number(x.max(*y)),
             _ => a, // Keep first value on error
         };
-        
+
         handler.reduce_commutative(values, identity, combine)
     }
-    
+
     /// Reduces values by finding minimum (commutative).
     pub fn min(handler: &DefaultReductionHandler, values: Vec<Value>) -> ParallelismResult<Value> {
         if values.is_empty() {
             return Ok(Value::Number(f64::INFINITY));
         }
-        
+
         let identity = Value::Number(f64::INFINITY);
         let combine = |a: Value, b: Value| match (&a, &b) {
             (Value::Number(x), Value::Number(y)) => Value::Number(x.min(*y)),
             _ => a, // Keep first value on error
         };
-        
+
         handler.reduce_commutative(values, identity, combine)
     }
-    
+
     /// Reduces strings by concatenation (non-commutative).
     ///
     /// This operation preserves left-to-right order, so "a" + "b" + "c" = "abc".
     pub fn concat(
-        handler: &DefaultReductionHandler, 
-        indexed_values: Vec<(usize, Value)>
+        handler: &DefaultReductionHandler,
+        indexed_values: Vec<(usize, Value)>,
     ) -> ParallelismResult<Value> {
         let identity = Value::String("".to_string());
         let combine = |a: Value, b: Value| match (a, b) {
@@ -406,7 +419,7 @@ pub mod operations {
             (_, Value::String(y)) => Value::String(y),
             _ => Value::String("".to_string()), // Error case
         };
-        
+
         handler.reduce_non_commutative(indexed_values, identity, combine)
     }
 }
@@ -414,7 +427,7 @@ pub mod operations {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{Value, ComparisonOp, LogicalOperator};
+    use crate::bcib::{ComparisonOp, LogicalOperator, Value};
     use crate::execution_plan::IRInstruction;
 
     // ===== ReductionType Tests =====
@@ -423,11 +436,11 @@ mod tests {
     fn test_reduction_type_enum() {
         let commutative = ReductionType::Commutative;
         let non_commutative = ReductionType::NonCommutative;
-        
+
         // Test Debug trait
         assert_eq!(format!("{:?}", commutative), "Commutative");
         assert_eq!(format!("{:?}", non_commutative), "NonCommutative");
-        
+
         // Test PartialEq trait
         assert_eq!(commutative, ReductionType::Commutative);
         assert_ne!(commutative, non_commutative);
@@ -450,7 +463,7 @@ mod tests {
             right_register: 1,
             target_register: 2,
         };
-        
+
         let classification = handler.classify_reduction(&compare_op);
         assert_eq!(classification, ReductionType::Commutative);
     }
@@ -463,7 +476,7 @@ mod tests {
             operand_registers: vec![0, 1],
             target_register: 2,
         };
-        
+
         let classification = handler.classify_reduction(&logical_op);
         assert_eq!(classification, ReductionType::Commutative);
     }
@@ -475,7 +488,7 @@ mod tests {
             context_id: "test".to_string(),
             target_register: 0,
         };
-        
+
         // Unknown operations should default to non-commutative for safety
         let classification = handler.classify_reduction(&load_op);
         assert_eq!(classification, ReductionType::NonCommutative);
@@ -492,8 +505,10 @@ mod tests {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0),
         };
-        
-        let result = handler.reduce_commutative(values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_commutative(values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::Number(0.0));
     }
 
@@ -506,8 +521,10 @@ mod tests {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0),
         };
-        
-        let result = handler.reduce_commutative(values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_commutative(values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::Number(42.0));
     }
 
@@ -525,8 +542,10 @@ mod tests {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0),
         };
-        
-        let result = handler.reduce_commutative(values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_commutative(values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::Number(10.0)); // 1 + 2 + 3 + 4 = 10
     }
 
@@ -541,8 +560,10 @@ mod tests {
             (Value::String(x), Value::String(y)) => Value::String(x + &y),
             _ => Value::String("".to_string()),
         };
-        
-        let result = handler.reduce_non_commutative(indexed_values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_non_commutative(indexed_values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::String("".to_string()));
     }
 
@@ -559,8 +580,10 @@ mod tests {
             (Value::String(x), Value::String(y)) => Value::String(x + &y),
             _ => Value::String("".to_string()),
         };
-        
-        let result = handler.reduce_non_commutative(indexed_values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_non_commutative(indexed_values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::String("abc".to_string()));
     }
 
@@ -578,8 +601,10 @@ mod tests {
             (Value::String(x), Value::String(y)) => Value::String(x + &y),
             _ => Value::String("".to_string()),
         };
-        
-        let result = handler.reduce_non_commutative(indexed_values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_non_commutative(indexed_values, identity, combine)
+            .unwrap();
         // Should still produce "abc" because indices are sorted
         assert_eq!(result, Value::String("abc".to_string()));
     }
@@ -589,12 +614,8 @@ mod tests {
     #[test]
     fn test_sum_operation() {
         let handler = DefaultReductionHandler::new();
-        let values = vec![
-            Value::Number(1.0),
-            Value::Number(2.0),
-            Value::Number(3.0),
-        ];
-        
+        let values = vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)];
+
         let result = operations::sum(&handler, values).unwrap();
         assert_eq!(result, Value::Number(6.0));
     }
@@ -628,12 +649,8 @@ mod tests {
     #[test]
     fn test_product_operation() {
         let handler = DefaultReductionHandler::new();
-        let values = vec![
-            Value::Number(2.0),
-            Value::Number(3.0),
-            Value::Number(4.0),
-        ];
-        
+        let values = vec![Value::Number(2.0), Value::Number(3.0), Value::Number(4.0)];
+
         let result = operations::product(&handler, values).unwrap();
         assert_eq!(result, Value::Number(24.0));
     }
@@ -641,12 +658,8 @@ mod tests {
     #[test]
     fn test_max_operation() {
         let handler = DefaultReductionHandler::new();
-        let values = vec![
-            Value::Number(1.0),
-            Value::Number(5.0),
-            Value::Number(3.0),
-        ];
-        
+        let values = vec![Value::Number(1.0), Value::Number(5.0), Value::Number(3.0)];
+
         let result = operations::max(&handler, values).unwrap();
         assert_eq!(result, Value::Number(5.0));
     }
@@ -654,12 +667,8 @@ mod tests {
     #[test]
     fn test_min_operation() {
         let handler = DefaultReductionHandler::new();
-        let values = vec![
-            Value::Number(5.0),
-            Value::Number(1.0),
-            Value::Number(3.0),
-        ];
-        
+        let values = vec![Value::Number(5.0), Value::Number(1.0), Value::Number(3.0)];
+
         let result = operations::min(&handler, values).unwrap();
         assert_eq!(result, Value::Number(1.0));
     }
@@ -672,7 +681,7 @@ mod tests {
             (1, Value::String(" ".to_string())),
             (2, Value::String("World".to_string())),
         ];
-        
+
         let result = operations::concat(&handler, indexed_values).unwrap();
         assert_eq!(result, Value::String("Hello World".to_string()));
     }
@@ -686,7 +695,7 @@ mod tests {
             (0, Value::String("Hello".to_string())),
             (1, Value::String(" ".to_string())),
         ];
-        
+
         let result = operations::concat(&handler, indexed_values).unwrap();
         // Should still produce correct order
         assert_eq!(result, Value::String("Hello World".to_string()));
@@ -703,15 +712,21 @@ mod tests {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0),
         };
-        
+
         let values1 = vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)];
         let values2 = vec![Value::Number(3.0), Value::Number(1.0), Value::Number(2.0)];
         let values3 = vec![Value::Number(2.0), Value::Number(3.0), Value::Number(1.0)];
-        
-        let result1 = handler.reduce_commutative(values1, identity.clone(), &combine).unwrap();
-        let result2 = handler.reduce_commutative(values2, identity.clone(), &combine).unwrap();
-        let result3 = handler.reduce_commutative(values3, identity, &combine).unwrap();
-        
+
+        let result1 = handler
+            .reduce_commutative(values1, identity.clone(), &combine)
+            .unwrap();
+        let result2 = handler
+            .reduce_commutative(values2, identity.clone(), &combine)
+            .unwrap();
+        let result3 = handler
+            .reduce_commutative(values3, identity, &combine)
+            .unwrap();
+
         assert_eq!(result1, result2);
         assert_eq!(result2, result3);
         assert_eq!(result1, Value::Number(6.0));
@@ -726,23 +741,27 @@ mod tests {
             (Value::String(x), Value::String(y)) => Value::String(x + &y),
             _ => Value::String("".to_string()),
         };
-        
+
         // Different input orders should produce same result when indices are preserved
         let indexed_values1 = vec![
             (0, Value::String("a".to_string())),
             (1, Value::String("b".to_string())),
             (2, Value::String("c".to_string())),
         ];
-        
+
         let indexed_values2 = vec![
             (2, Value::String("c".to_string())),
             (0, Value::String("a".to_string())),
             (1, Value::String("b".to_string())),
         ];
-        
-        let result1 = handler.reduce_non_commutative(indexed_values1, identity.clone(), &combine).unwrap();
-        let result2 = handler.reduce_non_commutative(indexed_values2, identity, &combine).unwrap();
-        
+
+        let result1 = handler
+            .reduce_non_commutative(indexed_values1, identity.clone(), &combine)
+            .unwrap();
+        let result2 = handler
+            .reduce_non_commutative(indexed_values2, identity, &combine)
+            .unwrap();
+
         assert_eq!(result1, result2);
         assert_eq!(result1, Value::String("abc".to_string()));
     }
@@ -752,24 +771,26 @@ mod tests {
     #[test]
     fn test_concrete_implementation() {
         let handler = DefaultReductionHandler::new();
-        
+
         // Test all trait methods
         let load_op = IRInstruction::LoadContext {
             context_id: "test".to_string(),
             target_register: 0,
         };
-        
+
         let classification = handler.classify_reduction(&load_op);
         assert_eq!(classification, ReductionType::NonCommutative);
-        
+
         let values = vec![Value::Number(1.0), Value::Number(2.0)];
         let identity = Value::Number(0.0);
         let combine = |a: Value, b: Value| match (a, b) {
             (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
             _ => Value::Number(0.0),
         };
-        
-        let result = handler.reduce_commutative(values, identity, combine).unwrap();
+
+        let result = handler
+            .reduce_commutative(values, identity, combine)
+            .unwrap();
         assert_eq!(result, Value::Number(3.0));
     }
 }

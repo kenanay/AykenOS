@@ -74,7 +74,7 @@
                         <h3>3. Sistem Çağrıları</h3>
                         <ul>
                             <li><a href="#3-1" data-section="3.1">3.1 Syscall Mimarisi</a></li>
-                            <li><a href="#3-2" data-section="3.2">3.2 Temel Syscall'lar (1000-1010)</a></li>
+                            <li><a href="#3-2" data-section="3.2">3.2 Temel Syscall'lar (1000-1011)</a></li>
                             <li><a href="#3-3" data-section="3.3">3.3 BCIB Execution Engine</a></li>
                         </ul>
                     </div>
@@ -146,7 +146,7 @@
                         <div class="feature-grid">
                             <div class="feature-card">
                                 <h4>🔧 Minimal Kernel</h4>
-                                <p>Sadece 11 temel <term data-term="syscall">syscall</term> (1000-1010 aralığı, frozen)</p>
+                                <p>Sadece 12 temel <term data-term="syscall">syscall</term> (1000-1011 aralığı, frozen)</p>
                             </div>
                             <div class="feature-card">
                                 <h4>🛡️ Ring3 Empowerment</h4>
@@ -325,7 +325,7 @@ make all        # kernel.elf ve BOOTX64.EFI oluşturur</code></pre>
                                 <div class="layer-content">
                                     <p>Minimal çekirdek - sadece mekanizma</p>
                                     <ul>
-                                        <li>11 temel syscall (1000-1010)</li>
+                                        <li>12 temel syscall (1000-1011)</li>
                                         <li>Bellek yönetimi</li>
                                         <li>Context switching</li>
                                         <li>Interrupt handling</li>
@@ -362,7 +362,7 @@ make all        # kernel.elf ve BOOTX64.EFI oluşturur</code></pre>
                         
                         <h3>Syscall Mimarisi</h3>
                         
-                        <p>Geleneksel işletim sistemleri yüzlerce syscall içerirken, AykenOS sadece 11 temel syscall kullanır:</p>
+                        <p>Geleneksel işletim sistemleri yüzlerce syscall içerirken, AykenOS sadece 12 temel syscall kullanır:</p>
                         
                         <div class="syscall-table">
                             <table>
@@ -429,6 +429,11 @@ make all        # kernel.elf ve BOOTX64.EFI oluşturur</code></pre>
                                         <td><code>sys_v2_debug_putchar</code></td>
                                         <td>Ring3 debug heartbeat</td>
                                     </tr>
+                                    <tr>
+                                        <td>1011</td>
+                                        <td><code>sys_v2_complete_execution</code></td>
+                                        <td>BCIB execution tamamlama</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -443,7 +448,7 @@ make all        # kernel.elf ve BOOTX64.EFI oluşturur</code></pre>
                             
                             <p>AykenOS'ta ise:</p>
                             <div class="math-formula">
-                                $$C_{ayken} = O(10 + k)$$
+                                $$C_{ayken} = O(12 + k)$$
                             </div>
                             <p>Burada $k$ = <term data-term="bcib">BCIB</term> instruction karmaşıklığı</p>
                         </div>
@@ -585,7 +590,7 @@ make run</code></pre>
                                 <div class="layer-content">
                                     <p>Minimal syscall arayüzü</p>
                                     <ul>
-                                        <li>11 temel syscall (1000-1010)</li>
+                                        <li>12 temel syscall (1000-1011)</li>
                                         <li>Interrupt handling</li>
                                         <li>Timer management</li>
                                         <li>Capability-based security</li>

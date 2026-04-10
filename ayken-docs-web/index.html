@@ -57,8 +57,8 @@
                 </div>
                 <div class="hero-visual">
                     <div class="constitutional-diagram">
-                        <div class="phase-indicator">Phase 10 &amp; 11 Officially Closed</div>
-                        <div class="status-badge">Real CPL3 Entry Verified ✓</div>
+                        <div class="phase-indicator">Phase 15 Officially Closed</div>
+                        <div class="status-badge">BCIB Execution Engine v3 Verified ✓</div>
                     </div>
                 </div>
             </div>
@@ -123,7 +123,7 @@
                         <h3>Çekirdek (Kernel)</h3>
                         <ul>
                             <li>Ring0 güvenlik modeli</li>
-                            <li>11 temel syscall (1000-1010, frozen)</li>
+                            <li>12 temel syscall (1000-1011, frozen)</li>
                             <li>Scheduler arbitration (Ring3 hint → Ring0 arbiter)</li>
                             <li>Execution-centric mimari</li>
                         </ul>
@@ -140,9 +140,9 @@
                     <div class="arch-layer">
                         <h3>Geliştirme Araçları</h3>
                         <ul>
-                            <li>Ayken CLI (principle enforcement)</li>
+                            <li>Ayken CLI v0.1 (Faz A wrapper)</li>
                             <li>AHS/AHTS/MARS/ARRE/ARH sistemleri</li>
-                            <li>21 CI gates (make ci-freeze)</li>
+                            <li>30 CI gates (make ci-freeze)</li>
                             <li>VS Code entegrasyonu</li>
                         </ul>
                     </div>
@@ -200,29 +200,25 @@
                     <div class="project-section">
                         <h3>Ayken OS (İşletim Sistemi)</h3>
                         <div class="current-phase">
-                            <span class="phase-number">Phase 10 &amp; 11</span>
-                            <span class="phase-name">Officially Closed — Architecture Freeze Active</span>
+                            <span class="phase-number">Phase 15</span>
+                            <span class="phase-name">Officially Closed — Phase 16 Pending</span>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 100%"></div>
                             </div>
-                            <span class="progress-text">Phase 10/11 Tamamlandı — Phase 12 Devam Ediyor</span>
+                            <span class="progress-text">Phase 10-15 Tamamlandı — Phase 16 Governance Onayı Bekliyor</span>
                         </div>
                         
                         <div class="completed-phases">
                             <h4>Tamamlanan Fazlar</h4>
                             <ul class="phase-list">
-                                <li class="completed">Faz 1: Çekirdek temelinin tamamlanması</li>
-                                <li class="completed">Faz 1.5: Stabilizasyon ve Ring3 doğrulaması</li>
-                                <li class="completed">Faz 2: Execution-centric mimari dönüşümü</li>
-                                <li class="completed">Faz 2.5: Legacy kod temizliği</li>
-                                <li class="completed">Faz 3.4: Multi-Agent Orchestration</li>
-                                <li class="completed">Faz 4.3: Performance Optimization</li>
-                                <li class="completed">Faz 4.4: Ring3 Execution Model</li>
-                                <li class="completed">Faz 4.5: Advanced Integration (Policy Accept Proof)</li>
-                                <li class="completed">Phase 10-A1: Ring3 Process Preparation</li>
-                                <li class="completed">Phase 10-A2: Real CPL3 Entry — OFFICIALLY CLOSED (7 Mart 2026)</li>
+                                <li class="completed">Faz 1-4.5: Çekirdek temel ve execution-centric dönüşüm</li>
+                                <li class="completed">Phase 10: Runtime — OFFICIALLY CLOSED (7 Mart 2026)</li>
                                 <li class="completed">Phase 11: Verification Substrate — OFFICIALLY CLOSED (7 Mart 2026)</li>
-                                <li class="in-progress">Phase 12: Distributed Verification (P12-01..P12-13 local tamamlandı)</li>
+                                <li class="completed">Phase 12: Trust Layer — OFFICIALLY CLOSED (PR #62)</li>
+                                <li class="completed">Phase 13: Distributed Observability — OFFICIALLY CLOSED (PR #81)</li>
+                                <li class="completed">Phase 14: Observability Hardening — OFFICIALLY CLOSED</li>
+                                <li class="completed">Phase 15: BCIB Execution Engine v3 — OFFICIALLY CLOSED (PR #104)</li>
+                                <li class="in-progress">Phase 16: Ayken CLI Orchestration — PENDING (Governance onayı bekliyor)</li>
                             </ul>
                         </div>
                     </div>
@@ -259,19 +255,19 @@
                         <h3>Proje Metrikleri</h3>
                         <div class="metrics-grid">
                             <div class="metric">
-                                <span class="metric-number">11</span>
+                                <span class="metric-number">12</span>
                                 <span class="metric-label">Syscalls (Frozen)</span>
                             </div>
                             <div class="metric">
-                                <span class="metric-number">21</span>
+                                <span class="metric-number">30</span>
                                 <span class="metric-label">CI Gates</span>
                             </div>
                             <div class="metric">
-                                <span class="metric-number">350+</span>
-                                <span class="metric-label">Constitutional Tests</span>
+                                <span class="metric-number">305</span>
+                                <span class="metric-label">BCIB v3 Tests</span>
                             </div>
                             <div class="metric">
-                                <span class="metric-number">~49K</span>
+                                <span class="metric-number">~55K</span>
                                 <span class="metric-label">Toplam LOC</span>
                             </div>
                         </div>

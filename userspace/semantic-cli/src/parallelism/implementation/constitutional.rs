@@ -17,7 +17,7 @@
 //! 2. **Adaptive Blacklist is Soft** - Blacklisting is reversible after 50 executions
 //! 3. **Native Code Purity Constraint** - Native code must be observationally pure
 
-use crate::execution_plan::{IRBlock, BlockId, ParallelSafety};
+use crate::execution_plan::{BlockId, IRBlock, ParallelSafety};
 use crate::parallelism::{ParallelismError, ParallelismResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -51,20 +51,20 @@ impl ExecutionMode {
     pub fn allows_adaptation(&self) -> bool {
         match self {
             ExecutionMode::Normal => true,
-            ExecutionMode::Replay => false,      // CONSTITUTIONAL: P3
+            ExecutionMode::Replay => false, // CONSTITUTIONAL: P3
             ExecutionMode::Verification => false, // CONSTITUTIONAL: No contamination
             #[cfg(debug_assertions)]
             ExecutionMode::Development => true,
         }
     }
-    
+
     /// Checks if this mode requires strict determinism.
     ///
     /// **CONSTITUTIONAL:** ALL modes require determinism - this is non-negotiable.
     pub fn requires_determinism(&self) -> bool {
         true // CONSTITUTIONAL: P1 - Determinism > Parallelism
     }
-    
+
     /// Checks if this mode allows parallel execution.
     ///
     /// **CONSTITUTIONAL:** Replay mode MUST use sequential execution only.
@@ -100,7 +100,7 @@ impl SafetyVerdict {
     pub fn is_binding(&self) -> bool {
         true
     }
-    
+
     /// Enforces the safety verdict or panics.
     ///
     /// **CONSTITUTIONAL ENFORCEMENT:** Attempting to execute rejected operations
@@ -154,26 +154,26 @@ impl RestrictionSet {
             required_checks: Vec::new(),
         }
     }
-    
+
     /// Checks if the restriction set is empty.
     pub fn is_empty(&self) -> bool {
-        self.max_workers.is_none() 
-            && self.min_dataset_size.is_none() 
+        self.max_workers.is_none()
+            && self.min_dataset_size.is_none()
             && self.required_checks.is_empty()
     }
-    
+
     /// Adds a maximum worker restriction.
     pub fn with_max_workers(mut self, max_workers: usize) -> Self {
         self.max_workers = Some(max_workers);
         self
     }
-    
+
     /// Adds a minimum dataset size restriction.
     pub fn with_min_dataset_size(mut self, min_size: usize) -> Self {
         self.min_dataset_size = Some(min_size);
         self
     }
-    
+
     /// Adds a required safety check.
     pub fn with_safety_check(mut self, check: SafetyCheck) -> Self {
         self.required_checks.push(check);
@@ -266,31 +266,33 @@ impl PolicyTable {
     /// - Other errors have appropriate recovery policies
     pub fn constitutional_default() -> Self {
         let mut policies = HashMap::new();
-        
+
         // CONSTITUTIONAL: Determinism violations are FATAL
         policies.insert(ErrorClass::DeterminismViolation, ErrorPolicy::Fatal);
-        
+
         // CONSTITUTIONAL: Safety violations are FATAL
         policies.insert(ErrorClass::SafetyViolation, ErrorPolicy::Fatal);
-        
+
         // Performance issues get blacklisted
         policies.insert(ErrorClass::PerformanceDegradation, ErrorPolicy::Blacklist);
-        
+
         // Worker panics get one retry, then blacklist
         policies.insert(ErrorClass::WorkerPanic, ErrorPolicy::Retry(1));
-        
+
         // Resource issues fall back to sequential
         policies.insert(ErrorClass::ResourceExhaustion, ErrorPolicy::Fallback);
         policies.insert(ErrorClass::Timeout, ErrorPolicy::Fallback);
-        
-        Self { error_policies: policies }
+
+        Self {
+            error_policies: policies,
+        }
     }
-    
+
     /// Gets the policy for an error class.
     pub fn get_policy(&self, error_class: ErrorClass) -> Option<ErrorPolicy> {
         self.error_policies.get(&error_class).copied()
     }
-    
+
     /// Enforces the policy for an error.
     ///
     /// **CONSTITUTIONAL ENFORCEMENT:** Fatal errors cause immediate panic.
@@ -325,10 +327,10 @@ impl PolicyTable {
 pub struct ConstitutionalConfig {
     /// IMMUTABLE - Can only be set at startup
     pub static_config: StaticConfig,
-    
+
     /// RUNTIME TUNABLE - Can be changed during execution
     pub runtime_config: Arc<RwLock<RuntimeConfig>>,
-    
+
     /// CONSTITUTION LOCKED - Cannot be changed without system restart
     pub locked_config: LockedConfig,
 }
@@ -342,12 +344,12 @@ impl ConstitutionalConfig {
             locked_config: LockedConfig::default(),
         }
     }
-    
+
     /// Gets the current execution mode.
     pub fn execution_mode(&self) -> ExecutionMode {
         self.locked_config.execution_mode
     }
-    
+
     /// Sets the execution mode (requires constitutional authority).
     ///
     /// **CONSTITUTIONAL:** Mode changes must be authorized and may require restart.
@@ -390,16 +392,16 @@ impl StaticConfig {
             constitutional_compliance: true,
         }
     }
-    
+
     /// Creates development configuration (only in debug builds).
     ///
     /// **CONSTITUTIONAL:** Even in development, core principles are enforced.
     #[cfg(debug_assertions)]
     pub fn development_default() -> Self {
         Self {
-            determinism_enforcement: true, // Still required
-            safety_verification: true,    // Still required
-            replay_capability: true,      // Still required
+            determinism_enforcement: true,    // Still required
+            safety_verification: true,        // Still required
+            replay_capability: true,          // Still required
             constitutional_compliance: false, // Can be relaxed for testing
         }
     }
@@ -528,12 +530,12 @@ impl ConstitutionalAuthority {
             granted_at: std::time::Instant::now(),
         }
     }
-    
+
     /// Gets the authority level.
     pub fn get_authority_level(&self) -> AuthorityLevel {
         self.authority_level
     }
-    
+
     /// Verifies that the authority is valid.
     pub fn verify(&self) -> ParallelismResult<()> {
         // Authority expires after 1 minute to prevent misuse
@@ -542,7 +544,7 @@ impl ConstitutionalAuthority {
                 message: "Constitutional authority expired".to_string(),
             });
         }
-        
+
         Ok(())
     }
 }
@@ -574,12 +576,12 @@ impl ConstitutionalChecker {
             policy_table: PolicyTable::constitutional_default(),
         }
     }
-    
+
     /// Verifies constitutional compliance for an execution request.
     ///
     /// **CONSTITUTIONAL ENFORCEMENT:** This method MUST be called before
     /// any parallel execution to ensure constitutional compliance.
-    /// 
+    ///
     /// **NOTE:** This method returns the SafetyVerdict for examination.
     /// The caller is responsible for enforcing the verdict if needed.
     pub fn verify_execution_request(
@@ -592,7 +594,7 @@ impl ConstitutionalChecker {
         if self.config.static_config.constitutional_compliance {
             self.verify_constitutional_compliance()?;
         }
-        
+
         // 2. Verify execution mode requirements
         if !mode.requires_determinism() {
             return Err(ParallelismError::ConstitutionalViolation {
@@ -600,14 +602,14 @@ impl ConstitutionalChecker {
                 violation: "Execution mode does not require determinism".to_string(),
             });
         }
-        
+
         // 3. Verify safety requirements
         let safety_verdict = self.analyze_safety(block, mode, data_size)?;
-        
+
         // 4. Return verdict for caller to handle (don't enforce here during verification)
         Ok(safety_verdict)
     }
-    
+
     /// Verifies overall constitutional compliance.
     fn verify_constitutional_compliance(&self) -> ParallelismResult<()> {
         // Verify P1: Determinism > Parallelism
@@ -617,7 +619,7 @@ impl ConstitutionalChecker {
                 violation: "Determinism enforcement is disabled".to_string(),
             });
         }
-        
+
         // Verify P3: Replay First-Class Citizen
         if !self.config.static_config.replay_capability {
             return Err(ParallelismError::ConstitutionalViolation {
@@ -625,10 +627,10 @@ impl ConstitutionalChecker {
                 violation: "Replay capability is disabled".to_string(),
             });
         }
-        
+
         Ok(())
     }
-    
+
     /// Analyzes safety for a specific execution request.
     fn analyze_safety(
         &self,
@@ -646,27 +648,28 @@ impl ConstitutionalChecker {
             }
             ParallelSafety::ReductionOnly => {
                 // Allow with restrictions
-                let restrictions = RestrictionSet::new()
-                    .with_safety_check(SafetyCheck::DeterministicOrdering);
+                let restrictions =
+                    RestrictionSet::new().with_safety_check(SafetyCheck::DeterministicOrdering);
                 return Ok(SafetyVerdict::AllowWithRestrictions(restrictions));
             }
         }
-        
+
         // Check execution mode constraints
         if mode == ExecutionMode::Replay && !mode.allows_parallelism() {
             return Ok(SafetyVerdict::Reject(RejectionReason::Custom(
-                "Replay mode requires sequential execution".to_string()
+                "Replay mode requires sequential execution".to_string(),
             )));
         }
-        
+
         // Check dataset size
         let runtime_config = self.config.runtime_config.read().unwrap();
         if data_size < runtime_config.parallel_threshold {
-            return Ok(SafetyVerdict::Reject(RejectionReason::Custom(
-                format!("Dataset too small: {} < {}", data_size, runtime_config.parallel_threshold)
-            )));
+            return Ok(SafetyVerdict::Reject(RejectionReason::Custom(format!(
+                "Dataset too small: {} < {}",
+                data_size, runtime_config.parallel_threshold
+            ))));
         }
-        
+
         // Default to allow for safe operations
         Ok(SafetyVerdict::Allow)
     }
@@ -675,7 +678,7 @@ impl ConstitutionalChecker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution_plan::{IRInstruction, BlockTerminator};
+    use crate::execution_plan::{BlockTerminator, IRInstruction};
 
     fn create_test_block(id: BlockId, safety: ParallelSafety) -> IRBlock {
         IRBlock::with_safety(
@@ -695,7 +698,7 @@ mod tests {
         assert!(ExecutionMode::Normal.requires_determinism());
         assert!(ExecutionMode::Replay.requires_determinism());
         assert!(ExecutionMode::Verification.requires_determinism());
-        
+
         #[cfg(debug_assertions)]
         assert!(ExecutionMode::Development.requires_determinism());
     }
@@ -706,7 +709,7 @@ mod tests {
         assert!(ExecutionMode::Normal.allows_adaptation());
         assert!(!ExecutionMode::Replay.allows_adaptation());
         assert!(!ExecutionMode::Verification.allows_adaptation());
-        
+
         #[cfg(debug_assertions)]
         assert!(ExecutionMode::Development.allows_adaptation());
     }
@@ -716,7 +719,7 @@ mod tests {
         assert!(ExecutionMode::Normal.allows_parallelism());
         assert!(!ExecutionMode::Replay.allows_parallelism()); // CONSTITUTIONAL
         assert!(ExecutionMode::Verification.allows_parallelism());
-        
+
         #[cfg(debug_assertions)]
         assert!(ExecutionMode::Development.allows_parallelism());
     }
@@ -726,7 +729,7 @@ mod tests {
         let allow = SafetyVerdict::Allow;
         let restrict = SafetyVerdict::AllowWithRestrictions(RestrictionSet::new());
         let reject = SafetyVerdict::Reject(RejectionReason::SideEffects);
-        
+
         // All verdicts are binding
         assert!(allow.is_binding());
         assert!(restrict.is_binding());
@@ -738,7 +741,7 @@ mod tests {
     fn test_safety_verdict_enforce_reject() {
         let verdict = SafetyVerdict::Reject(RejectionReason::SideEffects);
         let block = create_test_block(1, ParallelSafety::Unsafe);
-        
+
         verdict.enforce_or_panic(&block);
     }
 
@@ -747,7 +750,7 @@ mod tests {
     fn test_safety_verdict_enforce_empty_restrictions() {
         let verdict = SafetyVerdict::AllowWithRestrictions(RestrictionSet::new());
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         verdict.enforce_or_panic(&block);
     }
 
@@ -755,7 +758,7 @@ mod tests {
     fn test_safety_verdict_enforce_allow() {
         let verdict = SafetyVerdict::Allow;
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // Should not panic
         verdict.enforce_or_panic(&block);
     }
@@ -766,7 +769,7 @@ mod tests {
             .with_max_workers(4)
             .with_min_dataset_size(1000)
             .with_safety_check(SafetyCheck::NoSharedMutableState);
-        
+
         assert!(!restrictions.is_empty());
         assert_eq!(restrictions.max_workers, Some(4));
         assert_eq!(restrictions.min_dataset_size, Some(1000));
@@ -776,7 +779,7 @@ mod tests {
     #[test]
     fn test_policy_table_constitutional_default() {
         let policy_table = PolicyTable::constitutional_default();
-        
+
         // Constitutional violations must be fatal
         assert_eq!(
             policy_table.get_policy(ErrorClass::DeterminismViolation),
@@ -786,7 +789,7 @@ mod tests {
             policy_table.get_policy(ErrorClass::SafetyViolation),
             Some(ErrorPolicy::Fatal)
         );
-        
+
         // Performance issues should be blacklisted
         assert_eq!(
             policy_table.get_policy(ErrorClass::PerformanceDegradation),
@@ -797,20 +800,20 @@ mod tests {
     #[test]
     fn test_constitutional_config() {
         let config = ConstitutionalConfig::new();
-        
+
         // Production defaults should enforce all constitutional principles
         assert!(config.static_config.determinism_enforcement);
         assert!(config.static_config.safety_verification);
         assert!(config.static_config.replay_capability);
         assert!(config.static_config.constitutional_compliance);
-        
+
         assert_eq!(config.execution_mode(), ExecutionMode::Normal);
     }
 
     #[test]
     fn test_constitutional_authority() {
         let authority = ConstitutionalAuthority::grant_system_authority();
-        
+
         // Fresh authority should be valid
         assert!(authority.verify().is_ok());
     }
@@ -819,27 +822,19 @@ mod tests {
     fn test_constitutional_checker() {
         let config = ConstitutionalConfig::new();
         let checker = ConstitutionalChecker::new(config);
-        
+
         // Safe block should be allowed
         let safe_block = create_test_block(1, ParallelSafety::Safe);
-        let verdict = checker.verify_execution_request(
-            &safe_block,
-            ExecutionMode::Normal,
-            1000
-        );
+        let verdict = checker.verify_execution_request(&safe_block, ExecutionMode::Normal, 1000);
         assert!(verdict.is_ok());
         assert_eq!(verdict.unwrap(), SafetyVerdict::Allow);
-        
+
         // Unsafe block should be rejected
         let unsafe_block = create_test_block(2, ParallelSafety::Unsafe);
-        let verdict = checker.verify_execution_request(
-            &unsafe_block,
-            ExecutionMode::Normal,
-            1000
-        );
+        let verdict = checker.verify_execution_request(&unsafe_block, ExecutionMode::Normal, 1000);
         assert!(verdict.is_ok());
         match verdict.unwrap() {
-            SafetyVerdict::Reject(RejectionReason::SideEffects) => {},
+            SafetyVerdict::Reject(RejectionReason::SideEffects) => {}
             _ => panic!("Expected rejection for unsafe block"),
         }
     }

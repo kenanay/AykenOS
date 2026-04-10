@@ -39,7 +39,10 @@ pub struct Parser {
 impl Parser {
     /// Create a new parser
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, position: 0 }
+        Self {
+            tokens,
+            position: 0,
+        }
     }
 
     /// Parse tokens into AST

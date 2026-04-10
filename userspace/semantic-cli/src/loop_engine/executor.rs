@@ -18,18 +18,18 @@
 //! - ✅ Phase 7.2: Deterministic partitioning
 //! - ✅ Phase 7.3: Parallel execution with stable index mapping
 
-use crate::bcib::{LoopInstruction, LoopType, Value, LoopRange, ControlFlowType};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
-use crate::loop_engine::{LoopState, LoopContext, LoopError, LoopResult};
+use super::core::{LoopBodyFn, LoopBodyResult, LoopExecutor as CoreLoopExecutor};
+use crate::bcib::{ControlFlowType, LoopInstruction, LoopRange, LoopType, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
+use crate::loop_engine::{LoopContext, LoopError, LoopResult, LoopState};
 use crate::parallelism::DeterministicMerger;
-use super::core::{LoopExecutor as CoreLoopExecutor, LoopBodyFn, LoopBodyResult};
 
 /// Iteration partition for deterministic parallel execution (Phase 7.2)
-/// 
+///
 /// Represents a contiguous range of loop iterations that can be executed
 /// independently by a parallel worker. The partition boundaries are
 /// calculated deterministically based on iteration count only.
-/// 
+///
 /// Requirements 15.1, 15.2: Deterministic partitioning, stable index mapping
 #[derive(Debug, Clone, PartialEq)]
 pub struct IterationPartition {
@@ -48,13 +48,13 @@ impl IterationPartition {
     pub fn contains_iteration(&self, iteration: u32) -> bool {
         iteration >= self.start_iteration && iteration < self.end_iteration
     }
-    
+
     /// Get the local iteration index within this partition
-    /// 
+    ///
     /// This implements the stable index mapping required for deterministic
     /// parallel execution: global iteration N maps to local iteration
     /// (N - start_iteration) within the partition.
-    /// 
+    ///
     /// Requirements 15.2: Stable index mapping
     pub fn local_iteration_index(&self, global_iteration: u32) -> Option<u32> {
         if self.contains_iteration(global_iteration) {
@@ -63,10 +63,10 @@ impl IterationPartition {
             None
         }
     }
-    
+
     /// Check if this partition is valid (well-formed)
     pub fn is_valid(&self) -> bool {
-        self.start_iteration <= self.end_iteration 
+        self.start_iteration <= self.end_iteration
             && self.iteration_count == (self.end_iteration - self.start_iteration)
     }
 }
@@ -112,7 +112,9 @@ impl ParallelizationDecision {
     /// Get the estimated benefit for parallel execution (if applicable)
     pub fn parallel_benefit(&self) -> Option<f64> {
         match self {
-            ParallelizationDecision::Parallel { estimated_benefit, .. } => Some(*estimated_benefit),
+            ParallelizationDecision::Parallel {
+                estimated_benefit, ..
+            } => Some(*estimated_benefit),
             ParallelizationDecision::Sequential { .. } => None,
         }
     }
@@ -120,18 +122,20 @@ impl ParallelizationDecision {
     /// Get the iteration count for parallel execution (if applicable)
     pub fn iteration_count(&self) -> Option<u32> {
         match self {
-            ParallelizationDecision::Parallel { iteration_count, .. } => Some(*iteration_count),
+            ParallelizationDecision::Parallel {
+                iteration_count, ..
+            } => Some(*iteration_count),
             ParallelizationDecision::Sequential { .. } => None,
         }
     }
 }
 
 /// Result of executing a single iteration within a partition (Phase 7.3)
-/// 
+///
 /// This struct captures the result of executing one iteration with stable
 /// index mapping, including the global iteration index for deterministic
 /// result collection.
-/// 
+///
 /// Requirements 15.2, 15.6: Stable index mapping, deterministic result collection
 #[derive(Debug, Clone, PartialEq)]
 pub struct IterationExecutionResult {
@@ -144,11 +148,11 @@ pub struct IterationExecutionResult {
 }
 
 /// Result of executing a partition with stable index mapping (Phase 7.3)
-/// 
+///
 /// This struct captures the complete result of executing a partition,
 /// including all iteration results with their stable indices for
 /// deterministic result collection.
-/// 
+///
 /// Requirements 15.2, 15.6: Stable index mapping, deterministic result collection
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartitionExecutionResult {
@@ -246,7 +250,7 @@ impl PartitionExecutionResult {
 }
 
 /// Loop execution engine with advanced features
-/// 
+///
 /// This struct wraps the core execution engine and adds advanced features
 /// like parallelization, partitioning, and performance optimizations.
 pub struct LoopExecutor {
@@ -272,7 +276,7 @@ impl LoopExecutor {
     }
 
     /// Determine if a loop should be parallelized (Phase 7.1 - Parallelization trigger logic)
-    /// 
+    ///
     /// Requirements 7.1: Only parallelize Safe loop bodies, exclude While loops,
     /// support For and ForEach loops with statically known iteration counts,
     /// fall back to sequential execution for Unsafe loops.
@@ -285,7 +289,9 @@ impl LoopExecutor {
         match instruction.loop_type() {
             LoopType::While => {
                 return ParallelizationDecision::Sequential {
-                    reason: "While loops are excluded from parallelization (non-static iteration count)".to_string(),
+                    reason:
+                        "While loops are excluded from parallelization (non-static iteration count)"
+                            .to_string(),
                 };
             }
             LoopType::For | LoopType::ForEach => {
@@ -308,7 +314,8 @@ impl LoopExecutor {
             Some(count) => count,
             None => {
                 return ParallelizationDecision::Sequential {
-                    reason: "Dynamic iteration count - cannot determine parallelization benefit".to_string(),
+                    reason: "Dynamic iteration count - cannot determine parallelization benefit"
+                        .to_string(),
                 };
             }
         };
@@ -333,7 +340,7 @@ impl LoopExecutor {
     }
 
     /// Get static iteration count for a loop instruction (Phase 7.1)
-    /// 
+    ///
     /// Returns Some(count) if the iteration count can be determined statically,
     /// None if the iteration count is dynamic or unknown.
     pub fn get_static_iteration_count(&self, instruction: &LoopInstruction) -> Option<u32> {
@@ -345,12 +352,14 @@ impl LoopExecutor {
             LoopInstruction::For { range, config, .. } => {
                 // For loops have static iteration count if range is known
                 let iteration_count = self.calculate_for_loop_iterations(range);
-                
+
                 // Ensure we don't exceed the iteration limit
                 let limited_count = iteration_count.min(config.iteration_limit);
                 Some(limited_count)
             }
-            LoopInstruction::ForEach { collection, config, .. } => {
+            LoopInstruction::ForEach {
+                collection, config, ..
+            } => {
                 // ForEach loops have static iteration count if collection size is known
                 match self.get_collection_size_hint(collection) {
                     Some(size) => {
@@ -396,7 +405,7 @@ impl LoopExecutor {
     }
 
     /// Get collection size hint for ForEach loops (Phase 7.1)
-    /// 
+    ///
     /// Returns Some(size) if the collection size can be determined statically,
     /// None if the collection size is dynamic or unknown.
     fn get_collection_size_hint(&self, collection_ref: &crate::bcib::OperandRef) -> Option<u32> {
@@ -420,7 +429,7 @@ impl LoopExecutor {
     }
 
     /// Estimate parallelization benefit for a given iteration count (Phase 7.1)
-    /// 
+    ///
     /// Returns a benefit score from 0.0 (no benefit) to 1.0 (maximum benefit).
     /// This is used for prioritizing parallelization decisions.
     fn estimate_parallelization_benefit(&self, iteration_count: u32) -> f64 {
@@ -430,9 +439,9 @@ impl LoopExecutor {
         // - Available CPU cores
         // - Memory access patterns
         // - Historical performance data
-        
+
         const MAX_BENEFIT_THRESHOLD: u32 = 10000;
-        
+
         if iteration_count >= MAX_BENEFIT_THRESHOLD {
             1.0 // Maximum benefit for large loops
         } else {
@@ -440,28 +449,30 @@ impl LoopExecutor {
             let min_threshold = 100.0; // MIN_PARALLEL_ITERATIONS as f64
             let max_threshold = MAX_BENEFIT_THRESHOLD as f64;
             let current = iteration_count as f64;
-            
-            ((current - min_threshold) / (max_threshold - min_threshold)).min(1.0).max(0.0)
+
+            ((current - min_threshold) / (max_threshold - min_threshold))
+                .min(1.0)
+                .max(0.0)
         }
     }
 
     /// Partition iterations deterministically for parallel execution (Phase 7.2)
-    /// 
+    ///
     /// Requirements 7.5, 15.1, 15.3: Partition iterations based on iteration count only,
     /// use fixed chunk size algorithm, treat available parallelism as upper bound.
-    /// 
+    ///
     /// This method implements the constitutional requirement for deterministic partitioning:
     /// - Same iteration count → same partitions (always)
     /// - Available parallelism (core count) is optimization hint, not semantic input
     /// - Fixed chunk size algorithm ensures reproducible partition boundaries
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `total_iterations` - Total number of iterations to partition
     /// * `available_parallelism` - Available parallel workers (upper bound only)
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Vector of `IterationPartition` structs defining deterministic partition boundaries
     pub fn partition_iterations_deterministic(
         &self,
@@ -472,7 +483,7 @@ impl LoopExecutor {
         if total_iterations == 0 {
             return Vec::new();
         }
-        
+
         if available_parallelism == 0 {
             return Vec::new();
         }
@@ -480,17 +491,17 @@ impl LoopExecutor {
         // Phase 7.2: Deterministic chunk size calculation
         // Constitutional rule: Based on iteration count only, not machine-dependent factors
         let chunk_size = self.calculate_deterministic_chunk_size(total_iterations);
-        
+
         // Calculate number of partitions needed
         let num_partitions = ((total_iterations + chunk_size - 1) / chunk_size) as usize;
-        
+
         // Treat available parallelism as upper bound (optimization, not semantic)
         let effective_partitions = num_partitions.min(available_parallelism);
-        
+
         // Create deterministic partitions using fixed chunk size
         let mut partitions = Vec::with_capacity(effective_partitions);
         let mut start_iteration = 0;
-        
+
         for partition_id in 0..effective_partitions {
             // Calculate partition boundaries deterministically
             let end_iteration = if partition_id == effective_partitions - 1 {
@@ -500,7 +511,7 @@ impl LoopExecutor {
                 // Regular partition gets fixed chunk size
                 (start_iteration + chunk_size).min(total_iterations)
             };
-            
+
             if start_iteration < end_iteration {
                 partitions.push(IterationPartition {
                     partition_id,
@@ -509,34 +520,34 @@ impl LoopExecutor {
                     iteration_count: end_iteration - start_iteration,
                 });
             }
-            
+
             start_iteration = end_iteration;
-            
+
             // Stop if we've covered all iterations
             if start_iteration >= total_iterations {
                 break;
             }
         }
-        
+
         partitions
     }
 
     /// Calculate deterministic chunk size for iteration partitioning (Phase 7.2)
-    /// 
+    ///
     /// This method implements the fixed chunk size algorithm required for deterministic
     /// partitioning. The chunk size is calculated based solely on iteration count,
     /// ensuring the same input always produces the same partitions.
-    /// 
+    ///
     /// Requirements 15.1: Partition iterations based on iteration count only
     fn calculate_deterministic_chunk_size(&self, total_iterations: u32) -> u32 {
         // Phase 7.2: Fixed chunk size algorithm
         // Constitutional rule: Deterministic calculation based on iteration count only
-        
+
         // Use a fixed chunk size that scales with iteration count
         // This ensures deterministic partitioning while providing reasonable parallelism
-        const MIN_CHUNK_SIZE: u32 = 100;  // Minimum chunk size for overhead amortization
+        const MIN_CHUNK_SIZE: u32 = 100; // Minimum chunk size for overhead amortization
         const MAX_CHUNK_SIZE: u32 = 1000; // Maximum chunk size for load balancing
-        
+
         if total_iterations <= MIN_CHUNK_SIZE {
             // Small loops: single chunk
             total_iterations
@@ -550,12 +561,12 @@ impl LoopExecutor {
     }
 
     /// Execute loop with deterministic parallel partitioning (Phase 7.3)
-    /// 
+    ///
     /// This method implements the complete parallel loop execution workflow:
     /// 1. Partition iterations deterministically
     /// 2. Execute partitions in parallel using stable index mapping
     /// 3. Collect results in deterministic order (partition 0, 1, 2, ...)
-    /// 
+    ///
     /// Requirements 7.4, 15.2, 15.6: Stable index mapping, deterministic partitioning,
     /// deterministic result collection order
     pub fn execute_loop_parallel(
@@ -566,37 +577,35 @@ impl LoopExecutor {
         available_parallelism: usize,
     ) -> Result<LoopResult> {
         // Phase 7.3: Create deterministic partitions
-        let partitions = self.partition_iterations_deterministic(iteration_count, available_parallelism);
-        
+        let partitions =
+            self.partition_iterations_deterministic(iteration_count, available_parallelism);
+
         if partitions.is_empty() {
             // No partitions - fall back to sequential execution
             return self.execute_loop(instruction, body_fn);
         }
-        
+
         if partitions.len() == 1 {
             // Single partition - execute sequentially for efficiency
             return self.execute_loop(instruction, body_fn);
         }
-        
+
         // Phase 7.3: Execute partitions with stable index mapping and result collection
-        let partition_results = self.execute_partitions_with_stable_mapping(
-            instruction,
-            &body_fn,
-            &partitions,
-        )?;
-        
+        let partition_results =
+            self.execute_partitions_with_stable_mapping(instruction, &body_fn, &partitions)?;
+
         // Phase 7.3: Collect results in deterministic order (partition 0, 1, 2, ...)
         let final_result = self.collect_partition_results_deterministic(partition_results)?;
-        
+
         Ok(final_result)
     }
 
     /// Execute partitions with stable index mapping (Phase 7.3)
-    /// 
+    ///
     /// This method ensures that iteration i always processes the same input data
     /// regardless of which partition contains it. Each partition maintains stable
     /// index mapping where global iteration N maps to the same input data.
-    /// 
+    ///
     /// Requirements 7.4, 15.2: Stable index mapping, deterministic data access
     fn execute_partitions_with_stable_mapping(
         &mut self,
@@ -605,27 +614,24 @@ impl LoopExecutor {
         partitions: &[IterationPartition],
     ) -> Result<Vec<PartitionExecutionResult>> {
         let mut partition_results = Vec::with_capacity(partitions.len());
-        
+
         // Execute each partition with stable index mapping
         for partition in partitions {
-            let partition_result = self.execute_single_partition_with_stable_mapping(
-                instruction,
-                body_fn,
-                partition,
-            )?;
+            let partition_result =
+                self.execute_single_partition_with_stable_mapping(instruction, body_fn, partition)?;
             partition_results.push(partition_result);
         }
-        
+
         Ok(partition_results)
     }
 
     /// Execute a single partition with stable index mapping (Phase 7.3)
-    /// 
+    ///
     /// This method implements the core stable index mapping guarantee:
     /// - Iteration i always processes input_data[i] (same input data)
     /// - Partition assignment does not affect data access
     /// - Same data access in parallel and sequential modes
-    /// 
+    ///
     /// Requirements 15.2: Stable index mapping for deterministic parallel execution
     fn execute_single_partition_with_stable_mapping(
         &mut self,
@@ -636,14 +642,14 @@ impl LoopExecutor {
         // Create partition-local loop context
         let context = self.create_loop_context(instruction)?;
         let mut state = LoopState::new(context, instruction.get_initial_accumulator().clone())?;
-        
+
         let mut iteration_results = Vec::with_capacity(partition.iteration_count as usize);
-        
+
         // Execute each iteration in the partition with stable index mapping
         for global_iteration in partition.start_iteration..partition.end_iteration {
             // Phase 7.3: Stable index mapping - iteration i always processes same input data
             let input_data = self.get_input_data_for_iteration(instruction, global_iteration)?;
-            
+
             // Check limits before each iteration
             if state.would_exceed_iteration_limit() {
                 return Ok(PartitionExecutionResult::error(
@@ -654,7 +660,7 @@ impl LoopExecutor {
                     },
                 ));
             }
-            
+
             let budget_cost = self.calculate_iteration_budget_cost(&state);
             if state.would_exceed_budget_timeout(budget_cost) {
                 return Ok(PartitionExecutionResult::error(
@@ -666,7 +672,7 @@ impl LoopExecutor {
                     },
                 ));
             }
-            
+
             // Execute iteration body with stable input data
             let body_result = self.execute_iteration_with_stable_input(
                 body_fn,
@@ -674,7 +680,7 @@ impl LoopExecutor {
                 global_iteration,
                 &input_data,
             )?;
-            
+
             // Handle control flow and update state
             match body_result {
                 LoopBodyResult::Break(accumulator) => {
@@ -682,14 +688,14 @@ impl LoopExecutor {
                     state.increment_completed_iterations();
                     let budget_cost = self.calculate_break_budget_cost();
                     state.add_budget_consumed(budget_cost);
-                    
+
                     // Add iteration result with stable index
                     iteration_results.push(IterationExecutionResult {
                         global_iteration_index: global_iteration,
                         result_value: accumulator,
                         control_flow: ControlFlowType::Break,
                     });
-                    
+
                     return Ok(PartitionExecutionResult::break_result(
                         partition.partition_id,
                         iteration_results,
@@ -702,14 +708,14 @@ impl LoopExecutor {
                     state.increment_completed_iterations();
                     let budget_cost = self.calculate_continue_budget_cost();
                     state.add_budget_consumed(budget_cost);
-                    
+
                     // Add iteration result with stable index
                     iteration_results.push(IterationExecutionResult {
                         global_iteration_index: global_iteration,
                         result_value: accumulator,
                         control_flow: ControlFlowType::Continue,
                     });
-                    
+
                     continue;
                 }
                 LoopBodyResult::Normal(new_accumulator) => {
@@ -717,7 +723,7 @@ impl LoopExecutor {
                     state.increment_completed_iterations();
                     let budget_cost = self.calculate_iteration_budget_cost(&state);
                     state.add_budget_consumed(budget_cost);
-                    
+
                     // Add iteration result with stable index
                     iteration_results.push(IterationExecutionResult {
                         global_iteration_index: global_iteration,
@@ -727,7 +733,7 @@ impl LoopExecutor {
                 }
             }
         }
-        
+
         // Partition completed successfully
         Ok(PartitionExecutionResult::success(
             partition.partition_id,
@@ -738,12 +744,12 @@ impl LoopExecutor {
     }
 
     /// Get input data for a specific iteration with stable index mapping (Phase 7.3)
-    /// 
+    ///
     /// This method implements the stable index mapping guarantee:
     /// - Iteration i always accesses input_data[i]
     /// - Mapping is based on iteration index, not partition assignment
     /// - Same input data regardless of parallel vs sequential execution
-    /// 
+    ///
     /// Requirements 15.2: Stable index mapping ensures deterministic data access
     fn get_input_data_for_iteration(
         &self,
@@ -758,11 +764,14 @@ impl LoopExecutor {
             }
             LoopInstruction::ForEach { collection, .. } => {
                 // ForEach loops: stable mapping based on collection index
-                let collection_value = self.resolve_collection_operand(collection, &LoopState::new(
-                    self.create_loop_context(instruction)?,
-                    instruction.get_initial_accumulator().clone(),
-                )?)?;
-                
+                let collection_value = self.resolve_collection_operand(
+                    collection,
+                    &LoopState::new(
+                        self.create_loop_context(instruction)?,
+                        instruction.get_initial_accumulator().clone(),
+                    )?,
+                )?;
+
                 // Get element at stable index position
                 match collection_value {
                     Value::Array(ref arr) => {
@@ -770,7 +779,11 @@ impl LoopExecutor {
                             Ok(arr[global_iteration as usize].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("Array index {} out of bounds (length: {})", global_iteration, arr.len()),
+                                &format!(
+                                    "Array index {} out of bounds (length: {})",
+                                    global_iteration,
+                                    arr.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
@@ -780,7 +793,11 @@ impl LoopExecutor {
                             Ok(list[global_iteration as usize].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("List index {} out of bounds (length: {})", global_iteration, list.len()),
+                                &format!(
+                                    "List index {} out of bounds (length: {})",
+                                    global_iteration,
+                                    list.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
@@ -792,17 +809,19 @@ impl LoopExecutor {
                             Ok(map[*key].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("Map index {} out of bounds (size: {})", global_iteration, keys.len()),
+                                &format!(
+                                    "Map index {} out of bounds (size: {})",
+                                    global_iteration,
+                                    keys.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
                     }
-                    _ => {
-                        Err(SemanticCLIError::execution_error(
-                            "Unsupported collection type for stable index mapping",
-                            ErrorCode::E500,
-                        ))
-                    }
+                    _ => Err(SemanticCLIError::execution_error(
+                        "Unsupported collection type for stable index mapping",
+                        ErrorCode::E500,
+                    )),
                 }
             }
             LoopInstruction::While { .. } => {
@@ -814,7 +833,7 @@ impl LoopExecutor {
     }
 
     /// Execute iteration with stable input data (Phase 7.3)
-    /// 
+    ///
     /// This method executes a single iteration with the stable input data
     /// determined by the stable index mapping. The same global iteration
     /// index always receives the same input data.
@@ -832,12 +851,12 @@ impl LoopExecutor {
     }
 
     /// Collect partition results in deterministic order (Phase 7.3)
-    /// 
+    ///
     /// This method implements deterministic result collection:
     /// - Results collected in partition order (0, 1, 2, ...)
     /// - Within each partition, results ordered by iteration index
     /// - Final result identical to sequential execution
-    /// 
+    ///
     /// Requirements 15.6: Deterministic result collection order
     fn collect_partition_results_deterministic(
         &self,
@@ -846,11 +865,15 @@ impl LoopExecutor {
         // Phase 7.3: Sort partition results by partition ID (deterministic order)
         let mut sorted_results = partition_results;
         sorted_results.sort_by_key(|result| result.partition_id);
-        
+
         // Check for early termination (break or error) in any partition
         for partition_result in &sorted_results {
             match &partition_result.result_type {
-                PartitionResultType::Break { iteration_results: _, final_accumulator, iterations_completed } => {
+                PartitionResultType::Break {
+                    iteration_results: _,
+                    final_accumulator,
+                    iterations_completed,
+                } => {
                     return Ok(LoopResult::break_result(
                         final_accumulator.clone(),
                         *iterations_completed,
@@ -864,15 +887,20 @@ impl LoopExecutor {
                 }
             }
         }
-        
+
         // All partitions completed successfully - collect iteration results
         let mut all_iteration_results = Vec::new();
         let mut total_iterations = 0;
         let mut final_accumulator = Value::Number(0.0); // Will be updated
-        
+
         // Phase 7.3: Collect results in partition order (0, 1, 2, ...)
         for partition_result in sorted_results {
-            if let PartitionResultType::Success { iteration_results, final_accumulator: acc, iterations_completed } = partition_result.result_type {
+            if let PartitionResultType::Success {
+                iteration_results,
+                final_accumulator: acc,
+                iterations_completed,
+            } = partition_result.result_type
+            {
                 // Add iteration results with stable index mapping
                 for iteration_result in iteration_results {
                     all_iteration_results.push((
@@ -880,20 +908,21 @@ impl LoopExecutor {
                         iteration_result.result_value,
                     ));
                 }
-                
+
                 total_iterations += iterations_completed;
                 final_accumulator = acc; // Use the last partition's accumulator
             }
         }
-        
+
         // Phase 7.3: Use stable index merger for deterministic result ordering
         let merger = crate::parallelism::StableIndexMerger::new();
-        let _ordered_results = merger.merge(all_iteration_results)
-            .map_err(|e| SemanticCLIError::execution_error(
+        let _ordered_results = merger.merge(all_iteration_results).map_err(|e| {
+            SemanticCLIError::execution_error(
                 &format!("Failed to merge parallel results: {}", e),
                 ErrorCode::E500,
-            ))?;
-        
+            )
+        })?;
+
         // Reconstruct final accumulator from ordered results
         // In a real implementation, this would use the accumulator pattern
         // For Phase 7.3, we'll use the last partition's accumulator
@@ -906,7 +935,7 @@ impl LoopExecutor {
     fn create_loop_context(&self, instruction: &LoopInstruction) -> Result<LoopContext> {
         let config = instruction.get_config();
         let loop_id = instruction.get_loop_id().clone();
-        
+
         // Phase 2.1: Simple body reference
         let loop_body = format!("loop-body-{}", loop_id.0);
 
@@ -961,7 +990,10 @@ impl LoopExecutor {
                 // Phase 3.1: For now, return an error for field references
                 // Future phases will implement proper field resolution
                 Err(SemanticCLIError::execution_error(
-                    &format!("Field reference '{}' resolution not implemented in Phase 3.1", field_name),
+                    &format!(
+                        "Field reference '{}' resolution not implemented in Phase 3.1",
+                        field_name
+                    ),
                     ErrorCode::E500,
                 ))
             }
@@ -970,7 +1002,10 @@ impl LoopExecutor {
                 // Phase 3.1: For now, return an error for temp register references
                 // Future phases will implement proper register resolution
                 Err(SemanticCLIError::execution_error(
-                    &format!("Temp register {} resolution not implemented in Phase 3.1", register_id),
+                    &format!(
+                        "Temp register {} resolution not implemented in Phase 3.1",
+                        register_id
+                    ),
                     ErrorCode::E500,
                 ))
             }

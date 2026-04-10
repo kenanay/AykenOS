@@ -42,11 +42,7 @@ impl<'a> Lexer<'a> {
             self.skip_whitespace();
 
             if self.is_at_end() {
-                tokens.push(Token::new(
-                    TokenKind::Eof,
-                    self.current_location(),
-                    "",
-                ));
+                tokens.push(Token::new(TokenKind::Eof, self.current_location(), ""));
                 break;
             }
 
@@ -248,7 +244,8 @@ impl<'a> Lexer<'a> {
         let lexeme = &self.input[start_pos..self.position];
 
         // Check if it's a keyword
-        let kind = keyword_from_str(lexeme).unwrap_or_else(|| TokenKind::Identifier(lexeme.to_string()));
+        let kind =
+            keyword_from_str(lexeme).unwrap_or_else(|| TokenKind::Identifier(lexeme.to_string()));
 
         Ok(Token::new(kind, start_location, lexeme))
     }
@@ -283,10 +280,7 @@ impl<'a> Lexer<'a> {
 
     /// Peek at the next character
     fn peek_next(&self) -> char {
-        self.input[self.position..]
-            .chars()
-            .nth(1)
-            .unwrap_or('\0')
+        self.input[self.position..].chars().nth(1).unwrap_or('\0')
     }
 
     /// Advance to the next character
@@ -296,7 +290,7 @@ impl<'a> Lexer<'a> {
         if !self.is_at_end() {
             let ch = self.peek();
             self.position += ch.len_utf8();
-            
+
             // Handle newline for correct line/column tracking
             if ch == '\n' {
                 self.line += 1;
@@ -410,7 +404,10 @@ mod tests {
         let mut lexer = Lexer::new("data users_table");
         let tokens = lexer.tokenize().unwrap();
         assert_eq!(tokens[0].kind, TokenKind::Identifier("data".to_string()));
-        assert_eq!(tokens[1].kind, TokenKind::Identifier("users_table".to_string()));
+        assert_eq!(
+            tokens[1].kind,
+            TokenKind::Identifier("users_table".to_string())
+        );
     }
 
     #[test]

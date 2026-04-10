@@ -16,27 +16,27 @@
 //! - Requirements 4.4: Corrupted fingerprint rejection
 
 #[cfg(test)]
+use crate::bcib::{BudgetMeasurement, LoopID, Value, ValueType};
+#[cfg(test)]
+use crate::loop_engine::{
+    fingerprint::{
+        ControlDecision, Fingerprint, FingerprintVerifier, LoopType, VerificationManager,
+        VerificationMode,
+    },
+    AccumulatorPattern, LoopContext,
+};
+#[cfg(test)]
 use proptest::prelude::*;
 #[cfg(test)]
 use proptest::strategy::ValueTree;
-#[cfg(test)]
-use crate::bcib::{Value, ValueType, BudgetMeasurement, LoopID};
-#[cfg(test)]
-use crate::loop_engine::{
-    LoopContext, AccumulatorPattern,
-    fingerprint::{
-        Fingerprint, LoopType, ControlDecision, VerificationMode, 
-        FingerprintVerifier, VerificationManager
-    }
-};
 
 /// Generate arbitrary loop contexts for property testing
 #[cfg(test)]
 fn arb_loop_context() -> impl Strategy<Value = LoopContext> {
     (
-        "[a-z]{3,10}",                    // loop_id
-        1u32..=10000,                     // iteration_limit
-        100u64..=50000,                   // budget_timeout
+        "[a-z]{3,10}",  // loop_id
+        1u32..=10000,   // iteration_limit
+        100u64..=50000, // budget_timeout
         prop_oneof![
             Just(BudgetMeasurement::IterationCount),
             Just(BudgetMeasurement::InstructionCount { weight: 10 }),
@@ -50,17 +50,18 @@ fn arb_loop_context() -> impl Strategy<Value = LoopContext> {
             Just(ValueType::List),
             Just(ValueType::SortedMap),
         ],
-        "[a-z ]{5,20}",                   // loop_body
-    ).prop_map(|(id, limit, budget, measurement, acc_type, body)| {
-        LoopContext {
-            loop_id: LoopID::new(id),
-            iteration_limit: limit,
-            budget_timeout: budget,
-            budget_measurement: measurement,
-            accumulator_type: acc_type,
-            loop_body: body,
-        }
-    })
+        "[a-z ]{5,20}", // loop_body
+    )
+        .prop_map(
+            |(id, limit, budget, measurement, acc_type, body)| LoopContext {
+                loop_id: LoopID::new(id),
+                iteration_limit: limit,
+                budget_timeout: budget,
+                budget_measurement: measurement,
+                accumulator_type: acc_type,
+                loop_body: body,
+            },
+        )
 }
 
 /// Generate arbitrary accumulator patterns for property testing
@@ -68,15 +69,16 @@ fn arb_loop_context() -> impl Strategy<Value = LoopContext> {
 fn arb_accumulator_pattern() -> impl Strategy<Value = AccumulatorPattern> {
     prop::collection::vec(
         (
-            "[a-z]{3,8}",                 // accumulator name
+            "[a-z]{3,8}", // accumulator name
             prop_oneof![
                 any::<f64>().prop_map(Value::Number),
                 "[a-z ]{1,10}".prop_map(Value::String),
                 any::<bool>().prop_map(Value::Boolean),
-            ]
+            ],
         ),
-        1..=5  // 1 to 5 accumulators
-    ).prop_map(|accumulators| {
+        1..=5, // 1 to 5 accumulators
+    )
+    .prop_map(|accumulators| {
         let mut pattern = AccumulatorPattern::new();
         for (name, value) in accumulators {
             // Ignore errors for property testing - we want to test with valid patterns
@@ -92,16 +94,20 @@ fn arb_control_decisions() -> impl Strategy<Value = Vec<ControlDecision>> {
     prop::collection::vec(
         prop_oneof![
             (any::<bool>(), 0u64..100).prop_map(|(result, iter)| {
-                ControlDecision::Continue { condition_result: result, iteration: iter }
+                ControlDecision::Continue {
+                    condition_result: result,
+                    iteration: iter,
+                }
             }),
             (any::<bool>(), 0u64..100).prop_map(|(result, iter)| {
-                ControlDecision::Break { condition_result: result, iteration: iter }
+                ControlDecision::Break {
+                    condition_result: result,
+                    iteration: iter,
+                }
             }),
-            (0u64..10000).prop_map(|elapsed| {
-                ControlDecision::Timeout { elapsed }
-            }),
+            (0u64..10000).prop_map(|elapsed| { ControlDecision::Timeout { elapsed } }),
         ],
-        0..=20  // 0 to 20 control decisions
+        0..=20, // 0 to 20 control decisions
     )
 }
 
@@ -140,29 +146,35 @@ fn arb_fingerprint_test_case() -> impl Strategy<Value = FingerprintTestCase> {
         arb_control_decisions(),
         arb_iteration_count(),
         arb_loop_type(),
-    ).prop_map(|(context, pattern, control_decisions, iteration_count, loop_type)| {
-        FingerprintTestCase {
-            context,
-            pattern,
-            control_decisions,
-            iteration_count,
-            loop_type,
-        }
-    })
+    )
+        .prop_map(
+            |(context, pattern, control_decisions, iteration_count, loop_type)| {
+                FingerprintTestCase {
+                    context,
+                    pattern,
+                    control_decisions,
+                    iteration_count,
+                    loop_type,
+                }
+            },
+        )
 }
 
 /// Generate pairs of different fingerprint test cases for uniqueness testing
 #[cfg(test)]
-fn arb_different_fingerprint_cases() -> impl Strategy<Value = (FingerprintTestCase, FingerprintTestCase)> {
-    (arb_fingerprint_test_case(), arb_fingerprint_test_case())
-        .prop_filter("Cases must be different", |(case1, case2)| {
+fn arb_different_fingerprint_cases(
+) -> impl Strategy<Value = (FingerprintTestCase, FingerprintTestCase)> {
+    (arb_fingerprint_test_case(), arb_fingerprint_test_case()).prop_filter(
+        "Cases must be different",
+        |(case1, case2)| {
             // Ensure the cases are actually different in some meaningful way
-            case1.context.loop_id.0 != case2.context.loop_id.0 ||
-            case1.context.iteration_limit != case2.context.iteration_limit ||
-            case1.iteration_count != case2.iteration_count ||
-            case1.loop_type != case2.loop_type ||
-            case1.control_decisions.len() != case2.control_decisions.len()
-        })
+            case1.context.loop_id.0 != case2.context.loop_id.0
+                || case1.context.iteration_limit != case2.context.iteration_limit
+                || case1.iteration_count != case2.iteration_count
+                || case1.loop_type != case2.loop_type
+                || case1.control_decisions.len() != case2.control_decisions.len()
+        },
+    )
 }
 
 /// Generate verification modes for property testing
@@ -189,25 +201,25 @@ proptest! {
             case1.control_decisions.clone(),
             case1.iteration_count,
         );
-        
+
         let fingerprint2_result = Fingerprint::from_context_and_accumulator(
             &case2.context,
             &case2.pattern,
             case2.control_decisions.clone(),
             case2.iteration_count,
         );
-        
+
         // Both fingerprint generations should succeed
         prop_assert!(fingerprint1_result.is_ok(), "First fingerprint generation failed: {:?}", fingerprint1_result.err());
         prop_assert!(fingerprint2_result.is_ok(), "Second fingerprint generation failed: {:?}", fingerprint2_result.err());
-        
+
         let fingerprint1 = fingerprint1_result.unwrap();
         let fingerprint2 = fingerprint2_result.unwrap();
-        
+
         // Property 2: Different execution paths should produce distinct fingerprints
         // This is the core uniqueness property - different inputs should yield different outputs
         prop_assert_ne!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint2.combined_hash,
             "Different execution paths produced identical fingerprints!\n\
              Case 1: loop_id={}, iteration_limit={}, iteration_count={}, loop_type={:?}\n\
@@ -218,19 +230,19 @@ proptest! {
             case2.context.loop_id.0, case2.context.iteration_limit, case2.iteration_count, case2.loop_type,
             fingerprint1, fingerprint2
         );
-        
+
         // Additional uniqueness checks on individual layers
         // At least one layer should be different for different execution paths
         let shape_different = fingerprint1.shape != fingerprint2.shape;
         let control_different = fingerprint1.control != fingerprint2.control;
         let data_different = fingerprint1.data != fingerprint2.data;
-        
+
         prop_assert!(
             shape_different || control_different || data_different,
             "All fingerprint layers are identical despite different execution paths!\n\
              This indicates a serious fingerprint generation bug."
         );
-        
+
         // Validate both fingerprints are well-formed
         prop_assert!(fingerprint1.validate().is_ok(), "First fingerprint validation failed");
         prop_assert!(fingerprint2.validate().is_ok(), "Second fingerprint validation failed");
@@ -251,31 +263,31 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         let fingerprint2_result = Fingerprint::from_context_and_accumulator(
             &case.context,
             &case.pattern,
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         // Both fingerprint generations should succeed
         prop_assert!(fingerprint1_result.is_ok(), "First fingerprint generation failed: {:?}", fingerprint1_result.err());
         prop_assert!(fingerprint2_result.is_ok(), "Second fingerprint generation failed: {:?}", fingerprint2_result.err());
-        
+
         let fingerprint1 = fingerprint1_result.unwrap();
         let fingerprint2 = fingerprint2_result.unwrap();
-        
+
         // Property: Identical inputs should produce identical fingerprints (determinism)
         prop_assert_eq!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint2.combined_hash,
             "Identical execution paths produced different fingerprints!\n\
              This violates determinism requirements.\n\
              Case: loop_id={}, iteration_limit={}, iteration_count={}, loop_type={:?}",
             case.context.loop_id.0, case.context.iteration_limit, case.iteration_count, case.loop_type
         );
-        
+
         // All layers should be identical
         prop_assert_eq!(fingerprint1.shape, fingerprint2.shape, "Shape fingerprints differ for identical inputs");
         prop_assert_eq!(fingerprint1.control, fingerprint2.control, "Control fingerprints differ for identical inputs");
@@ -299,16 +311,16 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         prop_assert!(fingerprint_result.is_ok(), "Fingerprint generation failed: {:?}", fingerprint_result.err());
         let fingerprint = fingerprint_result.unwrap();
-        
+
         // Create a verifier with the specified mode
         let verifier = FingerprintVerifier::new(mode);
-        
+
         // Test verification with identical fingerprints (should always succeed)
         let result = verifier.verify(&fingerprint, &fingerprint, Some(0));
-        
+
         match mode {
             VerificationMode::Disabled => {
                 // Property 3a: Disabled mode should always report success
@@ -326,22 +338,22 @@ proptest! {
                 prop_assert!(result.mismatch_type.is_none(), "LogOnly mode should not report mismatch for identical fingerprints");
             }
         }
-        
+
         // Test verification with different fingerprints
         // Create a slightly different fingerprint by modifying iteration count
         let mut different_case = case.clone();
         different_case.iteration_count = case.iteration_count.wrapping_add(1);
-        
+
         let different_fingerprint_result = Fingerprint::from_context_and_accumulator(
             &different_case.context,
             &different_case.pattern,
             different_case.control_decisions,
             different_case.iteration_count,
         );
-        
+
         if let Ok(different_fingerprint) = different_fingerprint_result {
             let mismatch_result = verifier.verify(&fingerprint, &different_fingerprint, Some(0));
-            
+
             match mode {
                 VerificationMode::Disabled => {
                     // Property 3d: Disabled mode should always report success even for different fingerprints
@@ -374,27 +386,27 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         prop_assert!(fingerprint1_result.is_ok(), "First fingerprint generation failed");
         let fingerprint1 = fingerprint1_result.unwrap();
-        
+
         // Create a different fingerprint by modifying the context
         let mut different_case = case.clone();
         different_case.context.iteration_limit = case.context.iteration_limit.wrapping_add(1);
-        
+
         let fingerprint2_result = Fingerprint::from_context_and_accumulator(
             &different_case.context,
             &different_case.pattern,
             different_case.control_decisions,
             different_case.iteration_count,
         );
-        
+
         prop_assert!(fingerprint2_result.is_ok(), "Second fingerprint generation failed");
         let fingerprint2 = fingerprint2_result.unwrap();
-        
+
         // Create verification manager with the specified mode
         let mut manager = VerificationManager::new(mode);
-        
+
         // Test mandatory verification enforcement
         let verification_result = manager.verify_mandatory(
             &fingerprint1,
@@ -402,7 +414,7 @@ proptest! {
             &case.context.loop_id.0,
             Some(0),
         );
-        
+
         match mode {
             VerificationMode::Disabled => {
                 // Property 3f: Disabled mode should not enforce verification (always succeeds)
@@ -429,11 +441,11 @@ proptest! {
                 }
             }
         }
-        
+
         // Verify statistics are updated correctly
         let stats = manager.stats();
         prop_assert_eq!(stats.total_verifications, 1, "Total verifications should be incremented");
-        
+
         match &verification_result {
             Ok(result) => {
                 if result.success {
@@ -462,7 +474,7 @@ proptest! {
     ) {
         // Property 7: Identical execution paths should produce identical fingerprints (determinism)
         // This validates that the system maintains deterministic execution guarantees after architectural changes
-        
+
         // Generate the same fingerprint multiple times with identical inputs
         let fingerprint1_result = Fingerprint::from_context_and_accumulator(
             &case.context,
@@ -470,66 +482,66 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         let fingerprint2_result = Fingerprint::from_context_and_accumulator(
             &case.context,
             &case.pattern,
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         let fingerprint3_result = Fingerprint::from_context_and_accumulator(
             &case.context,
             &case.pattern,
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         // All fingerprint generations should succeed
         prop_assert!(fingerprint1_result.is_ok(), "First fingerprint generation failed: {:?}", fingerprint1_result.err());
         prop_assert!(fingerprint2_result.is_ok(), "Second fingerprint generation failed: {:?}", fingerprint2_result.err());
         prop_assert!(fingerprint3_result.is_ok(), "Third fingerprint generation failed: {:?}", fingerprint3_result.err());
-        
+
         let fingerprint1 = fingerprint1_result.unwrap();
         let fingerprint2 = fingerprint2_result.unwrap();
         let fingerprint3 = fingerprint3_result.unwrap();
-        
+
         // Property 7a: Identical inputs should produce identical combined hashes (determinism core requirement)
         prop_assert_eq!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint2.combined_hash,
             "Identical execution paths produced different combined hashes!\n\
              This violates deterministic execution preservation.\n\
              Case: loop_id={}, iteration_limit={}, iteration_count={}, loop_type={:?}",
             case.context.loop_id.0, case.context.iteration_limit, case.iteration_count, case.loop_type
         );
-        
+
         prop_assert_eq!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint3.combined_hash,
             "Identical execution paths produced different combined hashes (third generation)!\n\
              This violates deterministic execution preservation."
         );
-        
+
         // Property 7b: All fingerprint layers should be identical for identical inputs
         prop_assert_eq!(&fingerprint1.shape, &fingerprint2.shape, "Shape fingerprints differ for identical inputs");
         prop_assert_eq!(&fingerprint1.shape, &fingerprint3.shape, "Shape fingerprints differ for identical inputs (third generation)");
-        
+
         prop_assert_eq!(&fingerprint1.control, &fingerprint2.control, "Control fingerprints differ for identical inputs");
         prop_assert_eq!(&fingerprint1.control, &fingerprint3.control, "Control fingerprints differ for identical inputs (third generation)");
-        
+
         prop_assert_eq!(&fingerprint1.data, &fingerprint2.data, "Data fingerprints differ for identical inputs");
         prop_assert_eq!(&fingerprint1.data, &fingerprint3.data, "Data fingerprints differ for identical inputs (third generation)");
-        
+
         // Property 7c: Fingerprint versions should be consistent
         prop_assert_eq!(fingerprint1.version, fingerprint2.version, "Fingerprint versions differ for identical inputs");
         prop_assert_eq!(fingerprint1.version, fingerprint3.version, "Fingerprint versions differ for identical inputs (third generation)");
-        
+
         // Property 7d: All fingerprints should be well-formed and valid
         prop_assert!(fingerprint1.validate().is_ok(), "First fingerprint validation failed");
         prop_assert!(fingerprint2.validate().is_ok(), "Second fingerprint validation failed");
         prop_assert!(fingerprint3.validate().is_ok(), "Third fingerprint validation failed");
-        
+
         // Property 7e: Deterministic execution should be preserved across multiple calls
         // Test that the fingerprint generation process itself is deterministic
         let fingerprint4_result = Fingerprint::from_context_and_accumulator(
@@ -538,12 +550,12 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         prop_assert!(fingerprint4_result.is_ok(), "Fourth fingerprint generation failed");
         let fingerprint4 = fingerprint4_result.unwrap();
-        
+
         prop_assert_eq!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint4.combined_hash,
             "Deterministic execution preservation failed across multiple calls"
         );
@@ -559,7 +571,7 @@ proptest! {
     ) {
         // Property 7f: Deterministic execution should be preserved across different execution contexts
         // This tests that architectural changes don't introduce platform-specific non-determinism
-        
+
         // Generate fingerprint with the same inputs but simulate different execution contexts
         // by creating separate instances of the same data
         let context_copy1 = LoopContext {
@@ -570,7 +582,7 @@ proptest! {
             accumulator_type: case.context.accumulator_type.clone(),
             loop_body: case.context.loop_body.clone(),
         };
-        
+
         let context_copy2 = LoopContext {
             loop_id: LoopID::new(case.context.loop_id.0.clone()),
             iteration_limit: case.context.iteration_limit,
@@ -579,16 +591,16 @@ proptest! {
             accumulator_type: case.context.accumulator_type.clone(),
             loop_body: case.context.loop_body.clone(),
         };
-        
+
         // Create separate accumulator patterns with identical content
         let mut pattern_copy1 = AccumulatorPattern::new();
         let mut pattern_copy2 = AccumulatorPattern::new();
-        
+
         for (name, value) in case.pattern.get_all_values() {
             let _ = pattern_copy1.add_accumulator(name.clone(), value.clone());
             let _ = pattern_copy2.add_accumulator(name.clone(), value.clone());
         }
-        
+
         // Generate fingerprints from separate instances
         let fingerprint1_result = Fingerprint::from_context_and_accumulator(
             &context_copy1,
@@ -596,30 +608,30 @@ proptest! {
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         let fingerprint2_result = Fingerprint::from_context_and_accumulator(
             &context_copy2,
             &pattern_copy2,
             case.control_decisions.clone(),
             case.iteration_count,
         );
-        
+
         // Both fingerprint generations should succeed
         prop_assert!(fingerprint1_result.is_ok(), "First cross-platform fingerprint generation failed");
         prop_assert!(fingerprint2_result.is_ok(), "Second cross-platform fingerprint generation failed");
-        
+
         let fingerprint1 = fingerprint1_result.unwrap();
         let fingerprint2 = fingerprint2_result.unwrap();
-        
+
         // Property 7f: Cross-platform determinism - identical data should produce identical fingerprints
         prop_assert_eq!(
-            fingerprint1.combined_hash, 
+            fingerprint1.combined_hash,
             fingerprint2.combined_hash,
             "Cross-platform deterministic execution failed!\n\
              Identical data from separate instances produced different fingerprints.\n\
              This indicates platform-specific non-determinism in fingerprint generation."
         );
-        
+
         // Verify all layers are identical
         prop_assert_eq!(&fingerprint1.shape, &fingerprint2.shape, "Cross-platform shape fingerprints differ");
         prop_assert_eq!(&fingerprint1.control, &fingerprint2.control, "Cross-platform control fingerprints differ");
@@ -635,26 +647,27 @@ fn arb_collision_resistance_cases() -> impl Strategy<Value = Vec<FingerprintTest
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(200); // Reduced default for faster testing
-    
+
     // Generate a collection of diverse test cases for collision testing
-    prop::collection::vec(arb_fingerprint_test_case(), 100..=max_cases.min(1000))
-        .prop_map(|mut cases| {
+    prop::collection::vec(arb_fingerprint_test_case(), 100..=max_cases.min(1000)).prop_map(
+        |mut cases| {
             // Ensure cases are diverse by modifying key fields
             for (i, case) in cases.iter_mut().enumerate() {
                 // Modify loop_id to ensure uniqueness
                 case.context.loop_id = LoopID::new(format!("collision-test-{}", i));
-                
+
                 // Vary iteration counts
                 case.iteration_count = (i as u64 % 100) + 1; // Reduced range
-                
+
                 // Vary iteration limits
                 case.context.iteration_limit = ((i % 5) + 1) as u32 * 100; // Reduced range
-                
+
                 // Vary budget timeouts
                 case.context.budget_timeout = ((i % 3) + 1) as u64 * 1000; // Reduced range
             }
             cases
-        })
+        },
+    )
 }
 
 // Feature: loop-engine-architectural-improvements, Property 9: Collision Resistance
@@ -677,22 +690,22 @@ proptest! {
     ) {
         use std::collections::HashSet;
         use std::time::Instant;
-        
+
         // Property 9: Collision Resistance - No fingerprint collisions should be observed
         // within the runtime budget (100,000 cases OR 3 seconds, whichever comes first)
-        
+
         let start_time = Instant::now();
         let mut fingerprint_hashes = HashSet::new();
         let mut processed_cases = 0;
         let mut collision_found = false;
         let mut collision_details = None;
-        
+
         for (i, case) in cases.iter().enumerate() {
             // Check runtime budget - halt if we exceed 2 seconds
             if start_time.elapsed().as_secs() >= 2 {
                 break;
             }
-            
+
             // Generate fingerprint for this case
             let fingerprint_result = Fingerprint::from_context_and_accumulator(
                 &case.context,
@@ -700,24 +713,24 @@ proptest! {
                 case.control_decisions.clone(),
                 case.iteration_count,
             );
-            
+
             if let Ok(fingerprint) = fingerprint_result {
                 processed_cases += 1;
-                
+
                 // Check for collision
                 if !fingerprint_hashes.insert(fingerprint.combined_hash) {
                     collision_found = true;
                     collision_details = Some((i, fingerprint.combined_hash));
                     break;
                 }
-                
+
                 // Also check if we've reached the case limit (reduced)
                 if processed_cases >= 1000 {
                     break;
                 }
             }
         }
-        
+
         // Property 9a: No collisions should be found within the budget
         prop_assert!(
             !collision_found,
@@ -730,14 +743,14 @@ proptest! {
             processed_cases,
             start_time.elapsed()
         );
-        
+
         // Property 9b: We should process a reasonable number of cases
         prop_assert!(
             processed_cases >= 100,
             "Insufficient test coverage for collision resistance: only {} cases processed",
             processed_cases
         );
-        
+
         // Property 9c: All generated fingerprints should be unique
         prop_assert_eq!(
             fingerprint_hashes.len(),
@@ -746,7 +759,7 @@ proptest! {
             fingerprint_hashes.len(),
             processed_cases
         );
-        
+
         // Log test statistics for monitoring
         println!(
             "Collision resistance test completed: {} unique fingerprints from {} cases in {:?}",
@@ -771,14 +784,14 @@ proptest! {
     ) {
         use std::collections::HashSet;
         use std::time::Instant;
-        
+
         // Property 9d: Targeted collision resistance - Small variations should not cause collisions
         // This test focuses on cases that are similar but should still produce different fingerprints
-        
+
         let start_time = Instant::now();
         let mut fingerprint_hashes = HashSet::new();
         let mut variations_tested = 0;
-        
+
         // Generate the base fingerprint
         let base_fingerprint_result = Fingerprint::from_context_and_accumulator(
             &base_case.context,
@@ -786,21 +799,21 @@ proptest! {
             base_case.control_decisions.clone(),
             base_case.iteration_count,
         );
-        
+
         prop_assert!(base_fingerprint_result.is_ok(), "Base fingerprint generation failed");
         let base_fingerprint = base_fingerprint_result.unwrap();
         fingerprint_hashes.insert(base_fingerprint.combined_hash);
-        
+
         // Test variations of the base case (reduced for faster testing)
         for i in 1..=200 {
             // Check runtime budget
             if start_time.elapsed().as_secs() >= 1 {
                 break;
             }
-            
+
             // Create variations by modifying different aspects with more significant changes
             let mut variant_case = base_case.clone();
-            
+
             match i % 5 {
                 0 => {
                     // Vary iteration count with more significant changes
@@ -824,7 +837,7 @@ proptest! {
                 }
                 _ => unreachable!(),
             }
-            
+
             // Generate fingerprint for variant
             let variant_fingerprint_result = Fingerprint::from_context_and_accumulator(
                 &variant_case.context,
@@ -832,12 +845,12 @@ proptest! {
                 variant_case.control_decisions,
                 variant_case.iteration_count,
             );
-            
+
             if let Ok(variant_fingerprint) = variant_fingerprint_result {
                 // Only count this as a variation if it's actually different from the base
                 if variant_fingerprint.combined_hash != base_fingerprint.combined_hash {
                     variations_tested += 1;
-                    
+
                     // Check for collision with any existing fingerprint
                     if !fingerprint_hashes.insert(variant_fingerprint.combined_hash) {
                         // If we get a collision, it might be due to insufficient variation
@@ -853,14 +866,14 @@ proptest! {
                 }
             }
         }
-        
+
         // Property 9e: We should test a reasonable number of variations (reduced and more lenient)
         prop_assert!(
             variations_tested >= 10,
             "Insufficient variation testing: only {} variations tested",
             variations_tested
         );
-        
+
         // Property 9f: Most variations should produce unique fingerprints (allow some tolerance)
         let uniqueness_ratio = fingerprint_hashes.len() as f64 / (variations_tested + 1) as f64;
         prop_assert!(
@@ -870,7 +883,7 @@ proptest! {
             variations_tested + 1,
             uniqueness_ratio
         );
-        
+
         // Log test statistics
         println!(
             "Targeted collision resistance test: {} unique fingerprints from {} variations in {:?} (uniqueness: {:.2}%)",
@@ -887,33 +900,32 @@ proptest! {
 fn arb_corrupted_fingerprint() -> impl Strategy<Value = Fingerprint> {
     (
         arb_fingerprint_test_case(),
-        prop_oneof![
-            Just("corrupt_version"),
-            Just("corrupt_hash"),
-        ]
-    ).prop_map(|(case, corruption_type)| {
-        // Generate a valid fingerprint first
-        let mut fingerprint = Fingerprint::from_context_and_accumulator(
-            &case.context,
-            &case.pattern,
-            case.control_decisions,
-            case.iteration_count,
-        ).unwrap();
-        
-        // Apply corruption based on type
-        match corruption_type {
-            "corrupt_version" => {
-                fingerprint.version = 255; // Invalid version
+        prop_oneof![Just("corrupt_version"), Just("corrupt_hash"),],
+    )
+        .prop_map(|(case, corruption_type)| {
+            // Generate a valid fingerprint first
+            let mut fingerprint = Fingerprint::from_context_and_accumulator(
+                &case.context,
+                &case.pattern,
+                case.control_decisions,
+                case.iteration_count,
+            )
+            .unwrap();
+
+            // Apply corruption based on type
+            match corruption_type {
+                "corrupt_version" => {
+                    fingerprint.version = 255; // Invalid version
+                }
+                "corrupt_hash" => {
+                    // Corrupt the combined hash
+                    fingerprint.combined_hash[0] = fingerprint.combined_hash[0].wrapping_add(1);
+                }
+                _ => {} // No corruption
             }
-            "corrupt_hash" => {
-                // Corrupt the combined hash
-                fingerprint.combined_hash[0] = fingerprint.combined_hash[0].wrapping_add(1);
-            }
-            _ => {} // No corruption
-        }
-        
-        fingerprint
-    })
+
+            fingerprint
+        })
 }
 
 /// Generate deterministic execution test cases for property testing
@@ -921,19 +933,17 @@ fn arb_corrupted_fingerprint() -> impl Strategy<Value = Fingerprint> {
 fn arb_deterministic_execution_case() -> impl Strategy<Value = FingerprintTestCase> {
     // Use a fixed seed for deterministic generation within the property test
     // This ensures that identical inputs produce identical outputs
-    arb_fingerprint_test_case()
-        .prop_map(|mut case| {
-            // Normalize the case to ensure deterministic behavior
-            // Sort control decisions by iteration for consistent ordering
-            case.control_decisions.sort_by_key(|decision| {
-                match decision {
-                    ControlDecision::Continue { iteration, .. } => *iteration,
-                    ControlDecision::Break { iteration, .. } => *iteration,
-                    ControlDecision::Timeout { elapsed } => *elapsed,
-                }
+    arb_fingerprint_test_case().prop_map(|mut case| {
+        // Normalize the case to ensure deterministic behavior
+        // Sort control decisions by iteration for consistent ordering
+        case.control_decisions
+            .sort_by_key(|decision| match decision {
+                ControlDecision::Continue { iteration, .. } => *iteration,
+                ControlDecision::Break { iteration, .. } => *iteration,
+                ControlDecision::Timeout { elapsed } => *elapsed,
             });
-            case
-        })
+        case
+    })
 }
 
 // Feature: loop-engine-architectural-improvements, Property 11: Corrupted Fingerprint Rejection
@@ -951,39 +961,39 @@ proptest! {
             valid_case.control_decisions,
             valid_case.iteration_count,
         );
-        
+
         prop_assert!(valid_fingerprint_result.is_ok(), "Valid fingerprint generation failed");
         let valid_fingerprint = valid_fingerprint_result.unwrap();
-        
+
         // Create verifier in enabled mode for strict checking
         let verifier = FingerprintVerifier::new(VerificationMode::Enabled);
-        
+
         // Test verification of corrupted fingerprint against valid one
         let verification_result = verifier.verify(&valid_fingerprint, &corrupted_fingerprint, Some(0));
-        
+
         // Property 11: Corrupted fingerprints should be detected and rejected
         // The verification should either:
         // 1. Detect a mismatch (different hashes), or
         // 2. The corrupted fingerprint should fail validation
-        
+
         let corrupted_validation = corrupted_fingerprint.validate();
         let valid_validation = valid_fingerprint.validate();
-        
+
         prop_assert!(valid_validation.is_ok(), "Valid fingerprint should pass validation");
-        
+
         if corrupted_validation.is_err() {
             // Property 11a: Corrupted fingerprint fails validation (detected at fingerprint level)
             prop_assert!(true, "Corrupted fingerprint correctly rejected during validation");
         } else {
             // Property 11b: Corrupted fingerprint passes validation but should be detected during verification
             if valid_fingerprint.combined_hash != corrupted_fingerprint.combined_hash {
-                prop_assert!(!verification_result.success, 
+                prop_assert!(!verification_result.success,
                     "Verification should detect mismatch between valid and corrupted fingerprints");
-                prop_assert!(verification_result.mismatch_type.is_some(), 
+                prop_assert!(verification_result.mismatch_type.is_some(),
                     "Verification should report mismatch type for corrupted fingerprints");
             }
         }
-        
+
         // Additional check: Test with verification manager for mandatory enforcement
         let mut manager = VerificationManager::new(VerificationMode::Enabled);
         let mandatory_result = manager.verify_mandatory(
@@ -992,10 +1002,10 @@ proptest! {
             &valid_case.context.loop_id.0,
             Some(0),
         );
-        
+
         // Property 11c: Mandatory verification should reject corrupted fingerprints
         if valid_fingerprint.combined_hash != corrupted_fingerprint.combined_hash {
-            prop_assert!(mandatory_result.is_err(), 
+            prop_assert!(mandatory_result.is_err(),
                 "Mandatory verification should halt execution for corrupted fingerprints");
         }
     }
@@ -1015,25 +1025,25 @@ proptest! {
             case.control_decisions,
             case.iteration_count,
         );
-        
+
         prop_assert!(fingerprint_result.is_ok(), "Fingerprint generation failed");
         let mut fingerprint = fingerprint_result.unwrap();
-        
+
         // Verify the fingerprint is initially valid
         prop_assert!(fingerprint.validate().is_ok(), "Generated fingerprint should be valid");
-        
+
         // Corrupt the combined hash
         let original_hash = fingerprint.combined_hash;
         fingerprint.combined_hash[0] = fingerprint.combined_hash[0].wrapping_add(1);
-        
+
         // Property 11d: Fingerprint with corrupted hash should fail validation
         let validation_result = fingerprint.validate();
-        prop_assert!(validation_result.is_err(), 
+        prop_assert!(validation_result.is_err(),
             "Fingerprint with corrupted hash should fail validation");
-        
+
         // Restore original hash and verify it passes validation again
         fingerprint.combined_hash = original_hash;
-        prop_assert!(fingerprint.validate().is_ok(), 
+        prop_assert!(fingerprint.validate().is_ok(),
             "Fingerprint with restored hash should pass validation");
     }
 }
@@ -1046,25 +1056,25 @@ proptest! {
         values in prop::collection::vec(arb_bcib_value(), 1..=20)
     ) {
         use crate::loop_engine::fingerprint::CanonicalEncoder;
-        
+
         // Property 5: Canonical encoding should be consistent across multiple calls
         // and produce identical results for identical inputs across different platforms
-        
+
         for value in &values {
             // Encode the same value multiple times
             let encoding1_result = CanonicalEncoder::encode_value(value);
             let encoding2_result = CanonicalEncoder::encode_value(value);
             let encoding3_result = CanonicalEncoder::encode_value(value);
-            
+
             // All encodings should succeed
             prop_assert!(encoding1_result.is_ok(), "First encoding failed for value: {:?}", value);
             prop_assert!(encoding2_result.is_ok(), "Second encoding failed for value: {:?}", value);
             prop_assert!(encoding3_result.is_ok(), "Third encoding failed for value: {:?}", value);
-            
+
             let encoding1 = encoding1_result.unwrap();
             let encoding2 = encoding2_result.unwrap();
             let encoding3 = encoding3_result.unwrap();
-            
+
             // Property 5a: Identical inputs should produce identical encodings (determinism)
             prop_assert_eq!(
                 &encoding1, &encoding2,
@@ -1074,7 +1084,7 @@ proptest! {
                  Second encoding: {:?}",
                 value, encoding1, encoding2
             );
-            
+
             prop_assert_eq!(
                 &encoding1, &encoding3,
                 "Canonical encoding is not deterministic (third call)!\n\
@@ -1083,14 +1093,14 @@ proptest! {
                  Third encoding: {:?}",
                 value, encoding1, encoding3
             );
-            
+
             // Property 5b: Encoding should use little-endian byte order for multi-byte values
             // Verify this by checking the structure of encoded data
             match value {
                 Value::Number(n) => {
                     // Should start with F64 type tag
                     prop_assert_eq!(encoding1[0], 0x22, "Number should use F64 type tag (0x22)");
-                    
+
                     // Should contain canonicalized f64 bytes in little-endian order
                     let canonical_bytes = CanonicalEncoder::canonicalize_f64(*n);
                     prop_assert_eq!(
@@ -1101,14 +1111,14 @@ proptest! {
                 Value::String(s) => {
                     // Should start with String type tag
                     prop_assert_eq!(encoding1[0], 0x30, "String should use String type tag (0x30)");
-                    
+
                     // Should contain length in little-endian format
                     let expected_len = (s.len() as u32).to_le_bytes();
                     prop_assert_eq!(
                         &encoding1[1..5], &expected_len,
                         "String length should be encoded in little-endian format"
                     );
-                    
+
                     // Should contain UTF-8 bytes
                     prop_assert_eq!(
                         &encoding1[5..], s.as_bytes(),
@@ -1118,7 +1128,7 @@ proptest! {
                 Value::Boolean(b) => {
                     // Should start with Boolean type tag
                     prop_assert_eq!(encoding1[0], 0x60, "Boolean should use Boolean type tag (0x60)");
-                    
+
                     // Should contain boolean value as single byte
                     let expected_byte = if *b { 1 } else { 0 };
                     prop_assert_eq!(
@@ -1129,7 +1139,7 @@ proptest! {
                 Value::Array(arr) => {
                     // Should start with Array type tag
                     prop_assert_eq!(encoding1[0], 0x40, "Array should use Array type tag (0x40)");
-                    
+
                     // Should contain length in little-endian format
                     let expected_len = (arr.len() as u32).to_le_bytes();
                     prop_assert_eq!(
@@ -1140,7 +1150,7 @@ proptest! {
                 Value::List(list) => {
                     // Lists are encoded as arrays
                     prop_assert_eq!(encoding1[0], 0x40, "List should use Array type tag (0x40)");
-                    
+
                     // Should contain length in little-endian format
                     let expected_len = (list.len() as u32).to_le_bytes();
                     prop_assert_eq!(
@@ -1151,7 +1161,7 @@ proptest! {
                 Value::SortedMap(map) => {
                     // Should start with Struct type tag
                     prop_assert_eq!(encoding1[0], 0x50, "SortedMap should use Struct type tag (0x50)");
-                    
+
                     // Should contain length in little-endian format
                     let expected_len = (map.len() as u32).to_le_bytes();
                     prop_assert_eq!(
@@ -1160,12 +1170,12 @@ proptest! {
                     );
                 }
             }
-            
+
             // Property 5c: Encoding should be non-empty and start with valid type tag
             prop_assert!(!encoding1.is_empty(), "Encoding should not be empty");
-            
+
             let type_tag = encoding1[0];
-            let valid_type_tags = [0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14, 
+            let valid_type_tags = [0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14,
                                   0x21, 0x22, 0x30, 0x31, 0x40, 0x50, 0x60];
             prop_assert!(
                 valid_type_tags.contains(&type_tag),
@@ -1173,7 +1183,7 @@ proptest! {
                 type_tag
             );
         }
-        
+
         // Property 5d: Different values should produce different encodings (uniqueness)
         if values.len() > 1 {
             let mut encodings = Vec::new();
@@ -1182,7 +1192,7 @@ proptest! {
                     encodings.push(encoding);
                 }
             }
-            
+
             // Check for uniqueness among different values
             for i in 0..encodings.len() {
                 for j in (i + 1)..encodings.len() {
@@ -1216,10 +1226,11 @@ fn are_encoding_equivalent(value1: &Value, value2: &Value) -> bool {
         (Value::List(list1), Value::Array(arr2)) if list1.is_empty() && arr2.is_empty() => true,
         // Arrays and lists with identical content are encoding equivalent
         (Value::Array(arr), Value::List(list)) | (Value::List(list), Value::Array(arr)) => {
-            arr.len() == list.len() && arr.iter().zip(list.iter()).all(|(a, l)| {
-                // Use deep equivalence check that accounts for canonicalization
-                values_deeply_equivalent(a, l)
-            })
+            arr.len() == list.len()
+                && arr.iter().zip(list.iter()).all(|(a, l)| {
+                    // Use deep equivalence check that accounts for canonicalization
+                    values_deeply_equivalent(a, l)
+                })
         }
         // All other cases are not encoding equivalent
         _ => false,
@@ -1234,7 +1245,11 @@ fn are_canonically_equivalent(value1: &Value, value2: &Value) -> bool {
         // All NaN values are canonically equivalent (they all canonicalize to the same quiet NaN)
         (Value::Number(n1), Value::Number(n2)) if n1.is_nan() && n2.is_nan() => true,
         // -0.0 and +0.0 are canonically equivalent (both canonicalize to +0.0)
-        (Value::Number(n1), Value::Number(n2)) if (*n1 == -0.0 && *n2 == 0.0) || (*n1 == 0.0 && *n2 == -0.0) => true,
+        (Value::Number(n1), Value::Number(n2))
+            if (*n1 == -0.0 && *n2 == 0.0) || (*n1 == 0.0 && *n2 == -0.0) =>
+        {
+            true
+        }
         // All other cases are not canonically equivalent
         _ => false,
     }
@@ -1247,34 +1262,39 @@ fn values_deeply_equivalent(value1: &Value, value2: &Value) -> bool {
     if value1 == value2 {
         return true;
     }
-    
+
     // Then check encoding equivalence (Array/List with same content)
     if are_encoding_equivalent(value1, value2) {
         return true;
     }
-    
+
     // Then check canonical equivalence (NaN normalization, -0.0/+0.0)
     if are_canonically_equivalent(value1, value2) {
         return true;
     }
-    
+
     // For collections, check if they have the same structure with equivalent elements
     match (value1, value2) {
-        (Value::Array(arr1), Value::Array(arr2)) | 
-        (Value::List(arr1), Value::List(arr2)) => {
-            arr1.len() == arr2.len() && 
-            arr1.iter().zip(arr2.iter()).all(|(a, b)| values_deeply_equivalent(a, b))
+        (Value::Array(arr1), Value::Array(arr2)) | (Value::List(arr1), Value::List(arr2)) => {
+            arr1.len() == arr2.len()
+                && arr1
+                    .iter()
+                    .zip(arr2.iter())
+                    .all(|(a, b)| values_deeply_equivalent(a, b))
         }
-        (Value::Array(arr), Value::List(list)) | 
-        (Value::List(list), Value::Array(arr)) => {
-            arr.len() == list.len() && 
-            arr.iter().zip(list.iter()).all(|(a, l)| values_deeply_equivalent(a, l))
+        (Value::Array(arr), Value::List(list)) | (Value::List(list), Value::Array(arr)) => {
+            arr.len() == list.len()
+                && arr
+                    .iter()
+                    .zip(list.iter())
+                    .all(|(a, l)| values_deeply_equivalent(a, l))
         }
         (Value::SortedMap(map1), Value::SortedMap(map2)) => {
-            map1.len() == map2.len() &&
-            map1.iter().zip(map2.iter()).all(|((k1, v1), (k2, v2))| {
-                k1 == k2 && values_deeply_equivalent(v1, v2)
-            })
+            map1.len() == map2.len()
+                && map1
+                    .iter()
+                    .zip(map2.iter())
+                    .all(|((k1, v1), (k2, v2))| k1 == k2 && values_deeply_equivalent(v1, v2))
         }
         _ => false,
     }
@@ -1292,34 +1312,34 @@ fn arb_bcib_value() -> impl Strategy<Value = Value> {
             Just(f64::INFINITY),
             Just(f64::NEG_INFINITY),
             (-1000.0..1000.0),
-        ].prop_map(Value::Number),
-        
+        ]
+        .prop_map(Value::Number),
         // Strings with various content
         prop_oneof![
             Just("".to_string()),
             "[a-zA-Z0-9 ]{1,20}",
             "[\u{0000}-\u{007F}]{1,10}", // ASCII
             "[\u{0080}-\u{00FF}]{1,5}",  // Extended ASCII
-        ].prop_map(Value::String),
-        
+        ]
+        .prop_map(Value::String),
         // Booleans
         any::<bool>().prop_map(Value::Boolean),
     ];
-    
+
     leaf.prop_recursive(
         3,  // Max depth
         10, // Max size
         5,  // Items per collection
-        |inner| prop_oneof![
-            // Arrays
-            prop::collection::vec(inner.clone(), 0..=5).prop_map(Value::Array),
-            
-            // Lists
-            prop::collection::vec(inner.clone(), 0..=5).prop_map(Value::List),
-            
-            // SortedMaps
-            prop::collection::btree_map("[a-z]{1,5}", inner, 0..=3).prop_map(Value::SortedMap),
-        ]
+        |inner| {
+            prop_oneof![
+                // Arrays
+                prop::collection::vec(inner.clone(), 0..=5).prop_map(Value::Array),
+                // Lists
+                prop::collection::vec(inner.clone(), 0..=5).prop_map(Value::List),
+                // SortedMaps
+                prop::collection::btree_map("[a-z]{1,5}", inner, 0..=3).prop_map(Value::SortedMap),
+            ]
+        },
     )
 }
 
@@ -1331,17 +1351,17 @@ proptest! {
         value in arb_bcib_value()
     ) {
         use crate::loop_engine::fingerprint::CanonicalEncoder;
-        
+
         // Property 5e: Canonical encoding should produce identical results across different
         // execution contexts (simulating cross-platform consistency)
-        
+
         // Encode the value multiple times in different "contexts" (separate function calls)
         let context1_encoding = {
             let result = CanonicalEncoder::encode_value(&value);
             prop_assert!(result.is_ok(), "Context 1 encoding failed for value: {:?}", value);
             result.unwrap()
         };
-        
+
         let context2_encoding = {
             // Simulate different execution context by cloning the value
             let value_copy = match &value {
@@ -1352,19 +1372,19 @@ proptest! {
                 Value::List(list) => Value::List(list.clone()),
                 Value::SortedMap(map) => Value::SortedMap(map.clone()),
             };
-            
+
             let result = CanonicalEncoder::encode_value(&value_copy);
             prop_assert!(result.is_ok(), "Context 2 encoding failed for value: {:?}", value);
             result.unwrap()
         };
-        
+
         let context3_encoding = {
             // Simulate third execution context
             let result = CanonicalEncoder::encode_value(&value);
             prop_assert!(result.is_ok(), "Context 3 encoding failed for value: {:?}", value);
             result.unwrap()
         };
-        
+
         // Property 5e: All contexts should produce identical encodings
         prop_assert_eq!(
             &context1_encoding, &context2_encoding,
@@ -1374,7 +1394,7 @@ proptest! {
              Context 2 encoding: {:?}",
             value, context1_encoding, context2_encoding
         );
-        
+
         prop_assert_eq!(
             &context1_encoding, &context3_encoding,
             "Cross-platform encoding consistency failed (context 3)!\n\
@@ -1383,16 +1403,16 @@ proptest! {
              Context 3 encoding: {:?}",
             value, context1_encoding, context3_encoding
         );
-        
+
         // Property 5f: Encoding should be platform-independent (byte-level verification)
         // Verify that the encoding follows the canonical format specification
         if !context1_encoding.is_empty() {
             let type_tag = context1_encoding[0];
-            
+
             match &value {
                 Value::Number(n) => {
                     prop_assert_eq!(type_tag, 0x22, "Number type tag should be consistent");
-                    
+
                     // Verify canonical f64 encoding
                     let expected_canonical = CanonicalEncoder::canonicalize_f64(*n);
                     prop_assert_eq!(
@@ -1425,17 +1445,17 @@ proptest! {
         values in prop::collection::vec(arb_f64_value(), 1..=50)
     ) {
         use crate::loop_engine::fingerprint::CanonicalEncoder;
-        
+
         // Property 6: Floating-point canonicalization should normalize NaN to single canonical
         // quiet NaN bit pattern, convert -0.0 to +0.0, and perform bit-level IEEE754 hashing
         // without decimal rounding
-        
+
         for value in &values {
             // Test f64 canonicalization
             let canonical1 = CanonicalEncoder::canonicalize_f64(*value);
             let canonical2 = CanonicalEncoder::canonicalize_f64(*value);
             let canonical3 = CanonicalEncoder::canonicalize_f64(*value);
-            
+
             // Property 6a: Canonicalization should be deterministic
             prop_assert_eq!(
                 canonical1, canonical2,
@@ -1445,7 +1465,7 @@ proptest! {
                  Second result: {:?}",
                 value, canonical1, canonical2
             );
-            
+
             prop_assert_eq!(
                 canonical1, canonical3,
                 "f64 canonicalization is not deterministic (third call)!\n\
@@ -1454,7 +1474,7 @@ proptest! {
                  Third result: {:?}",
                 value, canonical1, canonical3
             );
-            
+
             // Property 6b: NaN values should be normalized to canonical quiet NaN
             if value.is_nan() {
                 let expected_nan_bytes = f64::from_bits(0x7FF8000000000000).to_le_bytes();
@@ -1467,7 +1487,7 @@ proptest! {
                     value, value.to_bits(), expected_nan_bytes, canonical1
                 );
             }
-            
+
             // Property 6c: -0.0 should be converted to +0.0
             if *value == -0.0 {
                 let expected_zero_bytes = 0.0f64.to_le_bytes();
@@ -1480,7 +1500,7 @@ proptest! {
                     value, value.to_bits(), expected_zero_bytes, canonical1
                 );
             }
-            
+
             // Property 6d: Normal values should preserve their bit representation
             if value.is_finite() && *value != -0.0 {
                 let expected_bytes = value.to_le_bytes();
@@ -1493,7 +1513,7 @@ proptest! {
                     value, value.to_bits(), expected_bytes, canonical1
                 );
             }
-            
+
             // Property 6e: Infinity values should preserve their bit representation
             if value.is_infinite() {
                 let expected_bytes = value.to_le_bytes();
@@ -1506,14 +1526,14 @@ proptest! {
                     value, value.to_bits(), expected_bytes, canonical1
                 );
             }
-            
+
             // Property 6f: Result should always be 8 bytes (f64 size)
             prop_assert_eq!(
                 canonical1.len(), 8,
                 "Canonicalized f64 should always be 8 bytes, got {} bytes",
                 canonical1.len()
             );
-            
+
             // Property 6g: Result should be in little-endian byte order
             let reconstructed = f64::from_le_bytes(canonical1);
             if !value.is_nan() && *value != -0.0 {
@@ -1544,7 +1564,7 @@ proptest! {
                      Reconstructed: {:?}",
                     value, reconstructed
                 );
-                
+
                 prop_assert_eq!(
                     reconstructed.to_bits(), 0x7FF8000000000000,
                     "NaN should be reconstructed as canonical quiet NaN\n\
@@ -1554,14 +1574,14 @@ proptest! {
                 );
             }
         }
-        
+
         // Test f32 canonicalization as well
         for value in &values {
             let f32_value = *value as f32;
-            
+
             let canonical_f32_1 = CanonicalEncoder::canonicalize_f32(f32_value);
             let canonical_f32_2 = CanonicalEncoder::canonicalize_f32(f32_value);
-            
+
             // Property 6h: f32 canonicalization should be deterministic
             prop_assert_eq!(
                 canonical_f32_1, canonical_f32_2,
@@ -1571,7 +1591,7 @@ proptest! {
                  Second result: {:?}",
                 f32_value, canonical_f32_1, canonical_f32_2
             );
-            
+
             // Property 6i: f32 NaN values should be normalized to canonical quiet NaN
             if f32_value.is_nan() {
                 let expected_f32_nan_bytes = f32::from_bits(0x7FC00000).to_le_bytes();
@@ -1584,7 +1604,7 @@ proptest! {
                     f32_value, f32_value.to_bits(), expected_f32_nan_bytes, canonical_f32_1
                 );
             }
-            
+
             // Property 6j: f32 -0.0 should be converted to +0.0
             if f32_value == -0.0 {
                 let expected_f32_zero_bytes = 0.0f32.to_le_bytes();
@@ -1597,7 +1617,7 @@ proptest! {
                     f32_value, f32_value.to_bits(), expected_f32_zero_bytes, canonical_f32_1
                 );
             }
-            
+
             // Property 6k: f32 result should always be 4 bytes
             prop_assert_eq!(
                 canonical_f32_1.len(), 4,
@@ -1624,7 +1644,7 @@ fn arb_f64_value() -> impl Strategy<Value = f64> {
             Just(f64::MIN_POSITIVE),
             Just(f64::EPSILON),
         ],
-        
+
         // Different types of NaN values to test canonicalization
         5 => prop_oneof![
             Just(f64::from_bits(0x7FF0000000000001)), // Signaling NaN
@@ -1633,13 +1653,13 @@ fn arb_f64_value() -> impl Strategy<Value = f64> {
             Just(f64::from_bits(0x7FFFFFFFFFFFFFFF)), // Another NaN pattern
             Just(f64::from_bits(0xFFF8000000000000)), // Negative NaN
         ],
-        
+
         // Normal finite values
         20 => -1e10..1e10,
-        
+
         // Small values around zero
         5 => -1e-10..1e-10,
-        
+
         // Values that might cause precision issues
         5 => prop_oneof![
             Just(1.0 / 3.0),
@@ -1659,25 +1679,25 @@ proptest! {
         sign_bit in any::<bool>()
     ) {
         use crate::loop_engine::fingerprint::CanonicalEncoder;
-        
+
         // Property 6l: All NaN bit patterns should be canonicalized to the same value
         // This tests that different NaN representations are normalized consistently
-        
+
         // Create a NaN with specific bit pattern
         let nan_bits_with_sign = if sign_bit {
             nan_bits | 0x8000000000000000 // Set sign bit
         } else {
             nan_bits & 0x7FFFFFFFFFFFFFFF // Clear sign bit
         };
-        
+
         let nan_value = f64::from_bits(nan_bits_with_sign);
-        
+
         // Only proceed if this is actually a NaN
         prop_assume!(nan_value.is_nan());
-        
+
         let canonical_result = CanonicalEncoder::canonicalize_f64(nan_value);
         let expected_canonical_nan = f64::from_bits(0x7FF8000000000000).to_le_bytes();
-        
+
         // Property 6l: All NaN values should canonicalize to the same bit pattern
         prop_assert_eq!(
             canonical_result, expected_canonical_nan,
@@ -1688,11 +1708,11 @@ proptest! {
              Actual result: {:?}",
             nan_bits_with_sign, nan_value, expected_canonical_nan, canonical_result
         );
-        
+
         // Property 6m: Canonicalization should be idempotent for NaN
         let reconstructed_nan = f64::from_le_bytes(canonical_result);
         let double_canonical = CanonicalEncoder::canonicalize_f64(reconstructed_nan);
-        
+
         prop_assert_eq!(
             canonical_result, double_canonical,
             "NaN canonicalization should be idempotent\n\
@@ -1711,25 +1731,25 @@ proptest! {
         _dummy in any::<u8>() // Dummy parameter to make this a property test
     ) {
         use crate::loop_engine::fingerprint::CanonicalEncoder;
-        
+
         // Property 6n: Both +0.0 and -0.0 should canonicalize to the same value (+0.0)
-        
+
         let positive_zero = 0.0f64;
         let negative_zero = -0.0f64;
-        
+
         // Verify they are different at the bit level but equal mathematically
         prop_assert_eq!(positive_zero, negative_zero, "0.0 and -0.0 should be mathematically equal");
         prop_assert_ne!(
             positive_zero.to_bits(), negative_zero.to_bits(),
             "0.0 and -0.0 should have different bit representations"
         );
-        
+
         let canonical_pos_zero = CanonicalEncoder::canonicalize_f64(positive_zero);
         let canonical_neg_zero = CanonicalEncoder::canonicalize_f64(negative_zero);
-        
+
         // Property 6n: Both should canonicalize to +0.0
         let expected_zero_bytes = 0.0f64.to_le_bytes();
-        
+
         prop_assert_eq!(
             canonical_pos_zero, expected_zero_bytes,
             "+0.0 should canonicalize to itself\n\
@@ -1737,7 +1757,7 @@ proptest! {
              Actual: {:?}",
             expected_zero_bytes, canonical_pos_zero
         );
-        
+
         prop_assert_eq!(
             canonical_neg_zero, expected_zero_bytes,
             "-0.0 should canonicalize to +0.0\n\
@@ -1745,7 +1765,7 @@ proptest! {
              Actual: {:?}",
             expected_zero_bytes, canonical_neg_zero
         );
-        
+
         // Property 6o: Both canonicalizations should be identical
         prop_assert_eq!(
             canonical_pos_zero, canonical_neg_zero,
@@ -1754,22 +1774,22 @@ proptest! {
              -0.0 canonical: {:?}",
             canonical_pos_zero, canonical_neg_zero
         );
-        
+
         // Test the same for f32
         let canonical_pos_zero_f32 = CanonicalEncoder::canonicalize_f32(0.0f32);
         let canonical_neg_zero_f32 = CanonicalEncoder::canonicalize_f32(-0.0f32);
         let expected_zero_f32_bytes = 0.0f32.to_le_bytes();
-        
+
         prop_assert_eq!(
             canonical_pos_zero_f32, expected_zero_f32_bytes,
             "f32 +0.0 should canonicalize to itself"
         );
-        
+
         prop_assert_eq!(
             canonical_neg_zero_f32, expected_zero_f32_bytes,
             "f32 -0.0 should canonicalize to +0.0"
         );
-        
+
         prop_assert_eq!(
             canonical_pos_zero_f32, canonical_neg_zero_f32,
             "f32 +0.0 and -0.0 should canonicalize to identical byte sequences"
@@ -1780,48 +1800,51 @@ proptest! {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    
+
     #[test]
     fn test_property_test_generators() {
         // Test that our generators produce valid data
         let mut runner = proptest::test_runner::TestRunner::default();
-        
+
         // Test loop context generator
         let context_strategy = arb_loop_context();
         let context = context_strategy.new_tree(&mut runner).unwrap().current();
         assert!(!context.loop_id.0.is_empty());
         assert!(context.iteration_limit > 0);
         assert!(context.budget_timeout > 0);
-        
+
         // Test accumulator pattern generator
         let pattern_strategy = arb_accumulator_pattern();
         let pattern = pattern_strategy.new_tree(&mut runner).unwrap().current();
         assert!(!pattern.get_all_values().is_empty());
-        
+
         // Test control decisions generator
         let decisions_strategy = arb_control_decisions();
         let decisions = decisions_strategy.new_tree(&mut runner).unwrap().current();
         // Decisions can be empty, so just verify it's a valid Vec
         assert!(decisions.len() <= 20);
-        
+
         // Test fingerprint test case generator
         let case_strategy = arb_fingerprint_test_case();
         let case = case_strategy.new_tree(&mut runner).unwrap().current();
         assert!(!case.context.loop_id.0.is_empty());
         assert!(case.iteration_count <= 1000);
     }
-    
+
     #[test]
     fn test_corrupted_fingerprint_generator() {
         let mut runner = proptest::test_runner::TestRunner::default();
-        
+
         let corrupted_strategy = arb_corrupted_fingerprint();
         let corrupted = corrupted_strategy.new_tree(&mut runner).unwrap().current();
-        
+
         // The corrupted fingerprint should be structurally valid but potentially have invalid content
         // Version can be either 1 (valid) or 255 (corrupted) depending on corruption type
-        assert!(corrupted.version == 1 || corrupted.version == 255, 
-            "Version should be either 1 (valid) or 255 (corrupted), got {}", corrupted.version);
+        assert!(
+            corrupted.version == 1 || corrupted.version == 255,
+            "Version should be either 1 (valid) or 255 (corrupted), got {}",
+            corrupted.version
+        );
         assert_eq!(corrupted.combined_hash.len(), 32);
     }
 }

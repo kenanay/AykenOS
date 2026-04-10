@@ -16,10 +16,10 @@
 
 use crate::bcib::Value;
 use crate::execution_plan::IRBlock;
-use crate::parallelism::{
-    DataPartition, ImmutableContext, LocalState, ParallelismError, ParallelismResult
-};
 use crate::ir_planner::ExecutionError;
+use crate::parallelism::{
+    DataPartition, ImmutableContext, LocalState, ParallelismError, ParallelismResult,
+};
 use rayon::prelude::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -104,7 +104,7 @@ impl RayonParallelExecutor {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Executes a single partition with panic safety.
     ///
     /// This method wraps partition execution in `catch_unwind` to handle
@@ -133,7 +133,7 @@ impl RayonParallelExecutor {
         let result = catch_unwind(AssertUnwindSafe(|| {
             self.execute_partition_impl(block, partition, context)
         }));
-        
+
         match result {
             Ok(execution_result) => execution_result,
             Err(panic) => {
@@ -145,7 +145,7 @@ impl RayonParallelExecutor {
                 } else {
                     "Unknown panic occurred during parallel execution".to_string()
                 };
-                
+
                 Err(ParallelismError::ExecutionError {
                     worker_id: None, // Rayon doesn't expose worker IDs directly
                     partition_start: Some(partition.start_index),
@@ -156,7 +156,7 @@ impl RayonParallelExecutor {
             }
         }
     }
-    
+
     /// Internal implementation of partition execution.
     ///
     /// This method processes a single data partition by executing the IR block
@@ -179,12 +179,12 @@ impl RayonParallelExecutor {
         // Create thread-local state for this worker
         let mut local_state = LocalState::new();
         let mut results = Vec::with_capacity(partition.size());
-        
+
         // Process each element in the partition
         for (local_idx, value) in partition.data.iter().enumerate() {
             // Calculate logical index for stable index mapping
             let logical_idx = partition.logical_index(local_idx);
-            
+
             // Execute IR block on this value
             // Note: This is a simplified implementation
             // In a real implementation, this would use the IR executor
@@ -203,10 +203,10 @@ impl RayonParallelExecutor {
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Executes an IR block on a single value.
     ///
     /// This is a simplified implementation that demonstrates the execution pattern.
@@ -241,7 +241,7 @@ impl ParallelExecutor for RayonParallelExecutor {
         if partitions.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Execute partitions in parallel using Rayon
         // Each partition is processed by a separate worker thread
         let results: Result<Vec<Vec<(usize, Value)>>, ParallelismError> = partitions
@@ -251,16 +251,14 @@ impl ParallelExecutor for RayonParallelExecutor {
                 self.execute_partition_safe(block, partition, context)
             })
             .collect();
-        
+
         match results {
             Ok(partition_results) => {
                 // Flatten results from all partitions
                 // This preserves the stable index mapping
-                let flattened: Vec<(usize, Value)> = partition_results
-                    .into_iter()
-                    .flatten()
-                    .collect();
-                
+                let flattened: Vec<(usize, Value)> =
+                    partition_results.into_iter().flatten().collect();
+
                 Ok(flattened)
             }
             Err(e) => Err(e),
@@ -272,12 +270,12 @@ impl ParallelExecutor for RayonParallelExecutor {
 mod tests {
     use super::*;
     use crate::bcib::Value;
-    use crate::execution_plan::{IRBlock, IRInstruction, BlockTerminator, ParallelSafety};
-    use crate::parallelism::types::{ExecutionConfig, ImmutableContext};
-    use crate::execution_plan::ExecutionPlan;
-    use crate::normalizer::RegisterAllocation;
     use crate::execution_plan::dataflow::DataflowGraph;
     use crate::execution_plan::ExecutionMetadata;
+    use crate::execution_plan::ExecutionPlan;
+    use crate::execution_plan::{BlockTerminator, IRBlock, IRInstruction, ParallelSafety};
+    use crate::normalizer::RegisterAllocation;
+    use crate::parallelism::types::{ExecutionConfig, ImmutableContext};
     use std::collections::HashMap;
 
     // ===== Test Helpers =====
@@ -294,7 +292,7 @@ mod tests {
             DataflowGraph::new(),
             ExecutionMetadata::new("test".to_string(), 0, 0, 0),
         );
-        
+
         ImmutableContext {
             execution_plan,
             config: ExecutionConfig::default(),
@@ -304,12 +302,10 @@ mod tests {
     fn create_test_block() -> IRBlock {
         IRBlock::with_safety(
             0,
-            vec![
-                IRInstruction::LoadContext {
-                    context_id: "test".to_string(),
-                    target_register: 0,
-                },
-            ],
+            vec![IRInstruction::LoadContext {
+                context_id: "test".to_string(),
+                target_register: 0,
+            }],
             BlockTerminator::Return { register: 0 },
             ParallelSafety::Safe,
         )
@@ -322,11 +318,11 @@ mod tests {
     fn create_test_partitions(data: &[Value], num_partitions: usize) -> Vec<DataPartition<'_>> {
         let partition_size = (data.len() + num_partitions - 1) / num_partitions;
         let mut partitions = Vec::new();
-        
+
         for i in 0..num_partitions {
             let start = i * partition_size;
             let end = ((i + 1) * partition_size).min(data.len());
-            
+
             if start < data.len() {
                 partitions.push(DataPartition {
                     data: &data[start..end],
@@ -335,7 +331,7 @@ mod tests {
                 });
             }
         }
-        
+
         partitions
     }
 
@@ -353,7 +349,7 @@ mod tests {
         let block = create_test_block();
         let context = create_test_context();
         let partitions = vec![];
-        
+
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
@@ -366,13 +362,13 @@ mod tests {
         let context = create_test_context();
         let data = create_test_data(5);
         let partitions = create_test_partitions(&data, 1);
-        
+
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
-        
+
         let results = result.unwrap();
         assert_eq!(results.len(), 5);
-        
+
         // Verify stable index mapping
         for (i, (idx, _)) in results.iter().enumerate() {
             assert_eq!(*idx, i);
@@ -386,17 +382,17 @@ mod tests {
         let context = create_test_context();
         let data = create_test_data(10);
         let partitions = create_test_partitions(&data, 3);
-        
+
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
-        
+
         let results = result.unwrap();
         assert_eq!(results.len(), 10);
-        
+
         // Sort results by index to verify completeness
         let mut sorted_results = results;
         sorted_results.sort_by_key(|(idx, _)| *idx);
-        
+
         // Verify all indices are present
         for (i, (idx, _)) in sorted_results.iter().enumerate() {
             assert_eq!(*idx, i);
@@ -414,7 +410,7 @@ mod tests {
         let context = create_test_context();
         let data = create_test_data(1);
         let partitions = create_test_partitions(&data, 1);
-        
+
         // Normal execution should work
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
@@ -430,17 +426,17 @@ mod tests {
         let context = create_test_context();
         let data = create_test_data(100);
         let partitions = create_test_partitions(&data, 4);
-        
+
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
-        
+
         let results = result.unwrap();
         assert_eq!(results.len(), 100);
-        
+
         // Verify index preservation
         let mut sorted_results = results;
         sorted_results.sort_by_key(|(idx, _)| *idx);
-        
+
         for (i, (idx, _)) in sorted_results.iter().enumerate() {
             assert_eq!(*idx, i);
         }
@@ -453,24 +449,24 @@ mod tests {
         let block = create_test_block();
         let context = create_test_context();
         let data = create_test_data(50);
-        
+
         // Execute multiple times with same input
         let partitions1 = create_test_partitions(&data, 3);
         let partitions2 = create_test_partitions(&data, 3);
-        
+
         let result1 = executor.execute_parallel(&block, partitions1, &context);
         let result2 = executor.execute_parallel(&block, partitions2, &context);
-        
+
         assert!(result1.is_ok());
         assert!(result2.is_ok());
-        
+
         let mut results1 = result1.unwrap();
         let mut results2 = result2.unwrap();
-        
+
         // Sort both results by index
         results1.sort_by_key(|(idx, _)| *idx);
         results2.sort_by_key(|(idx, _)| *idx);
-        
+
         // Results should be identical
         assert_eq!(results1.len(), results2.len());
         for (r1, r2) in results1.iter().zip(results2.iter()) {
@@ -485,13 +481,13 @@ mod tests {
     fn test_trait_implementation() {
         let executor = RayonParallelExecutor::new();
         let _: &dyn ParallelExecutor = &executor;
-        
+
         // Verify trait methods are callable
         let block = create_test_block();
         let context = create_test_context();
         let data = create_test_data(5);
         let partitions = create_test_partitions(&data, 2);
-        
+
         let result = executor.execute_parallel(&block, partitions, &context);
         assert!(result.is_ok());
     }

@@ -10,17 +10,17 @@
 //! **Phase:** 3.5 Gate C
 
 use crate::gate_c::{
-    error::{IRError, GateCResult},
-    types::{ExecutionPlan, PlanStep, Operation, DataRef},
+    error::{GateCResult, IRError},
     limits::{MAX_PLAN_STEPS, MAX_SEMANTIC_HINTS},
+    types::{DataRef, ExecutionPlan, Operation, PlanStep},
 };
 pub mod optimized_analyzer;
 pub mod optimized_executor;
 
-use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Semantic analysis engine for BCIB instructions
-/// 
+///
 /// **Key Constraints:**
 /// - NO register allocation
 /// - NO runtime optimization  
@@ -39,7 +39,7 @@ impl SemanticAnalyzer {
             max_hints: MAX_SEMANTIC_HINTS,
         }
     }
-    
+
     /// Create analyzer with custom limits
     pub fn with_limits(max_plan_steps: usize, max_hints: usize) -> Self {
         Self {
@@ -47,56 +47,66 @@ impl SemanticAnalyzer {
             max_hints,
         }
     }
-    
+
     /// Analyze execution plan for semantic dependencies
-    /// 
+    ///
     /// **Complexity:** O(n) where n is number of steps
     /// **Constraints:** No runtime optimization, semantic analysis only
-    pub fn analyze_semantic_dependencies(&self, plan: &ExecutionPlan) -> GateCResult<SemanticAnalysis> {
+    pub fn analyze_semantic_dependencies(
+        &self,
+        plan: &ExecutionPlan,
+    ) -> GateCResult<SemanticAnalysis> {
         // Validate plan size
         if plan.steps.len() > self.max_plan_steps {
             return Err(IRError::TooComplex(format!(
-                "Plan has {} steps, exceeds limit of {}", 
-                plan.steps.len(), self.max_plan_steps
-            )).into());
+                "Plan has {} steps, exceeds limit of {}",
+                plan.steps.len(),
+                self.max_plan_steps
+            ))
+            .into());
         }
-        
+
         let mut analysis = SemanticAnalysis::new();
-        
+
         // Build semantic dependency graph (O(n))
         let dependency_graph = self.build_semantic_dependency_graph(&plan.steps)?;
         analysis.dependency_graph = dependency_graph;
-        
+
         // Generate ordering hints (O(n))
         let ordering_hints = self.generate_ordering_hints(&plan.steps)?;
         analysis.ordering_hints = ordering_hints;
-        
+
         // Generate parallelism hints (O(n))
         let parallelism_hints = self.generate_parallelism_hints(&plan.steps)?;
         analysis.parallelism_hints = parallelism_hints;
-        
+
         // Validate hint count limits
         if analysis.ordering_hints.len() > self.max_hints {
             return Err(IRError::TooComplex(format!(
-                "Generated {} ordering hints, exceeds limit of {}", 
-                analysis.ordering_hints.len(), self.max_hints
-            )).into());
+                "Generated {} ordering hints, exceeds limit of {}",
+                analysis.ordering_hints.len(),
+                self.max_hints
+            ))
+            .into());
         }
-        
+
         Ok(analysis)
     }
-    
+
     /// Build semantic dependency graph
-    /// 
+    ///
     /// **Complexity:** O(n) - single pass through steps
-    fn build_semantic_dependency_graph(&self, steps: &[PlanStep]) -> GateCResult<SemanticDependencyGraph> {
+    fn build_semantic_dependency_graph(
+        &self,
+        steps: &[PlanStep],
+    ) -> GateCResult<SemanticDependencyGraph> {
         let mut graph = SemanticDependencyGraph::new();
         let mut data_producers: BTreeMap<String, String> = BTreeMap::new();
-        
+
         // Single pass through steps (O(n))
         for step in steps {
             let mut dependencies = Vec::new();
-            
+
             // Check input dependencies
             for input in &step.inputs {
                 if let Some(producer_step) = &input.source_step {
@@ -108,21 +118,21 @@ impl SemanticAnalyzer {
                     });
                 }
             }
-            
+
             // Record output producers
             for output in &step.outputs {
                 data_producers.insert(output.id.clone(), step.id.clone());
             }
-            
+
             // Add step to graph
             graph.add_step(step.id.clone(), dependencies);
         }
-        
+
         Ok(graph)
     }
-    
+
     /// Generate enhanced semantic ordering hints with dependency-based analysis
-    /// 
+    ///
     /// **Complexity:** O(n) - single pass analysis with dependency tracking
     /// **Enhanced Features:**
     /// - Dependency-based ordering suggestions
@@ -131,11 +141,11 @@ impl SemanticAnalyzer {
     /// - Execution priority scoring
     fn generate_ordering_hints(&self, steps: &[PlanStep]) -> GateCResult<Vec<OrderingHint>> {
         let mut hints = Vec::new();
-        
+
         // Build dependency map for enhanced analysis
         let dependency_map = self.build_dependency_map(steps);
         let critical_path = self.identify_critical_path(steps, &dependency_map);
-        
+
         // Analyze each step for ordering opportunities (O(n))
         for (_i, step) in steps.iter().enumerate() {
             // Enhanced operation-based hints
@@ -145,10 +155,11 @@ impl SemanticAnalyzer {
                     hints.push(OrderingHint {
                         step_id: step.id.clone(),
                         hint_type: OrderingHintType::EarlyExecution,
-                        reason: "Query operations can be executed early to reduce latency".to_string(),
+                        reason: "Query operations can be executed early to reduce latency"
+                            .to_string(),
                         confidence,
                     });
-                    
+
                     // Add IO-intensive hint for queries
                     hints.push(OrderingHint {
                         step_id: step.id.clone(),
@@ -161,16 +172,18 @@ impl SemanticAnalyzer {
                     hints.push(OrderingHint {
                         step_id: step.id.clone(),
                         hint_type: OrderingHintType::ComputeIntensive,
-                        reason: "Compute operations may benefit from parallel execution".to_string(),
+                        reason: "Compute operations may benefit from parallel execution"
+                            .to_string(),
                         confidence: 0.8,
                     });
-                    
+
                     // Check if compute step is on critical path
                     if critical_path.contains(&step.id) {
                         hints.push(OrderingHint {
                             step_id: step.id.clone(),
                             hint_type: OrderingHintType::EarlyExecution,
-                            reason: "Step is on critical path and should be prioritized".to_string(),
+                            reason: "Step is on critical path and should be prioritized"
+                                .to_string(),
                             confidence: 0.95,
                         });
                     }
@@ -179,17 +192,18 @@ impl SemanticAnalyzer {
                     hints.push(OrderingHint {
                         step_id: step.id.clone(),
                         hint_type: OrderingHintType::LateExecution,
-                        reason: "Mutation operations should be executed after dependencies".to_string(),
+                        reason: "Mutation operations should be executed after dependencies"
+                            .to_string(),
                         confidence: 0.9,
                     });
                 }
             }
-            
+
             // Enhanced dependency-based ordering hints
             let input_count = step.inputs.len();
             let output_count = step.outputs.len();
             let dependents = self.count_dependents(step, steps);
-            
+
             if input_count == 0 {
                 hints.push(OrderingHint {
                     step_id: step.id.clone(),
@@ -198,7 +212,7 @@ impl SemanticAnalyzer {
                     confidence: 0.9,
                 });
             }
-            
+
             if output_count == 0 {
                 let confidence = if dependents == 0 { 0.8 } else { 0.6 };
                 hints.push(OrderingHint {
@@ -208,23 +222,26 @@ impl SemanticAnalyzer {
                     confidence,
                 });
             }
-            
+
             // High fan-out steps should be prioritized
             if dependents > 2 {
                 hints.push(OrderingHint {
                     step_id: step.id.clone(),
                     hint_type: OrderingHintType::EarlyExecution,
-                    reason: format!("Step has {} dependents and should be prioritized", dependents),
+                    reason: format!(
+                        "Step has {} dependents and should be prioritized",
+                        dependents
+                    ),
                     confidence: 0.85,
                 });
             }
-            
+
             // Resource contention analysis
             if let Some(resource_hint) = self.analyze_resource_contention(step, steps) {
                 hints.push(resource_hint);
             }
         }
-        
+
         // Add critical path hints
         for step_id in &critical_path {
             hints.push(OrderingHint {
@@ -234,21 +251,26 @@ impl SemanticAnalyzer {
                 confidence: 0.95,
             });
         }
-        
+
         // Sort hints for deterministic ordering
         hints.sort_by(|a, b| {
-            a.step_id.cmp(&b.step_id)
+            a.step_id
+                .cmp(&b.step_id)
                 .then_with(|| a.hint_type.cmp(&b.hint_type))
-                .then_with(|| a.confidence.partial_cmp(&b.confidence).unwrap_or(std::cmp::Ordering::Equal))
+                .then_with(|| {
+                    a.confidence
+                        .partial_cmp(&b.confidence)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
         });
-        
+
         Ok(hints)
     }
-    
+
     /// Build dependency map for enhanced analysis
     fn build_dependency_map(&self, steps: &[PlanStep]) -> BTreeMap<String, Vec<String>> {
         let mut dependency_map = BTreeMap::new();
-        
+
         for step in steps {
             let mut dependencies = Vec::new();
             for input in &step.inputs {
@@ -260,34 +282,48 @@ impl SemanticAnalyzer {
             dependencies.sort();
             dependency_map.insert(step.id.clone(), dependencies);
         }
-        
+
         dependency_map
     }
-    
+
     /// Identify critical path through the plan
-    /// 
+    ///
     /// **Algorithm:** Longest path through dependency graph
-    fn identify_critical_path(&self, steps: &[PlanStep], dependency_map: &BTreeMap<String, Vec<String>>) -> Vec<String> {
+    fn identify_critical_path(
+        &self,
+        steps: &[PlanStep],
+        dependency_map: &BTreeMap<String, Vec<String>>,
+    ) -> Vec<String> {
         let mut critical_path = Vec::new();
         let mut visited = BTreeSet::new();
         let mut path_lengths: BTreeMap<String, usize> = BTreeMap::new();
-        
+
         // Calculate longest path to each step (deterministic order)
         for step in steps {
             if !visited.contains(&step.id) {
-                self.calculate_longest_path(&step.id, dependency_map, &mut path_lengths, &mut visited);
+                self.calculate_longest_path(
+                    &step.id,
+                    dependency_map,
+                    &mut path_lengths,
+                    &mut visited,
+                );
             }
         }
-        
+
         // Find the step with maximum path length (deterministic selection)
         if let Some((longest_step, _)) = path_lengths.iter().max_by_key(|(_, &length)| length) {
             // Reconstruct critical path
-            self.reconstruct_critical_path(longest_step, dependency_map, &path_lengths, &mut critical_path);
+            self.reconstruct_critical_path(
+                longest_step,
+                dependency_map,
+                &path_lengths,
+                &mut critical_path,
+            );
         }
-        
+
         critical_path
     }
-    
+
     /// Calculate longest path to a step (recursive with memoization)
     fn calculate_longest_path(
         &self,
@@ -299,9 +335,9 @@ impl SemanticAnalyzer {
         if let Some(&length) = path_lengths.get(step_id) {
             return length;
         }
-        
+
         visited.insert(step_id.to_string());
-        
+
         let empty_deps = Vec::new();
         let dependencies = dependency_map.get(step_id).unwrap_or(&empty_deps);
         let max_dep_length = dependencies
@@ -309,12 +345,12 @@ impl SemanticAnalyzer {
             .map(|dep| self.calculate_longest_path(dep, dependency_map, path_lengths, visited))
             .max()
             .unwrap_or(0);
-        
+
         let length = max_dep_length + 1;
         path_lengths.insert(step_id.to_string(), length);
         length
     }
-    
+
     /// Reconstruct critical path from longest step
     fn reconstruct_critical_path(
         &self,
@@ -324,22 +360,27 @@ impl SemanticAnalyzer {
         critical_path: &mut Vec<String>,
     ) {
         critical_path.push(step_id.to_string());
-        
+
         let current_length = path_lengths.get(step_id).unwrap_or(&0);
         let empty_deps = Vec::new();
         let dependencies = dependency_map.get(step_id).unwrap_or(&empty_deps);
-        
+
         // Find dependency with length = current_length - 1
         for dep in dependencies {
             if let Some(&dep_length) = path_lengths.get(dep) {
                 if dep_length == current_length - 1 {
-                    self.reconstruct_critical_path(dep, dependency_map, path_lengths, critical_path);
+                    self.reconstruct_critical_path(
+                        dep,
+                        dependency_map,
+                        path_lengths,
+                        critical_path,
+                    );
                     break;
                 }
             }
         }
     }
-    
+
     /// Count number of steps that depend on this step
     fn count_dependents(&self, step: &PlanStep, all_steps: &[PlanStep]) -> usize {
         let mut count = 0;
@@ -355,37 +396,46 @@ impl SemanticAnalyzer {
         }
         count
     }
-    
+
     /// Analyze resource contention for ordering hints
-    fn analyze_resource_contention(&self, step: &PlanStep, all_steps: &[PlanStep]) -> Option<OrderingHint> {
+    fn analyze_resource_contention(
+        &self,
+        step: &PlanStep,
+        all_steps: &[PlanStep],
+    ) -> Option<OrderingHint> {
         // Check for steps that might contend for similar resources
         let mut contending_steps = 0;
-        
+
         for other_step in all_steps {
             if other_step.id == step.id {
                 continue;
             }
-            
+
             // Simple heuristic: same operation type might contend for resources
-            if std::mem::discriminant(&step.operation) == std::mem::discriminant(&other_step.operation) {
+            if std::mem::discriminant(&step.operation)
+                == std::mem::discriminant(&other_step.operation)
+            {
                 contending_steps += 1;
             }
         }
-        
+
         if contending_steps > 2 {
             Some(OrderingHint {
                 step_id: step.id.clone(),
                 hint_type: OrderingHintType::EarlyExecution,
-                reason: format!("Step may contend with {} similar operations", contending_steps),
+                reason: format!(
+                    "Step may contend with {} similar operations",
+                    contending_steps
+                ),
                 confidence: 0.6,
             })
         } else {
             None
         }
     }
-    
+
     /// Generate enhanced parallelism opportunity hints with advanced analysis
-    /// 
+    ///
     /// **Complexity:** O(n) - CRITICAL FIX: Linear time analysis per Gate C rules
     /// **Note:** These are semantic hints only, NOT execution optimization
     /// **Enhanced Features:**
@@ -397,7 +447,7 @@ impl SemanticAnalyzer {
         let mut hints = Vec::new();
         let mut data_dependencies: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut resource_usage: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        
+
         // CRITICAL FIX: Single pass O(n) analysis instead of O(n²)
         // Build data dependency and resource usage maps (O(n)) with deterministic ordering
         for step in steps {
@@ -408,47 +458,50 @@ impl SemanticAnalyzer {
                 }
             }
             data_dependencies.insert(step.id.clone(), deps);
-            
+
             // Analyze resource usage patterns
             let mut resources = self.analyze_step_resources(step);
             // Sort resources for deterministic ordering
             resources.sort();
             resource_usage.insert(step.id.clone(), resources);
         }
-        
+
         // CRITICAL FIX: O(n) parallelism analysis using dependency sets with deterministic ordering
         // Process steps in deterministic order (sorted by step ID)
         let mut sorted_steps: Vec<_> = steps.iter().collect();
         sorted_steps.sort_by(|a, b| a.id.cmp(&b.id));
-        
+
         for step in sorted_steps {
             let step_deps = data_dependencies.get(&step.id).unwrap();
             let step_resources = resource_usage.get(&step.id).unwrap();
-            
+
             // Count potential parallel candidates using set operations (O(1) per step)
             let mut parallel_count = 0;
             let mut resource_contention_count = 0;
-            
+
             // Process other steps in deterministic order
             let mut other_sorted_steps: Vec<_> = steps.iter().collect();
             other_sorted_steps.sort_by(|a, b| a.id.cmp(&b.id));
-            
+
             for other_step in other_sorted_steps {
                 if other_step.id == step.id {
                     continue;
                 }
-                
+
                 let other_deps = data_dependencies.get(&other_step.id).unwrap();
-                
+
                 // Quick dependency check using sets (O(1) average case)
                 if !step_deps.contains(&other_step.id) && !other_deps.contains(&step.id) {
                     // Check for data conflicts (simplified O(1) check)
                     let has_data_conflict = self.quick_data_conflict_check(step, other_step);
-                    
+
                     if !has_data_conflict {
                         // Quick resource conflict check
-                        let resource_conflict = self.quick_resource_conflict_check(step_resources, resource_usage.get(&other_step.id).unwrap());
-                        
+                        let resource_conflict = self.quick_resource_conflict_check(
+                            step_resources,
+                            resource_usage.get(&other_step.id).unwrap(),
+                        );
+
                         if resource_conflict {
                             resource_contention_count += 1;
                         } else {
@@ -457,7 +510,7 @@ impl SemanticAnalyzer {
                     }
                 }
             }
-            
+
             // Generate hints based on counts (O(1))
             if parallel_count > 0 {
                 let confidence = self.calculate_simple_parallelism_confidence(step, parallel_count);
@@ -466,10 +519,13 @@ impl SemanticAnalyzer {
                     hint_type: ParallelismHintType::ParallelCandidate,
                     parallel_with: vec![], // Simplified: don't store all candidates
                     confidence,
-                    reason: format!("Step can potentially run in parallel with {} other steps", parallel_count),
+                    reason: format!(
+                        "Step can potentially run in parallel with {} other steps",
+                        parallel_count
+                    ),
                 });
             }
-            
+
             // Generate resource contention hints
             if resource_contention_count > 0 {
                 hints.push(ParallelismHint {
@@ -477,10 +533,13 @@ impl SemanticAnalyzer {
                     hint_type: ParallelismHintType::ResourceContention,
                     parallel_with: vec![], // Simplified
                     confidence: 0.8,
-                    reason: format!("Step may contend with {} other steps for resources", resource_contention_count),
+                    reason: format!(
+                        "Step may contend with {} other steps for resources",
+                        resource_contention_count
+                    ),
                 });
             }
-            
+
             // Check if step requires sequential execution
             if self.requires_sequential_execution(step) {
                 hints.push(ParallelismHint {
@@ -492,21 +551,26 @@ impl SemanticAnalyzer {
                 });
             }
         }
-        
+
         // Sort hints for deterministic ordering
         hints.sort_by(|a, b| {
-            a.step_id.cmp(&b.step_id)
+            a.step_id
+                .cmp(&b.step_id)
                 .then_with(|| a.hint_type.cmp(&b.hint_type))
-                .then_with(|| a.confidence.partial_cmp(&b.confidence).unwrap_or(std::cmp::Ordering::Equal))
+                .then_with(|| {
+                    a.confidence
+                        .partial_cmp(&b.confidence)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
         });
-        
+
         Ok(hints)
     }
-    
+
     /// Analyze resource usage patterns for a step
     fn analyze_step_resources(&self, step: &PlanStep) -> Vec<String> {
         let mut resources = Vec::new();
-        
+
         match &step.operation {
             Operation::Query { target, .. } => {
                 resources.push(format!("query:{}", target));
@@ -521,19 +585,19 @@ impl SemanticAnalyzer {
                 resources.push("write".to_string());
             }
         }
-        
+
         // Add resource hints based on inputs/outputs
         for input in &step.inputs {
             resources.push(format!("read:{}", input.data_type));
         }
-        
+
         for output in &step.outputs {
             resources.push(format!("write:{}", output.data_type));
         }
-        
+
         resources
     }
-    
+
     /// Check for resource conflicts between steps
     fn check_resource_conflicts(&self, resources1: &[String], resources2: &[String]) -> bool {
         for r1 in resources1 {
@@ -544,7 +608,7 @@ impl SemanticAnalyzer {
                         return true;
                     }
                 }
-                
+
                 // Check for specific resource conflicts
                 if r1 == r2 && (r1 == "mutation" || r1 == "cpu" || r1 == "io") {
                     return true;
@@ -553,38 +617,43 @@ impl SemanticAnalyzer {
         }
         false
     }
-    
+
     /// Calculate confidence score for parallelism hint
-    fn calculate_parallelism_confidence(&self, step: &PlanStep, candidates: &[String], _all_steps: &[PlanStep]) -> f64 {
+    fn calculate_parallelism_confidence(
+        &self,
+        step: &PlanStep,
+        candidates: &[String],
+        _all_steps: &[PlanStep],
+    ) -> f64 {
         let mut confidence: f64 = 0.7; // Base confidence
-        
+
         // Increase confidence for independent operations
         match &step.operation {
             Operation::Query { .. } => confidence += 0.1,
             Operation::Compute { .. } => confidence += 0.15,
             Operation::Mutation { .. } => confidence -= 0.2, // Mutations are riskier
         }
-        
+
         // Adjust based on number of candidates
         if candidates.len() > 3 {
             confidence += 0.1; // More candidates = higher confidence
         }
-        
+
         // Adjust based on step complexity
         let input_count = step.inputs.len();
         let output_count = step.outputs.len();
-        
+
         if input_count == 0 && output_count > 0 {
             confidence += 0.1; // Source steps are good for parallelism
         }
-        
+
         if input_count > 0 && output_count == 0 {
             confidence += 0.05; // Sink steps are also good
         }
-        
+
         confidence.min(1.0).max(0.0)
     }
-    
+
     /// Check if step requires sequential execution
     fn requires_sequential_execution(&self, step: &PlanStep) -> bool {
         match &step.operation {
@@ -593,28 +662,32 @@ impl SemanticAnalyzer {
             Operation::Compute { .. } => false,
         }
     }
-    
+
     /// Identify groups of steps that can be parallelized together
-    fn identify_parallelizable_groups(&self, steps: &[PlanStep], dependencies: &BTreeMap<String, BTreeSet<String>>) -> Vec<Vec<String>> {
+    fn identify_parallelizable_groups(
+        &self,
+        steps: &[PlanStep],
+        dependencies: &BTreeMap<String, BTreeSet<String>>,
+    ) -> Vec<Vec<String>> {
         let mut groups = Vec::new();
         let mut visited = BTreeSet::new();
-        
+
         for step in steps {
             if visited.contains(&step.id) {
                 continue;
             }
-            
+
             let mut group = Vec::new();
             self.find_parallelizable_group(&step.id, steps, dependencies, &mut group, &mut visited);
-            
+
             if group.len() > 1 {
                 groups.push(group);
             }
         }
-        
+
         groups
     }
-    
+
     /// Find all steps that can be parallelized with the given step
     fn find_parallelizable_group(
         &self,
@@ -627,41 +700,47 @@ impl SemanticAnalyzer {
         if visited.contains(step_id) {
             return;
         }
-        
+
         visited.insert(step_id.to_string());
         group.push(step_id.to_string());
-        
+
         let step = all_steps.iter().find(|s| s.id == step_id);
         if step.is_none() {
             return;
         }
         let step = step.unwrap();
-        
+
         // Find other steps at the same dependency level
         let step_deps = dependencies.get(step_id).unwrap();
-        
+
         for other_step in all_steps {
             if visited.contains(&other_step.id) || other_step.id == step_id {
                 continue;
             }
-            
+
             let other_deps = dependencies.get(&other_step.id).unwrap();
-            
+
             // Check if steps can be parallelized
-            if !step_deps.contains(&other_step.id) 
+            if !step_deps.contains(&other_step.id)
                 && !other_deps.contains(step_id)
-                && !self.quick_data_conflict_check(step, other_step) {
-                
+                && !self.quick_data_conflict_check(step, other_step)
+            {
                 // Recursively add to group
-                self.find_parallelizable_group(&other_step.id, all_steps, dependencies, group, visited);
+                self.find_parallelizable_group(
+                    &other_step.id,
+                    all_steps,
+                    dependencies,
+                    group,
+                    visited,
+                );
             }
         }
     }
-    
+
     /// Quick data conflict check (O(1) simplified version)
     fn quick_data_conflict_check(&self, step1: &PlanStep, step2: &PlanStep) -> bool {
         // Simplified conflict detection for O(n) analysis
-        
+
         // Check for write-write conflicts (overlapping outputs)
         for output1 in &step1.outputs {
             for output2 in &step2.outputs {
@@ -670,7 +749,7 @@ impl SemanticAnalyzer {
                 }
             }
         }
-        
+
         // Check for read-write conflicts (step1 writes what step2 reads, or vice versa)
         for output1 in &step1.outputs {
             for input2 in &step2.inputs {
@@ -679,7 +758,7 @@ impl SemanticAnalyzer {
                 }
             }
         }
-        
+
         for output2 in &step2.outputs {
             for input1 in &step1.inputs {
                 if output2.id == input1.id {
@@ -687,10 +766,10 @@ impl SemanticAnalyzer {
                 }
             }
         }
-        
+
         false
     }
-    
+
     /// Quick resource conflict check (O(1) simplified version)
     fn quick_resource_conflict_check(&self, resources1: &[String], resources2: &[String]) -> bool {
         // Simplified resource conflict check
@@ -703,49 +782,56 @@ impl SemanticAnalyzer {
         }
         false
     }
-    
+
     /// Calculate simple parallelism confidence (O(1))
-    fn calculate_simple_parallelism_confidence(&self, step: &PlanStep, parallel_count: usize) -> f64 {
+    fn calculate_simple_parallelism_confidence(
+        &self,
+        step: &PlanStep,
+        parallel_count: usize,
+    ) -> f64 {
         let mut confidence: f64 = 0.7; // Base confidence
-        
+
         // Increase confidence for independent operations
         match &step.operation {
             Operation::Query { .. } => confidence += 0.1,
             Operation::Compute { .. } => confidence += 0.15,
             Operation::Mutation { .. } => confidence -= 0.2, // Mutations are riskier
         }
-        
+
         // Adjust based on number of candidates
         if parallel_count > 3 {
             confidence += 0.1;
         }
-        
+
         confidence.min(1.0).max(0.0)
     }
 
     /// Analyze execution plan for performance testing (bypasses constitutional limits)
-    /// 
+    ///
     /// **CRITICAL:** This method is ONLY for performance testing and constitutional compliance verification.
     /// It bypasses constitutional limits and should NEVER be used in production code.
-    /// 
+    ///
     /// **Phase 4.3.4.2:** Used for constitutional compliance verification to ensure optimizations
     /// preserve deterministic behavior and semantic correctness.
-    pub fn analyze_for_performance_testing(&self, plan: &ExecutionPlan) -> GateCResult<SemanticAnalysis> {
+    pub fn analyze_for_performance_testing(
+        &self,
+        plan: &ExecutionPlan,
+    ) -> GateCResult<SemanticAnalysis> {
         // Skip constitutional limits for performance testing
         let mut analysis = SemanticAnalysis::new();
-        
+
         // Build semantic dependency graph (O(n))
         let dependency_graph = self.build_semantic_dependency_graph(&plan.steps)?;
         analysis.dependency_graph = dependency_graph;
-        
+
         // Generate ordering hints (O(n))
         let ordering_hints = self.generate_ordering_hints(&plan.steps)?;
         analysis.ordering_hints = ordering_hints;
-        
+
         // Generate parallelism hints (O(n))
         let parallelism_hints = self.generate_parallelism_hints(&plan.steps)?;
         analysis.parallelism_hints = parallelism_hints;
-        
+
         // Skip hint count limits for performance testing
         Ok(analysis)
     }
@@ -787,26 +873,26 @@ impl SemanticDependencyGraph {
             steps: BTreeMap::new(),
         }
     }
-    
+
     fn add_step(&mut self, step_id: String, dependencies: Vec<SemanticDependency>) {
         self.steps.insert(step_id, dependencies);
     }
-    
+
     /// Get dependencies for a step
     pub fn get_dependencies(&self, step_id: &str) -> Option<&Vec<SemanticDependency>> {
         self.steps.get(step_id)
     }
-    
+
     /// Get all steps in the graph
     pub fn get_steps(&self) -> Vec<&String> {
         self.steps.keys().collect()
     }
-    
+
     /// Get number of steps in the graph
     pub fn len(&self) -> usize {
         self.steps.len()
     }
-    
+
     /// Check if the graph is empty
     pub fn is_empty(&self) -> bool {
         self.steps.is_empty()
@@ -878,24 +964,29 @@ impl OrderingHinter {
             semantic_analyzer: SemanticAnalyzer::new(),
         }
     }
-    
+
     /// Generate enhanced ordering hints for a plan
     pub fn generate_hints(&self, plan: &ExecutionPlan) -> GateCResult<Vec<OrderingHint>> {
         let analysis = self.semantic_analyzer.analyze_semantic_dependencies(plan)?;
         Ok(analysis.ordering_hints)
     }
-    
+
     /// Generate dependency-based ordering suggestions
-    pub fn generate_dependency_based_hints(&self, plan: &ExecutionPlan) -> GateCResult<Vec<OrderingHint>> {
+    pub fn generate_dependency_based_hints(
+        &self,
+        plan: &ExecutionPlan,
+    ) -> GateCResult<Vec<OrderingHint>> {
         let mut hints = Vec::new();
-        
+
         // Build dependency graph
-        let dependency_graph = self.semantic_analyzer.build_semantic_dependency_graph(&plan.steps)?;
-        
+        let dependency_graph = self
+            .semantic_analyzer
+            .build_semantic_dependency_graph(&plan.steps)?;
+
         // Analyze dependency patterns
         for step in &plan.steps {
             let dependencies = dependency_graph.get_dependencies(&step.id);
-            
+
             if let Some(deps) = dependencies {
                 // Steps with many dependencies should be scheduled later
                 if deps.len() > 3 {
@@ -906,9 +997,11 @@ impl OrderingHinter {
                         confidence: 0.8,
                     });
                 }
-                
+
                 // Steps with only data flow dependencies can be optimized
-                let data_flow_only = deps.iter().all(|d| d.dependency_type == SemanticDependencyType::DataFlow);
+                let data_flow_only = deps
+                    .iter()
+                    .all(|d| d.dependency_type == SemanticDependencyType::DataFlow);
                 if data_flow_only && deps.len() <= 2 {
                     hints.push(OrderingHint {
                         step_id: step.id.clone(),
@@ -919,10 +1012,10 @@ impl OrderingHinter {
                 }
             }
         }
-        
+
         Ok(hints)
     }
-    
+
     /// Validate hint consistency with enhanced checks
     pub fn validate_hints(&self, hints: &[OrderingHint]) -> GateCResult<()> {
         // Check for conflicting hints
@@ -930,69 +1023,74 @@ impl OrderingHinter {
         let mut late_steps = HashSet::new();
         let mut compute_intensive = HashSet::new();
         let mut io_intensive = HashSet::new();
-        
+
         for hint in hints {
             match hint.hint_type {
                 OrderingHintType::EarlyExecution => {
                     if late_steps.contains(&hint.step_id) {
                         return Err(IRError::InconsistentHints(format!(
-                            "Step {} has conflicting early/late execution hints", 
+                            "Step {} has conflicting early/late execution hints",
                             hint.step_id
-                        )).into());
+                        ))
+                        .into());
                     }
                     early_steps.insert(&hint.step_id);
                 }
                 OrderingHintType::LateExecution => {
                     if early_steps.contains(&hint.step_id) {
                         return Err(IRError::InconsistentHints(format!(
-                            "Step {} has conflicting early/late execution hints", 
+                            "Step {} has conflicting early/late execution hints",
                             hint.step_id
-                        )).into());
+                        ))
+                        .into());
                     }
                     late_steps.insert(&hint.step_id);
                 }
                 OrderingHintType::ComputeIntensive => {
                     if io_intensive.contains(&hint.step_id) {
                         return Err(IRError::InconsistentHints(format!(
-                            "Step {} has conflicting compute/IO intensive hints", 
+                            "Step {} has conflicting compute/IO intensive hints",
                             hint.step_id
-                        )).into());
+                        ))
+                        .into());
                     }
                     compute_intensive.insert(&hint.step_id);
                 }
                 OrderingHintType::IOIntensive => {
                     if compute_intensive.contains(&hint.step_id) {
                         return Err(IRError::InconsistentHints(format!(
-                            "Step {} has conflicting compute/IO intensive hints", 
+                            "Step {} has conflicting compute/IO intensive hints",
                             hint.step_id
-                        )).into());
+                        ))
+                        .into());
                     }
                     io_intensive.insert(&hint.step_id);
                 }
             }
         }
-        
+
         // Validate confidence scores
         for hint in hints {
             if hint.confidence < 0.0 || hint.confidence > 1.0 {
                 return Err(IRError::InconsistentHints(format!(
-                    "Step {} has invalid confidence score: {}", 
+                    "Step {} has invalid confidence score: {}",
                     hint.step_id, hint.confidence
-                )).into());
+                ))
+                .into());
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Merge and deduplicate hints from multiple sources
     pub fn merge_hints(&self, hint_sets: Vec<Vec<OrderingHint>>) -> Vec<OrderingHint> {
         let mut merged_hints: BTreeMap<(String, OrderingHintType), OrderingHint> = BTreeMap::new();
-        
+
         for hint_set in hint_sets {
             for hint in hint_set {
                 let key = (hint.step_id.clone(), hint.hint_type.clone());
-                
+
                 // Keep hint with higher confidence
                 if let Some(existing_hint) = merged_hints.get(&key) {
                     if hint.confidence > existing_hint.confidence {
@@ -1003,21 +1101,26 @@ impl OrderingHinter {
                 }
             }
         }
-        
+
         merged_hints.into_values().collect()
     }
-    
+
     /// Filter hints by confidence threshold
-    pub fn filter_by_confidence(&self, hints: Vec<OrderingHint>, min_confidence: f64) -> Vec<OrderingHint> {
-        hints.into_iter()
+    pub fn filter_by_confidence(
+        &self,
+        hints: Vec<OrderingHint>,
+        min_confidence: f64,
+    ) -> Vec<OrderingHint> {
+        hints
+            .into_iter()
             .filter(|hint| hint.confidence >= min_confidence)
             .collect()
     }
-    
+
     /// Generate execution priority scores based on hints
     pub fn generate_priority_scores(&self, hints: &[OrderingHint]) -> BTreeMap<String, f64> {
         let mut scores = BTreeMap::new();
-        
+
         for hint in hints {
             let score_delta = match hint.hint_type {
                 OrderingHintType::EarlyExecution => hint.confidence * 10.0,
@@ -1025,10 +1128,10 @@ impl OrderingHinter {
                 OrderingHintType::ComputeIntensive => hint.confidence * 2.0,
                 OrderingHintType::IOIntensive => hint.confidence * 1.0,
             };
-            
+
             *scores.entry(hint.step_id.clone()).or_insert(0.0) += score_delta;
         }
-        
+
         scores
     }
 }
@@ -1053,56 +1156,58 @@ impl IRPlanner {
             ordering_hinter: OrderingHinter::new(),
         }
     }
-    
+
     /// Perform complete semantic analysis of execution plan
     pub fn analyze_plan(&self, plan: &ExecutionPlan) -> GateCResult<SemanticAnalysis> {
         // Validate plan structure first
         self.validate_plan_structure(plan)?;
-        
+
         // Perform semantic analysis
         let analysis = self.semantic_analyzer.analyze_semantic_dependencies(plan)?;
-        
+
         // Validate hint consistency
-        self.ordering_hinter.validate_hints(&analysis.ordering_hints)?;
-        
+        self.ordering_hinter
+            .validate_hints(&analysis.ordering_hints)?;
+
         Ok(analysis)
     }
-    
+
     /// Validate plan structure for semantic analysis
     fn validate_plan_structure(&self, plan: &ExecutionPlan) -> GateCResult<()> {
         if plan.steps.is_empty() {
-            return Err(IRError::InvalidPlan(
-                "Plan cannot be empty".to_string()
-            ).into());
+            return Err(IRError::InvalidPlan("Plan cannot be empty".to_string()).into());
         }
-        
+
         // Check for duplicate step IDs
         let mut seen_ids = HashSet::new();
         for step in &plan.steps {
             if seen_ids.contains(&step.id) {
-                return Err(IRError::InvalidPlan(format!(
-                    "Duplicate step ID: {}", step.id
-                )).into());
+                return Err(IRError::InvalidPlan(format!("Duplicate step ID: {}", step.id)).into());
             }
             seen_ids.insert(&step.id);
         }
-        
+
         Ok(())
     }
 
     /// Analyze execution plan for performance testing (bypasses constitutional limits)
-    /// 
+    ///
     /// **CRITICAL:** This method is ONLY for performance testing and constitutional compliance verification.
     /// It bypasses constitutional limits and should NEVER be used in production code.
-    /// 
+    ///
     /// **Phase 4.3.4.2:** Used for constitutional compliance verification to ensure optimizations
     /// preserve deterministic behavior and semantic correctness.
-    pub fn plan_for_performance_testing(&self, plan: &ExecutionPlan) -> GateCResult<SemanticAnalysis> {
+    pub fn plan_for_performance_testing(
+        &self,
+        plan: &ExecutionPlan,
+    ) -> GateCResult<SemanticAnalysis> {
         // Skip constitutional limits for performance testing
-        
+
         // Perform semantic analysis without limits
-        let analysis = self.semantic_analyzer.analyze_for_performance_testing(plan)?;
-        
+        let analysis = self
+            .semantic_analyzer
+            .analyze_for_performance_testing(plan)?;
+
         // Skip hint validation for performance testing
         Ok(analysis)
     }
@@ -1117,7 +1222,7 @@ impl Default for IRPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate_c::types::{PlanMetadata, MutationIntent, ResourcePath, ChangeSet};
+    use crate::gate_c::types::{ChangeSet, MutationIntent, PlanMetadata, ResourcePath};
     use std::collections::HashMap;
 
     fn create_test_plan() -> ExecutionPlan {
@@ -1177,15 +1282,15 @@ mod tests {
     fn test_semantic_dependency_analysis() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_test_plan();
-        
+
         let result = analyzer.analyze_semantic_dependencies(&plan);
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert!(!analysis.ordering_hints.is_empty());
         // Parallelism hints may be empty if no parallelism opportunities exist
         // This is expected behavior
-        
+
         // Check dependency graph
         let deps = analysis.dependency_graph.get_dependencies("step-2");
         assert!(deps.is_some());
@@ -1196,14 +1301,14 @@ mod tests {
     fn test_ordering_hint_generation() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_test_plan();
-        
+
         let hints = analyzer.generate_ordering_hints(&plan.steps).unwrap();
         assert!(!hints.is_empty());
-        
+
         // Check that we have hints for both steps
         let step1_hints: Vec<_> = hints.iter().filter(|h| h.step_id == "step-1").collect();
         let step2_hints: Vec<_> = hints.iter().filter(|h| h.step_id == "step-2").collect();
-        
+
         assert!(!step1_hints.is_empty());
         assert!(!step2_hints.is_empty());
     }
@@ -1212,7 +1317,7 @@ mod tests {
     fn test_parallelism_hint_generation() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_test_plan();
-        
+
         let _hints = analyzer.generate_parallelism_hints(&plan.steps).unwrap();
         // May or may not have parallelism hints depending on dependencies
         // This is expected behavior
@@ -1221,7 +1326,7 @@ mod tests {
     #[test]
     fn test_data_conflict_detection() {
         let analyzer = SemanticAnalyzer::new();
-        
+
         let step1 = PlanStep {
             id: "step-1".to_string(),
             operation: Operation::Query {
@@ -1235,7 +1340,7 @@ mod tests {
                 source_step: Some("step-1".to_string()),
             }],
         };
-        
+
         let step2 = PlanStep {
             id: "step-2".to_string(),
             operation: Operation::Query {
@@ -1249,7 +1354,7 @@ mod tests {
             }],
             outputs: vec![],
         };
-        
+
         // Should detect write-read conflict
         assert!(analyzer.quick_data_conflict_check(&step2, &step1)); // step2 reads what step1 writes
     }
@@ -1258,10 +1363,10 @@ mod tests {
     fn test_ordering_hinter() {
         let hinter = OrderingHinter::new();
         let plan = create_test_plan();
-        
+
         let hints = hinter.generate_hints(&plan).unwrap();
         assert!(!hints.is_empty());
-        
+
         // Validate hints
         let result = hinter.validate_hints(&hints);
         assert!(result.is_ok());
@@ -1271,7 +1376,7 @@ mod tests {
     fn test_ir_planner() {
         let planner = IRPlanner::new();
         let plan = create_test_plan();
-        
+
         let analysis = planner.analyze_plan(&plan).unwrap();
         assert!(!analysis.ordering_hints.is_empty());
     }
@@ -1291,7 +1396,7 @@ mod tests {
             },
             dependencies: vec![],
         };
-        
+
         let result = planner.analyze_plan(&empty_plan);
         assert!(result.is_err());
     }
@@ -1301,7 +1406,7 @@ mod tests {
         let planner = IRPlanner::new();
         let mut plan = create_test_plan();
         plan.steps[1].id = plan.steps[0].id.clone(); // Duplicate ID
-        
+
         let result = planner.analyze_plan(&plan);
         assert!(result.is_err());
     }
@@ -1309,20 +1414,20 @@ mod tests {
     #[test]
     fn test_semantic_dependency_graph() {
         let mut graph = SemanticDependencyGraph::new();
-        
+
         let dep = SemanticDependency {
             from_step: "step-1".to_string(),
             to_step: "step-2".to_string(),
             dependency_type: SemanticDependencyType::DataFlow,
             data_ref: Some("data-1".to_string()),
         };
-        
+
         graph.add_step("step-2".to_string(), vec![dep]);
-        
+
         let deps = graph.get_dependencies("step-2");
         assert!(deps.is_some());
         assert_eq!(deps.unwrap().len(), 1);
-        
+
         let steps = graph.get_steps();
         assert_eq!(steps.len(), 1);
     }
@@ -1331,22 +1436,24 @@ mod tests {
     fn test_enhanced_ordering_hint_generation() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_complex_test_plan();
-        
+
         let hints = analyzer.generate_ordering_hints(&plan.steps).unwrap();
         assert!(!hints.is_empty());
-        
+
         // Check for critical path hints
-        let critical_path_hints: Vec<_> = hints.iter()
+        let critical_path_hints: Vec<_> = hints
+            .iter()
             .filter(|h| h.reason.contains("critical path"))
             .collect();
         assert!(!critical_path_hints.is_empty());
-        
+
         // Check for dependency-based hints
-        let dependency_hints: Vec<_> = hints.iter()
+        let dependency_hints: Vec<_> = hints
+            .iter()
             .filter(|h| h.reason.contains("dependencies") || h.reason.contains("dependents"))
             .collect();
         assert!(!dependency_hints.is_empty());
-        
+
         // Verify confidence scores are valid
         for hint in &hints {
             assert!(hint.confidence >= 0.0 && hint.confidence <= 1.0);
@@ -1357,21 +1464,23 @@ mod tests {
     fn test_enhanced_parallelism_hint_generation() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_parallelizable_test_plan();
-        
+
         let hints = analyzer.generate_parallelism_hints(&plan.steps).unwrap();
-        
+
         // Should have parallelism hints for independent steps (may be empty if no opportunities)
-        let _parallel_hints: Vec<_> = hints.iter()
+        let _parallel_hints: Vec<_> = hints
+            .iter()
             .filter(|h| h.hint_type == ParallelismHintType::ParallelCandidate)
             .collect();
         // Note: parallel hints may be empty if steps have dependencies or conflicts
-        
+
         // Check for resource contention hints
-        let _contention_hints: Vec<_> = hints.iter()
+        let _contention_hints: Vec<_> = hints
+            .iter()
             .filter(|h| h.hint_type == ParallelismHintType::ResourceContention)
             .collect();
         // May or may not have contention hints depending on plan structure
-        
+
         // Verify all hints have valid confidence scores
         for hint in &hints {
             assert!(hint.confidence >= 0.0 && hint.confidence <= 1.0);
@@ -1382,10 +1491,10 @@ mod tests {
     fn test_critical_path_identification() {
         let analyzer = SemanticAnalyzer::new();
         let plan = create_linear_dependency_plan();
-        
+
         let dependency_map = analyzer.build_dependency_map(&plan.steps);
         let critical_path = analyzer.identify_critical_path(&plan.steps, &dependency_map);
-        
+
         assert!(!critical_path.is_empty());
         // Critical path should include the final step
         assert!(critical_path.contains(&"step-3".to_string()));
@@ -1394,7 +1503,7 @@ mod tests {
     #[test]
     fn test_resource_contention_analysis() {
         let analyzer = SemanticAnalyzer::new();
-        
+
         // Create steps with similar operations (potential resource contention)
         let step1 = PlanStep {
             id: "compute-1".to_string(),
@@ -1405,7 +1514,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
         };
-        
+
         let step2 = PlanStep {
             id: "compute-2".to_string(),
             operation: Operation::Compute {
@@ -1415,7 +1524,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
         };
-        
+
         let step3 = PlanStep {
             id: "compute-3".to_string(),
             operation: Operation::Compute {
@@ -1425,7 +1534,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
         };
-        
+
         let step4 = PlanStep {
             id: "compute-4".to_string(),
             operation: Operation::Compute {
@@ -1435,7 +1544,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
         };
-        
+
         let step5 = PlanStep {
             id: "query-1".to_string(),
             operation: Operation::Query {
@@ -1445,13 +1554,13 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
         };
-        
+
         let steps = vec![step1, step2, step3, step4, step5];
-        
+
         // Should detect resource contention between compute steps (4 compute steps > 2 threshold)
         let hint = analyzer.analyze_resource_contention(&steps[0], &steps);
         assert!(hint.is_some());
-        
+
         let hint = hint.unwrap();
         assert!(hint.reason.contains("contend"));
         assert_eq!(hint.hint_type, OrderingHintType::EarlyExecution);
@@ -1461,12 +1570,13 @@ mod tests {
     fn test_dependency_based_ordering_hints() {
         let hinter = OrderingHinter::new();
         let plan = create_complex_test_plan();
-        
+
         let hints = hinter.generate_dependency_based_hints(&plan).unwrap();
         assert!(!hints.is_empty());
-        
+
         // Should have hints based on dependency patterns
-        let dependency_based_hints: Vec<_> = hints.iter()
+        let dependency_based_hints: Vec<_> = hints
+            .iter()
             .filter(|h| h.reason.contains("dependencies"))
             .collect();
         assert!(!dependency_based_hints.is_empty());
@@ -1475,7 +1585,7 @@ mod tests {
     #[test]
     fn test_enhanced_hint_validation() {
         let hinter = OrderingHinter::new();
-        
+
         // Create hints with conflicts
         let conflicting_hints = vec![
             OrderingHint {
@@ -1491,20 +1601,18 @@ mod tests {
                 confidence: 0.8,
             },
         ];
-        
+
         let result = hinter.validate_hints(&conflicting_hints);
         assert!(result.is_err());
-        
+
         // Test invalid confidence scores
-        let invalid_confidence_hints = vec![
-            OrderingHint {
-                step_id: "step-1".to_string(),
-                hint_type: OrderingHintType::EarlyExecution,
-                reason: "Test".to_string(),
-                confidence: 1.5, // Invalid confidence > 1.0
-            },
-        ];
-        
+        let invalid_confidence_hints = vec![OrderingHint {
+            step_id: "step-1".to_string(),
+            hint_type: OrderingHintType::EarlyExecution,
+            reason: "Test".to_string(),
+            confidence: 1.5, // Invalid confidence > 1.0
+        }];
+
         let result = hinter.validate_hints(&invalid_confidence_hints);
         assert!(result.is_err());
     }
@@ -1512,25 +1620,21 @@ mod tests {
     #[test]
     fn test_hint_merging() {
         let hinter = OrderingHinter::new();
-        
-        let hints1 = vec![
-            OrderingHint {
-                step_id: "step-1".to_string(),
-                hint_type: OrderingHintType::EarlyExecution,
-                reason: "Test 1".to_string(),
-                confidence: 0.7,
-            },
-        ];
-        
-        let hints2 = vec![
-            OrderingHint {
-                step_id: "step-1".to_string(),
-                hint_type: OrderingHintType::EarlyExecution,
-                reason: "Test 2".to_string(),
-                confidence: 0.9, // Higher confidence
-            },
-        ];
-        
+
+        let hints1 = vec![OrderingHint {
+            step_id: "step-1".to_string(),
+            hint_type: OrderingHintType::EarlyExecution,
+            reason: "Test 1".to_string(),
+            confidence: 0.7,
+        }];
+
+        let hints2 = vec![OrderingHint {
+            step_id: "step-1".to_string(),
+            hint_type: OrderingHintType::EarlyExecution,
+            reason: "Test 2".to_string(),
+            confidence: 0.9, // Higher confidence
+        }];
+
         let merged = hinter.merge_hints(vec![hints1, hints2]);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].confidence, 0.9); // Should keep higher confidence
@@ -1539,7 +1643,7 @@ mod tests {
     #[test]
     fn test_confidence_filtering() {
         let hinter = OrderingHinter::new();
-        
+
         let hints = vec![
             OrderingHint {
                 step_id: "step-1".to_string(),
@@ -1554,7 +1658,7 @@ mod tests {
                 confidence: 0.3,
             },
         ];
-        
+
         let filtered = hinter.filter_by_confidence(hints, 0.5);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].step_id, "step-1");
@@ -1563,7 +1667,7 @@ mod tests {
     #[test]
     fn test_priority_score_generation() {
         let hinter = OrderingHinter::new();
-        
+
         let hints = vec![
             OrderingHint {
                 step_id: "step-1".to_string(),
@@ -1584,12 +1688,12 @@ mod tests {
                 confidence: 0.6,
             },
         ];
-        
+
         let scores = hinter.generate_priority_scores(&hints);
-        
+
         assert!(scores.contains_key("step-1"));
         assert!(scores.contains_key("step-2"));
-        
+
         // step-1 should have higher priority (early + compute)
         // step-2 should have lower priority (late)
         assert!(scores["step-1"] > scores["step-2"]);
@@ -1794,7 +1898,7 @@ mod tests {
     fn test_plan_size_limits() {
         let analyzer = SemanticAnalyzer::with_limits(1, 10); // Limit to 1 step
         let plan = create_test_plan(); // Has 2 steps
-        
+
         let result = analyzer.analyze_semantic_dependencies(&plan);
         assert!(result.is_err());
     }

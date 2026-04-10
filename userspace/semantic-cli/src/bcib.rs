@@ -123,7 +123,7 @@ impl ContextInstruction {
                         ErrorCode::E300,
                     ));
                 }
-                
+
                 // Validate path format (should contain at least one dot)
                 if !path.contains('.') {
                     return Err(SemanticCLIError::validation_error(
@@ -132,7 +132,7 @@ impl ContextInstruction {
                         ErrorCode::E300,
                     ));
                 }
-                
+
                 Ok(())
             }
             Self::Return { .. } => Ok(()),
@@ -144,7 +144,9 @@ impl ContextInstruction {
         match self {
             Self::LoadContext { path, .. } => {
                 // Generate contextual capability based on path
-                Some(Capability::Read { context: path.clone() })
+                Some(Capability::Read {
+                    context: path.clone(),
+                })
             }
             Self::Return { .. } => None,
         }
@@ -152,7 +154,7 @@ impl ContextInstruction {
 }
 
 /// OperandRef - Reference to operands in instruction graph (AR-1)
-/// 
+///
 /// This replaces embedded Value types to create a flat instruction graph
 /// instead of expression trees, enabling optimizer insertion between
 /// transformer and executor.
@@ -180,9 +182,7 @@ impl OperandRef {
                 }
                 Ok(())
             }
-            Self::Literal(value) => {
-                value.validate()
-            }
+            Self::Literal(value) => value.validate(),
             Self::TempRegister(_) => {
                 // Temp registers are always valid
                 Ok(())
@@ -282,12 +282,8 @@ impl QueryInstruction {
                 }
                 Ok(())
             }
-            Self::LoadLiteral { value, .. } => {
-                value.validate()
-            }
-            Self::ApplyFilter { expression, .. } => {
-                expression.validate()
-            }
+            Self::LoadLiteral { value, .. } => value.validate(),
+            Self::ApplyFilter { expression, .. } => expression.validate(),
             Self::ApplyFilterBool { .. } => {
                 // Register-based filter is always valid structurally
                 Ok(())
@@ -296,7 +292,9 @@ impl QueryInstruction {
                 left.validate()?;
                 right.validate()
             }
-            Self::LogicalOp { operator, operands, .. } => {
+            Self::LogicalOp {
+                operator, operands, ..
+            } => {
                 match operator {
                     LogicalOperator::Not => {
                         if operands.len() != 1 {
@@ -317,11 +315,11 @@ impl QueryInstruction {
                         }
                     }
                 }
-                
+
                 for operand in operands {
                     operand.validate()?;
                 }
-                
+
                 Ok(())
             }
         }
@@ -360,8 +358,12 @@ impl SystemInstruction {
     /// Get the required capability for this instruction (AR-4: Contextual)
     pub fn required_capability(&self) -> Option<Capability> {
         match self {
-            Self::SystemStatus { .. } => Some(Capability::System { scope: SystemScope::Status }),
-            Self::ListAgents { .. } => Some(Capability::System { scope: SystemScope::Agents }),
+            Self::SystemStatus { .. } => Some(Capability::System {
+                scope: SystemScope::Status,
+            }),
+            Self::ListAgents { .. } => Some(Capability::System {
+                scope: SystemScope::Agents,
+            }),
         }
     }
 }
@@ -394,7 +396,12 @@ impl DebugInstruction {
     /// Validate this debug instruction
     pub fn validate(&self) -> Result<()> {
         match self {
-            Self::Explain { target_sequence_id, .. } | Self::DryRun { target_sequence_id, .. } => {
+            Self::Explain {
+                target_sequence_id, ..
+            }
+            | Self::DryRun {
+                target_sequence_id, ..
+            } => {
                 if target_sequence_id.is_empty() {
                     return Err(SemanticCLIError::validation_error(
                         "Debug instruction requires a valid sequence ID",
@@ -402,7 +409,7 @@ impl DebugInstruction {
                         ErrorCode::E300,
                     ));
                 }
-                
+
                 Ok(())
             }
             Self::History { .. } => Ok(()),
@@ -470,17 +477,30 @@ impl LoopInstruction {
     /// Validate this loop instruction
     pub fn validate(&self) -> Result<()> {
         match self {
-            Self::While { id, condition, config, .. } => {
+            Self::While {
+                id,
+                condition,
+                config,
+                ..
+            } => {
                 id.validate()?;
                 condition.validate()?;
                 config.validate()
             }
-            Self::For { id, range, config, .. } => {
+            Self::For {
+                id, range, config, ..
+            } => {
                 id.validate()?;
                 range.validate()?;
                 config.validate()
             }
-            Self::ForEach { id, collection, collection_type, config, .. } => {
+            Self::ForEach {
+                id,
+                collection,
+                collection_type,
+                config,
+                ..
+            } => {
                 id.validate()?;
                 collection.validate()?;
                 collection_type.validate()?;
@@ -603,7 +623,7 @@ impl LoopConfig {
     /// Create a new loop configuration with defaults
     pub fn new(initial_accumulator: Value, accumulator_type: ValueType) -> Self {
         Self {
-            iteration_limit: 10_000, // Constitutional default
+            iteration_limit: 10_000,   // Constitutional default
             budget_timeout: 1_000_000, // Default budget
             budget_measurement: BudgetMeasurement::IterationCount,
             initial_accumulator,
@@ -621,7 +641,7 @@ impl LoopConfig {
                 ErrorCode::E300,
             ));
         }
-        
+
         if self.iteration_limit > 10_000 {
             return Err(SemanticCLIError::validation_error(
                 "Iteration limit exceeds constitutional maximum of 10,000",
@@ -757,13 +777,11 @@ pub enum ErrorRecoveryPolicy {
     Abort,
     /// Retry with increased limit (Constitutional: explicit only)
     RetryWithIncreasedLimit {
-        new_limit: u32,    // Must not exceed global max (10,000)
-        max_retries: u32,  // Must be bounded (default: 1, max: 3)
+        new_limit: u32,   // Must not exceed global max (10,000)
+        max_retries: u32, // Must be bounded (default: 1, max: 3)
     },
     /// Return partial results (Constitutional: explicit only)
-    ReturnPartialResults {
-        include_error_info: bool,
-    },
+    ReturnPartialResults { include_error_info: bool },
 }
 
 impl ErrorRecoveryPolicy {
@@ -771,7 +789,10 @@ impl ErrorRecoveryPolicy {
     pub fn validate(&self) -> Result<()> {
         match self {
             Self::Abort => Ok(()),
-            Self::RetryWithIncreasedLimit { new_limit, max_retries } => {
+            Self::RetryWithIncreasedLimit {
+                new_limit,
+                max_retries,
+            } => {
                 if *new_limit > 10_000 {
                     return Err(SemanticCLIError::validation_error(
                         "Retry limit exceeds constitutional maximum of 10,000",
@@ -809,9 +830,9 @@ pub struct FilterExpression {
 impl FilterExpression {
     /// Create a new filter expression
     pub fn new(field: String, operator: ComparisonOp, value: OperandRef) -> Self {
-        Self { 
-            field, 
-            operator, 
+        Self {
+            field,
+            operator,
             value,
             normalized: false, // Default to not normalized
         }
@@ -819,9 +840,9 @@ impl FilterExpression {
 
     /// Create a new normalized filter expression
     pub fn new_normalized(field: String, operator: ComparisonOp, value: OperandRef) -> Self {
-        Self { 
-            field, 
-            operator, 
+        Self {
+            field,
+            operator,
             value,
             normalized: true,
         }
@@ -836,7 +857,7 @@ impl FilterExpression {
                 ErrorCode::E300,
             ));
         }
-        
+
         self.value.validate()
     }
 }
@@ -883,30 +904,30 @@ impl std::hash::Hash for Value {
             Self::String(s) => {
                 0u8.hash(state);
                 s.hash(state);
-            },
+            }
             Self::Number(n) => {
                 1u8.hash(state);
                 // Convert f64 to bits for consistent hashing
                 n.to_bits().hash(state);
-            },
+            }
             Self::Boolean(b) => {
                 2u8.hash(state);
                 b.hash(state);
-            },
+            }
             Self::Array(arr) => {
                 3u8.hash(state);
                 arr.len().hash(state);
                 for item in arr {
                     item.hash(state);
                 }
-            },
+            }
             Self::List(list) => {
                 4u8.hash(state);
                 list.len().hash(state);
                 for item in list {
                     item.hash(state);
                 }
-            },
+            }
             Self::SortedMap(map) => {
                 5u8.hash(state);
                 map.len().hash(state);
@@ -915,7 +936,7 @@ impl std::hash::Hash for Value {
                     key.hash(state);
                     value.hash(state);
                 }
-            },
+            }
         }
     }
 }
@@ -1035,11 +1056,8 @@ impl Value {
             }),
             Self::SortedMap(map) => {
                 let items: Vec<_> = map.iter().collect();
-                Some(CollectionIterator::SortedMap {
-                    items,
-                    index: 0,
-                })
-            },
+                Some(CollectionIterator::SortedMap { items, index: 0 })
+            }
             _ => None,
         }
     }
@@ -1050,15 +1068,9 @@ impl Value {
 #[derive(Debug)]
 pub enum CollectionIterator<'a> {
     /// Array iterator - index order (0, 1, 2, ...)
-    Array {
-        items: &'a Vec<Value>,
-        index: usize,
-    },
+    Array { items: &'a Vec<Value>, index: usize },
     /// List iterator - insertion order
-    List {
-        items: &'a Vec<Value>,
-        index: usize,
-    },
+    List { items: &'a Vec<Value>, index: usize },
     /// SortedMap iterator - key sort order
     SortedMap {
         items: Vec<(&'a String, &'a Value)>,
@@ -1100,10 +1112,7 @@ impl<'a> Iterator for CollectionIterator<'a> {
             CollectionIterator::SortedMap { items, index } => {
                 if *index < items.len() {
                     let (key, value) = items[*index];
-                    let element = CollectionElement::MapElement {
-                        key,
-                        value,
-                    };
+                    let element = CollectionElement::MapElement { key, value };
                     *index += 1;
                     Some(element)
                 } else {
@@ -1118,20 +1127,11 @@ impl<'a> Iterator for CollectionIterator<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CollectionElement<'a> {
     /// Array element with index
-    ArrayElement {
-        index: usize,
-        value: &'a Value,
-    },
+    ArrayElement { index: usize, value: &'a Value },
     /// List element with insertion order index
-    ListElement {
-        index: usize,
-        value: &'a Value,
-    },
+    ListElement { index: usize, value: &'a Value },
     /// Map element with key-value pair
-    MapElement {
-        key: &'a String,
-        value: &'a Value,
-    },
+    MapElement { key: &'a String, value: &'a Value },
 }
 
 impl<'a> CollectionElement<'a> {
@@ -1228,7 +1228,7 @@ impl BCIBSequence {
         // Validate each instruction
         for instruction in &self.instructions {
             instruction.validate()?;
-            
+
             // Check phase compatibility
             if !instruction.is_phase_compatible() {
                 return Err(SemanticCLIError::validation_error(
@@ -1245,7 +1245,7 @@ impl BCIBSequence {
     /// Get all required capabilities for this sequence
     pub fn required_capabilities(&self) -> Vec<Capability> {
         let mut capabilities = Vec::new();
-        
+
         for instruction in &self.instructions {
             if let Some(cap) = instruction.required_capability() {
                 if !capabilities.contains(&cap) {
@@ -1253,7 +1253,7 @@ impl BCIBSequence {
                 }
             }
         }
-        
+
         capabilities
     }
 
@@ -1317,7 +1317,7 @@ impl Default for BCIBMetadata {
 }
 
 /// BCIB Sequence Registry for AR-3 (Debug instruction sequence references)
-/// 
+///
 /// In-memory, append-only registry that maps sequence IDs to BCIB sequences.
 /// This enables debug instructions to reference sequences by ID instead of
 /// carrying recursive BCIB structures.
@@ -1405,8 +1405,10 @@ mod tests {
 
         // Check contextual capability generation (AR-4)
         assert_eq!(
-            valid.required_capability(), 
-            Some(Capability::Read { context: "data.users".to_string() })
+            valid.required_capability(),
+            Some(Capability::Read {
+                context: "data.users".to_string()
+            })
         );
 
         // Invalid - empty path
@@ -1451,8 +1453,8 @@ mod tests {
         let valid_logical = QueryInstruction::LogicalOp {
             operator: LogicalOperator::And,
             operands: vec![
-                OperandRef::Literal(Value::Boolean(true)), 
-                OperandRef::Literal(Value::Boolean(false))
+                OperandRef::Literal(Value::Boolean(true)),
+                OperandRef::Literal(Value::Boolean(false)),
             ],
             target_register: 1,
             location: test_location(),
@@ -1478,8 +1480,8 @@ mod tests {
         let invalid_not = QueryInstruction::LogicalOp {
             operator: LogicalOperator::Not,
             operands: vec![
-                OperandRef::Literal(Value::Boolean(true)), 
-                OperandRef::Literal(Value::Boolean(false))
+                OperandRef::Literal(Value::Boolean(true)),
+                OperandRef::Literal(Value::Boolean(false)),
             ],
             target_register: 2,
             location: test_location(),
@@ -1496,15 +1498,26 @@ mod tests {
 
         // Invalid operand references
         assert!(OperandRef::Field("".to_string()).validate().is_err());
-        assert!(OperandRef::Literal(Value::Number(f64::NAN)).validate().is_err());
+        assert!(OperandRef::Literal(Value::Number(f64::NAN))
+            .validate()
+            .is_err());
     }
 
     #[test]
     fn test_operand_ref_types() {
         // Test operand type detection (AR-1)
-        assert_eq!(OperandRef::Field("age".to_string()).operand_type(), OperandType::Field);
-        assert_eq!(OperandRef::Literal(Value::Number(42.0)).operand_type(), OperandType::Literal(ValueType::Number));
-        assert_eq!(OperandRef::TempRegister(0).operand_type(), OperandType::TempRegister);
+        assert_eq!(
+            OperandRef::Field("age".to_string()).operand_type(),
+            OperandType::Field
+        );
+        assert_eq!(
+            OperandRef::Literal(Value::Number(42.0)).operand_type(),
+            OperandType::Literal(ValueType::Number)
+        );
+        assert_eq!(
+            OperandRef::TempRegister(0).operand_type(),
+            OperandType::TempRegister
+        );
     }
 
     #[test]
@@ -1557,35 +1570,33 @@ mod tests {
         ];
 
         let original = BCIBSequence::new(instructions);
-        
+
         // Serialize to JSON
         let json = original.to_json().unwrap();
         assert!(!json.is_empty());
-        
+
         // Deserialize from JSON
         let deserialized = BCIBSequence::from_json(&json).unwrap();
-        
+
         // Should be identical
         assert_eq!(original.instructions, deserialized.instructions);
     }
 
     #[test]
     fn test_serialization_round_trip_binary() {
-        let instructions = vec![
-            BCIBInstruction::System(SystemInstruction::SystemStatus {
-                location: test_location(),
-            }),
-        ];
+        let instructions = vec![BCIBInstruction::System(SystemInstruction::SystemStatus {
+            location: test_location(),
+        })];
 
         let original = BCIBSequence::new(instructions);
-        
+
         // Serialize to binary
         let binary = original.to_binary().unwrap();
         assert!(!binary.is_empty());
-        
+
         // Deserialize from binary
         let deserialized = BCIBSequence::from_binary(&binary).unwrap();
-        
+
         // Should be identical
         assert_eq!(original.instructions, deserialized.instructions);
     }
@@ -1598,8 +1609,10 @@ mod tests {
             location: test_location(),
         });
         assert_eq!(
-            context_inst.required_capability(), 
-            Some(Capability::Read { context: "data.users".to_string() })
+            context_inst.required_capability(),
+            Some(Capability::Read {
+                context: "data.users".to_string()
+            })
         );
 
         // System instruction with scoped capability (AR-4)
@@ -1607,8 +1620,10 @@ mod tests {
             location: test_location(),
         });
         assert_eq!(
-            system_inst.required_capability(), 
-            Some(Capability::System { scope: SystemScope::Status })
+            system_inst.required_capability(),
+            Some(Capability::System {
+                scope: SystemScope::Status
+            })
         );
 
         let debug_inst = BCIBInstruction::Debug(DebugInstruction::History {
@@ -1634,7 +1649,7 @@ mod tests {
             ComparisonOp::GreaterThan,
             OperandRef::Literal(Value::Number(18.0)),
         );
-        
+
         assert!(expr.validate().is_ok());
         assert_eq!(expr.field, "age");
         assert_eq!(expr.operator, ComparisonOp::GreaterThan);
@@ -1661,7 +1676,10 @@ mod tests {
     #[test]
     fn test_value_types() {
         // AR-1: Field removed from Value
-        assert_eq!(Value::String("test".to_string()).value_type(), ValueType::String);
+        assert_eq!(
+            Value::String("test".to_string()).value_type(),
+            ValueType::String
+        );
         assert_eq!(Value::Number(42.0).value_type(), ValueType::Number);
         assert_eq!(Value::Boolean(true).value_type(), ValueType::Boolean);
     }
@@ -1669,7 +1687,7 @@ mod tests {
     #[test]
     fn test_bcib_metadata() {
         let metadata = BCIBMetadata::new();
-        
+
         assert!(!metadata.sequence_id.is_empty());
         assert!(metadata.created_at > 0);
         assert_eq!(metadata.phase, "3.5.1");
@@ -1683,15 +1701,13 @@ mod tests {
         assert!(registry.is_empty());
 
         // Create and register a sequence
-        let instructions = vec![
-            BCIBInstruction::Context(ContextInstruction::LoadContext {
-                path: "data.users".to_string(),
-                location: test_location(),
-            }),
-        ];
+        let instructions = vec![BCIBInstruction::Context(ContextInstruction::LoadContext {
+            path: "data.users".to_string(),
+            location: test_location(),
+        })];
         let sequence = BCIBSequence::new(instructions);
         let sequence_id = sequence.metadata.sequence_id.clone();
-        
+
         let registered_id = registry.register(sequence);
         assert_eq!(registered_id, sequence_id);
         assert_eq!(registry.len(), 1);
@@ -1738,7 +1754,7 @@ mod tests {
         // t1 = LOAD_LITERAL(18)
         // t2 = CMP_GT(t0, t1)
         // APPLY_FILTER_BOOL(t2)
-        
+
         let instructions = vec![
             BCIBInstruction::Query(QueryInstruction::LoadField {
                 field: "age".to_string(),
@@ -1765,10 +1781,10 @@ mod tests {
 
         let sequence = BCIBSequence::new(instructions);
         assert!(sequence.validate().is_ok());
-        
+
         // Verify flat structure (no nested expressions)
         assert_eq!(sequence.instructions.len(), 4);
-        
+
         // Each instruction should be atomic
         for instruction in &sequence.instructions {
             assert!(instruction.validate().is_ok());
@@ -1778,10 +1794,18 @@ mod tests {
     #[test]
     fn test_contextual_capabilities() {
         // Test AR-4: Contextual capabilities
-        let read_users = Capability::Read { context: "data.users".to_string() };
-        let read_logs = Capability::Read { context: "fs.logs".to_string() };
-        let system_status = Capability::System { scope: SystemScope::Status };
-        let system_agents = Capability::System { scope: SystemScope::Agents };
+        let read_users = Capability::Read {
+            context: "data.users".to_string(),
+        };
+        let read_logs = Capability::Read {
+            context: "fs.logs".to_string(),
+        };
+        let system_status = Capability::System {
+            scope: SystemScope::Status,
+        };
+        let system_agents = Capability::System {
+            scope: SystemScope::Agents,
+        };
 
         // Different contexts should be different capabilities
         assert_ne!(read_users, read_logs);

@@ -49,7 +49,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Hashing (for BCIB metadata)
 sha2 = "0.10"
-blake3 = "1.5"
 hex = "0.4"
 
 # Random number generation (for mock data)
@@ -66,6 +65,8 @@ bit-set = "0.5"
 smallvec = "1.11"
 
 [dev-dependencies]
+bcib-runtime = { path = "../bcib-runtime" }
+
 # Property-based testing
 proptest = "1.4"
 

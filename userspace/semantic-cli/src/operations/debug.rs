@@ -12,18 +12,16 @@
 //! Debug instructions use sequence ID references instead of recursive BCIB structures.
 //! This enables history/replay/audit systems and prevents infinite recursion.
 
-use crate::bcib::{
-    BCIBInstruction, DebugInstruction, BCIBSequenceRegistry
-};
-use crate::operations::{OperationResult, OperationExecutor};
+use crate::bcib::{BCIBInstruction, BCIBSequenceRegistry, DebugInstruction};
 use crate::error::{ErrorCode, Result, SemanticCLIError};
-use serde_json::{Value as JsonValue, json};
+use crate::operations::{OperationExecutor, OperationResult};
+use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// Debug executor for BCIB-based debug operations
-/// 
+///
 /// **CRITICAL:** This executor ONLY consumes BCIB instructions from Transformer.
 /// It uses sequence ID references (AR-3) to avoid recursive BCIB structures.
 pub struct DebugExecutor {
@@ -78,7 +76,13 @@ impl DebugExecutor {
     }
 
     /// Add command to history
-    pub fn add_to_history(&mut self, sequence_id: String, command: String, success: bool, execution_time_ms: u64) {
+    pub fn add_to_history(
+        &mut self,
+        sequence_id: String,
+        command: String,
+        success: bool,
+        execution_time_ms: u64,
+    ) {
         let entry = HistoryEntry {
             sequence_id,
             command,
@@ -87,7 +91,7 @@ impl DebugExecutor {
             execution_time_ms,
         };
         self.command_history.push(entry);
-        
+
         // Keep only last 100 entries to prevent unbounded growth
         if self.command_history.len() > 100 {
             self.command_history.remove(0);
@@ -96,18 +100,20 @@ impl DebugExecutor {
 
     /// Execute explain operation using sequence ID reference (AR-3)
     fn execute_explain(&self, target_sequence_id: &str) -> Result<JsonValue> {
-        let registry = self.sequence_registry.lock()
-            .map_err(|_| SemanticCLIError::execution_error(
+        let registry = self.sequence_registry.lock().map_err(|_| {
+            SemanticCLIError::execution_error(
                 "Failed to acquire sequence registry lock",
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
-        let sequence = registry.get(target_sequence_id)
-            .ok_or_else(|| SemanticCLIError::validation_error(
+        let sequence = registry.get(target_sequence_id).ok_or_else(|| {
+            SemanticCLIError::validation_error(
                 format!("Sequence ID '{}' not found in registry", target_sequence_id),
                 "Provide a valid sequence ID from a previous command",
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
         // Format sequence explanation
         let mut explanations = Vec::new();
@@ -130,23 +136,25 @@ impl DebugExecutor {
 
     /// Execute dry-run operation using sequence ID reference (AR-3)
     fn execute_dry_run(&self, target_sequence_id: &str) -> Result<JsonValue> {
-        let registry = self.sequence_registry.lock()
-            .map_err(|_| SemanticCLIError::execution_error(
+        let registry = self.sequence_registry.lock().map_err(|_| {
+            SemanticCLIError::execution_error(
                 "Failed to acquire sequence registry lock",
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
-        let sequence = registry.get(target_sequence_id)
-            .ok_or_else(|| SemanticCLIError::validation_error(
+        let sequence = registry.get(target_sequence_id).ok_or_else(|| {
+            SemanticCLIError::validation_error(
                 format!("Sequence ID '{}' not found in registry", target_sequence_id),
                 "Provide a valid sequence ID from a previous command",
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
         // Simulate execution without side effects
         let mut simulation_steps = Vec::new();
         let mut simulated_state = HashMap::new();
-        
+
         for (i, instruction) in sequence.instructions.iter().enumerate() {
             let step = self.simulate_instruction(instruction, i + 1, &mut simulated_state)?;
             simulation_steps.push(step);
@@ -167,16 +175,20 @@ impl DebugExecutor {
 
     /// Execute history operation
     fn execute_history(&self) -> Result<JsonValue> {
-        let history_data: Vec<JsonValue> = self.command_history.iter()
+        let history_data: Vec<JsonValue> = self
+            .command_history
+            .iter()
             .rev() // Most recent first
             .take(20) // Last 20 commands
-            .map(|entry| json!({
-                "sequence_id": entry.sequence_id,
-                "command": entry.command,
-                "timestamp": entry.timestamp.to_rfc3339(),
-                "success": entry.success,
-                "execution_time_ms": entry.execution_time_ms
-            }))
+            .map(|entry| {
+                json!({
+                    "sequence_id": entry.sequence_id,
+                    "command": entry.command,
+                    "timestamp": entry.timestamp.to_rfc3339(),
+                    "success": entry.success,
+                    "execution_time_ms": entry.execution_time_ms
+                })
+            })
             .collect();
 
         Ok(json!({
@@ -189,177 +201,194 @@ impl DebugExecutor {
     /// Explain a single instruction
     fn explain_instruction(&self, instruction: &BCIBInstruction, step: usize) -> JsonValue {
         match instruction {
-            BCIBInstruction::Context(ctx_inst) => {
-                match ctx_inst {
-                    crate::bcib::ContextInstruction::LoadContext { path, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Context",
-                            "operation": "LoadContext",
-                            "description": format!("Load context data from '{}'", path),
-                            "details": {
-                                "context_path": path,
-                                "capability_required": format!("Read{{context: \"{}\"}}", path)
-                            }
-                        })
-                    }
-                    crate::bcib::ContextInstruction::Return { .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Context",
-                            "operation": "Return",
-                            "description": "Return the current result to caller",
-                            "details": {
-                                "side_effects": "none"
-                            }
-                        })
-                    }
+            BCIBInstruction::Context(ctx_inst) => match ctx_inst {
+                crate::bcib::ContextInstruction::LoadContext { path, .. } => {
+                    json!({
+                        "step": step,
+                        "type": "Context",
+                        "operation": "LoadContext",
+                        "description": format!("Load context data from '{}'", path),
+                        "details": {
+                            "context_path": path,
+                            "capability_required": format!("Read{{context: \"{}\"}}", path)
+                        }
+                    })
                 }
-            }
-            BCIBInstruction::Query(query_inst) => {
-                match query_inst {
-                    crate::bcib::QueryInstruction::ApplyFilter { expression, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "ApplyFilter",
-                            "description": format!("Filter items where {} {:?} value", expression.field, expression.operator),
-                            "details": {
-                                "field": expression.field,
-                                "operator": format!("{:?}", expression.operator),
-                                "normalized": expression.normalized
-                            }
-                        })
-                    }
-                    crate::bcib::QueryInstruction::ApplyFilterBool { filter_register, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "ApplyFilterBool",
-                            "description": format!("Apply boolean filter from register {}", filter_register),
-                            "details": {
-                                "filter_register": filter_register
-                            }
-                        })
-                    }
-                    crate::bcib::QueryInstruction::LoadField { field, target_register, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "LoadField",
-                            "description": format!("Load field '{}' into register {}", field, target_register),
-                            "details": {
-                                "field": field,
-                                "target_register": target_register
-                            }
-                        })
-                    }
-                    crate::bcib::QueryInstruction::LoadLiteral { value, target_register, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "LoadLiteral",
-                            "description": format!("Load literal value into register {}", target_register),
-                            "details": {
-                                "value": format!("{:?}", value),
-                                "target_register": target_register
-                            }
-                        })
-                    }
-                    crate::bcib::QueryInstruction::Compare { left, operator, right, target_register, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "Compare",
-                            "description": format!("Compare operands using {:?} operator", operator),
-                            "details": {
-                                "left_operand": format!("{:?}", left),
-                                "operator": format!("{:?}", operator),
-                                "right_operand": format!("{:?}", right),
-                                "target_register": target_register
-                            }
-                        })
-                    }
-                    crate::bcib::QueryInstruction::LogicalOp { operator, operands, target_register, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Query",
-                            "operation": "LogicalOp",
-                            "description": format!("Apply {:?} logical operation", operator),
-                            "details": {
-                                "operator": format!("{:?}", operator),
-                                "operand_count": operands.len(),
-                                "target_register": target_register
-                            }
-                        })
-                    }
+                crate::bcib::ContextInstruction::Return { .. } => {
+                    json!({
+                        "step": step,
+                        "type": "Context",
+                        "operation": "Return",
+                        "description": "Return the current result to caller",
+                        "details": {
+                            "side_effects": "none"
+                        }
+                    })
                 }
-            }
-            BCIBInstruction::System(sys_inst) => {
-                match sys_inst {
-                    crate::bcib::SystemInstruction::SystemStatus { .. } => {
-                        json!({
-                            "step": step,
-                            "type": "System",
-                            "operation": "SystemStatus",
-                            "description": "Query system status and health metrics",
-                            "details": {
-                                "capability_required": "System{scope: \"status\"}"
-                            }
-                        })
-                    }
-                    crate::bcib::SystemInstruction::ListAgents { .. } => {
-                        json!({
-                            "step": step,
-                            "type": "System",
-                            "operation": "ListAgents",
-                            "description": "List active agents and their status",
-                            "details": {
-                                "capability_required": "System{scope: \"agents\"}"
-                            }
-                        })
-                    }
+            },
+            BCIBInstruction::Query(query_inst) => match query_inst {
+                crate::bcib::QueryInstruction::ApplyFilter { expression, .. } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "ApplyFilter",
+                        "description": format!("Filter items where {} {:?} value", expression.field, expression.operator),
+                        "details": {
+                            "field": expression.field,
+                            "operator": format!("{:?}", expression.operator),
+                            "normalized": expression.normalized
+                        }
+                    })
                 }
-            }
-            BCIBInstruction::Debug(debug_inst) => {
-                match debug_inst {
-                    DebugInstruction::Explain { target_sequence_id, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Debug",
-                            "operation": "Explain",
-                            "description": format!("Explain sequence '{}'", target_sequence_id),
-                            "details": {
-                                "target_sequence_id": target_sequence_id,
-                                "capability_required": "Debug"
-                            }
-                        })
-                    }
-                    DebugInstruction::DryRun { target_sequence_id, .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Debug",
-                            "operation": "DryRun",
-                            "description": format!("Simulate sequence '{}'", target_sequence_id),
-                            "details": {
-                                "target_sequence_id": target_sequence_id,
-                                "capability_required": "Debug"
-                            }
-                        })
-                    }
-                    DebugInstruction::History { .. } => {
-                        json!({
-                            "step": step,
-                            "type": "Debug",
-                            "operation": "History",
-                            "description": "Show command execution history",
-                            "details": {
-                                "capability_required": "Debug"
-                            }
-                        })
-                    }
+                crate::bcib::QueryInstruction::ApplyFilterBool {
+                    filter_register, ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "ApplyFilterBool",
+                        "description": format!("Apply boolean filter from register {}", filter_register),
+                        "details": {
+                            "filter_register": filter_register
+                        }
+                    })
                 }
-            }
+                crate::bcib::QueryInstruction::LoadField {
+                    field,
+                    target_register,
+                    ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "LoadField",
+                        "description": format!("Load field '{}' into register {}", field, target_register),
+                        "details": {
+                            "field": field,
+                            "target_register": target_register
+                        }
+                    })
+                }
+                crate::bcib::QueryInstruction::LoadLiteral {
+                    value,
+                    target_register,
+                    ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "LoadLiteral",
+                        "description": format!("Load literal value into register {}", target_register),
+                        "details": {
+                            "value": format!("{:?}", value),
+                            "target_register": target_register
+                        }
+                    })
+                }
+                crate::bcib::QueryInstruction::Compare {
+                    left,
+                    operator,
+                    right,
+                    target_register,
+                    ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "Compare",
+                        "description": format!("Compare operands using {:?} operator", operator),
+                        "details": {
+                            "left_operand": format!("{:?}", left),
+                            "operator": format!("{:?}", operator),
+                            "right_operand": format!("{:?}", right),
+                            "target_register": target_register
+                        }
+                    })
+                }
+                crate::bcib::QueryInstruction::LogicalOp {
+                    operator,
+                    operands,
+                    target_register,
+                    ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Query",
+                        "operation": "LogicalOp",
+                        "description": format!("Apply {:?} logical operation", operator),
+                        "details": {
+                            "operator": format!("{:?}", operator),
+                            "operand_count": operands.len(),
+                            "target_register": target_register
+                        }
+                    })
+                }
+            },
+            BCIBInstruction::System(sys_inst) => match sys_inst {
+                crate::bcib::SystemInstruction::SystemStatus { .. } => {
+                    json!({
+                        "step": step,
+                        "type": "System",
+                        "operation": "SystemStatus",
+                        "description": "Query system status and health metrics",
+                        "details": {
+                            "capability_required": "System{scope: \"status\"}"
+                        }
+                    })
+                }
+                crate::bcib::SystemInstruction::ListAgents { .. } => {
+                    json!({
+                        "step": step,
+                        "type": "System",
+                        "operation": "ListAgents",
+                        "description": "List active agents and their status",
+                        "details": {
+                            "capability_required": "System{scope: \"agents\"}"
+                        }
+                    })
+                }
+            },
+            BCIBInstruction::Debug(debug_inst) => match debug_inst {
+                DebugInstruction::Explain {
+                    target_sequence_id, ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Debug",
+                        "operation": "Explain",
+                        "description": format!("Explain sequence '{}'", target_sequence_id),
+                        "details": {
+                            "target_sequence_id": target_sequence_id,
+                            "capability_required": "Debug"
+                        }
+                    })
+                }
+                DebugInstruction::DryRun {
+                    target_sequence_id, ..
+                } => {
+                    json!({
+                        "step": step,
+                        "type": "Debug",
+                        "operation": "DryRun",
+                        "description": format!("Simulate sequence '{}'", target_sequence_id),
+                        "details": {
+                            "target_sequence_id": target_sequence_id,
+                            "capability_required": "Debug"
+                        }
+                    })
+                }
+                DebugInstruction::History { .. } => {
+                    json!({
+                        "step": step,
+                        "type": "Debug",
+                        "operation": "History",
+                        "description": "Show command execution history",
+                        "details": {
+                            "capability_required": "Debug"
+                        }
+                    })
+                }
+            },
             BCIBInstruction::Loop(_) => {
                 json!({
                     "step": step,
@@ -386,137 +415,145 @@ impl DebugExecutor {
     }
 
     /// Simulate instruction execution without side effects
-    fn simulate_instruction(&self, instruction: &BCIBInstruction, step: usize, state: &mut HashMap<String, JsonValue>) -> Result<JsonValue> {
+    fn simulate_instruction(
+        &self,
+        instruction: &BCIBInstruction,
+        step: usize,
+        state: &mut HashMap<String, JsonValue>,
+    ) -> Result<JsonValue> {
         match instruction {
-            BCIBInstruction::Context(ctx_inst) => {
-                match ctx_inst {
-                    crate::bcib::ContextInstruction::LoadContext { path, .. } => {
-                        state.insert("current_context".to_string(), json!(path));
-                        Ok(json!({
-                            "step": step,
-                            "action": "load_context",
-                            "result": format!("Context '{}' would be loaded", path),
-                            "state_change": format!("current_context = '{}'", path)
-                        }))
-                    }
-                    crate::bcib::ContextInstruction::Return { .. } => {
-                        Ok(json!({
-                            "step": step,
-                            "action": "return",
-                            "result": "Current result would be returned",
-                            "state_change": "none"
-                        }))
-                    }
+            BCIBInstruction::Context(ctx_inst) => match ctx_inst {
+                crate::bcib::ContextInstruction::LoadContext { path, .. } => {
+                    state.insert("current_context".to_string(), json!(path));
+                    Ok(json!({
+                        "step": step,
+                        "action": "load_context",
+                        "result": format!("Context '{}' would be loaded", path),
+                        "state_change": format!("current_context = '{}'", path)
+                    }))
                 }
-            }
-            BCIBInstruction::Query(query_inst) => {
-                match query_inst {
-                    crate::bcib::QueryInstruction::ApplyFilter { expression, .. } => {
-                        state.insert("filtered_items".to_string(), json!("filtered_result"));
-                        Ok(json!({
-                            "step": step,
-                            "action": "apply_filter",
-                            "result": format!("Items would be filtered by {}", expression.field),
-                            "state_change": "filtered_items = filtered_result"
-                        }))
-                    }
-                    crate::bcib::QueryInstruction::ApplyFilterBool { filter_register, .. } => {
-                        state.insert("filtered_items".to_string(), json!("boolean_filtered_result"));
-                        Ok(json!({
-                            "step": step,
-                            "action": "apply_filter_bool",
-                            "result": format!("Items would be filtered by boolean register {}", filter_register),
-                            "state_change": "filtered_items = boolean_filtered_result"
-                        }))
-                    }
-                    crate::bcib::QueryInstruction::LoadField { field, target_register, .. } => {
-                        let register_key = format!("register_{}", target_register);
-                        state.insert(register_key.clone(), json!(format!("field_{}", field)));
-                        Ok(json!({
-                            "step": step,
-                            "action": "load_field",
-                            "result": format!("Field '{}' would be loaded", field),
-                            "state_change": format!("{} = field_{}", register_key, field)
-                        }))
-                    }
-                    crate::bcib::QueryInstruction::LoadLiteral { value, target_register, .. } => {
-                        let register_key = format!("register_{}", target_register);
-                        state.insert(register_key.clone(), json!(format!("{:?}", value)));
-                        Ok(json!({
-                            "step": step,
-                            "action": "load_literal",
-                            "result": format!("Literal {:?} would be loaded", value),
-                            "state_change": format!("{} = {:?}", register_key, value)
-                        }))
-                    }
-                    crate::bcib::QueryInstruction::Compare { target_register, .. } => {
-                        let register_key = format!("register_{}", target_register);
-                        state.insert(register_key.clone(), json!(true));
-                        Ok(json!({
-                            "step": step,
-                            "action": "compare",
-                            "result": "Comparison would be performed",
-                            "state_change": format!("{} = comparison_result", register_key)
-                        }))
-                    }
-                    crate::bcib::QueryInstruction::LogicalOp { target_register, .. } => {
-                        let register_key = format!("register_{}", target_register);
-                        state.insert(register_key.clone(), json!(true));
-                        Ok(json!({
-                            "step": step,
-                            "action": "logical_op",
-                            "result": "Logical operation would be performed",
-                            "state_change": format!("{} = logical_result", register_key)
-                        }))
-                    }
+                crate::bcib::ContextInstruction::Return { .. } => Ok(json!({
+                    "step": step,
+                    "action": "return",
+                    "result": "Current result would be returned",
+                    "state_change": "none"
+                })),
+            },
+            BCIBInstruction::Query(query_inst) => match query_inst {
+                crate::bcib::QueryInstruction::ApplyFilter { expression, .. } => {
+                    state.insert("filtered_items".to_string(), json!("filtered_result"));
+                    Ok(json!({
+                        "step": step,
+                        "action": "apply_filter",
+                        "result": format!("Items would be filtered by {}", expression.field),
+                        "state_change": "filtered_items = filtered_result"
+                    }))
                 }
-            }
-            BCIBInstruction::System(sys_inst) => {
-                match sys_inst {
-                    crate::bcib::SystemInstruction::SystemStatus { .. } => {
-                        state.insert("system_status".to_string(), json!("healthy"));
-                        Ok(json!({
-                            "step": step,
-                            "action": "system_status",
-                            "result": "System status would be queried",
-                            "state_change": "system_status = healthy"
-                        }))
-                    }
-                    crate::bcib::SystemInstruction::ListAgents { .. } => {
-                        state.insert("agents".to_string(), json!(["agent1", "agent2"]));
-                        Ok(json!({
-                            "step": step,
-                            "action": "list_agents",
-                            "result": "Active agents would be listed",
-                            "state_change": "agents = [agent1, agent2]"
-                        }))
-                    }
+                crate::bcib::QueryInstruction::ApplyFilterBool {
+                    filter_register, ..
+                } => {
+                    state.insert(
+                        "filtered_items".to_string(),
+                        json!("boolean_filtered_result"),
+                    );
+                    Ok(json!({
+                        "step": step,
+                        "action": "apply_filter_bool",
+                        "result": format!("Items would be filtered by boolean register {}", filter_register),
+                        "state_change": "filtered_items = boolean_filtered_result"
+                    }))
                 }
-            }
-            BCIBInstruction::Debug(_) => {
-                Ok(json!({
-                    "step": step,
-                    "action": "debug_operation",
-                    "result": "Debug operation would be performed",
-                    "state_change": "none (debug operations don't modify state)"
-                }))
-            }
-            BCIBInstruction::Loop(_) => {
-                Ok(json!({
-                    "step": step,
-                    "action": "loop_operation",
-                    "result": "Loop operation not yet implemented in Phase 1",
-                    "state_change": "none (skeletal implementation)"
-                }))
-            }
-            BCIBInstruction::ControlFlow(_) => {
-                Ok(json!({
-                    "step": step,
-                    "action": "control_flow_operation",
-                    "result": "Control flow operation not yet implemented in Phase 2.3",
-                    "state_change": "none (implementation in progress)"
-                }))
-            }
+                crate::bcib::QueryInstruction::LoadField {
+                    field,
+                    target_register,
+                    ..
+                } => {
+                    let register_key = format!("register_{}", target_register);
+                    state.insert(register_key.clone(), json!(format!("field_{}", field)));
+                    Ok(json!({
+                        "step": step,
+                        "action": "load_field",
+                        "result": format!("Field '{}' would be loaded", field),
+                        "state_change": format!("{} = field_{}", register_key, field)
+                    }))
+                }
+                crate::bcib::QueryInstruction::LoadLiteral {
+                    value,
+                    target_register,
+                    ..
+                } => {
+                    let register_key = format!("register_{}", target_register);
+                    state.insert(register_key.clone(), json!(format!("{:?}", value)));
+                    Ok(json!({
+                        "step": step,
+                        "action": "load_literal",
+                        "result": format!("Literal {:?} would be loaded", value),
+                        "state_change": format!("{} = {:?}", register_key, value)
+                    }))
+                }
+                crate::bcib::QueryInstruction::Compare {
+                    target_register, ..
+                } => {
+                    let register_key = format!("register_{}", target_register);
+                    state.insert(register_key.clone(), json!(true));
+                    Ok(json!({
+                        "step": step,
+                        "action": "compare",
+                        "result": "Comparison would be performed",
+                        "state_change": format!("{} = comparison_result", register_key)
+                    }))
+                }
+                crate::bcib::QueryInstruction::LogicalOp {
+                    target_register, ..
+                } => {
+                    let register_key = format!("register_{}", target_register);
+                    state.insert(register_key.clone(), json!(true));
+                    Ok(json!({
+                        "step": step,
+                        "action": "logical_op",
+                        "result": "Logical operation would be performed",
+                        "state_change": format!("{} = logical_result", register_key)
+                    }))
+                }
+            },
+            BCIBInstruction::System(sys_inst) => match sys_inst {
+                crate::bcib::SystemInstruction::SystemStatus { .. } => {
+                    state.insert("system_status".to_string(), json!("healthy"));
+                    Ok(json!({
+                        "step": step,
+                        "action": "system_status",
+                        "result": "System status would be queried",
+                        "state_change": "system_status = healthy"
+                    }))
+                }
+                crate::bcib::SystemInstruction::ListAgents { .. } => {
+                    state.insert("agents".to_string(), json!(["agent1", "agent2"]));
+                    Ok(json!({
+                        "step": step,
+                        "action": "list_agents",
+                        "result": "Active agents would be listed",
+                        "state_change": "agents = [agent1, agent2]"
+                    }))
+                }
+            },
+            BCIBInstruction::Debug(_) => Ok(json!({
+                "step": step,
+                "action": "debug_operation",
+                "result": "Debug operation would be performed",
+                "state_change": "none (debug operations don't modify state)"
+            })),
+            BCIBInstruction::Loop(_) => Ok(json!({
+                "step": step,
+                "action": "loop_operation",
+                "result": "Loop operation not yet implemented in Phase 1",
+                "state_change": "none (skeletal implementation)"
+            })),
+            BCIBInstruction::ControlFlow(_) => Ok(json!({
+                "step": step,
+                "action": "control_flow_operation",
+                "result": "Control flow operation not yet implemented in Phase 2.3",
+                "state_change": "none (implementation in progress)"
+            })),
         }
     }
 }
@@ -528,7 +565,7 @@ impl OperationExecutor for DebugExecutor {
 
     fn execute(&self, input: Self::Input) -> Result<Self::Output> {
         let start_time = Instant::now();
-        
+
         // Validate input
         if input.instructions.is_empty() {
             return Err(SemanticCLIError::validation_error(
@@ -544,50 +581,55 @@ impl OperationExecutor for DebugExecutor {
         // Process debug instructions
         for instruction in &input.instructions {
             match instruction {
-                BCIBInstruction::Debug(debug_inst) => {
-                    match debug_inst {
-                        DebugInstruction::Explain { target_sequence_id, .. } => {
-                            if !operation_type.is_empty() {
-                                return Err(SemanticCLIError::validation_error(
-                                    "Multiple debug operations in single sequence not allowed",
-                                    "Use exactly one Debug instruction",
-                                    ErrorCode::E400,
-                                ));
-                            }
-                            operation_type = "explain".to_string();
-                            result_data = self.execute_explain(target_sequence_id)?;
+                BCIBInstruction::Debug(debug_inst) => match debug_inst {
+                    DebugInstruction::Explain {
+                        target_sequence_id, ..
+                    } => {
+                        if !operation_type.is_empty() {
+                            return Err(SemanticCLIError::validation_error(
+                                "Multiple debug operations in single sequence not allowed",
+                                "Use exactly one Debug instruction",
+                                ErrorCode::E400,
+                            ));
                         }
-                        DebugInstruction::DryRun { target_sequence_id, .. } => {
-                            if !operation_type.is_empty() {
-                                return Err(SemanticCLIError::validation_error(
-                                    "Multiple debug operations in single sequence not allowed",
-                                    "Use exactly one Debug instruction",
-                                    ErrorCode::E400,
-                                ));
-                            }
-                            operation_type = "dry_run".to_string();
-                            result_data = self.execute_dry_run(target_sequence_id)?;
-                        }
-                        DebugInstruction::History { .. } => {
-                            if !operation_type.is_empty() {
-                                return Err(SemanticCLIError::validation_error(
-                                    "Multiple debug operations in single sequence not allowed",
-                                    "Use exactly one Debug instruction",
-                                    ErrorCode::E400,
-                                ));
-                            }
-                            operation_type = "history".to_string();
-                            result_data = self.execute_history()?;
-                        }
+                        operation_type = "explain".to_string();
+                        result_data = self.execute_explain(target_sequence_id)?;
                     }
-                }
+                    DebugInstruction::DryRun {
+                        target_sequence_id, ..
+                    } => {
+                        if !operation_type.is_empty() {
+                            return Err(SemanticCLIError::validation_error(
+                                "Multiple debug operations in single sequence not allowed",
+                                "Use exactly one Debug instruction",
+                                ErrorCode::E400,
+                            ));
+                        }
+                        operation_type = "dry_run".to_string();
+                        result_data = self.execute_dry_run(target_sequence_id)?;
+                    }
+                    DebugInstruction::History { .. } => {
+                        if !operation_type.is_empty() {
+                            return Err(SemanticCLIError::validation_error(
+                                "Multiple debug operations in single sequence not allowed",
+                                "Use exactly one Debug instruction",
+                                ErrorCode::E400,
+                            ));
+                        }
+                        operation_type = "history".to_string();
+                        result_data = self.execute_history()?;
+                    }
+                },
                 BCIBInstruction::Context(crate::bcib::ContextInstruction::Return { .. }) => {
                     // Return instruction is allowed in debug operations
                     continue;
                 }
                 _ => {
                     return Err(SemanticCLIError::validation_error(
-                        format!("Instruction type not supported in debug operations: {:?}", instruction),
+                        format!(
+                            "Instruction type not supported in debug operations: {:?}",
+                            instruction
+                        ),
                         "Debug operations only support Debug and Return instructions",
                         ErrorCode::E400,
                     ));
@@ -620,18 +662,29 @@ impl OperationResult for DebugResult {
     fn format(&self) -> String {
         match self.operation_type.as_str() {
             "explain" => {
-                if let Some(explanations) = self.data.get("explanations").and_then(|e| e.as_array()) {
+                if let Some(explanations) = self.data.get("explanations").and_then(|e| e.as_array())
+                {
                     let mut output = format!("=== Sequence Explanation ===\n");
-                    output.push_str(&format!("Sequence ID: {}\n", 
-                        self.data.get("sequence_id").and_then(|s| s.as_str()).unwrap_or("unknown")));
-                    output.push_str(&format!("Instructions: {}\n\n", 
-                        self.data.get("instruction_count").and_then(|c| c.as_u64()).unwrap_or(0)));
-                    
+                    output.push_str(&format!(
+                        "Sequence ID: {}\n",
+                        self.data
+                            .get("sequence_id")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("unknown")
+                    ));
+                    output.push_str(&format!(
+                        "Instructions: {}\n\n",
+                        self.data
+                            .get("instruction_count")
+                            .and_then(|c| c.as_u64())
+                            .unwrap_or(0)
+                    ));
+
                     for explanation in explanations {
                         if let (Some(step), Some(op), Some(desc)) = (
                             explanation.get("step").and_then(|s| s.as_u64()),
                             explanation.get("operation").and_then(|o| o.as_str()),
-                            explanation.get("description").and_then(|d| d.as_str())
+                            explanation.get("description").and_then(|d| d.as_str()),
                         ) {
                             output.push_str(&format!("{}. {} - {}\n", step, op, desc));
                         }
@@ -644,15 +697,20 @@ impl OperationResult for DebugResult {
             "dry_run" => {
                 if let Some(steps) = self.data.get("simulation_steps").and_then(|s| s.as_array()) {
                     let mut output = format!("=== Dry Run Simulation ===\n");
-                    output.push_str(&format!("Sequence ID: {}\n", 
-                        self.data.get("sequence_id").and_then(|s| s.as_str()).unwrap_or("unknown")));
+                    output.push_str(&format!(
+                        "Sequence ID: {}\n",
+                        self.data
+                            .get("sequence_id")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("unknown")
+                    ));
                     output.push_str(&format!("Steps: {}\n\n", steps.len()));
-                    
+
                     for step in steps {
                         if let (Some(step_num), Some(action), Some(result)) = (
                             step.get("step").and_then(|s| s.as_u64()),
                             step.get("action").and_then(|a| a.as_str()),
-                            step.get("result").and_then(|r| r.as_str())
+                            step.get("result").and_then(|r| r.as_str()),
                         ) {
                             output.push_str(&format!("{}. {} → {}\n", step_num, action, result));
                         }
@@ -666,15 +724,20 @@ impl OperationResult for DebugResult {
             "history" => {
                 if let Some(history) = self.data.get("history").and_then(|h| h.as_array()) {
                     let mut output = format!("=== Command History ===\n");
-                    output.push_str(&format!("Total commands: {}\n", 
-                        self.data.get("total_commands").and_then(|c| c.as_u64()).unwrap_or(0)));
+                    output.push_str(&format!(
+                        "Total commands: {}\n",
+                        self.data
+                            .get("total_commands")
+                            .and_then(|c| c.as_u64())
+                            .unwrap_or(0)
+                    ));
                     output.push_str(&format!("Showing recent: {}\n\n", history.len()));
-                    
+
                     for entry in history {
                         if let (Some(cmd), Some(timestamp), Some(success)) = (
                             entry.get("command").and_then(|c| c.as_str()),
                             entry.get("timestamp").and_then(|t| t.as_str()),
-                            entry.get("success").and_then(|s| s.as_bool())
+                            entry.get("success").and_then(|s| s.as_bool()),
                         ) {
                             let status = if success { "✓" } else { "✗" };
                             output.push_str(&format!("{} {} ({})\n", status, cmd, timestamp));
@@ -685,20 +748,26 @@ impl OperationResult for DebugResult {
                     "History data not available".to_string()
                 }
             }
-            _ => format!("Debug operation '{}' completed in {}ms", self.operation_type, self.execution_time_ms)
+            _ => format!(
+                "Debug operation '{}' completed in {}ms",
+                self.operation_type, self.execution_time_ms
+            ),
         }
     }
 
     fn metadata(&self) -> HashMap<String, serde_json::Value> {
         let mut metadata = HashMap::new();
         metadata.insert("operation_type".to_string(), json!(self.operation_type));
-        metadata.insert("execution_time_ms".to_string(), json!(self.execution_time_ms));
+        metadata.insert(
+            "execution_time_ms".to_string(),
+            json!(self.execution_time_ms),
+        );
         metadata.insert("success".to_string(), json!(self.success));
-        
+
         if let Some(error) = &self.error_message {
             metadata.insert("error_message".to_string(), json!(error));
         }
-        
+
         metadata
     }
 
@@ -716,7 +785,7 @@ impl Default for DebugExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{DeterminismLevel};
+    use crate::bcib::DeterminismLevel;
     use crate::types::SourceLocation;
 
     fn test_location() -> SourceLocation {
@@ -754,15 +823,15 @@ mod tests {
         let registry = Arc::new(Mutex::new(BCIBSequenceRegistry::new()));
         let sequence = create_test_sequence();
         let sequence_id = sequence.metadata.sequence_id.clone();
-        
+
         // Register sequence
         {
             let mut reg = registry.lock().unwrap();
             reg.register(sequence);
         }
-        
+
         let executor = DebugExecutor::with_registry(registry);
-        
+
         let input = DebugInput {
             instructions: vec![
                 BCIBInstruction::Debug(DebugInstruction::Explain {
@@ -774,7 +843,7 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute(input).unwrap();
         assert!(result.is_success());
         assert_eq!(result.operation_type, "explain");
@@ -786,15 +855,15 @@ mod tests {
         let registry = Arc::new(Mutex::new(BCIBSequenceRegistry::new()));
         let sequence = create_test_sequence();
         let sequence_id = sequence.metadata.sequence_id.clone();
-        
+
         // Register sequence
         {
             let mut reg = registry.lock().unwrap();
             reg.register(sequence);
         }
-        
+
         let executor = DebugExecutor::with_registry(registry);
-        
+
         let input = DebugInput {
             instructions: vec![
                 BCIBInstruction::Debug(DebugInstruction::DryRun {
@@ -806,7 +875,7 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute(input).unwrap();
         assert!(result.is_success());
         assert_eq!(result.operation_type, "dry_run");
@@ -816,11 +885,11 @@ mod tests {
     #[test]
     fn test_history_operation() {
         let mut executor = DebugExecutor::new();
-        
+
         // Add some history entries
         executor.add_to_history("seq1".to_string(), "list users".to_string(), true, 50);
         executor.add_to_history("seq2".to_string(), "show user 123".to_string(), true, 75);
-        
+
         let input = DebugInput {
             instructions: vec![
                 BCIBInstruction::Debug(DebugInstruction::History {
@@ -831,26 +900,27 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute(input).unwrap();
         assert!(result.is_success());
         assert_eq!(result.operation_type, "history");
-        assert_eq!(result.data.get("total_commands").unwrap().as_u64().unwrap(), 2);
+        assert_eq!(
+            result.data.get("total_commands").unwrap().as_u64().unwrap(),
+            2
+        );
     }
 
     #[test]
     fn test_sequence_not_found() {
         let executor = DebugExecutor::new();
-        
+
         let input = DebugInput {
-            instructions: vec![
-                BCIBInstruction::Debug(DebugInstruction::Explain {
-                    target_sequence_id: "nonexistent".to_string(),
-                    location: test_location(),
-                }),
-            ],
+            instructions: vec![BCIBInstruction::Debug(DebugInstruction::Explain {
+                target_sequence_id: "nonexistent".to_string(),
+                location: test_location(),
+            })],
         };
-        
+
         let result = executor.execute(input);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not found"));
@@ -859,7 +929,7 @@ mod tests {
     #[test]
     fn test_multiple_debug_operations_rejected() {
         let executor = DebugExecutor::new();
-        
+
         let input = DebugInput {
             instructions: vec![
                 BCIBInstruction::Debug(DebugInstruction::History {
@@ -871,57 +941,69 @@ mod tests {
                 }),
             ],
         };
-        
+
         let result = executor.execute(input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Multiple debug operations"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Multiple debug operations"));
     }
 
     #[test]
     fn test_empty_sequence_rejected() {
         let executor = DebugExecutor::new();
-        
+
         let input = DebugInput {
             instructions: vec![],
         };
-        
+
         let result = executor.execute(input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("at least one instruction"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("at least one instruction"));
     }
 
     #[test]
     fn test_unsupported_instruction_rejected() {
         let executor = DebugExecutor::new();
-        
+
         let input = DebugInput {
-            instructions: vec![
-                BCIBInstruction::System(crate::bcib::SystemInstruction::SystemStatus {
+            instructions: vec![BCIBInstruction::System(
+                crate::bcib::SystemInstruction::SystemStatus {
                     location: test_location(),
-                }),
-            ],
+                },
+            )],
         };
-        
+
         let result = executor.execute(input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not supported in debug operations"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not supported in debug operations"));
     }
 
     #[test]
     fn test_no_debug_operation_rejected() {
         let executor = DebugExecutor::new();
-        
+
         let input = DebugInput {
-            instructions: vec![
-                BCIBInstruction::Context(crate::bcib::ContextInstruction::Return {
+            instructions: vec![BCIBInstruction::Context(
+                crate::bcib::ContextInstruction::Return {
                     location: test_location(),
-                }),
-            ],
+                },
+            )],
         };
-        
+
         let result = executor.execute(input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No debug operation found"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No debug operation found"));
     }
 
     #[test]
@@ -942,7 +1024,7 @@ mod tests {
             success: true,
             error_message: None,
         };
-        
+
         let formatted = result.format();
         assert!(formatted.contains("Command History"));
         assert!(formatted.contains("Total commands: 2"));
@@ -952,22 +1034,23 @@ mod tests {
     #[test]
     fn test_history_size_limit() {
         let mut executor = DebugExecutor::new();
-        
+
         // Add more than 100 entries
         for i in 0..150 {
-            executor.add_to_history(
-                format!("seq{}", i),
-                format!("command {}", i),
-                true,
-                10
-            );
+            executor.add_to_history(format!("seq{}", i), format!("command {}", i), true, 10);
         }
-        
+
         // Should keep only last 100
         assert_eq!(executor.command_history.len(), 100);
-        
+
         // Should have the most recent entries
-        assert_eq!(executor.command_history.last().unwrap().sequence_id, "seq149");
-        assert_eq!(executor.command_history.first().unwrap().sequence_id, "seq50");
+        assert_eq!(
+            executor.command_history.last().unwrap().sequence_id,
+            "seq149"
+        );
+        assert_eq!(
+            executor.command_history.first().unwrap().sequence_id,
+            "seq50"
+        );
     }
 }

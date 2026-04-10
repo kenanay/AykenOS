@@ -106,7 +106,7 @@ impl GateCLimits {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Create limits configuration for testing (reduced limits)
     pub fn for_testing() -> Self {
         Self {
@@ -120,7 +120,7 @@ impl GateCLimits {
             max_plan_metadata_bytes: 512,
         }
     }
-    
+
     /// Validate plan against limits
     pub fn validate_plan_size(&self, steps: usize) -> Result<(), String> {
         if steps > self.max_plan_steps {
@@ -131,7 +131,7 @@ impl GateCLimits {
         }
         Ok(())
     }
-    
+
     /// Validate pipeline against limits
     pub fn validate_pipeline_size(&self, steps: usize) -> Result<(), String> {
         if steps > self.max_pipeline_steps {
@@ -142,7 +142,7 @@ impl GateCLimits {
         }
         Ok(())
     }
-    
+
     /// Validate dependency graph against limits
     pub fn validate_dependency_graph(&self, edges: usize) -> Result<(), String> {
         if edges > self.max_dep_graph_edges {
@@ -153,7 +153,7 @@ impl GateCLimits {
         }
         Ok(())
     }
-    
+
     /// Validate output size against limits
     pub fn validate_output_size(&self, size: usize) -> Result<(), String> {
         if size > self.max_inspect_output_bytes {
@@ -164,7 +164,7 @@ impl GateCLimits {
         }
         Ok(())
     }
-    
+
     /// Validate render nodes against limits
     pub fn validate_render_nodes(&self, nodes: usize) -> Result<(), String> {
         if nodes > self.max_render_nodes {
@@ -198,10 +198,10 @@ impl ComplexityMetrics {
         let step_score = (self.steps * 100 / MAX_PLAN_STEPS).min(100);
         let dep_score = (self.dependencies * 100 / MAX_DEP_GRAPH_EDGES).min(100);
         let depth_score = (self.dependency_depth * 100 / MAX_DEPENDENCY_DEPTH).min(100);
-        
+
         ((step_score + dep_score + depth_score) / 3).min(100) as u8
     }
-    
+
     /// Check if complexity is within acceptable bounds
     pub fn is_acceptable(&self, limits: &GateCLimits) -> bool {
         self.steps <= limits.max_plan_steps
@@ -233,10 +233,10 @@ mod tests {
     #[test]
     fn test_plan_validation() {
         let limits = GateCLimits::default();
-        
+
         // Valid plan
         assert!(limits.validate_plan_size(100).is_ok());
-        
+
         // Invalid plan (too large)
         assert!(limits.validate_plan_size(2000).is_err());
     }
@@ -244,10 +244,10 @@ mod tests {
     #[test]
     fn test_pipeline_validation() {
         let limits = GateCLimits::default();
-        
+
         // Valid pipeline
         assert!(limits.validate_pipeline_size(50).is_ok());
-        
+
         // Invalid pipeline (too large)
         assert!(limits.validate_pipeline_size(200).is_err());
     }
@@ -255,21 +255,21 @@ mod tests {
     #[test]
     fn test_complexity_score() {
         let metrics = ComplexityMetrics {
-            steps: 512,  // 50% of MAX_PLAN_STEPS
-            dependencies: 2048,  // 50% of MAX_DEP_GRAPH_EDGES
+            steps: 512,         // 50% of MAX_PLAN_STEPS
+            dependencies: 2048, // 50% of MAX_DEP_GRAPH_EDGES
             data_refs: 100,
-            dependency_depth: 16,  // 50% of MAX_DEPENDENCY_DEPTH
+            dependency_depth: 16, // 50% of MAX_DEPENDENCY_DEPTH
             mutation_intents: 32,
         };
-        
+
         let score = metrics.complexity_score();
-        assert_eq!(score, 50);  // Average of 50%, 50%, 50%
+        assert_eq!(score, 50); // Average of 50%, 50%, 50%
     }
 
     #[test]
     fn test_complexity_acceptability() {
         let limits = GateCLimits::default();
-        
+
         let acceptable_metrics = ComplexityMetrics {
             steps: 100,
             dependencies: 100,
@@ -278,9 +278,9 @@ mod tests {
             mutation_intents: 10,
         };
         assert!(acceptable_metrics.is_acceptable(&limits));
-        
+
         let unacceptable_metrics = ComplexityMetrics {
-            steps: 2000,  // Exceeds limit
+            steps: 2000, // Exceeds limit
             dependencies: 100,
             data_refs: 50,
             dependency_depth: 10,

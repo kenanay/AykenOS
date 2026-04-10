@@ -15,14 +15,16 @@
 //! - Verify Ring3_Runtime integration readiness
 //! - Requirements: 6.4, 6.6
 
-use crate::bcib::{LoopInstruction, LoopID, LoopConfig, LoopRange, Value, ValueType, ControlFlowInstruction, ControlFlowType};
-use crate::loop_engine::{
-    LoopEngine, LoopResult, LoopError, EnvironmentFault,
-    SafetyAnalyzer, SafetyClass, LoopAnalysisContext,
-    LoopBodyFn, LoopBodyResult, ControlFlow, ControlFlowDecision,
-    JITConfig, MonitoringConfig
+use crate::bcib::{
+    ControlFlowInstruction, ControlFlowType, LoopConfig, LoopID, LoopInstruction, LoopRange, Value,
+    ValueType,
 };
-use crate::error::{SemanticCLIError, ErrorCode};
+use crate::error::{ErrorCode, SemanticCLIError};
+use crate::loop_engine::{
+    ControlFlow, ControlFlowDecision, EnvironmentFault, JITConfig, LoopAnalysisContext, LoopBodyFn,
+    LoopBodyResult, LoopEngine, LoopError, LoopResult, MonitoringConfig, SafetyAnalyzer,
+    SafetyClass,
+};
 use crate::types::SourceLocation;
 
 /// Test suite for Task 14.1: LoopResult/ControlFlow separation validation
@@ -31,7 +33,7 @@ mod loop_result_control_flow_separation {
     use super::*;
 
     /// Test that LoopResult and ControlFlow types are properly separated
-    /// 
+    ///
     /// This test validates that:
     /// 1. LoopResult represents execution outcomes
     /// 2. ControlFlow manages iteration control
@@ -49,9 +51,9 @@ mod loop_result_control_flow_separation {
         assert!(break_result.is_break());
         assert_eq!(break_result.get_iterations_completed(), 5);
 
-        let error_result = LoopResult::error(LoopError::IterationLimitExceeded { 
-            limit: 100, 
-            completed: 0  // Control-flow dominant path - no iterations completed
+        let error_result = LoopResult::error(LoopError::IterationLimitExceeded {
+            limit: 100,
+            completed: 0, // Control-flow dominant path - no iterations completed
         });
         assert!(error_result.is_error());
         assert_eq!(error_result.get_iterations_completed(), 0);
@@ -83,7 +85,7 @@ mod loop_result_control_flow_separation {
     }
 
     /// Test that LoopResult interface is preserved and stable
-    /// 
+    ///
     /// This validates that the public API of LoopResult remains unchanged
     /// and provides the expected interface for consumers.
     #[test]
@@ -94,7 +96,10 @@ mod loop_result_control_flow_separation {
         assert!(!success.is_error());
         assert!(!success.is_break());
         assert_eq!(success.get_iterations_completed(), 15);
-        assert_eq!(success.get_accumulator(), Some(&Value::String("result".to_string())));
+        assert_eq!(
+            success.get_accumulator(),
+            Some(&Value::String("result".to_string()))
+        );
 
         // Test Error variant interface
         let error = LoopResult::error(LoopError::BudgetTimeoutExceeded {
@@ -127,7 +132,7 @@ mod loop_result_control_flow_separation {
     }
 
     /// Test that ControlFlow interface is preserved and stable
-    /// 
+    ///
     /// This validates that the public API of ControlFlow remains unchanged
     /// and provides the expected interface for loop execution management.
     #[test]
@@ -169,15 +174,13 @@ mod loop_result_control_flow_separation {
         let control_fingerprint = control_flow.create_control_fingerprint();
         assert!(!control_fingerprint.is_empty());
 
-        let shape_fingerprint = control_flow.create_shape_fingerprint(
-            12345,
-            crate::loop_engine::fingerprint::LoopType::While,
-        );
+        let shape_fingerprint = control_flow
+            .create_shape_fingerprint(12345, crate::loop_engine::fingerprint::LoopType::While);
         assert_eq!(shape_fingerprint.loop_id, 12345);
     }
 
     /// Test that LoopResult and ControlFlow have no inappropriate coupling
-    /// 
+    ///
     /// This validates that the types maintain proper separation of concerns
     /// and don't have hidden dependencies on each other.
     #[test]
@@ -197,7 +200,7 @@ mod loop_result_control_flow_separation {
             iteration: 0, // Control-flow dominant - error before meaningful iterations
             error: "test error".to_string(),
         });
-        
+
         // Result should only expose result-related information
         assert!(result.is_error());
         assert_eq!(result.get_iterations_completed(), 0);
@@ -206,14 +209,14 @@ mod loop_result_control_flow_separation {
         // ControlFlow should not expose LoopResult internals
         let mut control = ControlFlow::new();
         control.record_decision(ControlFlowDecision::Break, false);
-        
+
         // Control flow should only expose control-related information
         assert_eq!(control.get_decision_trace().len(), 1);
         // Should not expose accumulator values, error details, etc.
     }
 
     /// Test that error handling maintains proper separation
-    /// 
+    ///
     /// This validates that error handling respects the separation between
     /// execution outcomes (LoopResult) and control flow management.
     #[test]
@@ -221,12 +224,12 @@ mod loop_result_control_flow_separation {
         // Control flow errors should be about limits and constraints
         let mut control_flow = ControlFlow::new();
         control_flow.set_iteration_limit(5);
-        
+
         // Exceed iteration limit
         for _ in 0..6 {
             control_flow.increment_iteration_count();
         }
-        
+
         assert!(control_flow.would_exceed_iteration_limit());
         assert!(control_flow.check_iteration_limit().is_err());
 
@@ -239,7 +242,7 @@ mod loop_result_control_flow_separation {
         });
 
         assert!(execution_error.is_error());
-        
+
         // The two error domains should be independent
         // Control flow limit checking doesn't depend on LoopResult
         // LoopResult error creation doesn't depend on ControlFlow state
@@ -252,7 +255,7 @@ mod safety_analyzer_positioning {
     use super::*;
 
     /// Test that SafetyAnalyzer maintains its correct position in the architecture
-    /// 
+    ///
     /// This validates that the safety analyzer:
     /// 1. Remains positioned correctly in the execution pipeline
     /// 2. Maintains its interface and responsibilities
@@ -260,7 +263,7 @@ mod safety_analyzer_positioning {
     #[test]
     fn test_safety_analyzer_positioning() {
         let mut loop_engine = LoopEngine::new();
-        
+
         // Safety analyzer should be accessible through loop engine
         let cache_stats = loop_engine.get_safety_cache_stats();
         assert_eq!(cache_stats.entries, 0); // Initially empty
@@ -273,7 +276,7 @@ mod safety_analyzer_positioning {
         let safe_body = "accumulator = accumulator + i";
         let analysis_result = loop_engine.analyze_loop_safety(safe_body, &context);
         assert!(analysis_result.is_ok());
-        
+
         let result = analysis_result.unwrap();
         assert_eq!(result.classification, SafetyClass::Safe);
 
@@ -288,13 +291,13 @@ mod safety_analyzer_positioning {
     }
 
     /// Test that SafetyAnalyzer interface is preserved
-    /// 
+    ///
     /// This validates that the safety analyzer maintains its expected
     /// public interface and functionality.
     #[test]
     fn test_safety_analyzer_interface_preservation() {
         let mut analyzer = SafetyAnalyzer::new();
-        
+
         // Test basic analysis interface
         let mut context = LoopAnalysisContext::new();
         context.add_loop_variable("sum".to_string(), "number".to_string());
@@ -323,13 +326,13 @@ mod safety_analyzer_positioning {
     }
 
     /// Test that SafetyAnalyzer integrates correctly with loop execution
-    /// 
+    ///
     /// This validates that the safety analyzer works correctly within
     /// the broader loop execution context.
     #[test]
     fn test_safety_analyzer_integration() {
         let mut loop_engine = LoopEngine::new();
-        
+
         // Create a test loop instruction
         let loop_config = LoopConfig::new(Value::Number(0.0), ValueType::Number);
         let loop_instruction = LoopInstruction::For {
@@ -346,19 +349,21 @@ mod safety_analyzer_positioning {
         context.add_loop_variable("i".to_string(), "number".to_string());
         context.add_loop_variable("accumulator".to_string(), "number".to_string());
 
-        let analysis_result = loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
+        let analysis_result =
+            loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
         assert!(analysis_result.is_ok());
 
         // Safety analysis should inform parallelization decisions
         let safety_result = analysis_result.unwrap();
-        let parallelization_decision = loop_engine.should_parallelize_loop(&loop_instruction, &safety_result);
-        
+        let parallelization_decision =
+            loop_engine.should_parallelize_loop(&loop_instruction, &safety_result);
+
         // The decision should be based on safety analysis
         // (Exact decision depends on loop type and safety classification)
         assert!(matches!(
             parallelization_decision,
-            crate::loop_engine::ParallelizationDecision::Sequential { .. } |
-            crate::loop_engine::ParallelizationDecision::Parallel { .. }
+            crate::loop_engine::ParallelizationDecision::Sequential { .. }
+                | crate::loop_engine::ParallelizationDecision::Parallel { .. }
         ));
     }
 }
@@ -369,7 +374,7 @@ mod interface_stability {
     use super::*;
 
     /// Test that core loop engine interfaces remain stable
-    /// 
+    ///
     /// This validates that the main loop engine interfaces haven't
     /// been broken by the architectural improvements.
     #[test]
@@ -390,7 +395,9 @@ mod interface_stability {
         // Create a simple body function
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
                 Err(SemanticCLIError::execution_error(
                     "Invalid accumulator type",
@@ -408,7 +415,7 @@ mod interface_stability {
         // Test monitoring interface
         let loop_id = LoopID::new("test-monitoring".to_string());
         assert!(!loop_engine.is_hot_loop(&loop_id));
-        
+
         // Verify monitoring stats are available
         let global_stats = loop_engine.get_global_monitoring_stats();
         // Note: total_loop_executions is u64, always >= 0
@@ -426,20 +433,23 @@ mod interface_stability {
     }
 
     /// Test that error types and handling remain consistent
-    /// 
+    ///
     /// This validates that error handling interfaces haven't been
     /// disrupted by the architectural changes.
     #[test]
     fn test_error_handling_interface_stability() {
         // Test LoopError variants are still available and functional
-        let iteration_error = LoopError::IterationLimitExceeded { limit: 100, completed: 50 };
+        let iteration_error = LoopError::IterationLimitExceeded {
+            limit: 100,
+            completed: 50,
+        };
         assert_eq!(iteration_error.error_code(), "LE001");
         assert!(iteration_error.is_recoverable());
 
-        let budget_error = LoopError::BudgetTimeoutExceeded { 
-            budget: 1000, 
-            consumed: 1000, 
-            iterations_completed: 25 
+        let budget_error = LoopError::BudgetTimeoutExceeded {
+            budget: 1000,
+            consumed: 1000,
+            iterations_completed: 25,
         };
         assert_eq!(budget_error.error_code(), "LE002");
         assert!(budget_error.supports_partial_results());
@@ -458,7 +468,10 @@ mod interface_stability {
             elapsed_ms: 5000,
             limit_ms: 3000,
         };
-        assert_eq!(format!("{:?}", env_fault), "WallClockKill { elapsed_ms: 5000, limit_ms: 3000 }");
+        assert_eq!(
+            format!("{:?}", env_fault),
+            "WallClockKill { elapsed_ms: 5000, limit_ms: 3000 }"
+        );
 
         // Test error result creation
         let error_result = LoopResult::error(iteration_error);
@@ -469,7 +482,7 @@ mod interface_stability {
     }
 
     /// Test that value types and operations remain stable
-    /// 
+    ///
     /// This validates that the core value system used by loops
     /// hasn't been disrupted.
     #[test]
@@ -506,7 +519,7 @@ mod integration_readiness_preservation {
     use super::*;
 
     /// Test BCIB integration compatibility
-    /// 
+    ///
     /// This validates that the loop engine maintains compatibility with
     /// the BCIB instruction system and can process BCIB loop instructions.
     #[test]
@@ -525,7 +538,10 @@ mod integration_readiness_preservation {
         // Validate BCIB instruction
         assert!(bcib_while_loop.validate().is_ok());
         assert_eq!(bcib_while_loop.loop_type(), crate::bcib::LoopType::While);
-        assert_eq!(bcib_while_loop.required_capability(), Some(crate::bcib::Capability::Execute));
+        assert_eq!(
+            bcib_while_loop.required_capability(),
+            Some(crate::bcib::Capability::Execute)
+        );
 
         // Test BCIB For loop
         let bcib_for_loop = LoopInstruction::For {
@@ -556,14 +572,18 @@ mod integration_readiness_preservation {
         };
 
         assert!(bcib_foreach_loop.validate().is_ok());
-        assert_eq!(bcib_foreach_loop.loop_type(), crate::bcib::LoopType::ForEach);
+        assert_eq!(
+            bcib_foreach_loop.loop_type(),
+            crate::bcib::LoopType::ForEach
+        );
 
         // Test that loop engine can analyze BCIB instructions for safety
         let mut context = LoopAnalysisContext::new();
         context.add_loop_variable("i".to_string(), "number".to_string());
         context.add_loop_variable("accumulator".to_string(), "number".to_string());
 
-        let safety_analysis = loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
+        let safety_analysis =
+            loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
         assert!(safety_analysis.is_ok());
 
         // Test that loop engine can make parallelization decisions for BCIB instructions
@@ -571,13 +591,13 @@ mod integration_readiness_preservation {
         let parallel_decision = loop_engine.should_parallelize_loop(&bcib_for_loop, &safety_result);
         assert!(matches!(
             parallel_decision,
-            crate::loop_engine::ParallelizationDecision::Sequential { .. } |
-            crate::loop_engine::ParallelizationDecision::Parallel { .. }
+            crate::loop_engine::ParallelizationDecision::Sequential { .. }
+                | crate::loop_engine::ParallelizationDecision::Parallel { .. }
         ));
     }
 
     /// Test BCIB ControlFlow instruction compatibility
-    /// 
+    ///
     /// This validates that the loop engine maintains compatibility with
     /// BCIB control flow instructions (break/continue).
     #[test]
@@ -589,7 +609,10 @@ mod integration_readiness_preservation {
 
         assert!(bcib_break.validate().is_ok());
         assert_eq!(bcib_break.control_flow_type(), ControlFlowType::Break);
-        assert_eq!(bcib_break.required_capability(), Some(crate::bcib::Capability::Execute));
+        assert_eq!(
+            bcib_break.required_capability(),
+            Some(crate::bcib::Capability::Execute)
+        );
 
         // Test BCIB Continue instruction
         let bcib_continue = ControlFlowInstruction::Continue {
@@ -598,11 +621,14 @@ mod integration_readiness_preservation {
 
         assert!(bcib_continue.validate().is_ok());
         assert_eq!(bcib_continue.control_flow_type(), ControlFlowType::Continue);
-        assert_eq!(bcib_continue.required_capability(), Some(crate::bcib::Capability::Execute));
+        assert_eq!(
+            bcib_continue.required_capability(),
+            Some(crate::bcib::Capability::Execute)
+        );
 
         // Test that ControlFlow manager can handle BCIB control flow types
         let mut control_flow = ControlFlow::new();
-        
+
         // Simulate break handling
         let break_decision = control_flow.handle_break();
         assert_eq!(break_decision, ControlFlowDecision::Break);
@@ -619,7 +645,7 @@ mod integration_readiness_preservation {
     }
 
     /// Test JIT (D1) integration readiness
-    /// 
+    ///
     /// This validates that the loop engine maintains readiness for
     /// JIT compilation integration without breaking existing functionality.
     #[test]
@@ -664,14 +690,14 @@ mod integration_readiness_preservation {
 
         // Test hot loop JIT compilation trigger
         let loop_id = LoopID::new("hot-loop-test".to_string());
-        
+
         // This should fail gracefully since loop is not hot
         let jit_result = loop_engine.trigger_integrated_jit_compilation(&loop_id, &test_loop);
         assert!(jit_result.is_err()); // Expected to fail for non-hot loop
     }
 
     /// Test parallelism (D2) integration readiness
-    /// 
+    ///
     /// This validates that the loop engine maintains readiness for
     /// parallel execution without breaking existing functionality.
     #[test]
@@ -706,9 +732,12 @@ mod integration_readiness_preservation {
         // Test deterministic partitioning
         let partitions = loop_engine.partition_iterations_deterministic(100, 4);
         assert!(!partitions.is_empty());
-        
+
         // Verify partitions cover all iterations
-        let total_iterations: u32 = partitions.iter().map(|p| p.end_iteration - p.start_iteration).sum();
+        let total_iterations: u32 = partitions
+            .iter()
+            .map(|p| p.end_iteration - p.start_iteration)
+            .sum();
         assert_eq!(total_iterations, 100);
 
         // Test parallelization decision making
@@ -717,23 +746,27 @@ mod integration_readiness_preservation {
         context.add_loop_variable("accumulator".to_string(), "number".to_string());
 
         let mut analyzer = SafetyAnalyzer::new();
-        let safety_result = analyzer.analyze_loop_safety("accumulator = accumulator + i", &context).unwrap();
+        let safety_result = analyzer
+            .analyze_loop_safety("accumulator = accumulator + i", &context)
+            .unwrap();
 
         let parallel_decision = loop_engine.should_parallelize_loop(&for_loop, &safety_result);
-        
+
         // Decision should be based on safety analysis and loop type
         match parallel_decision {
             crate::loop_engine::ParallelizationDecision::Sequential { reason } => {
                 assert!(!reason.is_empty()); // Should have a reason
             }
-            crate::loop_engine::ParallelizationDecision::Parallel { iteration_count, .. } => {
+            crate::loop_engine::ParallelizationDecision::Parallel {
+                iteration_count, ..
+            } => {
                 assert!(iteration_count > 0); // Should have positive iteration count
             }
         }
     }
 
     /// Test Ring3 Runtime integration readiness
-    /// 
+    ///
     /// This validates that the loop engine maintains compatibility with
     /// Ring3 runtime requirements and interfaces.
     #[test]
@@ -764,7 +797,9 @@ mod integration_readiness_preservation {
 
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
                 Err(SemanticCLIError::execution_error(
                     "Invalid accumulator type",
@@ -782,17 +817,20 @@ mod integration_readiness_preservation {
         assert!(updated_stats.total_loop_executions > 0);
 
         // Test error handling compatibility with Ring3 runtime
-        let error_result = LoopResult::error(LoopError::IterationLimitExceeded { 
-            limit: 10, 
-            completed: 0  // Control-flow dominant - no meaningful iterations completed
+        let error_result = LoopResult::error(LoopError::IterationLimitExceeded {
+            limit: 10,
+            completed: 0, // Control-flow dominant - no meaningful iterations completed
         });
-        
+
         // Ring3 runtime should be able to handle all error types
         assert!(error_result.is_error());
         assert_eq!(error_result.get_iterations_completed(), 0);
 
         // Test capability-based security (Ring3 runtime requirement)
-        assert_eq!(test_loop.required_capability(), Some(crate::bcib::Capability::Execute));
+        assert_eq!(
+            test_loop.required_capability(),
+            Some(crate::bcib::Capability::Execute)
+        );
 
         // Test clear monitoring data (Ring3 runtime management)
         loop_engine.clear_monitoring_data();
@@ -801,7 +839,7 @@ mod integration_readiness_preservation {
     }
 
     /// Test cross-system integration stability
-    /// 
+    ///
     /// This validates that all integration points work together without
     /// conflicts or unexpected interactions.
     #[test]
@@ -827,7 +865,8 @@ mod integration_readiness_preservation {
         context.add_loop_variable("i".to_string(), "number".to_string());
         context.add_loop_variable("accumulator".to_string(), "number".to_string());
 
-        let safety_result = loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
+        let safety_result =
+            loop_engine.analyze_loop_safety("accumulator = accumulator + i", &context);
         assert!(safety_result.is_ok());
 
         // JIT eligibility should work
@@ -839,17 +878,21 @@ mod integration_readiness_preservation {
         let parallel_decision = loop_engine.should_parallelize_loop(&test_loop, &safety_analysis);
         assert!(matches!(
             parallel_decision,
-            crate::loop_engine::ParallelizationDecision::Sequential { .. } |
-            crate::loop_engine::ParallelizationDecision::Parallel { .. }
+            crate::loop_engine::ParallelizationDecision::Sequential { .. }
+                | crate::loop_engine::ParallelizationDecision::Parallel { .. }
         ));
 
         // Monitoring should work
-        let stats_before_executions = loop_engine.get_global_monitoring_stats().total_loop_executions;
-        
+        let stats_before_executions = loop_engine
+            .get_global_monitoring_stats()
+            .total_loop_executions;
+
         // Execute loop with all systems potentially involved
         let body_fn: LoopBodyFn = Box::new(|accumulator, iteration| {
             if let Value::Number(acc) = accumulator {
-                Ok(LoopBodyResult::Normal(Value::Number(acc + iteration as f64)))
+                Ok(LoopBodyResult::Normal(Value::Number(
+                    acc + iteration as f64,
+                )))
             } else {
                 Err(SemanticCLIError::execution_error(
                     "Invalid accumulator type",
@@ -873,7 +916,7 @@ mod integration_readiness_preservation {
     }
 
     /// Test backward compatibility with existing integrations
-    /// 
+    ///
     /// This validates that existing integration points haven't been broken
     /// by the architectural improvements.
     #[test]
@@ -881,7 +924,7 @@ mod integration_readiness_preservation {
         let mut loop_engine = LoopEngine::new();
 
         // Test that all existing public methods are still available and functional
-        
+
         // Loop execution methods
         let loop_config = LoopConfig::new(Value::Number(0.0), ValueType::Number);
         let test_loop = LoopInstruction::While {
@@ -892,9 +935,8 @@ mod integration_readiness_preservation {
             location: SourceLocation::new(1, 1, 0),
         };
 
-        let body_fn: LoopBodyFn = Box::new(|accumulator, _iteration| {
-            Ok(LoopBodyResult::Normal(accumulator.clone()))
-        });
+        let body_fn: LoopBodyFn =
+            Box::new(|accumulator, _iteration| Ok(LoopBodyResult::Normal(accumulator.clone())));
 
         let result = loop_engine.execute_loop(&test_loop, body_fn);
         assert!(result.is_ok());
@@ -903,7 +945,8 @@ mod integration_readiness_preservation {
         let mut context = LoopAnalysisContext::new();
         context.add_loop_variable("accumulator".to_string(), "number".to_string());
 
-        let safety_result = loop_engine.analyze_loop_safety("accumulator = accumulator + 1", &context);
+        let safety_result =
+            loop_engine.analyze_loop_safety("accumulator = accumulator + 1", &context);
         assert!(safety_result.is_ok());
 
         let cache_stats = loop_engine.get_safety_cache_stats();

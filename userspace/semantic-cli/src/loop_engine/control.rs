@@ -4,7 +4,7 @@
 //! focusing on iteration counting, bounds checking, and decision tracking.
 //!
 //! # Restricted Imports
-//! 
+//!
 //! Following the task requirements, this module only imports:
 //! - `use super::{state, errors};`
 //!
@@ -26,8 +26,8 @@
 //! 5. Decision trace recording for fingerprint generation
 
 use super::state;
-use crate::bcib::{Value, LoopRange};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
+use crate::bcib::{LoopRange, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 
 /// Control flow decision for loop execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,22 +71,37 @@ impl ControlDecision {
 
     /// Create a continue decision
     pub fn continue_decision(condition_result: bool, iteration: u32, decision_index: u64) -> Self {
-        Self::new(ControlFlowDecision::Continue, condition_result, iteration, decision_index)
+        Self::new(
+            ControlFlowDecision::Continue,
+            condition_result,
+            iteration,
+            decision_index,
+        )
     }
 
     /// Create a break decision
     pub fn break_decision(condition_result: bool, iteration: u32, decision_index: u64) -> Self {
-        Self::new(ControlFlowDecision::Break, condition_result, iteration, decision_index)
+        Self::new(
+            ControlFlowDecision::Break,
+            condition_result,
+            iteration,
+            decision_index,
+        )
     }
 
     /// Create a skip decision (for continue statements)
     pub fn skip_decision(condition_result: bool, iteration: u32, decision_index: u64) -> Self {
-        Self::new(ControlFlowDecision::Skip, condition_result, iteration, decision_index)
+        Self::new(
+            ControlFlowDecision::Skip,
+            condition_result,
+            iteration,
+            decision_index,
+        )
     }
 }
 
 /// Control flow manager for loop execution
-/// 
+///
 /// This struct manages iteration counting, bounds checking, and decision tracking
 /// for fingerprint generation. It enforces constitutional guarantees around
 /// iteration limits and budget timeouts.
@@ -157,7 +172,7 @@ impl ControlFlow {
     }
 
     /// Check if iteration limit would be exceeded (Constitutional: PRE-CHECK)
-    /// 
+    ///
     /// This method implements the constitutional requirement for PRE-CHECK
     /// iteration limit validation before executing any iteration.
     pub fn would_exceed_iteration_limit(&self) -> bool {
@@ -169,7 +184,7 @@ impl ControlFlow {
     }
 
     /// Check if budget timeout would be exceeded (Constitutional: PRE-CHECK)
-    /// 
+    ///
     /// This method implements the constitutional requirement for PRE-CHECK
     /// budget timeout validation before executing any iteration.
     pub fn would_exceed_budget_timeout(&self, additional_budget: u64) -> bool {
@@ -212,7 +227,7 @@ impl ControlFlow {
     }
 
     /// Increment iteration count (Constitutional: POST-INCREMENT after successful iteration)
-    /// 
+    ///
     /// This method implements the constitutional requirement for POST-INCREMENT
     /// iteration counting after successful iteration execution.
     pub fn increment_iteration_count(&mut self) {
@@ -220,7 +235,7 @@ impl ControlFlow {
     }
 
     /// Add to budget consumed (Constitutional: POST-INCREMENT after successful iteration)
-    /// 
+    ///
     /// This method implements the constitutional requirement for POST-INCREMENT
     /// budget tracking after successful iteration execution.
     pub fn add_budget_consumed(&mut self, budget: u64) {
@@ -228,7 +243,7 @@ impl ControlFlow {
     }
 
     /// Record a control flow decision for fingerprint tracking
-    /// 
+    ///
     /// This method records control flow decisions in a deterministic order
     /// for fingerprint generation. Each decision is assigned a unique index
     /// to ensure deterministic ordering across executions.
@@ -239,62 +254,63 @@ impl ControlFlow {
             self.iteration_count,
             self.decision_index,
         );
-        
+
         self.decision_trace.push(control_decision);
         self.decision_index += 1;
     }
 
     /// Evaluate a condition and record the decision
-    /// 
+    ///
     /// This method evaluates a boolean condition and records the decision
     /// for fingerprint tracking. It returns the control flow decision
     /// based on the condition result.
     pub fn evaluate_condition(&mut self, condition: bool) -> ControlFlowDecision {
         // Track condition evaluation order for ShapeFingerprint
-        self.condition_evaluation_order.push(self.iteration_count as u64);
-        
+        self.condition_evaluation_order
+            .push(self.iteration_count as u64);
+
         let decision = if condition {
             ControlFlowDecision::Continue
         } else {
             ControlFlowDecision::Break
         };
-        
+
         self.record_decision(decision, condition);
         decision
     }
 
     /// Handle break statement execution
-    /// 
+    ///
     /// This method handles break statement execution by recording the decision
     /// and returning the appropriate control flow result.
     pub fn handle_break(&mut self) -> ControlFlowDecision {
         // Track break position for ShapeFingerprint
         self.break_positions.push(self.iteration_count as u64);
-        
+
         self.record_decision(ControlFlowDecision::Break, true);
         ControlFlowDecision::Break
     }
 
     /// Handle continue statement execution
-    /// 
+    ///
     /// This method handles continue statement execution by recording the decision
     /// and returning the appropriate control flow result.
     pub fn handle_continue(&mut self) -> ControlFlowDecision {
         // Track continue position for ShapeFingerprint
         self.continue_positions.push(self.iteration_count as u64);
-        
+
         self.record_decision(ControlFlowDecision::Skip, true);
         ControlFlowDecision::Skip
     }
 
     /// Check wall-clock kill switch (Constitutional: environment fault mechanism)
-    /// 
+    ///
     /// This method implements the constitutional requirement for wall-clock
     /// kill switch monitoring. It checks every 100 iterations for performance
     /// and can trigger environment faults for non-semantic termination.
     pub fn check_wall_clock_kill_switch(&mut self) -> Result<()> {
         self.wall_clock_check_counter += 1;
-        
+
         // Check every 100 iterations for performance
         if self.wall_clock_check_counter % 100 != 0 && self.wall_clock_check_counter != 1 {
             return Ok(());
@@ -304,7 +320,7 @@ impl ControlFlow {
         // For now, this is a placeholder that never triggers
         // Future implementation will track wall-clock time since loop start
         // and trigger EnvironmentFault::WallClockKill if exceeded
-        
+
         Ok(())
     }
 
@@ -356,39 +372,46 @@ impl ControlFlow {
     }
 
     /// Create a control fingerprint from the decision trace
-    /// 
+    ///
     /// This method generates a control fingerprint from the recorded decision
     /// trace for use in the enhanced fingerprint system. The fingerprint
     /// includes decision sequence and evaluation order for deterministic
     /// replay verification.
-    pub fn create_control_fingerprint(&self) -> crate::loop_engine::fingerprint::ControlFingerprint {
-        let converted_decisions = self.decision_trace.iter().map(|d| {
-            match d.decision {
-                ControlFlowDecision::Continue => {
-                    crate::loop_engine::fingerprint::ControlDecision::Continue {
-                        condition_result: d.condition_result,
-                        iteration: d.iteration as u64,
+    pub fn create_control_fingerprint(
+        &self,
+    ) -> crate::loop_engine::fingerprint::ControlFingerprint {
+        let converted_decisions = self
+            .decision_trace
+            .iter()
+            .map(|d| {
+                match d.decision {
+                    ControlFlowDecision::Continue => {
+                        crate::loop_engine::fingerprint::ControlDecision::Continue {
+                            condition_result: d.condition_result,
+                            iteration: d.iteration as u64,
+                        }
+                    }
+                    ControlFlowDecision::Break => {
+                        crate::loop_engine::fingerprint::ControlDecision::Break {
+                            condition_result: d.condition_result,
+                            iteration: d.iteration as u64,
+                        }
+                    }
+                    ControlFlowDecision::Skip => {
+                        // Skip is treated as Continue for fingerprint purposes
+                        crate::loop_engine::fingerprint::ControlDecision::Continue {
+                            condition_result: d.condition_result,
+                            iteration: d.iteration as u64,
+                        }
                     }
                 }
-                ControlFlowDecision::Break => {
-                    crate::loop_engine::fingerprint::ControlDecision::Break {
-                        condition_result: d.condition_result,
-                        iteration: d.iteration as u64,
-                    }
-                }
-                ControlFlowDecision::Skip => {
-                    // Skip is treated as Continue for fingerprint purposes
-                    crate::loop_engine::fingerprint::ControlDecision::Continue {
-                        condition_result: d.condition_result,
-                        iteration: d.iteration as u64,
-                    }
-                }
-            }
-        }).collect();
+            })
+            .collect();
 
         crate::loop_engine::fingerprint::ControlFingerprint {
             decision_sequence: converted_decisions,
-            condition_evaluation_order: self.decision_trace
+            condition_evaluation_order: self
+                .decision_trace
                 .iter()
                 .map(|d| d.decision_index)
                 .collect(),
@@ -397,7 +420,7 @@ impl ControlFlow {
     }
 
     /// Create a shape fingerprint from the control flow state
-    /// 
+    ///
     /// This method generates a shape fingerprint from the tracked execution
     /// characteristics including break/continue positions and condition
     /// evaluation order for deterministic replay verification.
@@ -430,7 +453,7 @@ pub struct BudgetCalculator;
 
 impl BudgetCalculator {
     /// Calculate budget cost for a single iteration
-    /// 
+    ///
     /// This method calculates the budget cost for a single iteration
     /// based on the budget measurement method specified in the loop context.
     pub fn calculate_iteration_budget_cost(
@@ -453,14 +476,14 @@ impl BudgetCalculator {
     }
 
     /// Calculate budget cost for break instruction
-    /// 
+    ///
     /// Constitutional: Break instruction has minimal cost to prevent budget bypass
     pub fn calculate_break_budget_cost() -> u64 {
         1
     }
 
     /// Calculate budget cost for continue instruction
-    /// 
+    ///
     /// Constitutional: Continue instruction has minimal cost to prevent budget bypass
     pub fn calculate_continue_budget_cost() -> u64 {
         1
@@ -525,7 +548,7 @@ impl RangeIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopID, BudgetMeasurement, ValueType};
+    use crate::bcib::{BudgetMeasurement, LoopID, ValueType};
 
     fn create_test_loop_state() -> state::LoopState {
         let context = state::LoopContext {
@@ -536,7 +559,7 @@ mod tests {
             accumulator_type: ValueType::Number,
             loop_body: "test-body".to_string(),
         };
-        
+
         state::LoopState::new(context, Value::Number(0.0)).unwrap()
     }
 
@@ -675,21 +698,21 @@ mod tests {
     #[test]
     fn test_budget_calculator() {
         // Test iteration count budget
-        let budget = BudgetCalculator::calculate_iteration_budget_cost(
-            &BudgetMeasurement::IterationCount
-        );
+        let budget =
+            BudgetCalculator::calculate_iteration_budget_cost(&BudgetMeasurement::IterationCount);
         assert_eq!(budget, 1);
 
         // Test instruction count budget
         let budget = BudgetCalculator::calculate_iteration_budget_cost(
-            &BudgetMeasurement::InstructionCount { weight: 10 }
+            &BudgetMeasurement::InstructionCount { weight: 10 },
         );
         assert_eq!(budget, 10);
 
         // Test hybrid budget
-        let budget = BudgetCalculator::calculate_iteration_budget_cost(
-            &BudgetMeasurement::Hybrid { multiplier: 5.5 }
-        );
+        let budget =
+            BudgetCalculator::calculate_iteration_budget_cost(&BudgetMeasurement::Hybrid {
+                multiplier: 5.5,
+            });
         assert_eq!(budget, 5);
 
         // Test break and continue costs
@@ -747,7 +770,7 @@ mod tests {
         let mut control_flow = ControlFlow::new();
         control_flow.set_iteration_limit(100);
         control_flow.set_budget_limit(1000);
-        
+
         // Add some state
         control_flow.increment_iteration_count();
         control_flow.add_budget_consumed(50);
@@ -776,22 +799,22 @@ mod tests {
     #[test]
     fn test_break_continue_position_tracking() {
         let mut control_flow = ControlFlow::new();
-        
+
         // Simulate some iterations with breaks and continues
         control_flow.increment_iteration_count(); // iteration 1
         control_flow.handle_continue(); // continue at iteration 1
-        
+
         control_flow.increment_iteration_count(); // iteration 2
         control_flow.increment_iteration_count(); // iteration 3
         control_flow.handle_break(); // break at iteration 3
-        
+
         control_flow.increment_iteration_count(); // iteration 4
         control_flow.handle_continue(); // continue at iteration 4
 
         // Verify positions are tracked correctly
         let break_positions = control_flow.get_break_positions();
         let continue_positions = control_flow.get_continue_positions();
-        
+
         assert_eq!(break_positions, &[3]);
         assert_eq!(continue_positions, &[1, 4]);
     }
@@ -799,16 +822,16 @@ mod tests {
     #[test]
     fn test_condition_evaluation_order_tracking() {
         let mut control_flow = ControlFlow::new();
-        
+
         // Simulate condition evaluations at different iterations
         control_flow.evaluate_condition(true); // iteration 0
         control_flow.increment_iteration_count();
-        
+
         control_flow.evaluate_condition(true); // iteration 1
         control_flow.increment_iteration_count();
-        
+
         control_flow.evaluate_condition(false); // iteration 2
-        
+
         // Verify condition evaluation order is tracked
         let evaluation_order = control_flow.get_condition_evaluation_order();
         assert_eq!(evaluation_order, &[0, 1, 2]);
@@ -817,26 +840,26 @@ mod tests {
     #[test]
     fn test_shape_fingerprint_creation() {
         use crate::loop_engine::fingerprint::LoopType;
-        
+
         let mut control_flow = ControlFlow::new();
-        
+
         // Simulate loop execution with breaks and continues
         control_flow.evaluate_condition(true); // condition at iteration 0
         control_flow.increment_iteration_count(); // iteration 1
         control_flow.handle_continue();
-        
+
         control_flow.evaluate_condition(true); // condition at iteration 1
         control_flow.increment_iteration_count(); // iteration 2
-        
+
         control_flow.evaluate_condition(false); // condition at iteration 2
         control_flow.increment_iteration_count(); // iteration 3
         control_flow.handle_break();
-        
+
         // Create shape fingerprint
         let loop_id = 12345u64;
         let loop_type = LoopType::While;
         let shape_fingerprint = control_flow.create_shape_fingerprint(loop_id, loop_type);
-        
+
         // Verify shape fingerprint contents
         assert_eq!(shape_fingerprint.loop_id, loop_id);
         assert_eq!(shape_fingerprint.loop_type, loop_type);

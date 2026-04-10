@@ -63,6 +63,18 @@ pub enum SemanticCLIError {
     #[error("Audit error: {message}")]
     AuditError { message: String, code: ErrorCode },
 
+    /// Replay verification failed
+    #[error("Replay verification failed: {0}")]
+    ReplayVerificationFailed(String),
+
+    /// Submission failed
+    #[error("Submission failed: {0}")]
+    SubmissionFailed(String),
+
+    /// Capability derivation failed
+    #[error("Capability derivation failed: {0}")]
+    CapabilityDerivationFailed(String),
+
     /// I/O error
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
@@ -120,6 +132,21 @@ pub enum ErrorCode {
     E700, // Audit trail creation failed
     E701, // Audit integrity check failed
     E702, // Audit record corruption
+
+    // Replay verification errors (E750-E759)
+    E750, // Replay verification failed
+    E751, // Replay deviation detected
+    E752, // Replay binding integrity failed
+
+    // Submission errors (E760-E769)
+    E760, // Submission failed
+    E761, // Submission validation failed
+    E762, // Kernel endpoint unavailable
+
+    // Capability derivation errors (E770-E779)
+    E770, // Capability derivation failed
+    E771, // Capability mismatch
+    E772, // Capability audit failed
 
     // System errors (E800-E899)
     E800, // System timestamp error

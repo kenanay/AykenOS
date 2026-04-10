@@ -25,14 +25,14 @@
 //! - Requirements 1.4: File size under 1000 lines
 //! - Requirements 6.2: Preserve type-safe accumulator abstraction
 
-use crate::bcib::Value;
-use crate::error::{Result, SemanticCLIError, ErrorCode};
 use super::accumulator::AccumulatorPattern;
+use crate::bcib::Value;
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Accumulator transition record for fingerprint generation
-/// 
+///
 /// This struct captures a single state transition in the accumulator,
 /// providing the data needed for data fingerprint computation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -77,7 +77,9 @@ impl AccumulatorTransition {
             ));
         }
 
-        if self.canonical_bytes.is_empty() && !matches!(self.transition_type, TransitionType::Create) {
+        if self.canonical_bytes.is_empty()
+            && !matches!(self.transition_type, TransitionType::Create)
+        {
             return Err(SemanticCLIError::validation_error(
                 "Accumulator transition must have canonical bytes (except for Create transitions)",
                 "Provide canonical bytes representation",
@@ -141,7 +143,7 @@ pub enum TransitionType {
 }
 
 /// Data fingerprint for accumulator transitions
-/// 
+///
 /// This struct represents the data fingerprint component as specified
 /// in the design document, tracking accumulator transitions for
 /// deterministic execution verification.
@@ -159,10 +161,10 @@ impl DataFingerprint {
     /// Create a new data fingerprint from transitions
     pub fn from_transitions(transitions: Vec<AccumulatorTransition>) -> Result<Self> {
         let transition_step_count = transitions.len() as u64;
-        
+
         // Compute combined hash using BLAKE3
         let combined_hash = Self::compute_combined_hash(&transitions)?;
-        
+
         Ok(Self {
             transition_step_count,
             transitions,
@@ -170,35 +172,35 @@ impl DataFingerprint {
         })
     }
 
-    /// Compute combined BLAKE3 hash of all transitions
+    /// Compute combined SHA-256 hash of all transitions
     fn compute_combined_hash(transitions: &[AccumulatorTransition]) -> Result<[u8; 32]> {
-        use blake3::Hasher;
-        
-        let mut hasher = Hasher::new();
-        
+        use sha2::{Digest, Sha256};
+
+        let mut hasher = Sha256::new();
+
         // Add transition count for deterministic hashing
         hasher.update(&(transitions.len() as u64).to_le_bytes());
-        
+
         // Add each transition in order
         for transition in transitions {
             // Add step index
             hasher.update(&transition.step_index.to_le_bytes());
-            
+
             // Add type tag
             hasher.update(&[transition.type_tag.as_byte()]);
-            
+
             // Add canonical bytes
             hasher.update(&(transition.canonical_bytes.len() as u32).to_le_bytes());
             hasher.update(&transition.canonical_bytes);
-            
+
             // Add accumulator name
             hasher.update(&(transition.accumulator_name.len() as u32).to_le_bytes());
             hasher.update(transition.accumulator_name.as_bytes());
-            
+
             // Add transition type
             hasher.update(&[transition.transition_type as u8]);
         }
-        
+
         Ok(hasher.finalize().into())
     }
 
@@ -232,7 +234,7 @@ impl DataFingerprint {
 }
 
 /// Accumulator Manager with transition tracking
-/// 
+///
 /// This struct manages accumulator operations and tracks all state transitions
 /// for data fingerprint generation. It provides the core functionality for
 /// accumulator state management while maintaining transition history.
@@ -261,13 +263,13 @@ impl AccumulatorManager {
     /// Create accumulator manager from existing pattern
     pub fn from_pattern(pattern: AccumulatorPattern) -> Result<Self> {
         let mut manager = Self::new();
-        
+
         // Record create transitions for existing accumulators
         for name in pattern.get_accumulator_names() {
             let value = pattern.get_accumulator(&name)?;
             manager.record_create_transition(&name, value)?;
         }
-        
+
         manager.pattern = pattern;
         Ok(manager)
     }
@@ -275,11 +277,12 @@ impl AccumulatorManager {
     /// Add a new accumulator with transition tracking
     pub fn add_accumulator(&mut self, name: String, initial_value: Value) -> Result<()> {
         // Add to pattern
-        self.pattern.add_accumulator(name.clone(), initial_value.clone())?;
-        
+        self.pattern
+            .add_accumulator(name.clone(), initial_value.clone())?;
+
         // Record create transition
         self.record_create_transition(&name, &initial_value)?;
-        
+
         Ok(())
     }
 
@@ -287,10 +290,10 @@ impl AccumulatorManager {
     pub fn update_accumulator(&mut self, name: &str, new_value: Value) -> Result<()> {
         // Update pattern with type validation
         self.pattern.update_accumulator(name, new_value.clone())?;
-        
+
         // Record update transition
         self.record_update_transition(name, &new_value)?;
-        
+
         Ok(())
     }
 
@@ -327,12 +330,12 @@ impl AccumulatorManager {
     /// Finalize all accumulators and record transitions
     pub fn finalize_all(&mut self) -> Result<HashMap<String, Value>> {
         let all_values = self.pattern.get_all_values();
-        
+
         // Record finalize transitions
         for (name, value) in &all_values {
             self.record_finalize_transition(name, value)?;
         }
-        
+
         Ok(all_values)
     }
 
@@ -361,23 +364,26 @@ impl AccumulatorManager {
     pub fn validate(&self) -> Result<()> {
         // Validate underlying pattern
         self.pattern.validate()?;
-        
+
         // Validate all transitions
         for transition in &self.transitions {
             transition.validate()?;
         }
-        
+
         // Validate step sequence
         for (i, transition) in self.transitions.iter().enumerate() {
             if transition.step_index != i as u64 {
                 return Err(SemanticCLIError::validation_error(
-                    format!("Transition step index {} does not match position {}", transition.step_index, i),
+                    format!(
+                        "Transition step index {} does not match position {}",
+                        transition.step_index, i
+                    ),
                     "Ensure transitions are recorded in order",
                     ErrorCode::E300,
                 ));
             }
         }
-        
+
         Ok(())
     }
 
@@ -385,7 +391,7 @@ impl AccumulatorManager {
     fn record_create_transition(&mut self, name: &str, value: &Value) -> Result<()> {
         let type_tag = TypeTag::from_value(value);
         let canonical_bytes = self.type_registry.encode_canonical(value)?;
-        
+
         let transition = AccumulatorTransition::new(
             self.current_step,
             type_tag,
@@ -393,10 +399,10 @@ impl AccumulatorManager {
             name.to_string(),
             TransitionType::Create,
         );
-        
+
         self.transitions.push(transition);
         self.current_step += 1;
-        
+
         Ok(())
     }
 
@@ -404,7 +410,7 @@ impl AccumulatorManager {
     fn record_update_transition(&mut self, name: &str, value: &Value) -> Result<()> {
         let type_tag = TypeTag::from_value(value);
         let canonical_bytes = self.type_registry.encode_canonical(value)?;
-        
+
         let transition = AccumulatorTransition::new(
             self.current_step,
             type_tag,
@@ -412,10 +418,10 @@ impl AccumulatorManager {
             name.to_string(),
             TransitionType::Update,
         );
-        
+
         self.transitions.push(transition);
         self.current_step += 1;
-        
+
         Ok(())
     }
 
@@ -423,7 +429,7 @@ impl AccumulatorManager {
     fn record_finalize_transition(&mut self, name: &str, value: &Value) -> Result<()> {
         let type_tag = TypeTag::from_value(value);
         let canonical_bytes = self.type_registry.encode_canonical(value)?;
-        
+
         let transition = AccumulatorTransition::new(
             self.current_step,
             type_tag,
@@ -431,10 +437,10 @@ impl AccumulatorManager {
             name.to_string(),
             TransitionType::Finalize,
         );
-        
+
         self.transitions.push(transition);
         self.current_step += 1;
-        
+
         Ok(())
     }
 }
@@ -446,7 +452,7 @@ impl Default for AccumulatorManager {
 }
 
 /// Type registry for canonical encoding
-/// 
+///
 /// This struct provides canonical encoding services for accumulator values,
 /// ensuring deterministic byte representation for fingerprint generation.
 pub struct TypeRegistry {
@@ -466,11 +472,11 @@ impl TypeRegistry {
     /// Encode a value in canonical form
     pub fn encode_canonical(&self, value: &Value) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
-        
+
         // Add type tag
         let type_tag = TypeTag::from_value(value);
         bytes.push(type_tag.as_byte());
-        
+
         // Encode value based on type
         match value {
             Value::String(s) => {
@@ -512,7 +518,7 @@ impl TypeRegistry {
                     // Encode key as string
                     bytes.extend_from_slice(&(key.len() as u32).to_le_bytes());
                     bytes.extend_from_slice(key.as_bytes());
-                    
+
                     // Encode value
                     let value_bytes = self.encode_canonical(value)?;
                     bytes.extend_from_slice(&(value_bytes.len() as u32).to_le_bytes());
@@ -520,12 +526,12 @@ impl TypeRegistry {
                 }
             }
         }
-        
+
         Ok(bytes)
     }
 
     /// Canonicalize floating-point value
-    /// 
+    ///
     /// This implements the floating-point canonicalization requirements:
     /// - Normalize NaN to single canonical quiet NaN bit pattern
     /// - Convert -0.0 to +0.0
@@ -561,14 +567,14 @@ pub struct EncodingConfig {
 impl Default for EncodingConfig {
     fn default() -> Self {
         Self {
-            little_endian: true,  // Requirements 7.1: little-endian byte order
-            explicit_type_tags: true,  // Requirements 7.1: explicit type tags
+            little_endian: true,      // Requirements 7.1: little-endian byte order
+            explicit_type_tags: true, // Requirements 7.1: explicit type tags
         }
     }
 }
 
 /// Data transformation operations for accumulator values
-/// 
+///
 /// This struct provides data transformation utilities that work with
 /// the accumulator manager to perform common data operations.
 pub struct DataTransformer {
@@ -594,8 +600,12 @@ impl DataTransformer {
         match transformation {
             ValueTransformation::Identity => Ok(current_value.clone()),
             ValueTransformation::Increment => self.increment_value(current_value),
-            ValueTransformation::Append(ref append_value) => self.append_value(current_value, append_value),
-            ValueTransformation::Merge(ref merge_value) => self.merge_value(current_value, merge_value),
+            ValueTransformation::Append(ref append_value) => {
+                self.append_value(current_value, append_value)
+            }
+            ValueTransformation::Merge(ref merge_value) => {
+                self.merge_value(current_value, merge_value)
+            }
         }
     }
 
@@ -679,24 +689,38 @@ mod tests {
     #[test]
     fn test_accumulator_manager_basic_operations() {
         let mut manager = AccumulatorManager::new();
-        
+
         // Add accumulators
-        assert!(manager.add_accumulator("counter".to_string(), Value::Number(0.0)).is_ok());
-        assert!(manager.add_accumulator("flag".to_string(), Value::Boolean(false)).is_ok());
-        
+        assert!(manager
+            .add_accumulator("counter".to_string(), Value::Number(0.0))
+            .is_ok());
+        assert!(manager
+            .add_accumulator("flag".to_string(), Value::Boolean(false))
+            .is_ok());
+
         assert_eq!(manager.len(), 2);
         assert!(!manager.is_empty());
         assert!(manager.has_accumulator("counter"));
         assert!(manager.has_accumulator("flag"));
-        
+
         // Update accumulators
-        assert!(manager.update_accumulator("counter", Value::Number(42.0)).is_ok());
-        assert!(manager.update_accumulator("flag", Value::Boolean(true)).is_ok());
-        
+        assert!(manager
+            .update_accumulator("counter", Value::Number(42.0))
+            .is_ok());
+        assert!(manager
+            .update_accumulator("flag", Value::Boolean(true))
+            .is_ok());
+
         // Get values
-        assert_eq!(manager.get_accumulator("counter").unwrap(), &Value::Number(42.0));
-        assert_eq!(manager.get_accumulator("flag").unwrap(), &Value::Boolean(true));
-        
+        assert_eq!(
+            manager.get_accumulator("counter").unwrap(),
+            &Value::Number(42.0)
+        );
+        assert_eq!(
+            manager.get_accumulator("flag").unwrap(),
+            &Value::Boolean(true)
+        );
+
         // Check transition tracking
         assert_eq!(manager.get_transition_count(), 4); // 2 creates + 2 updates
     }
@@ -710,9 +734,9 @@ mod tests {
             "test".to_string(),
             TransitionType::Update,
         );
-        
+
         assert!(transition.validate().is_ok());
-        
+
         // Test invalid transition (empty name)
         let invalid_transition = AccumulatorTransition::new(
             0,
@@ -721,26 +745,32 @@ mod tests {
             "".to_string(),
             TransitionType::Update,
         );
-        
+
         assert!(invalid_transition.validate().is_err());
     }
 
     #[test]
     fn test_data_fingerprint_generation() {
         let mut manager = AccumulatorManager::new();
-        
+
         // Add and update accumulators
-        manager.add_accumulator("sum".to_string(), Value::Number(0.0)).unwrap();
-        manager.update_accumulator("sum", Value::Number(10.0)).unwrap();
-        manager.update_accumulator("sum", Value::Number(25.0)).unwrap();
-        
+        manager
+            .add_accumulator("sum".to_string(), Value::Number(0.0))
+            .unwrap();
+        manager
+            .update_accumulator("sum", Value::Number(10.0))
+            .unwrap();
+        manager
+            .update_accumulator("sum", Value::Number(25.0))
+            .unwrap();
+
         // Get data fingerprint
         let fingerprint = manager.get_data_fingerprint().unwrap();
-        
+
         assert_eq!(fingerprint.transition_step_count, 3);
         assert_eq!(fingerprint.transitions.len(), 3);
         assert!(fingerprint.validate().is_ok());
-        
+
         // Verify hash consistency
         let fingerprint2 = manager.get_data_fingerprint().unwrap();
         assert_eq!(fingerprint.combined_hash, fingerprint2.combined_hash);
@@ -749,25 +779,25 @@ mod tests {
     #[test]
     fn test_type_registry_canonical_encoding() {
         let registry = TypeRegistry::new();
-        
+
         // Test different value types
         let string_val = Value::String("test".to_string());
         let number_val = Value::Number(42.5);
         let bool_val = Value::Boolean(true);
         let array_val = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
-        
+
         // Encode values
         let string_bytes = registry.encode_canonical(&string_val).unwrap();
         let number_bytes = registry.encode_canonical(&number_val).unwrap();
         let bool_bytes = registry.encode_canonical(&bool_val).unwrap();
         let array_bytes = registry.encode_canonical(&array_val).unwrap();
-        
+
         // Verify type tags are included
         assert_eq!(string_bytes[0], TypeTag::String.as_byte());
         assert_eq!(number_bytes[0], TypeTag::F64.as_byte());
         assert_eq!(bool_bytes[0], TypeTag::Boolean.as_byte());
         assert_eq!(array_bytes[0], TypeTag::Array.as_byte());
-        
+
         // Test deterministic encoding (same input -> same output)
         let string_bytes2 = registry.encode_canonical(&string_val).unwrap();
         assert_eq!(string_bytes, string_bytes2);
@@ -776,13 +806,13 @@ mod tests {
     #[test]
     fn test_floating_point_canonicalization() {
         let registry = TypeRegistry::new();
-        
+
         // Test NaN canonicalization
         let nan_val = Value::Number(f64::NAN);
         let nan_bytes1 = registry.encode_canonical(&nan_val).unwrap();
         let nan_bytes2 = registry.encode_canonical(&nan_val).unwrap();
         assert_eq!(nan_bytes1, nan_bytes2); // Should be identical
-        
+
         // Test -0.0 canonicalization
         let neg_zero = Value::Number(-0.0);
         let pos_zero = Value::Number(0.0);
@@ -794,37 +824,40 @@ mod tests {
     #[test]
     fn test_data_transformer() {
         let transformer = DataTransformer::new();
-        
+
         // Test increment transformation
         let number_val = Value::Number(5.0);
-        let incremented = transformer.transform_accumulator_value(
-            &number_val,
-            ValueTransformation::Increment,
-        ).unwrap();
+        let incremented = transformer
+            .transform_accumulator_value(&number_val, ValueTransformation::Increment)
+            .unwrap();
         assert_eq!(incremented, Value::Number(6.0));
-        
+
         // Test append transformation
         let array_val = Value::Array(vec![Value::Number(1.0)]);
-        let appended = transformer.transform_accumulator_value(
-            &array_val,
-            ValueTransformation::Append(Value::Number(2.0)),
-        ).unwrap();
-        assert_eq!(appended, Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]));
-        
+        let appended = transformer
+            .transform_accumulator_value(
+                &array_val,
+                ValueTransformation::Append(Value::Number(2.0)),
+            )
+            .unwrap();
+        assert_eq!(
+            appended,
+            Value::Array(vec![Value::Number(1.0), Value::Number(2.0)])
+        );
+
         // Test merge transformation
         let mut map1 = BTreeMap::new();
         map1.insert("a".to_string(), Value::Number(1.0));
         let mut map2 = BTreeMap::new();
         map2.insert("b".to_string(), Value::Number(2.0));
-        
+
         let map1_val = Value::SortedMap(map1);
         let map2_val = Value::SortedMap(map2);
-        
-        let merged = transformer.transform_accumulator_value(
-            &map1_val,
-            ValueTransformation::Merge(map2_val),
-        ).unwrap();
-        
+
+        let merged = transformer
+            .transform_accumulator_value(&map1_val, ValueTransformation::Merge(map2_val))
+            .unwrap();
+
         if let Value::SortedMap(merged_map) = merged {
             assert_eq!(merged_map.len(), 2);
             assert!(merged_map.contains_key("a"));
@@ -837,14 +870,16 @@ mod tests {
     #[test]
     fn test_accumulator_manager_from_pattern() {
         let mut pattern = AccumulatorPattern::new();
-        pattern.add_accumulator("existing".to_string(), Value::String("test".to_string())).unwrap();
-        
+        pattern
+            .add_accumulator("existing".to_string(), Value::String("test".to_string()))
+            .unwrap();
+
         let manager = AccumulatorManager::from_pattern(pattern).unwrap();
-        
+
         assert_eq!(manager.len(), 1);
         assert!(manager.has_accumulator("existing"));
         assert_eq!(manager.get_transition_count(), 1); // One create transition
-        
+
         let transitions = manager.get_transitions();
         assert_eq!(transitions[0].transition_type, TransitionType::Create);
         assert_eq!(transitions[0].accumulator_name, "existing");
@@ -853,20 +888,24 @@ mod tests {
     #[test]
     fn test_accumulator_manager_validation() {
         let mut manager = AccumulatorManager::new();
-        
+
         // Add valid accumulators
-        manager.add_accumulator("test1".to_string(), Value::Number(1.0)).unwrap();
-        manager.add_accumulator("test2".to_string(), Value::Boolean(true)).unwrap();
-        
+        manager
+            .add_accumulator("test1".to_string(), Value::Number(1.0))
+            .unwrap();
+        manager
+            .add_accumulator("test2".to_string(), Value::Boolean(true))
+            .unwrap();
+
         // Should validate successfully
         assert!(manager.validate().is_ok());
-        
+
         // Test finalization
         let final_values = manager.finalize_all().unwrap();
         assert_eq!(final_values.len(), 2);
         assert_eq!(final_values.get("test1"), Some(&Value::Number(1.0)));
         assert_eq!(final_values.get("test2"), Some(&Value::Boolean(true)));
-        
+
         // Should still validate after finalization
         assert!(manager.validate().is_ok());
     }

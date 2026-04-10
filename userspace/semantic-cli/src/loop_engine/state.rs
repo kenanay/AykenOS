@@ -10,8 +10,8 @@
 //! - Deterministic budget measurement
 //! - Type safety validation for accumulators
 
-use crate::bcib::{LoopID, LoopConfig, Value, ValueType, BudgetMeasurement};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
+use crate::bcib::{BudgetMeasurement, LoopConfig, LoopID, Value, ValueType};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 use serde::{Deserialize, Serialize};
 
 /// Immutable loop context (Constitutional Alignment)
@@ -33,11 +33,7 @@ pub struct LoopContext {
 
 impl LoopContext {
     /// Create a new loop context
-    pub fn new(
-        loop_id: LoopID,
-        config: &LoopConfig,
-        loop_body: String,
-    ) -> Self {
+    pub fn new(loop_id: LoopID, config: &LoopConfig, loop_body: String) -> Self {
         Self {
             loop_id,
             iteration_limit: config.iteration_limit,
@@ -190,7 +186,7 @@ impl LoopState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopID, Value, ValueType, BudgetMeasurement};
+    use crate::bcib::{BudgetMeasurement, LoopID, Value, ValueType};
 
     fn create_test_context() -> LoopContext {
         LoopContext {
@@ -289,6 +285,8 @@ mod tests {
         assert_eq!(state.accumulator, Value::Number(42.0));
 
         // Invalid type update
-        assert!(state.update_accumulator(Value::String("invalid".to_string())).is_err());
+        assert!(state
+            .update_accumulator(Value::String("invalid".to_string()))
+            .is_err());
     }
 }

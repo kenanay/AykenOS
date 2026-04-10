@@ -79,89 +79,86 @@ pub enum TokenKind {
     // ========================================================================
     // These tokens are STABLE and UNCHANGING.
     // Changes require architectural review.
-    
+
     // Context Operations (CORE)
-    Query,         // query <context> <filter>
-    List,          // list <context>
-    Show,          // show <context> <id>
-    
+    Query, // query <context> <filter>
+    List,  // list <context>
+    Show,  // show <context> <id>
+
     // System Operations (CORE)
-    Status,        // status
-    Agents,        // agents
-    
+    Status, // status
+    Agents, // agents
+
     // Debug Operations (CORE)
-    Explain,       // explain <command>
-    DryRun,        // dry-run <command>
-    History,       // history
-    
+    Explain, // explain <command>
+    DryRun,  // dry-run <command>
+    History, // history
+
     // ========================================================================
     // EXTENDED DSL (Phase 3.5.2+)
     // ========================================================================
     // These tokens are for future phases.
     // They are defined here for completeness but MUST NOT be used in Phase 3.5.1.
-    
+
     // Mutation Operations (EXTENDED - Phase 3.5.2)
-    Add,           // add <context> <data>
-    Update,        // update <context> <id> <data>
-    Delete,        // delete <context> <id>
-    
+    Add,    // add <context> <data>
+    Update, // update <context> <id> <data>
+    Delete, // delete <context> <id>
+
     // Pipeline Operations (EXTENDED - Phase 3.5.2)
-    Pipeline,      // pipeline[...]
-    
+    Pipeline, // pipeline[...]
+
     // Orchestration Operations (EXTENDED - Phase 3.5.2)
-    Orchestrate,   // orchestrate <task>
-    
+    Orchestrate, // orchestrate <task>
+
     // Security Operations (EXTENDED - Phase 3.5.2)
-    Permissions,   // permissions <context>
-    Sandbox,       // sandbox <command>
-    
+    Permissions, // permissions <context>
+    Sandbox,     // sandbox <command>
+
     // Logical Operators (EXTENDED - Phase 3.5.2)
-    And,           // and
-    Or,            // or
-    Not,           // not
-    
+    And, // and
+    Or,  // or
+    Not, // not
+
     // Arithmetic Operators (EXTENDED - Phase 3.5.2)
-    Plus,          // +
-    Minus,         // -
-    Star,          // *
-    Slash,         // /
-    
+    Plus,  // +
+    Minus, // -
+    Star,  // *
+    Slash, // /
+
     // ========================================================================
     // LITERALS AND IDENTIFIERS (CORE)
     // ========================================================================
-    
     Identifier(String),
     String(String),
     Number(String), // Store as string to preserve precision
     Boolean(bool),
-    
+
     // ========================================================================
     // OPERATORS (CORE)
     // ========================================================================
-    
-    Dot,           // .
-    Comma,         // ,
-    Colon,         // :
-    Pipe,          // |
-    LBrace,        // {
-    RBrace,        // }
-    LBracket,      // [
-    RBracket,      // ]
-    LParen,        // (
-    RParen,        // )
-    
+    Dot,      // .
+    Comma,    // ,
+    Colon,    // :
+    Pipe,     // |
+    LBrace,   // {
+    RBrace,   // }
+    LBracket, // [
+    RBracket, // ]
+    LParen,   // (
+    RParen,   // )
+
     // Comparison (CORE)
-    Eq,            // ==
-    Ne,            // !=
-    Lt,            // <
-    Le,            // <=
-    Gt,            // >
-    Ge,            // >=
-    
+    Eq, // ==
+    Ne, // !=
+    Lt, // <
+    Le, // <=
+    Gt, // >
+    Ge, // >=
+
     // ========================================================================
     // SPECIAL
     // ========================================================================
-    
     Eof,
     Newline,
 }
@@ -274,10 +271,7 @@ impl TokenKind {
 
     /// Check if token is an EXTENDED operator (Phase 3.5.2+)
     pub fn is_extended_operator(&self) -> bool {
-        matches!(
-            self,
-            Self::Plus | Self::Minus | Self::Star | Self::Slash
-        )
+        matches!(self, Self::Plus | Self::Minus | Self::Star | Self::Slash)
     }
 
     /// Check if token is any operator (CORE or EXTENDED)
@@ -314,7 +308,7 @@ pub fn keyword_from_str(s: &str) -> Option<TokenKind> {
         "explain" => Some(TokenKind::Explain),
         "dry-run" => Some(TokenKind::DryRun),
         "history" => Some(TokenKind::History),
-        
+
         // EXTENDED DSL (Phase 3.5.2+)
         // These are recognized by lexer but MUST be rejected by parser in Phase 3.5.1
         "add" => Some(TokenKind::Add),
@@ -327,11 +321,11 @@ pub fn keyword_from_str(s: &str) -> Option<TokenKind> {
         "and" => Some(TokenKind::And),
         "or" => Some(TokenKind::Or),
         "not" => Some(TokenKind::Not),
-        
+
         // Literals
         "true" => Some(TokenKind::Boolean(true)),
         "false" => Some(TokenKind::Boolean(false)),
-        
+
         _ => None,
     }
 }
@@ -342,11 +336,7 @@ mod tests {
 
     #[test]
     fn test_token_creation() {
-        let token = Token::new(
-            TokenKind::Query,
-            SourceLocation::new(1, 1, 0),
-            "query",
-        );
+        let token = Token::new(TokenKind::Query, SourceLocation::new(1, 1, 0), "query");
         assert_eq!(token.kind, TokenKind::Query);
         assert_eq!(token.lexeme, "query");
     }
@@ -367,13 +357,13 @@ mod tests {
         assert!(TokenKind::List.is_core_keyword());
         assert!(TokenKind::Status.is_core_keyword());
         assert!(!TokenKind::Add.is_core_keyword());
-        
+
         // Extended keywords
         assert!(TokenKind::Add.is_extended_keyword());
         assert!(TokenKind::Pipeline.is_extended_keyword());
         assert!(TokenKind::And.is_extended_keyword());
         assert!(!TokenKind::Query.is_extended_keyword());
-        
+
         // All keywords
         assert!(TokenKind::Query.is_keyword());
         assert!(TokenKind::Add.is_keyword());
@@ -383,12 +373,12 @@ mod tests {
         assert!(TokenKind::Dot.is_core_operator());
         assert!(TokenKind::Eq.is_core_operator());
         assert!(!TokenKind::Plus.is_core_operator());
-        
+
         // Extended operators
         assert!(TokenKind::Plus.is_extended_operator());
         assert!(TokenKind::Star.is_extended_operator());
         assert!(!TokenKind::Dot.is_extended_operator());
-        
+
         // All operators
         assert!(TokenKind::Dot.is_operator());
         assert!(TokenKind::Plus.is_operator());

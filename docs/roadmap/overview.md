@@ -205,6 +205,20 @@ Interpretation:
 4. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
 5. Governance: ayrı spec ile onay gerekli
 
+### 5.2.1 Code-Structure-Derived First Slice (2026-04-10)
+1. Repo yapisina gore ilk kritik gelistirme adimi, yeni `ayken-cli` komutu eklemek degil, gercek Phase-16 BCIB toolchain/orchestration dilimini tamamlamaktir.
+2. Gerekce: `tools/ayken-cli/` altinda `status`, `risk`, `gate`, `closure`, `head`, `bcib` komut yuzeyi zaten landed durumdadir; buna karsin `userspace/orchestration/` hala placeholder, `userspace/semantic-cli` submission bridge hala placeholder/TODO, ve `userspace/bcib-runtime/src/bin/dispatcher.rs` DSL komutlarini NOP / placeholder index'lere map etmektedir.
+3. Bu ilk dilimin kapsami:
+   - `userspace/orchestration` crate'ini gercek thin-wrapper submit router olarak acmak
+   - `semantic-cli` submit-only bridge'ini placeholder/TODO durumundan cikarmak
+   - DSL -> canonical IR -> BCIB -> submit path'ini authoritative hale getirmek; dogrudan DSL -> BCIB kisayolunu ve NOP / placeholder opcode-indeks mappinglerini kaldirmak
+   - mevcut authority modelini, `service != authority`, `diagnostics != decision`, `parity != consensus` sinirlarini degistirmemek
+4. Bu dilim yeni kernel semantics'i acmamalidir; mevcut ring0/ring3 runtime hattini by-pass eden ikinci bir execution authority yolu olusturmamak esastir.
+5. Kernel tarafinda scheduler-owner / ring3 runtime karmasikligi izlenmeye devam etmelidir; ancak yeni Phase-16 buyumesi, bu runtime hattini buyutmeden onun ustune tek bir userspace orchestration giris noktasi oturtmalidir.
+6. Takip dosyalari:
+   - `docs/specs/phase16-ayken-orchestration/requirements.md`
+   - `docs/specs/phase16-ayken-orchestration/tasks.md`
+
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
 2. Distributed replay'i trust transport'tan once acmak

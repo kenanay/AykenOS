@@ -15,19 +15,21 @@
 //! - Command history search
 //! - Multi-line editing
 
+use crate::bcib::{BCIBInstruction, BCIBSequenceRegistry};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 use crate::lexer::Lexer;
+use crate::operations::{
+    DebugExecutor, OperationExecutor, OperationResult, QueryExecutor, SystemExecutor,
+};
 use crate::parser::Parser;
 use crate::transformer::Transformer;
 use crate::validator::BCIBValidator;
-use crate::operations::{QueryExecutor, SystemExecutor, DebugExecutor, OperationExecutor, OperationResult};
-use crate::bcib::{BCIBInstruction, BCIBSequenceRegistry};
-use crate::error::{ErrorCode, Result, SemanticCLIError};
 use rustyline::Editor;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// Minimal REPL for Semantic CLI
-/// 
+///
 /// **Gate B Scope:** Basic functionality only
 /// - Command input/output
 /// - Execution pipeline
@@ -64,11 +66,12 @@ pub struct REPLResult {
 impl MinimalREPL {
     /// Create new minimal REPL
     pub fn new() -> Result<Self> {
-        let editor = Editor::new()
-            .map_err(|e| SemanticCLIError::execution_error(
+        let editor = Editor::new().map_err(|e| {
+            SemanticCLIError::execution_error(
                 format!("Failed to initialize REPL editor: {}", e),
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
         let sequence_registry = Arc::new(Mutex::new(BCIBSequenceRegistry::new()));
         let transformer = Transformer::with_registry(Arc::clone(&sequence_registry));
@@ -97,17 +100,17 @@ impl MinimalREPL {
             match readline {
                 Ok(line) => {
                     let line = line.trim();
-                    
+
                     // Handle special commands
                     if line.is_empty() {
                         continue;
                     }
-                    
+
                     if line == "exit" || line == "quit" {
                         println!("Goodbye! 👋");
                         break;
                     }
-                    
+
                     if line == "help" {
                         self.show_help();
                         continue;
@@ -120,7 +123,7 @@ impl MinimalREPL {
 
                     // Add to history
                     let _ = self.editor.add_history_entry(line); // Intentional ignore - UX decision
-                    
+
                     // Execute command
                     let result = self.execute_command(line);
                     self.display_result(result);
@@ -227,13 +230,13 @@ impl MinimalREPL {
     fn execute_bcib_sequence(&mut self, sequence: &crate::bcib::BCIBSequence) -> REPLResult {
         // Determine operation type from first instruction
         let operation_type = self.determine_operation_type(&sequence.instructions);
-        
+
         match operation_type.as_str() {
             "query" => {
                 let input = crate::operations::query::QueryInput {
                     instructions: sequence.instructions.clone(),
                 };
-                
+
                 match self.query_executor.execute(input) {
                     Ok(result) => REPLResult {
                         success: true,
@@ -246,14 +249,14 @@ impl MinimalREPL {
                         output: format!("❌ Query Execution Error: {}", e),
                         execution_time_ms: 0,
                         command_count: self.command_count,
-                    }
+                    },
                 }
             }
             "system" => {
                 let input = crate::operations::system::SystemInput {
                     instructions: sequence.instructions.clone(),
                 };
-                
+
                 match self.system_executor.execute(input) {
                     Ok(result) => REPLResult {
                         success: true,
@@ -266,14 +269,14 @@ impl MinimalREPL {
                         output: format!("❌ System Execution Error: {}", e),
                         execution_time_ms: 0,
                         command_count: self.command_count,
-                    }
+                    },
                 }
             }
             "debug" => {
                 let input = crate::operations::debug::DebugInput {
                     instructions: sequence.instructions.clone(),
                 };
-                
+
                 match self.debug_executor.execute(input) {
                     Ok(result) => REPLResult {
                         success: true,
@@ -286,7 +289,7 @@ impl MinimalREPL {
                         output: format!("❌ Debug Execution Error: {}", e),
                         execution_time_ms: 0,
                         command_count: self.command_count,
-                    }
+                    },
                 }
             }
             _ => REPLResult {
@@ -294,7 +297,7 @@ impl MinimalREPL {
                 output: format!("❌ Unknown operation type: {}", operation_type),
                 execution_time_ms: 0,
                 command_count: self.command_count,
-            }
+            },
         }
     }
 
@@ -317,10 +320,16 @@ impl MinimalREPL {
     fn display_result(&self, result: REPLResult) {
         if result.success {
             println!("{}", result.output);
-            println!("✅ Command #{} completed in {}ms", result.command_count, result.execution_time_ms);
+            println!(
+                "✅ Command #{} completed in {}ms",
+                result.command_count, result.execution_time_ms
+            );
         } else {
             println!("{}", result.output);
-            println!("💥 Command #{} failed in {}ms", result.command_count, result.execution_time_ms);
+            println!(
+                "💥 Command #{} failed in {}ms",
+                result.command_count, result.execution_time_ms
+            );
         }
         println!(); // Empty line for readability
     }
@@ -378,7 +387,7 @@ mod tests {
     #[test]
     fn test_operation_type_determination() {
         let repl = MinimalREPL::new().unwrap();
-        
+
         // Query operation
         let query_instructions = vec![
             BCIBInstruction::Context(crate::bcib::ContextInstruction::LoadContext {
@@ -394,35 +403,41 @@ mod tests {
                 location: crate::types::SourceLocation::new(1, 1, 0),
             }),
         ];
-        
+
         assert_eq!(repl.determine_operation_type(&query_instructions), "query");
-        
+
         // System operation
-        let system_instructions = vec![
-            BCIBInstruction::System(crate::bcib::SystemInstruction::SystemStatus {
+        let system_instructions = vec![BCIBInstruction::System(
+            crate::bcib::SystemInstruction::SystemStatus {
                 location: crate::types::SourceLocation::new(1, 1, 0),
-            }),
-        ];
-        
-        assert_eq!(repl.determine_operation_type(&system_instructions), "system");
-        
+            },
+        )];
+
+        assert_eq!(
+            repl.determine_operation_type(&system_instructions),
+            "system"
+        );
+
         // Debug operation
-        let debug_instructions = vec![
-            BCIBInstruction::Debug(crate::bcib::DebugInstruction::History {
+        let debug_instructions = vec![BCIBInstruction::Debug(
+            crate::bcib::DebugInstruction::History {
                 location: crate::types::SourceLocation::new(1, 1, 0),
-            }),
-        ];
-        
+            },
+        )];
+
         assert_eq!(repl.determine_operation_type(&debug_instructions), "debug");
-        
+
         // Unknown operation (context only)
-        let context_instructions = vec![
-            BCIBInstruction::Context(crate::bcib::ContextInstruction::Return {
+        let context_instructions = vec![BCIBInstruction::Context(
+            crate::bcib::ContextInstruction::Return {
                 location: crate::types::SourceLocation::new(1, 1, 0),
-            }),
-        ];
-        
-        assert_eq!(repl.determine_operation_type(&context_instructions), "unknown");
+            },
+        )];
+
+        assert_eq!(
+            repl.determine_operation_type(&context_instructions),
+            "unknown"
+        );
     }
 
     #[test]
@@ -433,7 +448,7 @@ mod tests {
             execution_time_ms: 50,
             command_count: 1,
         };
-        
+
         assert!(result.success);
         assert_eq!(result.output, "Test output");
         assert_eq!(result.execution_time_ms, 50);

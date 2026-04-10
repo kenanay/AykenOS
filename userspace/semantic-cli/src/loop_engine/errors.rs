@@ -91,10 +91,7 @@ impl ErrorRecoveryPolicy {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum LoopError {
     /// Iteration limit exceeded (Constitutional: exactness guarantee)
-    IterationLimitExceeded {
-        limit: u32,
-        completed: u32,
-    },
+    IterationLimitExceeded { limit: u32, completed: u32 },
     /// Budget timeout exceeded (Constitutional: deterministic)
     BudgetTimeoutExceeded {
         budget: u64,
@@ -114,37 +111,55 @@ pub enum LoopError {
         reason: String,
     },
     /// Error in loop body execution
-    LoopBodyError {
-        iteration: u32,
-        error: String,
-    },
+    LoopBodyError { iteration: u32, error: String },
     /// Break signal (early termination)
-    BreakSignal {
-        iteration: u32,
-        accumulator: Value,
-    },
+    BreakSignal { iteration: u32, accumulator: Value },
     /// Continue signal (skip iteration)
-    ContinueSignal {
-        iteration: u32,
-    },
+    ContinueSignal { iteration: u32 },
 }
 
 impl fmt::Display for LoopError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IterationLimitExceeded { limit, completed } => {
-                write!(f, "Iteration limit of {} exceeded (completed: {})", limit, completed)
+                write!(
+                    f,
+                    "Iteration limit of {} exceeded (completed: {})",
+                    limit, completed
+                )
             }
-            Self::BudgetTimeoutExceeded { budget, consumed, iterations_completed } => {
-                write!(f, "Budget timeout of {} exceeded (consumed: {}, iterations: {})", 
-                       budget, consumed, iterations_completed)
+            Self::BudgetTimeoutExceeded {
+                budget,
+                consumed,
+                iterations_completed,
+            } => {
+                write!(
+                    f,
+                    "Budget timeout of {} exceeded (consumed: {}, iterations: {})",
+                    budget, consumed, iterations_completed
+                )
             }
-            Self::AccumulatorTypeMismatch { expected, actual, iteration, accumulator_name } => {
-                write!(f, "Accumulator type mismatch in '{}' at iteration {}: expected {:?}, got {:?}", 
-                       accumulator_name, iteration, expected, actual)
+            Self::AccumulatorTypeMismatch {
+                expected,
+                actual,
+                iteration,
+                accumulator_name,
+            } => {
+                write!(
+                    f,
+                    "Accumulator type mismatch in '{}' at iteration {}: expected {:?}, got {:?}",
+                    accumulator_name, iteration, expected, actual
+                )
             }
-            Self::UnorderedCollectionRejected { collection_type, reason } => {
-                write!(f, "Unordered collection '{}' rejected: {}", collection_type, reason)
+            Self::UnorderedCollectionRejected {
+                collection_type,
+                reason,
+            } => {
+                write!(
+                    f,
+                    "Unordered collection '{}' rejected: {}",
+                    collection_type, reason
+                )
             }
             Self::LoopBodyError { iteration, error } => {
                 write!(f, "Loop body error at iteration {}: {}", iteration, error)
@@ -182,8 +197,8 @@ impl LoopError {
             Self::BudgetTimeoutExceeded { .. } => true,
             Self::AccumulatorTypeMismatch { .. } => false,
             Self::UnorderedCollectionRejected { .. } => false,
-            Self::LoopBodyError { .. } => true, // Configurable
-            Self::BreakSignal { .. } => false, // Control flow, not error
+            Self::LoopBodyError { .. } => true,   // Configurable
+            Self::BreakSignal { .. } => false,    // Control flow, not error
             Self::ContinueSignal { .. } => false, // Control flow, not error
         }
     }
@@ -192,11 +207,11 @@ impl LoopError {
     pub fn supports_partial_results(&self) -> bool {
         match self {
             Self::IterationLimitExceeded { .. } => true, // POST-INCREMENT
-            Self::BudgetTimeoutExceeded { .. } => true, // POST-INCREMENT
+            Self::BudgetTimeoutExceeded { .. } => true,  // POST-INCREMENT
             Self::AccumulatorTypeMismatch { .. } => true, // PRE-COMMIT
             Self::UnorderedCollectionRejected { .. } => false,
             Self::LoopBodyError { .. } => true, // Configurable
-            Self::BreakSignal { .. } => true, // Break value
+            Self::BreakSignal { .. } => true,   // Break value
             Self::ContinueSignal { .. } => false,
         }
     }
@@ -206,18 +221,21 @@ impl LoopError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EnvironmentFault {
     /// Wall-clock kill switch triggered (Constitutional: non-semantic)
-    WallClockKill {
-        elapsed_ms: u64,
-        limit_ms: u64,
-    },
+    WallClockKill { elapsed_ms: u64, limit_ms: u64 },
 }
 
 impl fmt::Display for EnvironmentFault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::WallClockKill { elapsed_ms, limit_ms } => {
-                write!(f, "Wall-clock kill switch triggered: {}ms elapsed (limit: {}ms)", 
-                       elapsed_ms, limit_ms)
+            Self::WallClockKill {
+                elapsed_ms,
+                limit_ms,
+            } => {
+                write!(
+                    f,
+                    "Wall-clock kill switch triggered: {}ms elapsed (limit: {}ms)",
+                    elapsed_ms, limit_ms
+                )
             }
         }
     }
@@ -337,7 +355,7 @@ pub enum LoopResult {
 }
 
 /// Rich loop execution result with execution semantics (Phase 6.2 - JIT Integration)
-/// 
+///
 /// This type formalizes the execution contract between the loop executor and JIT system.
 /// It provides rich execution metadata while maintaining constitutional compliance.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -389,14 +407,16 @@ pub enum ControlFlowResult {
         iterations_completed: u32,
     },
     /// Continue result - skip remaining body
-    Continue {
-        iterations_completed: u32,
-    },
+    Continue { iterations_completed: u32 },
 }
 
 impl RichLoopExecutionResult {
     /// Create a successful execution result
-    pub fn success(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn success(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::Success,
             iterations_completed,
@@ -406,7 +426,11 @@ impl RichLoopExecutionResult {
     }
 
     /// Create a budget exceeded result
-    pub fn budget_exceeded(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn budget_exceeded(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::BudgetExceeded,
             iterations_completed,
@@ -416,7 +440,11 @@ impl RichLoopExecutionResult {
     }
 
     /// Create an iteration limit reached result
-    pub fn iteration_limit_reached(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn iteration_limit_reached(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::IterationLimitReached,
             iterations_completed,
@@ -426,7 +454,11 @@ impl RichLoopExecutionResult {
     }
 
     /// Create a type error result
-    pub fn type_error(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn type_error(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::TypeError,
             iterations_completed,
@@ -436,7 +468,11 @@ impl RichLoopExecutionResult {
     }
 
     /// Create a break result
-    pub fn break_result(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn break_result(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::Break,
             iterations_completed,
@@ -446,7 +482,11 @@ impl RichLoopExecutionResult {
     }
 
     /// Create an environment fault result
-    pub fn environment_fault(accumulator: Value, iterations_completed: u32, execution_mode: ExecutionMode) -> Self {
+    pub fn environment_fault(
+        accumulator: Value,
+        iterations_completed: u32,
+        execution_mode: ExecutionMode,
+    ) -> Self {
         Self {
             status: LoopExecutionStatus::EnvironmentFault,
             iterations_completed,
@@ -479,28 +519,37 @@ impl RichLoopExecutionResult {
     /// Convert from LoopResult to LoopExecutionResult
     pub fn from_loop_result(result: LoopResult, execution_mode: ExecutionMode) -> Self {
         match result {
-            LoopResult::Success { accumulator, iterations_completed } => {
-                Self::success(accumulator, iterations_completed, execution_mode)
-            }
-            LoopResult::Partial(partial) => {
-                match partial.termination_reason {
-                    TerminationReason::BudgetTimeoutReached => {
-                        Self::budget_exceeded(partial.accumulator, partial.iterations_completed, execution_mode)
-                    }
-                    TerminationReason::IterationLimitReached => {
-                        Self::iteration_limit_reached(partial.accumulator, partial.iterations_completed, execution_mode)
-                    }
-                    TerminationReason::BreakExecuted => {
-                        Self::break_result(partial.accumulator, partial.iterations_completed, execution_mode)
-                    }
-                    TerminationReason::EnvironmentFault => {
-                        Self::environment_fault(partial.accumulator, partial.iterations_completed, execution_mode)
-                    }
-                    _ => {
-                        Self::success(partial.accumulator, partial.iterations_completed, execution_mode)
-                    }
-                }
-            }
+            LoopResult::Success {
+                accumulator,
+                iterations_completed,
+            } => Self::success(accumulator, iterations_completed, execution_mode),
+            LoopResult::Partial(partial) => match partial.termination_reason {
+                TerminationReason::BudgetTimeoutReached => Self::budget_exceeded(
+                    partial.accumulator,
+                    partial.iterations_completed,
+                    execution_mode,
+                ),
+                TerminationReason::IterationLimitReached => Self::iteration_limit_reached(
+                    partial.accumulator,
+                    partial.iterations_completed,
+                    execution_mode,
+                ),
+                TerminationReason::BreakExecuted => Self::break_result(
+                    partial.accumulator,
+                    partial.iterations_completed,
+                    execution_mode,
+                ),
+                TerminationReason::EnvironmentFault => Self::environment_fault(
+                    partial.accumulator,
+                    partial.iterations_completed,
+                    execution_mode,
+                ),
+                _ => Self::success(
+                    partial.accumulator,
+                    partial.iterations_completed,
+                    execution_mode,
+                ),
+            },
             LoopResult::Error(error) => {
                 // For errors, we need to provide a default accumulator and iteration count
                 // This represents the state at the point of error
@@ -508,7 +557,10 @@ impl RichLoopExecutionResult {
                     LoopError::IterationLimitExceeded { completed, .. } => {
                         (Value::Number(0.0), *completed) // Default accumulator for limit errors
                     }
-                    LoopError::BudgetTimeoutExceeded { iterations_completed, .. } => {
+                    LoopError::BudgetTimeoutExceeded {
+                        iterations_completed,
+                        ..
+                    } => {
                         (Value::Number(0.0), *iterations_completed) // Default accumulator for timeout errors
                     }
                     LoopError::AccumulatorTypeMismatch { iteration, .. } => {
@@ -527,9 +579,7 @@ impl RichLoopExecutionResult {
                     LoopError::AccumulatorTypeMismatch { .. } => {
                         Self::type_error(accumulator, iterations, execution_mode)
                     }
-                    _ => {
-                        Self::type_error(accumulator, iterations, execution_mode)
-                    }
+                    _ => Self::type_error(accumulator, iterations, execution_mode),
                 }
             }
             LoopResult::EnvironmentFault(_) => {
@@ -537,10 +587,13 @@ impl RichLoopExecutionResult {
             }
             LoopResult::ControlFlow(control_flow) => {
                 match control_flow {
-                    ControlFlowResult::Break { accumulator, iterations_completed } => {
-                        Self::break_result(accumulator, iterations_completed, execution_mode)
-                    }
-                    ControlFlowResult::Continue { iterations_completed } => {
+                    ControlFlowResult::Break {
+                        accumulator,
+                        iterations_completed,
+                    } => Self::break_result(accumulator, iterations_completed, execution_mode),
+                    ControlFlowResult::Continue {
+                        iterations_completed,
+                    } => {
                         // Continue doesn't have an accumulator, so we use a default
                         Self::success(Value::Number(0.0), iterations_completed, execution_mode)
                     }
@@ -630,17 +683,28 @@ impl LoopResult {
             Self::Success { accumulator, .. } => Some(accumulator),
             Self::Partial(partial) => Some(&partial.accumulator),
             Self::ControlFlow(ControlFlowResult::Break { accumulator, .. }) => Some(accumulator),
-            Self::Error(_) | Self::EnvironmentFault(_) | Self::ControlFlow(ControlFlowResult::Continue { .. }) => None,
+            Self::Error(_)
+            | Self::EnvironmentFault(_)
+            | Self::ControlFlow(ControlFlowResult::Continue { .. }) => None,
         }
     }
 
     /// Get the number of completed iterations
     pub fn get_iterations_completed(&self) -> u32 {
         match self {
-            Self::Success { iterations_completed, .. } => *iterations_completed,
+            Self::Success {
+                iterations_completed,
+                ..
+            } => *iterations_completed,
             Self::Partial(partial) => partial.iterations_completed,
-            Self::ControlFlow(ControlFlowResult::Break { iterations_completed, .. }) => *iterations_completed,
-            Self::ControlFlow(ControlFlowResult::Continue { iterations_completed, .. }) => *iterations_completed,
+            Self::ControlFlow(ControlFlowResult::Break {
+                iterations_completed,
+                ..
+            }) => *iterations_completed,
+            Self::ControlFlow(ControlFlowResult::Continue {
+                iterations_completed,
+                ..
+            }) => *iterations_completed,
             Self::Error(_) | Self::EnvironmentFault(_) => 0,
         }
     }
@@ -657,14 +721,18 @@ mod tests {
             limit: 100,
             completed: 100,
         };
-        assert!(error.to_string().contains("Iteration limit of 100 exceeded"));
+        assert!(error
+            .to_string()
+            .contains("Iteration limit of 100 exceeded"));
 
         let error = LoopError::BudgetTimeoutExceeded {
             budget: 1000,
             consumed: 1000,
             iterations_completed: 50,
         };
-        assert!(error.to_string().contains("Budget timeout of 1000 exceeded"));
+        assert!(error
+            .to_string()
+            .contains("Budget timeout of 1000 exceeded"));
 
         let error = LoopError::AccumulatorTypeMismatch {
             expected: ValueType::Number,
@@ -672,7 +740,9 @@ mod tests {
             iteration: 5,
             accumulator_name: "counter".to_string(),
         };
-        assert!(error.to_string().contains("Accumulator type mismatch in 'counter'"));
+        assert!(error
+            .to_string()
+            .contains("Accumulator type mismatch in 'counter'"));
     }
 
     #[test]
@@ -681,7 +751,9 @@ mod tests {
             elapsed_ms: 5000,
             limit_ms: 3000,
         };
-        assert!(fault.to_string().contains("Wall-clock kill switch triggered"));
+        assert!(fault
+            .to_string()
+            .contains("Wall-clock kill switch triggered"));
     }
 
     #[test]
@@ -694,7 +766,10 @@ mod tests {
 
         assert_eq!(partial.accumulator, Value::Number(42.0));
         assert_eq!(partial.iterations_completed, 10);
-        assert_eq!(partial.termination_reason, TerminationReason::IterationLimitReached);
+        assert_eq!(
+            partial.termination_reason,
+            TerminationReason::IterationLimitReached
+        );
         assert!(partial.error_info.is_none());
 
         let partial_with_error = PartialResult::with_error(
@@ -704,17 +779,38 @@ mod tests {
             "Division by zero".to_string(),
         );
 
-        assert_eq!(partial_with_error.error_info, Some("Division by zero".to_string()));
+        assert_eq!(
+            partial_with_error.error_info,
+            Some("Division by zero".to_string())
+        );
     }
 
     #[test]
     fn test_termination_reason_display() {
-        assert_eq!(TerminationReason::IterationLimitReached.to_string(), "iteration limit reached");
-        assert_eq!(TerminationReason::BudgetTimeoutReached.to_string(), "budget timeout reached");
-        assert_eq!(TerminationReason::BreakExecuted.to_string(), "break executed");
-        assert_eq!(TerminationReason::ConditionFalse.to_string(), "condition became false");
-        assert_eq!(TerminationReason::LoopBodyError.to_string(), "loop body error");
-        assert_eq!(TerminationReason::EnvironmentFault.to_string(), "environment fault");
+        assert_eq!(
+            TerminationReason::IterationLimitReached.to_string(),
+            "iteration limit reached"
+        );
+        assert_eq!(
+            TerminationReason::BudgetTimeoutReached.to_string(),
+            "budget timeout reached"
+        );
+        assert_eq!(
+            TerminationReason::BreakExecuted.to_string(),
+            "break executed"
+        );
+        assert_eq!(
+            TerminationReason::ConditionFalse.to_string(),
+            "condition became false"
+        );
+        assert_eq!(
+            TerminationReason::LoopBodyError.to_string(),
+            "loop body error"
+        );
+        assert_eq!(
+            TerminationReason::EnvironmentFault.to_string(),
+            "environment fault"
+        );
     }
 
     #[test]
@@ -741,7 +837,10 @@ mod tests {
         assert!(!partial_result.is_error());
         assert!(!partial_result.is_environment_fault());
         assert!(!partial_result.is_control_flow());
-        assert_eq!(partial_result.get_accumulator(), Some(&Value::String("partial".to_string())));
+        assert_eq!(
+            partial_result.get_accumulator(),
+            Some(&Value::String("partial".to_string()))
+        );
         assert_eq!(partial_result.get_iterations_completed(), 25);
 
         // Test error result
@@ -802,10 +901,17 @@ mod tests {
     #[test]
     fn test_error_codes() {
         // Test LoopError codes
-        let error = LoopError::IterationLimitExceeded { limit: 100, completed: 100 };
+        let error = LoopError::IterationLimitExceeded {
+            limit: 100,
+            completed: 100,
+        };
         assert_eq!(error.error_code(), "LE001");
 
-        let error = LoopError::BudgetTimeoutExceeded { budget: 1000, consumed: 1000, iterations_completed: 50 };
+        let error = LoopError::BudgetTimeoutExceeded {
+            budget: 1000,
+            consumed: 1000,
+            iterations_completed: 50,
+        };
         assert_eq!(error.error_code(), "LE002");
 
         let error = LoopError::AccumulatorTypeMismatch {
@@ -822,32 +928,51 @@ mod tests {
         };
         assert_eq!(error.error_code(), "LE004");
 
-        let error = LoopError::LoopBodyError { iteration: 10, error: "Division by zero".to_string() };
+        let error = LoopError::LoopBodyError {
+            iteration: 10,
+            error: "Division by zero".to_string(),
+        };
         assert_eq!(error.error_code(), "LE005");
 
-        let error = LoopError::BreakSignal { iteration: 5, accumulator: Value::Number(42.0) };
+        let error = LoopError::BreakSignal {
+            iteration: 5,
+            accumulator: Value::Number(42.0),
+        };
         assert_eq!(error.error_code(), "LE006");
 
         let error = LoopError::ContinueSignal { iteration: 3 };
         assert_eq!(error.error_code(), "LE007");
 
         // Test EnvironmentFault codes
-        let fault = EnvironmentFault::WallClockKill { elapsed_ms: 5000, limit_ms: 3000 };
+        let fault = EnvironmentFault::WallClockKill {
+            elapsed_ms: 5000,
+            limit_ms: 3000,
+        };
         assert_eq!(fault.error_code(), "EF001");
     }
 
     #[test]
     fn test_error_recoverability() {
         // Recoverable errors
-        let error = LoopError::IterationLimitExceeded { limit: 100, completed: 100 };
+        let error = LoopError::IterationLimitExceeded {
+            limit: 100,
+            completed: 100,
+        };
         assert!(error.is_recoverable());
         assert!(error.supports_partial_results());
 
-        let error = LoopError::BudgetTimeoutExceeded { budget: 1000, consumed: 1000, iterations_completed: 50 };
+        let error = LoopError::BudgetTimeoutExceeded {
+            budget: 1000,
+            consumed: 1000,
+            iterations_completed: 50,
+        };
         assert!(error.is_recoverable());
         assert!(error.supports_partial_results());
 
-        let error = LoopError::LoopBodyError { iteration: 10, error: "Test error".to_string() };
+        let error = LoopError::LoopBodyError {
+            iteration: 10,
+            error: "Test error".to_string(),
+        };
         assert!(error.is_recoverable());
         assert!(error.supports_partial_results());
 
@@ -869,7 +994,10 @@ mod tests {
         assert!(!error.supports_partial_results());
 
         // Control flow (not errors)
-        let error = LoopError::BreakSignal { iteration: 5, accumulator: Value::Number(42.0) };
+        let error = LoopError::BreakSignal {
+            iteration: 5,
+            accumulator: Value::Number(42.0),
+        };
         assert!(!error.is_recoverable()); // Control flow, not error
         assert!(error.supports_partial_results()); // Break value
 
@@ -878,7 +1006,10 @@ mod tests {
         assert!(!error.supports_partial_results());
 
         // Environment faults
-        let fault = EnvironmentFault::WallClockKill { elapsed_ms: 5000, limit_ms: 3000 };
+        let fault = EnvironmentFault::WallClockKill {
+            elapsed_ms: 5000,
+            limit_ms: 3000,
+        };
         assert!(!fault.is_recoverable());
         assert!(fault.supports_partial_results());
     }
@@ -924,7 +1055,11 @@ mod tests {
             new_limit: Some(200),
             new_budget: Some(2000),
         };
-        if let RecoveryAction::Retry { new_limit, new_budget } = action {
+        if let RecoveryAction::Retry {
+            new_limit,
+            new_budget,
+        } = action
+        {
             assert_eq!(new_limit, Some(200));
             assert_eq!(new_budget, Some(2000));
         } else {

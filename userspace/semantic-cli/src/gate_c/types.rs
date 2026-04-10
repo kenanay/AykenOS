@@ -61,9 +61,7 @@ pub enum Operation {
         parameters: HashMap<String, String>,
     },
     /// Mutation operation (becomes MutationIntent)
-    Mutation {
-        intent: MutationIntent,
-    },
+    Mutation { intent: MutationIntent },
     /// Computation operation
     Compute {
         function: String,
@@ -248,45 +246,43 @@ impl CanonicalPlan {
     pub fn fingerprint(&self) -> &PlanFingerprint {
         &self.fingerprint
     }
-    
+
     /// Convert to canonical byte representation for deterministic comparison
-    /// 
+    ///
     /// **CONSTITUTIONAL GUARANTEE:** This method produces byte-identical output
     /// for semantically identical plans across all runs, platforms, and Rust versions.
-    /// 
+    ///
     /// **CRITICAL:** This is the ONLY valid method for snapshot testing and
     /// deterministic comparison. Never use Debug, Display, or format! for
     /// deterministic operations.
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        
-        
         let mut canonical_repr = Vec::new();
-        
+
         // 1. Fingerprint (deterministic)
         canonical_repr.extend_from_slice(&self.fingerprint.hash.to_le_bytes());
         canonical_repr.extend_from_slice(&self.fingerprint.version.to_le_bytes());
-        
+
         // 2. Metadata (canonical order)
         canonical_repr.extend_from_slice(self.metadata.name.as_bytes());
         canonical_repr.push(0); // null separator
         canonical_repr.extend_from_slice(&self.metadata.canonicalized_at.to_le_bytes());
         canonical_repr.extend_from_slice(self.metadata.version.as_bytes());
         canonical_repr.push(0); // null separator
-        
+
         // 3. Steps (already in canonical order)
         canonical_repr.extend_from_slice(&(self.normalized_steps.len() as u32).to_le_bytes());
         for step in &self.normalized_steps {
             // Step ID
             canonical_repr.extend_from_slice(step.id.as_bytes());
             canonical_repr.push(0);
-            
+
             // Operation (canonical serialization)
             match &step.operation {
                 Operation::Query { target, parameters } => {
                     canonical_repr.push(b'Q'); // Query marker
                     canonical_repr.extend_from_slice(target.as_bytes());
                     canonical_repr.push(0);
-                    
+
                     // Parameters SORTED by key for determinism
                     let mut param_keys: Vec<_> = parameters.keys().collect();
                     param_keys.sort();
@@ -298,11 +294,14 @@ impl CanonicalPlan {
                         canonical_repr.push(0);
                     }
                 }
-                Operation::Compute { function, arguments } => {
+                Operation::Compute {
+                    function,
+                    arguments,
+                } => {
                     canonical_repr.push(b'C'); // Compute marker
                     canonical_repr.extend_from_slice(function.as_bytes());
                     canonical_repr.push(0);
-                    
+
                     // Arguments in order
                     canonical_repr.extend_from_slice(&(arguments.len() as u32).to_le_bytes());
                     for arg in arguments {
@@ -312,7 +311,7 @@ impl CanonicalPlan {
                 }
                 Operation::Mutation { intent } => {
                     canonical_repr.push(b'M'); // Mutation marker
-                    // Serialize mutation intent deterministically using canonical format
+                                               // Serialize mutation intent deterministically using canonical format
                     match intent {
                         MutationIntent::InvalidateIntent { target, reason } => {
                             canonical_repr.push(b'I'); // Invalidate marker
@@ -321,7 +320,9 @@ impl CanonicalPlan {
                             match reason {
                                 InvalidationReason::Obsolete => canonical_repr.push(b'O'),
                                 InvalidationReason::Conflict => canonical_repr.push(b'C'),
-                                InvalidationReason::ConstraintViolation => canonical_repr.push(b'V'),
+                                InvalidationReason::ConstraintViolation => {
+                                    canonical_repr.push(b'V')
+                                }
                                 InvalidationReason::Custom(s) => {
                                     canonical_repr.push(b'X');
                                     canonical_repr.extend_from_slice(s.as_bytes());
@@ -332,22 +333,24 @@ impl CanonicalPlan {
                             canonical_repr.push(b'U'); // Update marker
                             canonical_repr.extend_from_slice(target.to_string().as_bytes());
                             canonical_repr.push(b':');
-                            
+
                             // Serialize updates in sorted order for determinism
                             let mut update_keys: Vec<_> = changes.updates.keys().collect();
                             update_keys.sort();
-                            canonical_repr.extend_from_slice(&(update_keys.len() as u32).to_le_bytes());
+                            canonical_repr
+                                .extend_from_slice(&(update_keys.len() as u32).to_le_bytes());
                             for key in update_keys {
                                 canonical_repr.extend_from_slice(key.as_bytes());
                                 canonical_repr.push(b'=');
                                 canonical_repr.extend_from_slice(changes.updates[key].as_bytes());
                                 canonical_repr.push(0);
                             }
-                            
+
                             // Serialize removals in sorted order
                             let mut removals = changes.removals.clone();
                             removals.sort();
-                            canonical_repr.extend_from_slice(&(removals.len() as u32).to_le_bytes());
+                            canonical_repr
+                                .extend_from_slice(&(removals.len() as u32).to_le_bytes());
                             for removal in removals {
                                 canonical_repr.extend_from_slice(removal.as_bytes());
                                 canonical_repr.push(0);
@@ -365,7 +368,7 @@ impl CanonicalPlan {
                     }
                 }
             }
-            
+
             // Inputs and outputs (already in canonical order)
             canonical_repr.extend_from_slice(&(step.inputs.len() as u32).to_le_bytes());
             for input in &step.inputs {
@@ -374,7 +377,7 @@ impl CanonicalPlan {
                 canonical_repr.extend_from_slice(input.data_type.as_bytes());
                 canonical_repr.push(0);
             }
-            
+
             canonical_repr.extend_from_slice(&(step.outputs.len() as u32).to_le_bytes());
             for output in &step.outputs {
                 canonical_repr.extend_from_slice(output.id.as_bytes());
@@ -383,33 +386,36 @@ impl CanonicalPlan {
                 canonical_repr.push(0);
             }
         }
-        
+
         canonical_repr
     }
-    
+
     /// Convert to canonical string representation for human-readable comparison
-    /// 
+    ///
     /// **WARNING:** This is for debugging only. Use `to_canonical_bytes()` for
     /// deterministic comparison and snapshot testing.
     pub fn to_canonical_string(&self) -> String {
         let bytes = self.to_canonical_bytes();
-        format!("CanonicalPlan[{}bytes:{}]", bytes.len(), 
-                crate::gate_c::deterministic::deterministic_hash_fnv1a(&bytes))
+        format!(
+            "CanonicalPlan[{}bytes:{}]",
+            bytes.len(),
+            crate::gate_c::deterministic::deterministic_hash_fnv1a(&bytes)
+        )
     }
 }
 
 /// Plan fingerprint for deterministic comparison
-/// 
+///
 /// **ARCHITECTURAL LOCK:** This fingerprint is used EXCLUSIVELY for:
 /// - Audit trails and determinism validation
 /// - Property-based testing consistency
 /// - Cross-version behavior verification
-/// 
+///
 /// **MUST NOT be used for:**
 /// - Execution identity or cache keys
 /// - Runtime behavior or optimization
 /// - Any execution-related logic
-/// 
+///
 /// The fingerprint is derived from canonical plan representation only
 /// and provides deterministic comparison for audit and testing purposes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -422,7 +428,7 @@ pub struct PlanFingerprint {
 
 impl PlanFingerprint {
     /// Create fingerprint from canonical plan
-    /// 
+    ///
     /// **ARCHITECTURAL GUARANTEE:** This method produces deterministic fingerprints
     /// for audit and testing purposes only. The fingerprint MUST NOT be used for
     /// execution identity, caching, or runtime behavior.
@@ -478,7 +484,11 @@ mod tests {
     #[test]
     fn test_resource_path_display() {
         let path = ResourcePath {
-            segments: vec!["users".to_string(), "123".to_string(), "profile".to_string()],
+            segments: vec![
+                "users".to_string(),
+                "123".to_string(),
+                "profile".to_string(),
+            ],
         };
         assert_eq!(format!("{}", path), "/users/123/profile");
     }
@@ -486,7 +496,10 @@ mod tests {
     #[test]
     fn test_plan_fingerprint_creation() {
         let plan = CanonicalPlan {
-            fingerprint: PlanFingerprint { hash: 12345, version: 1 },
+            fingerprint: PlanFingerprint {
+                hash: 12345,
+                version: 1,
+            },
             normalized_steps: vec![],
             metadata: CanonicalMetadata {
                 name: "test".to_string(),
@@ -494,7 +507,7 @@ mod tests {
                 canonicalized_at: 1234567890,
             },
         };
-        
+
         let fingerprint = PlanFingerprint::from_canonical_plan(&plan);
         assert_eq!(fingerprint.version, 1);
     }

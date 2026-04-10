@@ -41,29 +41,35 @@
 //! **NO AI in this phase.** Only DSL → BCIB → Execution.
 
 // Module declarations
-pub mod types;
 pub mod error;
+pub mod types;
 
 // Lexer module (tokenization)
 pub mod lexer;
 
 // Parser module (AST construction)
-pub mod parser;
 pub mod ast;
+pub mod parser;
 
 // Validator module (semantic analysis)
 pub mod validator;
 
 // Transformer module (AST → BCIB)
-pub mod transformer;
 pub mod bcib;
+pub mod bcib_simple; // Simplified BCIB for Phase-16A
+pub mod transformer;
 
 // Normalizer module (BCIB → NormalizedBCIB) - Gate C
-pub mod normalizer;
 pub mod execution_plan;
 pub mod ir_planner;
 pub mod memory;
+pub mod normalizer;
 pub mod performance_management;
+pub mod canonical_query;
+pub mod canonical_query_lowering;
+pub mod submission_validation;
+pub mod proof_chain;
+pub mod submit_only_router;
 
 // Parallelism module (D2 Parallelism Architecture) - Gate D
 pub mod parallelism;
@@ -80,6 +86,15 @@ pub mod operations;
 // Submission Bridge (BCIB submission via orchestrator) - Gate C
 pub mod submission_bridge;
 
+// Replay Verification (deterministic execution verification)
+pub mod replay_verification;
+
+// Kernel Submit Adapter (Ring3 → Ring0 boundary)
+pub mod kernel_submit_adapter;
+
+// Capability Derivation Audit (capability derivation verification)
+pub mod capability_derivation_audit;
+
 // Gate C: Submission Bridge (Phase 3.5)
 pub mod gate_c;
 
@@ -87,13 +102,37 @@ pub mod gate_c;
 pub mod repl;
 
 pub mod ir_executor {
-    pub use crate::ir_planner::{ExecutionError, ExecutionResult, ExecutionState, IRExecutor};
     pub use crate::ir_planner::register_file::{RegisterFile, RegisterValue};
     pub use crate::ir_planner::replay::{ReplayRecorder, ReplayTrace};
+    pub use crate::ir_planner::{ExecutionError, ExecutionResult, ExecutionState, IRExecutor};
 }
 
 // Re-exports for convenience
-pub use error::{SemanticCLIError, Result};
+pub use error::{Result, SemanticCLIError};
+pub use canonical_query::{
+    build_canonical_plan, build_canonical_plan_from_command, parse_canonical_plan,
+    CanonicalCommandKind, CanonicalIrInstruction, CanonicalPlan, CanonicalPredicate,
+    CanonicalPredicateKind, CanonicalQueryBinding,
+};
+pub use canonical_query_lowering::{
+    lower_canonical_query_to_bcib, lower_canonical_query_to_bcib_with_options,
+    validate_canonical_query_bcib, CanonicalQueryLoweringOptions,
+    LoweredBcibInstruction, LoweredCanonicalQuery,
+};
+pub use proof_chain::{build_proof_chain_record, ProofChainRecord, ProofReplayBinding};
+pub use submission_validation::{
+    derive_required_capabilities, SubmissionCapability, SubmissionCapabilityScope,
+    SubmissionValidationInput, SubmissionValidationReport, SubmissionValidator,
+};
+pub use submit_only_router::{
+    CanonicalQuerySubmission, CanonicalQuerySubmissionRequest, DeterministicSubmitAdapter,
+    SubmitAdapter, SubmitOnlyRouter,
+};
+pub use replay_verification::{ReplayVerificationResult, ReplayVerifier};
+pub use kernel_submit_adapter::KernelSubmitAdapter;
+pub use capability_derivation_audit::{
+    CapabilityDerivationAudit, CapabilityDerivationAuditor, DerivationStep,
+};
 pub use types::*;
 
 /// Library version

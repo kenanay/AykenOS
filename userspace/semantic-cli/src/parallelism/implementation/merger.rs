@@ -60,7 +60,7 @@ pub trait DeterministicMerger {
     ///
     /// **Validates: Requirement 2.2 (Stable Index Map)**
     fn merge(&self, results: Vec<(usize, Value)>) -> Result<Vec<Value>, ParallelismError>;
-    
+
     /// Verifies that all expected indices are present in the results.
     ///
     /// # Arguments
@@ -115,19 +115,16 @@ impl DeterministicMerger for StableIndexMerger {
         if results.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Find the maximum index to determine output size
-        let max_idx = results.iter()
-            .map(|(idx, _)| *idx)
-            .max()
-            .unwrap(); // Safe because we checked results is not empty
-        
+        let max_idx = results.iter().map(|(idx, _)| *idx).max().unwrap(); // Safe because we checked results is not empty
+
         let expected_size = max_idx + 1;
-        
+
         // Pre-allocate output vector with None values
         // This is the single-threaded merge phase (no false sharing)
         let mut output: Vec<Option<Value>> = vec![None; expected_size];
-        
+
         // Single-threaded merge: place each result at its index position
         // This is cache-friendly because we write sequentially to the output vector
         for (idx, value) in results {
@@ -136,14 +133,11 @@ impl DeterministicMerger for StableIndexMerger {
                     worker_id: None,
                     partition_start: None,
                     partition_end: None,
-                    message: format!(
-                        "Invalid index: {} exceeds maximum index {}",
-                        idx, max_idx
-                    ),
+                    message: format!("Invalid index: {} exceeds maximum index {}", idx, max_idx),
                     source: None,
                 });
             }
-            
+
             // Check for duplicate indices
             if output[idx].is_some() {
                 return Err(ParallelismError::ExecutionError {
@@ -154,10 +148,10 @@ impl DeterministicMerger for StableIndexMerger {
                     source: None,
                 });
             }
-            
+
             output[idx] = Some(value);
         }
-        
+
         // Verify completeness: check if any indices are missing
         for (idx, opt) in output.iter().enumerate() {
             if opt.is_none() {
@@ -165,36 +159,31 @@ impl DeterministicMerger for StableIndexMerger {
                     worker_id: None,
                     partition_start: None,
                     partition_end: None,
-                    message: format!(
-                        "Incomplete results: missing result at index {}",
-                        idx
-                    ),
+                    message: format!("Incomplete results: missing result at index {}", idx),
                     source: None,
                 });
             }
         }
-        
+
         // Convert Option<Value> to Value
         // This should never fail because we verified completeness above
-        Ok(output.into_iter()
-            .map(|opt| opt.unwrap())
-            .collect())
+        Ok(output.into_iter().map(|opt| opt.unwrap()).collect())
     }
-    
+
     fn verify_completeness(&self, results: &[(usize, Value)], expected_size: usize) -> bool {
         // Check that we have the expected number of results
         if results.len() != expected_size {
             return false;
         }
-        
+
         // If expected_size is 0, we're done
         if expected_size == 0 {
             return true;
         }
-        
+
         // Create a boolean array to track which indices are present
         let mut present = vec![false; expected_size];
-        
+
         // Mark each index as present
         for (idx, _) in results {
             if *idx >= expected_size {
@@ -205,7 +194,7 @@ impl DeterministicMerger for StableIndexMerger {
             }
             present[*idx] = true;
         }
-        
+
         // Verify all indices are present
         present.iter().all(|&p| p)
     }
@@ -222,7 +211,7 @@ mod tests {
     fn test_merge_empty_results() {
         let merger = StableIndexMerger::new();
         let results = vec![];
-        
+
         let merged = merger.merge(results).unwrap();
         assert_eq!(merged.len(), 0);
     }
@@ -230,10 +219,8 @@ mod tests {
     #[test]
     fn test_merge_single_element() {
         let merger = StableIndexMerger::new();
-        let results = vec![
-            (0, Value::Number(42.0)),
-        ];
-        
+        let results = vec![(0, Value::Number(42.0))];
+
         let merged = merger.merge(results).unwrap();
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0], Value::Number(42.0));
@@ -248,7 +235,7 @@ mod tests {
             (2, Value::Number(3.0)),
             (3, Value::Number(4.0)),
         ];
-        
+
         let merged = merger.merge(results).unwrap();
         assert_eq!(merged.len(), 4);
         assert_eq!(merged[0], Value::Number(1.0));
@@ -268,7 +255,7 @@ mod tests {
             (3, Value::Number(4.0)),
             (1, Value::Number(2.0)),
         ];
-        
+
         let merged = merger.merge(results).unwrap();
         assert_eq!(merged.len(), 4);
         assert_eq!(merged[0], Value::Number(1.0));
@@ -280,16 +267,16 @@ mod tests {
     #[test]
     fn test_merge_large_dataset() {
         let merger = StableIndexMerger::new();
-        
+
         // Create 1000 results in reverse order
         let mut results = Vec::new();
         for i in (0..1000).rev() {
             results.push((i, Value::Number(i as f64)));
         }
-        
+
         let merged = merger.merge(results).unwrap();
         assert_eq!(merged.len(), 1000);
-        
+
         // Verify correct ordering
         for (i, value) in merged.iter().enumerate() {
             assert_eq!(*value, Value::Number(i as f64));
@@ -307,10 +294,10 @@ mod tests {
             // Missing index 2
             (3, Value::Number(4.0)),
         ];
-        
+
         let result = merger.merge(results);
         assert!(result.is_err());
-        
+
         match result {
             Err(ParallelismError::ExecutionError { message, .. }) => {
                 assert!(message.contains("Incomplete results"));
@@ -328,10 +315,10 @@ mod tests {
             (1, Value::Number(3.0)), // Duplicate index 1
             (2, Value::Number(4.0)),
         ];
-        
+
         let result = merger.merge(results);
         assert!(result.is_err());
-        
+
         match result {
             Err(ParallelismError::ExecutionError { message, .. }) => {
                 assert!(message.contains("Duplicate index"));
@@ -349,7 +336,7 @@ mod tests {
             (2, Value::Number(3.0)),
             (10, Value::Number(4.0)), // Gap in indices
         ];
-        
+
         let result = merger.merge(results);
         assert!(result.is_err());
     }
@@ -364,18 +351,15 @@ mod tests {
             (1, Value::Number(2.0)),
             (2, Value::Number(3.0)),
         ];
-        
+
         assert!(merger.verify_completeness(&results, 3));
     }
 
     #[test]
     fn test_verify_completeness_missing_index() {
         let merger = StableIndexMerger::new();
-        let results = vec![
-            (0, Value::Number(1.0)),
-            (2, Value::Number(3.0)),
-        ];
-        
+        let results = vec![(0, Value::Number(1.0)), (2, Value::Number(3.0))];
+
         assert!(!merger.verify_completeness(&results, 3));
     }
 
@@ -387,7 +371,7 @@ mod tests {
             (1, Value::Number(2.0)),
             (1, Value::Number(3.0)),
         ];
-        
+
         assert!(!merger.verify_completeness(&results, 3));
     }
 
@@ -399,18 +383,15 @@ mod tests {
             (1, Value::Number(2.0)),
             (5, Value::Number(3.0)),
         ];
-        
+
         assert!(!merger.verify_completeness(&results, 3));
     }
 
     #[test]
     fn test_verify_completeness_wrong_count() {
         let merger = StableIndexMerger::new();
-        let results = vec![
-            (0, Value::Number(1.0)),
-            (1, Value::Number(2.0)),
-        ];
-        
+        let results = vec![(0, Value::Number(1.0)), (1, Value::Number(2.0))];
+
         assert!(!merger.verify_completeness(&results, 3));
     }
 
@@ -421,29 +402,29 @@ mod tests {
     fn test_property_order_independence() {
         // Property: Merge result should be independent of input order
         let merger = StableIndexMerger::new();
-        
+
         let results1 = vec![
             (0, Value::Number(1.0)),
             (1, Value::Number(2.0)),
             (2, Value::Number(3.0)),
         ];
-        
+
         let results2 = vec![
             (2, Value::Number(3.0)),
             (0, Value::Number(1.0)),
             (1, Value::Number(2.0)),
         ];
-        
+
         let results3 = vec![
             (1, Value::Number(2.0)),
             (2, Value::Number(3.0)),
             (0, Value::Number(1.0)),
         ];
-        
+
         let merged1 = merger.merge(results1).unwrap();
         let merged2 = merger.merge(results2).unwrap();
         let merged3 = merger.merge(results3).unwrap();
-        
+
         assert_eq!(merged1, merged2);
         assert_eq!(merged2, merged3);
     }
@@ -452,16 +433,16 @@ mod tests {
     fn test_property_index_preservation() {
         // Property: Value at index i in output should correspond to (i, value) in input
         let merger = StableIndexMerger::new();
-        
+
         let results = vec![
             (3, Value::Number(30.0)),
             (1, Value::Number(10.0)),
             (0, Value::Number(0.0)),
             (2, Value::Number(20.0)),
         ];
-        
+
         let merged = merger.merge(results).unwrap();
-        
+
         assert_eq!(merged[0], Value::Number(0.0));
         assert_eq!(merged[1], Value::Number(10.0));
         assert_eq!(merged[2], Value::Number(20.0));
@@ -472,17 +453,17 @@ mod tests {
     fn test_property_determinism() {
         // Property: Same input should always produce same output
         let merger = StableIndexMerger::new();
-        
+
         let results = vec![
             (2, Value::Number(3.0)),
             (0, Value::Number(1.0)),
             (1, Value::Number(2.0)),
         ];
-        
+
         let merged1 = merger.merge(results.clone()).unwrap();
         let merged2 = merger.merge(results.clone()).unwrap();
         let merged3 = merger.merge(results).unwrap();
-        
+
         assert_eq!(merged1, merged2);
         assert_eq!(merged2, merged3);
     }

@@ -14,7 +14,7 @@
 //! **Design Reference:** D2 Parallelism Architecture - Adaptive Decision Engine section
 //! **Requirements:** 4.1, 4.4, 4.5, 4.7
 
-use crate::execution_plan::{IRBlock, BlockId, ParallelSafety};
+use crate::execution_plan::{BlockId, IRBlock, ParallelSafety};
 use crate::parallelism::types::ExecutionMetrics;
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -60,22 +60,22 @@ pub const MIN_PARALLEL_SIZE: usize = 100;
 /// ```text
 /// if replay_mode:
 ///     return Sequential
-/// 
+///
 /// if block.safety == Unsafe:
 ///     return Sequential
-/// 
+///
 /// if is_blacklisted(block_id):
 ///     if executions_since_blacklist < 50 AND version_hash_unchanged:
 ///         return Sequential
 ///     else:
 ///         clear_blacklist(block_id)
-/// 
+///
 /// if data_size < MIN_PARALLEL_SIZE:
 ///     return Sequential
-/// 
+///
 /// if estimated_net_speedup < 2.0:
 ///     return Sequential
-/// 
+///
 /// return Parallel
 /// ```
 ///
@@ -95,7 +95,7 @@ pub trait AdaptiveDecisionEngine {
     ///
     /// **Validates: Requirements 4.1, 4.7**
     fn should_parallelize(&self, block: &IRBlock, data_size: usize) -> bool;
-    
+
     /// Records execution metrics for adaptive learning.
     ///
     /// # Arguments
@@ -105,7 +105,7 @@ pub trait AdaptiveDecisionEngine {
     ///
     /// **Validates: Requirement 4.4 (Learning System)**
     fn record_execution(&mut self, block_id: BlockId, metrics: ExecutionMetrics);
-    
+
     /// Calculates net speedup from execution metrics.
     ///
     /// This is a convenience method that extracts the net speedup calculation
@@ -113,7 +113,7 @@ pub trait AdaptiveDecisionEngine {
     ///
     /// **Validates: Requirement 4.1**
     fn calculate_net_speedup(&self, metrics: &ExecutionMetrics) -> f64;
-    
+
     /// Checks if an operation is currently blacklisted.
     ///
     /// # Arguments
@@ -127,7 +127,7 @@ pub trait AdaptiveDecisionEngine {
     ///
     /// **Validates: Requirement 4.4**
     fn is_blacklisted(&self, block_id: BlockId) -> bool;
-    
+
     /// Updates the blacklist based on performance metrics.
     ///
     /// # Arguments
@@ -167,13 +167,13 @@ impl BlacklistEntry {
             blacklist_version_hash: version_hash,
         }
     }
-    
+
     /// Adds a new speedup measurement to the history.
     pub fn add_measurement(&mut self, speedup: f64) {
         self.speedup_history.push(speedup);
         self.executions_since_blacklist += 1;
     }
-    
+
     /// Calculates the P50 (median) speedup from history.
     ///
     /// **Validates: Requirement 4.3 (Percentile Metrics)**
@@ -181,14 +181,14 @@ impl BlacklistEntry {
         if self.speedup_history.is_empty() {
             return 0.0;
         }
-        
+
         let mut sorted = self.speedup_history.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         let mid = sorted.len() / 2;
         sorted[mid]
     }
-    
+
     /// Calculates the P75 (75th percentile) speedup from history.
     ///
     /// **Validates: Requirement 4.3 (Percentile Metrics)**
@@ -196,10 +196,10 @@ impl BlacklistEntry {
         if self.speedup_history.is_empty() {
             return 0.0;
         }
-        
+
         let mut sorted = self.speedup_history.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         let p75_idx = (sorted.len() as f64 * 0.75) as usize;
         let idx = p75_idx.min(sorted.len() - 1);
         sorted[idx]
@@ -229,7 +229,7 @@ impl AdaptiveBlacklist {
             version_hash: Self::compute_version_hash(),
         }
     }
-    
+
     /// Computes a version hash based on system state.
     ///
     /// This hash changes when the IR structure or optimizer version changes,
@@ -238,20 +238,20 @@ impl AdaptiveBlacklist {
     /// **Validates: Requirement 4.5 (Version Hash)**
     fn compute_version_hash() -> u64 {
         let mut hasher = DefaultHasher::new();
-        
+
         // Hash system version information
         // In a real implementation, this would include:
         // - IR structure version
         // - Optimizer version
         // - JIT compiler version
         // - Hardware capabilities
-        
+
         "d2-parallelism-v1.0".hash(&mut hasher);
         std::env::consts::ARCH.hash(&mut hasher);
-        
+
         hasher.finish()
     }
-    
+
     /// Checks if an operation should be re-evaluated.
     ///
     /// Re-evaluation is triggered by:
@@ -260,10 +260,10 @@ impl AdaptiveBlacklist {
     ///
     /// **Validates: Requirement 4.4**
     pub fn should_reevaluate(&self, entry: &BlacklistEntry) -> bool {
-        entry.executions_since_blacklist >= REEVALUATION_WINDOW 
+        entry.executions_since_blacklist >= REEVALUATION_WINDOW
             || entry.blacklist_version_hash != self.version_hash
     }
-    
+
     /// Adds or updates a blacklist entry.
     pub fn add_entry(&mut self, block_id: BlockId, speedup: f64) {
         if let Some(entry) = self.entries.get_mut(&block_id) {
@@ -273,27 +273,27 @@ impl AdaptiveBlacklist {
             self.entries.insert(block_id, entry);
         }
     }
-    
+
     /// Removes a blacklist entry (for re-evaluation).
     pub fn remove_entry(&mut self, block_id: BlockId) {
         self.entries.remove(&block_id);
     }
-    
+
     /// Gets a blacklist entry if it exists.
     pub fn get_entry(&self, block_id: BlockId) -> Option<&BlacklistEntry> {
         self.entries.get(&block_id)
     }
-    
+
     /// Returns the number of blacklisted operations.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
-    
+
     /// Checks if the blacklist is empty.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
-    
+
     /// Gets the current version hash.
     pub fn get_version_hash(&self) -> u64 {
         self.version_hash
@@ -331,7 +331,7 @@ impl DefaultDecisionEngine {
             replay_mode: false,
         }
     }
-    
+
     /// Sets replay mode state.
     ///
     /// When replay mode is active, all operations use sequential execution
@@ -341,12 +341,12 @@ impl DefaultDecisionEngine {
     pub fn set_replay_mode(&mut self, replay_mode: bool) {
         self.replay_mode = replay_mode;
     }
-    
+
     /// Checks if replay mode is active.
     pub fn is_replay_mode(&self) -> bool {
         self.replay_mode
     }
-    
+
     /// Returns the number of blacklisted operations.
     pub fn blacklist_size(&self) -> usize {
         self.blacklist.len()
@@ -366,13 +366,13 @@ impl AdaptiveDecisionEngine for DefaultDecisionEngine {
             // P3: Replay First-Class Citizen - MUST use sequential execution
             return false;
         }
-        
+
         // CONSTITUTIONAL ENFORCEMENT: P1 - Determinism > Parallelism
         // Unsafe blocks MUST NEVER be parallelized
         if block.parallel_safety == ParallelSafety::Unsafe {
             return false;
         }
-        
+
         // Check blacklist status
         if let Some(entry) = self.blacklist.get_entry(block.id) {
             if !self.blacklist.should_reevaluate(entry) {
@@ -381,21 +381,21 @@ impl AdaptiveDecisionEngine for DefaultDecisionEngine {
             }
             // Can be re-evaluated, continue with other checks
         }
-        
+
         // Check data size threshold
         if data_size < MIN_PARALLEL_SIZE {
             return false;
         }
-        
+
         // For new operations or re-evaluation, assume parallelism is beneficial
         // The actual performance will be measured and recorded
         true
     }
-    
+
     fn record_execution(&mut self, block_id: BlockId, metrics: ExecutionMetrics) {
         let net_speedup = self.calculate_net_speedup(&metrics);
         let overhead_ratio = metrics.ordering_overhead_ratio();
-        
+
         // Check if this operation should be blacklisted
         if net_speedup < MIN_NET_SPEEDUP || overhead_ratio > MAX_OVERHEAD_RATIO {
             self.update_blacklist(block_id, net_speedup);
@@ -404,11 +404,11 @@ impl AdaptiveDecisionEngine for DefaultDecisionEngine {
             self.blacklist.remove_entry(block_id);
         }
     }
-    
+
     fn calculate_net_speedup(&self, metrics: &ExecutionMetrics) -> f64 {
         metrics.net_speedup()
     }
-    
+
     fn is_blacklisted(&self, block_id: BlockId) -> bool {
         if let Some(entry) = self.blacklist.get_entry(block_id) {
             !self.blacklist.should_reevaluate(entry)
@@ -416,7 +416,7 @@ impl AdaptiveDecisionEngine for DefaultDecisionEngine {
             false
         }
     }
-    
+
     fn update_blacklist(&mut self, block_id: BlockId, speedup: f64) {
         self.blacklist.add_entry(block_id, speedup);
     }
@@ -425,7 +425,7 @@ impl AdaptiveDecisionEngine for DefaultDecisionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution_plan::{IRBlock, IRInstruction, BlockTerminator, ParallelSafety};
+    use crate::execution_plan::{BlockTerminator, IRBlock, IRInstruction, ParallelSafety};
     use std::time::Duration;
 
     // ===== Test Helpers =====
@@ -433,18 +433,20 @@ mod tests {
     fn create_test_block(id: BlockId, safety: ParallelSafety) -> IRBlock {
         IRBlock::with_safety(
             id,
-            vec![
-                IRInstruction::LoadContext {
-                    context_id: "test".to_string(),
-                    target_register: 0,
-                },
-            ],
+            vec![IRInstruction::LoadContext {
+                context_id: "test".to_string(),
+                target_register: 0,
+            }],
             BlockTerminator::Return { register: 0 },
             safety,
         )
     }
 
-    fn create_test_metrics(sequential_ms: u64, parallel_ms: u64, overhead_ms: u64) -> ExecutionMetrics {
+    fn create_test_metrics(
+        sequential_ms: u64,
+        parallel_ms: u64,
+        overhead_ms: u64,
+    ) -> ExecutionMetrics {
         ExecutionMetrics {
             sequential_time: Duration::from_millis(sequential_ms),
             parallel_time: Duration::from_millis(parallel_ms),
@@ -459,7 +461,7 @@ mod tests {
     #[test]
     fn test_blacklist_entry_creation() {
         let entry = BlacklistEntry::new(1, 1.5, 12345);
-        
+
         assert_eq!(entry.block_id, 1);
         assert_eq!(entry.speedup_history.len(), 1);
         assert_eq!(entry.speedup_history[0], 1.5);
@@ -470,10 +472,10 @@ mod tests {
     #[test]
     fn test_blacklist_entry_add_measurement() {
         let mut entry = BlacklistEntry::new(1, 1.5, 12345);
-        
+
         entry.add_measurement(1.8);
         entry.add_measurement(1.2);
-        
+
         assert_eq!(entry.speedup_history.len(), 3);
         assert_eq!(entry.executions_since_blacklist, 2);
     }
@@ -482,7 +484,7 @@ mod tests {
     fn test_blacklist_entry_p50_speedup() {
         let mut entry = BlacklistEntry::new(1, 2.0, 12345);
         entry.speedup_history = vec![1.0, 1.5, 2.0, 2.5, 3.0];
-        
+
         let p50 = entry.p50_speedup();
         assert_eq!(p50, 2.0); // Median of [1.0, 1.5, 2.0, 2.5, 3.0]
     }
@@ -491,7 +493,7 @@ mod tests {
     fn test_blacklist_entry_p75_speedup() {
         let mut entry = BlacklistEntry::new(1, 1.0, 12345);
         entry.speedup_history = vec![1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5];
-        
+
         let p75 = entry.p75_speedup();
         assert!(p75 >= 3.5); // 75th percentile should be around 3.5-4.0
     }
@@ -508,11 +510,11 @@ mod tests {
     #[test]
     fn test_adaptive_blacklist_add_entry() {
         let mut blacklist = AdaptiveBlacklist::new();
-        
+
         blacklist.add_entry(1, 1.5);
         assert_eq!(blacklist.len(), 1);
         assert!(!blacklist.is_empty());
-        
+
         let entry = blacklist.get_entry(1).unwrap();
         assert_eq!(entry.block_id, 1);
         assert_eq!(entry.speedup_history[0], 1.5);
@@ -521,12 +523,12 @@ mod tests {
     #[test]
     fn test_adaptive_blacklist_update_entry() {
         let mut blacklist = AdaptiveBlacklist::new();
-        
+
         blacklist.add_entry(1, 1.5);
         blacklist.add_entry(1, 1.8); // Update existing entry
-        
+
         assert_eq!(blacklist.len(), 1);
-        
+
         let entry = blacklist.get_entry(1).unwrap();
         assert_eq!(entry.speedup_history.len(), 2);
         assert_eq!(entry.executions_since_blacklist, 1);
@@ -535,10 +537,10 @@ mod tests {
     #[test]
     fn test_adaptive_blacklist_remove_entry() {
         let mut blacklist = AdaptiveBlacklist::new();
-        
+
         blacklist.add_entry(1, 1.5);
         assert_eq!(blacklist.len(), 1);
-        
+
         blacklist.remove_entry(1);
         assert_eq!(blacklist.len(), 0);
         assert!(blacklist.get_entry(1).is_none());
@@ -548,11 +550,11 @@ mod tests {
     fn test_should_reevaluate_execution_count() {
         let blacklist = AdaptiveBlacklist::new();
         let mut entry = BlacklistEntry::new(1, 1.5, blacklist.version_hash);
-        
+
         // Not enough executions
         entry.executions_since_blacklist = 49;
         assert!(!blacklist.should_reevaluate(&entry));
-        
+
         // Enough executions
         entry.executions_since_blacklist = 50;
         assert!(blacklist.should_reevaluate(&entry));
@@ -562,7 +564,7 @@ mod tests {
     fn test_should_reevaluate_version_hash() {
         let blacklist = AdaptiveBlacklist::new();
         let mut entry = BlacklistEntry::new(1, 1.5, blacklist.version_hash + 1); // Different version
-        
+
         // Different version hash should trigger re-evaluation
         entry.executions_since_blacklist = 0;
         assert!(blacklist.should_reevaluate(&entry));
@@ -581,14 +583,14 @@ mod tests {
     fn test_replay_mode_forces_sequential() {
         let mut engine = DefaultDecisionEngine::new();
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // Normal mode should allow parallelism
         assert!(engine.should_parallelize(&block, 1000));
-        
+
         // Replay mode should force sequential
         engine.set_replay_mode(true);
         assert!(!engine.should_parallelize(&block, 1000));
-        
+
         // Back to normal mode
         engine.set_replay_mode(false);
         assert!(engine.should_parallelize(&block, 1000));
@@ -599,10 +601,10 @@ mod tests {
         let engine = DefaultDecisionEngine::new();
         let unsafe_block = create_test_block(1, ParallelSafety::Unsafe);
         let safe_block = create_test_block(2, ParallelSafety::Safe);
-        
+
         // Unsafe blocks should never be parallelized
         assert!(!engine.should_parallelize(&unsafe_block, 1000));
-        
+
         // Safe blocks should be considered for parallelization
         assert!(engine.should_parallelize(&safe_block, 1000));
     }
@@ -611,11 +613,11 @@ mod tests {
     fn test_small_dataset_sequential() {
         let engine = DefaultDecisionEngine::new();
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // Small datasets should use sequential execution
         assert!(!engine.should_parallelize(&block, 50));
         assert!(!engine.should_parallelize(&block, MIN_PARALLEL_SIZE - 1));
-        
+
         // Large datasets should consider parallelization
         assert!(engine.should_parallelize(&block, MIN_PARALLEL_SIZE));
         assert!(engine.should_parallelize(&block, 1000));
@@ -625,14 +627,14 @@ mod tests {
     fn test_blacklist_prevents_parallelization() {
         let mut engine = DefaultDecisionEngine::new();
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // Initially should allow parallelization
         assert!(engine.should_parallelize(&block, 1000));
-        
+
         // Record poor performance (low speedup)
         let poor_metrics = create_test_metrics(1000, 800, 100); // 1.11x speedup
         engine.record_execution(1, poor_metrics);
-        
+
         // Should now be blacklisted
         assert!(!engine.should_parallelize(&block, 1000));
         assert_eq!(engine.blacklist_size(), 1);
@@ -642,11 +644,11 @@ mod tests {
     fn test_high_overhead_blacklisting() {
         let mut engine = DefaultDecisionEngine::new();
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // Record execution with high overhead (>50%)
         let high_overhead_metrics = create_test_metrics(1000, 300, 200); // 66% overhead
         engine.record_execution(1, high_overhead_metrics);
-        
+
         // Should be blacklisted due to high overhead
         assert!(!engine.should_parallelize(&block, 1000));
     }
@@ -655,16 +657,16 @@ mod tests {
     fn test_good_performance_removes_blacklist() {
         let mut engine = DefaultDecisionEngine::new();
         let block = create_test_block(1, ParallelSafety::Safe);
-        
+
         // First, blacklist the operation
         let poor_metrics = create_test_metrics(1000, 800, 100);
         engine.record_execution(1, poor_metrics);
         assert!(!engine.should_parallelize(&block, 1000));
-        
+
         // Then record good performance
         let good_metrics = create_test_metrics(1000, 300, 50); // 2.86x speedup
         engine.record_execution(1, good_metrics);
-        
+
         // Should be removed from blacklist
         assert!(engine.should_parallelize(&block, 1000));
         assert_eq!(engine.blacklist_size(), 0);
@@ -673,10 +675,10 @@ mod tests {
     #[test]
     fn test_calculate_net_speedup() {
         let engine = DefaultDecisionEngine::new();
-        
+
         let metrics = create_test_metrics(1000, 300, 50);
         let speedup = engine.calculate_net_speedup(&metrics);
-        
+
         // 1000 / (300 + 50) = 2.86x
         assert!((speedup - 2.857).abs() < 0.01);
     }
@@ -684,10 +686,10 @@ mod tests {
     #[test]
     fn test_is_blacklisted() {
         let mut engine = DefaultDecisionEngine::new();
-        
+
         // Initially not blacklisted
         assert!(!engine.is_blacklisted(1));
-        
+
         // Add to blacklist
         engine.update_blacklist(1, 1.5);
         assert!(engine.is_blacklisted(1));
@@ -699,16 +701,16 @@ mod tests {
     fn test_trait_implementation() {
         let mut engine = DefaultDecisionEngine::new();
         let _: &mut dyn AdaptiveDecisionEngine = &mut engine;
-        
+
         let block = create_test_block(1, ParallelSafety::Safe);
         let metrics = create_test_metrics(1000, 400, 50);
-        
+
         // Test all trait methods
         let should_parallel = engine.should_parallelize(&block, 1000);
         engine.record_execution(1, metrics);
         let speedup = engine.calculate_net_speedup(&metrics);
         let is_blacklisted = engine.is_blacklisted(1);
-        
+
         assert!(should_parallel);
         assert!(speedup > 2.0);
         assert!(!is_blacklisted); // Good performance, not blacklisted

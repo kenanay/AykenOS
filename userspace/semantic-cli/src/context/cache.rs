@@ -172,7 +172,8 @@ impl ContextCache {
 
     /// Clean expired entries
     pub fn clean_expired(&mut self) {
-        let expired_keys: Vec<String> = self.entries
+        let expired_keys: Vec<String> = self
+            .entries
             .iter()
             .filter(|(_, entry)| entry.is_expired())
             .map(|(key, _)| key.clone())
@@ -181,7 +182,7 @@ impl ContextCache {
         for key in expired_keys {
             let _ = self.entries.pop(&key);
         }
-        
+
         self.stats.size = self.entries.len();
     }
 
@@ -208,14 +209,23 @@ impl ContextCache {
     /// Get detailed cache information for debugging
     pub fn debug_info(&self) -> HashMap<String, serde_json::Value> {
         let mut info = HashMap::new();
-        
+
         info.insert("capacity".to_string(), serde_json::json!(self.capacity));
         info.insert("size".to_string(), serde_json::json!(self.entries.len()));
-        info.insert("utilization".to_string(), serde_json::json!(self.utilization()));
-        info.insert("hit_rate".to_string(), serde_json::json!(self.stats().hit_rate()));
+        info.insert(
+            "utilization".to_string(),
+            serde_json::json!(self.utilization()),
+        );
+        info.insert(
+            "hit_rate".to_string(),
+            serde_json::json!(self.stats().hit_rate()),
+        );
         info.insert("total_hits".to_string(), serde_json::json!(self.stats.hits));
-        info.insert("total_misses".to_string(), serde_json::json!(self.stats.misses));
-        
+        info.insert(
+            "total_misses".to_string(),
+            serde_json::json!(self.stats.misses),
+        );
+
         // Entry details
         let mut entries_info = Vec::new();
         for (key, entry) in &self.entries {
@@ -229,7 +239,7 @@ impl ContextCache {
             }));
         }
         info.insert("entries".to_string(), serde_json::json!(entries_info));
-        
+
         info
     }
 }
@@ -254,9 +264,7 @@ mod tests {
     }
 
     fn create_test_data_with_ttl(ttl: Duration) -> ContextData {
-        let items = vec![
-            json!({"id": "1", "name": "test1"}),
-        ];
+        let items = vec![json!({"id": "1", "name": "test1"})];
         ContextData::new_with_ttl(items, ttl)
     }
 
@@ -273,7 +281,7 @@ mod tests {
     fn test_context_data_expiration() {
         let data = create_test_data_with_ttl(Duration::from_millis(1));
         assert!(!data.is_expired());
-        
+
         // Wait for expiration
         std::thread::sleep(Duration::from_millis(2));
         assert!(data.is_expired());
@@ -293,18 +301,18 @@ mod tests {
     fn test_cache_insert_and_get() {
         let mut cache = ContextCache::new(10);
         let data = create_test_data();
-        
+
         // Insert data
         cache.insert("test_key".to_string(), data.clone());
         assert_eq!(cache.len(), 1);
         assert!(!cache.is_empty());
-        
+
         // Get data
         let retrieved = cache.get("test_key");
         assert!(retrieved.is_some());
         let retrieved_data = retrieved.unwrap();
         assert_eq!(retrieved_data.items.len(), data.items.len());
-        
+
         // Check stats
         let stats = cache.stats();
         assert_eq!(stats.hits, 1);
@@ -315,10 +323,10 @@ mod tests {
     #[test]
     fn test_cache_miss() {
         let mut cache = ContextCache::new(10);
-        
+
         let result = cache.get("nonexistent_key");
         assert!(result.is_none());
-        
+
         let stats = cache.stats();
         assert_eq!(stats.hits, 0);
         assert_eq!(stats.misses, 1);
@@ -328,19 +336,19 @@ mod tests {
     fn test_cache_expiration() {
         let mut cache = ContextCache::new(10);
         let data = create_test_data_with_ttl(Duration::from_millis(1));
-        
+
         // Insert data
         cache.insert("test_key".to_string(), data);
         assert_eq!(cache.len(), 1);
-        
+
         // Wait for expiration
         std::thread::sleep(Duration::from_millis(2));
-        
+
         // Try to get expired data
         let result = cache.get("test_key");
         assert!(result.is_none());
         assert_eq!(cache.len(), 0); // Should be removed
-        
+
         let stats = cache.stats();
         assert_eq!(stats.hits, 0);
         assert_eq!(stats.misses, 1);
@@ -349,14 +357,14 @@ mod tests {
     #[test]
     fn test_cache_lru_eviction() {
         let mut cache = ContextCache::new(2); // Small capacity
-        
+
         // Insert 3 items (should evict first)
         cache.insert("key1".to_string(), create_test_data());
         cache.insert("key2".to_string(), create_test_data());
         cache.insert("key3".to_string(), create_test_data());
-        
+
         assert_eq!(cache.len(), 2);
-        
+
         // key1 should be evicted
         assert!(cache.get("key1").is_none());
         assert!(cache.get("key2").is_some());
@@ -366,19 +374,19 @@ mod tests {
     #[test]
     fn test_cache_access_order() {
         let mut cache = ContextCache::new(2);
-        
+
         // Insert 2 items
         cache.insert("key1".to_string(), create_test_data());
         cache.insert("key2".to_string(), create_test_data());
-        
+
         // Access key1 to make it most recently used
         let _ = cache.get("key1");
-        
+
         // Insert key3 (should evict key2, not key1)
         cache.insert("key3".to_string(), create_test_data());
-        
+
         assert!(cache.get("key1").is_some()); // Still there
-        assert!(cache.get("key2").is_none());  // Evicted
+        assert!(cache.get("key2").is_none()); // Evicted
         assert!(cache.get("key3").is_some()); // New item
     }
 
@@ -386,14 +394,14 @@ mod tests {
     fn test_cache_remove() {
         let mut cache = ContextCache::new(10);
         let data = create_test_data();
-        
+
         cache.insert("test_key".to_string(), data.clone());
         assert_eq!(cache.len(), 1);
-        
+
         let removed = cache.remove("test_key");
         assert!(removed.is_some());
         assert_eq!(cache.len(), 0);
-        
+
         // Try to remove again
         let removed_again = cache.remove("test_key");
         assert!(removed_again.is_none());
@@ -402,11 +410,11 @@ mod tests {
     #[test]
     fn test_cache_clear() {
         let mut cache = ContextCache::new(10);
-        
+
         cache.insert("key1".to_string(), create_test_data());
         cache.insert("key2".to_string(), create_test_data());
         assert_eq!(cache.len(), 2);
-        
+
         cache.clear();
         assert_eq!(cache.len(), 0);
         assert!(cache.is_empty());
@@ -415,18 +423,21 @@ mod tests {
     #[test]
     fn test_cache_clean_expired() {
         let mut cache = ContextCache::new(10);
-        
+
         // Insert mix of expired and valid data
         cache.insert("valid".to_string(), create_test_data());
-        cache.insert("expired".to_string(), create_test_data_with_ttl(Duration::from_millis(1)));
-        
+        cache.insert(
+            "expired".to_string(),
+            create_test_data_with_ttl(Duration::from_millis(1)),
+        );
+
         // Wait for expiration
         std::thread::sleep(Duration::from_millis(2));
-        
+
         assert_eq!(cache.len(), 2);
         cache.clean_expired();
         assert_eq!(cache.len(), 1);
-        
+
         // Valid data should still be there
         assert!(cache.get("valid").is_some());
         assert!(cache.get("expired").is_none());
@@ -436,15 +447,15 @@ mod tests {
     fn test_cache_stats() {
         let mut cache = ContextCache::new(10);
         let data = create_test_data();
-        
+
         cache.insert("key1".to_string(), data);
-        
+
         // Generate some hits and misses
         let _ = cache.get("key1"); // hit
         let _ = cache.get("key1"); // hit
         let _ = cache.get("key2"); // miss
         let _ = cache.get("key3"); // miss
-        
+
         let stats = cache.stats();
         assert_eq!(stats.hits, 2);
         assert_eq!(stats.misses, 2);
@@ -456,15 +467,15 @@ mod tests {
     #[test]
     fn test_cache_utilization() {
         let mut cache = ContextCache::new(4);
-        
+
         assert_eq!(cache.utilization(), 0.0);
-        
+
         cache.insert("key1".to_string(), create_test_data());
         assert_eq!(cache.utilization(), 0.25);
-        
+
         cache.insert("key2".to_string(), create_test_data());
         assert_eq!(cache.utilization(), 0.5);
-        
+
         cache.insert("key3".to_string(), create_test_data());
         cache.insert("key4".to_string(), create_test_data());
         assert_eq!(cache.utilization(), 1.0);
@@ -474,18 +485,18 @@ mod tests {
     fn test_cache_debug_info() {
         let mut cache = ContextCache::new(10);
         cache.insert("test_key".to_string(), create_test_data());
-        
+
         let debug_info = cache.debug_info();
-        
+
         assert!(debug_info.contains_key("capacity"));
         assert!(debug_info.contains_key("size"));
         assert!(debug_info.contains_key("utilization"));
         assert!(debug_info.contains_key("hit_rate"));
         assert!(debug_info.contains_key("entries"));
-        
+
         let entries = debug_info.get("entries").unwrap().as_array().unwrap();
         assert_eq!(entries.len(), 1);
-        
+
         let entry = &entries[0];
         assert!(entry.get("key").is_some());
         assert!(entry.get("age_ms").is_some());
@@ -498,24 +509,24 @@ mod tests {
     #[test]
     fn test_cache_performance() {
         let mut cache = ContextCache::new(1000);
-        
+
         // Insert many items
         let start = Instant::now();
         for i in 0..1000 {
             cache.insert(format!("key_{}", i), create_test_data());
         }
         let insert_duration = start.elapsed();
-        
+
         // Should be fast (< 100ms for 1000 inserts)
         assert!(insert_duration.as_millis() < 100);
-        
+
         // Access items
         let start = Instant::now();
         for i in 0..1000 {
             let _ = cache.get(&format!("key_{}", i));
         }
         let access_duration = start.elapsed();
-        
+
         // Should be very fast (< 50ms for 1000 accesses)
         assert!(access_duration.as_millis() < 50);
     }

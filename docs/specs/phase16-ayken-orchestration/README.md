@@ -17,6 +17,70 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `ayken bcib hash`
 - `ayken bcib inspect`
 
+## Active First Slice (Phase-16A)
+
+Phase-16A does not widen the command surface first. It closes one real,
+end-to-end execution path on top of the already landed runtime and authority
+surfaces.
+
+Locked first-slice command surface:
+
+- `list <context>`
+- `show <context> <id>`
+- `query <context> where <predicate>`
+
+Everything else in the semantic/orchestration path is explicitly unsupported in
+Phase-16A and must fail closed.
+
+Locked Phase-16A pipeline:
+
+`DSL -> semantic parse -> canonical IR -> canonical IR validation -> BCIB lowering -> submission bridge -> runtime submit -> proof/replay`
+
+## Implementation Naming
+
+Implementation file and module names must be purpose-based, not phase-based.
+Phase labels are allowed in roadmap/spec text, but production code should carry
+stable responsibility names such as `canonical_query`, `submission_bridge`, or
+`orchestration`.
+
+## Canonical IR Rule
+
+Phase-16A does not invent a new semantic IR. It freezes the existing
+register-based execution-plan subset as the canonical contract between semantic
+parsing and BCIB lowering.
+
+Canonical IR subset:
+
+- `LoadContext`
+- `LoadField`
+- `LoadLiteral`
+- `Compare`
+- `LogicalOp`
+- `ApplyFilter`
+- `Return`
+
+Phase-16A register discipline:
+
+- `r0` is the active context/result register
+- no implicit mutation of hidden state
+- no direct production-path `DSL -> BCIB` shortcut
+
+## Phase-16A BCIB Subset
+
+Production lowering for the first slice may emit only:
+
+- `DataQuery`
+- `End`
+- optional `TraceEmit`
+
+The following opcodes are out of scope for Phase-16A production lowering:
+
+- `Nop`
+- `DataCreate`
+- `DataAdd`
+- `UiRender`
+- `AiAsk`
+
 ## Authority Model
 
 - official closure authority is phase-tagged and immutable
@@ -44,6 +108,11 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - no authority override from local tools
 - no mutation of closure artifacts without CI confirmation
 - reuse existing `proof-verifier`, `semantic-cli`, and `bcib-runtime` surfaces instead of copying logic
+- Phase-16A orchestration is a pure translation/submission layer; it does not make policy decisions
+- Phase-16A orchestration may reject or package work; it may not reinterpret semantic intent
+- Phase-16A submission is submit-only; it does not grow a parallel execution authority plane
+- Phase-16A production lowering must be NOP-free
+- unsupported DSL commands or predicates must return explicit errors, never silent fallback
 
 ## Out of Scope
 
@@ -51,7 +120,10 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `ayken` backend compiler promotion
 - automatic evidence mutation
 - any local workflow that claims official closure without remote confirmation
+- mutation, AI, UI, debug, system, loop, or control-flow widening inside the Phase-16A production path
 
 ## Related Specs
 
 - `docs/specs/authority-lineage-v1/README.md`
+- `docs/specs/phase16-ayken-orchestration/requirements.md`
+- `docs/specs/phase16-ayken-orchestration/tasks.md`

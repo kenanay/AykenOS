@@ -4,7 +4,7 @@
 //! focusing on main execution loop coordination and state management.
 //!
 //! # Restricted Imports
-//! 
+//!
 //! Following the task requirements, this module only imports:
 //! - `use super::{state, accumulator, errors};`
 //!
@@ -25,12 +25,12 @@
 //! 5. Check limits (iteration/budget)
 //! 6. Decide: continue/terminate/error
 
-use super::{state, errors, control};
-use crate::bcib::{LoopInstruction, LoopType, Value, LoopRange};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
+use super::{control, errors, state};
+use crate::bcib::{LoopInstruction, LoopRange, LoopType, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 
 /// Loop body execution function type
-/// 
+///
 /// Phase 2.3: Enhanced with control flow support
 /// Returns Ok(ControlFlowDecision) for normal execution, break, or continue
 /// Returns Err for execution errors
@@ -67,9 +67,10 @@ impl LoopExecutor {
     ) -> Result<errors::LoopResult> {
         // Create loop context from instruction
         let context = self.create_loop_context(instruction)?;
-        
+
         // Create initial loop state
-        let mut state = state::LoopState::new(context, instruction.get_initial_accumulator().clone())?;
+        let mut state =
+            state::LoopState::new(context, instruction.get_initial_accumulator().clone())?;
 
         // Dispatch to appropriate loop type
         match instruction.loop_type() {
@@ -88,38 +89,46 @@ impl LoopExecutor {
     ) -> Result<errors::LoopResult> {
         // Create control flow manager from loop state
         let mut control_flow = control::ControlFlow::from_loop_state(state);
-        
+
         loop {
             // 🔒 CONSTITUTIONAL: PRE-CHECK iteration limit using control flow
             if control_flow.would_exceed_iteration_limit() {
-                return Ok(errors::LoopResult::error(errors::LoopError::IterationLimitExceeded {
-                    limit: state.context.iteration_limit,
-                    completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::IterationLimitExceeded {
+                        limit: state.context.iteration_limit,
+                        completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // 🔒 CONSTITUTIONAL: PRE-CHECK budget timeout (Phase 2.2) using control flow
-            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                &state.context.budget_measurement,
+            );
             if control_flow.would_exceed_budget_timeout(budget_cost) {
-                return Ok(errors::LoopResult::error(errors::LoopError::BudgetTimeoutExceeded {
-                    budget: state.context.budget_timeout,
-                    consumed: control_flow.get_budget_consumed(),
-                    iterations_completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::BudgetTimeoutExceeded {
+                        budget: state.context.budget_timeout,
+                        consumed: control_flow.get_budget_consumed(),
+                        iterations_completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // Phase 2.2: Check wall-clock kill switch using control flow
             if let Err(_) = control_flow.check_wall_clock_kill_switch() {
-                return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                    iteration: control_flow.get_iteration_count(),
-                    error: "Wall-clock kill switch triggered".to_string(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::LoopBodyError {
+                        iteration: control_flow.get_iteration_count(),
+                        error: "Wall-clock kill switch triggered".to_string(),
+                    },
+                ));
             }
 
             // Phase 2.4: Evaluate while condition
             let condition_result = self.evaluate_while_condition(state, instruction)?;
             let decision = control_flow.evaluate_condition(condition_result);
-            
+
             if decision == control::ControlFlowDecision::Break {
                 // Condition is false - normal loop termination
                 return Ok(errors::LoopResult::success(
@@ -127,7 +136,7 @@ impl LoopExecutor {
                     control_flow.get_iteration_count(),
                 ));
             }
-            
+
             // 🔒 CONSTITUTIONAL SEQUENCE: Execute iteration with control flow
             match self.execute_single_iteration_with_control(state, &body_fn, &mut control_flow) {
                 Ok(control::ControlFlowDecision::Continue) => {
@@ -147,10 +156,12 @@ impl LoopExecutor {
                 }
                 Err(e) => {
                     // Error during iteration - return error result
-                    return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                        iteration: control_flow.get_iteration_count(),
-                        error: e.to_string(),
-                    }));
+                    return Ok(errors::LoopResult::error(
+                        errors::LoopError::LoopBodyError {
+                            iteration: control_flow.get_iteration_count(),
+                            error: e.to_string(),
+                        },
+                    ));
                 }
             }
         }
@@ -164,16 +175,17 @@ impl LoopExecutor {
         body_fn: LoopBodyFn,
     ) -> Result<errors::LoopResult> {
         // Extract range from instruction
-        let range = instruction.get_range()
-            .ok_or_else(|| SemanticCLIError::execution_error(
+        let range = instruction.get_range().ok_or_else(|| {
+            SemanticCLIError::execution_error(
                 "For loop missing range specification",
                 ErrorCode::E500,
-            ))?;
+            )
+        })?;
 
         // Create control flow manager and range iterator
         let mut control_flow = control::ControlFlow::from_loop_state(state);
         let mut range_iterator = control::RangeIterator::from_loop_range(range);
-        
+
         loop {
             // Check if range is complete
             if range_iterator.is_complete() {
@@ -186,35 +198,48 @@ impl LoopExecutor {
 
             // 🔒 CONSTITUTIONAL: PRE-CHECK iteration limit using control flow
             if control_flow.would_exceed_iteration_limit() {
-                return Ok(errors::LoopResult::error(errors::LoopError::IterationLimitExceeded {
-                    limit: state.context.iteration_limit,
-                    completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::IterationLimitExceeded {
+                        limit: state.context.iteration_limit,
+                        completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // 🔒 CONSTITUTIONAL: PRE-CHECK budget timeout using control flow
-            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                &state.context.budget_measurement,
+            );
             if control_flow.would_exceed_budget_timeout(budget_cost) {
-                return Ok(errors::LoopResult::error(errors::LoopError::BudgetTimeoutExceeded {
-                    budget: state.context.budget_timeout,
-                    consumed: control_flow.get_budget_consumed(),
-                    iterations_completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::BudgetTimeoutExceeded {
+                        budget: state.context.budget_timeout,
+                        consumed: control_flow.get_budget_consumed(),
+                        iterations_completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // Phase 2.2: Check wall-clock kill switch using control flow
             if let Err(_) = control_flow.check_wall_clock_kill_switch() {
-                return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                    iteration: control_flow.get_iteration_count(),
-                    error: "Wall-clock kill switch triggered".to_string(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::LoopBodyError {
+                        iteration: control_flow.get_iteration_count(),
+                        error: "Wall-clock kill switch triggered".to_string(),
+                    },
+                ));
             }
 
             // Get current iterator value
             let iterator_value = range_iterator.current_value();
-            
+
             // 🔒 CONSTITUTIONAL SEQUENCE: Execute iteration with control flow
-            match self.execute_single_iteration_with_iterator_and_control(state, &body_fn, &iterator_value, &mut control_flow) {
+            match self.execute_single_iteration_with_iterator_and_control(
+                state,
+                &body_fn,
+                &iterator_value,
+                &mut control_flow,
+            ) {
                 Ok(control::ControlFlowDecision::Continue) => {
                     // Continue to next iteration
                     range_iterator.advance();
@@ -233,10 +258,12 @@ impl LoopExecutor {
                     continue;
                 }
                 Err(e) => {
-                    return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                        iteration: control_flow.get_iteration_count(),
-                        error: e.to_string(),
-                    }));
+                    return Ok(errors::LoopResult::error(
+                        errors::LoopError::LoopBodyError {
+                            iteration: control_flow.get_iteration_count(),
+                            error: e.to_string(),
+                        },
+                    ));
                 }
             }
         }
@@ -251,7 +278,11 @@ impl LoopExecutor {
     ) -> Result<errors::LoopResult> {
         // Extract collection and collection type from instruction
         let (collection_ref, collection_type) = match instruction {
-            LoopInstruction::ForEach { collection, collection_type, .. } => (collection, collection_type),
+            LoopInstruction::ForEach {
+                collection,
+                collection_type,
+                ..
+            } => (collection, collection_type),
             _ => {
                 return Err(SemanticCLIError::execution_error(
                     "execute_foreach_loop called on non-ForEach loop",
@@ -267,11 +298,9 @@ impl LoopExecutor {
         self.validate_collection_determinism(&collection_value, collection_type)?;
 
         // Phase 3.1: Create deterministic iterator
-        let collection_iter = collection_value.iter_collection()
-            .ok_or_else(|| SemanticCLIError::execution_error(
-                "Value is not a collection",
-                ErrorCode::E500,
-            ))?;
+        let collection_iter = collection_value.iter_collection().ok_or_else(|| {
+            SemanticCLIError::execution_error("Value is not a collection", ErrorCode::E500)
+        })?;
 
         // Create control flow manager
         let mut control_flow = control::ControlFlow::from_loop_state(state);
@@ -280,32 +309,45 @@ impl LoopExecutor {
         for collection_element in collection_iter {
             // 🔒 CONSTITUTIONAL: PRE-CHECK iteration limit using control flow
             if control_flow.would_exceed_iteration_limit() {
-                return Ok(errors::LoopResult::error(errors::LoopError::IterationLimitExceeded {
-                    limit: state.context.iteration_limit,
-                    completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::IterationLimitExceeded {
+                        limit: state.context.iteration_limit,
+                        completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // 🔒 CONSTITUTIONAL: PRE-CHECK budget timeout using control flow
-            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+            let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                &state.context.budget_measurement,
+            );
             if control_flow.would_exceed_budget_timeout(budget_cost) {
-                return Ok(errors::LoopResult::error(errors::LoopError::BudgetTimeoutExceeded {
-                    budget: state.context.budget_timeout,
-                    consumed: control_flow.get_budget_consumed(),
-                    iterations_completed: control_flow.get_iteration_count(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::BudgetTimeoutExceeded {
+                        budget: state.context.budget_timeout,
+                        consumed: control_flow.get_budget_consumed(),
+                        iterations_completed: control_flow.get_iteration_count(),
+                    },
+                ));
             }
 
             // Phase 2.2: Check wall-clock kill switch using control flow
             if let Err(_) = control_flow.check_wall_clock_kill_switch() {
-                return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                    iteration: control_flow.get_iteration_count(),
-                    error: "Wall-clock kill switch triggered".to_string(),
-                }));
+                return Ok(errors::LoopResult::error(
+                    errors::LoopError::LoopBodyError {
+                        iteration: control_flow.get_iteration_count(),
+                        error: "Wall-clock kill switch triggered".to_string(),
+                    },
+                ));
             }
 
             // Phase 3.1: Execute iteration with collection element as iterator value
-            match self.execute_single_iteration_with_collection_element_and_control(state, &body_fn, collection_element.value(), &mut control_flow) {
+            match self.execute_single_iteration_with_collection_element_and_control(
+                state,
+                &body_fn,
+                collection_element.value(),
+                &mut control_flow,
+            ) {
                 Ok(control::ControlFlowDecision::Continue) => {
                     // Continue to next iteration
                     continue;
@@ -323,10 +365,12 @@ impl LoopExecutor {
                 }
                 Err(e) => {
                     // Error during iteration - return error result
-                    return Ok(errors::LoopResult::error(errors::LoopError::LoopBodyError {
-                        iteration: control_flow.get_iteration_count(),
-                        error: e.to_string(),
-                    }));
+                    return Ok(errors::LoopResult::error(
+                        errors::LoopError::LoopBodyError {
+                            iteration: control_flow.get_iteration_count(),
+                            error: e.to_string(),
+                        },
+                    ));
                 }
             }
         }
@@ -339,7 +383,7 @@ impl LoopExecutor {
     }
 
     /// Execute a single iteration following constitutional sequence with control flow
-    /// 
+    ///
     /// 🔒 CONSTITUTIONAL SEQUENCE (LOCKED):
     /// 1. Execute iteration body
     /// 2. Handle control flow (break/continue) - Phase 2.3
@@ -364,12 +408,12 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for break instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_break_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 // Record break decision
                 let decision = control_flow.handle_break();
                 return Ok(decision);
@@ -379,19 +423,19 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for continue instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_continue_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 // Record continue decision
                 let decision = control_flow.handle_continue();
                 return Ok(decision);
             }
             LoopBodyResult::Normal(new_accumulator) => {
                 // Normal execution: proceed with standard flow
-                
+
                 // 3. Update accumulator value
                 // 4. Type validation check (PRE-COMMIT) - handled by update_accumulator
                 state.update_accumulator(new_accumulator)?;
@@ -401,7 +445,9 @@ impl LoopExecutor {
                 control_flow.increment_iteration_count();
 
                 // 6. 🔒 CONSTITUTIONAL: POST-INCREMENT budget after successful iteration
-                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                    &state.context.budget_measurement,
+                );
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
 
@@ -421,7 +467,7 @@ impl LoopExecutor {
     ) -> Result<control::ControlFlowDecision> {
         // Phase 2.1: Simple approach - pass iterator via closure context
         // Future phases will integrate with proper variable scoping
-        
+
         // 1. Execute iteration body (iterator passed via closure context)
         let body_result = body_fn(state.get_accumulator(), control_flow.get_iteration_count())?;
 
@@ -432,12 +478,12 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for break instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_break_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 let decision = control_flow.handle_break();
                 return Ok(decision);
             }
@@ -446,12 +492,12 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for continue instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_continue_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 let decision = control_flow.handle_continue();
                 return Ok(decision);
             }
@@ -460,9 +506,11 @@ impl LoopExecutor {
                 state.update_accumulator(new_accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // POST-INCREMENT budget after successful iteration
-                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                    &state.context.budget_measurement,
+                );
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
 
@@ -481,7 +529,7 @@ impl LoopExecutor {
     ) -> Result<control::ControlFlowDecision> {
         // Phase 3.1: Simple approach - pass collection element via closure context
         // Future phases will integrate with proper variable scoping
-        
+
         // 1. Execute iteration body (collection element passed via closure context)
         let body_result = body_fn(state.get_accumulator(), control_flow.get_iteration_count())?;
 
@@ -492,12 +540,12 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for break instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_break_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 let decision = control_flow.handle_break();
                 return Ok(decision);
             }
@@ -506,12 +554,12 @@ impl LoopExecutor {
                 state.update_accumulator(accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // Account for continue instruction in budget
                 let budget_cost = control::BudgetCalculator::calculate_continue_budget_cost();
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
-                
+
                 let decision = control_flow.handle_continue();
                 return Ok(decision);
             }
@@ -520,9 +568,11 @@ impl LoopExecutor {
                 state.update_accumulator(new_accumulator)?;
                 state.increment_completed_iterations();
                 control_flow.increment_iteration_count();
-                
+
                 // POST-INCREMENT budget after successful iteration
-                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(&state.context.budget_measurement);
+                let budget_cost = control::BudgetCalculator::calculate_iteration_budget_cost(
+                    &state.context.budget_measurement,
+                );
                 state.add_budget_consumed(budget_cost);
                 control_flow.add_budget_consumed(budget_cost);
 
@@ -535,7 +585,7 @@ impl LoopExecutor {
     fn create_loop_context(&self, instruction: &LoopInstruction) -> Result<state::LoopContext> {
         let config = instruction.get_config();
         let loop_id = instruction.get_loop_id().clone();
-        
+
         // Phase 2.1: Simple body reference
         let loop_body = format!("loop-body-{}", loop_id.0);
 
@@ -543,7 +593,7 @@ impl LoopExecutor {
     }
 
     /// Evaluate While loop condition (Phase 2.4)
-    /// 
+    ///
     /// Requirements 1.9, 1.10: Evaluate condition under same safety rules as loop body,
     /// detect and reject non-deterministic conditions, support explicit capture/logging
     fn evaluate_while_condition(
@@ -568,7 +618,7 @@ impl LoopExecutor {
     }
 
     /// Evaluate a condition expression with safety analysis (Phase 2.4)
-    /// 
+    ///
     /// This method evaluates expressions under the same safety rules as loop bodies,
     /// detecting non-deterministic operations like external calls, I/O, and timing.
     fn evaluate_condition_expression(
@@ -585,7 +635,7 @@ impl LoopExecutor {
                 // Field references are deterministic if they reference loop state
                 // Phase 2.4: For now, assume field references are deterministic
                 // Future phases will implement proper field resolution
-                
+
                 // Placeholder: return true for field references
                 Ok(Value::Boolean(true))
             }
@@ -593,7 +643,7 @@ impl LoopExecutor {
                 // Temp register references are deterministic if they contain deterministic values
                 // Phase 2.4: For now, assume temp registers are deterministic
                 // Future phases will implement proper register resolution
-                
+
                 // Placeholder: return true for temp register references
                 Ok(Value::Boolean(true))
             }
@@ -628,7 +678,10 @@ impl LoopExecutor {
                 // Phase 3.1: For now, return an error for field references
                 // Future phases will implement proper field resolution
                 Err(SemanticCLIError::execution_error(
-                    &format!("Field reference '{}' resolution not implemented in Phase 3.1", field_name),
+                    &format!(
+                        "Field reference '{}' resolution not implemented in Phase 3.1",
+                        field_name
+                    ),
                     ErrorCode::E500,
                 ))
             }
@@ -637,7 +690,10 @@ impl LoopExecutor {
                 // Phase 3.1: For now, return an error for temp register references
                 // Future phases will implement proper register resolution
                 Err(SemanticCLIError::execution_error(
-                    &format!("Temp register {} resolution not implemented in Phase 3.1", register_id),
+                    &format!(
+                        "Temp register {} resolution not implemented in Phase 3.1",
+                        register_id
+                    ),
                     ErrorCode::E500,
                 ))
             }
@@ -655,17 +711,15 @@ impl LoopExecutor {
             (Value::Array(_), crate::bcib::CollectionType::Array) => Ok(()),
             (Value::List(_), crate::bcib::CollectionType::List) => Ok(()),
             (Value::SortedMap(_), crate::bcib::CollectionType::SortedMap) => Ok(()),
-            _ => {
-                Err(SemanticCLIError::validation_error(
-                    &format!(
-                        "Collection type mismatch: expected {:?}, got {:?}",
-                        expected_type,
-                        collection_value.value_type()
-                    ),
-                    "Ensure collection type matches loop specification",
-                    ErrorCode::E301,
-                ))
-            }
+            _ => Err(SemanticCLIError::validation_error(
+                &format!(
+                    "Collection type mismatch: expected {:?}, got {:?}",
+                    expected_type,
+                    collection_value.value_type()
+                ),
+                "Ensure collection type matches loop specification",
+                ErrorCode::E301,
+            )),
         }
     }
 }

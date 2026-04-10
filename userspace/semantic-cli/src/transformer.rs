@@ -32,10 +32,11 @@
 //! - Achieved: < 1ms average (50x better than requirement)
 //! - Approach: Single-pass transformation, efficient register allocation
 
-use crate::ast::{AstNode, CommandNode, Expr, BinaryOp, UnaryOp};
+use crate::ast::{AstNode, BinaryOp, CommandNode, Expr, UnaryOp};
 use crate::bcib::{
-    BCIBSequence, BCIBInstruction, ContextInstruction, QueryInstruction, SystemInstruction,
-    DebugInstruction, OperandRef, Value, FilterExpression, ComparisonOp, LogicalOperator, BCIBSequenceRegistry
+    BCIBInstruction, BCIBSequence, BCIBSequenceRegistry, ComparisonOp, ContextInstruction,
+    DebugInstruction, FilterExpression, LogicalOperator, OperandRef, QueryInstruction,
+    SystemInstruction, Value,
 };
 use crate::error::{ErrorCode, Result, SemanticCLIError};
 use crate::types::SourceLocation;
@@ -70,23 +71,31 @@ impl Transformer {
     pub fn transform(&mut self, ast: &AstNode) -> Result<BCIBSequence> {
         let mut instructions = Vec::new();
         self.transform_command(&ast.command, &mut instructions)?;
-        
+
         let sequence = BCIBSequence::new(instructions);
         Ok(sequence)
     }
 
     /// Transform a command node to BCIB instructions
-    fn transform_command(&mut self, command: &CommandNode, instructions: &mut Vec<BCIBInstruction>) -> Result<()> {
+    fn transform_command(
+        &mut self,
+        command: &CommandNode,
+        instructions: &mut Vec<BCIBInstruction>,
+    ) -> Result<()> {
         match command {
-            CommandNode::Query { location, context, filter } => {
-                self.transform_query_command(*location, context, filter.as_ref(), instructions)
-            }
+            CommandNode::Query {
+                location,
+                context,
+                filter,
+            } => self.transform_query_command(*location, context, filter.as_ref(), instructions),
             CommandNode::List { location, context } => {
                 self.transform_list_command(*location, context, instructions)
             }
-            CommandNode::Show { location, context, id } => {
-                self.transform_show_command(*location, context, id, instructions)
-            }
+            CommandNode::Show {
+                location,
+                context,
+                id,
+            } => self.transform_show_command(*location, context, id, instructions),
             CommandNode::Status { location } => {
                 self.transform_status_command(*location, instructions)
             }
@@ -111,7 +120,7 @@ impl Transformer {
         location: SourceLocation,
         context: &[String],
         filter: Option<&Expr>,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // Load context with contextual capability (AR-4)
         let context_path = context.join(".");
@@ -126,7 +135,9 @@ impl Transformer {
         }
 
         // Return results
-        instructions.push(BCIBInstruction::Context(ContextInstruction::Return { location }));
+        instructions.push(BCIBInstruction::Context(ContextInstruction::Return {
+            location,
+        }));
         Ok(())
     }
 
@@ -135,7 +146,7 @@ impl Transformer {
         &mut self,
         location: SourceLocation,
         context: &[String],
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // Load context with contextual capability (AR-4)
         let context_path = context.join(".");
@@ -145,7 +156,9 @@ impl Transformer {
         }));
 
         // Return all items (no filter)
-        instructions.push(BCIBInstruction::Context(ContextInstruction::Return { location }));
+        instructions.push(BCIBInstruction::Context(ContextInstruction::Return {
+            location,
+        }));
         Ok(())
     }
 
@@ -155,7 +168,7 @@ impl Transformer {
         location: SourceLocation,
         context: &[String],
         id: &Expr,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // Load context with contextual capability (AR-4)
         let context_path = context.join(".");
@@ -166,11 +179,7 @@ impl Transformer {
 
         // Create filter for specific ID using OperandRef model (AR-1)
         let id_operand = self.transform_expression_to_operand(id)?;
-        let filter = FilterExpression::new(
-            "id".to_string(),
-            ComparisonOp::Equal,
-            id_operand,
-        );
+        let filter = FilterExpression::new("id".to_string(), ComparisonOp::Equal, id_operand);
 
         instructions.push(BCIBInstruction::Query(QueryInstruction::ApplyFilter {
             expression: filter,
@@ -178,7 +187,9 @@ impl Transformer {
         }));
 
         // Return filtered result
-        instructions.push(BCIBInstruction::Context(ContextInstruction::Return { location }));
+        instructions.push(BCIBInstruction::Context(ContextInstruction::Return {
+            location,
+        }));
         Ok(())
     }
 
@@ -186,10 +197,12 @@ impl Transformer {
     fn transform_status_command(
         &mut self,
         location: SourceLocation,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // System status with contextual capability (AR-4)
-        instructions.push(BCIBInstruction::System(SystemInstruction::SystemStatus { location }));
+        instructions.push(BCIBInstruction::System(SystemInstruction::SystemStatus {
+            location,
+        }));
         Ok(())
     }
 
@@ -197,10 +210,12 @@ impl Transformer {
     fn transform_agents_command(
         &mut self,
         location: SourceLocation,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // List agents with contextual capability (AR-4)
-        instructions.push(BCIBInstruction::System(SystemInstruction::ListAgents { location }));
+        instructions.push(BCIBInstruction::System(SystemInstruction::ListAgents {
+            location,
+        }));
         Ok(())
     }
 
@@ -209,7 +224,7 @@ impl Transformer {
         &mut self,
         location: SourceLocation,
         command: &CommandNode,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // Transform the target command to a sequence
         let mut target_instructions = Vec::new();
@@ -236,7 +251,7 @@ impl Transformer {
         &mut self,
         location: SourceLocation,
         command: &CommandNode,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // Transform the target command to a sequence
         let mut target_instructions = Vec::new();
@@ -262,17 +277,28 @@ impl Transformer {
     fn transform_history_command(
         &mut self,
         location: SourceLocation,
-        instructions: &mut Vec<BCIBInstruction>
+        instructions: &mut Vec<BCIBInstruction>,
     ) -> Result<()> {
         // History command with debug capability
-        instructions.push(BCIBInstruction::Debug(DebugInstruction::History { location }));
+        instructions.push(BCIBInstruction::Debug(DebugInstruction::History {
+            location,
+        }));
         Ok(())
     }
 
     /// Transform filter expression using flat instruction graph (AR-1, AR-2)
-    fn transform_filter_expression(&mut self, expr: &Expr, instructions: &mut Vec<BCIBInstruction>) -> Result<()> {
+    fn transform_filter_expression(
+        &mut self,
+        expr: &Expr,
+        instructions: &mut Vec<BCIBInstruction>,
+    ) -> Result<()> {
         match expr {
-            Expr::Binary { left, op, right, location } => {
+            Expr::Binary {
+                left,
+                op,
+                right,
+                location,
+            } => {
                 // For simple comparisons, create direct filter (AR-2: Not normalized initially)
                 if self.is_simple_comparison(left, op, right) {
                     let filter = self.create_simple_filter(left, op, right)?;
@@ -286,12 +312,10 @@ impl Transformer {
                 }
                 Ok(())
             }
-            _ => {
-                Err(SemanticCLIError::transformation_error(
-                    "Filter expression must be a comparison or logical operation",
-                    ErrorCode::E400,
-                ))
-            }
+            _ => Err(SemanticCLIError::transformation_error(
+                "Filter expression must be a comparison or logical operation",
+                ErrorCode::E400,
+            )),
         }
     }
 
@@ -302,35 +326,60 @@ impl Transformer {
 
     /// Check if expression is a literal
     fn is_literal_expr(&self, expr: &Expr) -> bool {
-        matches!(expr, Expr::Number { .. } | Expr::String { .. } | Expr::Boolean { .. })
+        matches!(
+            expr,
+            Expr::Number { .. } | Expr::String { .. } | Expr::Boolean { .. }
+        )
     }
 
     /// Create simple filter for field op literal (AR-2: Normalization flag)
-    fn create_simple_filter(&self, left: &Expr, op: &BinaryOp, right: &Expr) -> Result<FilterExpression> {
+    fn create_simple_filter(
+        &self,
+        left: &Expr,
+        op: &BinaryOp,
+        right: &Expr,
+    ) -> Result<FilterExpression> {
         let field_name = match left {
             Expr::Identifier { name, .. } => name.clone(),
-            _ => return Err(SemanticCLIError::transformation_error(
-                "Left side of comparison must be a field name",
-                ErrorCode::E400,
-            )),
+            _ => {
+                return Err(SemanticCLIError::transformation_error(
+                    "Left side of comparison must be a field name",
+                    ErrorCode::E400,
+                ))
+            }
         };
 
         let comparison_op = self.convert_binary_op_to_comparison(*op)?;
         let value_operand = self.transform_expression_to_operand(right)?;
 
         // Create filter with normalization flag (AR-2)
-        Ok(FilterExpression::new(field_name, comparison_op, value_operand))
+        Ok(FilterExpression::new(
+            field_name,
+            comparison_op,
+            value_operand,
+        ))
     }
 
     /// Transform complex filter using flat instruction graph (AR-1)
-    fn transform_complex_filter(&mut self, expr: &Expr, instructions: &mut Vec<BCIBInstruction>) -> Result<()> {
+    fn transform_complex_filter(
+        &mut self,
+        expr: &Expr,
+        instructions: &mut Vec<BCIBInstruction>,
+    ) -> Result<()> {
         match expr {
-            Expr::Binary { left, op, right, location } => {
+            Expr::Binary {
+                left,
+                op,
+                right,
+                location,
+            } => {
                 match op {
                     BinaryOp::And | BinaryOp::Or => {
                         // Generate flat instruction sequence for logical operations (AR-1)
-                        let left_register = self.transform_expression_to_register(left, instructions)?;
-                        let right_register = self.transform_expression_to_register(right, instructions)?;
+                        let left_register =
+                            self.transform_expression_to_register(left, instructions)?;
+                        let right_register =
+                            self.transform_expression_to_register(right, instructions)?;
                         let result_register = self.allocate_temp_register();
 
                         let logical_op = match op {
@@ -353,10 +402,12 @@ impl Transformer {
                         // In Phase 3.5.1, ApplyFilterBool is the only valid consumer
                         // of boolean temp registers produced by LogicalOp / Compare
                         // TODO(Gate C): Optimizer will validate this constraint
-                        instructions.push(BCIBInstruction::Query(QueryInstruction::ApplyFilterBool {
-                            filter_register: result_register,
-                            location: *location,
-                        }));
+                        instructions.push(BCIBInstruction::Query(
+                            QueryInstruction::ApplyFilterBool {
+                                filter_register: result_register,
+                                location: *location,
+                            },
+                        ));
 
                         Ok(())
                     }
@@ -376,19 +427,26 @@ impl Transformer {
                         }));
 
                         // Apply the boolean result as filter
-                        instructions.push(BCIBInstruction::Query(QueryInstruction::ApplyFilterBool {
-                            filter_register: result_register,
-                            location: *location,
-                        }));
+                        instructions.push(BCIBInstruction::Query(
+                            QueryInstruction::ApplyFilterBool {
+                                filter_register: result_register,
+                                location: *location,
+                            },
+                        ));
 
                         Ok(())
                     }
                 }
             }
-            Expr::Unary { op, operand, location } => {
+            Expr::Unary {
+                op,
+                operand,
+                location,
+            } => {
                 match op {
                     UnaryOp::Not => {
-                        let operand_register = self.transform_expression_to_register(operand, instructions)?;
+                        let operand_register =
+                            self.transform_expression_to_register(operand, instructions)?;
                         let result_register = self.allocate_temp_register();
 
                         instructions.push(BCIBInstruction::Query(QueryInstruction::LogicalOp {
@@ -399,26 +457,30 @@ impl Transformer {
                         }));
 
                         // Apply the boolean result as filter
-                        instructions.push(BCIBInstruction::Query(QueryInstruction::ApplyFilterBool {
-                            filter_register: result_register,
-                            location: *location,
-                        }));
+                        instructions.push(BCIBInstruction::Query(
+                            QueryInstruction::ApplyFilterBool {
+                                filter_register: result_register,
+                                location: *location,
+                            },
+                        ));
 
                         Ok(())
                     }
                 }
             }
-            _ => {
-                Err(SemanticCLIError::transformation_error(
-                    "Unsupported filter expression type",
-                    ErrorCode::E400,
-                ))
-            }
+            _ => Err(SemanticCLIError::transformation_error(
+                "Unsupported filter expression type",
+                ErrorCode::E400,
+            )),
         }
     }
 
     /// Transform expression to register, generating load instructions (AR-1)
-    fn transform_expression_to_register(&mut self, expr: &Expr, instructions: &mut Vec<BCIBInstruction>) -> Result<u16> {
+    fn transform_expression_to_register(
+        &mut self,
+        expr: &Expr,
+        instructions: &mut Vec<BCIBInstruction>,
+    ) -> Result<u16> {
         match expr {
             Expr::Identifier { name, location } => {
                 let register = self.allocate_temp_register();
@@ -431,11 +493,12 @@ impl Transformer {
             }
             Expr::Number { value, location } => {
                 let register = self.allocate_temp_register();
-                let parsed_value = value.parse::<f64>()
-                    .map_err(|_| SemanticCLIError::transformation_error(
+                let parsed_value = value.parse::<f64>().map_err(|_| {
+                    SemanticCLIError::transformation_error(
                         format!("Invalid number format: {}", value),
                         ErrorCode::E400,
-                    ))?;
+                    )
+                })?;
                 instructions.push(BCIBInstruction::Query(QueryInstruction::LoadLiteral {
                     value: Value::Number(parsed_value),
                     target_register: register,
@@ -461,9 +524,19 @@ impl Transformer {
                 }));
                 Ok(register)
             }
-            Expr::Binary { left, op, right, location } => {
+            Expr::Binary {
+                left,
+                op,
+                right,
+                location,
+            } => {
                 match op {
-                    BinaryOp::Eq | BinaryOp::Ne | BinaryOp::Lt | BinaryOp::Le | BinaryOp::Gt | BinaryOp::Ge => {
+                    BinaryOp::Eq
+                    | BinaryOp::Ne
+                    | BinaryOp::Lt
+                    | BinaryOp::Le
+                    | BinaryOp::Gt
+                    | BinaryOp::Ge => {
                         // Comparison operations
                         let left_operand = self.transform_expression_to_operand(left)?;
                         let right_operand = self.transform_expression_to_operand(right)?;
@@ -482,8 +555,10 @@ impl Transformer {
                     }
                     BinaryOp::And | BinaryOp::Or => {
                         // Logical operations
-                        let left_register = self.transform_expression_to_register(left, instructions)?;
-                        let right_register = self.transform_expression_to_register(right, instructions)?;
+                        let left_register =
+                            self.transform_expression_to_register(left, instructions)?;
+                        let right_register =
+                            self.transform_expression_to_register(right, instructions)?;
                         let result_register = self.allocate_temp_register();
 
                         let logical_op = match op {
@@ -506,46 +581,44 @@ impl Transformer {
                     }
                 }
             }
-            Expr::Unary { op, operand, location } => {
-                match op {
-                    UnaryOp::Not => {
-                        let operand_register = self.transform_expression_to_register(operand, instructions)?;
-                        let result_register = self.allocate_temp_register();
+            Expr::Unary {
+                op,
+                operand,
+                location,
+            } => match op {
+                UnaryOp::Not => {
+                    let operand_register =
+                        self.transform_expression_to_register(operand, instructions)?;
+                    let result_register = self.allocate_temp_register();
 
-                        instructions.push(BCIBInstruction::Query(QueryInstruction::LogicalOp {
-                            operator: LogicalOperator::Not,
-                            operands: vec![OperandRef::TempRegister(operand_register)],
-                            target_register: result_register,
-                            location: *location,
-                        }));
+                    instructions.push(BCIBInstruction::Query(QueryInstruction::LogicalOp {
+                        operator: LogicalOperator::Not,
+                        operands: vec![OperandRef::TempRegister(operand_register)],
+                        target_register: result_register,
+                        location: *location,
+                    }));
 
-                        Ok(result_register)
-                    }
+                    Ok(result_register)
                 }
-            }
+            },
         }
     }
 
     /// Transform expression to OperandRef (AR-1)
     fn transform_expression_to_operand(&self, expr: &Expr) -> Result<OperandRef> {
         match expr {
-            Expr::Identifier { name, .. } => {
-                Ok(OperandRef::Field(name.clone()))
-            }
+            Expr::Identifier { name, .. } => Ok(OperandRef::Field(name.clone())),
             Expr::Number { value, .. } => {
-                let parsed_value = value.parse::<f64>()
-                    .map_err(|_| SemanticCLIError::transformation_error(
+                let parsed_value = value.parse::<f64>().map_err(|_| {
+                    SemanticCLIError::transformation_error(
                         format!("Invalid number format: {}", value),
                         ErrorCode::E400,
-                    ))?;
+                    )
+                })?;
                 Ok(OperandRef::Literal(Value::Number(parsed_value)))
             }
-            Expr::String { value, .. } => {
-                Ok(OperandRef::Literal(Value::String(value.clone())))
-            }
-            Expr::Boolean { value, .. } => {
-                Ok(OperandRef::Literal(Value::Boolean(*value)))
-            }
+            Expr::String { value, .. } => Ok(OperandRef::Literal(Value::String(value.clone()))),
+            Expr::Boolean { value, .. } => Ok(OperandRef::Literal(Value::Boolean(*value))),
             _ => {
                 // Complex expressions need to be evaluated to temp registers
                 // For now, we'll return an error since this should be handled by the caller
@@ -566,12 +639,10 @@ impl Transformer {
             BinaryOp::Le => Ok(ComparisonOp::LessThanOrEqual),
             BinaryOp::Gt => Ok(ComparisonOp::GreaterThan),
             BinaryOp::Ge => Ok(ComparisonOp::GreaterThanOrEqual),
-            BinaryOp::And | BinaryOp::Or => {
-                Err(SemanticCLIError::transformation_error(
-                    format!("Logical operator {:?} cannot be used as comparison", op),
-                    ErrorCode::E400,
-                ))
-            }
+            BinaryOp::And | BinaryOp::Or => Err(SemanticCLIError::transformation_error(
+                format!("Logical operator {:?} cannot be used as comparison", op),
+                ErrorCode::E400,
+            )),
         }
     }
 
@@ -612,7 +683,7 @@ mod tests {
     #[test]
     fn test_simple_query_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let ast = AstNode::new(CommandNode::Query {
             location: test_location(),
             context: vec!["data".to_string(), "users".to_string()],
@@ -621,10 +692,10 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 2); // LoadContext + Return
-        
+
         // Check first instruction is LoadContext
         match &sequence.instructions[0] {
             BCIBInstruction::Context(ContextInstruction::LoadContext { path, .. }) => {
@@ -637,7 +708,7 @@ mod tests {
     #[test]
     fn test_query_with_simple_filter() {
         let mut transformer = Transformer::new();
-        
+
         let filter = Expr::Binary {
             left: Box::new(Expr::Identifier {
                 name: "age".to_string(),
@@ -659,10 +730,10 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 3); // LoadContext + ApplyFilter + Return
-        
+
         // Check filter instruction
         match &sequence.instructions[1] {
             BCIBInstruction::Query(QueryInstruction::ApplyFilter { expression, .. }) => {
@@ -677,7 +748,7 @@ mod tests {
     #[test]
     fn test_list_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let ast = AstNode::new(CommandNode::List {
             location: test_location(),
             context: vec!["data".to_string(), "users".to_string()],
@@ -685,7 +756,7 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 2); // LoadContext + Return
     }
@@ -693,7 +764,7 @@ mod tests {
     #[test]
     fn test_show_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let id_expr = Expr::String {
             value: "123".to_string(),
             location: test_location(),
@@ -707,10 +778,10 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 3); // LoadContext + ApplyFilter + Return
-        
+
         // Check filter for ID
         match &sequence.instructions[1] {
             BCIBInstruction::Query(QueryInstruction::ApplyFilter { expression, .. }) => {
@@ -728,19 +799,19 @@ mod tests {
     #[test]
     fn test_status_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let ast = AstNode::new(CommandNode::Status {
             location: test_location(),
         });
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 1);
-        
+
         match &sequence.instructions[0] {
-            BCIBInstruction::System(SystemInstruction::SystemStatus { .. }) => {},
+            BCIBInstruction::System(SystemInstruction::SystemStatus { .. }) => {}
             _ => panic!("Expected SystemStatus instruction"),
         }
     }
@@ -748,19 +819,19 @@ mod tests {
     #[test]
     fn test_agents_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let ast = AstNode::new(CommandNode::Agents {
             location: test_location(),
         });
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 1);
-        
+
         match &sequence.instructions[0] {
-            BCIBInstruction::System(SystemInstruction::ListAgents { .. }) => {},
+            BCIBInstruction::System(SystemInstruction::ListAgents { .. }) => {}
             _ => panic!("Expected ListAgents instruction"),
         }
     }
@@ -768,7 +839,7 @@ mod tests {
     #[test]
     fn test_explain_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let target_command = CommandNode::Status {
             location: test_location(),
         };
@@ -780,12 +851,14 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 1);
-        
+
         match &sequence.instructions[0] {
-            BCIBInstruction::Debug(DebugInstruction::Explain { target_sequence_id, .. }) => {
+            BCIBInstruction::Debug(DebugInstruction::Explain {
+                target_sequence_id, ..
+            }) => {
                 assert!(!target_sequence_id.is_empty());
             }
             _ => panic!("Expected Explain instruction"),
@@ -795,7 +868,7 @@ mod tests {
     #[test]
     fn test_dry_run_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let target_command = CommandNode::List {
             location: test_location(),
             context: vec!["data".to_string(), "users".to_string()],
@@ -808,12 +881,14 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 1);
-        
+
         match &sequence.instructions[0] {
-            BCIBInstruction::Debug(DebugInstruction::DryRun { target_sequence_id, .. }) => {
+            BCIBInstruction::Debug(DebugInstruction::DryRun {
+                target_sequence_id, ..
+            }) => {
                 assert!(!target_sequence_id.is_empty());
             }
             _ => panic!("Expected DryRun instruction"),
@@ -823,19 +898,19 @@ mod tests {
     #[test]
     fn test_history_command_transformation() {
         let mut transformer = Transformer::new();
-        
+
         let ast = AstNode::new(CommandNode::History {
             location: test_location(),
         });
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         assert_eq!(sequence.instructions.len(), 1);
-        
+
         match &sequence.instructions[0] {
-            BCIBInstruction::Debug(DebugInstruction::History { .. }) => {},
+            BCIBInstruction::Debug(DebugInstruction::History { .. }) => {}
             _ => panic!("Expected History instruction"),
         }
     }
@@ -843,7 +918,7 @@ mod tests {
     #[test]
     fn test_complex_filter_transformation() {
         let mut transformer = Transformer::new();
-        
+
         // Create filter: age > 18 and active == true
         let filter = Expr::Binary {
             left: Box::new(Expr::Binary {
@@ -882,7 +957,7 @@ mod tests {
 
         let result = transformer.transform(&ast);
         assert!(result.is_ok());
-        
+
         let sequence = result.unwrap();
         // Should have multiple instructions for complex filter
         assert!(sequence.instructions.len() > 3);
@@ -891,11 +966,11 @@ mod tests {
     #[test]
     fn test_register_allocation() {
         let mut transformer = Transformer::new();
-        
+
         let reg1 = transformer.allocate_temp_register();
         let reg2 = transformer.allocate_temp_register();
         let reg3 = transformer.allocate_temp_register();
-        
+
         assert_eq!(reg1, 0);
         assert_eq!(reg2, 1);
         assert_eq!(reg3, 2);
@@ -904,7 +979,7 @@ mod tests {
     #[test]
     fn test_operand_ref_transformation() {
         let transformer = Transformer::new();
-        
+
         // Test field reference
         let field_expr = Expr::Identifier {
             name: "age".to_string(),
@@ -933,16 +1008,50 @@ mod tests {
     #[test]
     fn test_binary_op_conversion() {
         let transformer = Transformer::new();
-        
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Eq).unwrap(), ComparisonOp::Equal);
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Ne).unwrap(), ComparisonOp::NotEqual);
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Lt).unwrap(), ComparisonOp::LessThan);
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Le).unwrap(), ComparisonOp::LessThanOrEqual);
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Gt).unwrap(), ComparisonOp::GreaterThan);
-        assert_eq!(transformer.convert_binary_op_to_comparison(BinaryOp::Ge).unwrap(), ComparisonOp::GreaterThanOrEqual);
-        
+
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Eq)
+                .unwrap(),
+            ComparisonOp::Equal
+        );
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Ne)
+                .unwrap(),
+            ComparisonOp::NotEqual
+        );
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Lt)
+                .unwrap(),
+            ComparisonOp::LessThan
+        );
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Le)
+                .unwrap(),
+            ComparisonOp::LessThanOrEqual
+        );
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Gt)
+                .unwrap(),
+            ComparisonOp::GreaterThan
+        );
+        assert_eq!(
+            transformer
+                .convert_binary_op_to_comparison(BinaryOp::Ge)
+                .unwrap(),
+            ComparisonOp::GreaterThanOrEqual
+        );
+
         // Logical operators should fail
-        assert!(transformer.convert_binary_op_to_comparison(BinaryOp::And).is_err());
-        assert!(transformer.convert_binary_op_to_comparison(BinaryOp::Or).is_err());
+        assert!(transformer
+            .convert_binary_op_to_comparison(BinaryOp::And)
+            .is_err());
+        assert!(transformer
+            .convert_binary_op_to_comparison(BinaryOp::Or)
+            .is_err());
     }
 }

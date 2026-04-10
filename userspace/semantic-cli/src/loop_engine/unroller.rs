@@ -19,8 +19,8 @@
 //! 3. **Optimization Transparency**: Unrolling decisions don't affect fingerprinting
 //! 4. **Conservative Approach**: When in doubt, don't unroll (preserve correctness)
 
-use crate::bcib::{LoopInstruction, LoopType, Value, BCIBInstruction, BCIBSequence};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
+use crate::bcib::{BCIBInstruction, BCIBSequence, LoopInstruction, LoopType, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
 use std::collections::HashMap;
 
 /// Loop unrolling threshold - loops with fewer iterations are candidates for unrolling
@@ -125,7 +125,7 @@ impl LoopUnroller {
     }
 
     /// Analyze a loop instruction and determine if it should be unrolled
-    /// 
+    ///
     /// This is the main entry point for loop unrolling optimization.
     /// Returns UnrollResult indicating whether the loop was unrolled or not.
     pub fn analyze_loop(&mut self, loop_instruction: &LoopInstruction) -> Result<UnrollResult> {
@@ -207,11 +207,14 @@ impl LoopUnroller {
     }
 
     /// Determine the static iteration count for a loop instruction
-    /// 
+    ///
     /// Returns Some(count) if the iteration count can be determined at compile time,
     /// None otherwise. This implements Requirement 4.5 (skip unrolling when iteration
     /// count cannot be statically analyzed).
-    fn get_static_iteration_count(&self, loop_instruction: &LoopInstruction) -> Result<Option<u32>> {
+    fn get_static_iteration_count(
+        &self,
+        loop_instruction: &LoopInstruction,
+    ) -> Result<Option<u32>> {
         match loop_instruction {
             LoopInstruction::While { .. } => {
                 // While loops are never unrolled due to non-static iteration count
@@ -235,7 +238,8 @@ impl LoopUnroller {
                             Ok(None)
                         }
                     }
-                    crate::bcib::OperandRef::Field(_) | crate::bcib::OperandRef::TempRegister(_) => {
+                    crate::bcib::OperandRef::Field(_)
+                    | crate::bcib::OperandRef::TempRegister(_) => {
                         // Field references and temp registers have dynamic size
                         Ok(None)
                     }
@@ -245,7 +249,7 @@ impl LoopUnroller {
     }
 
     /// Unroll a loop body into sequential instructions
-    /// 
+    ///
     /// This method expands the loop body N times where N is the iteration count,
     /// preserving exact semantics including iteration order and side effects.
     /// Implements Requirements 4.2 and 4.3.
@@ -258,11 +262,8 @@ impl LoopUnroller {
 
         // Generate unrolled instructions for each iteration
         for iteration in 0..iteration_count {
-            let iteration_instructions = self.generate_iteration_instructions(
-                loop_instruction,
-                iteration,
-                iteration_count,
-            )?;
+            let iteration_instructions =
+                self.generate_iteration_instructions(loop_instruction, iteration, iteration_count)?;
             unrolled_instructions.extend(iteration_instructions);
         }
 
@@ -273,7 +274,7 @@ impl LoopUnroller {
     }
 
     /// Generate instructions for a single iteration of the unrolled loop
-    /// 
+    ///
     /// This method creates the instruction sequence for iteration N of the loop,
     /// handling iterator variable binding and accumulator state management.
     fn generate_iteration_instructions(
@@ -286,10 +287,14 @@ impl LoopUnroller {
 
         // Handle iterator variable binding based on loop type
         match loop_instruction {
-            LoopInstruction::For { range, iterator_var, .. } => {
+            LoopInstruction::For {
+                range,
+                iterator_var,
+                ..
+            } => {
                 // Calculate iterator value for this iteration
                 let iterator_value = range.start + (iteration as i64 * range.step);
-                
+
                 // Generate instruction to bind iterator variable
                 // In a full implementation, this would create a variable binding instruction
                 // For Phase 5.1, we create a placeholder comment instruction
@@ -298,16 +303,19 @@ impl LoopUnroller {
                     Value::Number(iterator_value as f64),
                 )?);
             }
-            LoopInstruction::ForEach { collection, iterator_var, .. } => {
+            LoopInstruction::ForEach {
+                collection,
+                iterator_var,
+                ..
+            } => {
                 // Extract collection element for this iteration
                 if let crate::bcib::OperandRef::Literal(collection_value) = collection {
                     let element_value = self.get_collection_element(collection_value, iteration)?;
-                    
+
                     // Generate instruction to bind iterator variable to collection element
-                    instructions.push(self.create_iterator_binding_instruction(
-                        iterator_var,
-                        element_value,
-                    )?);
+                    instructions.push(
+                        self.create_iterator_binding_instruction(iterator_var, element_value)?,
+                    );
                 } else {
                     return Err(SemanticCLIError::execution_error(
                         "ForEach unrolling requires literal collection",
@@ -327,16 +335,14 @@ impl LoopUnroller {
         // Generate loop body instructions
         // In Phase 5.1, we create a placeholder for the loop body
         // A full implementation would expand the actual loop body IR
-        instructions.push(self.create_loop_body_placeholder_instruction(
-            loop_instruction,
-            iteration,
-        )?);
+        instructions
+            .push(self.create_loop_body_placeholder_instruction(loop_instruction, iteration)?);
 
         Ok(instructions)
     }
 
     /// Create an iterator variable binding instruction
-    /// 
+    ///
     /// This is a placeholder implementation for Phase 5.1.
     /// A full implementation would create proper variable binding instructions.
     fn create_iterator_binding_instruction(
@@ -346,14 +352,16 @@ impl LoopUnroller {
     ) -> Result<BCIBInstruction> {
         // Phase 5.1: Create a debug instruction as placeholder
         // Future phases will implement proper variable binding
-        Ok(BCIBInstruction::Debug(crate::bcib::DebugInstruction::Explain {
-            target_sequence_id: format!("bind-{}-to-{:?}", iterator_var, value),
-            location: crate::types::SourceLocation::new(1, 1, 0),
-        }))
+        Ok(BCIBInstruction::Debug(
+            crate::bcib::DebugInstruction::Explain {
+                target_sequence_id: format!("bind-{}-to-{:?}", iterator_var, value),
+                location: crate::types::SourceLocation::new(1, 1, 0),
+            },
+        ))
     }
 
     /// Create a loop body placeholder instruction
-    /// 
+    ///
     /// This is a placeholder implementation for Phase 5.1.
     /// A full implementation would expand the actual loop body IR.
     fn create_loop_body_placeholder_instruction(
@@ -369,14 +377,16 @@ impl LoopUnroller {
 
         // Phase 5.1: Create a debug instruction as placeholder
         // Future phases will implement proper loop body expansion
-        Ok(BCIBInstruction::Debug(crate::bcib::DebugInstruction::Explain {
-            target_sequence_id: format!("unrolled-{}-iteration-{}", loop_id, iteration),
-            location: crate::types::SourceLocation::new(1, 1, 0),
-        }))
+        Ok(BCIBInstruction::Debug(
+            crate::bcib::DebugInstruction::Explain {
+                target_sequence_id: format!("unrolled-{}-iteration-{}", loop_id, iteration),
+                location: crate::types::SourceLocation::new(1, 1, 0),
+            },
+        ))
     }
 
     /// Get a collection element at the specified index
-    /// 
+    ///
     /// This method extracts the element at the given index from a collection value,
     /// maintaining deterministic iteration order.
     fn get_collection_element(&self, collection: &Value, index: u32) -> Result<Value> {
@@ -386,7 +396,11 @@ impl LoopUnroller {
                     Ok(arr[index as usize].clone())
                 } else {
                     Err(SemanticCLIError::execution_error(
-                        format!("Array index {} out of bounds (length: {})", index, arr.len()),
+                        format!(
+                            "Array index {} out of bounds (length: {})",
+                            index,
+                            arr.len()
+                        ),
                         ErrorCode::E500,
                     ))
                 }
@@ -396,7 +410,11 @@ impl LoopUnroller {
                     Ok(list[index as usize].clone())
                 } else {
                     Err(SemanticCLIError::execution_error(
-                        format!("List index {} out of bounds (length: {})", index, list.len()),
+                        format!(
+                            "List index {} out of bounds (length: {})",
+                            index,
+                            list.len()
+                        ),
                         ErrorCode::E500,
                     ))
                 }
@@ -431,7 +449,7 @@ impl LoopUnroller {
     }
 
     /// Check if a loop should be unrolled (without actually unrolling it)
-    /// 
+    ///
     /// This is a lightweight check that can be used for decision making
     /// without the overhead of generating the unrolled instructions.
     pub fn should_unroll(&self, loop_instruction: &LoopInstruction) -> Result<bool> {
@@ -489,7 +507,11 @@ impl std::fmt::Display for UnrollSkipReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UnrollSkipReason::IterationCountTooHigh { count, threshold } => {
-                write!(f, "Iteration count {} exceeds threshold {}", count, threshold)
+                write!(
+                    f,
+                    "Iteration count {} exceeds threshold {}",
+                    count, threshold
+                )
             }
             UnrollSkipReason::NonStaticIterationCount => {
                 write!(f, "Iteration count cannot be determined statically")
@@ -498,7 +520,10 @@ impl std::fmt::Display for UnrollSkipReason {
                 write!(f, "While loops are not supported for unrolling")
             }
             UnrollSkipReason::ForEachDynamicCollection => {
-                write!(f, "ForEach loops with dynamic collections cannot be unrolled")
+                write!(
+                    f,
+                    "ForEach loops with dynamic collections cannot be unrolled"
+                )
             }
             UnrollSkipReason::UnrollingDisabled => {
                 write!(f, "Loop unrolling is disabled in configuration")
@@ -510,7 +535,7 @@ impl std::fmt::Display for UnrollSkipReason {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopID, LoopConfig, LoopRange, ValueType};
+    use crate::bcib::{LoopConfig, LoopID, LoopRange, ValueType};
     use crate::types::SourceLocation;
 
     fn create_test_for_loop(start: i64, end: i64, step: i64) -> LoopInstruction {
@@ -554,7 +579,10 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::Unrolled { iteration_count, unrolled_sequence } => {
+            UnrollResult::Unrolled {
+                iteration_count,
+                unrolled_sequence,
+            } => {
                 assert_eq!(iteration_count, 3);
                 assert_eq!(unrolled_sequence.instructions.len(), 6); // 3 iterations * 2 instructions each
             }
@@ -578,15 +606,13 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::NotUnrolled { reason, .. } => {
-                match reason {
-                    UnrollSkipReason::IterationCountTooHigh { count, threshold } => {
-                        assert_eq!(count, 15);
-                        assert_eq!(threshold, 10);
-                    }
-                    _ => panic!("Expected IterationCountTooHigh but got: {}", reason),
+            UnrollResult::NotUnrolled { reason, .. } => match reason {
+                UnrollSkipReason::IterationCountTooHigh { count, threshold } => {
+                    assert_eq!(count, 15);
+                    assert_eq!(threshold, 10);
                 }
-            }
+                _ => panic!("Expected IterationCountTooHigh but got: {}", reason),
+            },
             UnrollResult::Unrolled { .. } => {
                 panic!("Expected no unrolling for large loop");
             }
@@ -640,7 +666,10 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::Unrolled { iteration_count, unrolled_sequence } => {
+            UnrollResult::Unrolled {
+                iteration_count,
+                unrolled_sequence,
+            } => {
                 assert_eq!(iteration_count, 3);
                 assert_eq!(unrolled_sequence.instructions.len(), 6); // 3 iterations * 2 instructions each
             }
@@ -785,12 +814,18 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::Unrolled { iteration_count, unrolled_sequence } => {
+            UnrollResult::Unrolled {
+                iteration_count,
+                unrolled_sequence,
+            } => {
                 assert_eq!(iteration_count, 0);
                 assert_eq!(unrolled_sequence.instructions.len(), 0); // No instructions for 0 iterations
             }
             UnrollResult::NotUnrolled { reason, .. } => {
-                panic!("Expected unrolling of zero-iteration loop but got: {}", reason);
+                panic!(
+                    "Expected unrolling of zero-iteration loop but got: {}",
+                    reason
+                );
             }
         }
     }
@@ -803,12 +838,18 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::Unrolled { iteration_count, unrolled_sequence } => {
+            UnrollResult::Unrolled {
+                iteration_count,
+                unrolled_sequence,
+            } => {
                 assert_eq!(iteration_count, 1);
                 assert_eq!(unrolled_sequence.instructions.len(), 2); // 1 iteration * 2 instructions
             }
             UnrollResult::NotUnrolled { reason, .. } => {
-                panic!("Expected unrolling of single-iteration loop but got: {}", reason);
+                panic!(
+                    "Expected unrolling of single-iteration loop but got: {}",
+                    reason
+                );
             }
         }
     }
@@ -826,15 +867,13 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::NotUnrolled { reason, .. } => {
-                match reason {
-                    UnrollSkipReason::IterationCountTooHigh { count, threshold } => {
-                        assert_eq!(count, 7);
-                        assert_eq!(threshold, 5);
-                    }
-                    _ => panic!("Expected IterationCountTooHigh but got: {}", reason),
+            UnrollResult::NotUnrolled { reason, .. } => match reason {
+                UnrollSkipReason::IterationCountTooHigh { count, threshold } => {
+                    assert_eq!(count, 7);
+                    assert_eq!(threshold, 5);
                 }
-            }
+                _ => panic!("Expected IterationCountTooHigh but got: {}", reason),
+            },
             UnrollResult::Unrolled { .. } => {
                 panic!("Expected no unrolling with custom threshold");
             }
@@ -849,12 +888,18 @@ mod tests {
         let result = unroller.analyze_loop(&loop_instruction).unwrap();
 
         match result {
-            UnrollResult::Unrolled { iteration_count, unrolled_sequence } => {
+            UnrollResult::Unrolled {
+                iteration_count,
+                unrolled_sequence,
+            } => {
                 assert_eq!(iteration_count, 3);
                 assert_eq!(unrolled_sequence.instructions.len(), 6); // 3 iterations * 2 instructions each
             }
             UnrollResult::NotUnrolled { reason, .. } => {
-                panic!("Expected unrolling of negative step loop but got: {}", reason);
+                panic!(
+                    "Expected unrolling of negative step loop but got: {}",
+                    reason
+                );
             }
         }
     }

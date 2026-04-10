@@ -7,7 +7,7 @@
 //! **ARCHITECTURAL RULE:**
 //! This module MUST NOT depend on higher-level Gate C components.
 //! Violations are considered architecture breaks.
-//! 
+//!
 //! Gate C implements semantic planning and submission without execution.
 //!
 //! ## Gate C Boundaries
@@ -57,10 +57,10 @@
 //! - `_ayken/steering/GATE_C_TEST_AND_LIMITS.md` (LOCK)
 
 // Core types and error definitions
-pub mod types;
+pub mod deterministic;
 pub mod error;
 pub mod limits;
-pub mod deterministic;  // DETERMINISM UTILITIES
+pub mod types; // DETERMINISM UTILITIES
 
 // Submission Bridge (Submit-Only)
 pub mod submission;
@@ -88,16 +88,16 @@ pub mod performance;
 
 // Constitutional CI Guards - Phase 4.0 Baseline Hardening
 #[cfg(test)]
-pub mod snapshot_tests;
-#[cfg(test)]
 pub mod complexity_budget_tests;
 #[cfg(test)]
 pub mod optimized_complexity_budget_tests;
+#[cfg(test)]
+pub mod snapshot_tests;
 
 // Re-exports for convenience
 pub use error::{GateCError, GateCResult};
-pub use types::*;
 pub use limits::*;
+pub use types::*;
 
 /// Gate C version
 pub const GATE_C_VERSION: &str = "3.5.0";

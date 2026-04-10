@@ -48,11 +48,11 @@ pub enum ParallelismError {
     SafetyViolation {
         /// Identifier of the IR block that violated safety constraints
         block_id: BlockId,
-        
+
         /// Human-readable explanation of the safety violation
         reason: String,
     },
-    
+
     /// Runtime error during parallel execution.
     ///
     /// This error occurs when:
@@ -65,21 +65,21 @@ pub enum ParallelismError {
     ExecutionError {
         /// Identifier of the worker that encountered the error (if applicable)
         worker_id: Option<usize>,
-        
+
         /// Starting index of the partition being processed when error occurred
         partition_start: Option<usize>,
-        
+
         /// Ending index of the partition being processed when error occurred
         partition_end: Option<usize>,
-        
+
         /// Detailed error message
         message: String,
-        
+
         /// Optional source error for error chaining
         #[allow(dead_code)]
         source: Option<Box<dyn Error + Send + Sync>>,
     },
-    
+
     /// Verification mode detected that parallel execution produced different results
     /// than sequential execution.
     ///
@@ -92,17 +92,17 @@ pub enum ParallelismError {
     DeterminismViolation {
         /// Result produced by parallel execution
         parallel_result: Value,
-        
+
         /// Result produced by sequential execution (expected result)
         sequential_result: Value,
-        
+
         /// Input value that produced the mismatch
         input: Value,
-        
+
         /// Additional diagnostic information
         diagnostics: String,
     },
-    
+
     /// Parallelism provides insufficient performance benefit.
     ///
     /// This error occurs when:
@@ -114,14 +114,14 @@ pub enum ParallelismError {
     PerformanceDegradation {
         /// Measured net speedup (including all overhead)
         net_speedup: f64,
-        
+
         /// Ratio of ordering overhead to parallel execution time
         overhead_ratio: f64,
-        
+
         /// Human-readable explanation of the performance issue
         reason: String,
     },
-    
+
     /// Thread pool initialization failure.
     ///
     /// This error occurs when:
@@ -136,7 +136,7 @@ pub enum ParallelismError {
         /// Human-readable explanation of the initialization failure
         reason: String,
     },
-    
+
     /// Constitutional principle violation (FATAL).
     ///
     /// This error occurs when:
@@ -151,11 +151,11 @@ pub enum ParallelismError {
     ConstitutionalViolation {
         /// The constitutional principle that was violated
         principle: String,
-        
+
         /// Detailed description of the violation
         violation: String,
     },
-    
+
     /// Security boundary violation.
     ///
     /// This error occurs when:
@@ -224,12 +224,11 @@ impl fmt::Display for ParallelismError {
             ParallelismError::ThreadPoolInitialization { reason } => {
                 write!(f, "Thread pool initialization failed: {}", reason)
             }
-            ParallelismError::ConstitutionalViolation { principle, violation } => {
-                write!(
-                    f,
-                    "CONSTITUTIONAL VIOLATION: {} - {}",
-                    principle, violation
-                )
+            ParallelismError::ConstitutionalViolation {
+                principle,
+                violation,
+            } => {
+                write!(f, "CONSTITUTIONAL VIOLATION: {} - {}", principle, violation)
             }
             ParallelismError::SecurityError { message } => {
                 write!(f, "Security error: {}", message)
@@ -258,10 +257,11 @@ impl ParallelismError {
     pub fn unsafe_block(block_id: BlockId) -> Self {
         ParallelismError::SafetyViolation {
             block_id,
-            reason: "IR block is marked as ParallelSafety::Unsafe and cannot be parallelized".to_string(),
+            reason: "IR block is marked as ParallelSafety::Unsafe and cannot be parallelized"
+                .to_string(),
         }
     }
-    
+
     /// Creates a safety violation error for shared mutable state.
     pub fn shared_mutable_state(block_id: BlockId) -> Self {
         ParallelismError::SafetyViolation {
@@ -269,7 +269,7 @@ impl ParallelismError {
             reason: "Shared mutable state detected between parallel workers".to_string(),
         }
     }
-    
+
     /// Creates a safety violation error for native code purity constraint violation.
     pub fn native_code_impurity(block_id: BlockId, details: String) -> Self {
         ParallelismError::SafetyViolation {
@@ -277,9 +277,14 @@ impl ParallelismError {
             reason: format!("Native code purity constraint violated: {}", details),
         }
     }
-    
+
     /// Creates an execution error from a worker panic.
-    pub fn worker_panic(worker_id: usize, partition_start: usize, partition_end: usize, panic_message: String) -> Self {
+    pub fn worker_panic(
+        worker_id: usize,
+        partition_start: usize,
+        partition_end: usize,
+        panic_message: String,
+    ) -> Self {
         ParallelismError::ExecutionError {
             worker_id: Some(worker_id),
             partition_start: Some(partition_start),
@@ -288,7 +293,7 @@ impl ParallelismError {
             source: None,
         }
     }
-    
+
     /// Creates an execution error from a thread pool failure.
     pub fn thread_pool_failure(message: String) -> Self {
         ParallelismError::ExecutionError {
@@ -299,7 +304,7 @@ impl ParallelismError {
             source: None,
         }
     }
-    
+
     /// Creates a determinism violation error with diagnostic information.
     pub fn determinism_mismatch(
         parallel_result: Value,
@@ -314,7 +319,7 @@ impl ParallelismError {
             diagnostics: context,
         }
     }
-    
+
     /// Creates a performance degradation error for low speedup.
     pub fn low_speedup(net_speedup: f64, overhead_ratio: f64) -> Self {
         ParallelismError::PerformanceDegradation {
@@ -326,7 +331,7 @@ impl ParallelismError {
             ),
         }
     }
-    
+
     /// Creates a performance degradation error for high overhead.
     pub fn high_overhead(overhead_ratio: f64) -> Self {
         ParallelismError::PerformanceDegradation {
@@ -338,7 +343,7 @@ impl ParallelismError {
             ),
         }
     }
-    
+
     /// Creates a constitutional violation error (FATAL).
     ///
     /// **CONSTITUTIONAL:** This error type is reserved for violations of
@@ -349,12 +354,12 @@ impl ParallelismError {
             violation,
         }
     }
-    
+
     /// Creates a security error for unauthorized access.
     pub fn security_violation(message: String) -> Self {
         ParallelismError::SecurityError { message }
     }
-    
+
     /// Checks if this error represents a constitutional violation.
     ///
     /// **CONSTITUTIONAL:** Constitutional violations are FATAL and must
@@ -362,34 +367,31 @@ impl ParallelismError {
     pub fn is_constitutional_violation(&self) -> bool {
         matches!(self, ParallelismError::ConstitutionalViolation { .. })
     }
-    
+
     /// Checks if this error should cause operation blacklisting.
     pub fn should_blacklist(&self) -> bool {
         matches!(
             self,
-            ParallelismError::PerformanceDegradation { .. } |
-            ParallelismError::ExecutionError { .. }
+            ParallelismError::PerformanceDegradation { .. }
+                | ParallelismError::ExecutionError { .. }
         )
     }
-    
+
     /// Checks if this error should cause fallback to sequential execution.
     pub fn should_fallback(&self) -> bool {
         matches!(
             self,
-            ParallelismError::SafetyViolation { .. } |
-            ParallelismError::DeterminismViolation { .. } |
-            ParallelismError::ThreadPoolInitialization { .. }
+            ParallelismError::SafetyViolation { .. }
+                | ParallelismError::DeterminismViolation { .. }
+                | ParallelismError::ThreadPoolInitialization { .. }
         )
     }
-    
+
     /// Checks if this error is fatal and should cause system shutdown.
     ///
     /// **CONSTITUTIONAL:** Constitutional violations are always fatal.
     pub fn is_fatal(&self) -> bool {
-        matches!(
-            self,
-            ParallelismError::ConstitutionalViolation { .. }
-        )
+        matches!(self, ParallelismError::ConstitutionalViolation { .. })
     }
 }
 
@@ -441,7 +443,6 @@ impl From<Box<dyn Error + Send + Sync>> for ParallelismError {
 mod tests {
     use super::*;
     use crate::bcib::Value;
-    
 
     #[test]
     fn test_safety_violation_display() {
@@ -449,7 +450,7 @@ mod tests {
             block_id: 42,
             reason: "Test reason".to_string(),
         };
-        
+
         let display = format!("{}", error);
         assert!(display.contains("safety violation"));
         assert!(display.contains("42"));
@@ -465,7 +466,7 @@ mod tests {
             message: "Test error".to_string(),
             source: None,
         };
-        
+
         let display = format!("{}", error);
         assert!(display.contains("execution error"));
         assert!(display.contains("worker 3"));
@@ -481,7 +482,7 @@ mod tests {
             input: Value::Number(3.0),
             diagnostics: "Test diagnostics".to_string(),
         };
-        
+
         let display = format!("{}", error);
         assert!(display.contains("Determinism violation"));
         assert!(display.contains("Test diagnostics"));
@@ -494,7 +495,7 @@ mod tests {
             overhead_ratio: 0.6,
             reason: "Test reason".to_string(),
         };
-        
+
         let display = format!("{}", error);
         assert!(display.contains("Performance degradation"));
         assert!(display.contains("1.50x"));
@@ -505,7 +506,7 @@ mod tests {
     #[test]
     fn test_unsafe_block_constructor() {
         let error = ParallelismError::unsafe_block(10);
-        
+
         match error {
             ParallelismError::SafetyViolation { block_id, reason } => {
                 assert_eq!(block_id, 10);
@@ -517,13 +518,8 @@ mod tests {
 
     #[test]
     fn test_worker_panic_constructor() {
-        let error = ParallelismError::worker_panic(
-            2,
-            50,
-            100,
-            "Division by zero".to_string(),
-        );
-        
+        let error = ParallelismError::worker_panic(2, 50, 100, "Division by zero".to_string());
+
         match error {
             ParallelismError::ExecutionError {
                 worker_id,
@@ -544,7 +540,7 @@ mod tests {
     #[test]
     fn test_low_speedup_constructor() {
         let error = ParallelismError::low_speedup(1.5, 0.3);
-        
+
         match error {
             ParallelismError::PerformanceDegradation {
                 net_speedup,
@@ -562,7 +558,7 @@ mod tests {
     #[test]
     fn test_high_overhead_constructor() {
         let error = ParallelismError::high_overhead(0.65);
-        
+
         match error {
             ParallelismError::PerformanceDegradation {
                 overhead_ratio,
@@ -579,10 +575,10 @@ mod tests {
     #[test]
     fn test_error_trait_implementation() {
         let error = ParallelismError::unsafe_block(1);
-        
+
         // Test that Error trait is implemented
         let _: &dyn Error = &error;
-        
+
         // Test Display through Error trait
         let display = format!("{}", error);
         assert!(!display.is_empty());
@@ -595,9 +591,9 @@ mod tests {
         let exec_error = ExecutionError::InvalidOperation {
             operation: "test_op".to_string(),
         };
-        
+
         let parallelism_error: ParallelismError = exec_error.into();
-        
+
         match parallelism_error {
             ParallelismError::ExecutionError { message, .. } => {
                 assert!(message.contains("test_op"));
@@ -608,13 +604,10 @@ mod tests {
 
     #[test]
     fn test_from_io_error() {
-        let io_error = std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "test IO error",
-        );
-        
+        let io_error = std::io::Error::new(std::io::ErrorKind::Other, "test IO error");
+
         let parallelism_error: ParallelismError = io_error.into();
-        
+
         match parallelism_error {
             ParallelismError::ExecutionError { message, .. } => {
                 assert!(message.contains("IO error"));
@@ -626,13 +619,17 @@ mod tests {
 
     #[test]
     fn test_from_boxed_error() {
-        let boxed_error: Box<dyn Error + Send + Sync> = 
-            Box::new(std::io::Error::new(std::io::ErrorKind::Other, "boxed error"));
-        
+        let boxed_error: Box<dyn Error + Send + Sync> = Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "boxed error",
+        ));
+
         let parallelism_error: ParallelismError = boxed_error.into();
-        
+
         match parallelism_error {
-            ParallelismError::ExecutionError { message, source, .. } => {
+            ParallelismError::ExecutionError {
+                message, source, ..
+            } => {
                 assert!(message.contains("boxed error"));
                 assert!(source.is_some());
             }

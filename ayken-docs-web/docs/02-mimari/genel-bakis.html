@@ -65,13 +65,13 @@
                         <h3>Temel Mimarik Kontratlar</h3>
                         <ul>
                             <li><strong>Ring0 mekanizma, Ring3 politika:</strong> kernel tarafında politika kararları yasak</li>
-                            <li><strong>Syscall ABI stabilitesi:</strong> kullanıcı alanı aralığı sabit <code>1000..1010</code></li>
+                            <li><strong>Syscall ABI stabilitesi:</strong> kullanıcı alanı aralığı sabit <code>1000..1011</code></li>
                             <li><strong>Evidence-first doğrulama:</strong> kararlar <code>evidence/run-*/</code> artefaktlarıyla takip edilir</li>
                             <li><strong>Determinism governance:</strong> freeze zinciriyle düzenli doğrulama</li>
                         </ul>
                     </div>
 
-                    <p>10 Mart 2026 itibarıyla AykenOS, <strong>Phase 10 (Runtime)</strong> ve <strong>Phase 11 (Verification Substrate)</strong>'i resmi olarak kapatmıştır. Evidence chain tam olarak doğrulanmış, official CI onayı alınmıştır. Proje şu an Architecture Freeze modunda olup Phase 12 (Distributed Verification) yerel olarak devam etmektedir.</p>
+                    <p>10 Nisan 2026 itibarıyla AykenOS, <strong>Phase 10-15</strong> resmi olarak kapatmıştır. Evidence chain tam olarak doğrulanmış, official CI onayı alınmıştır. Proje şu an Architecture Freeze modunda olup Phase 16 (Ayken CLI Orchestration) governance onayı beklemektedir.</p>
                 </section>
 
                 <section class="docs-section">
@@ -80,7 +80,7 @@
                     <div class="arch-overview">
                         <div class="arch-layer">
                             <h3>Anayasal Yönetişim Katmanı</h3>
-                            <p><strong>Çapraz katman denetim</strong> — 21 CI gate zinciri ve branch politikalarıyla sistem davranışı sınırlandırılır.</p>
+                            <p><strong>Çapraz katman denetim</strong> — 30 CI gate zinciri ve branch politikalarıyla sistem davranışı sınırlandırılır.</p>
                             <ul>
                                 <li><code>ci-gate-abi</code></li>
                                 <li><code>ci-gate-boundary</code></li>
@@ -92,7 +92,7 @@
                                 <li><code>ci-gate-scheduler-mailbox-phase10c</code></li>
                                 <li><code>ci-gate-abdf-snapshot-identity</code></li>
                                 <li><code>ci-gate-kpl-proof-verify</code></li>
-                                <li>... ve 11 gate daha (toplam 21)</li>
+                                <li>... ve 20 gate daha (toplam 30)</li>
                             </ul>
                         </div>
 
@@ -139,15 +139,15 @@
                         <h4>Sabitler</h4>
                         <ul>
                             <li><code>SYS_V2_BASE = 1000</code></li>
-                            <li><code>SYS_V2_MAX_INDEX = 10</code></li>
-                            <li><code>SYS_V2_NR = 11</code></li>
-                            <li><code>SYS_V2_LAST = 1010</code></li>
+                            <li><code>SYS_V2_MAX_INDEX = 11</code></li>
+                            <li><code>SYS_V2_NR = 12</code></li>
+                            <li><code>SYS_V2_LAST = 1011</code></li>
                         </ul>
 
                         <div class="code-block">
                             <pre><code># ABI ve dispatcher doğrulama
 rg -n "SYS_V2_BASE|SYS_V2_LAST|SYS_V2_NR" kernel/sys/syscall_v2.h
-rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
+rg -n "valid range: 1000-1011" kernel/sys/syscall.c</code></pre>
                         </div>
                     </div>
 
@@ -220,7 +220,7 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                                 <tr>
                                     <td>1</td>
                                     <td>Userspace çağrısı</td>
-                                    <td>Syscall numarası 1000..1010 aralığında üretilir</td>
+                                    <td>Syscall numarası 1000..1011 aralığında üretilir</td>
                                     <td><code>kernel/sys/syscall_v2.h</code></td>
                                 </tr>
                                 <tr>
@@ -249,8 +249,8 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                     <div class="code-block">
                         <pre><code>Ring3 App
   -> INT 0x80
-  -> syscall_handler (1000..1010 check)
-  -> syscall_v2_handler(index 0..10)
+  -> syscall_handler (1000..1011 check)
+  -> syscall_v2_handler(index 0..11)
   -> mechanism result (RAX)
   -> evidence/log markers (runtime gate)</code></pre>
                     </div>
@@ -281,33 +281,43 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                         </div>
 
                         <div class="concept-card">
-                            <h4>Phase 12 — IN PROGRESS 🔄</h4>
+                            <h4>Phase 12-15 — OFFICIALLY CLOSED ✅</h4>
                             <ul>
-                                <li>P12-01..P12-13 yerel olarak tamamlandı</li>
-                                <li>P12-14: Parity diagnostics devam ediyor</li>
-                                <li>Island analysis framework hazır</li>
-                                <li>CURRENT_PHASE=10 pointer korunuyor</li>
+                                <li>Phase 12: Trust Layer (PR #62)</li>
+                                <li>Phase 13: Distributed Observability (PR #81)</li>
+                                <li>Phase 14: Observability Hardening</li>
+                                <li>Phase 15: BCIB Execution Engine v3 (PR #104)</li>
+                            </ul>
+                        </div>
+
+                        <div class="concept-card">
+                            <h4>Phase 16 — PENDING 🔄</h4>
+                            <ul>
+                                <li>Ayken CLI Faz B: status, risk, gate all</li>
+                                <li>Ayken CLI Faz C: bcib verify, inspect</li>
+                                <li>BCIB toolchain surface</li>
+                                <li>Governance onayı bekliyor</li>
                             </ul>
                         </div>
 
                         <div class="concept-card">
                             <h4>Teknik Metrikler</h4>
                             <ul>
-                                <li>Toplam LOC: ~49,000</li>
-                                <li>Constitutional Tests: 350+</li>
-                                <li>CI Gates: 21 aktif</li>
-                                <li>Boot Time: ~200ms</li>
-                                <li>Syscall Latency: ~500ns-1μs</li>
-                                <li>Context Switch: ~1-2μs</li>
+                                <li>Toplam LOC: ~55,000</li>
+                                <li>BCIB v3 Tests: 305 (293 unit + 12 property)</li>
+                                <li>CI Gates: 30 aktif</li>
+                                <li>Syscalls: 12 (1000-1011)</li>
+                                <li>Performance: gha-ubuntu24-20260406.80.1-X64</li>
                             </ul>
                         </div>
                     </div>
 
                     <div class="highlight-box">
                         <h3>Official CI Onayı</h3>
-                        <p>Evidence git SHA: <code>9cb2171b</code> — Closure sync SHA: <code>fe9031d7</code></p>
-                        <p>Official CI: <code>ci-freeze</code> run <code>#22797401328</code> — <strong>success</strong></p>
+                        <p>Phase-15 Evidence git SHA: <code>48970cd0</code> — Closure sync SHA: <code>c34109ef</code></p>
+                        <p>Official CI: <code>ci-freeze</code> run <code>#24213727039</code> — <strong>success</strong></p>
                         <p>Evidence chain: <code>execution → trace → replay → proof → portable bundle</code></p>
+                        <p>BCIB v3: 293 unit/integration tests + 12 property tests — <strong>PASS</strong></p>
                     </div>
                 </section>
 
@@ -318,12 +328,12 @@ rg -n "valid range: 1000-1010" kernel/sys/syscall.c</code></pre>
                         <div class="step">
                             <div class="step-number">Q1 2026</div>
                             <div class="step-content">
-                                <h3>Phase 12 Tamamlama</h3>
+                                <h3>Phase 16 Tamamlama</h3>
                                 <ul>
-                                    <li>P12-14: Parity diagnostics</li>
-                                    <li>P12-15..P12-18 tamamlama</li>
-                                    <li>Normatif Phase-12C gate set</li>
-                                    <li>Full Phase-12 closure</li>
+                                    <li>Ayken CLI Faz B: status, risk, gate all</li>
+                                    <li>Ayken CLI Faz C: bcib verify, inspect</li>
+                                    <li>BCIB toolchain surface</li>
+                                    <li>Authority lineage v1</li>
                                 </ul>
                             </div>
                         </div>

@@ -21,26 +21,28 @@
 //! **Requirements 15.6**: Collect results from partitions in deterministic order
 //! (partition 0, 1, 2, ...).
 
-use crate::bcib::{LoopInstruction, Value, LoopRange};
-use crate::error::{Result, SemanticCLIError, ErrorCode};
-use crate::loop_engine::{IterationPartition};
-use crate::loop_engine::executor::{IterationExecutionResult, PartitionExecutionResult, PartitionResultType};
-use crate::parallelism::{StableIndexMerger, DeterministicMerger};
+use crate::bcib::{LoopInstruction, LoopRange, Value};
+use crate::error::{ErrorCode, Result, SemanticCLIError};
+use crate::loop_engine::executor::{
+    IterationExecutionResult, PartitionExecutionResult, PartitionResultType,
+};
+use crate::loop_engine::IterationPartition;
+use crate::parallelism::{DeterministicMerger, StableIndexMerger};
 use std::collections::HashMap;
 
 /// Stable index mapper for deterministic parallel loop execution
-/// 
+///
 /// This struct implements the stable index mapping system that ensures iteration i
 /// always processes the same input data regardless of partition assignment. It also
 /// handles deterministic result collection from parallel partitions.
-/// 
+///
 /// # Design Principles
-/// 
+///
 /// 1. **Stable Mapping**: Global iteration index determines input data access
 /// 2. **Partition Independence**: Same input data regardless of partition assignment
 /// 3. **Deterministic Collection**: Results ordered by global iteration index
 /// 4. **Constitutional Compliance**: Parallel results equal sequential results
-/// 
+///
 /// **Requirements:** 7.4, 15.2, 15.6
 #[derive(Debug, Clone)]
 pub struct StableIndexMapper {
@@ -57,24 +59,24 @@ impl StableIndexMapper {
     }
 
     /// Create input data mapping for partitions with stable index mapping (Phase 7.3)
-    /// 
+    ///
     /// This method creates the input data for all iterations with stable index mapping.
     /// Each iteration i always receives the same input data regardless of which partition
     /// contains it, ensuring deterministic parallel execution.
-    /// 
+    ///
     /// **Requirements 7.4, 15.2**: Stable index mapping for deterministic data access
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `instruction` - The loop instruction defining the iteration pattern
     /// * `partitions` - The partitions that will execute the iterations
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Vector of input data values with stable index mapping
-    /// 
+    ///
     /// # Guarantees
-    /// 
+    ///
     /// - Iteration i always receives input_data[i] (stable mapping)
     /// - Same input data in parallel and sequential execution modes
     /// - Input data order is deterministic and reproducible
@@ -84,41 +86,42 @@ impl StableIndexMapper {
         partitions: &[IterationPartition],
     ) -> Result<Vec<(u32, Value)>> {
         let mut input_mapping = Vec::new();
-        
+
         // Create input data for all iterations with stable index mapping
         for partition in partitions {
             for global_iteration in partition.start_iteration..partition.end_iteration {
-                let iteration_data = self.get_input_data_for_iteration(instruction, global_iteration)?;
+                let iteration_data =
+                    self.get_input_data_for_iteration(instruction, global_iteration)?;
                 input_mapping.push((global_iteration, iteration_data));
             }
         }
-        
+
         // Sort by global iteration index to ensure deterministic order
         input_mapping.sort_by_key(|(global_idx, _)| *global_idx);
-        
+
         Ok(input_mapping)
     }
 
     /// Get input data for a specific iteration with stable index mapping (Phase 7.3)
-    /// 
+    ///
     /// This method implements the core stable index mapping guarantee:
     /// - Iteration i always accesses input_data[i]
     /// - Mapping is based on iteration index, not partition assignment
     /// - Same input data regardless of parallel vs sequential execution
-    /// 
+    ///
     /// **Requirements 15.2**: Stable index mapping ensures deterministic data access
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `instruction` - The loop instruction defining the iteration pattern
     /// * `global_iteration` - The global iteration index (0, 1, 2, ...)
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Input data value for the specified iteration
-    /// 
+    ///
     /// # Guarantees
-    /// 
+    ///
     /// - Same global_iteration → same input data (always)
     /// - Input data independent of partition assignment
     /// - Deterministic data access pattern
@@ -144,24 +147,24 @@ impl StableIndexMapper {
     }
 
     /// Collect partition results in deterministic order (Phase 7.3)
-    /// 
+    ///
     /// This method implements deterministic result collection from parallel partitions:
     /// - Results collected in partition order (0, 1, 2, ...)
     /// - Within each partition, results ordered by global iteration index
     /// - Final result identical to sequential execution
-    /// 
+    ///
     /// **Requirements 15.6**: Deterministic result collection order
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `partition_results` - Results from all partitions
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Merged results in deterministic order
-    /// 
+    ///
     /// # Guarantees
-    /// 
+    ///
     /// - Results ordered by global iteration index
     /// - Same result order as sequential execution
     /// - Deterministic and reproducible result collection
@@ -172,15 +175,19 @@ impl StableIndexMapper {
         // Phase 7.3: Sort partition results by partition ID (deterministic order)
         let mut sorted_results = partition_results;
         sorted_results.sort_by_key(|result| result.partition_id);
-        
+
         // Collect all iteration results with stable index mapping
         let mut all_iteration_results = Vec::new();
-        
+
         // Phase 7.3: Collect results in partition order (0, 1, 2, ...)
         for partition_result in sorted_results {
             match partition_result.result_type {
-                PartitionResultType::Success { iteration_results, .. } |
-                PartitionResultType::Break { iteration_results, .. } => {
+                PartitionResultType::Success {
+                    iteration_results, ..
+                }
+                | PartitionResultType::Break {
+                    iteration_results, ..
+                } => {
                     // Add iteration results with stable index mapping
                     all_iteration_results.extend(iteration_results);
                 }
@@ -190,26 +197,26 @@ impl StableIndexMapper {
                 }
             }
         }
-        
+
         // Sort results by global iteration index for deterministic ordering
         all_iteration_results.sort_by_key(|result| result.global_iteration_index);
-        
+
         Ok(all_iteration_results)
     }
 
     /// Merge iteration results using D2 stable index merger (Phase 7.3)
-    /// 
+    ///
     /// This method uses the D2 parallelism system's stable index merger to
     /// reconstruct the deterministic result order from parallel execution results.
-    /// 
+    ///
     /// **Requirements 15.6**: Use D2 merger for deterministic result collection
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `iteration_results` - Results from all iterations with global indices
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Merged results in deterministic order using D2 merger
     pub fn merge_results_with_d2_system(
         &self,
@@ -218,30 +225,36 @@ impl StableIndexMapper {
         // Convert iteration results to D2 merger format
         let indexed_results: Vec<(usize, Value)> = iteration_results
             .iter()
-            .map(|result| (result.global_iteration_index as usize, result.result_value.clone()))
+            .map(|result| {
+                (
+                    result.global_iteration_index as usize,
+                    result.result_value.clone(),
+                )
+            })
             .collect();
-        
+
         // Use D2 stable index merger for deterministic result collection
-        self.merger.merge(indexed_results)
-            .map_err(|e| SemanticCLIError::execution_error(
+        self.merger.merge(indexed_results).map_err(|e| {
+            SemanticCLIError::execution_error(
                 &format!("Failed to merge parallel results using D2 system: {}", e),
                 ErrorCode::E500,
-            ))
+            )
+        })
     }
 
     /// Verify stable index mapping correctness (Phase 7.3)
-    /// 
+    ///
     /// This method verifies that the stable index mapping is working correctly
     /// by checking that the same global iteration index always produces the same
     /// input data across multiple calls.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `instruction` - The loop instruction to verify
     /// * `test_iterations` - Number of iterations to test
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Result indicating whether stable index mapping is working correctly
     pub fn verify_stable_mapping(
         &self,
@@ -254,11 +267,11 @@ impl StableIndexMapper {
             unstable_mappings: 0,
             errors: Vec::new(),
         };
-        
+
         // Test stable mapping for each iteration
         for global_iteration in 0..test_iterations {
             verification.total_tested += 1;
-            
+
             // Get input data multiple times for the same iteration
             match (
                 self.get_input_data_for_iteration(instruction, global_iteration),
@@ -284,7 +297,7 @@ impl StableIndexMapper {
                 }
             }
         }
-        
+
         Ok(verification)
     }
 
@@ -312,7 +325,11 @@ impl StableIndexMapper {
                             Ok(arr[global_iteration as usize].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("Array index {} out of bounds (length: {})", global_iteration, arr.len()),
+                                &format!(
+                                    "Array index {} out of bounds (length: {})",
+                                    global_iteration,
+                                    arr.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
@@ -322,7 +339,11 @@ impl StableIndexMapper {
                             Ok(list[global_iteration as usize].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("List index {} out of bounds (length: {})", global_iteration, list.len()),
+                                &format!(
+                                    "List index {} out of bounds (length: {})",
+                                    global_iteration,
+                                    list.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
@@ -334,17 +355,19 @@ impl StableIndexMapper {
                             Ok(map[*key].clone())
                         } else {
                             Err(SemanticCLIError::execution_error(
-                                &format!("Map index {} out of bounds (size: {})", global_iteration, keys.len()),
+                                &format!(
+                                    "Map index {} out of bounds (size: {})",
+                                    global_iteration,
+                                    keys.len()
+                                ),
                                 ErrorCode::E500,
                             ))
                         }
                     }
-                    _ => {
-                        Err(SemanticCLIError::execution_error(
-                            "Unsupported collection type for stable index mapping",
-                            ErrorCode::E500,
-                        ))
-                    }
+                    _ => Err(SemanticCLIError::execution_error(
+                        "Unsupported collection type for stable index mapping",
+                        ErrorCode::E500,
+                    )),
                 }
             }
             _ => {
@@ -404,10 +427,7 @@ impl StableMappingVerification {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IndexMappingStrategy {
     /// For loop: range-based mapping
-    Range {
-        start: i64,
-        step: i64,
-    },
+    Range { start: i64, step: i64 },
     /// ForEach loop: collection-based mapping
     Collection {
         collection_size: usize,
@@ -421,37 +441,29 @@ impl StableIndexMapper {
     /// Analyze the index mapping strategy for a loop instruction
     pub fn analyze_mapping_strategy(&self, instruction: &LoopInstruction) -> IndexMappingStrategy {
         match instruction {
-            LoopInstruction::For { range, .. } => {
-                IndexMappingStrategy::Range {
-                    start: range.start,
-                    step: range.step,
-                }
-            }
-            LoopInstruction::ForEach { collection, .. } => {
-                match collection {
-                    crate::bcib::OperandRef::Literal(value) => {
-                        let (size, type_name) = match value {
-                            Value::Array(arr) => (arr.len(), "Array"),
-                            Value::List(list) => (list.len(), "List"),
-                            Value::SortedMap(map) => (map.len(), "SortedMap"),
-                            _ => (0, "Unknown"),
-                        };
-                        IndexMappingStrategy::Collection {
-                            collection_size: size,
-                            collection_type: type_name.to_string(),
-                        }
-                    }
-                    _ => {
-                        IndexMappingStrategy::Collection {
-                            collection_size: 0,
-                            collection_type: "Dynamic".to_string(),
-                        }
+            LoopInstruction::For { range, .. } => IndexMappingStrategy::Range {
+                start: range.start,
+                step: range.step,
+            },
+            LoopInstruction::ForEach { collection, .. } => match collection {
+                crate::bcib::OperandRef::Literal(value) => {
+                    let (size, type_name) = match value {
+                        Value::Array(arr) => (arr.len(), "Array"),
+                        Value::List(list) => (list.len(), "List"),
+                        Value::SortedMap(map) => (map.len(), "SortedMap"),
+                        _ => (0, "Unknown"),
+                    };
+                    IndexMappingStrategy::Collection {
+                        collection_size: size,
+                        collection_type: type_name.to_string(),
                     }
                 }
-            }
-            LoopInstruction::While { .. } => {
-                IndexMappingStrategy::Iteration
-            }
+                _ => IndexMappingStrategy::Collection {
+                    collection_size: 0,
+                    collection_type: "Dynamic".to_string(),
+                },
+            },
+            LoopInstruction::While { .. } => IndexMappingStrategy::Iteration,
         }
     }
 
@@ -462,13 +474,13 @@ impl StableIndexMapper {
         max_iterations: u32,
     ) -> Result<IndexMappingCache> {
         let mut cache = HashMap::new();
-        
+
         // Pre-compute input data for all iterations
         for global_iteration in 0..max_iterations {
             let input_data = self.get_input_data_for_iteration(instruction, global_iteration)?;
             cache.insert(global_iteration, input_data);
         }
-        
+
         Ok(IndexMappingCache {
             cache,
             strategy: self.analyze_mapping_strategy(instruction),
@@ -532,7 +544,9 @@ pub struct IndexMappingCacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bcib::{LoopID, LoopConfig, LoopRange, Value, ValueType, BudgetMeasurement, ErrorRecoveryPolicy};
+    use crate::bcib::{
+        BudgetMeasurement, ErrorRecoveryPolicy, LoopConfig, LoopID, LoopRange, Value, ValueType,
+    };
     use crate::types::SourceLocation;
 
     fn create_test_loop_config() -> LoopConfig {
@@ -560,10 +574,16 @@ mod tests {
 
         // Test stable mapping for For loop
         for i in 0..10 {
-            let data1 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data2 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data3 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            
+            let data1 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data2 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data3 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+
             assert_eq!(data1, data2);
             assert_eq!(data2, data3);
             assert_eq!(data1, Value::Number(i as f64));
@@ -590,10 +610,16 @@ mod tests {
         // Test stable mapping for ForEach loop
         let expected_values = [10.0, 20.0, 30.0];
         for i in 0..3 {
-            let data1 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data2 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data3 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            
+            let data1 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data2 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data3 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+
             assert_eq!(data1, data2);
             assert_eq!(data2, data3);
             assert_eq!(data1, Value::Number(expected_values[i as usize]));
@@ -613,10 +639,16 @@ mod tests {
 
         // Test stable mapping for While loop
         for i in 0..10 {
-            let data1 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data2 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            let data3 = mapper.get_input_data_for_iteration(&instruction, i).unwrap();
-            
+            let data1 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data2 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+            let data3 = mapper
+                .get_input_data_for_iteration(&instruction, i)
+                .unwrap();
+
             assert_eq!(data1, data2);
             assert_eq!(data2, data3);
             assert_eq!(data1, Value::Number(i as f64));
@@ -650,10 +682,12 @@ mod tests {
             },
         ];
 
-        let input_mapping = mapper.create_stable_input_mapping(&instruction, &partitions).unwrap();
-        
+        let input_mapping = mapper
+            .create_stable_input_mapping(&instruction, &partitions)
+            .unwrap();
+
         assert_eq!(input_mapping.len(), 10);
-        
+
         // Verify stable mapping
         for (i, (global_idx, value)) in input_mapping.iter().enumerate() {
             assert_eq!(*global_idx, i as u32);
@@ -674,7 +708,7 @@ mod tests {
         };
 
         let verification = mapper.verify_stable_mapping(&instruction, 10).unwrap();
-        
+
         assert!(verification.is_stable());
         assert_eq!(verification.total_tested, 10);
         assert_eq!(verification.stable_mappings, 10);
@@ -686,7 +720,7 @@ mod tests {
     #[test]
     fn test_mapping_strategy_analysis() {
         let mapper = StableIndexMapper::new();
-        
+
         // For loop strategy
         let for_instruction = LoopInstruction::For {
             id: LoopID::new("test-for".to_string()),
@@ -696,10 +730,13 @@ mod tests {
             config: create_test_loop_config(),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let for_strategy = mapper.analyze_mapping_strategy(&for_instruction);
-        assert_eq!(for_strategy, IndexMappingStrategy::Range { start: 10, step: 2 });
-        
+        assert_eq!(
+            for_strategy,
+            IndexMappingStrategy::Range { start: 10, step: 2 }
+        );
+
         // ForEach loop strategy
         let foreach_instruction = LoopInstruction::ForEach {
             id: LoopID::new("test-foreach".to_string()),
@@ -713,13 +750,16 @@ mod tests {
             config: create_test_loop_config(),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let foreach_strategy = mapper.analyze_mapping_strategy(&foreach_instruction);
-        assert_eq!(foreach_strategy, IndexMappingStrategy::Collection {
-            collection_size: 2,
-            collection_type: "Array".to_string(),
-        });
-        
+        assert_eq!(
+            foreach_strategy,
+            IndexMappingStrategy::Collection {
+                collection_size: 2,
+                collection_type: "Array".to_string(),
+            }
+        );
+
         // While loop strategy
         let while_instruction = LoopInstruction::While {
             id: LoopID::new("test-while".to_string()),
@@ -728,7 +768,7 @@ mod tests {
             config: create_test_loop_config(),
             location: SourceLocation::new(1, 1, 0),
         };
-        
+
         let while_strategy = mapper.analyze_mapping_strategy(&while_instruction);
         assert_eq!(while_strategy, IndexMappingStrategy::Iteration);
     }
@@ -746,15 +786,15 @@ mod tests {
         };
 
         let cache = mapper.create_mapping_cache(&instruction, 10).unwrap();
-        
+
         assert_eq!(cache.max_iterations(), 10);
-        
+
         // Test cache lookups
         for i in 0..10 {
             let cached_data = cache.get_input_data(i).unwrap();
             assert_eq!(*cached_data, Value::Number(i as f64));
         }
-        
+
         let stats = cache.cache_stats();
         assert_eq!(stats.cached_entries, 10);
         assert_eq!(stats.max_iterations, 10);
@@ -764,7 +804,7 @@ mod tests {
     #[test]
     fn test_deterministic_result_collection() {
         let mapper = StableIndexMapper::new();
-        
+
         // Create mock partition results
         let partition_results = vec![
             PartitionExecutionResult::success(
@@ -803,10 +843,12 @@ mod tests {
             ),
         ];
 
-        let collected_results = mapper.collect_results_deterministic(partition_results).unwrap();
-        
+        let collected_results = mapper
+            .collect_results_deterministic(partition_results)
+            .unwrap();
+
         assert_eq!(collected_results.len(), 4);
-        
+
         // Verify results are in deterministic order
         for (i, result) in collected_results.iter().enumerate() {
             assert_eq!(result.global_iteration_index, i as u32);
@@ -817,7 +859,7 @@ mod tests {
     #[test]
     fn test_d2_merger_integration() {
         let mapper = StableIndexMapper::new();
-        
+
         let iteration_results = vec![
             IterationExecutionResult {
                 global_iteration_index: 2,
@@ -836,8 +878,10 @@ mod tests {
             },
         ];
 
-        let merged_results = mapper.merge_results_with_d2_system(&iteration_results).unwrap();
-        
+        let merged_results = mapper
+            .merge_results_with_d2_system(&iteration_results)
+            .unwrap();
+
         assert_eq!(merged_results.len(), 3);
         assert_eq!(merged_results[0], Value::Number(0.0));
         assert_eq!(merged_results[1], Value::Number(10.0));
@@ -858,10 +902,16 @@ mod tests {
         };
 
         for global_iteration in 0..100 {
-            let data1 = mapper.get_input_data_for_iteration(&instruction, global_iteration).unwrap();
-            let data2 = mapper.get_input_data_for_iteration(&instruction, global_iteration).unwrap();
-            let data3 = mapper.get_input_data_for_iteration(&instruction, global_iteration).unwrap();
-            
+            let data1 = mapper
+                .get_input_data_for_iteration(&instruction, global_iteration)
+                .unwrap();
+            let data2 = mapper
+                .get_input_data_for_iteration(&instruction, global_iteration)
+                .unwrap();
+            let data3 = mapper
+                .get_input_data_for_iteration(&instruction, global_iteration)
+                .unwrap();
+
             assert_eq!(data1, data2);
             assert_eq!(data2, data3);
         }
@@ -871,41 +921,43 @@ mod tests {
     fn test_property_deterministic_collection() {
         // Property: Same partition results always produce same collection order
         let mapper = StableIndexMapper::new();
-        
+
         let partition_results = vec![
             PartitionExecutionResult::success(
                 1, // Note: partition 1 first
-                vec![
-                    IterationExecutionResult {
-                        global_iteration_index: 2,
-                        result_value: Value::Number(2.0),
-                        control_flow: crate::bcib::ControlFlowType::Normal,
-                    },
-                ],
+                vec![IterationExecutionResult {
+                    global_iteration_index: 2,
+                    result_value: Value::Number(2.0),
+                    control_flow: crate::bcib::ControlFlowType::Normal,
+                }],
                 Value::Number(2.0),
                 1,
             ),
             PartitionExecutionResult::success(
                 0, // Note: partition 0 second
-                vec![
-                    IterationExecutionResult {
-                        global_iteration_index: 0,
-                        result_value: Value::Number(0.0),
-                        control_flow: crate::bcib::ControlFlowType::Normal,
-                    },
-                ],
+                vec![IterationExecutionResult {
+                    global_iteration_index: 0,
+                    result_value: Value::Number(0.0),
+                    control_flow: crate::bcib::ControlFlowType::Normal,
+                }],
                 Value::Number(0.0),
                 1,
             ),
         ];
 
-        let results1 = mapper.collect_results_deterministic(partition_results.clone()).unwrap();
-        let results2 = mapper.collect_results_deterministic(partition_results.clone()).unwrap();
-        let results3 = mapper.collect_results_deterministic(partition_results).unwrap();
-        
+        let results1 = mapper
+            .collect_results_deterministic(partition_results.clone())
+            .unwrap();
+        let results2 = mapper
+            .collect_results_deterministic(partition_results.clone())
+            .unwrap();
+        let results3 = mapper
+            .collect_results_deterministic(partition_results)
+            .unwrap();
+
         assert_eq!(results1, results2);
         assert_eq!(results2, results3);
-        
+
         // Results should be ordered by global iteration index, not partition order
         assert_eq!(results1[0].global_iteration_index, 0);
         assert_eq!(results1[1].global_iteration_index, 2);
