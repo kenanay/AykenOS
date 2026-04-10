@@ -1,10 +1,8 @@
 use crate::cli::{ClosureArgs, ClosureTarget};
-use crate::core::{error::AykenError, output};
+use crate::core::{authority::load_json_file, error::AykenError, git::read_git_head_sha, output};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Deserialize)]
 struct ClosureIndex {
@@ -21,28 +19,28 @@ struct RemoteCiConfirmation {
 }
 
 #[derive(Serialize)]
-struct ClosureStatus {
-    base_path: &'static str,
-    evidence_index_exists: bool,
-    closure_manifest_exists: bool,
-    closure_index_exists: bool,
-    local_closure_ready: bool,
-    official_closure_state: bool,
-    integrity_verified: bool,
-    remote_ci_run_id: Option<String>,
-    remote_ci_pass: bool,
-    git_head_sha: Option<String>,
-    indexed_head_sha: Option<String>,
-    head_sha_match: bool,
-    authority_confirmed: bool,
-    remote_authority_required: bool,
-    evaluation_error: Option<String>,
-    note: &'static str,
+pub(crate) struct ClosureStatus {
+    pub(crate) base_path: &'static str,
+    pub(crate) evidence_index_exists: bool,
+    pub(crate) closure_manifest_exists: bool,
+    pub(crate) closure_index_exists: bool,
+    pub(crate) local_closure_ready: bool,
+    pub(crate) official_closure_state: bool,
+    pub(crate) integrity_verified: bool,
+    pub(crate) remote_ci_run_id: Option<String>,
+    pub(crate) remote_ci_pass: bool,
+    pub(crate) git_head_sha: Option<String>,
+    pub(crate) indexed_head_sha: Option<String>,
+    pub(crate) head_sha_match: bool,
+    pub(crate) authority_confirmed: bool,
+    pub(crate) remote_authority_required: bool,
+    pub(crate) evaluation_error: Option<String>,
+    pub(crate) note: &'static str,
 }
 
-struct ClosureEvaluation {
-    status: ClosureStatus,
-    verify_error: Option<AykenError>,
+pub(crate) struct ClosureEvaluation {
+    pub(crate) status: ClosureStatus,
+    pub(crate) verify_error: Option<AykenError>,
 }
 
 pub fn run(args: ClosureArgs, json: bool) -> Result<(), AykenError> {
@@ -59,7 +57,7 @@ pub fn run(args: ClosureArgs, json: bool) -> Result<(), AykenError> {
     }
 }
 
-fn evaluate_closure_status() -> ClosureEvaluation {
+pub(crate) fn evaluate_closure_status() -> ClosureEvaluation {
     let base = Path::new("reports/phase15_official_closure");
     let evidence = base.join("evidence_index.json").exists();
     let manifest = base.join("closure_manifest.json").exists();
@@ -82,7 +80,7 @@ fn evaluate_closure_status() -> ClosureEvaluation {
         authority_confirmed: false,
         remote_authority_required: true,
         evaluation_error: None,
-        note: "Official closure requires OFFICIAL_CLOSURE_CONFIRMED + integrity_verified + remote GitHub Actions ci-freeze PASS + HEAD SHA match",
+        note: "Official closure requires OFFICIAL_CLOSURE_CONFIRMED + integrity_verified + remote GitHub Actions ci-freeze PASS + HEAD SHA match. Use `ayken head verify` for verified development heads.",
     };
 
     let closure_index = match load_closure_index(base) {
@@ -117,19 +115,7 @@ fn evaluate_closure_status() -> ClosureEvaluation {
 }
 
 fn load_closure_index(base: &Path) -> Result<ClosureIndex, AykenError> {
-    let closure_index_path = base.join("closure_index.json");
-    if !closure_index_path.exists() {
-        return Err(fail_closed_policy("closure_index.json missing"));
-    }
-
-    let closure_index_text = fs::read_to_string(&closure_index_path)
-        .map_err(|err| fail_closed_policy(format!("failed to read closure_index.json: {err}")))?;
-    serde_json::from_str(&closure_index_text)
-        .map_err(|err| fail_closed_policy(format!("failed to parse closure_index.json: {err}")))
-}
-
-fn fail_closed_policy(message: impl Into<String>) -> AykenError {
-    AykenError::Policy(format!("{} (fail-closed)", message.into()))
+    load_json_file(&base.join("closure_index.json"), "closure_index.json")
 }
 
 fn evaluation_failure(mut status: ClosureStatus, error: AykenError) -> ClosureEvaluation {
@@ -178,25 +164,4 @@ fn emit_status(command: &str, status: &ClosureStatus, json: bool) -> Result<(), 
         io::stdout().flush()?;
         Ok(())
     }
-}
-
-fn read_git_head_sha() -> Result<String, AykenError> {
-    let output = Command::new("git").args(["rev-parse", "HEAD"]).output()?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(AykenError::Process(format!(
-            "`git rev-parse HEAD` exited with status {}: {}",
-            output.status.code().unwrap_or(-1),
-            stderr.trim()
-        )));
-    }
-
-    let head_sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if head_sha.is_empty() {
-        return Err(AykenError::Process(
-            "`git rev-parse HEAD` returned an empty SHA".to_string(),
-        ));
-    }
-
-    Ok(head_sha)
 }

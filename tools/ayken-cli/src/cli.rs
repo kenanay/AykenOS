@@ -23,10 +23,14 @@ pub enum Command {
     Check(CheckArgs),
     /// Run cargo test with enforced toolchain policy
     Test(TestArgs),
+    /// Show combined closure and verified-head authority state
+    Status(StatusArgs),
     /// Run a CI gate
     Gate(GateArgs),
     /// Observe or verify closure authority
     Closure(ClosureArgs),
+    /// Verify CI-backed development head authority
+    Head(HeadArgs),
     /// Thin BCIB orchestration over existing verifier/runtime surfaces
     Bcib(BcibArgs),
 }
@@ -61,6 +65,9 @@ pub struct TestArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct StatusArgs {}
+
+#[derive(Args, Debug)]
 pub struct GateArgs {
     #[command(subcommand)]
     pub target: GateTarget,
@@ -89,6 +96,18 @@ pub enum ClosureTarget {
     /// Advisory closure observation surface
     Status,
     /// Binding closure authority verification surface
+    Verify,
+}
+
+#[derive(Args, Debug)]
+pub struct HeadArgs {
+    #[command(subcommand)]
+    pub target: HeadTarget,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum HeadTarget {
+    /// Binding verified-head authority verification surface
     Verify,
 }
 

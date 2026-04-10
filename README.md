@@ -49,6 +49,19 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Closure Index:** `reports/phase15_official_closure/closure_index.json`
 - **Next Phase:** `16` (`pending` — Ayken CLI Faz B + BCIB toolchain surface)
 
+## Authority Model
+
+- **Official Closure**
+  - Phase-tagged, immutable
+  - Verified via `ayken closure verify`
+- **Verified Head**
+  - Development SHA validated by remote `ci-freeze`
+  - Verified via `ayken head verify`
+
+Current verified-head records live under `reports/verified_heads/`.
+
+> A verified head is not a closure.
+
 ---
 
 ## 🔒 IMPORTANT LEGAL NOTICE
@@ -291,9 +304,11 @@ AykenOS iki lisans modeli ile dağıtılır:
 ## 🎯 Sonraki Hedefler
 
 **Kısa Vadeli (Phase-16):**
+- Ayken CLI Faz B: `ayken status`
 - Ayken CLI Faz B: `ayken gate all`
 - Ayken CLI Faz B: `ayken closure status --json` (advisory)
 - Ayken CLI Faz B: `ayken closure verify` (binding, fail-closed)
+- Ayken CLI Faz B: `ayken head verify` (binding, CI-backed)
 - Ayken CLI Faz C: `ayken bcib verify`
 - Ayken CLI Faz C: `ayken bcib hash`
 - Ayken CLI Faz C: `ayken bcib inspect`
