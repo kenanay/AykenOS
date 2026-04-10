@@ -23,6 +23,21 @@ where
         .map_err(|err| fail_closed_policy(format!("failed to parse {label}: {err}")))
 }
 
+pub fn load_optional_json_file<T>(path: &Path, label: &str) -> Result<Option<T>, AykenError>
+where
+    T: DeserializeOwned,
+{
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let text = fs::read_to_string(path)
+        .map_err(|err| AykenError::Io(format!("failed to read {label}: {err}")))?;
+    let value = serde_json::from_str(&text)
+        .map_err(|err| AykenError::Serialization(format!("failed to parse {label}: {err}")))?;
+    Ok(Some(value))
+}
+
 pub fn sha256_hex_json<T>(value: &T) -> Result<String, AykenError>
 where
     T: Serialize,

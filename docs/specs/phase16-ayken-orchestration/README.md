@@ -11,6 +11,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `ayken closure status --json`
 - `ayken closure verify`
 - `ayken head verify`
+- `ayken head lineage`
 - `ayken bcib verify`
 - `ayken bcib hash`
 - `ayken bcib inspect`
@@ -25,12 +26,14 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - local `ayken` commands are advisory and may not override CI-confirmed truth
 - `ayken closure verify` validates official closure only
 - `ayken head verify` validates CI-backed development head records only
+- `ayken head lineage` reports nearest verified ancestors without changing authority
 - a verified head is not an official closure
 
 ## Constraints
 
 - `closure verify` and `gate all` are fail-closed
 - `head verify` is fail-closed against `reports/verified_heads/<FULL_SHA>.json`
+- `head lineage` is advisory-only and must not modify `effective_authority`
 - `gate all --json` emits normalized per-gate result summaries suitable for pipeline input
 - `status`, `closure status`, `bcib hash`, and `bcib inspect` are advisory observation surfaces
 - no authority override from local tools

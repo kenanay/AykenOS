@@ -17,12 +17,18 @@ struct AuthorityStatus {
     verified_head_run_id: Option<String>,
     verified_head_authority: Option<String>,
     head_evaluation_error: Option<String>,
+    lineage_resolved: bool,
+    lineage_tainted: bool,
+    nearest_verified_ancestor: Option<String>,
+    ancestor_distance: Option<usize>,
+    lineage_evaluation_error: Option<String>,
     note: &'static str,
 }
 
 pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
     let closure = closure::evaluate_closure_status();
     let head = head::evaluate_head_status();
+    let lineage = head::evaluate_head_lineage();
     let effective_authority = if closure.status.authority_confirmed {
         "closure"
     } else if head.status.head_verified {
@@ -47,7 +53,12 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         verified_head_run_id: head.status.ci_freeze_run_id.clone(),
         verified_head_authority: head.status.ci_freeze_authority.clone(),
         head_evaluation_error: head.status.evaluation_error.clone(),
-        note: "Official closure authority and verified development head authority are separate. A verified head is not a closure.",
+        lineage_resolved: lineage.lineage_resolved,
+        lineage_tainted: lineage.lineage_tainted,
+        nearest_verified_ancestor: lineage.nearest_verified_ancestor,
+        ancestor_distance: lineage.ancestor_distance,
+        lineage_evaluation_error: lineage.evaluation_error,
+        note: "Official closure authority and verified development head authority are separate. Authority lineage is advisory only and does not change effective_authority.",
     };
 
     if json {
@@ -92,6 +103,28 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         );
         if let Some(error) = &status.head_evaluation_error {
             println!("  head_evaluation_error        : {error}");
+        }
+        println!(
+            "  lineage_resolved             : {}",
+            status.lineage_resolved
+        );
+        println!(
+            "  lineage_tainted              : {}",
+            status.lineage_tainted
+        );
+        println!(
+            "  nearest_verified_ancestor    : {}",
+            status.nearest_verified_ancestor.as_deref().unwrap_or("n/a")
+        );
+        println!(
+            "  ancestor_distance            : {}",
+            status
+                .ancestor_distance
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "n/a".to_string())
+        );
+        if let Some(error) = &status.lineage_evaluation_error {
+            println!("  lineage_evaluation_error     : {error}");
         }
         println!("  note: {}", status.note);
         io::stdout().flush()?;

@@ -109,6 +109,8 @@ pub struct HeadArgs {
 pub enum HeadTarget {
     /// Binding verified-head authority verification surface
     Verify,
+    /// Advisory nearest-verified-ancestor diagnostics surface
+    Lineage,
 }
 
 #[derive(Args, Debug)]
