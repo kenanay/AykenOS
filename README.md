@@ -318,6 +318,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 - Ayken CLI Faz B: `ayken head verify` (binding, CI-backed)
 - Ayken CLI Faz B: `ayken head lineage` (advisory-only ancestry diagnostics)
 - Ayken CLI Faz B: `ayken risk` (advisory interpretation only)
+- Ayken CLI Faz B: `ayken gate all --json` (CI-ready gate + risk contract)
 - Ayken CLI Faz C: `ayken bcib verify`
 - Ayken CLI Faz C: `ayken bcib hash`
 - Ayken CLI Faz C: `ayken bcib inspect` (authority/lineage/risk observation only)

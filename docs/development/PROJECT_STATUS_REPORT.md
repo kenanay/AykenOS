@@ -169,7 +169,7 @@ Meaning:
 ## 5) Next Steps
 1. Keep `reports/phase15_official_closure/` as the canonical Phase-15 authority package.
 2. Keep Phase-16 orchestration constrained to thin wrapper scope while authority remains CI-bound.
-3. Implement Phase-16 commands in thin orchestration form only: `status`, `risk`, `gate all`, `closure status --json`, `closure verify`, `head verify`, `head lineage`, `bcib verify`, `bcib hash`, `bcib inspect`, while keeping verified-head integrity separate from official closure, requiring exact-SHA CI projections for head authority, and treating BCIB inspection as an authority-aware observation surface only.
+3. Implement Phase-16 commands in thin orchestration form only: `status`, `risk`, `gate all`, `closure status --json`, `closure verify`, `head verify`, `head lineage`, `bcib verify`, `bcib hash`, `bcib inspect`, while keeping verified-head integrity separate from official closure, requiring exact-SHA CI projections for head authority, treating BCIB inspection as an authority-aware observation surface only, and attaching advisory risk to `gate all --json`.
 4. Define authority-lineage as advisory-only ancestry diagnostics; do not inherit authority across SHAs.
 5. Keep monitoring replay stability under interrupt ordering nondeterminism.
 6. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.

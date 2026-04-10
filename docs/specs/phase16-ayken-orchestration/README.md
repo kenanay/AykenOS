@@ -39,7 +39,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `head lineage` is advisory-only and must not modify `effective_authority`
 - `risk` is advisory-only and must not modify `effective_authority`
 - `bcib inspect` is advisory-only and must not emit execution-safety or authority claims
-- `gate all --json` emits normalized per-gate result summaries suitable for pipeline input
+- `gate all --json` emits normalized per-gate result summaries plus advisory risk suitable for pipeline input
 - `status`, `closure status`, `bcib hash`, and `bcib inspect` are advisory observation surfaces
 - no authority override from local tools
 - no mutation of closure artifacts without CI confirmation
