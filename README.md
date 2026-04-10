@@ -320,7 +320,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 - Ayken CLI Faz B: `ayken risk` (advisory interpretation only)
 - Ayken CLI Faz C: `ayken bcib verify`
 - Ayken CLI Faz C: `ayken bcib hash`
-- Ayken CLI Faz C: `ayken bcib inspect`
+- Ayken CLI Faz C: `ayken bcib inspect` (authority/lineage/risk observation only)
 - Authority modeli: `ci-freeze` authoritative, local tooling advisory
 
 **Orta Vadeli:**

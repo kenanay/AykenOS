@@ -200,7 +200,7 @@ Interpretation:
 
 ### 5.2 Near Term (Phase-16)
 1. Ayken CLI Faz B: `status` (effective authority), `risk` (advisory), `gate all`, `closure status --json` (advisory), `closure verify` (binding), `head verify` (binding, exact SHA CI projection required), `head lineage` (advisory)
-2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect`
+2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect` (authority-aware observation only)
 3. Advisory authority-lineage spec: nearest verified ancestor diagnostics without inherited authority
 4. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
 5. Governance: ayrı spec ile onay gerekli

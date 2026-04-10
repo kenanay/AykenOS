@@ -5,13 +5,13 @@ use serde::Serialize;
 use std::io::{self, Write};
 
 #[derive(Serialize)]
-struct AdvisoryRiskSummary {
-    authority: &'static str,
-    lineage_confidence: Option<LineageConfidence>,
-    lineage_tainted: bool,
-    ancestor_distance: Option<usize>,
-    risk_level: &'static str,
-    note: &'static str,
+pub(crate) struct AdvisoryRiskSummary {
+    pub(crate) authority: &'static str,
+    pub(crate) lineage_confidence: Option<LineageConfidence>,
+    pub(crate) lineage_tainted: bool,
+    pub(crate) ancestor_distance: Option<usize>,
+    pub(crate) risk_level: &'static str,
+    pub(crate) note: &'static str,
 }
 
 pub fn run(_args: RiskArgs, json: bool) -> Result<(), AykenError> {
@@ -45,7 +45,7 @@ pub fn run(_args: RiskArgs, json: bool) -> Result<(), AykenError> {
     }
 }
 
-fn compute_risk(status: &AuthorityStatus) -> AdvisoryRiskSummary {
+pub(crate) fn compute_risk(status: &AuthorityStatus) -> AdvisoryRiskSummary {
     let risk_level = match status.effective_authority {
         "closure" => "none",
         "verified_head" => "low",

@@ -1,4 +1,8 @@
 use crate::cli::{BcibArgs, BcibPathArgs, BcibTarget, BcibVerifyArgs};
+use crate::commands::{
+    risk,
+    status::{self, LineageConfidence},
+};
 use crate::core::{error::AykenError, output, process};
 use bcib::{BcibBuffer, BCIB_MAGIC, BCIB_VERSION};
 use serde::Serialize;
@@ -26,6 +30,24 @@ struct BcibInspectStatus {
     decoded_instruction_count: Option<usize>,
     trailing_bytes: Option<u64>,
     decode_error: Option<String>,
+    authority: &'static str,
+    lineage: BcibInspectLineageStatus,
+    risk: BcibInspectRiskStatus,
+    note: &'static str,
+}
+
+#[derive(Serialize)]
+struct BcibInspectLineageStatus {
+    resolved: bool,
+    tainted: bool,
+    confidence: Option<LineageConfidence>,
+    ancestor_distance: Option<usize>,
+    nearest_verified_ancestor: Option<String>,
+}
+
+#[derive(Serialize)]
+struct BcibInspectRiskStatus {
+    level: &'static str,
     note: &'static str,
 }
 
@@ -98,6 +120,8 @@ fn run_inspect(args: BcibPathArgs, json: bool) -> Result<(), AykenError> {
     let bytes = fs::read(&path)?;
     let structure = inspect_structure(&bytes);
     let sha256 = sha256_hex(&bytes);
+    let authority = status::gather_authority_status();
+    let advisory_risk = risk::compute_risk(&authority);
     let (valid_bcib, decoded_instruction_count, decode_error) = match BcibBuffer::decode(&bytes) {
         Ok(buffer) => (true, Some(buffer.len()), None),
         Err(err) => (false, None, Some(err.to_string())),
@@ -114,7 +138,19 @@ fn run_inspect(args: BcibPathArgs, json: bool) -> Result<(), AykenError> {
         decoded_instruction_count,
         trailing_bytes: structure.trailing_bytes,
         decode_error,
-        note: "Inspection is advisory; header and layout signals are exposed separately from decode success and do not claim verification authority.",
+        authority: authority.effective_authority,
+        lineage: BcibInspectLineageStatus {
+            resolved: authority.lineage_resolved,
+            tainted: authority.lineage_tainted,
+            confidence: authority.lineage_confidence,
+            ancestor_distance: authority.ancestor_distance,
+            nearest_verified_ancestor: authority.nearest_verified_ancestor.clone(),
+        },
+        risk: BcibInspectRiskStatus {
+            level: advisory_risk.risk_level,
+            note: advisory_risk.note,
+        },
+        note: "Inspection is advisory; BCIB structure/decode signals are exposed alongside authority, lineage, and risk context without claiming execution safety or verification authority.",
     };
 
     if json {
@@ -151,6 +187,35 @@ fn run_inspect(args: BcibPathArgs, json: bool) -> Result<(), AykenError> {
         if let Some(error) = &status.decode_error {
             println!("  decode_error      : {error}");
         }
+        println!("  authority         : {}", status.authority);
+        println!("  lineage.resolved  : {}", status.lineage.resolved);
+        println!("  lineage.tainted   : {}", status.lineage.tainted);
+        println!(
+            "  lineage.confidence: {}",
+            status
+                .lineage
+                .confidence
+                .map(|value| format!("{value:?}"))
+                .unwrap_or_else(|| "n/a".to_string())
+        );
+        println!(
+            "  lineage.distance  : {}",
+            status
+                .lineage
+                .ancestor_distance
+                .map(|count| count.to_string())
+                .unwrap_or_else(|| "n/a".to_string())
+        );
+        println!(
+            "  lineage.ancestor  : {}",
+            status
+                .lineage
+                .nearest_verified_ancestor
+                .as_deref()
+                .unwrap_or("n/a")
+        );
+        println!("  risk.level        : {}", status.risk.level);
+        println!("  risk.note         : {}", status.risk.note);
         println!("  note: {}", status.note);
         Ok(())
     }

@@ -29,6 +29,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `ayken head verify` validates CI-backed development head records only
 - `ayken head lineage` reports nearest verified ancestors without changing authority
 - `ayken risk` reports advisory interpretation only and must not affect authority
+- `ayken bcib inspect` reports BCIB structure/decode signals together with advisory authority, lineage, and risk context only
 - a verified head is not an official closure
 
 ## Constraints
@@ -37,6 +38,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `head verify` is fail-closed against `reports/verified_heads/<FULL_SHA>.json`
 - `head lineage` is advisory-only and must not modify `effective_authority`
 - `risk` is advisory-only and must not modify `effective_authority`
+- `bcib inspect` is advisory-only and must not emit execution-safety or authority claims
 - `gate all --json` emits normalized per-gate result summaries suitable for pipeline input
 - `status`, `closure status`, `bcib hash`, and `bcib inspect` are advisory observation surfaces
 - no authority override from local tools
