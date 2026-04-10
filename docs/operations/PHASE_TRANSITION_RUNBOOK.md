@@ -1,7 +1,7 @@
 # Phase Transition Runbook
 
 **Authority:** ARCHITECTURE_FREEZE.md  
-**Last Updated:** 2026-02-26  
+**Last Updated:** 2026-04-10  
 **Status:** ACTIVE
 
 ## Overview
@@ -390,8 +390,18 @@ gh pr merge <PR> --admin --squash
 - **Gate:** `ci-gate-drift-activation` (SKIP → PASS)
 - **Constitutional:** Phase-aware check in `ci-gate-constitutional`
 
-### Phase 10+: TBD
-- Document phase-specific requirements here
+### Phase 10-15: Completed
+- Phase-10: Runtime determinism — OFFICIALLY CLOSED (ci-freeze#22797401328)
+- Phase-11: Verification substrate — OFFICIALLY CLOSED (ci-freeze#22797401328)
+- Phase-12: Trust layer — OFFICIALLY CLOSED (ci-freeze#23099070483, PR #62)
+- Phase-13: Distributed observability — OFFICIALLY CLOSED (ci-freeze#23706742211, PR #81)
+- Phase-14: Observability hardening — OFFICIALLY CLOSED (ci-freeze#23999026616)
+- Phase-15: BCIB Execution Engine v3 — OFFICIALLY CLOSED (ci-freeze#24213727039, PR #104)
+- **Current:** `CURRENT_PHASE=15` — Phase-16 PENDING
+
+### Phase 16+: TBD
+- Ayken CLI Faz B + BCIB toolchain surface
+- Governance: ayrı spec ile onay gerekli (`docs/specs/phase16-ayken-orchestration/README.md`)
 
 ## References
 

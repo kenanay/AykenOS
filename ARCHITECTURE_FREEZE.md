@@ -593,8 +593,8 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-04-03):**
-- ✅ All CI gates active and passing (23-gate ci-freeze chain)
+**Current Status (2026-04-10):**
+- ✅ All CI gates active and passing (30-gate ci-freeze chain)
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
@@ -606,6 +606,11 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ `CURRENT_PHASE=14` formal transition completed (`8b23fe0d`)
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
 - ✅ Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run `ci-freeze#23999026616`, tag: `phase14-official-closure-confirmed`)
+- ✅ Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run `ci-freeze#24213727039`, PR #104, tag: `phase15-official-closure`)
+- ✅ `CURRENT_PHASE=15` formal transition completed (`48970cd0`)
+- ✅ Performance baseline updated: `gha-ubuntu24-20260406.80.1-X64` (PR #104)
+- ✅ `ayken-cli` v0.1 (Faz A wrapper) shipped: `tools/ayken-cli/`
+- 🔄 Phase-16 PENDING (Ayken CLI Faz B + BCIB toolchain surface)
 
 ---
 
@@ -831,20 +836,46 @@ Phase-14 (Distributed Observability Hardening) resmi olarak KAPALI. Aşağıdaki
 
 ---
 
+## 15.2 Phase-15 Post-Closure Immutability Lock
+
+**Effective:** 2026-04-09 | **Authority:** CI run `24213727039` | **HEAD SHA:** `48970cd0fe78b31bf867b94c4c4532dc1cd35905`
+
+Phase-15 (BCIB Execution Engine v3) resmi olarak KAPALI. Aşağıdaki bileşenler ve sözleşmeler **değiştirilemez (IMMUTABLE)**:
+
+- `userspace/bcib-runtime/` — BCIB v3 üç katmanlı runtime (BcibVerifierPlanner, BcibExecutionRuntime, SchedulerSubmitBridge)
+- `tools/ayken-cli/` — ayken-cli v0.1 Faz A wrapper
+- Phase-15 CI gate seti (WS 3.1–3.9): `ci-gate-bcib-v3-core`, `ci-gate-dsl-bcib-contract`, `ci-gate-semantic-cli-contract`, `ci-gate-data-runtime-bcib`, `ci-gate-ai-runtime-boundary`, `ci-gate-capability-manager`, `ci-gate-proofd-observability-boundary`, `ci-gate-toolchain-opcode-registry`
+
+**Kapanış Sonrası Değişmezler:**
+- BCIB v3 üç katmanlı mimari — geriye dönük olarak değiştirilemez
+- `BcibVerifierPlanner` dört aşamalı doğrulama pipeline — geriye dönük olarak değiştirilemez
+- `SchedulerSubmitBridge` → `SYS_V2_SUBMIT_EXECUTION (1003)` bağlantısı — geriye dönük olarak değiştirilemez
+- v0.2 golden fixture uyumluluğu — geriye dönük olarak değiştirilemez
+- `ayken-cli` v0.1 Faz A komut seti — geriye dönük olarak değiştirilemez
+
+**Test Kanıtı:** 293 unit/integration test PASS, 12 property test PASS (min 100 iterasyon).
+
+**Etiket Koruması:** `phase15-official-closure` etiketi korumalıdır; force-push yasaktır.
+
+**Kapsam Dondurma:** Phase-15 kapsamına yeni BCIB opcode, yeni execution layer veya yeni CLI komutu eklenemez. Yeni özellikler Phase-16 veya sonraki bir faz gerektirir.
+
+---
+
 ## 16. Document Control
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-03-28  
-**Next Review:** 2026-04-11  
+**Last Review:** 2026-04-10  
+**Next Review:** 2026-04-25  
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.1 | 2026-04-10 | Kenan AY | Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run ci-freeze#24213727039, PR #104, tag: phase15-official-closure); CURRENT_PHASE=15; Phase-16 PENDING; §15.2 immutability lock eklendi |
 | 2.0 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616, tag: phase14-official-closure-confirmed) |
 | 1.9 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14; perf baseline updated (PR #83) |
 | 1.8 | 2026-03-29 | Kenan AY | Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71-#77); closure prep pending |

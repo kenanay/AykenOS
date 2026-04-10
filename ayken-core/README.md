@@ -477,6 +477,6 @@ Katkılarınızı bekliyoruz! Lütfen aşağıdaki adımları izleyin:
 ---
 
 **Oluşturan:** Kenan AY  
-**Son Güncelleme:** 15 Ocak 2026
+**Son Güncelleme:** 10 Nisan 2026
 
 **© 2026 Kenan AY - AykenOS Project**
