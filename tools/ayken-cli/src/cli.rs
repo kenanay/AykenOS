@@ -25,6 +25,8 @@ pub enum Command {
     Test(TestArgs),
     /// Show combined closure and verified-head authority state
     Status(StatusArgs),
+    /// Show advisory risk interpretation without changing authority
+    Risk(RiskArgs),
     /// Run a CI gate
     Gate(GateArgs),
     /// Observe or verify closure authority
@@ -66,6 +68,9 @@ pub struct TestArgs {
 
 #[derive(Args, Debug)]
 pub struct StatusArgs {}
+
+#[derive(Args, Debug)]
+pub struct RiskArgs {}
 
 #[derive(Args, Debug)]
 pub struct GateArgs {

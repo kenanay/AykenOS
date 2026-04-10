@@ -4,28 +4,58 @@ use crate::core::{error::AykenError, output};
 use serde::Serialize;
 use std::io::{self, Write};
 
-#[derive(Serialize)]
-struct AuthorityStatus {
-    git_head_sha: Option<String>,
-    closure_authority_confirmed: bool,
-    closure_reference: &'static str,
-    closure_run_id: Option<String>,
-    closure_evaluation_error: Option<String>,
-    head_verified: bool,
-    effective_authority: &'static str,
-    verified_head_reference: String,
-    verified_head_run_id: Option<String>,
-    verified_head_authority: Option<String>,
-    head_evaluation_error: Option<String>,
-    lineage_resolved: bool,
-    lineage_tainted: bool,
-    nearest_verified_ancestor: Option<String>,
-    ancestor_distance: Option<usize>,
-    lineage_evaluation_error: Option<String>,
-    note: &'static str,
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub(crate) enum LineageConfidence {
+    High,
+    Medium,
+    Low,
 }
 
-pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
+#[derive(Serialize)]
+pub(crate) struct AuthorityStatus {
+    pub(crate) git_head_sha: Option<String>,
+    pub(crate) closure_authority_confirmed: bool,
+    pub(crate) closure_reference: &'static str,
+    pub(crate) closure_run_id: Option<String>,
+    pub(crate) closure_evaluation_error: Option<String>,
+    pub(crate) head_verified: bool,
+    pub(crate) effective_authority: &'static str,
+    pub(crate) verified_head_reference: String,
+    pub(crate) verified_head_run_id: Option<String>,
+    pub(crate) verified_head_authority: Option<String>,
+    pub(crate) head_evaluation_error: Option<String>,
+    pub(crate) lineage_resolved: bool,
+    pub(crate) lineage_tainted: bool,
+    pub(crate) lineage_confidence: Option<LineageConfidence>,
+    pub(crate) nearest_verified_ancestor: Option<String>,
+    pub(crate) ancestor_distance: Option<usize>,
+    pub(crate) lineage_evaluation_error: Option<String>,
+    pub(crate) note: &'static str,
+}
+
+pub(crate) fn compute_lineage_confidence(
+    resolved: bool,
+    tainted: bool,
+    distance: Option<usize>,
+) -> Option<LineageConfidence> {
+    if !resolved {
+        return None;
+    }
+
+    if tainted {
+        return Some(LineageConfidence::Low);
+    }
+
+    match distance {
+        Some(distance) if distance <= 3 => Some(LineageConfidence::High),
+        Some(distance) if distance <= 10 => Some(LineageConfidence::Medium),
+        Some(_) => Some(LineageConfidence::Low),
+        None => None,
+    }
+}
+
+pub(crate) fn gather_authority_status() -> AuthorityStatus {
     let closure = closure::evaluate_closure_status();
     let head = head::evaluate_head_status();
     let lineage = head::evaluate_head_lineage();
@@ -37,7 +67,7 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         "none"
     };
 
-    let status = AuthorityStatus {
+    AuthorityStatus {
         git_head_sha: head
             .status
             .git_head_sha
@@ -55,11 +85,20 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         head_evaluation_error: head.status.evaluation_error.clone(),
         lineage_resolved: lineage.lineage_resolved,
         lineage_tainted: lineage.lineage_tainted,
+        lineage_confidence: compute_lineage_confidence(
+            lineage.lineage_resolved,
+            lineage.lineage_tainted,
+            lineage.ancestor_distance,
+        ),
         nearest_verified_ancestor: lineage.nearest_verified_ancestor,
         ancestor_distance: lineage.ancestor_distance,
         lineage_evaluation_error: lineage.evaluation_error,
         note: "Official closure authority and verified development head authority are separate. Authority lineage is advisory only and does not change effective_authority.",
-    };
+    }
+}
+
+pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
+    let status = gather_authority_status();
 
     if json {
         output::print_json(&status)
@@ -111,6 +150,13 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         println!(
             "  lineage_tainted              : {}",
             status.lineage_tainted
+        );
+        println!(
+            "  lineage_confidence           : {}",
+            status
+                .lineage_confidence
+                .map(|value| format!("{value:?}"))
+                .unwrap_or_else(|| "n/a".to_string())
         );
         println!(
             "  nearest_verified_ancestor    : {}",
