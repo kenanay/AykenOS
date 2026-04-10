@@ -1,7 +1,17 @@
 use crate::core::error::AykenError;
+use std::env;
 use std::process::Command;
 
 pub fn read_git_head_sha() -> Result<String, AykenError> {
+    for key in ["GITHUB_SHA", "CI_COMMIT_SHA"] {
+        if let Ok(value) = env::var(key) {
+            let sha = value.trim();
+            if is_full_hex_sha(sha) {
+                return Ok(sha.to_string());
+            }
+        }
+    }
+
     let output = Command::new("git").args(["rev-parse", "HEAD"]).output()?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -22,12 +32,6 @@ pub fn read_git_head_sha() -> Result<String, AykenError> {
     Ok(head_sha)
 }
 
-pub fn short_sha(head_sha: &str) -> Result<String, AykenError> {
-    if head_sha.len() < 8 {
-        return Err(AykenError::Process(format!(
-            "git HEAD SHA too short for verified head lookup: {head_sha}"
-        )));
-    }
-
-    Ok(head_sha[..8].to_string())
+fn is_full_hex_sha(value: &str) -> bool {
+    value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }

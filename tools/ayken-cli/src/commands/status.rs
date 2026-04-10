@@ -12,6 +12,7 @@ struct AuthorityStatus {
     closure_run_id: Option<String>,
     closure_evaluation_error: Option<String>,
     head_verified: bool,
+    effective_authority: &'static str,
     verified_head_reference: String,
     verified_head_run_id: Option<String>,
     verified_head_authority: Option<String>,
@@ -22,6 +23,13 @@ struct AuthorityStatus {
 pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
     let closure = closure::evaluate_closure_status();
     let head = head::evaluate_head_status();
+    let effective_authority = if closure.status.authority_confirmed {
+        "closure"
+    } else if head.status.head_verified {
+        "verified_head"
+    } else {
+        "none"
+    };
 
     let status = AuthorityStatus {
         git_head_sha: head
@@ -34,6 +42,7 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         closure_run_id: closure.status.remote_ci_run_id.clone(),
         closure_evaluation_error: closure.status.evaluation_error.clone(),
         head_verified: head.status.head_verified,
+        effective_authority,
         verified_head_reference: head.status.record_path.clone(),
         verified_head_run_id: head.status.ci_freeze_run_id.clone(),
         verified_head_authority: head.status.ci_freeze_authority.clone(),
@@ -52,6 +61,10 @@ pub fn run(_args: StatusArgs, json: bool) -> Result<(), AykenError> {
         println!(
             "  closure_authority_confirmed  : {}",
             status.closure_authority_confirmed
+        );
+        println!(
+            "  effective_authority          : {}",
+            status.effective_authority
         );
         println!(
             "  closure_reference            : {}",

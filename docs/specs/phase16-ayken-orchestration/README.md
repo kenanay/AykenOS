@@ -19,6 +19,8 @@ Provide a controlled orchestration surface for build, verification, and closure 
 
 - official closure authority is phase-tagged and immutable
 - verified head authority is CI-backed and SHA-scoped
+- verified head records use full SHA filenames plus binding-hash integrity
+- verified head records are local CI projections; only an exact current-SHA record may satisfy `head verify`
 - local `ayken` commands are advisory and may not override CI-confirmed truth
 - `ayken closure verify` validates official closure only
 - `ayken head verify` validates CI-backed development head records only
@@ -27,7 +29,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 ## Constraints
 
 - `closure verify` and `gate all` are fail-closed
-- `head verify` is fail-closed against `reports/verified_heads/<HEAD>.json`
+- `head verify` is fail-closed against `reports/verified_heads/<FULL_SHA>.json`
 - `gate all --json` emits normalized per-gate result summaries suitable for pipeline input
 - `status`, `closure status`, `bcib hash`, and `bcib inspect` are advisory observation surfaces
 - no authority override from local tools
