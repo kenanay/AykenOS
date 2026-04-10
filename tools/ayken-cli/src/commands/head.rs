@@ -248,6 +248,7 @@ pub(crate) fn evaluate_head_lineage() -> HeadLineageStatus {
         return status;
     }
     if let Some(error) = exact.evaluation_error {
+        status.lineage_tainted = true;
         status.advisory_diagnostics.push(format!(
             "ignored invalid exact-SHA verified-head record: {error}"
         ));
@@ -276,6 +277,7 @@ pub(crate) fn evaluate_head_lineage() -> HeadLineageStatus {
         }
 
         if let Some(error) = inspection.evaluation_error {
+            status.lineage_tainted = true;
             status.advisory_diagnostics.push(format!(
                 "ignored invalid verified-head record for {ancestor_sha}: {error}"
             ));
