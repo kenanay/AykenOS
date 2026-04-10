@@ -13,6 +13,7 @@ fn main() {
         Command::Check(args) => commands::check::run(args, cli.json),
         Command::Test(args) => commands::test::run(args, cli.json),
         Command::Status(args) => commands::status::run(args, cli.json),
+        Command::Risk(args) => commands::risk::run(args, cli.json),
         Command::Gate(args) => commands::gate::run(args, cli.json),
         Command::Closure(args) => commands::closure::run(args, cli.json),
         Command::Head(args) => commands::head::run(args, cli.json),

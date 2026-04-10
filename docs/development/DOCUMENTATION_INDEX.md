@@ -59,11 +59,13 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 2. `docs/roadmap/overview.md`
 3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `docs/specs/phase14-distributed-observability/README.md`
-6. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-7. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
-8. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
-9. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+5. `docs/specs/phase16-ayken-orchestration/README.md`
+6. `docs/specs/authority-lineage-v1/README.md`
+7. `docs/specs/phase14-distributed-observability/README.md`
+8. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+9. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+10. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
+11. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

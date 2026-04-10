@@ -25,6 +25,8 @@ pub enum Command {
     Test(TestArgs),
     /// Show combined closure and verified-head authority state
     Status(StatusArgs),
+    /// Show advisory risk interpretation without changing authority
+    Risk(RiskArgs),
     /// Run a CI gate
     Gate(GateArgs),
     /// Observe or verify closure authority
@@ -68,6 +70,9 @@ pub struct TestArgs {
 pub struct StatusArgs {}
 
 #[derive(Args, Debug)]
+pub struct RiskArgs {}
+
+#[derive(Args, Debug)]
 pub struct GateArgs {
     #[command(subcommand)]
     pub target: GateTarget,
@@ -109,6 +114,8 @@ pub struct HeadArgs {
 pub enum HeadTarget {
     /// Binding verified-head authority verification surface
     Verify,
+    /// Advisory nearest-verified-ancestor diagnostics surface
+    Lineage,
 }
 
 #[derive(Args, Debug)]

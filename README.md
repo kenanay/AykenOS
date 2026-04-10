@@ -57,9 +57,14 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Verified Head**
   - Development SHA validated by remote `ci-freeze`
   - Verified via `ayken head verify`
+- **Authority Lineage**
+  - Advisory ancestry diagnostics only
+  - Exposed via `ayken head lineage`
+  - Must not inherit verified authority across SHAs
 
 Current verified-head records live under `reports/verified_heads/<FULL_SHA>.json`.
 These records are SHA-scoped CI projections. `ayken head verify` only succeeds when an exact record for the current SHA is available locally.
+Authority lineage, when added, is diagnostic context only.
 
 > A verified head is not a closure.
 
@@ -306,13 +311,17 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 **Kısa Vadeli (Phase-16):**
 - Ayken CLI Faz B: `ayken status`
+- Ayken CLI Faz B: `ayken risk`
 - Ayken CLI Faz B: `ayken gate all`
 - Ayken CLI Faz B: `ayken closure status --json` (advisory)
 - Ayken CLI Faz B: `ayken closure verify` (binding, fail-closed)
 - Ayken CLI Faz B: `ayken head verify` (binding, CI-backed)
+- Ayken CLI Faz B: `ayken head lineage` (advisory-only ancestry diagnostics)
+- Ayken CLI Faz B: `ayken risk` (advisory interpretation only)
+- Ayken CLI Faz B: `ayken gate all --json` (CI-ready gate + risk contract)
 - Ayken CLI Faz C: `ayken bcib verify`
 - Ayken CLI Faz C: `ayken bcib hash`
-- Ayken CLI Faz C: `ayken bcib inspect`
+- Ayken CLI Faz C: `ayken bcib inspect` (authority/lineage/risk observation only)
 - Authority modeli: `ci-freeze` authoritative, local tooling advisory
 
 **Orta Vadeli:**
