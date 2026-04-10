@@ -178,8 +178,14 @@ mod tests {
             canonical_plan_fingerprint: "test_plan_fp".to_string(),
             canonical_binding_fingerprint: "test_binding_fp".to_string(),
             bcib_sha256: bcib_sha256.clone(),
-            submission_id: "test_submission_001".to_string(),
+            target_context_id: 1,
+            submission_id: crate::gate_c::types::SubmissionId {
+                id: "test_submission_001".to_string(),
+                timestamp: 0,
+                fingerprint: Some(bcib_sha256.clone()),
+            },
             required_capabilities: vec![],
+            declared_capabilities: vec![],
             replay_binding: ProofReplayBinding {
                 canonical_plan_fingerprint: "test_plan_fp".to_string(),
                 canonical_binding_fingerprint: "test_binding_fp".to_string(),

@@ -188,14 +188,12 @@ impl CapabilityDerivationAuditor {
 mod tests {
     use super::*;
     use crate::bcib_simple::BCIBOperand;
-    use crate::canonical_query::CanonicalQueryType;
 
     fn create_test_binding() -> CanonicalQueryBinding {
         CanonicalQueryBinding {
-            query_type: CanonicalQueryType::List,
-            context: "users".to_string(),
-            filter: None,
-            fingerprint: "test_fp".to_string(),
+            context_path: "users".to_string(),
+            predicate_kind: crate::canonical_query::CanonicalPredicateKind::All,
+            predicate_fingerprint: None,
         }
     }
 

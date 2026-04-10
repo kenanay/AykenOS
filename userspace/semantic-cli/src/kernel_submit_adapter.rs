@@ -157,10 +157,9 @@ mod tests {
         SubmissionInput {
             canonical_command: "list users".to_string(),
             canonical_binding: CanonicalQueryBinding {
-                query_type: crate::canonical_query::CanonicalQueryType::List,
-                context: "users".to_string(),
-                filter: None,
-                fingerprint: "test_fp".to_string(),
+                context_path: "users".to_string(),
+                predicate_kind: crate::canonical_query::CanonicalPredicateKind::All,
+                predicate_fingerprint: None,
             },
             bcib,
             declared_capabilities: vec![],
