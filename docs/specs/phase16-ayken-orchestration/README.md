@@ -21,6 +21,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - verified head authority is CI-backed and SHA-scoped
 - verified head records use full SHA filenames plus binding-hash integrity
 - verified head records are local CI projections; only an exact current-SHA record may satisfy `head verify`
+- authority lineage, when added, is advisory only and MUST NOT inherit verified authority across SHAs
 - local `ayken` commands are advisory and may not override CI-confirmed truth
 - `ayken closure verify` validates official closure only
 - `ayken head verify` validates CI-backed development head records only
@@ -42,3 +43,7 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - `ayken` backend compiler promotion
 - automatic evidence mutation
 - any local workflow that claims official closure without remote confirmation
+
+## Related Specs
+
+- `docs/specs/authority-lineage-v1/README.md`
