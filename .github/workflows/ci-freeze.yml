@@ -185,6 +185,7 @@ jobs:
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
       - name: Build Ayken CLI for advisory reporting
         if: ${{ always() }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           cargo build --manifest-path tools/ayken-cli/Cargo.toml
@@ -197,40 +198,76 @@ jobs:
           GATE_EXIT=$?
           out/cargo/debug/ayken-cli --json status > ayken-status.json
           STATUS_EXIT=$?
+          if ! jq -e . ayken-gate.json >/dev/null 2>&1; then
+            cat > ayken-gate.json <<'EOF'
+            {
+              "target": "all",
+              "all_pass": false,
+              "gates": [],
+              "risk": {
+                "authority": "unknown",
+                "lineage_confidence": null,
+                "lineage_tainted": true,
+                "ancestor_distance": null,
+                "risk_level": "unknown",
+                "note": "Advisory gate snapshot unavailable."
+              }
+            }
+            EOF
+          fi
+          if ! jq -e . ayken-status.json >/dev/null 2>&1; then
+            cat > ayken-status.json <<'EOF'
+            {
+              "effective_authority": "none",
+              "lineage_confidence": null,
+              "nearest_verified_ancestor": null,
+              "ancestor_distance": null,
+              "note": "Advisory status snapshot unavailable."
+            }
+            EOF
+          fi
           echo "gate_exit_code=${GATE_EXIT}" >> "$GITHUB_OUTPUT"
           echo "status_exit_code=${STATUS_EXIT}" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Build Ayken advisory contract
         if: ${{ always() }}
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          AUTH="$(jq -r '.risk.authority // "unknown"' ayken-gate.json 2>/dev/null || echo 'unknown')"
-          CONF="$(jq -r '.risk.lineage_confidence // "-"' ayken-gate.json 2>/dev/null || echo '-')"
-          RISK="$(jq -r '.risk.risk_level // "unknown"' ayken-gate.json 2>/dev/null || echo 'unknown')"
-          PASS="$(jq -r '.all_pass // false' ayken-gate.json 2>/dev/null || echo 'false')"
-          FAILS="$(jq -r '[.gates[]? | select(.result=="FAIL") | .gate] | join(",")' ayken-gate.json 2>/dev/null || echo '')"
-          NEAREST="$(jq -r '.nearest_verified_ancestor // "-"' ayken-status.json 2>/dev/null || echo '-')"
-          DIST="$(jq -r '.ancestor_distance // "-"' ayken-status.json 2>/dev/null || echo '-')"
-
+          set -u -o pipefail
           jq -n \
-            --arg authority "${AUTH}" \
-            --arg lineage_confidence "${CONF}" \
-            --arg risk_level "${RISK}" \
-            --arg nearest_verified_ancestor "${NEAREST}" \
-            --arg ancestor_distance "${DIST}" \
-            --argjson all_pass "${PASS}" \
-            --arg failing_gates "${FAILS}" \
-            '{
-              authority: $authority,
-              lineage_confidence: ($lineage_confidence == "-" ? null : $lineage_confidence),
-              risk_level: $risk_level,
-              nearest_verified_ancestor: ($nearest_verified_ancestor == "-" ? null : $nearest_verified_ancestor),
-              ancestor_distance: ($ancestor_distance == "-" ? null : ($ancestor_distance | tonumber)),
-              all_pass: $all_pass,
-              failing_gates: ($failing_gates == "" ? [] : ($failing_gates | split(",")))
-            }' > ayken-comment.json
+            --slurpfile gate ayken-gate.json \
+            --slurpfile status ayken-status.json \
+            '
+            ($gate[0] // {}) as $g |
+            ($status[0] // {}) as $s |
+            {
+              authority: ($g.risk.authority // "unknown"),
+              lineage_confidence: ($g.risk.lineage_confidence // null),
+              risk_level: ($g.risk.risk_level // "unknown"),
+              nearest_verified_ancestor: ($s.nearest_verified_ancestor // null),
+              ancestor_distance: ($s.ancestor_distance // null),
+              all_pass: ($g.all_pass // false),
+              failing_gates: (($g.gates // []) | map(select(.result == "FAIL") | .gate))
+            }
+            ' > ayken-comment.json
+          CONTRACT_EXIT=$?
+          if [ "${CONTRACT_EXIT}" -ne 0 ] || ! jq -e . ayken-comment.json >/dev/null 2>&1; then
+            cat > ayken-comment.json <<'EOF'
+            {
+              "authority": "unknown",
+              "lineage_confidence": null,
+              "risk_level": "unknown",
+              "nearest_verified_ancestor": null,
+              "ancestor_distance": null,
+              "all_pass": false,
+              "failing_gates": []
+            }
+            EOF
+          fi
+          exit 0
       - name: Write Ayken advisory summary
         if: ${{ always() }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           AUTH="$(jq -r '.authority // "unknown"' ayken-comment.json)"
@@ -258,6 +295,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish Ayken advisory PR comment
         if: ${{ always() && github.event_name == 'pull_request' }}
+        id: ayken_comment
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -268,17 +306,19 @@ jobs:
             const failing = summary.failing_gates.length
               ? `\n- Failing Gates: \`${summary.failing_gates.join(', ')}\``
               : '';
-            const body = `${marker}
-            ### Ayken Advisory
-
-            - Authority: **${summary.authority}**
-            - Confidence: **${summary.lineage_confidence ?? '-'}**
-            - Risk: **${summary.risk_level}**
-            - Nearest Verified Ancestor: **${summary.nearest_verified_ancestor ?? '-'}**
-            - Distance: **${summary.ancestor_distance ?? '-'} commits**
-            - Gates: **${summary.all_pass ? 'PASS' : 'FAIL'}**${failing}
-
-            > Advisory only — does not override CI authority.`;
+            const body = [
+              marker,
+              '### Ayken Advisory',
+              '',
+              `- Authority: **${summary.authority}**`,
+              `- Confidence: **${summary.lineage_confidence ?? '-'}**`,
+              `- Risk: **${summary.risk_level}**`,
+              `- Nearest Verified Ancestor: **${summary.nearest_verified_ancestor ?? '-'}**`,
+              `- Distance: **${summary.ancestor_distance ?? '-'} commits**`,
+              `- Gates: **${summary.all_pass ? 'PASS' : 'FAIL'}**${failing}`,
+              '',
+              '> Advisory only — does not override CI authority.',
+            ].join('\n');
 
             try {
               const { data: comments } = await github.rest.issues.listComments({
@@ -296,16 +336,39 @@ jobs:
                   comment_id: existing.id,
                   body,
                 });
+                core.setOutput('status', 'updated');
+                core.setOutput('comment_id', String(existing.id));
               } else {
-                await github.rest.issues.createComment({
+                const created = await github.rest.issues.createComment({
                   ...context.repo,
                   issue_number: context.issue.number,
                   body,
                 });
+                core.setOutput('status', 'created');
+                core.setOutput('comment_id', String(created.data.id));
               }
             } catch (error) {
               core.warning(`Failed to publish Ayken advisory PR comment: ${error.message}`);
+              core.setOutput('status', 'error');
+              core.setOutput('error_message', error.message);
             }
+      - name: Record Ayken advisory comment status
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          COMMENT_STATUS="${{ steps.ayken_comment.outputs.status }}"
+          COMMENT_ERROR="${{ steps.ayken_comment.outputs.error_message }}"
+          if [ -z "${COMMENT_STATUS}" ]; then
+            COMMENT_STATUS="not-run"
+          fi
+
+          {
+            echo "- PR Comment Publish: **${COMMENT_STATUS}**"
+            if [ -n "${COMMENT_ERROR}" ]; then
+              echo "- PR Comment Error: \`${COMMENT_ERROR}\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload performance evidence on success
         if: ${{ success() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
