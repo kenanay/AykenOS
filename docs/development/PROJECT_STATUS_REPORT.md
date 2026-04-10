@@ -168,8 +168,8 @@ Meaning:
 
 ## 5) Next Steps
 1. Keep `reports/phase15_official_closure/` as the canonical Phase-15 authority package.
-2. Finalize Phase-16 orchestration spec before expanding `ayken-cli` beyond Faz A wrapper scope.
-3. Implement Phase-16 commands in thin orchestration form only: `gate all`, `closure status --json`, `bcib verify`, `bcib hash`, `bcib inspect`.
+2. Keep Phase-16 orchestration constrained to thin wrapper scope while authority remains CI-bound.
+3. Implement Phase-16 commands in thin orchestration form only: `status`, `gate all`, `closure status --json`, `closure verify`, `head verify`, `bcib verify`, `bcib hash`, `bcib inspect`, while keeping verified-head integrity separate from official closure and requiring exact-SHA CI projections for head authority.
 4. Keep monitoring replay stability under interrupt ordering nondeterminism.
 5. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
 

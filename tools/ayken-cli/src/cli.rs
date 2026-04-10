@@ -1,7 +1,11 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(name = "ayken", version, about = "AykenOS controlled toolchain entrypoint")]
+#[command(
+    name = "ayken",
+    version,
+    about = "AykenOS controlled toolchain entrypoint"
+)]
 pub struct AykenCli {
     /// Output results as JSON
     #[arg(long, global = true)]
@@ -19,10 +23,16 @@ pub enum Command {
     Check(CheckArgs),
     /// Run cargo test with enforced toolchain policy
     Test(TestArgs),
+    /// Show combined closure and verified-head authority state
+    Status(StatusArgs),
     /// Run a CI gate
     Gate(GateArgs),
-    /// Show closure readiness status
+    /// Observe or verify closure authority
     Closure(ClosureArgs),
+    /// Verify CI-backed development head authority
+    Head(HeadArgs),
+    /// Thin BCIB orchestration over existing verifier/runtime surfaces
+    Bcib(BcibArgs),
 }
 
 #[derive(Args, Debug)]
@@ -55,17 +65,84 @@ pub struct TestArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct StatusArgs {}
+
+#[derive(Args, Debug)]
 pub struct GateArgs {
-    /// Gate to run: hygiene | all
-    pub target: String,
+    #[command(subcommand)]
+    pub target: GateTarget,
 
     /// Allow experimental toolchain. Forbidden in CI.
     #[arg(long)]
     pub experimental: bool,
 }
 
+#[derive(Subcommand, Debug)]
+pub enum GateTarget {
+    /// Run the hygiene gate only
+    Hygiene,
+    /// Run the Phase-16 minimal gate chain
+    All,
+}
+
 #[derive(Args, Debug)]
 pub struct ClosureArgs {
-    /// Closure sub-command: status
-    pub target: String,
+    #[command(subcommand)]
+    pub target: ClosureTarget,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ClosureTarget {
+    /// Advisory closure observation surface
+    Status,
+    /// Binding closure authority verification surface
+    Verify,
+}
+
+#[derive(Args, Debug)]
+pub struct HeadArgs {
+    #[command(subcommand)]
+    pub target: HeadTarget,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum HeadTarget {
+    /// Binding verified-head authority verification surface
+    Verify,
+}
+
+#[derive(Args, Debug)]
+pub struct BcibArgs {
+    #[command(subcommand)]
+    pub target: BcibTarget,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum BcibTarget {
+    /// Verify a proof bundle via the existing proof-verifier binary
+    Verify(BcibVerifyArgs),
+    /// Compute a SHA-256 digest for a BCIB artifact
+    Hash(BcibPathArgs),
+    /// Inspect a BCIB artifact without claiming authority
+    Inspect(BcibPathArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct BcibVerifyArgs {
+    /// Path to the proof bundle root
+    pub bundle_path: String,
+
+    /// Path to the trust policy JSON
+    #[arg(long)]
+    pub policy: String,
+
+    /// Path to the producer registry snapshot JSON
+    #[arg(long)]
+    pub registry: String,
+}
+
+#[derive(Args, Debug)]
+pub struct BcibPathArgs {
+    /// Path to the BCIB artifact
+    pub path: String,
 }
