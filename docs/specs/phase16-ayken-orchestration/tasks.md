@@ -50,19 +50,19 @@
   - [x] 6.5 Enforce explicit, non-empty context-read capability validation for the supported query surface
   - Reference: Requirements 6, 7, 8, 9
 
-- [ ] 7. Close the Phase-16A proof/replay slice
+- [x] 7. Close the Phase-16A proof/replay slice
   - [x] 7.1 Produce one canonical end-to-end artifact chain: command string -> IR fingerprint -> Canonical Query Binding fingerprint -> BCIB SHA-256 -> submission result
   - [x] 7.2 Bind proof material to the lowered BCIB identity
   - [x] 7.3 Add replay verification for the same canonical BCIB input
   - [x] 7.4 Fail closed on replay deviation
   - Reference: Requirement 10
 
-- [ ] 8. Add regression guards
+- [x] 8. Add regression guards
   - [x] 8.1 Add tests proving the production path never emits `Nop`
   - [x] 8.2 Add tests proving unsupported commands/predicates never degrade to placeholder success
-  - [ ] 8.3 Add tests proving the production path does not bypass orchestration with direct executor calls
-  - [ ] 8.4 Add one end-to-end deterministic query scenario for `list`, `show`, and `query`
-  - [ ] 8.5 Add tests proving orchestration rejects or packages work without reinterpreting semantic intent
+  - [x] 8.3 Add tests proving the production path does not bypass orchestration with direct executor calls
+  - [x] 8.4 Add one end-to-end deterministic query scenario for `list`, `show`, and `query`
+  - [x] 8.5 Add tests proving orchestration rejects or packages work without reinterpreting semantic intent
   - Reference: Requirements 3, 4, 6, 7, 8, 9, 10
 
 - [ ] 9. Keep docs synchronized while implementation lands
