@@ -185,46 +185,41 @@ jobs:
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
       - name: Build Ayken CLI for advisory reporting
         if: ${{ always() }}
+        id: ayken_build
         continue-on-error: true
         run: |
           set -euo pipefail
           cargo build --manifest-path tools/ayken-cli/Cargo.toml
+          echo "built=true" >> "$GITHUB_OUTPUT"
       - name: Capture Ayken advisory snapshots
         if: ${{ always() }}
         id: ayken_snapshots
         run: |
           set +e
-          out/cargo/debug/ayken-cli --json gate all > ayken-gate.json
-          GATE_EXIT=$?
-          out/cargo/debug/ayken-cli --json status > ayken-status.json
-          STATUS_EXIT=$?
+          CLI_AVAILABLE=false
+          if [ "${{ steps.ayken_build.outputs.built }}" = "true" ] && [ -x "out/cargo/debug/ayken-cli" ]; then
+            CLI_AVAILABLE=true
+          fi
+
+          if [ "${CLI_AVAILABLE}" = "true" ]; then
+            out/cargo/debug/ayken-cli --json gate all > ayken-gate.json 2>/dev/null
+            GATE_EXIT=$?
+            out/cargo/debug/ayken-cli --json status > ayken-status.json 2>/dev/null
+            STATUS_EXIT=$?
+          else
+            GATE_EXIT=1
+            STATUS_EXIT=1
+          fi
+
           if ! jq -e . ayken-gate.json >/dev/null 2>&1; then
             cat > ayken-gate.json <<'EOF'
-            {
-              "target": "all",
-              "all_pass": false,
-              "gates": [],
-              "risk": {
-                "authority": "unknown",
-                "lineage_confidence": null,
-                "lineage_tainted": true,
-                "ancestor_distance": null,
-                "risk_level": "unknown",
-                "note": "Advisory gate snapshot unavailable."
-              }
-            }
-            EOF
+{"target":"all","all_pass":false,"gates":[],"risk":{"authority":"unknown","lineage_confidence":null,"lineage_tainted":true,"ancestor_distance":null,"risk_level":"unknown","note":"Advisory gate snapshot unavailable."}}
+EOF
           fi
           if ! jq -e . ayken-status.json >/dev/null 2>&1; then
             cat > ayken-status.json <<'EOF'
-            {
-              "effective_authority": "none",
-              "lineage_confidence": null,
-              "nearest_verified_ancestor": null,
-              "ancestor_distance": null,
-              "note": "Advisory status snapshot unavailable."
-            }
-            EOF
+{"effective_authority":"none","lineage_confidence":null,"nearest_verified_ancestor":null,"ancestor_distance":null,"note":"Advisory status snapshot unavailable."}
+EOF
           fi
           echo "gate_exit_code=${GATE_EXIT}" >> "$GITHUB_OUTPUT"
           echo "status_exit_code=${STATUS_EXIT}" >> "$GITHUB_OUTPUT"
@@ -253,16 +248,8 @@ jobs:
           CONTRACT_EXIT=$?
           if [ "${CONTRACT_EXIT}" -ne 0 ] || ! jq -e . ayken-comment.json >/dev/null 2>&1; then
             cat > ayken-comment.json <<'EOF'
-            {
-              "authority": "unknown",
-              "lineage_confidence": null,
-              "risk_level": "unknown",
-              "nearest_verified_ancestor": null,
-              "ancestor_distance": null,
-              "all_pass": false,
-              "failing_gates": []
-            }
-            EOF
+{"authority":"unknown","lineage_confidence":null,"risk_level":"unknown","nearest_verified_ancestor":null,"ancestor_distance":null,"all_pass":false,"failing_gates":[]}
+EOF
           fi
           exit 0
       - name: Write Ayken advisory summary
