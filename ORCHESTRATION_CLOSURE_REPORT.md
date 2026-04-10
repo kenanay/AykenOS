@@ -1,12 +1,16 @@
 # Ayken Orchestration Closure Report
 
 **Date:** 2026-04-11  
-**Status:** ~95% Complete  
+**Status:** ~90% Complete (Production Candidate)  
 **Authority:** Kenan AY - Architectural Steward
 
 ## Executive Summary
 
-Ayken Orchestration pipeline is now **deterministic and cryptographically verifiable**. The system doesn't just "work" — it **proves** its determinism through end-to-end test coverage.
+Ayken Orchestration pipeline is now **deterministic and cryptographically verifiable** at the pipeline level. The system doesn't just "work" — it **proves** its pipeline determinism through end-to-end test coverage.
+
+**CRITICAL DISTINCTION:**
+- ✅ Pipeline determinism: DSL → BCIB → proof (proven)
+- ⚠️ Runtime determinism: BCIB → execution → result (not yet proven)
 
 ## Critical Achievement
 
@@ -123,10 +127,18 @@ This enables:
 - Replay attack prevention
 - Execution determinism proof
 
-## Remaining Work (~5%)
+## Remaining Work (~10%)
+
+### CRITICAL: Runtime Determinism (Blocking Production)
+- [ ] **Runtime equivalence test: runtime_result == replay_result**
+- [ ] Kernel execution determinism verification
+- [ ] Submission result fingerprint consistency
+
+This is the difference between:
+- "Pipeline is deterministic" (current state)
+- "Execution is deterministic" (production requirement)
 
 ### Integration Tests
-- [ ] Runtime result = replay result equivalence
 - [ ] Multi-context submission scenarios
 - [ ] Concurrent submission determinism
 
@@ -202,14 +214,20 @@ No silent failures, no degraded modes.
 ## Conclusion
 
 Ayken Orchestration is now a **deterministic, verifiable execution pipeline** with:
-- Cryptographic proof of determinism
+- Cryptographic proof of pipeline determinism
 - Constitutional enforcement
 - Fail-closed security
 - End-to-end test coverage
 
-The system doesn't just work — it **proves** it works correctly.
+The system doesn't just work — it **proves** its pipeline works correctly.
 
-**Status:** Ready for production use (with remaining 5% for optimization and documentation)
+**Status:** Production candidate (90% complete)
+
+**Blocking Issue:** Runtime determinism not yet proven. Pipeline determinism is proven, but execution determinism requires runtime equivalence tests.
+
+This is the difference between:
+- "We can prove the BCIB is deterministic" ✅
+- "We can prove the execution is deterministic" ⚠️
 
 ---
 

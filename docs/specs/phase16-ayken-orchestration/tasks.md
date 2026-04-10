@@ -71,3 +71,29 @@
   - [ ] 9.3 Record completed slices and validation in a follow-up progress note when implementation starts
   - [ ] 9.4 Keep code-facing names stable if the phase/spec label changes later
   - Reference: All requirements
+
+- [ ] 10. CRITICAL: Prove runtime determinism (BLOCKING PRODUCTION)
+  - [ ] 10.1 Implement runtime equivalence test: runtime_result == replay_result
+  - [ ] 10.2 Verify same BCIB → same runtime result (no drift)
+  - [ ] 10.3 Verify submission result fingerprint consistency
+  - [ ] 10.4 Connect replay verifier to kernel runtime
+  - [ ] 10.5 Prove execution determinism, not just pipeline determinism
+  - Reference: DETERMINISM.GLOBAL constitutional requirement
+
+## Current Status
+
+**Pipeline Determinism:** ✅ PROVEN (90% complete)
+- DSL → Canonical IR → BCIB → Proof chain is deterministic
+- 8/8 E2E closure tests passing
+- Cryptographic proof of pipeline determinism
+
+**Runtime Determinism:** ⚠️ NOT YET PROVEN (blocking production)
+- BCIB → Runtime execution → Result equivalence not tested
+- Requires kernel runtime integration
+- 4 placeholder tests created, awaiting implementation
+
+**Critical Distinction:**
+- We can prove: "Same input produces same BCIB"
+- We cannot yet prove: "Same BCIB produces same runtime result"
+
+This is the difference between a production-candidate and production-ready system.
