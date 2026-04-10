@@ -56,6 +56,11 @@ on:
         required: true
         default: false
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   freeze:
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.init_perf_baseline != 'true' }}
@@ -178,6 +183,129 @@ jobs:
         with:
           path: .ci-state
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
+      - name: Build Ayken CLI for advisory reporting
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          cargo build --manifest-path tools/ayken-cli/Cargo.toml
+      - name: Capture Ayken advisory snapshots
+        if: ${{ always() }}
+        id: ayken_snapshots
+        run: |
+          set +e
+          out/cargo/debug/ayken-cli --json gate all > ayken-gate.json
+          GATE_EXIT=$?
+          out/cargo/debug/ayken-cli --json status > ayken-status.json
+          STATUS_EXIT=$?
+          echo "gate_exit_code=${GATE_EXIT}" >> "$GITHUB_OUTPUT"
+          echo "status_exit_code=${STATUS_EXIT}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Build Ayken advisory contract
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          AUTH="$(jq -r '.risk.authority // "unknown"' ayken-gate.json 2>/dev/null || echo 'unknown')"
+          CONF="$(jq -r '.risk.lineage_confidence // "-"' ayken-gate.json 2>/dev/null || echo '-')"
+          RISK="$(jq -r '.risk.risk_level // "unknown"' ayken-gate.json 2>/dev/null || echo 'unknown')"
+          PASS="$(jq -r '.all_pass // false' ayken-gate.json 2>/dev/null || echo 'false')"
+          FAILS="$(jq -r '[.gates[]? | select(.result=="FAIL") | .gate] | join(",")' ayken-gate.json 2>/dev/null || echo '')"
+          NEAREST="$(jq -r '.nearest_verified_ancestor // "-"' ayken-status.json 2>/dev/null || echo '-')"
+          DIST="$(jq -r '.ancestor_distance // "-"' ayken-status.json 2>/dev/null || echo '-')"
+
+          jq -n \
+            --arg authority "${AUTH}" \
+            --arg lineage_confidence "${CONF}" \
+            --arg risk_level "${RISK}" \
+            --arg nearest_verified_ancestor "${NEAREST}" \
+            --arg ancestor_distance "${DIST}" \
+            --argjson all_pass "${PASS}" \
+            --arg failing_gates "${FAILS}" \
+            '{
+              authority: $authority,
+              lineage_confidence: ($lineage_confidence == "-" ? null : $lineage_confidence),
+              risk_level: $risk_level,
+              nearest_verified_ancestor: ($nearest_verified_ancestor == "-" ? null : $nearest_verified_ancestor),
+              ancestor_distance: ($ancestor_distance == "-" ? null : ($ancestor_distance | tonumber)),
+              all_pass: $all_pass,
+              failing_gates: ($failing_gates == "" ? [] : ($failing_gates | split(",")))
+            }' > ayken-comment.json
+      - name: Write Ayken advisory summary
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          AUTH="$(jq -r '.authority // "unknown"' ayken-comment.json)"
+          CONF="$(jq -r '.lineage_confidence // "-"' ayken-comment.json)"
+          RISK="$(jq -r '.risk_level // "unknown"' ayken-comment.json)"
+          NEAREST="$(jq -r '.nearest_verified_ancestor // "-"' ayken-comment.json)"
+          DIST="$(jq -r '.ancestor_distance // "-"' ayken-comment.json)"
+          PASS="$(jq -r '.all_pass' ayken-comment.json)"
+          FAILS="$(jq -r '.failing_gates | join(", ")' ayken-comment.json)"
+
+          {
+            echo "## Ayken Advisory"
+            echo ""
+            echo "- Authority: **${AUTH}**"
+            echo "- Confidence: **${CONF}**"
+            echo "- Risk Level: **${RISK}**"
+            echo "- Nearest Verified Ancestor: **${NEAREST}**"
+            echo "- Distance: **${DIST} commits**"
+            echo "- All Gates Pass: **${PASS}**"
+            if [ -n "${FAILS}" ]; then
+              echo "- Failing Gates: \`${FAILS}\`"
+            fi
+            echo ""
+            echo "> Advisory only — does not override CI authority."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish Ayken advisory PR comment
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- ayken-advisory -->';
+            const summary = JSON.parse(fs.readFileSync('ayken-comment.json', 'utf8'));
+            const failing = summary.failing_gates.length
+              ? `\n- Failing Gates: \`${summary.failing_gates.join(', ')}\``
+              : '';
+            const body = `${marker}
+            ### Ayken Advisory
+
+            - Authority: **${summary.authority}**
+            - Confidence: **${summary.lineage_confidence ?? '-'}**
+            - Risk: **${summary.risk_level}**
+            - Nearest Verified Ancestor: **${summary.nearest_verified_ancestor ?? '-'}**
+            - Distance: **${summary.ancestor_distance ?? '-'} commits**
+            - Gates: **${summary.all_pass ? 'PASS' : 'FAIL'}**${failing}
+
+            > Advisory only — does not override CI authority.`;
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                ...context.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              });
+              const existing = comments.find(
+                (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker),
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  ...context.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              core.warning(`Failed to publish Ayken advisory PR comment: ${error.message}`);
+            }
       - name: Upload performance evidence on success
         if: ${{ success() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
