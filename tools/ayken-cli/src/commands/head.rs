@@ -252,6 +252,11 @@ pub(crate) fn evaluate_head_lineage() -> HeadLineageStatus {
         status.advisory_diagnostics.push(format!(
             "ignored invalid exact-SHA verified-head record: {error}"
         ));
+    } else if exact.record_exists && !exact.head_verified {
+        status.lineage_tainted = true;
+        status
+            .advisory_diagnostics
+            .push("ignored semantically invalid exact-SHA verified-head record".to_string());
     }
 
     let ancestors = match list_first_parent_ancestors(&git_head_sha, LINEAGE_MAX_DEPTH) {
@@ -280,6 +285,11 @@ pub(crate) fn evaluate_head_lineage() -> HeadLineageStatus {
             status.lineage_tainted = true;
             status.advisory_diagnostics.push(format!(
                 "ignored invalid verified-head record for {ancestor_sha}: {error}"
+            ));
+        } else if inspection.record_exists && !inspection.head_verified {
+            status.lineage_tainted = true;
+            status.advisory_diagnostics.push(format!(
+                "ignored semantically invalid verified-head record for {ancestor_sha}"
             ));
         }
     }

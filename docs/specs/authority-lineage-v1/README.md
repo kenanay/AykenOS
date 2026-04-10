@@ -101,7 +101,8 @@ Lineage MAY:
 - exact authority commands remain fail-closed
 - lineage diagnostics remain advisory
 - missing git ancestry data yields `lineage_resolved=false`
-- malformed verified-head records are ignored for lineage promotion and surfaced as advisory diagnostics
+- malformed verified-head records are ignored for lineage promotion, surfaced as advisory diagnostics, and taint lineage
+- semantically non-authoritative verified-head records (for example schema mismatch, binding mismatch, or non-`PASS` CI result) are ignored for lineage promotion and taint lineage
 
 ## Future Hardening
 
