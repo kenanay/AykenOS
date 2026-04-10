@@ -212,14 +212,10 @@ jobs:
           fi
 
           if ! jq -e . ayken-gate.json >/dev/null 2>&1; then
-            cat > ayken-gate.json <<'EOF'
-{"target":"all","all_pass":false,"gates":[],"risk":{"authority":"unknown","lineage_confidence":null,"lineage_tainted":true,"ancestor_distance":null,"risk_level":"unknown","note":"Advisory gate snapshot unavailable."}}
-EOF
+            printf '%s\n' '{"target":"all","all_pass":false,"gates":[],"risk":{"authority":"unknown","lineage_confidence":null,"lineage_tainted":true,"ancestor_distance":null,"risk_level":"unknown","note":"Advisory gate snapshot unavailable."}}' > ayken-gate.json
           fi
           if ! jq -e . ayken-status.json >/dev/null 2>&1; then
-            cat > ayken-status.json <<'EOF'
-{"effective_authority":"none","lineage_confidence":null,"nearest_verified_ancestor":null,"ancestor_distance":null,"note":"Advisory status snapshot unavailable."}
-EOF
+            printf '%s\n' '{"effective_authority":"none","lineage_confidence":null,"nearest_verified_ancestor":null,"ancestor_distance":null,"note":"Advisory status snapshot unavailable."}' > ayken-status.json
           fi
           echo "gate_exit_code=${GATE_EXIT}" >> "$GITHUB_OUTPUT"
           echo "status_exit_code=${STATUS_EXIT}" >> "$GITHUB_OUTPUT"
@@ -229,27 +225,11 @@ EOF
         continue-on-error: true
         run: |
           set -u -o pipefail
-          jq -n \
-            --slurpfile gate ayken-gate.json \
-            --slurpfile status ayken-status.json \
-            '
-            ($gate[0] // {}) as $g |
-            ($status[0] // {}) as $s |
-            {
-              authority: ($g.risk.authority // "unknown"),
-              lineage_confidence: ($g.risk.lineage_confidence // null),
-              risk_level: ($g.risk.risk_level // "unknown"),
-              nearest_verified_ancestor: ($s.nearest_verified_ancestor // null),
-              ancestor_distance: ($s.ancestor_distance // null),
-              all_pass: ($g.all_pass // false),
-              failing_gates: (($g.gates // []) | map(select(.result == "FAIL") | .gate))
-            }
-            ' > ayken-comment.json
+          JQ_FILTER='($gate[0] // {}) as $g | ($status[0] // {}) as $s | {authority: ($g.risk.authority // "unknown"), lineage_confidence: ($g.risk.lineage_confidence // null), risk_level: ($g.risk.risk_level // "unknown"), nearest_verified_ancestor: ($s.nearest_verified_ancestor // null), ancestor_distance: ($s.ancestor_distance // null), all_pass: ($g.all_pass // false), failing_gates: (($g.gates // []) | map(select(.result == "FAIL") | .gate))}'
+          jq -n --slurpfile gate ayken-gate.json --slurpfile status ayken-status.json "${JQ_FILTER}" > ayken-comment.json
           CONTRACT_EXIT=$?
           if [ "${CONTRACT_EXIT}" -ne 0 ] || ! jq -e . ayken-comment.json >/dev/null 2>&1; then
-            cat > ayken-comment.json <<'EOF'
-{"authority":"unknown","lineage_confidence":null,"risk_level":"unknown","nearest_verified_ancestor":null,"ancestor_distance":null,"all_pass":false,"failing_gates":[]}
-EOF
+            printf '%s\n' '{"authority":"unknown","lineage_confidence":null,"risk_level":"unknown","nearest_verified_ancestor":null,"ancestor_distance":null,"all_pass":false,"failing_gates":[]}' > ayken-comment.json
           fi
           exit 0
       - name: Write Ayken advisory summary
