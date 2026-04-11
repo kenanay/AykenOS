@@ -6,7 +6,7 @@ This document specifies the isolation and boundary enforcement requirements betw
 
 The core architectural principle is: **Execution ≠ Data**. BCIB provides sandboxed, deterministic execution in Ring3, while ABDF provides immutable, snapshot-consistent data storage. The boundary between them must be strictly enforced to maintain system integrity, determinism, and security.
 
-**Critical Dependency:** This feature SHALL NOT be considered production-ready until BCIB execution closure (Phase-15) is completed. The isolation and boundary enforcement mechanisms depend on a stable, frozen BCIB execution model.
+**Critical Dependency:** This feature SHALL NOT be considered production-ready until BCIB execution closure is completed with kernel-level evidence. The isolation and boundary enforcement mechanisms depend on a stable, frozen BCIB execution model. Production deployment is BLOCKED until execution closure completion.
 
 This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 - `SECURITY.BOUNDARY.VIOLATION` - prevents Ring3 from accessing Ring0 directly
