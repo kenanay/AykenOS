@@ -36,13 +36,15 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 
 1. THE BCIB_Executor SHALL execute only in Ring3 user space
 2. THE BCIB_Executor SHALL NOT transfer policy, instruction semantics, or execution logic to Ring0
-3. WHEN BCIB needs kernel interaction, THE BCIB_Executor SHALL communicate only via `SYS_V2_SUBMIT_EXECUTION` syscall
-4. THE BCIB_Executor SHALL NOT extend the syscall surface (ABI freeze constraint)
-5. THE BCIB_Executor SHALL NOT invoke arbitrary syscalls beyond the approved execution submission interface
-6. THE BCIB_Executor SHALL NOT access DevFS directly
-7. THE BCIB_Executor SHALL NOT invoke device drivers directly
-8. THE BCIB_Executor SHALL NOT perform MMIO, IRQ, or I/O port operations
-9. IF any isolation violation occurs, THEN THE System SHALL terminate execution with `BCIB_ERR_ISOLATION_VIOLATION` and fail-closed behavior
+3. THE BCIB execution SHALL be initiated ONLY via the approved submission path
+4. THE BCIB runtime SHALL NOT be directly invocable via test helpers, debug hooks, or internal calls
+5. WHEN BCIB needs kernel interaction, THE BCIB_Executor SHALL communicate only via `SYS_V2_SUBMIT_EXECUTION` syscall
+6. THE BCIB_Executor SHALL NOT extend the syscall surface (ABI freeze constraint)
+7. THE BCIB_Executor SHALL NOT invoke arbitrary syscalls beyond the approved execution submission interface
+8. THE BCIB_Executor SHALL NOT access DevFS directly
+9. THE BCIB_Executor SHALL NOT invoke device drivers directly
+10. THE BCIB_Executor SHALL NOT perform MMIO, IRQ, or I/O port operations
+11. IF any isolation violation occurs, THEN THE System SHALL terminate execution with `BCIB_ERR_ISOLATION_VIOLATION` and fail-closed behavior
 
 ### Requirement 2: BCIB Memory Isolation
 
@@ -70,8 +72,11 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 4. THE BCIB_Executor SHALL NOT have direct access to device driver interfaces
 5. THE BCIB_Executor SHALL NOT have direct access to ABDF mutation primitives
 6. THE Runtime_Bridge SHALL enforce capability validation for all operations
-7. THE Runtime_Bridge SHALL log all external interactions for audit and replay
-8. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
+7. THE Runtime_Bridge SHALL be non-blocking and bounded in execution time
+8. THE Runtime_Bridge SHALL NOT introduce unbounded latency into execution
+9. THE Runtime_Bridge SHALL log all external interactions for audit and replay
+10. THE Runtime_Bridge logging SHALL NOT affect execution determinism
+11. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
 
 ### Requirement 4: Execution Capability Scope
 
@@ -84,9 +89,10 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 3. THE Capability SHALL be scoped to the current Execution_Context
 4. THE Capability SHALL NOT be global or implicit
 5. THE Capability SHALL NOT be transferable between execution contexts without explicit authorization
-6. WHEN BCIB executes a data-mutating instruction, THE Runtime_Bridge SHALL require a capability scoped to that operation and target segment
-7. WHEN BCIB executes an external instruction, THE Runtime_Bridge SHALL require a capability scoped to that external resource
-8. IF capability scope is violated, THEN THE System SHALL terminate with `BCIB_ERR_CAPABILITY_SCOPE_VIOLATION` and fail-closed behavior
+6. THE Capability revocation SHALL take effect immediately for all subsequent operations
+7. WHEN BCIB executes a data-mutating instruction, THE Runtime_Bridge SHALL require a capability scoped to that operation and target segment
+8. WHEN BCIB executes an external instruction, THE Runtime_Bridge SHALL require a capability scoped to that external resource
+9. IF capability scope is violated, THEN THE System SHALL terminate with `BCIB_ERR_CAPABILITY_SCOPE_VIOLATION` and fail-closed behavior
 
 ### Requirement 5: Side-Effect Declaration and Control
 
@@ -124,11 +130,12 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 
 1. THE ABDF SHALL be the authoritative data substrate for all persistent data
 2. THE ABDF objects SHALL be immutable during BCIB execution
-3. THE ABDF SHALL NOT allow in-place mutation of existing objects
-4. THE ABDF SHALL forbid concurrent mutable access to any object
-5. THE ABDF SHALL allow concurrent read-only access to immutable objects
-6. THE ABDF SHALL provide snapshot consistency for all read operations
-7. THE ABDF SHALL guarantee deterministic read view within an execution context
+3. THE ABDF snapshots SHALL be established at execution start and remain consistent throughout execution
+4. THE ABDF SHALL NOT allow in-place mutation of existing objects
+5. THE ABDF SHALL forbid concurrent mutable access to any object
+6. THE ABDF SHALL allow concurrent read-only access to immutable objects
+7. THE ABDF SHALL provide snapshot consistency for all read operations
+8. THE ABDF SHALL guarantee deterministic read view within an execution context
 
 ### Requirement 8: ABDF Write Path and Mutation Interface
 
@@ -155,9 +162,11 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 2. THE ABDF SHALL NOT expose raw memory pointers to BCIB
 3. THE ABDF_Handle SHALL be context-bound to the execution context that created or received it
 4. THE ABDF SHALL support handle revocation by the data owner
-5. WHEN a revoked handle is used, THE ABDF SHALL return `BCIB_ERR_ABDF_HANDLE_REVOKED` error
-6. THE ABDF_Handle SHALL NOT be transferable between execution contexts without explicit capability
-7. THE ABDF SHALL reject stale handles that reference deleted or expired objects
+5. THE System SHALL enforce handle lifecycle limits and prevent handle exhaustion
+6. THE System SHALL allow unused or stale handles to be reclaimed
+7. WHEN a revoked handle is used, THE ABDF SHALL return `BCIB_ERR_ABDF_HANDLE_REVOKED` error
+8. THE ABDF_Handle SHALL NOT be transferable between execution contexts without explicit capability
+9. THE ABDF SHALL reject stale handles that reference deleted or expired objects
 
 ### Requirement 10: ABDF Segment Type System
 
@@ -212,9 +221,10 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 2. THE BCIB SHALL NOT access another Execution_Context's capabilities
 3. THE BCIB SHALL NOT access another Execution_Context's memory regions
 4. THE BCIB SHALL require explicit cross-context capability for any inter-context communication
-5. THE Runtime_Bridge SHALL enforce context isolation for all operations
-6. THE System SHALL provide controlled inter-context communication primitives that require explicit capability
-7. IF cross-context violation occurs, THEN THE System SHALL terminate with `BCIB_ERR_CONTEXT_ISOLATION_VIOLATION` and fail-closed behavior
+5. THE inter-context communication SHALL occur only via ABDF-mediated channels with explicit capability
+6. THE Runtime_Bridge SHALL enforce context isolation for all operations
+7. THE System SHALL provide controlled inter-context communication primitives that require explicit capability
+8. IF cross-context violation occurs, THEN THE System SHALL terminate with `BCIB_ERR_CONTEXT_ISOLATION_VIOLATION` and fail-closed behavior
 
 ### Requirement 14: Execution Sandbox Integrity
 
