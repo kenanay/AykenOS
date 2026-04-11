@@ -22,6 +22,7 @@ pub mod opcode_registry;
 pub mod pools;
 pub mod program_cache;
 pub mod scheduler_bridge;
+pub mod syscall_adapter;
 pub mod types;
 pub mod verifier_planner;
 

@@ -32,6 +32,7 @@ use crate::types::{BcibError, ExecutionContextId, CapabilityTokenId};
 use crate::capability_manager::{CapabilityCheck, CapabilityResource};
 use crate::isolation::error_taxonomy::{IsolationError, ErrorCode};
 use crate::isolation::abdf_handle::{AbdfHandle, HandleId, HandleManager, SegmentType, AccessMode, SegmentTypeValidator};
+use crate::syscall_adapter::{SyscallAdapter, AbdfOperation, AbdfOperationResult};
 use std::sync::{Arc, Mutex};
 
 /// Intent expressed by BCIB opcodes (Phase-15 compatibility)
@@ -100,6 +101,8 @@ pub struct RuntimeBridge {
     handle_manager: Arc<Mutex<HandleManager>>,
     /// Capability checker for validation
     capability_checker: Arc<dyn CapabilityCheck + Send + Sync>,
+    /// Syscall adapter for kernel interaction (Task 5 - syscall integration)
+    syscall_adapter: SyscallAdapter,
     /// Bridge lifecycle state
     state: BridgeState,
 }
@@ -129,6 +132,7 @@ impl RuntimeBridge {
             context_id,
             handle_manager,
             capability_checker,
+            syscall_adapter: SyscallAdapter::new(context_id),
             state: BridgeState::Active,
         }
     }
@@ -365,10 +369,13 @@ impl RuntimeBridge {
     ///
     /// Device data is accessed ONLY via ABDF-provided segments.
     /// Direct device interaction is forbidden (Requirement 11.2, 11.3).
+    ///
+    /// **Task 5 Completion: Syscall Integration**
+    /// This now uses syscall_adapter to invoke kernel syscall instead of returning fake data.
     fn execute_device_operation(
         &self,
-        _device_id: u32,
-        _operation: String,
+        device_id: u32,
+        operation: String,
         capability_token: CapabilityTokenId,
     ) -> Result<SideEffectResult, BcibError> {
         // Validate capability for external operation (Requirement 3.8)
@@ -378,21 +385,36 @@ impl RuntimeBridge {
             self.context_id,
         )?;
         
-        // Placeholder: In production, this would:
-        // 1. Fetch device data via kernel syscall
-        // 2. Wrap result in ABDF segment (DeviceStatus, ReadResult, or Event)
-        // 3. Return handle to ABDF segment
+        // Task 5: Use syscall adapter to invoke kernel syscall
+        // This replaces the placeholder vec![] with real syscall invocation
+        //
+        // The syscall adapter will:
+        // 1. Invoke SYS_V2_DEVICE_OPERATION (1010)
+        // 2. Kernel validates capability
+        // 3. Kernel performs device operation
+        // 4. Kernel wraps result in ABDF segment (DeviceStatus, ReadResult, or Event)
+        // 5. Kernel returns handle to ABDF segment
         //
         // Direct device access is FORBIDDEN (Requirement 11.2, 11.3, 11.4, 11.5)
+        // ALL interaction goes through syscall (Requirement 3.4)
         
-        Ok(SideEffectResult::DeviceResult(vec![]))
+        let device_data = self.syscall_adapter.sys_v2_device_operation(
+            device_id,
+            &operation,
+            capability_token,
+        )?;
+        
+        Ok(SideEffectResult::DeviceResult(device_data))
     }
     
     /// Execute external call (AI/UI) (Requirement 5.4)
+    ///
+    /// **Task 5 Completion: Syscall Integration**
+    /// This now uses syscall_adapter to invoke kernel syscall instead of returning fake data.
     fn execute_external_call(
         &self,
-        _call_type: String,
-        _parameters: Vec<u8>,
+        call_type: String,
+        parameters: Vec<u8>,
         capability_token: CapabilityTokenId,
     ) -> Result<SideEffectResult, BcibError> {
         // Validate capability for external call (Requirement 3.8)
@@ -402,10 +424,26 @@ impl RuntimeBridge {
             self.context_id,
         )?;
         
-        // Placeholder: In production, this would execute the external call
-        // via approved syscall interface only (Requirement 3.4)
+        // Task 5: Use syscall adapter to invoke kernel syscall
+        // This replaces the placeholder vec![] with real syscall invocation
+        //
+        // The syscall adapter will:
+        // 1. Invoke SYS_V2_EXTERNAL_CALL (1011)
+        // 2. Kernel validates capability
+        // 3. Kernel routes to external handler (AI/UI)
+        // 4. Kernel waits for result
+        // 5. Kernel returns result data
+        //
+        // ALL interaction goes through syscall (Requirement 3.4)
+        // Runtime_Bridge does NOT call kernel APIs directly
         
-        Ok(SideEffectResult::ExternalResult(vec![]))
+        let external_result = self.syscall_adapter.sys_v2_external_call(
+            &call_type,
+            &parameters,
+            capability_token,
+        )?;
+        
+        Ok(SideEffectResult::ExternalResult(external_result))
     }
     
     /// Get the execution context this bridge is bound to

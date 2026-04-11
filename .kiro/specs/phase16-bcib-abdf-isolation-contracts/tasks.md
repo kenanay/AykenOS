@@ -148,6 +148,39 @@ All violations must:
     - **Validates: Requirements 9.7**
 
 - [x] 5. Implement Runtime_Bridge core interface and lifecycle
+  - Closure Status: SYSCALL ADAPTER LANDED; KERNEL INTEGRATION PENDING
+  - Implementation Evidence:
+    - Runtime_Bridge now uses SyscallAdapter for kernel interaction path
+    - execute_device_operation() calls sys_v2_device_operation() (placeholder)
+    - execute_external_call() calls sys_v2_external_call() (placeholder)
+    - Fake vec![] returns moved from Runtime_Bridge to SyscallAdapter
+    - `cargo test --lib` for `bcib-runtime` passes with 425 tests
+  - Syscall Adapter Status:
+    - SyscallAdapter layer created (userspace/bcib-runtime/src/syscall_adapter.rs)
+    - Runtime_Bridge → SyscallAdapter call path established
+    - Syscall adapter contains PLACEHOLDER implementations (TODO markers)
+    - New syscalls defined: SYS_V2_DEVICE_OPERATION (1010), SYS_V2_EXTERNAL_CALL (1011), SYS_V2_ABDF_OPERATION (1012)
+  - Architectural Achievement:
+    - Runtime_Bridge NEVER calls kernel APIs directly (Requirement 3.4 enforced)
+    - Syscall-only call path established
+    - Single point of kernel integration created
+    - Correct architectural boundary preserved
+  - Production Blockers:
+    - SyscallAdapter syscalls are PLACEHOLDER (return dummy data)
+    - Kernel syscall handlers NOT implemented (syscall_v2_hardened.c)
+    - No real syscall ABI invocation
+    - No QEMU/kernel evidence
+    - static_mut_refs warnings remain in fail_closed.rs
+    - unused field/import warnings in ExecutionSandbox, BoundaryEnforcer
+  - Next Steps (REQUIRED for production):
+    - Implement kernel syscall handlers in syscall_v2_hardened.c
+    - Replace placeholder syscall implementations with real syscall ABI invocations
+    - Device operation handler (SYS_V2_DEVICE_OPERATION)
+    - External call handler (SYS_V2_EXTERNAL_CALL)
+    - ABDF operation handler (SYS_V2_ABDF_OPERATION)
+    - Generate QEMU/kernel evidence for syscall path
+    - Resolve static_mut_refs and unused warnings
+  - Current Level: Userspace mediation layer complete; kernel closure pending
   - Enforcement Level: Kernel boundary remains authoritative
   - Runtime_Bridge is not an authority layer
   - Runtime_Bridge operates strictly as a controlled mediation layer inside an `Execution_Context`
@@ -210,7 +243,7 @@ All violations must:
     - **Property 9: Mutation Path Enforcement**
     - **Validates: Requirements 8.1, 8.2, 8.10**
 
-- [ ] 6. Implement BCIB Execution Sandbox
+- [-] 6. Implement BCIB Execution Sandbox
   - Enforcement Level: Authoritative sandbox/resource boundaries
   - Userspace checks alone are not sufficient for memory, context, or kernel-boundary claims
   - Kernel/MMU/syscall boundaries remain the source of truth where execution crosses into system resources
