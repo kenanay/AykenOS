@@ -6,7 +6,6 @@
 ///
 /// This is a placeholder implementation for Task 1. Full implementation will be
 /// completed in subsequent tasks.
-
 use crate::types::ExecutionContextId;
 
 /// Sandbox violation types
@@ -47,7 +46,7 @@ impl ExecutionSandbox {
             active: true,
         }
     }
-    
+
     /// Check if an operation would violate sandbox constraints
     pub fn check_operation(&self, operation: &str) -> Result<(), SandboxViolation> {
         // Placeholder implementation - full implementation in subsequent tasks

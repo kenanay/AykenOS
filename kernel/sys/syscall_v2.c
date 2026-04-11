@@ -190,6 +190,22 @@ static uint64_t sys_v2_dispatch_complete_execution(uint64_t a1, uint64_t a2, uin
     return sys_v2_complete_execution(a1, a2);
 }
 
+static uint64_t sys_v2_dispatch_device_operation(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    return sys_v2_device_operation(a1, a2, (uint64_t *)a3, a4);
+}
+
+static uint64_t sys_v2_dispatch_external_call(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a4;
+    return sys_v2_external_call(a1, (uint64_t *)a2, a3);
+}
+
+static uint64_t sys_v2_dispatch_abdf_operation(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    return sys_v2_abdf_operation(a1, a2, (uint64_t *)a3, a4);
+}
+
 static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
     [SYS_V2_MAP_MEMORY] = sys_v2_dispatch_map_memory,
     [SYS_V2_UNMAP_MEMORY] = sys_v2_dispatch_unmap_memory,
@@ -203,6 +219,9 @@ static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
     [SYS_V2_EXIT] = sys_v2_dispatch_exit,
     [SYS_V2_DEBUG_PUTCHAR] = sys_v2_dispatch_debug_putchar,
     [SYS_V2_COMPLETE_EXECUTION] = sys_v2_dispatch_complete_execution,
+    [SYS_V2_DEVICE_OPERATION] = sys_v2_dispatch_device_operation,
+    [SYS_V2_EXTERNAL_CALL] = sys_v2_dispatch_external_call,
+    [SYS_V2_ABDF_OPERATION] = sys_v2_dispatch_abdf_operation,
 };
 
 _Static_assert(sizeof(sys_v2_dispatch_table) / sizeof(sys_v2_dispatch_table[0]) == SYS_V2_NR,
@@ -1464,4 +1483,230 @@ uint64_t syscall_v2_handler(uint64_t syscall_num, uint64_t arg1,
         return sys_v2_finalize_result(ESYS_V2_NOT_IMPLEMENTED);
     }
     return sys_v2_finalize_result(dispatch_fn(arg1, arg2, arg3, arg4));
+}
+
+// ============================================================================
+// Phase-16 Runtime Bridge Syscalls
+// ============================================================================
+//
+// **CRITICAL WARNING: THESE ARE STUB IMPLEMENTATIONS**
+//
+// These handlers return mock data and do NOT integrate with real subsystems:
+// - Device operations: Return 0xDEADBEEF (not real DevFS)
+// - External calls: Log only (no real external handler)
+// - ABDF operations: Return mock data (not real ABDF substrate)
+//
+// **Production Requirements:**
+// 1. Integrate sys_v2_device_operation with real DevFS
+// 2. Integrate sys_v2_external_call with real external handler
+// 3. Integrate sys_v2_abdf_operation with real ABDF substrate
+// 4. Generate QEMU trace evidence showing real execution
+//
+// **Current Status:** ARCHITECTURAL SKELETON WITH MOCK DATA
+
+/**
+ * sys_v2_device_operation - Device operation syscall for Runtime_Bridge
+ * 
+ * Allows Runtime_Bridge to perform device operations with capability validation.
+ * This is the ONLY approved path for BCIB to interact with devices.
+ * 
+ * @device_id: Device identifier
+ * @operation: Operation type (read, write, status query)
+ * @buffer: Data buffer for operation
+ * @buffer_size: Size of data buffer
+ * 
+ * Returns: Operation result or error code
+ */
+uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation, 
+                                 uint64_t *buffer, uint64_t buffer_size) {
+    // Validate parameters
+    if (!buffer || buffer_size == 0 || buffer_size > 4096) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Validate device_id range
+    if (device_id >= 256) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Get current process for capability validation
+    extern proc_t *current_proc;
+    if (!current_proc) {
+        return ESYS_V2_CONTEXT_ERROR;
+    }
+    
+    // Validate caller has device capability
+    // In full implementation, this would check capability_token_t
+    // For now, we validate execution role
+    if (current_proc->execution_role != PROC_EXECUTION_ROLE_RUNTIME_BRIDGE) {
+        fb_print("[syscall_v2] Device operation denied: not Runtime_Bridge\n");
+        return ESYS_V2_PERMISSION_DENIED;
+    }
+    
+    // Operation types
+    #define DEVICE_OP_READ   1
+    #define DEVICE_OP_WRITE  2
+    #define DEVICE_OP_STATUS 3
+    
+    switch (operation) {
+        case DEVICE_OP_READ:
+            // Simulate device read - in real implementation, this would
+            // interact with device drivers through DevFS
+            buffer[0] = 0xDEADBEEF;  // Mock device data
+            buffer[1] = device_id;
+            return ESYS_V2_SUCCESS;
+            
+        case DEVICE_OP_WRITE:
+            // Simulate device write
+            fb_print("[syscall_v2] Device write to device ");
+            fb_print_int(device_id);
+            fb_print("\n");
+            return ESYS_V2_SUCCESS;
+            
+        case DEVICE_OP_STATUS:
+            // Return device status
+            buffer[0] = 0x1;  // Device ready
+            return ESYS_V2_SUCCESS;
+            
+        default:
+            return ESYS_V2_INVALID_PARAM;
+    }
+}
+
+/**
+ * sys_v2_external_call - External call syscall for Runtime_Bridge
+ * 
+ * Allows Runtime_Bridge to perform external calls with capability validation.
+ * This enables BCIB to interact with external systems through controlled interface.
+ * 
+ * @call_id: External call identifier
+ * @args: Argument array
+ * @arg_count: Number of arguments
+ * 
+ * Returns: Call result or error code
+ */
+uint64_t sys_v2_external_call(uint64_t call_id, uint64_t *args, uint64_t arg_count) {
+    // Validate parameters
+    if (!args || arg_count == 0 || arg_count > 8) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Validate call_id range
+    if (call_id >= 1024) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Get current process for capability validation
+    extern proc_t *current_proc;
+    if (!current_proc) {
+        return ESYS_V2_CONTEXT_ERROR;
+    }
+    
+    // Validate caller has external call capability
+    if (current_proc->execution_role != PROC_EXECUTION_ROLE_RUNTIME_BRIDGE) {
+        fb_print("[syscall_v2] External call denied: not Runtime_Bridge\n");
+        return ESYS_V2_PERMISSION_DENIED;
+    }
+    
+    // External call types
+    #define EXTERNAL_CALL_NETWORK  1
+    #define EXTERNAL_CALL_IPC      2
+    #define EXTERNAL_CALL_TIMER    3
+    
+    switch (call_id) {
+        case EXTERNAL_CALL_NETWORK:
+            // Simulate network call
+            fb_print("[syscall_v2] External network call\n");
+            return ESYS_V2_SUCCESS;
+            
+        case EXTERNAL_CALL_IPC:
+            // Simulate IPC call
+            fb_print("[syscall_v2] External IPC call\n");
+            return ESYS_V2_SUCCESS;
+            
+        case EXTERNAL_CALL_TIMER:
+            // Simulate timer call
+            fb_print("[syscall_v2] External timer call\n");
+            return ESYS_V2_SUCCESS;
+            
+        default:
+            // Unknown external call
+            fb_print("[syscall_v2] Unknown external call: ");
+            fb_print_int(call_id);
+            fb_print("\n");
+            return ESYS_V2_NOT_IMPLEMENTED;
+    }
+}
+
+/**
+ * sys_v2_abdf_operation - ABDF operation syscall for Runtime_Bridge
+ * 
+ * Allows Runtime_Bridge to perform ABDF operations with capability validation.
+ * This is the ONLY approved path for BCIB to interact with ABDF data substrate.
+ * 
+ * @operation_type: Operation type (read, write, create, revoke)
+ * @handle_id: ABDF handle identifier
+ * @data: Data buffer for operation
+ * @data_size: Size of data buffer
+ * 
+ * Returns: Operation result or error code
+ */
+uint64_t sys_v2_abdf_operation(uint64_t operation_type, uint64_t handle_id,
+                               uint64_t *data, uint64_t data_size) {
+    // Validate parameters
+    if (!data || data_size == 0 || data_size > 8192) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+    
+    // Get current process for capability validation
+    extern proc_t *current_proc;
+    if (!current_proc) {
+        return ESYS_V2_CONTEXT_ERROR;
+    }
+    
+    // Validate caller has ABDF capability
+    if (current_proc->execution_role != PROC_EXECUTION_ROLE_RUNTIME_BRIDGE) {
+        fb_print("[syscall_v2] ABDF operation denied: not Runtime_Bridge\n");
+        return ESYS_V2_PERMISSION_DENIED;
+    }
+    
+    // ABDF operation types
+    #define ABDF_OP_READ    1
+    #define ABDF_OP_WRITE   2
+    #define ABDF_OP_CREATE  3
+    #define ABDF_OP_REVOKE  4
+    
+    switch (operation_type) {
+        case ABDF_OP_READ:
+            // Simulate ABDF read
+            data[0] = 0xABDF0000 | (handle_id & 0xFFFF);
+            data[1] = 0x12345678;  // Mock ABDF data
+            fb_print("[syscall_v2] ABDF read handle ");
+            fb_print_int(handle_id);
+            fb_print("\n");
+            return ESYS_V2_SUCCESS;
+            
+        case ABDF_OP_WRITE:
+            // Simulate ABDF write (append-only)
+            fb_print("[syscall_v2] ABDF write handle ");
+            fb_print_int(handle_id);
+            fb_print("\n");
+            return ESYS_V2_SUCCESS;
+            
+        case ABDF_OP_CREATE:
+            // Simulate ABDF handle creation
+            data[0] = 0xABDF0000 | ((handle_id + 1) & 0xFFFF);  // New handle
+            fb_print("[syscall_v2] ABDF create new handle\n");
+            return ESYS_V2_SUCCESS;
+            
+        case ABDF_OP_REVOKE:
+            // Simulate ABDF handle revocation
+            fb_print("[syscall_v2] ABDF revoke handle ");
+            fb_print_int(handle_id);
+            fb_print("\n");
+            return ESYS_V2_SUCCESS;
+            
+        default:
+            return ESYS_V2_INVALID_PARAM;
+    }
 }

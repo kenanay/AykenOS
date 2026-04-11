@@ -1,4 +1,3 @@
-
 /// Boundary violation types
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoundaryViolation {
@@ -23,7 +22,7 @@ impl BoundaryEnforcer {
     pub fn new() -> Self {
         Self { active: true }
     }
-    
+
     /// Check if operation violates BCIB-ABDF boundary
     pub fn check_boundary(&self, operation: &str) -> Result<(), BoundaryViolation> {
         // Placeholder implementation - full implementation in subsequent tasks

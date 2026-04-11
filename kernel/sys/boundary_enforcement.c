@@ -4,7 +4,6 @@
 #include "../include/serial.h"
 #include "../include/execution_slot.h"
 #include "../include/proc.h"
-#include <string.h>
 
 /* Debug printf implementation using serial output */
 static void debug_printf(const char *fmt, ...) {
@@ -40,6 +39,59 @@ static int boundary_initialized = 0;
 static uint64_t violation_audit_log[MAX_VIOLATION_LOG_ENTRIES];
 static int violation_log_index = 0;
 
+static void boundary_zero_memory(void *ptr, uint64_t size)
+{
+    uint8_t *bytes = (uint8_t *)ptr;
+    for (uint64_t i = 0; i < size; i++) {
+        bytes[i] = 0;
+    }
+}
+
+static void boundary_write_i64(int64_t value)
+{
+    char buf[32];
+    int idx = 0;
+
+    if (value == 0) {
+        serial_write_char('0');
+        return;
+    }
+
+    if (value < 0) {
+        serial_write_char('-');
+        value = -value;
+    }
+
+    while (value > 0 && idx < (int)sizeof(buf)) {
+        buf[idx++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+
+    while (idx > 0) {
+        serial_write_char(buf[--idx]);
+    }
+}
+
+static void boundary_write_u64(uint64_t value)
+{
+    char buf[32];
+    int idx = 0;
+
+    if (value == 0) {
+        serial_write_char('0');
+        return;
+    }
+
+    while (value > 0 && idx < (int)sizeof(buf)) {
+        buf[idx++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+
+    while (idx > 0) {
+        serial_write_char(buf[--idx]);
+    }
+}
+
 /**
  * Initialize boundary enforcement subsystem
  * Must be called during kernel initialization
@@ -50,8 +102,8 @@ int boundary_enforce_init(void) {
     }
     
     /* Clear all boundary states */
-    memset(boundary_states, 0, sizeof(boundary_states));
-    memset(violation_audit_log, 0, sizeof(violation_audit_log));
+    boundary_zero_memory(boundary_states, (uint64_t)sizeof(boundary_states));
+    boundary_zero_memory(violation_audit_log, (uint64_t)sizeof(violation_audit_log));
     violation_log_index = 0;
     
     boundary_initialized = 1;
@@ -184,6 +236,9 @@ int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id) {
 /**
  * Fail-closed termination for boundary violations
  * Implements constitutional compliance with immediate termination
+ * 
+ * **CRITICAL: This function NEVER returns after a violation**
+ * After termination, execution MUST NOT continue.
  */
 void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason) {
     extern proc_t *current_proc;
@@ -192,13 +247,35 @@ void boundary_fail_closed_termination(int violation_code, uint64_t context_id, c
     debug_printf("[BOUNDARY] FAIL-CLOSED TERMINATION: Code=%d, Context=%lu, Reason=%s\n",
                 violation_code, context_id, reason ? reason : "Unknown");
     
+    /* QEMU PROOF MARKER - Critical for fail-closed evidence */
+    serial_write("[[AYKEN_BOUNDARY_KILL]]\n");
+    serial_write("[[AYKEN_BOUNDARY_CODE_");
+    boundary_write_i64((int64_t)violation_code);
+    serial_write("]]\n");
+    
+    serial_write("[BOUNDARY_DETAIL] code=");
+    boundary_write_i64((int64_t)violation_code);
+    serial_write(" context=");
+    boundary_write_u64(context_id);
+    serial_write(" reason=");
+    serial_write(reason ? reason : "Unknown");
+    if (current_proc) {
+        serial_write(" current_role=");
+        boundary_write_i64((int64_t)current_proc->execution_role);
+        serial_write(" current_state=");
+        boundary_write_i64((int64_t)current_proc->state);
+        serial_write(" current_type=");
+        boundary_write_i64((int64_t)current_proc->type);
+    }
+    serial_write("\n");
+    
     /* Constitutional compliance: KERNEL.SAFETY.CRITICAL and SECURITY.BOUNDARY.VIOLATION */
     debug_printf("[CONSTITUTIONAL] VIOLATION: KERNEL.SAFETY.CRITICAL + SECURITY.BOUNDARY.VIOLATION\n");
     
     /* Audit the violation */
     boundary_audit_violation(violation_code, context_id, reason);
     
-    /* REAL FAIL-CLOSED TERMINATION - CRITICAL FIX */
+    /* HARD FAIL-CLOSED TERMINATION - NO RETURN */
     if (current_proc && current_proc->type == PROC_TYPE_USER) {
         /* Terminate current user process immediately */
         debug_printf("[BOUNDARY] Terminating user process PID=%d due to boundary violation\n", current_proc->pid);
@@ -231,23 +308,49 @@ void boundary_fail_closed_termination(int violation_code, uint64_t context_id, c
         
         debug_printf("[BOUNDARY] Process terminated and removed from scheduler\n");
         
-        /* Force immediate context switch away from terminated process */
-        /* This ensures the boundary violation cannot continue execution */
-        /* Note: In production, this would trigger a context switch */
-        debug_printf("[BOUNDARY] Context switch requested to prevent continued execution\n");
+        /* CRITICAL: Force immediate context switch - NEVER RETURN */
+        /* This is the HARD fail-closed guarantee */
+        debug_printf("[BOUNDARY] HARD FAIL-CLOSED: Forcing immediate context switch\n");
+        
+        /* Disable interrupts to prevent any further execution */
+        __asm__ volatile("cli");
+        
+        /* Force scheduler to run - this will switch away from terminated process */
+        extern void sched_yield(void);
+        sched_yield();
+        
+        /* If we somehow reach here (should be impossible), halt */
+        debug_printf("[BOUNDARY] CRITICAL: Execution continued after fail-closed - HALTING\n");
+        while (1) {
+            __asm__ volatile("hlt");
+        }
         
     } else if (current_proc && current_proc->type == PROC_TYPE_KERNEL) {
         /* Kernel process boundary violation - this is critical */
         debug_printf("[BOUNDARY] CRITICAL: Kernel process boundary violation - system halt\n");
         
         /* For kernel processes, we cannot safely terminate, so halt the system */
-        /* Note: In production, this would halt the system */
-        debug_printf("[BOUNDARY] CRITICAL: System halt requested due to kernel boundary violation\n");
+        debug_printf("[BOUNDARY] CRITICAL: System halt due to kernel boundary violation\n");
+        
+        /* Disable interrupts and halt */
+        __asm__ volatile("cli");
+        while (1) {
+            __asm__ volatile("hlt");
+        }
         
     } else {
-        /* No current process or unknown state - log and continue */
-        debug_printf("[BOUNDARY] No current process to terminate\n");
+        /* No current process or unknown state - halt system */
+        debug_printf("[BOUNDARY] CRITICAL: No current process during violation - HALTING\n");
+        
+        /* Disable interrupts and halt */
+        __asm__ volatile("cli");
+        while (1) {
+            __asm__ volatile("hlt");
+        }
     }
+    
+    /* This point should NEVER be reached */
+    __builtin_unreachable();
 }
 
 /**

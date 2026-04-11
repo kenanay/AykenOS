@@ -12,7 +12,6 @@
 ///      registered opcode ID collides with a v0.2 reserved ID that has been
 ///      given a *different* name, or if any two registered opcodes share the
 ///      same ID. This is the CI gate for `ci-gate-toolchain-opcode-registry`.
-
 use crate::binary_format::{BCIB_VERSION_V02, BCIB_VERSION_V3};
 use crate::opcode_registry::{lookup_opcode, RESERVED_V02};
 use crate::types::BcibError;
@@ -96,7 +95,9 @@ pub fn validate_opcode_no_conflict() -> Result<(), BcibError> {
             if seen[id as usize] {
                 // Duplicate detected — should never happen with the const table,
                 // but guard against future refactors.
-                return Err(BcibError::InvalidGraph("duplicate opcode ID detected in registry"));
+                return Err(BcibError::InvalidGraph(
+                    "duplicate opcode ID detected in registry",
+                ));
             }
             seen[id as usize] = true;
         }
@@ -132,7 +133,10 @@ const _: () = {
     // list is reordered or truncated the count assertion below will catch it.
     //
     // Expected v0.2 reserved IDs: 0x00, 0x01, 0x10, 0x11, 0x12, 0x20, 0x30
-    assert!(RESERVED_V02.len() == 7, "RESERVED_V02 must contain exactly 7 v0.2 opcode IDs");
+    assert!(
+        RESERVED_V02.len() == 7,
+        "RESERVED_V02 must contain exactly 7 v0.2 opcode IDs"
+    );
 };
 
 // ---------------------------------------------------------------------------
@@ -217,8 +221,7 @@ mod tests {
 
     #[test]
     fn opcode_registry_has_no_conflicts() {
-        validate_opcode_no_conflict()
-            .expect("opcode registry must be conflict-free");
+        validate_opcode_no_conflict().expect("opcode registry must be conflict-free");
     }
 
     #[test]

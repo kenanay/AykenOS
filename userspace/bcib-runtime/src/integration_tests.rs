@@ -12,16 +12,16 @@
 
 #[cfg(test)]
 mod integration_tests {
+    use crate::binary_format::SectionId;
     use crate::binary_format::{
         BCIB_VERSION_V02, BCIB_VERSION_V3, HEADER_SIZE, SECTION_ENTRY_SIZE,
     };
     use crate::execution_runtime::BcibExecutionRuntime;
+    use crate::execution_runtime::ExecutionState;
     use crate::types::{
         BcibError, CapabilitySet, CostBudget, ExecutionContextId, ResourceLimits, SliceResult,
     };
     use crate::verifier_planner::BcibVerifierPlanner;
-    use crate::binary_format::SectionId;
-    use crate::execution_runtime::ExecutionState;
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -39,8 +39,8 @@ mod integration_tests {
         buf.extend_from_slice(&version.to_le_bytes());
         buf.extend_from_slice(&0u16.to_le_bytes()); // flags
         buf.extend_from_slice(&1u16.to_le_bytes()); // section_count
-        buf.extend_from_slice(&[0u8; 4]);           // reserved
-        buf.extend_from_slice(&[0u8; 2]);           // header tail bytes 14-15
+        buf.extend_from_slice(&[0u8; 4]); // reserved
+        buf.extend_from_slice(&[0u8; 2]); // header tail bytes 14-15
 
         // Section table entry (8 bytes)
         buf.extend_from_slice(&(SectionId::Instructions as u16).to_le_bytes());
@@ -143,7 +143,9 @@ mod integration_tests {
         // Step 4: cancel (if not already completed)
         let state_after_run = runtime.state_of(ctx_id).expect("state_of must succeed");
         if !state_after_run.is_terminal() {
-            runtime.cancel(ctx_id).expect("cancel must succeed on non-terminal context");
+            runtime
+                .cancel(ctx_id)
+                .expect("cancel must succeed on non-terminal context");
         } else {
             // Already completed — cancel on terminal state must return IllegalStateTransition.
             let cancel_result = runtime.cancel(ctx_id);
@@ -181,7 +183,9 @@ mod integration_tests {
             .expect("create_context must succeed");
 
         // Cancel without running
-        runtime.cancel(ctx_id).expect("cancel must succeed on Ready context");
+        runtime
+            .cancel(ctx_id)
+            .expect("cancel must succeed on Ready context");
 
         // Verify teardown contract (Requirement 3.9, 3.10)
         let ctx = runtime

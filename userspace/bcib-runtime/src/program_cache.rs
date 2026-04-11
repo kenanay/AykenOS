@@ -37,7 +37,6 @@
 /// - No `Box::leak` / `mem::forget`.
 /// - Deterministic eviction order (access-time based, not hash-order based).
 /// - Bounded capacity — no unbounded heap growth.
-
 use std::collections::{HashMap, VecDeque};
 
 use crate::types::{BcibError, CapabilitySet, ExecutionPlan, ResourceLimits};
@@ -65,7 +64,11 @@ pub struct ProgramCacheKey {
 
 impl ProgramCacheKey {
     /// Construct a key from an already-validated plan and its context hashes.
-    pub fn new(plan: &ExecutionPlan, capability_set: &CapabilitySet, resource_limits: &ResourceLimits) -> Self {
+    pub fn new(
+        plan: &ExecutionPlan,
+        capability_set: &CapabilitySet,
+        resource_limits: &ResourceLimits,
+    ) -> Self {
         Self {
             plan_hash: plan.canonical_hash(),
             capability_set_hash: hash_capability_set(capability_set),
@@ -119,7 +122,9 @@ impl ProgramCache {
     /// constructor returns an error rather than panicking (no `panic!`).
     pub fn new(capacity: usize, version: u16) -> Result<Self, BcibError> {
         if capacity == 0 {
-            return Err(BcibError::BoundsViolation("ProgramCache capacity must be >= 1"));
+            return Err(BcibError::BoundsViolation(
+                "ProgramCache capacity must be >= 1",
+            ));
         }
         Ok(Self {
             store: HashMap::with_capacity(capacity),
@@ -184,7 +189,9 @@ impl ProgramCache {
                 // Remove stale entry.
                 self.store.remove(&key);
                 self.remove_from_order(&key);
-                return Err(BcibError::CacheStale("plan version does not match current cache version"));
+                return Err(BcibError::CacheStale(
+                    "plan version does not match current cache version",
+                ));
             }
 
             // Cache hit — clone the plan, then promote key to MRU.
@@ -356,8 +363,8 @@ mod tests {
         buf.extend_from_slice(&BCIB_VERSION_V3.to_le_bytes());
         buf.extend_from_slice(&0u16.to_le_bytes()); // flags
         buf.extend_from_slice(&1u16.to_le_bytes()); // section_count = 1
-        buf.extend_from_slice(&[0u8; 4]);           // reserved [10..14]
-        buf.extend_from_slice(&[0u8; 2]);           // tail bytes [14..16]
+        buf.extend_from_slice(&[0u8; 4]); // reserved [10..14]
+        buf.extend_from_slice(&[0u8; 2]); // tail bytes [14..16]
 
         // Section table entry (8 bytes): section_id(2) + offset(4) + length(2)
         buf.extend_from_slice(&0x0001u16.to_le_bytes()); // Instructions = 0x01
@@ -396,8 +403,12 @@ mod tests {
         let caps = empty_caps();
         let limits = default_limits();
 
-        let plan1 = cache.get_or_validate(&graph, &caps, &limits, &planner()).unwrap();
-        let plan2 = cache.get_or_validate(&graph, &caps, &limits, &planner()).unwrap();
+        let plan1 = cache
+            .get_or_validate(&graph, &caps, &limits, &planner())
+            .unwrap();
+        let plan2 = cache
+            .get_or_validate(&graph, &caps, &limits, &planner())
+            .unwrap();
 
         // Both calls should return plans with the same hash.
         assert_eq!(plan1.canonical_hash(), plan2.canonical_hash());
@@ -416,7 +427,9 @@ mod tests {
         let limits = default_limits();
 
         // Populate the cache.
-        cache.get_or_validate(&graph, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph, &caps, &limits, &planner())
+            .unwrap();
         assert_eq!(cache.len(), 1);
 
         // Simulate a version bump by manually inserting a plan with the old
@@ -428,7 +441,10 @@ mod tests {
         // call invalidate_all with a bumped version and verify the cache is empty.
         let bumped_version = BCIB_VERSION_V3 + 1;
         cache.invalidate_all(bumped_version);
-        assert!(cache.is_empty(), "cache should be empty after invalidate_all");
+        assert!(
+            cache.is_empty(),
+            "cache should be empty after invalidate_all"
+        );
     }
 
     /// After invalidate_all, a new get_or_validate succeeds (re-validates).
@@ -439,7 +455,9 @@ mod tests {
         let caps = empty_caps();
         let limits = default_limits();
 
-        cache.get_or_validate(&graph, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph, &caps, &limits, &planner())
+            .unwrap();
         cache.invalidate_all(BCIB_VERSION_V3 + 1);
 
         // After invalidation the cache is empty; a new call should succeed
@@ -453,7 +471,11 @@ mod tests {
         // hit would be stale. But on a miss we always call verify_and_plan
         // and insert — no stale check on miss path.
         let result = cache.get_or_validate(&graph, &caps, &limits, &planner());
-        assert!(result.is_ok(), "expected Ok on cache miss after invalidation, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "expected Ok on cache miss after invalidation, got {:?}",
+            result
+        );
     }
 
     /// LRU eviction: inserting beyond capacity evicts the least-recently-used entry.
@@ -465,22 +487,30 @@ mod tests {
 
         // Build two distinct graphs (different instruction bytes → different keys).
         let graph_a = build_nop_buffer(); // NOP
-        // Graph B: two NOPs
+                                          // Graph B: two NOPs
         let instr_b: Vec<u8> = vec![0x00u8, 0x00u8, 0x00u8, 0x00u8];
         let graph_b = build_v3_buffer(&instr_b);
 
         // Insert A and B — cache is now full (capacity=2).
-        cache.get_or_validate(&graph_a, &caps, &limits, &planner()).unwrap();
-        cache.get_or_validate(&graph_b, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph_a, &caps, &limits, &planner())
+            .unwrap();
+        cache
+            .get_or_validate(&graph_b, &caps, &limits, &planner())
+            .unwrap();
         assert_eq!(cache.len(), 2);
 
         // Access A to make it MRU; B becomes LRU.
-        cache.get_or_validate(&graph_a, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph_a, &caps, &limits, &planner())
+            .unwrap();
 
         // Insert a third graph — B (LRU) should be evicted.
         let instr_c: Vec<u8> = vec![0x01u8, 0x00u8]; // End opcode
         let graph_c = build_v3_buffer(&instr_c);
-        cache.get_or_validate(&graph_c, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph_c, &caps, &limits, &planner())
+            .unwrap();
 
         // Cache should still have 2 entries (capacity=2).
         assert_eq!(cache.len(), 2);
@@ -490,7 +520,9 @@ mod tests {
     #[test]
     fn different_capability_sets_produce_different_keys() {
         let caps_a = CapabilitySet { token_ids: vec![] };
-        let caps_b = CapabilitySet { token_ids: vec![42] };
+        let caps_b = CapabilitySet {
+            token_ids: vec![42],
+        };
 
         let limits = default_limits();
         let graph = build_nop_buffer();
@@ -498,7 +530,10 @@ mod tests {
         let key_a = ProgramCacheKey::from_graph_bytes(&graph, &caps_a, &limits);
         let key_b = ProgramCacheKey::from_graph_bytes(&graph, &caps_b, &limits);
 
-        assert_ne!(key_a, key_b, "different capability sets must produce different keys");
+        assert_ne!(
+            key_a, key_b,
+            "different capability sets must produce different keys"
+        );
     }
 
     /// Different resource limits produce different cache entries.
@@ -514,7 +549,10 @@ mod tests {
         let key_a = ProgramCacheKey::from_graph_bytes(&graph, &caps, &limits_a);
         let key_b = ProgramCacheKey::from_graph_bytes(&graph, &caps, &limits_b);
 
-        assert_ne!(key_a, key_b, "different resource limits must produce different keys");
+        assert_ne!(
+            key_a, key_b,
+            "different resource limits must produce different keys"
+        );
     }
 
     /// Capacity 0 is rejected.
@@ -527,8 +565,12 @@ mod tests {
     /// Capability set hash is order-independent (set semantics).
     #[test]
     fn capability_set_hash_is_order_independent() {
-        let caps_a = CapabilitySet { token_ids: vec![1, 2, 3] };
-        let caps_b = CapabilitySet { token_ids: vec![3, 1, 2] };
+        let caps_a = CapabilitySet {
+            token_ids: vec![1, 2, 3],
+        };
+        let caps_b = CapabilitySet {
+            token_ids: vec![3, 1, 2],
+        };
         assert_eq!(
             hash_capability_set(&caps_a),
             hash_capability_set(&caps_b),
@@ -547,7 +589,9 @@ mod tests {
         let limits = default_limits();
 
         // Populate the cache with a V3 plan.
-        cache.get_or_validate(&graph, &caps, &limits, &planner()).unwrap();
+        cache
+            .get_or_validate(&graph, &caps, &limits, &planner())
+            .unwrap();
         assert_eq!(cache.len(), 1);
 
         // Manually bump current_version without clearing the store,

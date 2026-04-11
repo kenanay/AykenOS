@@ -219,6 +219,304 @@ Tasarım, **proptest** kütüphanesi (min 100 iterasyon) ile doğrulanacak Prope
 
 ---
 
+---
+
+## Kernel-Level Validation Architecture
+
+### Evidence-Based Security Model
+
+AykenOS güvenlik iddialarını **kanıt tabanlı (evidence-based)** bir modelle doğrular. Userspace testleri veya emüle edilmiş ortamlar, kernel seviyesindeki güvenlik sınırlarını kanıtlamak için yeterli değildir.
+
+**Otorite Hiyerarşisi:**
+```
+QEMU Kernel Trace (En Yüksek Otorite)
+    ↓
+Kernel Syscall Dispatcher
+    ↓
+Boundary Enforcement Layer
+    ↓
+Userspace Tests (Sadece API Doğrulama)
+```
+
+### Canonical Marker Flow (Zorunlu Sıralama)
+
+Fail-closed enforcement'ın kernel seviyesinde çalıştığını kanıtlamak için şu marker akışı **deterministik ve sıralı** olarak görülmelidir:
+
+```
+1. BCIB_FORBIDDEN_BEFORE
+   ↓ (Userspace: BCIB-role process forbidden syscall denemesi)
+   
+2. [[AYKEN_SYSCALL_ENTER]]
+   ↓ (Kernel: Trap gerçekleşti, syscall dispatcher'a düştü)
+   
+3. [[AYKEN_BOUNDARY_CHECK]] (opsiyonel ama güçlü)
+   ↓ (Kernel: Boundary validation path'ine girdi)
+   
+4. [[AYKEN_BOUNDARY_KILL]] 🔥 KRİTİK NOKTA
+   ↓ (Kernel: Process terminate edildi, fail-closed aktif)
+   ↓ (ÖNEMLI: Bu marker scheduler removal'dan ÖNCE emit edilir)
+   
+5. (BURADA BİTER - başka marker OLMAMALI)
+```
+
+### Negative Guarantees (Yasaklı Marker'lar)
+
+`[[AYKEN_BOUNDARY_KILL]]` sonrasında şu marker'lar **ASLA** görülmemelidir:
+
+| Marker | Anlamı | Neden Yasak |
+|--------|--------|-------------|
+| `BCIB_FORBIDDEN_AFTER` | Execution devam etti | Fail-closed çalışmadı |
+| `[[AYKEN_SYSCALL_EXIT]]` | Syscall return oldu | Terminate yerine dönüş yapıldı |
+| `[[AYKEN_SCHED_RESUME]]` | Process tekrar schedule edildi | Kill incomplete |
+| Aynı process'ten herhangi bir log | Process hala çalışıyor | Hard stop yok |
+
+### Fail-Closed Tanımı (Teknik)
+
+Fail-closed enforcement şu garantileri sağlar:
+
+**Irreversible Termination (Geri Dönüşsüz Sonlandırma):**
+- Process scheduler'dan çıkarılır
+- Execution slot temizlenir
+- Resume path yoktur
+
+**No Continuation (Devam Yok):**
+- Kill marker sonrası hiçbir kod çalışmaz
+- Syscall return olmaz
+- Partial state commit olmaz
+
+**No Recovery (Kurtarma Yok):**
+- Sistem violation'ı düzeltmeye çalışmaz
+- Retry mekanizması yoktur
+- Degraded mode yoktur
+
+**Deterministic Outcome (Deterministik Sonuç):**
+- Aynı violation her zaman aynı error code üretir
+- Aynı termination sequence izlenir
+- Audit trail immutable'dır
+
+### Host vs Kernel Evidence Ayrımı
+
+#### Host-Level Tests (Userspace)
+**Kapsam:**
+- API contract validation
+- Error return code checks
+- Data structure logic
+- Harness behavior
+
+**YAPAMAZ:**
+- Kernel trap path'ini kanıtlayamaz
+- Syscall dispatcher behavior'ını doğrulayamaz
+- Scheduler termination'ı ispatlayamaz
+- Boundary enforcement'ı kernel seviyesinde gösteremez
+
+**Kullanım:**
+- Development-time validation
+- Unit test coverage
+- Regression detection
+- API stability checks
+
+#### Kernel-Level Evidence (QEMU Trace)
+**Kapsam:**
+- Gerçek kernel trap execution
+- Syscall dispatcher behavior
+- Scheduler state changes
+- Boundary enforcement activation
+- Process termination proof
+
+**YAPAR:**
+- Kernel boundary claims'i kanıtlar
+- Fail-closed behavior'ı gösterir
+- Security guarantees'i ispat eder
+- Production-ready evidence sağlar
+
+**Kullanım:**
+- Security audit
+- Constitutional compliance
+- Production gate validation
+- Formal verification input
+
+### CI Gate: ci-gate-fail-closed-proof
+
+**Amaç:** Fail-closed enforcement'ın kernel seviyesinde çalıştığını QEMU trace ile kanıtlamak.
+
+**Input:**
+- QEMU kernel trace log (debugcon + serial output)
+- Test scenario: BCIB-role process → forbidden syscall attempt
+
+**Validation Logic:**
+
+```bash
+# 1. Marker Sequence Check (ZORUNLU SIRALAMA)
+grep "BCIB_FORBIDDEN_BEFORE" trace.log
+grep "\\[\\[AYKEN_SYSCALL_ENTER\\]\\]" trace.log
+grep "\\[\\[AYKEN_BOUNDARY_KILL\\]\\]" trace.log
+
+# 2. Process Identity Validation (KRİTİK)
+# Tüm marker'lar aynı process_id'ye ait olmalı
+PROCESS_ID=$(grep "BCIB_FORBIDDEN_BEFORE" trace.log | extract_pid)
+grep "\\[\\[AYKEN_SYSCALL_ENTER\\]\\].*pid=$PROCESS_ID" trace.log
+grep "\\[\\[AYKEN_BOUNDARY_KILL\\]\\].*pid=$PROCESS_ID" trace.log
+
+# 3. Single Kill Validation (KRİTİK)
+# Tam olarak 1 tane BOUNDARY_KILL olmalı
+KILL_COUNT=$(grep -c "\\[\\[AYKEN_BOUNDARY_KILL\\]\\]" trace.log)
+[ "$KILL_COUNT" -eq 1 ] || exit 1
+
+# 4. Bounded Execution Window (KRİTİK)
+# ENTER ile KILL arası sınırlı olmalı
+ENTER_LINE=$(grep -n "\\[\\[AYKEN_SYSCALL_ENTER\\]\\]" trace.log | cut -d: -f1)
+KILL_LINE=$(grep -n "\\[\\[AYKEN_BOUNDARY_KILL\\]\\]" trace.log | cut -d: -f1)
+WINDOW=$((KILL_LINE - ENTER_LINE))
+[ "$WINDOW" -lt 10 ] || exit 1  # < 10 log lines
+
+# 5. Negative Assertion (KILL SONRASI SCAN)
+# KILL marker'dan sonra şunlar OLMAMALI:
+grep -A 9999 "\\[\\[AYKEN_BOUNDARY_KILL\\]\\]" trace.log | \
+  grep -E "BCIB_FORBIDDEN_AFTER|AYKEN_SYSCALL_EXIT|AYKEN_SCHED_RESUME"
+# → EMPTY olmalı (hiçbir match bulmamalı)
+
+# 6. Hard Stop Guarantee
+# KILL sonrası aynı process'ten log olmamalı
+grep -A 9999 "\\[\\[AYKEN_BOUNDARY_KILL\\]\\]" trace.log | \
+  grep "pid=$PROCESS_ID"
+# → EMPTY olmalı
+```
+
+**Pass Criteria:**
+- ✅ Tüm required marker'lar sıralı ve mevcut
+- ✅ Tüm marker'lar aynı process_id'ye ait
+- ✅ Tam olarak 1 tane `[[AYKEN_BOUNDARY_KILL]]` var (0 veya >1 = FAIL)
+- ✅ ENTER ile KILL arası execution window bounded ve deterministik
+- ✅ `[[AYKEN_BOUNDARY_KILL]]` scheduler removal'dan ÖNCE emit edilmiş
+- ✅ KILL sonrası continuation marker yok
+- ✅ Process scheduler'dan düşmüş
+- ✅ Execution slot temizlenmiş
+
+**Fail Criteria:**
+- ❌ Required marker eksik
+- ❌ Marker sırası yanlış
+- ❌ Marker'lar farklı process_id'lere ait
+- ❌ 0 veya birden fazla `[[AYKEN_BOUNDARY_KILL]]` marker
+- ❌ Execution window unbounded veya non-deterministic
+- ❌ KILL sonrası continuation marker var
+- ❌ Process hala çalışıyor
+
+**Output:**
+- `failclosed_proof_evidence.json` - marker flow ve validation sonuçları
+- Failure durumunda: `FAIL_CLOSED_PROOF_INVALID` error code
+
+### Audit Script Mantığı
+
+Script şu adımları izler:
+
+```python
+def validate_fail_closed_proof(trace_log):
+    # 1. Marker extraction
+    markers = extract_markers_in_order(trace_log)
+    
+    # 2. Required sequence check
+    assert markers[0] == "BCIB_FORBIDDEN_BEFORE"
+    assert markers[1] == "[[AYKEN_SYSCALL_ENTER]]"
+    assert markers[2] == "[[AYKEN_BOUNDARY_KILL]]"
+    
+    # 3. Process identity validation (CRITICAL)
+    process_id = extract_process_id(markers[0])
+    assert extract_process_id(markers[1]) == process_id
+    assert extract_process_id(markers[2]) == process_id
+    
+    # 4. Single kill validation (CRITICAL)
+    kill_count = count_markers(trace_log, "[[AYKEN_BOUNDARY_KILL]]")
+    assert kill_count == 1  # exactly one, not zero, not multiple
+    
+    # 5. Bounded execution window (CRITICAL)
+    enter_position = find_marker_position(trace_log, "[[AYKEN_SYSCALL_ENTER]]")
+    kill_position = find_marker_position(trace_log, "[[AYKEN_BOUNDARY_KILL]]")
+    window_size = kill_position - enter_position
+    assert window_size < 10  # bounded to < 10 log lines
+    assert is_deterministic(window_size)  # same violation = same window
+    
+    # 6. Scan after kill (CRITICAL)
+    after_kill = trace_log[kill_position:]
+    
+    # 7. Negative assertions
+    assert "BCIB_FORBIDDEN_AFTER" not in after_kill
+    assert "[[AYKEN_SYSCALL_EXIT]]" not in after_kill
+    assert "[[AYKEN_SCHED_RESUME]]" not in after_kill
+    assert no_process_logs_after_kill(after_kill, process_id)
+    
+    # 8. Deterministic error code check
+    assert extract_error_code(trace_log) == "BCIB_ERR_ISOLATION_VIOLATION"
+    
+    return PROOF_VALID
+```
+
+### Gold Standard (Hedef Log Formatı)
+
+Başarılı bir fail-closed proof şöyle görünmelidir:
+
+```
+[U] BCIB_FORBIDDEN_BEFORE: Process 42 attempting SYS_V2_SUBMIT_EXECUTION
+[[AYKEN_SYSCALL_ENTER]] syscall=1001 pid=42
+[[AYKEN_BOUNDARY_CHECK]] role=BCIB syscall=1001 allowed=false
+[[AYKEN_BOUNDARY_KILL]] pid=42 reason=FORBIDDEN_SYSCALL
+
+(LOG BURADA BİTER - başka satır yok)
+```
+
+**Kritik Noktalar:**
+- Tüm marker'lar aynı pid (42)
+- Tam olarak 1 tane BOUNDARY_KILL
+- ENTER ile KILL arası 2 satır (bounded window)
+- KILL sonrası hiçbir log yok
+
+**Yanlış Örnek (Fail):**
+
+```
+[U] BCIB_FORBIDDEN_BEFORE: Process 42 attempting SYS_V2_SUBMIT_EXECUTION
+[[AYKEN_SYSCALL_ENTER]] syscall=1001 pid=42
+[[AYKEN_BOUNDARY_KILL]] pid=42 reason=FORBIDDEN_SYSCALL
+[[AYKEN_SYSCALL_EXIT]] syscall=1001 result=0  ← ❌ FAIL: syscall returned
+[U] BCIB_FORBIDDEN_AFTER: Execution continued  ← ❌ FAIL: execution continued
+```
+
+### En Sık Yapılan Hatalar
+
+| Hata | Açıklama | Tespit |
+|------|----------|--------|
+| **Fake PASS** | Sadece BEFORE + KILL var, ama ENTER yok | Userspace simulate, kernel trap yok |
+| **Soft Fail** | AFTER log geliyor | Kill çalışmamış, execution devam etmiş |
+| **Return Path Açık** | EXIT marker var | Syscall dönmüş, terminate olmamış |
+| **Scheduler Kaçırıyor** | Process tekrar çalışıyor | Kill incomplete, resume olmuş |
+| **Process ID Mismatch** | Marker'lar farklı pid'lere ait | Process A killed, Process B logged |
+| **Multiple Kill** | Birden fazla BOUNDARY_KILL | Unstable system, race condition |
+| **Unbounded Window** | ENTER ile KILL arası çok uzun | System hang, delayed enforcement |
+
+### Integration with Existing Gates
+
+`ci-gate-fail-closed-proof` diğer gate'lerle şu şekilde entegre olur:
+
+```
+ci-gate-hygiene (code quality)
+    ↓
+ci-gate-constitutional (NON_OVERRIDABLE rules)
+    ↓
+ci-gate-bcib-isolation (execution isolation)
+    ↓
+ci-gate-boundary-enforcement (boundary controls)
+    ↓
+ci-gate-fail-closed-proof (kernel-level evidence) ← YENİ
+    ↓
+MERGE ALLOWED
+```
+
+**Blocker Davranışı:**
+- `ci-gate-fail-closed-proof` FAIL ederse merge BLOCKED
+- Kernel trace eksikse gate FAIL
+- Continuation marker varsa gate FAIL
+- Marker sequence yanlışsa gate FAIL
+
+---
+
 ## CI Gates
 
 Phase-16 entegrasyonu aşağıdaki CI geçitlerinden başarıyla geçmelidir:
@@ -228,3 +526,4 @@ Phase-16 entegrasyonu aşağıdaki CI geçitlerinden başarıyla geçmelidir:
 4. `ci-gate-determinism`
 5. `ci-gate-capability-enforcement`
 6. `ci-gate-fail-closed`
+7. `ci-gate-fail-closed-proof` ← **YENİ: Kernel-level evidence validation**

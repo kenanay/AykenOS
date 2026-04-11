@@ -11,7 +11,6 @@
 /// - Requirement 15.3: System SHALL terminate execution immediately upon detecting any capability violation
 /// - Requirement 15.4: System SHALL NOT attempt to recover from security violations
 /// - Requirement 15.5: System SHALL produce deterministic error codes for all violation types
-
 use crate::types::{BcibError, ExecutionContextId};
 use std::fmt;
 
@@ -43,37 +42,37 @@ pub enum ErrorCode {
     DeviceAccessViolation = 0x1003,
     KernelAccessViolation = 0x1004,
     SyscallViolation = 0x1005,
-    
+
     // Boundary Violations (BCIB_ERR_BOUNDARY_*, ABDF_ERR_*)
     BoundaryViolation = 0x2001,
     AbdfDirectMutation = 0x2002,
     AbdfHandleRevoked = 0x2003,
     AbdfTypeViolation = 0x2004,
     AbdfAccessDenied = 0x2005,
-    
+
     // Capability Violations (BCIB_ERR_CAPABILITY_*)
     CapabilityScopeViolation = 0x3001,
     CapabilityDenied = 0x3002,
     CapabilityRevoked = 0x3003,
     CapabilityEscalation = 0x3004,
-    
+
     // Memory Contract Violations (MEMORY.CONTRACT.VIOLATION)
     MemoryContractViolation = 0x4001,
     BoundsViolation = 0x4002,
     RawPointerAccess = 0x4003,
     UnboundedAllocation = 0x4004,
-    
+
     // Constitutional Violations (NON_OVERRIDABLE rules)
     ConstitutionalViolation = 0x5001,
     DeterminismGlobal = 0x5002,
     KernelSafetyCritical = 0x5003,
     SecurityBoundaryViolation = 0x5004,
-    
+
     // Sandbox Violations (BCIB_ERR_SANDBOX_*)
     SandboxEscape = 0x6001,
     ContextIsolationViolation = 0x6002,
     CrossContextAccess = 0x6003,
-    
+
     // Side-Effect Violations (BCIB_ERR_SIDE_EFFECT_*)
     UndeclaredSideEffect = 0x7001,
     SideEffectOrdering = 0x7002,
@@ -89,38 +88,38 @@ impl ErrorCode {
             | ErrorCode::DeviceAccessViolation
             | ErrorCode::KernelAccessViolation
             | ErrorCode::SyscallViolation => ViolationType::Isolation,
-            
+
             ErrorCode::BoundaryViolation
             | ErrorCode::AbdfDirectMutation
             | ErrorCode::AbdfHandleRevoked
             | ErrorCode::AbdfTypeViolation
             | ErrorCode::AbdfAccessDenied => ViolationType::Boundary,
-            
+
             ErrorCode::CapabilityScopeViolation
             | ErrorCode::CapabilityDenied
             | ErrorCode::CapabilityRevoked
             | ErrorCode::CapabilityEscalation => ViolationType::Capability,
-            
+
             ErrorCode::MemoryContractViolation
             | ErrorCode::BoundsViolation
             | ErrorCode::RawPointerAccess
             | ErrorCode::UnboundedAllocation => ViolationType::Memory,
-            
+
             ErrorCode::ConstitutionalViolation
             | ErrorCode::DeterminismGlobal
             | ErrorCode::KernelSafetyCritical
             | ErrorCode::SecurityBoundaryViolation => ViolationType::Constitutional,
-            
+
             ErrorCode::SandboxEscape
             | ErrorCode::ContextIsolationViolation
             | ErrorCode::CrossContextAccess => ViolationType::Sandbox,
-            
+
             ErrorCode::UndeclaredSideEffect
             | ErrorCode::SideEffectOrdering
             | ErrorCode::OpcodeViolation => ViolationType::SideEffect,
         }
     }
-    
+
     /// Check if this error code represents a security violation that requires fail-closed termination
     pub fn is_security_violation(self) -> bool {
         matches!(
@@ -131,7 +130,7 @@ impl ErrorCode {
                 | ViolationType::Sandbox
         )
     }
-    
+
     /// Check if this error code represents a NON_OVERRIDABLE constitutional rule violation
     pub fn is_constitutional_violation(self) -> bool {
         matches!(
@@ -154,37 +153,39 @@ impl fmt::Display for ErrorCode {
             ErrorCode::DeviceAccessViolation => write!(f, "BCIB_ERR_DEVICE_ACCESS_VIOLATION"),
             ErrorCode::KernelAccessViolation => write!(f, "BCIB_ERR_KERNEL_ACCESS_VIOLATION"),
             ErrorCode::SyscallViolation => write!(f, "BCIB_ERR_SYSCALL_VIOLATION"),
-            
+
             // Boundary Violations
             ErrorCode::BoundaryViolation => write!(f, "ABDF_BOUNDARY_VIOLATION"),
             ErrorCode::AbdfDirectMutation => write!(f, "ABDF_ERR_DIRECT_MUTATION"),
             ErrorCode::AbdfHandleRevoked => write!(f, "BCIB_ERR_ABDF_HANDLE_REVOKED"),
             ErrorCode::AbdfTypeViolation => write!(f, "ABDF_ERR_TYPE_VIOLATION"),
             ErrorCode::AbdfAccessDenied => write!(f, "BCIB_ERR_ABDF_ACCESS_DENIED"),
-            
+
             // Capability Violations
             ErrorCode::CapabilityScopeViolation => write!(f, "BCIB_ERR_CAPABILITY_SCOPE_VIOLATION"),
             ErrorCode::CapabilityDenied => write!(f, "BCIB_ERR_CAPABILITY_DENIED"),
             ErrorCode::CapabilityRevoked => write!(f, "BCIB_ERR_CAPABILITY_REVOKED"),
             ErrorCode::CapabilityEscalation => write!(f, "BCIB_ERR_CAPABILITY_ESCALATION"),
-            
+
             // Memory Contract Violations
             ErrorCode::MemoryContractViolation => write!(f, "MEMORY.CONTRACT.VIOLATION"),
             ErrorCode::BoundsViolation => write!(f, "BCIB_ERR_BOUNDS_VIOLATION"),
             ErrorCode::RawPointerAccess => write!(f, "BCIB_ERR_RAW_POINTER_ACCESS"),
             ErrorCode::UnboundedAllocation => write!(f, "BCIB_ERR_UNBOUNDED_ALLOCATION"),
-            
+
             // Constitutional Violations
             ErrorCode::ConstitutionalViolation => write!(f, "CONSTITUTIONAL_VIOLATION"),
             ErrorCode::DeterminismGlobal => write!(f, "DETERMINISM.GLOBAL"),
             ErrorCode::KernelSafetyCritical => write!(f, "KERNEL.SAFETY.CRITICAL"),
             ErrorCode::SecurityBoundaryViolation => write!(f, "SECURITY.BOUNDARY.VIOLATION"),
-            
+
             // Sandbox Violations
             ErrorCode::SandboxEscape => write!(f, "BCIB_ERR_SANDBOX_ESCAPE"),
-            ErrorCode::ContextIsolationViolation => write!(f, "BCIB_ERR_CONTEXT_ISOLATION_VIOLATION"),
+            ErrorCode::ContextIsolationViolation => {
+                write!(f, "BCIB_ERR_CONTEXT_ISOLATION_VIOLATION")
+            }
             ErrorCode::CrossContextAccess => write!(f, "BCIB_ERR_CROSS_CONTEXT_ACCESS"),
-            
+
             // Side-Effect Violations
             ErrorCode::UndeclaredSideEffect => write!(f, "BCIB_ERR_UNDECLARED_SIDE_EFFECT"),
             ErrorCode::SideEffectOrdering => write!(f, "BCIB_ERR_SIDE_EFFECT_ORDERING"),
@@ -220,7 +221,7 @@ impl IsolationError {
             details: None,
         }
     }
-    
+
     /// Create an isolation error with additional details
     pub fn with_details(
         code: ErrorCode,
@@ -235,44 +236,58 @@ impl IsolationError {
             details: Some(details.into()),
         }
     }
-    
+
     /// Check if this error requires immediate fail-closed termination
     pub fn requires_fail_closed(&self) -> bool {
         self.code.is_security_violation() || self.code.is_constitutional_violation()
     }
-    
+
     /// Get the violation type for this error
     pub fn violation_type(&self) -> ViolationType {
         self.code.violation_type()
     }
-    
+
     /// Convert to BcibError for compatibility with existing error handling
     pub fn to_bcib_error(&self) -> BcibError {
         // Use static string literals for BcibError compatibility
         match self.code.violation_type() {
-            ViolationType::Isolation => BcibError::IsolationViolation("isolation violation detected"),
-            ViolationType::Boundary => BcibError::AbdfBoundaryViolation("boundary violation detected"),
-            ViolationType::Capability => BcibError::CapabilityDenied("capability violation detected"),
+            ViolationType::Isolation => {
+                BcibError::IsolationViolation("isolation violation detected")
+            }
+            ViolationType::Boundary => {
+                BcibError::AbdfBoundaryViolation("boundary violation detected")
+            }
+            ViolationType::Capability => {
+                BcibError::CapabilityDenied("capability violation detected")
+            }
             ViolationType::Memory => BcibError::BoundsViolation("memory violation detected"),
-            ViolationType::Constitutional => BcibError::IsolationViolation("constitutional violation detected"),
+            ViolationType::Constitutional => {
+                BcibError::IsolationViolation("constitutional violation detected")
+            }
             ViolationType::Sandbox => BcibError::IsolationViolation("sandbox violation detected"),
-            ViolationType::SideEffect => BcibError::IllegalStateTransition("side-effect violation detected"),
+            ViolationType::SideEffect => {
+                BcibError::IllegalStateTransition("side-effect violation detected")
+            }
         }
     }
 }
 
 impl fmt::Display for IsolationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} (0x{:04X}): {}", self.code, self.code as u16, self.message)?;
-        
+        write!(
+            f,
+            "{} (0x{:04X}): {}",
+            self.code, self.code as u16, self.message
+        )?;
+
         if let Some(ctx_id) = self.context_id {
             write!(f, " [context: {}]", ctx_id)?;
         }
-        
+
         if let Some(ref details) = self.details {
             write!(f, " - {}", details)?;
         }
-        
+
         Ok(())
     }
 }
@@ -290,7 +305,7 @@ impl IsolationError {
             format!("attempted operation: {}", operation),
         )
     }
-    
+
     /// BCIB attempted direct device access
     pub fn device_access_violation(context_id: ExecutionContextId, device: &str) -> Self {
         Self::with_details(
@@ -300,7 +315,7 @@ impl IsolationError {
             format!("attempted device: {}", device),
         )
     }
-    
+
     /// ABDF handle has been revoked
     pub fn abdf_handle_revoked(context_id: ExecutionContextId, handle_id: u64) -> Self {
         Self::with_details(
@@ -310,7 +325,7 @@ impl IsolationError {
             format!("handle_id: {}", handle_id),
         )
     }
-    
+
     /// Capability scope violation
     pub fn capability_scope_violation(
         context_id: ExecutionContextId,
@@ -321,10 +336,13 @@ impl IsolationError {
             ErrorCode::CapabilityScopeViolation,
             "Capability used outside its declared scope",
             Some(context_id),
-            format!("token_id: {}, attempted_resource: {}", token_id, attempted_resource),
+            format!(
+                "token_id: {}, attempted_resource: {}",
+                token_id, attempted_resource
+            ),
         )
     }
-    
+
     /// Memory contract violation (NON_OVERRIDABLE)
     pub fn memory_contract_violation(context_id: ExecutionContextId, violation: &str) -> Self {
         Self::with_details(
@@ -334,7 +352,7 @@ impl IsolationError {
             format!("violation: {}", violation),
         )
     }
-    
+
     /// Constitutional rule violation (NON_OVERRIDABLE)
     pub fn constitutional_violation(rule: &str, violation: &str) -> Self {
         Self::with_details(
@@ -344,7 +362,7 @@ impl IsolationError {
             format!("rule: {}, violation: {}", rule, violation),
         )
     }
-    
+
     /// Sandbox escape attempt
     pub fn sandbox_escape(context_id: ExecutionContextId, escape_type: &str) -> Self {
         Self::with_details(
@@ -354,7 +372,7 @@ impl IsolationError {
             format!("escape_type: {}", escape_type),
         )
     }
-    
+
     /// Undeclared side-effect detected
     pub fn undeclared_side_effect(
         context_id: ExecutionContextId,
@@ -376,13 +394,34 @@ mod tests {
 
     #[test]
     fn error_code_violation_type_mapping() {
-        assert_eq!(ErrorCode::IsolationViolation.violation_type(), ViolationType::Isolation);
-        assert_eq!(ErrorCode::BoundaryViolation.violation_type(), ViolationType::Boundary);
-        assert_eq!(ErrorCode::CapabilityDenied.violation_type(), ViolationType::Capability);
-        assert_eq!(ErrorCode::MemoryContractViolation.violation_type(), ViolationType::Memory);
-        assert_eq!(ErrorCode::ConstitutionalViolation.violation_type(), ViolationType::Constitutional);
-        assert_eq!(ErrorCode::SandboxEscape.violation_type(), ViolationType::Sandbox);
-        assert_eq!(ErrorCode::UndeclaredSideEffect.violation_type(), ViolationType::SideEffect);
+        assert_eq!(
+            ErrorCode::IsolationViolation.violation_type(),
+            ViolationType::Isolation
+        );
+        assert_eq!(
+            ErrorCode::BoundaryViolation.violation_type(),
+            ViolationType::Boundary
+        );
+        assert_eq!(
+            ErrorCode::CapabilityDenied.violation_type(),
+            ViolationType::Capability
+        );
+        assert_eq!(
+            ErrorCode::MemoryContractViolation.violation_type(),
+            ViolationType::Memory
+        );
+        assert_eq!(
+            ErrorCode::ConstitutionalViolation.violation_type(),
+            ViolationType::Constitutional
+        );
+        assert_eq!(
+            ErrorCode::SandboxEscape.violation_type(),
+            ViolationType::Sandbox
+        );
+        assert_eq!(
+            ErrorCode::UndeclaredSideEffect.violation_type(),
+            ViolationType::SideEffect
+        );
     }
 
     #[test]
@@ -415,11 +454,7 @@ mod tests {
 
     #[test]
     fn isolation_error_display() {
-        let error = IsolationError::new(
-            ErrorCode::IsolationViolation,
-            "Test violation",
-            Some(123),
-        );
+        let error = IsolationError::new(ErrorCode::IsolationViolation, "Test violation", Some(123));
         let display = format!("{}", error);
         assert!(display.contains("BCIB_ERR_ISOLATION_VIOLATION"));
         assert!(display.contains("0x1001"));

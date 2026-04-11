@@ -12,7 +12,6 @@
 /// - `SECURITY.BOUNDARY.VIOLATION` — Ring3 accessing Ring0 directly
 ///
 /// All violations result in immediate fail-closed termination with no recovery.
-
 use crate::isolation::error_taxonomy::{ErrorCode, IsolationError};
 use crate::types::ExecutionContextId;
 use std::fmt;
@@ -40,7 +39,7 @@ impl ConstitutionalRule {
             ConstitutionalRule::SecurityBoundaryViolation => ErrorCode::SecurityBoundaryViolation,
         }
     }
-    
+
     /// Get the rule name as defined in the constitutional framework
     pub fn rule_name(self) -> &'static str {
         match self {
@@ -50,17 +49,17 @@ impl ConstitutionalRule {
             ConstitutionalRule::SecurityBoundaryViolation => "SECURITY.BOUNDARY.VIOLATION",
         }
     }
-    
+
     /// Get a description of what this rule prohibits
     pub fn description(self) -> &'static str {
         match self {
-            ConstitutionalRule::DeterminismGlobal => 
+            ConstitutionalRule::DeterminismGlobal =>
                 "Prohibits global state mutations that could introduce non-determinism",
-            ConstitutionalRule::MemoryContractViolation => 
+            ConstitutionalRule::MemoryContractViolation =>
                 "Prohibits memory safety violations including bounds violations and raw pointer access",
-            ConstitutionalRule::KernelSafetyCritical => 
+            ConstitutionalRule::KernelSafetyCritical =>
                 "Prohibits operations that could compromise critical kernel safety",
-            ConstitutionalRule::SecurityBoundaryViolation => 
+            ConstitutionalRule::SecurityBoundaryViolation =>
                 "Prohibits Ring3 code from accessing Ring0 directly, bypassing security boundaries",
         }
     }
@@ -99,13 +98,13 @@ impl RuleViolation {
             details: None,
         }
     }
-    
+
     /// Add additional details to the violation
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
         self
     }
-    
+
     /// Convert to an IsolationError for fail-closed termination
     pub fn to_isolation_error(&self) -> IsolationError {
         let message = format!(
@@ -113,7 +112,7 @@ impl RuleViolation {
             self.rule.rule_name(),
             self.violation_description
         );
-        
+
         match &self.details {
             Some(details) => IsolationError::with_details(
                 self.rule.error_code(),
@@ -121,11 +120,7 @@ impl RuleViolation {
                 self.context_id,
                 details.clone(),
             ),
-            None => IsolationError::new(
-                self.rule.error_code(),
-                message,
-                self.context_id,
-            ),
+            None => IsolationError::new(self.rule.error_code(), message, self.context_id),
         }
     }
 }
@@ -133,15 +128,15 @@ impl RuleViolation {
 impl fmt::Display for RuleViolation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}: {}", self.rule, self.violation_description)?;
-        
+
         if let Some(ctx_id) = self.context_id {
             write!(f, " [context: {}]", ctx_id)?;
         }
-        
+
         if let Some(ref details) = self.details {
             write!(f, " - {}", details)?;
         }
-        
+
         Ok(())
     }
 }
@@ -159,11 +154,11 @@ impl ConstitutionalEnforcer {
             enforcement_active: true,
         }
     }
-    
+
     /// Create an enforcer with enforcement disabled (TESTING ONLY)
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This should NEVER be used in production code. It exists only for
     /// unit testing scenarios where constitutional violations need to be
     /// simulated without triggering fail-closed termination.
@@ -173,7 +168,7 @@ impl ConstitutionalEnforcer {
             enforcement_active: false,
         }
     }
-    
+
     /// Check if a global state mutation would violate DETERMINISM.GLOBAL
     pub fn check_determinism_global(
         &self,
@@ -183,7 +178,7 @@ impl ConstitutionalEnforcer {
         if !self.enforcement_active {
             return Ok(());
         }
-        
+
         // For now, we implement a basic check. In a full implementation,
         // this would analyze the specific operation for global state mutations.
         if operation.contains("global_state") || operation.contains("static_mut") {
@@ -191,12 +186,13 @@ impl ConstitutionalEnforcer {
                 ConstitutionalRule::DeterminismGlobal,
                 format!("Operation '{}' would mutate global state", operation),
                 context_id,
-            ).with_details("Global state mutations are prohibited to maintain determinism"));
+            )
+            .with_details("Global state mutations are prohibited to maintain determinism"));
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if a memory operation would violate MEMORY.CONTRACT.VIOLATION
     pub fn check_memory_contract(
         &self,
@@ -206,21 +202,23 @@ impl ConstitutionalEnforcer {
         if !self.enforcement_active {
             return Ok(());
         }
-        
+
         // Check for memory safety violations
-        if operation.contains("raw_pointer") 
+        if operation.contains("raw_pointer")
             || operation.contains("unbounded_alloc")
-            || operation.contains("bounds_violation") {
+            || operation.contains("bounds_violation")
+        {
             return Err(RuleViolation::new(
                 ConstitutionalRule::MemoryContractViolation,
                 format!("Operation '{}' violates memory safety contract", operation),
                 context_id,
-            ).with_details("Memory safety violations are prohibited"));
+            )
+            .with_details("Memory safety violations are prohibited"));
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if an operation would violate KERNEL.SAFETY.CRITICAL
     pub fn check_kernel_safety(
         &self,
@@ -230,21 +228,23 @@ impl ConstitutionalEnforcer {
         if !self.enforcement_active {
             return Ok(());
         }
-        
+
         // Check for kernel safety violations
-        if operation.contains("kernel_direct") 
+        if operation.contains("kernel_direct")
             || operation.contains("ring0_access")
-            || operation.contains("interrupt_handler") {
+            || operation.contains("interrupt_handler")
+        {
             return Err(RuleViolation::new(
                 ConstitutionalRule::KernelSafetyCritical,
                 format!("Operation '{}' compromises kernel safety", operation),
                 context_id,
-            ).with_details("Critical kernel safety must be maintained"));
+            )
+            .with_details("Critical kernel safety must be maintained"));
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if an operation would violate SECURITY.BOUNDARY.VIOLATION
     pub fn check_security_boundary(
         &self,
@@ -254,21 +254,23 @@ impl ConstitutionalEnforcer {
         if !self.enforcement_active {
             return Ok(());
         }
-        
+
         // Check for security boundary violations
-        if operation.contains("ring3_to_ring0") 
+        if operation.contains("ring3_to_ring0")
             || operation.contains("bypass_syscall")
-            || operation.contains("direct_kernel") {
+            || operation.contains("direct_kernel")
+        {
             return Err(RuleViolation::new(
                 ConstitutionalRule::SecurityBoundaryViolation,
                 format!("Operation '{}' violates security boundary", operation),
                 context_id,
-            ).with_details("Ring3 cannot access Ring0 directly"));
+            )
+            .with_details("Ring3 cannot access Ring0 directly"));
         }
-        
+
         Ok(())
     }
-    
+
     /// Comprehensive check against all constitutional rules
     pub fn check_all_rules(
         &self,
@@ -281,9 +283,9 @@ impl ConstitutionalEnforcer {
         self.check_security_boundary(operation, context_id)?;
         Ok(())
     }
-    
+
     /// Validate that an operation is constitutionally compliant
-    /// 
+    ///
     /// Returns Ok(()) if the operation is allowed, or an IsolationError
     /// for fail-closed termination if any constitutional rule is violated.
     pub fn validate_operation(
@@ -315,7 +317,7 @@ impl ConstitutionalEnforcer {
         let operation = format!("bcib_opcode_0x{:02x}", opcode);
         self.validate_operation(&operation, Some(context_id))
     }
-    
+
     /// Check if ABDF access would violate constitutional rules
     pub fn validate_abdf_access(
         &self,
@@ -326,7 +328,7 @@ impl ConstitutionalEnforcer {
         let operation = format!("abdf_{}_{}", access_type, handle_id);
         self.validate_operation(&operation, Some(context_id))
     }
-    
+
     /// Check if runtime bridge operation would violate constitutional rules
     pub fn validate_runtime_bridge_operation(
         &self,
@@ -336,7 +338,7 @@ impl ConstitutionalEnforcer {
         let operation = format!("runtime_bridge_{}", bridge_operation);
         self.validate_operation(&operation, Some(context_id))
     }
-    
+
     /// Check if syscall would violate constitutional rules
     pub fn validate_syscall(
         &self,
@@ -351,7 +353,8 @@ impl ConstitutionalEnforcer {
                 ConstitutionalRule::SecurityBoundaryViolation,
                 format!("Unauthorized syscall {} attempted", syscall_number),
                 Some(context_id),
-            ).with_details("Only SYS_V2_SUBMIT_EXECUTION (1003) is permitted");
+            )
+            .with_details("Only SYS_V2_SUBMIT_EXECUTION (1003) is permitted");
             return Err(violation.to_isolation_error());
         }
         Ok(())
@@ -376,8 +379,9 @@ mod tests {
             ConstitutionalRule::MemoryContractViolation,
             "Raw pointer access detected",
             Some(42),
-        ).with_details("Attempted to dereference raw pointer");
-        
+        )
+        .with_details("Attempted to dereference raw pointer");
+
         assert_eq!(violation.rule, ConstitutionalRule::MemoryContractViolation);
         assert_eq!(violation.context_id, Some(42));
         assert!(violation.details.is_some());
@@ -390,7 +394,7 @@ mod tests {
             "Ring3 to Ring0 access",
             Some(123),
         );
-        
+
         let error = violation.to_isolation_error();
         assert_eq!(error.code, ErrorCode::SecurityBoundaryViolation);
         assert_eq!(error.context_id, Some(123));
@@ -400,75 +404,113 @@ mod tests {
     #[test]
     fn constitutional_enforcer_determinism_check() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for normal operations
-        assert!(enforcer.check_determinism_global("normal_operation", Some(1)).is_ok());
-        
+        assert!(enforcer
+            .check_determinism_global("normal_operation", Some(1))
+            .is_ok());
+
         // Should fail for global state mutations
-        assert!(enforcer.check_determinism_global("global_state_mutation", Some(1)).is_err());
-        assert!(enforcer.check_determinism_global("static_mut_access", Some(1)).is_err());
+        assert!(enforcer
+            .check_determinism_global("global_state_mutation", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_determinism_global("static_mut_access", Some(1))
+            .is_err());
     }
 
     #[test]
     fn constitutional_enforcer_memory_check() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for safe operations
-        assert!(enforcer.check_memory_contract("safe_allocation", Some(1)).is_ok());
-        
+        assert!(enforcer
+            .check_memory_contract("safe_allocation", Some(1))
+            .is_ok());
+
         // Should fail for memory violations
-        assert!(enforcer.check_memory_contract("raw_pointer_access", Some(1)).is_err());
-        assert!(enforcer.check_memory_contract("unbounded_alloc", Some(1)).is_err());
-        assert!(enforcer.check_memory_contract("bounds_violation", Some(1)).is_err());
+        assert!(enforcer
+            .check_memory_contract("raw_pointer_access", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_memory_contract("unbounded_alloc", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_memory_contract("bounds_violation", Some(1))
+            .is_err());
     }
 
     #[test]
     fn constitutional_enforcer_kernel_safety_check() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for userspace operations
-        assert!(enforcer.check_kernel_safety("userspace_operation", Some(1)).is_ok());
-        
+        assert!(enforcer
+            .check_kernel_safety("userspace_operation", Some(1))
+            .is_ok());
+
         // Should fail for kernel safety violations
-        assert!(enforcer.check_kernel_safety("kernel_direct_access", Some(1)).is_err());
-        assert!(enforcer.check_kernel_safety("ring0_access", Some(1)).is_err());
-        assert!(enforcer.check_kernel_safety("interrupt_handler", Some(1)).is_err());
+        assert!(enforcer
+            .check_kernel_safety("kernel_direct_access", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_kernel_safety("ring0_access", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_kernel_safety("interrupt_handler", Some(1))
+            .is_err());
     }
 
     #[test]
     fn constitutional_enforcer_security_boundary_check() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for proper syscall usage
-        assert!(enforcer.check_security_boundary("proper_syscall", Some(1)).is_ok());
-        
+        assert!(enforcer
+            .check_security_boundary("proper_syscall", Some(1))
+            .is_ok());
+
         // Should fail for boundary violations
-        assert!(enforcer.check_security_boundary("ring3_to_ring0", Some(1)).is_err());
-        assert!(enforcer.check_security_boundary("bypass_syscall", Some(1)).is_err());
-        assert!(enforcer.check_security_boundary("direct_kernel", Some(1)).is_err());
+        assert!(enforcer
+            .check_security_boundary("ring3_to_ring0", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_security_boundary("bypass_syscall", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_security_boundary("direct_kernel", Some(1))
+            .is_err());
     }
 
     #[test]
     fn constitutional_enforcer_comprehensive_check() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for compliant operations
-        assert!(enforcer.check_all_rules("compliant_operation", Some(1)).is_ok());
-        
+        assert!(enforcer
+            .check_all_rules("compliant_operation", Some(1))
+            .is_ok());
+
         // Should fail if any rule is violated
-        assert!(enforcer.check_all_rules("global_state_mutation", Some(1)).is_err());
-        assert!(enforcer.check_all_rules("raw_pointer_access", Some(1)).is_err());
-        assert!(enforcer.check_all_rules("kernel_direct_access", Some(1)).is_err());
+        assert!(enforcer
+            .check_all_rules("global_state_mutation", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_all_rules("raw_pointer_access", Some(1))
+            .is_err());
+        assert!(enforcer
+            .check_all_rules("kernel_direct_access", Some(1))
+            .is_err());
         assert!(enforcer.check_all_rules("ring3_to_ring0", Some(1)).is_err());
     }
 
     #[test]
     fn constitutional_enforcer_syscall_validation() {
         let enforcer = ConstitutionalEnforcer::new();
-        
+
         // Should pass for allowed syscall (SYS_V2_SUBMIT_EXECUTION = 1003)
         assert!(enforcer.validate_syscall(1003, 1).is_ok());
-        
+
         // Should fail for other syscalls
         assert!(enforcer.validate_syscall(1000, 1).is_err());
         assert!(enforcer.validate_syscall(1004, 1).is_err());
@@ -478,11 +520,19 @@ mod tests {
     #[test]
     fn constitutional_enforcer_disabled_for_testing() {
         let enforcer = ConstitutionalEnforcer::disabled_for_testing();
-        
+
         // All checks should pass when enforcement is disabled
-        assert!(enforcer.check_determinism_global("global_state_mutation", Some(1)).is_ok());
-        assert!(enforcer.check_memory_contract("raw_pointer_access", Some(1)).is_ok());
-        assert!(enforcer.check_kernel_safety("kernel_direct_access", Some(1)).is_ok());
-        assert!(enforcer.check_security_boundary("ring3_to_ring0", Some(1)).is_ok());
+        assert!(enforcer
+            .check_determinism_global("global_state_mutation", Some(1))
+            .is_ok());
+        assert!(enforcer
+            .check_memory_contract("raw_pointer_access", Some(1))
+            .is_ok());
+        assert!(enforcer
+            .check_kernel_safety("kernel_direct_access", Some(1))
+            .is_ok());
+        assert!(enforcer
+            .check_security_boundary("ring3_to_ring0", Some(1))
+            .is_ok());
     }
 }

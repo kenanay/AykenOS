@@ -3,10 +3,10 @@
 //
 // This test verifies that the final syscall dispatcher correctly handles
 // only the execution-centric syscalls:
-// - 1000-1009 range: Execution-centric (v2) syscalls
+// - SYS_V2_BASE..SYS_V2_LAST range: Execution-centric (v2) syscalls
 // - All other ranges: Return -ENOSYS
 //
-// Requirements: AC-6 - Only 10 execution-centric syscalls remain
+// Requirements: AC-6 - Only execution-centric syscalls remain
 //
 // Author: Kenan AY
 // Project: AykenOS - Advanced AI-Integrated Operating System
@@ -23,7 +23,7 @@ void fb_print_int(int64_t value);
 /**
  * test_execution_centric_syscalls - Test the execution-centric syscall interface
  * 
- * This function tests all 10 execution-centric syscalls to ensure they
+ * This function tests representative execution-centric syscalls to ensure they
  * are properly routed and handled by the v2 syscall dispatcher.
  */
 void test_execution_centric_syscalls(void)
@@ -64,7 +64,7 @@ void test_execution_centric_syscalls(void)
 /**
  * test_syscall_numbering_plan - Test the final syscall numbering plan
  * 
- * This function tests that only the 1000-1009 range is valid and all
+ * This function tests that only the SYS_V2_BASE..SYS_V2_LAST range is valid and all
  * other syscall numbers return -ENOSYS.
  */
 void test_syscall_numbering_plan(void)
@@ -72,7 +72,7 @@ void test_syscall_numbering_plan(void)
     fb_print("[syscall_test] Testing final syscall numbering plan...\n");
     
     // Test v2 range boundaries (only valid range)
-    fb_print("[syscall_test] V2 range: 1000-1009 (ONLY valid range)\n");
+    fb_print("[syscall_test] V2 range: SYS_V2_BASE..SYS_V2_LAST (ONLY valid range)\n");
     fb_print("[syscall_test] Testing syscall 1000 (map_memory): ");
     uint64_t r1000 = syscall_handler(1000, 0x400000, 0x100000, 0x01, 0);
     fb_print_int(r1000);
@@ -110,9 +110,9 @@ void test_syscall_numbering_plan(void)
     fb_print_int(r999);
     fb_print("\n");
     
-    fb_print("[syscall_test] Testing syscall 1010: ");
-    uint64_t r1010 = syscall_handler(1010, 0, 0, 0, 0);
-    fb_print_int(r1010);
+    fb_print("[syscall_test] Testing syscall 1015: ");
+    uint64_t r1015 = syscall_handler(1015, 0, 0, 0, 0);
+    fb_print_int(r1015);
     fb_print("\n");
     
     fb_print("[syscall_test] Testing syscall 2000: ");
@@ -121,5 +121,5 @@ void test_syscall_numbering_plan(void)
     fb_print("\n");
     
     fb_print("[syscall_test] Final numbering plan test completed.\n");
-    fb_print("[syscall_test] SUMMARY: Only 1000-1009 should work, all others return -38\n");
+    fb_print("[syscall_test] SUMMARY: Only SYS_V2_BASE..SYS_V2_LAST should work, all others return -38\n");
 }

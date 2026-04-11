@@ -1,8 +1,14 @@
+use crate::capability_manager::{CapabilityCheck, CapabilityResource};
+use crate::isolation::abdf_handle::{
+    AbdfHandle, AccessMode, HandleId, HandleManager, SegmentType, SegmentTypeValidator,
+};
+use crate::isolation::error_taxonomy::{ErrorCode, IsolationError};
+use crate::syscall_adapter::SyscallAdapter;
 /// Runtime Bridge - Core Interface Between BCIB and External Systems
 ///
 /// This module implements the Runtime_Bridge component that serves as the sole
 /// approved interface between BCIB execution and external systems (kernel, device, ABDF).
-/// 
+///
 /// ## Critical Role Definition (Task 5)
 ///
 /// Runtime_Bridge is NOT an authority layer. It operates strictly as a controlled
@@ -27,12 +33,7 @@
 /// - Requirement 3.11: Runtime_Bridge logging SHALL be deterministic or externalized from execution trace
 /// - Requirement 3.12: Runtime_Bridge logging SHALL NOT affect execution determinism
 /// - Requirement 3.14: IF BCIB attempts to bypass Runtime_Bridge, THEN System SHALL terminate with BCIB_ERR_BRIDGE_BYPASS
-
-use crate::types::{BcibError, ExecutionContextId, CapabilityTokenId};
-use crate::capability_manager::{CapabilityCheck, CapabilityResource};
-use crate::isolation::error_taxonomy::{IsolationError, ErrorCode};
-use crate::isolation::abdf_handle::{AbdfHandle, HandleId, HandleManager, SegmentType, AccessMode, SegmentTypeValidator};
-use crate::syscall_adapter::{SyscallAdapter, AbdfOperation, AbdfOperationResult};
+use crate::types::{BcibError, CapabilityTokenId, ExecutionContextId};
 use std::sync::{Arc, Mutex};
 
 /// Intent expressed by BCIB opcodes (Phase-15 compatibility)
@@ -42,13 +43,13 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub enum SideEffectIntent {
     /// Read data from ABDF via handle
-    AbdfRead { 
+    AbdfRead {
         handle_id: u64,
         /// Segment type expected for validation
         expected_segment_type: SegmentType,
     },
     /// Write data to ABDF (mutation via controlled interface)
-    AbdfWrite { 
+    AbdfWrite {
         handle_id: u64,
         data: Vec<u8>,
         /// Segment type for validation
@@ -60,12 +61,9 @@ pub enum SideEffectIntent {
         data: Vec<u8>,
     },
     /// Device operation (via ABDF-provided segments only)
-    DeviceOperation { 
-        device_id: u32,
-        operation: String,
-    },
+    DeviceOperation { device_id: u32, operation: String },
     /// External call (AI/UI)
-    ExternalCall { 
+    ExternalCall {
         call_type: String,
         parameters: Vec<u8>,
     },
@@ -128,7 +126,7 @@ impl RuntimeBridge {
         handle_manager: Arc<Mutex<HandleManager>>,
         capability_checker: Arc<dyn CapabilityCheck + Send + Sync>,
     ) -> Self {
-        Self { 
+        Self {
             context_id,
             handle_manager,
             capability_checker,
@@ -136,20 +134,20 @@ impl RuntimeBridge {
             state: BridgeState::Active,
         }
     }
-    
+
     /// Check if the bridge is active and can process operations
     fn check_active(&self) -> Result<(), BcibError> {
         match self.state {
             BridgeState::Active => Ok(()),
             BridgeState::TearingDown => Err(BcibError::IllegalStateTransition(
-                "Runtime bridge is being torn down"
+                "Runtime bridge is being torn down",
             )),
             BridgeState::Terminated => Err(BcibError::IllegalStateTransition(
-                "Runtime bridge has been terminated"
+                "Runtime bridge has been terminated",
             )),
         }
     }
-    
+
     /// Initiate bridge teardown (Task 5.2, Requirement 13.5)
     ///
     /// This begins the teardown process:
@@ -163,7 +161,7 @@ impl RuntimeBridge {
             self.state = BridgeState::TearingDown;
         }
     }
-    
+
     /// Complete bridge teardown and cleanup (Task 5.2, Requirement 13.6)
     ///
     /// This completes the teardown process:
@@ -177,30 +175,30 @@ impl RuntimeBridge {
         if self.state == BridgeState::Active {
             self.state = BridgeState::TearingDown;
         }
-        
+
         // Revoke all handles for this context
         if let Ok(mut handle_manager) = self.handle_manager.lock() {
             let revoked = handle_manager.revoke_all_context_handles(self.context_id);
             // Log revocation count for audit (externalized, doesn't affect determinism)
             let _ = revoked; // Placeholder for audit logging
         }
-        
+
         // Mark as terminated
         self.state = BridgeState::Terminated;
-        
+
         Ok(())
     }
-    
+
     /// Check if the bridge is terminated
     pub fn is_terminated(&self) -> bool {
         self.state == BridgeState::Terminated
     }
-    
+
     /// Check if the bridge is active
     pub fn is_active(&self) -> bool {
         self.state == BridgeState::Active
     }
-    
+
     /// Execute a side-effect intent with capability validation (Requirements 3.8, 3.9)
     ///
     /// This is the core mediation function that:
@@ -224,27 +222,32 @@ impl RuntimeBridge {
     ) -> Result<SideEffectResult, BcibError> {
         // Check bridge is active (Task 5.2)
         self.check_active()?;
-        
+
         // Execute based on intent type
         match intent {
-            SideEffectIntent::AbdfRead { handle_id, expected_segment_type } => {
-                self.execute_abdf_read(handle_id, expected_segment_type, capability_token)
-            }
-            SideEffectIntent::AbdfWrite { handle_id, data, segment_type } => {
-                self.execute_abdf_write(handle_id, data, segment_type, capability_token)
-            }
+            SideEffectIntent::AbdfRead {
+                handle_id,
+                expected_segment_type,
+            } => self.execute_abdf_read(handle_id, expected_segment_type, capability_token),
+            SideEffectIntent::AbdfWrite {
+                handle_id,
+                data,
+                segment_type,
+            } => self.execute_abdf_write(handle_id, data, segment_type, capability_token),
             SideEffectIntent::AbdfCreate { segment_type, data } => {
                 self.execute_abdf_create(segment_type, data, capability_token)
             }
-            SideEffectIntent::DeviceOperation { device_id, operation } => {
-                self.execute_device_operation(device_id, operation, capability_token)
-            }
-            SideEffectIntent::ExternalCall { call_type, parameters } => {
-                self.execute_external_call(call_type, parameters, capability_token)
-            }
+            SideEffectIntent::DeviceOperation {
+                device_id,
+                operation,
+            } => self.execute_device_operation(device_id, operation, capability_token),
+            SideEffectIntent::ExternalCall {
+                call_type,
+                parameters,
+            } => self.execute_external_call(call_type, parameters, capability_token),
         }
     }
-    
+
     /// Execute ABDF read operation (Requirement 3.2)
     fn execute_abdf_read(
         &self,
@@ -258,29 +261,32 @@ impl RuntimeBridge {
             &CapabilityResource::DataRead,
             self.context_id,
         )?;
-        
+
         // Validate segment type allows read access
         SegmentTypeValidator::validate_access(expected_segment_type, AccessMode::Read)
             .map_err(|e| e.to_bcib_error())?;
-        
+
         // Access handle through handle manager (opaque, no raw pointers)
-        let handle_manager = self.handle_manager.lock()
+        let handle_manager = self
+            .handle_manager
+            .lock()
             .map_err(|_| BcibError::IsolationViolation("handle manager lock poisoned"))?;
-        
+
         // Create temporary handle for validation
         let handle = AbdfHandle::for_validation(
             HandleId::from_u64(handle_id),
             expected_segment_type,
             self.context_id,
         );
-        
+
         // Access data through handle (Requirement 9.1, 9.2)
-        let data = handle_manager.access_handle_data(&handle, self.context_id)
+        let data = handle_manager
+            .access_handle_data(&handle, self.context_id)
             .map_err(|e| e.to_bcib_error())?;
-        
+
         Ok(SideEffectResult::AbdfData(data.to_vec()))
     }
-    
+
     /// Execute ABDF write operation via controlled mutation interface (Requirement 8.2)
     fn execute_abdf_write(
         &self,
@@ -295,43 +301,44 @@ impl RuntimeBridge {
             &CapabilityResource::DataWrite,
             self.context_id,
         )?;
-        
+
         // Validate segment type allows mutation (Requirement 8.5)
         if !segment_type.allows_mutation() {
             return Err(IsolationError::new(
                 ErrorCode::AbdfDirectMutation,
                 format!("Segment type {:?} does not allow mutation", segment_type),
                 Some(self.context_id),
-            ).to_bcib_error());
+            )
+            .to_bcib_error());
         }
-        
+
         // Validate segment type allows write access
         SegmentTypeValidator::validate_access(segment_type, AccessMode::Write)
             .map_err(|e| e.to_bcib_error())?;
-        
+
         // Validate mutation data
         SegmentTypeValidator::validate_mutation(segment_type, &[], &data)
             .map_err(|e| e.to_bcib_error())?;
-        
+
         // Create new ABDF object with mutated data (Requirement 8.5, 8.7)
         // This preserves previous state and returns a new handle
-        let mut handle_manager = self.handle_manager.lock()
+        let mut handle_manager = self
+            .handle_manager
+            .lock()
             .map_err(|_| BcibError::IsolationViolation("handle manager lock poisoned"))?;
-        
-        let new_handle = handle_manager.create_handle(
-            segment_type,
-            self.context_id,
-            data,
-        ).map_err(|e| e.to_bcib_error())?;
-        
+
+        let new_handle = handle_manager
+            .create_handle(segment_type, self.context_id, data)
+            .map_err(|e| e.to_bcib_error())?;
+
         // Revoke old handle (mutation produces new object)
         let _ = handle_manager.revoke_handle(HandleId::from_u64(handle_id), self.context_id);
-        
-        Ok(SideEffectResult::AbdfWriteComplete { 
-            new_handle_id: new_handle.id.as_u64() 
+
+        Ok(SideEffectResult::AbdfWriteComplete {
+            new_handle_id: new_handle.id.as_u64(),
         })
     }
-    
+
     /// Execute ABDF create operation (Requirement 8.2)
     fn execute_abdf_create(
         &self,
@@ -345,33 +352,34 @@ impl RuntimeBridge {
             &CapabilityResource::DataWrite,
             self.context_id,
         )?;
-        
+
         // Validate segment creation (Requirement 10.2, 10.3)
         SegmentTypeValidator::validate_creation(segment_type, &data)
             .map_err(|e| e.to_bcib_error())?;
-        
+
         // Create new ABDF segment via handle manager
-        let mut handle_manager = self.handle_manager.lock()
+        let mut handle_manager = self
+            .handle_manager
+            .lock()
             .map_err(|_| BcibError::IsolationViolation("handle manager lock poisoned"))?;
-        
-        let handle = handle_manager.create_handle(
-            segment_type,
-            self.context_id,
-            data,
-        ).map_err(|e| e.to_bcib_error())?;
-        
-        Ok(SideEffectResult::AbdfCreated { 
-            handle_id: handle.id.as_u64() 
+
+        let handle = handle_manager
+            .create_handle(segment_type, self.context_id, data)
+            .map_err(|e| e.to_bcib_error())?;
+
+        Ok(SideEffectResult::AbdfCreated {
+            handle_id: handle.id.as_u64(),
         })
     }
-    
+
     /// Execute device operation (Requirement 11.6, 11.7)
     ///
     /// Device data is accessed ONLY via ABDF-provided segments.
     /// Direct device interaction is forbidden (Requirement 11.2, 11.3).
     ///
-    /// **Task 5 Completion: Syscall Integration**
-    /// This now uses syscall_adapter to invoke kernel syscall instead of returning fake data.
+    /// **Task 5 Syscall Path Wiring**
+    /// This uses syscall_adapter for the kernel trap path. Kernel handlers are
+    /// still subsystem stubs until DevFS/ABDF integration is completed.
     fn execute_device_operation(
         &self,
         device_id: u32,
@@ -384,12 +392,12 @@ impl RuntimeBridge {
             &CapabilityResource::ExternalCall,
             self.context_id,
         )?;
-        
+
         // Task 5: Use syscall adapter to invoke kernel syscall
         // This replaces the placeholder vec![] with real syscall invocation
         //
         // The syscall adapter will:
-        // 1. Invoke SYS_V2_DEVICE_OPERATION (1010)
+        // 1. Invoke SYS_V2_DEVICE_OPERATION (1012)
         // 2. Kernel validates capability
         // 3. Kernel performs device operation
         // 4. Kernel wraps result in ABDF segment (DeviceStatus, ReadResult, or Event)
@@ -397,20 +405,21 @@ impl RuntimeBridge {
         //
         // Direct device access is FORBIDDEN (Requirement 11.2, 11.3, 11.4, 11.5)
         // ALL interaction goes through syscall (Requirement 3.4)
-        
+
         let device_data = self.syscall_adapter.sys_v2_device_operation(
             device_id,
             &operation,
             capability_token,
         )?;
-        
+
         Ok(SideEffectResult::DeviceResult(device_data))
     }
-    
+
     /// Execute external call (AI/UI) (Requirement 5.4)
     ///
-    /// **Task 5 Completion: Syscall Integration**
-    /// This now uses syscall_adapter to invoke kernel syscall instead of returning fake data.
+    /// **Task 5 Syscall Path Wiring**
+    /// This uses syscall_adapter for the kernel trap path. Kernel handlers are
+    /// still subsystem stubs until external handler integration is completed.
     fn execute_external_call(
         &self,
         call_type: String,
@@ -423,12 +432,12 @@ impl RuntimeBridge {
             &CapabilityResource::ExternalCall,
             self.context_id,
         )?;
-        
+
         // Task 5: Use syscall adapter to invoke kernel syscall
         // This replaces the placeholder vec![] with real syscall invocation
         //
         // The syscall adapter will:
-        // 1. Invoke SYS_V2_EXTERNAL_CALL (1011)
+        // 1. Invoke SYS_V2_EXTERNAL_CALL (1013)
         // 2. Kernel validates capability
         // 3. Kernel routes to external handler (AI/UI)
         // 4. Kernel waits for result
@@ -436,16 +445,14 @@ impl RuntimeBridge {
         //
         // ALL interaction goes through syscall (Requirement 3.4)
         // Runtime_Bridge does NOT call kernel APIs directly
-        
-        let external_result = self.syscall_adapter.sys_v2_external_call(
-            &call_type,
-            &parameters,
-            capability_token,
-        )?;
-        
+
+        let external_result =
+            self.syscall_adapter
+                .sys_v2_external_call(&call_type, &parameters, capability_token)?;
+
         Ok(SideEffectResult::ExternalResult(external_result))
     }
-    
+
     /// Get the execution context this bridge is bound to
     pub fn context_id(&self) -> ExecutionContextId {
         self.context_id
@@ -456,14 +463,29 @@ impl RuntimeBridge {
 mod tests {
     use super::*;
     use crate::capability_manager::NoopCapabilityManager;
-    use crate::isolation::abdf_handle::HandlePoolConfig;
+    use crate::syscall_adapter::test_hook;
 
     fn create_test_bridge() -> RuntimeBridge {
         let context_id = 1;
         let handle_manager = Arc::new(Mutex::new(HandleManager::new_default()));
         let capability_checker = Arc::new(NoopCapabilityManager);
-        
+
         RuntimeBridge::new(context_id, handle_manager, capability_checker)
+    }
+
+    struct SyscallHookGuard;
+
+    impl SyscallHookGuard {
+        fn install(return_value: i64) -> Self {
+            test_hook::install(return_value);
+            Self
+        }
+    }
+
+    impl Drop for SyscallHookGuard {
+        fn drop(&mut self) {
+            test_hook::uninstall();
+        }
     }
 
     #[test]
@@ -476,15 +498,15 @@ mod tests {
     fn abdf_create_success() {
         let bridge = create_test_bridge();
         let data = vec![1, 2, 3, 4];
-        
+
         let intent = SideEffectIntent::AbdfCreate {
             segment_type: SegmentType::Input,
             data: data.clone(),
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
-        
+
         if let Ok(SideEffectResult::AbdfCreated { handle_id }) = result {
             assert!(handle_id > 0);
         } else {
@@ -496,12 +518,12 @@ mod tests {
     fn abdf_create_validates_segment_type() {
         let bridge = create_test_bridge();
         let data = vec![0u8; 2 * 1024 * 1024]; // 2 MiB - exceeds Input limit
-        
+
         let intent = SideEffectIntent::AbdfCreate {
             segment_type: SegmentType::Input,
             data,
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
     }
@@ -509,27 +531,28 @@ mod tests {
     #[test]
     fn abdf_write_requires_mutable_segment() {
         let bridge = create_test_bridge();
-        
+
         // Try to write to read-only segment type
         let intent = SideEffectIntent::AbdfWrite {
             handle_id: 1,
             data: vec![1, 2, 3],
             segment_type: SegmentType::Input, // Read-only
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
     }
 
     #[test]
     fn device_operation_requires_capability() {
+        let _hook = SyscallHookGuard::install(0);
         let bridge = create_test_bridge();
-        
+
         let intent = SideEffectIntent::DeviceOperation {
             device_id: 1,
             operation: "read".to_string(),
         };
-        
+
         // With NoopCapabilityManager, this should succeed
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
@@ -537,13 +560,14 @@ mod tests {
 
     #[test]
     fn external_call_requires_capability() {
+        let _hook = SyscallHookGuard::install(0);
         let bridge = create_test_bridge();
-        
+
         let intent = SideEffectIntent::ExternalCall {
             call_type: "ai_query".to_string(),
             parameters: vec![1, 2, 3],
         };
-        
+
         // With NoopCapabilityManager, this should succeed
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
@@ -561,20 +585,20 @@ mod tests {
     #[test]
     fn bridge_teardown_prevents_operations() {
         let mut bridge = create_test_bridge();
-        
+
         // Bridge starts active
         assert!(bridge.is_active());
-        
+
         // Begin teardown
         bridge.begin_teardown();
         assert!(!bridge.is_active());
-        
+
         // Operations should fail
         let intent = SideEffectIntent::AbdfCreate {
             segment_type: SegmentType::Input,
             data: vec![1, 2, 3],
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
     }
@@ -584,7 +608,7 @@ mod tests {
         let context_id = 1;
         let handle_manager = Arc::new(Mutex::new(HandleManager::new_default()));
         let capability_checker = Arc::new(NoopCapabilityManager);
-        
+
         // Create some handles
         {
             let mut hm = handle_manager.lock().unwrap();
@@ -592,15 +616,15 @@ mod tests {
             let _ = hm.create_handle(SegmentType::Event, context_id, vec![4, 5, 6]);
             assert_eq!(hm.get_context_handle_count(context_id), 2);
         }
-        
+
         // Create bridge and complete teardown
         let mut bridge = RuntimeBridge::new(context_id, handle_manager.clone(), capability_checker);
         bridge.complete_teardown().expect("teardown should succeed");
-        
+
         // Bridge should be terminated
         assert!(bridge.is_terminated());
         assert!(!bridge.is_active());
-        
+
         // Handles should be revoked
         {
             let hm = handle_manager.lock().unwrap();
@@ -611,32 +635,36 @@ mod tests {
     #[test]
     fn bridge_teardown_is_idempotent() {
         let mut bridge = create_test_bridge();
-        
+
         // First teardown
-        bridge.complete_teardown().expect("first teardown should succeed");
+        bridge
+            .complete_teardown()
+            .expect("first teardown should succeed");
         assert!(bridge.is_terminated());
-        
+
         // Second teardown should also succeed
-        bridge.complete_teardown().expect("second teardown should succeed");
+        bridge
+            .complete_teardown()
+            .expect("second teardown should succeed");
         assert!(bridge.is_terminated());
     }
 
     #[test]
     fn terminated_bridge_rejects_operations() {
         let mut bridge = create_test_bridge();
-        
+
         // Terminate bridge
         bridge.complete_teardown().expect("teardown should succeed");
-        
+
         // All operations should fail
         let intent = SideEffectIntent::AbdfCreate {
             segment_type: SegmentType::Input,
             data: vec![1, 2, 3],
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
-        
+
         if let Err(BcibError::IllegalStateTransition(msg)) = result {
             assert!(msg.contains("terminated"));
         } else {
@@ -651,32 +679,32 @@ mod tests {
         let context_id = 1;
         let handle_manager = Arc::new(Mutex::new(HandleManager::new_default()));
         let capability_checker = Arc::new(NoopCapabilityManager);
-        
+
         // Create initial handle
         let initial_handle = {
             let mut hm = handle_manager.lock().unwrap();
             hm.create_handle(SegmentType::ExecutionResult, context_id, vec![1, 2, 3])
                 .expect("handle creation should succeed")
         };
-        
+
         let initial_handle_id = initial_handle.id.as_u64();
-        
+
         // Create bridge and mutate
         let bridge = RuntimeBridge::new(context_id, handle_manager.clone(), capability_checker);
-        
+
         let intent = SideEffectIntent::AbdfWrite {
             handle_id: initial_handle_id,
             data: vec![4, 5, 6],
             segment_type: SegmentType::ExecutionResult,
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
-        
+
         // Should get new handle
         if let Ok(SideEffectResult::AbdfWriteComplete { new_handle_id }) = result {
             assert_ne!(new_handle_id, initial_handle_id);
-            
+
             // Old handle should be revoked
             let hm = handle_manager.lock().unwrap();
             let old_handle_valid = hm.validate_handle(&initial_handle, context_id);
@@ -691,15 +719,19 @@ mod tests {
         let context_id = 1;
         let handle_manager = Arc::new(Mutex::new(HandleManager::new_default()));
         let capability_checker = Arc::new(NoopCapabilityManager);
-        
+
         // Create initial handle with data
         let initial_data = vec![1, 2, 3];
         let initial_handle = {
             let mut hm = handle_manager.lock().unwrap();
-            hm.create_handle(SegmentType::ExecutionResult, context_id, initial_data.clone())
-                .expect("handle creation should succeed")
+            hm.create_handle(
+                SegmentType::ExecutionResult,
+                context_id,
+                initial_data.clone(),
+            )
+            .expect("handle creation should succeed")
         };
-        
+
         // Read initial data
         let read_initial = {
             let hm = handle_manager.lock().unwrap();
@@ -708,26 +740,22 @@ mod tests {
                 .to_vec()
         };
         assert_eq!(read_initial, initial_data);
-        
+
         // Mutate via bridge
         let bridge = RuntimeBridge::new(context_id, handle_manager.clone(), capability_checker);
-        
+
         let new_data = vec![4, 5, 6];
         let intent = SideEffectIntent::AbdfWrite {
             handle_id: initial_handle.id.as_u64(),
             data: new_data.clone(),
             segment_type: SegmentType::ExecutionResult,
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
-        
+
         // New handle should have new data
         if let Ok(SideEffectResult::AbdfWriteComplete { new_handle_id }) = result {
-            // Create a proper handle by looking it up from the manager
-            // In production, we would get the full handle from the manager
-            let hm = handle_manager.lock().unwrap();
-            
             // Verify we can access the new handle's data
             // Note: We need to create a handle with the correct generation
             // For now, just verify the handle was created
@@ -739,17 +767,17 @@ mod tests {
     #[test]
     fn abdf_mutation_validates_segment_type() {
         let bridge = create_test_bridge();
-        
+
         // Try to mutate read-only segment type
         let intent = SideEffectIntent::AbdfWrite {
             handle_id: 1,
             data: vec![1, 2, 3],
             segment_type: SegmentType::Input, // Read-only
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
-        
+
         // Should get error about mutation not allowed
         // The error comes from IsolationError which gets converted to BcibError
         match result {
@@ -765,7 +793,7 @@ mod tests {
     #[test]
     fn abdf_mutation_validates_data_size() {
         let bridge = create_test_bridge();
-        
+
         // Try to create segment with oversized data
         let data = vec![0u8; 3 * 1024 * 1024]; // 3 MiB - exceeds ExecutionResult limit
         let intent = SideEffectIntent::AbdfWrite {
@@ -773,7 +801,7 @@ mod tests {
             data,
             segment_type: SegmentType::ExecutionResult,
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_err());
     }
@@ -781,16 +809,16 @@ mod tests {
     #[test]
     fn abdf_create_returns_new_handle() {
         let bridge = create_test_bridge();
-        
+
         let data = vec![1, 2, 3, 4];
         let intent = SideEffectIntent::AbdfCreate {
             segment_type: SegmentType::ExecutionResult,
             data: data.clone(),
         };
-        
+
         let result = bridge.execute_side_effect(intent, 1);
         assert!(result.is_ok());
-        
+
         if let Ok(SideEffectResult::AbdfCreated { handle_id }) = result {
             assert!(handle_id > 0);
         } else {
@@ -801,28 +829,29 @@ mod tests {
     #[test]
     fn abdf_mutation_requires_capability() {
         use crate::capability_manager::CapabilityManager;
-        
+
         let context_id = 1;
         let handle_manager = Arc::new(Mutex::new(HandleManager::new_default()));
-        
+
         // Use real capability manager that denies by default
         let mut cap_manager = CapabilityManager::new(10);
-        let token_id = cap_manager.bind(CapabilityResource::DataRead, context_id)
+        let token_id = cap_manager
+            .bind(CapabilityResource::DataRead, context_id)
             .expect("bind should succeed");
-        
+
         let capability_checker = Arc::new(cap_manager);
         let bridge = RuntimeBridge::new(context_id, handle_manager, capability_checker);
-        
+
         // Try to write with read-only capability
         let intent = SideEffectIntent::AbdfWrite {
             handle_id: 1,
             data: vec![1, 2, 3],
             segment_type: SegmentType::ExecutionResult,
         };
-        
+
         let result = bridge.execute_side_effect(intent, token_id);
         assert!(result.is_err());
-        
+
         // Should get capability denied error
         if let Err(BcibError::CapabilityDenied(_)) = result {
             // Expected

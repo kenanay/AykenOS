@@ -16,9 +16,7 @@
 ///
 /// Requirements: 22.1, 22.2, 22.3, 22.4, 22.6
 use crate::capability_manager::{CapabilityCheck, CapabilityResource};
-use crate::types::{
-    BcibError, CapabilityTokenId, ExecutionContextId, SideEffectClass,
-};
+use crate::types::{BcibError, CapabilityTokenId, ExecutionContextId, SideEffectClass};
 
 // ---------------------------------------------------------------------------
 // AbdfAccessInterface — the ONLY permitted path to ABDF-managed data
@@ -189,7 +187,8 @@ impl AbdfHandle {
         data: &[u8],
     ) -> Result<(), BcibError> {
         self.check_access(requesting_context_id)?;
-        self.access_interface.write(self.handle_id, self.context_id, data)
+        self.access_interface
+            .write(self.handle_id, self.context_id, data)
     }
 
     // -----------------------------------------------------------------------
@@ -244,7 +243,11 @@ impl AbdfHandle {
         match side_effect_class {
             SideEffectClass::DataMutating => {
                 capability_manager
-                    .check(token_id, &CapabilityResource::DataWrite, requesting_context_id)
+                    .check(
+                        token_id,
+                        &CapabilityResource::DataWrite,
+                        requesting_context_id,
+                    )
                     .map_err(|_| {
                         BcibError::AbdfAccessDenied(
                             "capability check failed for DataMutating ABDF access; \
@@ -254,7 +257,11 @@ impl AbdfHandle {
             }
             SideEffectClass::External => {
                 capability_manager
-                    .check(token_id, &CapabilityResource::ExternalCall, requesting_context_id)
+                    .check(
+                        token_id,
+                        &CapabilityResource::ExternalCall,
+                        requesting_context_id,
+                    )
                     .map_err(|_| {
                         BcibError::AbdfAccessDenied(
                             "capability check failed for External ABDF access; \
@@ -270,7 +277,8 @@ impl AbdfHandle {
         // Step 3: perform the actual ABDF access via the interface.
         match write_data {
             Some(data) => {
-                self.access_interface.write(self.handle_id, self.context_id, data)?;
+                self.access_interface
+                    .write(self.handle_id, self.context_id, data)?;
                 Ok(vec![])
             }
             None => self.access_interface.read(self.handle_id, self.context_id),
@@ -420,11 +428,19 @@ mod tests {
 
     impl MockAbdfAccess {
         fn ok() -> Self {
-            Self { read_error: None, write_error: None, blocking: false }
+            Self {
+                read_error: None,
+                write_error: None,
+                blocking: false,
+            }
         }
 
         fn blocking() -> Self {
-            Self { read_error: None, write_error: None, blocking: true }
+            Self {
+                read_error: None,
+                write_error: None,
+                blocking: true,
+            }
         }
 
         fn denied() -> Self {
@@ -479,7 +495,9 @@ mod tests {
     #[test]
     fn write_via_interface_succeeds() {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
-        handle.write(1, &[0x01, 0x02]).expect("write should succeed");
+        handle
+            .write(1, &[0x01, 0x02])
+            .expect("write should succeed");
     }
 
     // -----------------------------------------------------------------------
@@ -489,21 +507,31 @@ mod tests {
     #[test]
     fn cross_context_read_denied() {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
-        let err = handle.read(99).expect_err("cross-context read must be denied");
-        assert_eq!(err, BcibError::AbdfAccessDenied(
-            "cross-context ABDF handle access without capability token; \
+        let err = handle
+            .read(99)
+            .expect_err("cross-context read must be denied");
+        assert_eq!(
+            err,
+            BcibError::AbdfAccessDenied(
+                "cross-context ABDF handle access without capability token; \
              BCIB_ERR_ABDF_ACCESS_DENIED",
-        ));
+            )
+        );
     }
 
     #[test]
     fn cross_context_write_denied() {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
-        let err = handle.write(99, &[]).expect_err("cross-context write must be denied");
-        assert_eq!(err, BcibError::AbdfAccessDenied(
-            "cross-context ABDF handle access without capability token; \
+        let err = handle
+            .write(99, &[])
+            .expect_err("cross-context write must be denied");
+        assert_eq!(
+            err,
+            BcibError::AbdfAccessDenied(
+                "cross-context ABDF handle access without capability token; \
              BCIB_ERR_ABDF_ACCESS_DENIED",
-        ));
+            )
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -516,19 +544,23 @@ mod tests {
         handle.revoke();
         assert!(handle.is_revoked());
         let err = handle.read(1).expect_err("revoked handle read must fail");
-        assert_eq!(err, BcibError::AbdfHandleRevoked(
-            "ABDF handle has been revoked; access denied",
-        ));
+        assert_eq!(
+            err,
+            BcibError::AbdfHandleRevoked("ABDF handle has been revoked; access denied",)
+        );
     }
 
     #[test]
     fn revoked_handle_write_denied() {
         let mut handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
         handle.revoke();
-        let err = handle.write(1, &[]).expect_err("revoked handle write must fail");
-        assert_eq!(err, BcibError::AbdfHandleRevoked(
-            "ABDF handle has been revoked; access denied",
-        ));
+        let err = handle
+            .write(1, &[])
+            .expect_err("revoked handle write must fail");
+        assert_eq!(
+            err,
+            BcibError::AbdfHandleRevoked("ABDF handle has been revoked; access denied",)
+        );
     }
 
     #[test]
@@ -627,7 +659,10 @@ mod tests {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
         let mgr = DenyAllCapabilityManager;
         let result = handle.access_data(1, SideEffectClass::Pure, 0, &mgr, None);
-        assert!(result.is_ok(), "Pure instruction must not require capability check");
+        assert!(
+            result.is_ok(),
+            "Pure instruction must not require capability check"
+        );
     }
 
     #[test]
@@ -670,7 +705,10 @@ mod tests {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
         let mgr = AllowAllCapabilityManager;
         let result = handle.access_data(1, SideEffectClass::DataMutating, 1, &mgr, Some(&[0xAA]));
-        assert!(result.is_ok(), "DataMutating with valid capability must succeed");
+        assert!(
+            result.is_ok(),
+            "DataMutating with valid capability must succeed"
+        );
     }
 
     #[test]
@@ -679,7 +717,10 @@ mod tests {
         let handle = AbdfHandle::new(1, 42, Box::new(MockAbdfAccess::ok()));
         let mgr = AllowAllCapabilityManager;
         let result = handle.access_data(1, SideEffectClass::External, 1, &mgr, None);
-        assert!(result.is_ok(), "External with valid capability must succeed");
+        assert!(
+            result.is_ok(),
+            "External with valid capability must succeed"
+        );
     }
 
     #[test]
@@ -724,7 +765,9 @@ mod tests {
     #[test]
     fn stub_cross_context_still_denied() {
         let handle = AbdfHandle::stub(5, 100);
-        let err = handle.read(6).expect_err("cross-context stub read must be denied");
+        let err = handle
+            .read(6)
+            .expect_err("cross-context stub read must be denied");
         assert!(matches!(err, BcibError::AbdfAccessDenied(_)));
     }
 

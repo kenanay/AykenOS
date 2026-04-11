@@ -123,6 +123,12 @@ int syscall_enforcement_validate_matrix(void) {
                     enforcement_debug("CRITICAL: Runtime_Bridge has execution submission - security violation");
                     return -1;
                 }
+                if (!(SYSCALL_ENFORCEMENT_MATRIX[i].allowed_syscalls_mask & (1 << SYS_V2_DEVICE_OPERATION)) ||
+                    !(SYSCALL_ENFORCEMENT_MATRIX[i].allowed_syscalls_mask & (1 << SYS_V2_EXTERNAL_CALL)) ||
+                    !(SYSCALL_ENFORCEMENT_MATRIX[i].allowed_syscalls_mask & (1 << SYS_V2_ABDF_OPERATION))) {
+                    enforcement_debug("CRITICAL: Runtime_Bridge missing required bridge syscalls");
+                    return -1;
+                }
                 break;
             case PROC_EXECUTION_ROLE_USER:
                 user_found = 1;

@@ -23,7 +23,6 @@
 /// ```
 ///
 /// Requirements: 12.1, 12.2, 16.1
-
 use crate::types::BcibError;
 
 // ---------------------------------------------------------------------------
@@ -261,7 +260,9 @@ pub fn parse_section_table(
 ///
 /// Returns `(BcibHeader, Vec<SectionEntry>)` on success.
 #[inline]
-pub fn parse_header_and_sections(data: &[u8]) -> Result<(BcibHeader, Vec<SectionEntry>), BcibError> {
+pub fn parse_header_and_sections(
+    data: &[u8],
+) -> Result<(BcibHeader, Vec<SectionEntry>), BcibError> {
     // --- Pass 1: header (bytes 0..16) ---
     // Fail-fast: any header error returns before touching the section table.
     let header = parse_header(data)?;
@@ -295,17 +296,17 @@ mod tests {
         let mut buf = Vec::with_capacity(26);
 
         // Header (16 bytes)
-        buf.extend_from_slice(b"BCIB");                    // magic
+        buf.extend_from_slice(b"BCIB"); // magic
         buf.extend_from_slice(&BCIB_VERSION_V3.to_le_bytes()); // version
-        buf.extend_from_slice(&0u16.to_le_bytes());        // flags
-        buf.extend_from_slice(&1u16.to_le_bytes());        // section_count = 1
-        buf.extend_from_slice(&[0u8; 4]);                  // reserved
-        buf.extend_from_slice(&[0u8; 2]);                  // header tail (bytes 14-15)
+        buf.extend_from_slice(&0u16.to_le_bytes()); // flags
+        buf.extend_from_slice(&1u16.to_le_bytes()); // section_count = 1
+        buf.extend_from_slice(&[0u8; 4]); // reserved
+        buf.extend_from_slice(&[0u8; 2]); // header tail (bytes 14-15)
 
         // Section table entry (8 bytes): Instructions section at offset 24, length 2
         buf.extend_from_slice(&(SectionId::Instructions as u16).to_le_bytes()); // section_id
-        buf.extend_from_slice(&24u32.to_le_bytes());       // offset
-        buf.extend_from_slice(&2u16.to_le_bytes());        // length
+        buf.extend_from_slice(&24u32.to_le_bytes()); // offset
+        buf.extend_from_slice(&2u16.to_le_bytes()); // length
 
         // Section data (2 bytes dummy payload)
         buf.extend_from_slice(&[0x00, 0x01]);

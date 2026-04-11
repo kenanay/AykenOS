@@ -73,8 +73,8 @@ void syscall_init(void)
 // execution-centric syscalls. All POSIX-like syscalls have been removed.
 // 
 // Syscall Numbering Plan (Final):
-// - 1000-1011 range: Execution-centric (v2) syscalls (user space numbers)
-// - 0-11 range: Internal kernel mapping for v2 syscalls
+// - SYS_V2_BASE..SYS_V2_LAST range: Execution-centric (v2) syscalls (user space numbers)
+// - 0..SYS_V2_MAX_INDEX range: Internal kernel mapping for v2 syscalls
 // - All other ranges: Invalid (return -ENOSYS)
 //
 // Requirements: AC-6 - Only execution-centric syscalls remain
@@ -100,15 +100,19 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     debugcon_write("P10_SYSCALL_ENTER\n");
     
     // Route based on Final Syscall Numbering Plan
-    if (syscall_num >= 1000 && syscall_num <= 1011) {
-        // Execution-centric syscalls (v2) - Convert to 0-11 range for hardened handler
+    if (syscall_num >= SYS_V2_BASE && syscall_num <= SYS_V2_LAST) {
+        // Execution-centric syscalls (v2) - Convert to internal index for hardened handler
         // Phase-16: Use hardened handler with boundary enforcement
-        result = syscall_v2_hardened_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
+        result = syscall_v2_hardened_handler(syscall_num - SYS_V2_BASE, arg1, arg2, arg3, arg4);
     } else {
-        // Invalid syscall number - only 1000-1011 range is valid
+        // Invalid syscall number - only the frozen v2 public range is valid
         fb_print("[syscall] ENOSYS: invalid syscall number ");
         fb_print_int(syscall_num);
-        fb_print(" (valid range: 1000-1011 only)\n");
+        fb_print(" (valid range: ");
+        fb_print_int(SYS_V2_BASE);
+        fb_print("-");
+        fb_print_int(SYS_V2_LAST);
+        fb_print(" only)\n");
         result = (uint64_t)-38; // -ENOSYS
     }
     

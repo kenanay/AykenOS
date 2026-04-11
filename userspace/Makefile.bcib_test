@@ -1,0 +1,27 @@
+# Makefile for BCIB forbidden test binary
+# Phase-16 QEMU fail-closed proof
+
+CC = clang
+LD = ld.lld
+OBJCOPY = llvm-objcopy
+
+CFLAGS = --target=x86_64-elf -ffreestanding -nostdlib -fno-pic -fno-stack-protector
+CFLAGS += -mno-red-zone -O2 -Wall -Wextra
+
+LDFLAGS = -T bcib_forbidden_test.ld -nostdlib
+
+all: bcib_forbidden_test.elf bcib_forbidden_test.bin
+
+bcib_forbidden_test.o: bcib_forbidden_test.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+bcib_forbidden_test.elf: bcib_forbidden_test.o bcib_forbidden_test.ld
+	$(LD) $(LDFLAGS) bcib_forbidden_test.o -o $@
+
+bcib_forbidden_test.bin: bcib_forbidden_test.elf
+	$(OBJCOPY) -O binary $< $@
+
+clean:
+	rm -f bcib_forbidden_test.o bcib_forbidden_test.elf bcib_forbidden_test.bin
+
+.PHONY: all clean

@@ -7,15 +7,15 @@
  * Keep the legacy macro surface visible in this wrapper so CI gates that
  * parse kernel/include/ayken_abi.h directly do not need to resolve includes.
  */
-/* ABI version bump: 0x00010000 → 0x00010001
- * Reason: SYS_V2_COMPLETE_EXECUTION (index=11, public=1011) added.
- * Syscall range extended: 1000-1010 → 1000-1011 (12 syscalls).
- * RFC: Phase 10B BCIB execution engine completion — complete_execution
- *      syscall required for execution slot lifecycle finalization.
- * Authority: Kenan AY — approved as part of Phase 10B merge.
+/* ABI version bump: 0x00010001 → 0x00010002
+ * Reason: Runtime_Bridge syscall trap surface added.
+ * Syscall range extended: 1000-1011 → 1000-1014 (15 syscalls).
+ * RFC: Phase 16 Runtime_Bridge syscall path — device, external-call,
+ *      and ABDF operation syscalls required for kernel-mediated bridge IO.
+ * Authority: Phase 16 Runtime_Bridge ABI extension.
  */
 #ifndef AYKEN_ABI_VERSION
-#define AYKEN_ABI_VERSION 0x00010001u
+#define AYKEN_ABI_VERSION 0x00010002u
 #endif
 
 #ifndef CTX_R15

@@ -11,7 +11,7 @@ use crate::{
 };
 use bcib::{BcibBuffer, DecodeError};
 
-/// Syscall base offset for v2 interface (1000-1009 range).
+/// Syscall base offset for v2 interface (1000-1014 range).
 const SYS_V2_BASE: u64 = 1000;
 /// Syscall numbers aligned with kernel/sys/syscall_v2.h
 const SYS_V2_SUBMIT_EXECUTION: u64 = SYS_V2_BASE + 3;

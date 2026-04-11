@@ -362,6 +362,13 @@ void jump_to_ring3(void)
         ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] create",
                          "[PANIC] Phase10: Ring3 process creation failed.");
     }
+    
+    // Phase-16: BCIB fail-closed proof test
+    // Set execution role to BCIB for boundary enforcement testing
+    #if defined(AYKEN_PHASE16_BCIB_PROOF_TEST) && (AYKEN_PHASE16_BCIB_PROOF_TEST == 1)
+    ring3_proc->execution_role = PROC_EXECUTION_ROLE_BCIB;
+    fb_print("[PHASE16] User process role set to BCIB for fail-closed proof test\n");
+    #endif
 
     if (proc_find_by_pid(ring3_proc->pid) != ring3_proc) {
         ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] not_registered",

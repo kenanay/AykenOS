@@ -28,7 +28,6 @@
 /// (`OBSERVABILITY_UX_CONTRACT_v1`, `CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1`,
 /// `PROOFD_EXTERNAL_DIAGNOSTICS_CONTRACT_v1`). It only adds BCIB-specific
 /// endpoints within the existing boundary.
-
 use crate::cost_tracker::CostTracker;
 use crate::execution_runtime::{BcibExecutionRuntime, ExecutionState};
 use crate::types::{CostUnit, ExecutionContextId};
@@ -459,7 +458,9 @@ fn derive_transitions_from_state(state: &ExecutionState) -> Vec<LifecycleTransit
 mod tests {
     use super::*;
     use crate::execution_runtime::BcibExecutionRuntime;
-    use crate::types::{BcibInstruction, CapabilitySet, CostBudget, ExecutionPlan, SideEffectClass, COST_PURE};
+    use crate::types::{
+        BcibInstruction, CapabilitySet, CostBudget, ExecutionPlan, SideEffectClass, COST_PURE,
+    };
 
     fn make_plan_with_nop() -> ExecutionPlan {
         let instr = BcibInstruction {
@@ -507,7 +508,13 @@ mod tests {
 
     #[test]
     fn check_forbidden_fields_passes_for_safe_fields() {
-        let safe = &["context_id", "state", "epistemic_boundary", "transitions", "cost"];
+        let safe = &[
+            "context_id",
+            "state",
+            "epistemic_boundary",
+            "transitions",
+            "cost",
+        ];
         assert!(
             check_forbidden_fields(safe).is_ok(),
             "safe fields must pass the forbidden field check"
@@ -517,44 +524,65 @@ mod tests {
     #[test]
     fn check_forbidden_fields_rejects_authority() {
         let err = check_forbidden_fields(&["context_id", "authority"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("authority".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("authority".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_rejects_decision() {
         let err = check_forbidden_fields(&["decision"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("decision".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("decision".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_rejects_ranking() {
         let err = check_forbidden_fields(&["ranking"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("ranking".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("ranking".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_rejects_verdict() {
         let err = check_forbidden_fields(&["verdict"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("verdict".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("verdict".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_rejects_truth() {
         let err = check_forbidden_fields(&["truth"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("truth".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("truth".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_rejects_consensus() {
         let err = check_forbidden_fields(&["consensus"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("consensus".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("consensus".to_string())
+        );
     }
 
     #[test]
     fn check_forbidden_fields_fail_fast_on_first_forbidden() {
         // "policy" comes before "priority" in the input; should fail on "policy".
         let err = check_forbidden_fields(&["context_id", "policy", "priority"]).unwrap_err();
-        assert_eq!(err, DiagnosticsError::ForbiddenFieldExposed("policy".to_string()));
+        assert_eq!(
+            err,
+            DiagnosticsError::ForbiddenFieldExposed("policy".to_string())
+        );
     }
 
     #[test]
@@ -695,7 +723,10 @@ mod tests {
         let diag = BcibDiagnostics::new(&runtime);
         let resp = diag.lifecycle_history(ctx_id).unwrap();
         for (i, t) in resp.transitions.iter().enumerate() {
-            assert_eq!(t.sequence, i as u64, "transitions must be ordered by sequence");
+            assert_eq!(
+                t.sequence, i as u64,
+                "transitions must be ordered by sequence"
+            );
         }
     }
 
@@ -763,7 +794,10 @@ mod tests {
         let eb = EpistemicBoundary::phase14();
 
         assert_eq!(diag.execution_state(ctx_id).unwrap().epistemic_boundary, eb);
-        assert_eq!(diag.lifecycle_history(ctx_id).unwrap().epistemic_boundary, eb);
+        assert_eq!(
+            diag.lifecycle_history(ctx_id).unwrap().epistemic_boundary,
+            eb
+        );
         assert_eq!(diag.cost_usage(ctx_id).unwrap().epistemic_boundary, eb);
     }
 

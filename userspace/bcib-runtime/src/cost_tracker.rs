@@ -13,11 +13,12 @@
 ///
 /// These constants enforce the invariant `pure < data-mutating < external`,
 /// which reflects the relative resource cost of each side-effect class.
-
 use crate::types::{BcibError, CostUnit};
 
 // Re-export constants so callers can import them from this module.
-pub use crate::types::{COST_DATA_MUTATING as DATA_MUTATING, COST_EXTERNAL as EXTERNAL, COST_PURE as PURE};
+pub use crate::types::{
+    COST_DATA_MUTATING as DATA_MUTATING, COST_EXTERNAL as EXTERNAL, COST_PURE as PURE,
+};
 
 /// Tracks instruction cost consumption for a single execution context.
 ///
@@ -96,7 +97,9 @@ impl CostTracker {
     pub fn charge_external(&mut self, cost: CostUnit) -> Result<(), BcibError> {
         let available = self.external_budget.saturating_sub(self.external_used);
         if cost > available {
-            Err(BcibError::ResourceExhausted("external cost budget exhausted"))
+            Err(BcibError::ResourceExhausted(
+                "external cost budget exhausted",
+            ))
         } else {
             self.external_used += cost;
             Ok(())
@@ -126,7 +129,7 @@ impl CostTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{COST_PURE, COST_DATA_MUTATING, COST_EXTERNAL};
+    use crate::types::{COST_DATA_MUTATING, COST_EXTERNAL, COST_PURE};
 
     // -----------------------------------------------------------------------
     // Cost constant ordering invariant (Requirement 17.1)
@@ -134,8 +137,14 @@ mod tests {
 
     #[test]
     fn cost_constants_ordering() {
-        assert!(COST_PURE < COST_DATA_MUTATING, "pure must be cheaper than data-mutating");
-        assert!(COST_DATA_MUTATING < COST_EXTERNAL, "data-mutating must be cheaper than external");
+        assert!(
+            COST_PURE < COST_DATA_MUTATING,
+            "pure must be cheaper than data-mutating"
+        );
+        assert!(
+            COST_DATA_MUTATING < COST_EXTERNAL,
+            "data-mutating must be cheaper than external"
+        );
     }
 
     #[test]
@@ -159,7 +168,7 @@ mod tests {
     #[test]
     fn charge_multiple_deductions() {
         let mut tracker = CostTracker::new(100, 50);
-        tracker.charge(COST_PURE).unwrap();          // -1  → 99
+        tracker.charge(COST_PURE).unwrap(); // -1  → 99
         tracker.charge(COST_DATA_MUTATING).unwrap(); // -10 → 89
         assert_eq!(tracker.remaining, 89);
     }
@@ -178,7 +187,10 @@ mod tests {
         let mut tracker = CostTracker::new(5, 50);
         let result = tracker.charge(10);
         assert!(result.is_err());
-        assert_eq!(tracker.remaining, 0, "remaining must be zeroed on over-budget charge");
+        assert_eq!(
+            tracker.remaining, 0,
+            "remaining must be zeroed on over-budget charge"
+        );
         assert!(tracker.is_exhausted());
     }
 

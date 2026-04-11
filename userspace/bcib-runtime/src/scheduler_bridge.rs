@@ -13,7 +13,6 @@
 ///
 /// This module communicates with other layers exclusively through the types
 /// defined in `types.rs`. No cross-layer implementation dependencies.
-
 use std::collections::HashMap;
 
 use crate::types::{BcibError, ExecutionContextId};
@@ -22,7 +21,7 @@ use crate::types::{BcibError, ExecutionContextId};
 // Syscall constants — ABI freeze (Requirements 1.2, 1.7)
 // ---------------------------------------------------------------------------
 
-/// Syscall base offset for v2 interface (1000-1010 range, ABI freeze).
+/// Syscall base offset for v2 interface (1000-1014 range, ABI freeze).
 const SYS_V2_BASE: u64 = 1000;
 
 /// Submit a BCIB graph to Ring0 for execution.
@@ -162,9 +161,7 @@ impl SchedulerSubmitBridge {
         execution_id: ExecutionId,
         timeout_ms: u64,
     ) -> Result<ExecutionResult, BcibError> {
-        let ret = unsafe {
-            syscall_v2(SYS_V2_WAIT_RESULT, execution_id.0, timeout_ms, 0, 0)
-        };
+        let ret = unsafe { syscall_v2(SYS_V2_WAIT_RESULT, execution_id.0, timeout_ms, 0, 0) };
         if (ret as i64) < 0 {
             return Err(BcibError::SchedulerBridgeFail(
                 "wait_result: SYS_V2_WAIT_RESULT returned error",
@@ -196,9 +193,7 @@ impl SchedulerSubmitBridge {
         // arg2 = 0      (no graph pointer — this is a signal, not a submission)
         // arg3 = 0      (no graph length)
         // arg4 = YIELD_SIGNAL (distinguishes yield signal from graph submission)
-        let ret = unsafe {
-            syscall_v2(SYS_V2_SUBMIT_EXECUTION, ctx_id, 0, 0, YIELD_SIGNAL)
-        };
+        let ret = unsafe { syscall_v2(SYS_V2_SUBMIT_EXECUTION, ctx_id, 0, 0, YIELD_SIGNAL) };
         if (ret as i64) < 0 {
             return Err(BcibError::SchedulerBridgeFail(
                 "yield_slice: SYS_V2_SUBMIT_EXECUTION returned error",
@@ -246,9 +241,8 @@ impl SchedulerSubmitBridge {
             // arg1 = ctx_id (identifies which context we are waiting to resume)
             // arg2 = RESUME_POLL_TIMEOUT_MS (per-poll timeout in milliseconds)
             // arg3 = 0, arg4 = 0 (reserved)
-            let ret = unsafe {
-                syscall_v2(SYS_V2_WAIT_RESULT, ctx_id, RESUME_POLL_TIMEOUT_MS, 0, 0)
-            };
+            let ret =
+                unsafe { syscall_v2(SYS_V2_WAIT_RESULT, ctx_id, RESUME_POLL_TIMEOUT_MS, 0, 0) };
 
             let ret_signed = ret as i64;
 
@@ -319,13 +313,7 @@ pub(crate) unsafe fn syscall_v2(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4:
 
 #[cfg(all(not(target_arch = "x86_64"), not(test)))]
 #[inline(always)]
-pub(crate) unsafe fn syscall_v2(
-    _num: u64,
-    _arg1: u64,
-    _arg2: u64,
-    _arg3: u64,
-    _arg4: u64,
-) -> u64 {
+pub(crate) unsafe fn syscall_v2(_num: u64, _arg1: u64, _arg2: u64, _arg3: u64, _arg4: u64) -> u64 {
     0 // non-x86_64 stub (ARM macOS, etc.)
 }
 
@@ -406,7 +394,13 @@ pub(crate) mod test_hook {
                 // don't need syscall recording still work (e.g. execution_runtime tests).
                 return 0;
             }
-            g.calls.push(RecordedCall { num, arg1, arg2, arg3, arg4 });
+            g.calls.push(RecordedCall {
+                num,
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+            });
             g.return_values.pop_front().unwrap_or(0)
         })
     }
@@ -418,8 +412,8 @@ pub(crate) mod test_hook {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::test_hook;
+    use super::*;
 
     /// Verify syscall constants match the ABI freeze specification.
     #[test]
@@ -466,7 +460,10 @@ mod tests {
         assert_eq!(calls[0].arg1, dummy.as_ptr() as u64);
         assert_eq!(calls[0].arg2, 8);
         assert_eq!(calls[0].arg3, 7);
-        assert_eq!(calls[0].arg4, 0, "arg4 must be 0 for graph submission (not yield signal)");
+        assert_eq!(
+            calls[0].arg4, 0,
+            "arg4 must be 0 for graph submission (not yield signal)"
+        );
     }
 
     /// submit() returns BCIB_ERR_SCHEDULER_BRIDGE_FAIL on negative return.
@@ -552,11 +549,17 @@ mod tests {
 
         assert_eq!(result, Ok(()));
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].num, SYS_V2_SUBMIT_EXECUTION, "must use SYS_V2_SUBMIT_EXECUTION (1003)");
+        assert_eq!(
+            calls[0].num, SYS_V2_SUBMIT_EXECUTION,
+            "must use SYS_V2_SUBMIT_EXECUTION (1003)"
+        );
         assert_eq!(calls[0].arg1, 42, "arg1 must be ctx_id");
         assert_eq!(calls[0].arg2, 0, "arg2 must be 0 (no graph pointer)");
         assert_eq!(calls[0].arg3, 0, "arg3 must be 0 (no graph length)");
-        assert_eq!(calls[0].arg4, YIELD_SIGNAL, "arg4 must be YIELD_SIGNAL to distinguish from graph submission");
+        assert_eq!(
+            calls[0].arg4, YIELD_SIGNAL,
+            "arg4 must be YIELD_SIGNAL to distinguish from graph submission"
+        );
     }
 
     /// yield_slice() returns Ok(()) when the kernel accepts the yield signal.
@@ -664,9 +667,15 @@ mod tests {
 
         assert_eq!(result, Ok(()));
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].num, SYS_V2_WAIT_RESULT, "must use SYS_V2_WAIT_RESULT (1004)");
+        assert_eq!(
+            calls[0].num, SYS_V2_WAIT_RESULT,
+            "must use SYS_V2_WAIT_RESULT (1004)"
+        );
         assert_eq!(calls[0].arg1, 77, "arg1 must be ctx_id");
-        assert_eq!(calls[0].arg2, RESUME_POLL_TIMEOUT_MS, "arg2 must be per-poll timeout");
+        assert_eq!(
+            calls[0].arg2, RESUME_POLL_TIMEOUT_MS,
+            "arg2 must be per-poll timeout"
+        );
     }
 
     /// await_resume() returns Ok(()) when the kernel signals resume immediately.
@@ -692,7 +701,11 @@ mod tests {
         test_hook::uninstall();
 
         assert_eq!(result, Ok(()));
-        assert_eq!(calls.len(), 4, "must poll 3 times (pending) then once more (resume)");
+        assert_eq!(
+            calls.len(),
+            4,
+            "must poll 3 times (pending) then once more (resume)"
+        );
         for call in &calls {
             assert_eq!(call.num, SYS_V2_WAIT_RESULT);
             assert_eq!(call.arg1, 10);

@@ -75,6 +75,15 @@ static void test_runtime_bridge_restrictions(void) {
     
     result = boundary_validate_syscall(SYS_V2_CAPABILITY_BIND, EXEC_CONTEXT_RUNTIME_BRIDGE, bridge_context);
     TEST_ASSERT(result == 0, "Runtime_Bridge allowed SYS_V2_CAPABILITY_BIND");
+
+    result = boundary_validate_syscall(SYS_V2_DEVICE_OPERATION, EXEC_CONTEXT_RUNTIME_BRIDGE, bridge_context);
+    TEST_ASSERT(result == 0, "Runtime_Bridge allowed SYS_V2_DEVICE_OPERATION");
+
+    result = boundary_validate_syscall(SYS_V2_EXTERNAL_CALL, EXEC_CONTEXT_RUNTIME_BRIDGE, bridge_context);
+    TEST_ASSERT(result == 0, "Runtime_Bridge allowed SYS_V2_EXTERNAL_CALL");
+
+    result = boundary_validate_syscall(SYS_V2_ABDF_OPERATION, EXEC_CONTEXT_RUNTIME_BRIDGE, bridge_context);
+    TEST_ASSERT(result == 0, "Runtime_Bridge allowed SYS_V2_ABDF_OPERATION");
     
     /* Test 3: Runtime_Bridge should be denied unauthorized syscalls */
     result = boundary_validate_syscall(SYS_V2_EXIT, EXEC_CONTEXT_RUNTIME_BRIDGE, bridge_context);

@@ -1,3 +1,6 @@
+pub mod abdf_handle;
+pub mod boundary_enforcement;
+pub mod constitutional;
 /// Phase-16 BCIB/ABDF Isolation & Boundary Enforcement
 ///
 /// This module implements the core isolation infrastructure for strict boundary
@@ -53,32 +56,35 @@
 /// - `side_effect_control`: Side-effect declaration and deterministic ordering
 /// - `boundary_enforcement`: BCIB-ABDF boundary controls and validation
 /// - `fail_closed`: Fail-closed termination system for all violations
-
 pub mod error_taxonomy;
-pub mod constitutional;
-pub mod runtime_bridge;
-pub mod execution_sandbox;
-pub mod execution_entry_enforcer;
 pub mod execution_entry_context;
-pub mod kernel_syscall_validator;
+pub mod execution_entry_enforcer;
 pub mod execution_entry_integration_test;
 pub mod execution_entry_requirements_test;
-pub mod side_effect_control;
-pub mod termination_aware_harness;
-pub mod boundary_enforcement;
+pub mod execution_sandbox;
 pub mod fail_closed;
 pub mod integration_test;
-pub mod abdf_handle;
+pub mod kernel_syscall_validator;
+pub mod runtime_bridge;
+pub mod side_effect_control;
+pub mod termination_aware_harness;
 
 // Re-export core types for convenience
-pub use error_taxonomy::{IsolationError, ViolationType, ErrorCode};
-pub use constitutional::{ConstitutionalRule, RuleViolation, ConstitutionalEnforcer};
-pub use runtime_bridge::{RuntimeBridge, SideEffectIntent, SideEffectResult};
+pub use abdf_handle::{
+    AbdfHandle, AccessMode, HandleId, HandleManager, HandlePoolConfig, HandleStatus, SegmentType,
+    SegmentTypeValidator, SharedHandleManager,
+};
+pub use boundary_enforcement::{BoundaryEnforcer, BoundaryViolation};
+pub use constitutional::{ConstitutionalEnforcer, ConstitutionalRule, RuleViolation};
+pub use error_taxonomy::{ErrorCode, IsolationError, ViolationType};
+pub use execution_entry_context::{
+    CallStackFingerprint, ExecutionEntryContext, PrivilegeLevel, SlotOwnership, SyscallOrigin,
+};
+pub use execution_entry_enforcer::{
+    DirectInvocationType, EntryValidationResult, ExecutionEntryEnforcer,
+};
 pub use execution_sandbox::{ExecutionSandbox, SandboxViolation};
-pub use execution_entry_enforcer::{ExecutionEntryEnforcer, EntryValidationResult, DirectInvocationType};
-pub use execution_entry_context::{ExecutionEntryContext, PrivilegeLevel, SyscallOrigin, CallStackFingerprint, SlotOwnership};
-pub use kernel_syscall_validator::{KernelSyscallValidator, SyscallNumber, ExecutionRole};
-pub use side_effect_control::{SideEffectDeclaration, SideEffectOrdering};
-pub use boundary_enforcement::{BoundaryViolation, BoundaryEnforcer};
 pub use fail_closed::{FailClosedTermination, TerminationReason};
-pub use abdf_handle::{AbdfHandle, HandleId, HandleStatus, SegmentType, HandleManager, HandlePoolConfig, SharedHandleManager, SegmentTypeValidator, AccessMode};
+pub use kernel_syscall_validator::{ExecutionRole, KernelSyscallValidator, SyscallNumber};
+pub use runtime_bridge::{RuntimeBridge, SideEffectIntent, SideEffectResult};
+pub use side_effect_control::{SideEffectDeclaration, SideEffectOrdering};

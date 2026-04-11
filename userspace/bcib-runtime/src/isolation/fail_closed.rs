@@ -13,7 +13,6 @@
 /// - Requirement 15.5: System SHALL produce deterministic error codes for all violation types
 /// - Requirement 15.6: System SHALL log all violations to immutable audit log before termination
 /// - Requirement 15.7: System SHALL prevent partial state commits when violations occur
-
 use crate::isolation::error_taxonomy::{ErrorCode, IsolationError, ViolationType};
 use crate::types::ExecutionContextId;
 use std::fmt;
@@ -51,7 +50,7 @@ impl TerminationReason {
             ViolationType::SideEffect => TerminationReason::IsolationViolation(error),
         }
     }
-    
+
     /// Get the primary error code for this termination
     pub fn primary_error_code(&self) -> ErrorCode {
         match self {
@@ -63,14 +62,15 @@ impl TerminationReason {
             | TerminationReason::SandboxViolation(e) => e.code,
             TerminationReason::MultipleViolations(errors) => {
                 // Return the highest priority error code
-                errors.iter()
+                errors
+                    .iter()
                     .map(|e| e.code)
                     .max_by_key(|&code| code as u16)
                     .unwrap_or(ErrorCode::IsolationViolation)
             }
         }
     }
-    
+
     /// Get all error codes involved in this termination
     pub fn all_error_codes(&self) -> Vec<ErrorCode> {
         match self {
@@ -80,15 +80,19 @@ impl TerminationReason {
             _ => vec![self.primary_error_code()],
         }
     }
-    
+
     /// Check if this termination involves constitutional violations
     pub fn has_constitutional_violations(&self) -> bool {
-        self.all_error_codes().iter().any(|code| code.is_constitutional_violation())
+        self.all_error_codes()
+            .iter()
+            .any(|code| code.is_constitutional_violation())
     }
-    
+
     /// Check if this termination involves security violations
     pub fn has_security_violations(&self) -> bool {
-        self.all_error_codes().iter().any(|code| code.is_security_violation())
+        self.all_error_codes()
+            .iter()
+            .any(|code| code.is_security_violation())
     }
 }
 
@@ -98,13 +102,17 @@ impl fmt::Display for TerminationReason {
             TerminationReason::IsolationViolation(e) => write!(f, "Isolation violation: {}", e),
             TerminationReason::BoundaryViolation(e) => write!(f, "Boundary violation: {}", e),
             TerminationReason::CapabilityViolation(e) => write!(f, "Capability violation: {}", e),
-            TerminationReason::ConstitutionalViolation(e) => write!(f, "Constitutional violation: {}", e),
+            TerminationReason::ConstitutionalViolation(e) => {
+                write!(f, "Constitutional violation: {}", e)
+            }
             TerminationReason::MemoryViolation(e) => write!(f, "Memory violation: {}", e),
             TerminationReason::SandboxViolation(e) => write!(f, "Sandbox violation: {}", e),
             TerminationReason::MultipleViolations(errors) => {
                 write!(f, "Multiple violations: ")?;
                 for (i, error) in errors.iter().enumerate() {
-                    if i > 0 { write!(f, "; ")?; }
+                    if i > 0 {
+                        write!(f, "; ")?;
+                    }
                     write!(f, "{}", error)?;
                 }
                 Ok(())
@@ -133,7 +141,7 @@ impl AuditLogEntry {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-            
+
         Self {
             timestamp,
             reason,
@@ -141,7 +149,7 @@ impl AuditLogEntry {
             additional_context: None,
         }
     }
-    
+
     /// Add additional context to the audit entry
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
         self.additional_context = Some(context.into());
@@ -152,15 +160,15 @@ impl AuditLogEntry {
 impl fmt::Display for AuditLogEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}] {}", self.timestamp, self.reason)?;
-        
+
         if let Some(ctx_id) = self.context_id {
             write!(f, " [context: {}]", ctx_id)?;
         }
-        
+
         if let Some(ref context) = self.additional_context {
             write!(f, " - {}", context)?;
         }
-        
+
         Ok(())
     }
 }
@@ -181,7 +189,7 @@ impl FailClosedTermination {
             prevent_partial_commits: true,
         }
     }
-    
+
     /// Terminate process immediately with kernel-level enforcement
     /// This is the real fail-closed termination that actually kills the process
     pub fn terminate_process_immediately(&self, violation_message: &str) -> ! {
@@ -189,10 +197,10 @@ impl FailClosedTermination {
         #[cfg(test)]
         {
             use crate::isolation::termination_aware_harness::{
-                capture_termination_event, is_termination_capture_active, 
-                TerminationEvent, TerminationReason
+                capture_termination_event, is_termination_capture_active, TerminationEvent,
+                TerminationReason,
             };
-            
+
             if is_termination_capture_active() {
                 // Capture the termination event for test verification FIRST
                 let termination_reason = self.classify_termination_reason(violation_message);
@@ -201,57 +209,62 @@ impl FailClosedTermination {
                     violation_message: violation_message.to_string(),
                     context_id: None, // Could be enhanced to capture context ID
                     termination_reason,
-                    audit_logged: true,  // We would have logged
-                    resources_cleaned: true,  // We would have cleaned
-                    scheduler_removed: true,  // We would have removed
+                    audit_logged: true,      // We would have logged
+                    resources_cleaned: true, // We would have cleaned
+                    scheduler_removed: true, // We would have removed
                 };
-                
+
                 // Capture BEFORE panicking
                 capture_termination_event(event);
-                
+
                 // In test mode, panic instead of actually terminating
                 // This allows the test harness to catch and verify the behavior
                 panic!("SECURITY.BOUNDARY.VIOLATION");
             }
         }
-        
+
         // Production mode: actual termination
         // Step 1: Log violation to kernel audit log (immutable)
         self.log_violation_to_kernel(violation_message);
-        
+
         // Step 2: Remove process from scheduler immediately
         self.remove_from_scheduler();
-        
+
         // Step 3: Clean up execution slots and resources
         self.cleanup_execution_resources();
-        
+
         // Step 4: Terminate process via kernel syscall (SYS_V2_EXIT)
         self.kernel_terminate_process();
-        
+
         // This point should never be reached in production
         // If we get here, kernel termination failed - this is a critical system failure
     }
-    
+
     /// Log violation to kernel's immutable audit log
     fn log_violation_to_kernel(&self, message: &str) {
         // In a real implementation, this would use a kernel syscall to log
         // the violation to an immutable audit trail that cannot be tampered with
-        eprintln!("KERNEL_AUDIT_LOG: SECURITY.BOUNDARY.VIOLATION - {}", message);
-        
+        eprintln!(
+            "KERNEL_AUDIT_LOG: SECURITY.BOUNDARY.VIOLATION - {}",
+            message
+        );
+
         // TODO: Replace with actual kernel syscall when available
         // sys_v2_audit_log(AUDIT_SECURITY_VIOLATION, message.as_ptr(), message.len());
     }
-    
+
     /// Remove process from scheduler immediately
     fn remove_from_scheduler(&self) {
         // In a real implementation, this would notify the kernel scheduler
         // to immediately remove this process from all scheduling queues
-        eprintln!("SCHEDULER: Removing process from all scheduling queues due to security violation");
-        
+        eprintln!(
+            "SCHEDULER: Removing process from all scheduling queues due to security violation"
+        );
+
         // TODO: Replace with actual kernel syscall when available
         // sys_v2_scheduler_remove_process(current_process_id());
     }
-    
+
     /// Clean up execution slots and resources
     fn cleanup_execution_resources(&self) {
         // In a real implementation, this would:
@@ -260,26 +273,26 @@ impl FailClosedTermination {
         // 3. Clean up ABDF handles
         // 4. Release memory mappings
         eprintln!("RESOURCE_CLEANUP: Releasing all execution resources due to security violation");
-        
+
         // TODO: Replace with actual resource cleanup when available
         // sys_v2_cleanup_execution_resources(current_process_id());
     }
-    
+
     /// Terminate process via kernel syscall
     fn kernel_terminate_process(&self) -> ! {
         // Use SYS_V2_EXIT to terminate the process immediately
         // This is the only legitimate way to terminate a process
         eprintln!("KERNEL_TERMINATION: Process terminating due to SECURITY.BOUNDARY.VIOLATION");
-        
+
         // TODO: Replace with actual SYS_V2_EXIT syscall when available
         // sys_v2_exit(EXIT_CODE_SECURITY_VIOLATION);
-        
+
         // For now, use std::process::exit as a placeholder
         std::process::exit(1);
     }
-    
+
     /// Terminate execution with fail-closed semantics (Requirement 15.1-15.4)
-    /// 
+    ///
     /// This function implements the core fail-closed termination logic:
     /// 1. Log the violation to immutable audit log (Requirement 15.6)
     /// 2. Prevent partial state commits (Requirement 15.7)
@@ -293,58 +306,50 @@ impl FailClosedTermination {
         // Step 1: Log to immutable audit log before termination
         let audit_entry = AuditLogEntry::new(reason.clone(), context_id);
         self.audit_log.push(audit_entry);
-        
+
         // Step 2: Prevent partial state commits
         if self.prevent_partial_commits {
             self.rollback_partial_state(context_id);
         }
-        
+
         // Step 3: Deterministic termination with error code
         let error_code = reason.primary_error_code();
         let violation_message = format!(
             "FAIL_CLOSED_TERMINATION: {} (0x{:04X}) - {}",
-            error_code,
-            error_code as u16,
-            reason
+            error_code, error_code as u16, reason
         );
-        
+
         // Step 4: Actual process termination (not just panic)
         self.terminate_process_immediately(&violation_message);
     }
-    
+
     /// Terminate with a single isolation error
-    pub fn terminate_with_error(
-        &mut self,
-        error: IsolationError,
-    ) -> ! {
+    pub fn terminate_with_error(&mut self, error: IsolationError) -> ! {
         let reason = TerminationReason::from_isolation_error(error.clone());
         self.terminate(reason, error.context_id);
     }
-    
+
     /// Terminate with multiple violations detected simultaneously
-    pub fn terminate_with_multiple_violations(
-        &mut self,
-        errors: Vec<IsolationError>,
-    ) -> ! {
+    pub fn terminate_with_multiple_violations(&mut self, errors: Vec<IsolationError>) -> ! {
         if errors.is_empty() {
             panic!("Cannot terminate with empty violation list");
         }
-        
+
         let context_id = errors.first().and_then(|e| e.context_id);
         let reason = TerminationReason::MultipleViolations(errors);
         self.terminate(reason, context_id);
     }
-    
+
     /// Check if termination is required for the given error
     pub fn requires_termination(error: &IsolationError) -> bool {
         error.requires_fail_closed()
     }
-    
+
     /// Get the audit log (read-only access)
     pub fn audit_log(&self) -> &[AuditLogEntry] {
         &self.audit_log
     }
-    
+
     /// Rollback partial state to prevent inconsistent state (Requirement 15.7)
     fn rollback_partial_state(&mut self, context_id: Option<ExecutionContextId>) {
         // In a real implementation, this would:
@@ -352,7 +357,7 @@ impl FailClosedTermination {
         // 2. Release any acquired capabilities
         // 3. Clean up any partial execution state
         // 4. Ensure no side-effects are partially applied
-        
+
         // For now, we just log the rollback attempt
         if let Some(ctx_id) = context_id {
             eprintln!("Rolling back partial state for context {}", ctx_id);
@@ -360,12 +365,15 @@ impl FailClosedTermination {
             eprintln!("Rolling back global partial state");
         }
     }
-    
+
     /// Classify the termination reason based on violation message
     #[cfg(test)]
-    fn classify_termination_reason(&self, violation_message: &str) -> crate::isolation::termination_aware_harness::TerminationReason {
+    fn classify_termination_reason(
+        &self,
+        violation_message: &str,
+    ) -> crate::isolation::termination_aware_harness::TerminationReason {
         use crate::isolation::termination_aware_harness::TerminationReason;
-        
+
         if violation_message.contains("SECURITY.BOUNDARY.VIOLATION") {
             TerminationReason::SecurityBoundaryViolation
         } else if violation_message.contains("KERNEL.SAFETY.CRITICAL") {
@@ -378,7 +386,7 @@ impl FailClosedTermination {
             TerminationReason::UnauthorizedEntry
         }
     }
-    
+
     /// Extract the violation type from the message
     #[cfg(test)]
     fn extract_violation_type(&self, violation_message: &str) -> String {
@@ -397,10 +405,11 @@ impl Default for FailClosedTermination {
 }
 
 /// Global fail-closed termination handler
-/// 
+///
 /// Thread-safe global handler using OnceLock for initialization.
 /// This replaces the unsafe `static mut` pattern with a safe alternative.
-static GLOBAL_TERMINATION_HANDLER: std::sync::OnceLock<FailClosedTermination> = std::sync::OnceLock::new();
+static GLOBAL_TERMINATION_HANDLER: std::sync::OnceLock<FailClosedTermination> =
+    std::sync::OnceLock::new();
 
 /// Initialize the global fail-closed termination handler
 pub fn initialize_fail_closed_handler() {
@@ -414,14 +423,12 @@ pub fn fail_closed_terminate(error: IsolationError) -> ! {
             // Create a new handler instance to avoid mutable reference issues
             let mut termination_handler = FailClosedTermination::new();
             termination_handler.terminate_with_error(error);
-        },
+        }
         None => {
             // Fallback if handler not initialized
             panic!(
                 "FAIL_CLOSED_TERMINATION: {} (0x{:04X}) - {} [handler not initialized]",
-                error.code,
-                error.code as u16,
-                error
+                error.code, error.code as u16, error
             );
         }
     }
@@ -454,12 +461,8 @@ mod tests {
 
     #[test]
     fn termination_reason_from_isolation_error() {
-        let error = IsolationError::new(
-            ErrorCode::IsolationViolation,
-            "Test violation",
-            Some(42),
-        );
-        
+        let error = IsolationError::new(ErrorCode::IsolationViolation, "Test violation", Some(42));
+
         let reason = TerminationReason::from_isolation_error(error.clone());
         assert!(matches!(reason, TerminationReason::IsolationViolation(_)));
         assert_eq!(reason.primary_error_code(), ErrorCode::IsolationViolation);
@@ -471,7 +474,7 @@ mod tests {
             IsolationError::new(ErrorCode::IsolationViolation, "Error 1", Some(1)),
             IsolationError::new(ErrorCode::BoundaryViolation, "Error 2", Some(2)),
         ];
-        
+
         let reason = TerminationReason::MultipleViolations(errors.clone());
         let all_codes = reason.all_error_codes();
         assert_eq!(all_codes.len(), 2);
@@ -486,7 +489,7 @@ mod tests {
             "Constitutional rule violated",
             None,
         );
-        
+
         let reason = TerminationReason::from_isolation_error(error);
         assert!(reason.has_constitutional_violations());
         assert!(reason.has_security_violations());
@@ -500,10 +503,10 @@ mod tests {
             Some(123),
         );
         let reason = TerminationReason::from_isolation_error(error);
-        
-        let entry = AuditLogEntry::new(reason, Some(123))
-            .with_context("Additional context information");
-        
+
+        let entry =
+            AuditLogEntry::new(reason, Some(123)).with_context("Additional context information");
+
         assert_eq!(entry.context_id, Some(123));
         assert!(entry.additional_context.is_some());
         assert!(entry.timestamp > 0);
@@ -512,10 +515,10 @@ mod tests {
     #[test]
     fn fail_closed_termination_handler() {
         let handler = FailClosedTermination::new();
-        
+
         // Initially empty audit log
         assert_eq!(handler.audit_log().len(), 0);
-        
+
         // Test requires_termination
         let security_error = IsolationError::new(
             ErrorCode::SecurityBoundaryViolation,
@@ -523,13 +526,12 @@ mod tests {
             Some(1),
         );
         assert!(FailClosedTermination::requires_termination(&security_error));
-        
-        let capability_error = IsolationError::new(
-            ErrorCode::CapabilityDenied,
-            "Capability denied",
-            Some(1),
-        );
-        assert!(!FailClosedTermination::requires_termination(&capability_error));
+
+        let capability_error =
+            IsolationError::new(ErrorCode::CapabilityDenied, "Capability denied", Some(1));
+        assert!(!FailClosedTermination::requires_termination(
+            &capability_error
+        ));
     }
 
     #[test]
@@ -541,7 +543,7 @@ mod tests {
         );
         let reason = TerminationReason::from_isolation_error(error);
         let entry = AuditLogEntry::new(reason, Some(456));
-        
+
         let display = format!("{}", entry);
         assert!(display.contains("Boundary violation"));
         assert!(display.contains("[context: 456]"));
@@ -550,12 +552,8 @@ mod tests {
     #[test]
     fn fail_closed_termination_panics() {
         let harness = TerminationAwareHarness::new();
-        let error = IsolationError::new(
-            ErrorCode::IsolationViolation,
-            "Test termination",
-            Some(1),
-        );
-        
+        let error = IsolationError::new(ErrorCode::IsolationViolation, "Test termination", Some(1));
+
         let event = harness
             .execute_expecting_termination(move || {
                 let mut handler = FailClosedTermination::new();

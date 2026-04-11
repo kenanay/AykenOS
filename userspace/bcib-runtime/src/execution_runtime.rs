@@ -9,13 +9,12 @@
 ///
 /// This module communicates with other layers exclusively through the types
 /// defined in `types.rs`. No cross-layer implementation dependencies.
-
 use std::collections::HashMap;
 
 use crate::abdf_boundary::AbdfHandle;
 use crate::capability_manager::{CapabilityCheck, CapabilityResource, NoopCapabilityManager};
-use crate::isolation::execution_entry_enforcer::ExecutionEntryEnforcer;
 use crate::isolation::execution_entry_context::ExecutionEntryContext;
+use crate::isolation::execution_entry_enforcer::ExecutionEntryEnforcer;
 use crate::pools::{IsolatedHandleSpace, IsolatedSlotSpace};
 use crate::scheduler_bridge::SchedulerSubmitBridge;
 use crate::types::{
@@ -137,15 +136,15 @@ impl StateKind {
 /// Any transition NOT in this table is illegal and MUST be rejected with
 /// `BCIB_ERR_ILLEGAL_STATE_TRANSITION` (Requirement 3b.3).
 const VALID_TRANSITIONS: &[(StateKind, StateKind)] = &[
-    (StateKind::Created, StateKind::Ready),       // verify_and_plan() succeeded
-    (StateKind::Ready, StateKind::Running),        // execution slice started
-    (StateKind::Running, StateKind::Yielded),      // voluntary yield (cost budget exhausted)
-    (StateKind::Running, StateKind::Waiting),      // waiting for external event
-    (StateKind::Running, StateKind::Completed),    // successful completion
-    (StateKind::Running, StateKind::Failed),       // error
-    (StateKind::Running, StateKind::Cancelled),    // cancel signal
-    (StateKind::Yielded, StateKind::Running),      // resume signal
-    (StateKind::Waiting, StateKind::Running),      // event arrived
+    (StateKind::Created, StateKind::Ready), // verify_and_plan() succeeded
+    (StateKind::Ready, StateKind::Running), // execution slice started
+    (StateKind::Running, StateKind::Yielded), // voluntary yield (cost budget exhausted)
+    (StateKind::Running, StateKind::Waiting), // waiting for external event
+    (StateKind::Running, StateKind::Completed), // successful completion
+    (StateKind::Running, StateKind::Failed), // error
+    (StateKind::Running, StateKind::Cancelled), // cancel signal
+    (StateKind::Yielded, StateKind::Running), // resume signal
+    (StateKind::Waiting, StateKind::Running), // event arrived
 ];
 
 /// Returns `true` if the transition from `from` to `to` is in the valid table.
@@ -242,7 +241,10 @@ impl BcibExecutionRuntime {
             1003, // SYS_V2_SUBMIT_EXECUTION
             std::process::id(),
             1, // thread_id
-            vec!["kernel_syscall_dispatcher".to_string(), "sys_v2_submit_execution".to_string()],
+            vec![
+                "kernel_syscall_dispatcher".to_string(),
+                "sys_v2_submit_execution".to_string(),
+            ],
         )
     }
 
@@ -268,7 +270,12 @@ impl BcibExecutionRuntime {
         resource_limits: ResourceLimits,
     ) -> Result<ExecutionContextId, BcibError> {
         let kernel_context = Self::create_valid_kernel_context_for_test();
-        self.create_context_with_limits_from_syscall(plan, capability_set, resource_limits, kernel_context)
+        self.create_context_with_limits_from_syscall(
+            plan,
+            capability_set,
+            resource_limits,
+            kernel_context,
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -279,7 +286,7 @@ impl BcibExecutionRuntime {
     ///
     /// The context starts in `Created` state and is immediately transitioned
     /// to `Ready` (plan is already validated by the Verifier/Planner layer).
-    /// 
+    ///
     /// PRIVATE: Only accessible from syscall dispatcher - direct calls are forbidden
     /// This method can only be called from create_context_from_syscall with real kernel context
     /// NO TEST ACCESS: Tests must use create_context_from_syscall with real kernel contexts
@@ -291,8 +298,9 @@ impl BcibExecutionRuntime {
     ) -> Result<ExecutionContextId, BcibError> {
         // **TASK 3 IMPLEMENTATION**: Real kernel-level execution entry enforcement
         // Validate actual syscall dispatch context BEFORE any resource allocation
-        self.entry_enforcer.validate_kernel_execution_entry(&entry_context)?;
-        
+        self.entry_enforcer
+            .validate_kernel_execution_entry(&entry_context)?;
+
         let id = self.next_id;
         self.next_id += 1;
 
@@ -342,8 +350,9 @@ impl BcibExecutionRuntime {
         entry_context: ExecutionEntryContext,
     ) -> Result<ExecutionContextId, BcibError> {
         // Validate actual syscall dispatch context BEFORE any resource allocation.
-        self.entry_enforcer.validate_kernel_execution_entry(&entry_context)?;
-        
+        self.entry_enforcer
+            .validate_kernel_execution_entry(&entry_context)?;
+
         let id = self.next_id;
         self.next_id += 1;
 
@@ -376,24 +385,29 @@ impl BcibExecutionRuntime {
         resource_limits: ResourceLimits,
         entry_context: ExecutionEntryContext,
     ) -> Result<ExecutionContextId, BcibError> {
-        self.create_context_with_limits_internal(plan, capability_set, resource_limits, entry_context)
+        self.create_context_with_limits_internal(
+            plan,
+            capability_set,
+            resource_limits,
+            entry_context,
+        )
     }
 
     // Host-only tests still use emulated kernel contexts. These helpers are not
     // authoritative kernel evidence and do not close Task 3 production enforcement.
 
     /// Disable execution entry enforcement (for testing only).
-    /// 
+    ///
     /// WARNING: This should only be used in test environments.
     /// Production code must never disable entry enforcement.
     // REMOVED: disable_entry_enforcement() - bypass mechanism eliminated for production security
     // Constitutional compliance: SECURITY.BOUNDARY.VIOLATION enforcement cannot be bypassed
-    
+
     /// Enable execution entry enforcement (production mode).
     pub fn enable_entry_enforcement(&mut self) {
         self.entry_enforcer.enable_enforcement();
     }
-    
+
     /// Check if execution entry enforcement is enabled.
     pub fn is_enforcement_enabled(&self) -> bool {
         self.entry_enforcer.is_enforcement_enabled()
@@ -835,7 +849,10 @@ impl BcibExecutionRuntime {
             .ok_or(BcibError::InvalidGraph("unknown context id"))?;
 
         // Step 1: locate and revoke the handle.
-        let found = ctx.abdf_handles.iter_mut().find(|h| h.handle_id == handle_id);
+        let found = ctx
+            .abdf_handles
+            .iter_mut()
+            .find(|h| h.handle_id == handle_id);
         match found {
             Some(handle) => {
                 handle.revoke();
@@ -865,7 +882,9 @@ impl BcibExecutionRuntime {
             );
             // Force state to Failed directly (bypass transition table) and run
             // the teardown contract — same approach as cancel() for Cancelled.
-            ctx.state = ExecutionState::Failed { error: revocation_error };
+            ctx.state = ExecutionState::Failed {
+                error: revocation_error,
+            };
             Self::teardown(ctx);
         }
 
@@ -1100,7 +1119,10 @@ mod tests {
                 },
             },
             StateKind::Completed => ExecutionState::Completed {
-                result: ExecutionResult { context_id: 1, output: vec![] },
+                result: ExecutionResult {
+                    context_id: 1,
+                    output: vec![],
+                },
             },
             StateKind::Failed => ExecutionState::Failed {
                 error: BcibError::InvalidGraph("test"),
@@ -1138,7 +1160,10 @@ mod tests {
                 },
             },
             StateKind::Completed => ExecutionState::Completed {
-                result: ExecutionResult { context_id: 1, output: vec![] },
+                result: ExecutionResult {
+                    context_id: 1,
+                    output: vec![],
+                },
             },
             StateKind::Failed => ExecutionState::Failed {
                 error: BcibError::InvalidGraph("test"),
@@ -1189,16 +1214,25 @@ mod tests {
         assert!(is_valid_transition(StateKind::Ready, StateKind::Running));
         assert!(is_valid_transition(StateKind::Running, StateKind::Yielded));
         assert!(is_valid_transition(StateKind::Yielded, StateKind::Running));
-        assert!(is_valid_transition(StateKind::Running, StateKind::Completed));
+        assert!(is_valid_transition(
+            StateKind::Running,
+            StateKind::Completed
+        ));
     }
 
     /// Spot-check illegal transitions — must NOT appear in the table.
     #[test]
     fn illegal_transitions_are_rejected() {
         // Completed → Running is illegal
-        assert!(!is_valid_transition(StateKind::Completed, StateKind::Running));
+        assert!(!is_valid_transition(
+            StateKind::Completed,
+            StateKind::Running
+        ));
         // Cancelled → Yielded is illegal
-        assert!(!is_valid_transition(StateKind::Cancelled, StateKind::Yielded));
+        assert!(!is_valid_transition(
+            StateKind::Cancelled,
+            StateKind::Yielded
+        ));
         // Created → Running skips Ready — illegal
         assert!(!is_valid_transition(StateKind::Created, StateKind::Running));
         // Failed → Ready is illegal
@@ -1216,7 +1250,10 @@ mod tests {
         let mut ctx = ExecutionContext {
             id: 1,
             state: ExecutionState::Completed {
-                result: ExecutionResult { context_id: 1, output: vec![] },
+                result: ExecutionResult {
+                    context_id: 1,
+                    output: vec![],
+                },
             },
             plan,
             capability_set: CapabilitySet::default(),
@@ -1244,7 +1281,9 @@ mod tests {
         let plan = ExecutionPlan::new(vec![], 0x0003);
         let cap_set = CapabilitySet::default();
 
-        let ctx_id = runtime.create_context_for_test(plan, cap_set).expect("create_context failed");
+        let ctx_id = runtime
+            .create_context_for_test(plan, cap_set)
+            .expect("create_context failed");
 
         let state = runtime.state_of(ctx_id).expect("state_of failed");
         assert!(
@@ -1284,7 +1323,9 @@ mod tests {
     fn create_context_binds_isolated_spaces_to_context_id() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
         assert_eq!(ctx.slot_space.owner(), ctx_id);
@@ -1296,7 +1337,9 @@ mod tests {
     fn create_context_abdf_handles_empty() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
         assert!(ctx.abdf_handles.is_empty(), "abdf_handles must start empty");
@@ -1312,7 +1355,9 @@ mod tests {
     fn teardown_cancel_returns_slots_to_pool() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Acquire a slot to simulate in-flight usage.
         {
@@ -1341,7 +1386,9 @@ mod tests {
     fn teardown_cancel_releases_abdf_handles() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Simulate acquired ABDF handles.
         {
@@ -1366,7 +1413,9 @@ mod tests {
     fn teardown_cancel_clears_handle_space() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Register handles in handle_space.
         {
@@ -1391,7 +1440,9 @@ mod tests {
     fn teardown_cancel_revokes_capability_tokens() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let cap_set = CapabilitySet { token_ids: vec![1, 2, 3] };
+        let cap_set = CapabilitySet {
+            token_ids: vec![1, 2, 3],
+        };
         let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         runtime.cancel(ctx_id).expect("cancel should succeed");
@@ -1408,7 +1459,9 @@ mod tests {
     fn teardown_cancel_sets_cancelled_state() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         runtime.cancel(ctx_id).expect("cancel should succeed");
 
@@ -1425,7 +1478,9 @@ mod tests {
     fn cancel_on_terminal_state_returns_illegal_transition() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // First cancel succeeds.
         runtime.cancel(ctx_id).expect("first cancel should succeed");
@@ -1446,7 +1501,9 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Simulate in-flight resources.
         {
@@ -1471,8 +1528,15 @@ mod tests {
             "state must be Failed after transition_to_failed"
         );
         assert!(ctx.abdf_handles.is_empty(), "ABDF handles must be cleared");
-        assert_eq!(ctx.handle_space.registered_count(), 0, "handles must be cleared");
-        assert!(ctx.capability_set.token_ids.is_empty(), "capability tokens must be revoked");
+        assert_eq!(
+            ctx.handle_space.registered_count(),
+            0,
+            "handles must be cleared"
+        );
+        assert!(
+            ctx.capability_set.token_ids.is_empty(),
+            "capability tokens must be revoked"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1521,7 +1585,9 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let cap_set = CapabilitySet { token_ids: vec![10, 20, 30] };
+        let cap_set = CapabilitySet {
+            token_ids: vec![10, 20, 30],
+        };
         let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         // Put resources in flight.
@@ -1544,13 +1610,27 @@ mod tests {
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
 
         // Step 2: ABDF handles released.
-        assert!(ctx.abdf_handles.is_empty(), "ABDF handles must be empty after teardown");
+        assert!(
+            ctx.abdf_handles.is_empty(),
+            "ABDF handles must be empty after teardown"
+        );
         // Step 3: slots returned to pool.
-        assert_eq!(ctx.slot_space.outstanding_count(), 0, "no outstanding slots after teardown");
+        assert_eq!(
+            ctx.slot_space.outstanding_count(),
+            0,
+            "no outstanding slots after teardown"
+        );
         // Step 4: handle_space cleared.
-        assert_eq!(ctx.handle_space.registered_count(), 0, "handle_space must be empty after teardown");
+        assert_eq!(
+            ctx.handle_space.registered_count(),
+            0,
+            "handle_space must be empty after teardown"
+        );
         // Step 6: capability tokens revoked.
-        assert!(ctx.capability_set.token_ids.is_empty(), "capability tokens must be revoked after teardown");
+        assert!(
+            ctx.capability_set.token_ids.is_empty(),
+            "capability tokens must be revoked after teardown"
+        );
         // State must be Cancelled.
         assert!(
             matches!(ctx.state, ExecutionState::Cancelled),
@@ -1644,15 +1724,26 @@ mod tests {
             })
             .collect();
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Budget of 3 — only 3 instructions can execute before yield.
         let budget = CostBudget::new(3, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must not error");
 
-        assert_eq!(result, SliceResult::Yielded, "must yield when cost budget exhausted");
+        assert_eq!(
+            result,
+            SliceResult::Yielded,
+            "must yield when cost budget exhausted"
+        );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Yielded { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Yielded { .. }
+            ),
             "context must be in Yielded state after budget exhaustion"
         );
     }
@@ -1686,11 +1777,20 @@ mod tests {
 
         // Large budget — cost won't be the limiting factor.
         let budget = CostBudget::new(10_000, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must not error");
 
-        assert_eq!(result, SliceResult::Yielded, "must yield when max_instructions_per_slice reached");
+        assert_eq!(
+            result,
+            SliceResult::Yielded,
+            "must yield when max_instructions_per_slice reached"
+        );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Yielded { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Yielded { .. }
+            ),
             "context must be in Yielded state after per-slice instruction limit"
         );
     }
@@ -1711,15 +1811,26 @@ mod tests {
             })
             .collect();
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Budget of 100 — more than enough.
         let budget = CostBudget::new(100, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must not error");
 
-        assert_eq!(result, SliceResult::Completed, "must complete when all instructions fit");
+        assert_eq!(
+            result,
+            SliceResult::Completed,
+            "must complete when all instructions fit"
+        );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Completed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Completed { .. }
+            ),
             "context must be in Completed state"
         );
     }
@@ -1729,7 +1840,9 @@ mod tests {
     fn run_slice_rejects_invalid_state() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Cancel the context — it's now in Cancelled (terminal) state.
         runtime.cancel(ctx_id).unwrap();
@@ -1776,7 +1889,9 @@ mod tests {
 
         // Large budget — cost won't be the limiting factor.
         let budget = CostBudget::new(10_000, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must return Ok(SliceResult)");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must return Ok(SliceResult)");
 
         // Must fail-closed with ResourceExhausted (not yield).
         assert!(
@@ -1786,7 +1901,10 @@ mod tests {
         );
         // Context must be in Failed state (teardown applied).
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Failed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Failed { .. }
+            ),
             "context must be in Failed state after max_instruction_count exhaustion"
         );
     }
@@ -1819,7 +1937,9 @@ mod tests {
             .unwrap();
 
         let budget = CostBudget::new(10_000, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must return Ok(SliceResult)");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must return Ok(SliceResult)");
 
         assert!(
             matches!(result, SliceResult::Failed(BcibError::ResourceExhausted(_))),
@@ -1827,7 +1947,10 @@ mod tests {
             result
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Failed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Failed { .. }
+            ),
             "context must be in Failed state"
         );
     }
@@ -1934,14 +2057,25 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must not error");
 
-        assert_eq!(result, SliceResult::Waiting, "External instruction must yield Waiting");
+        assert_eq!(
+            result,
+            SliceResult::Waiting,
+            "External instruction must yield Waiting"
+        );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Waiting { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Waiting { .. }
+            ),
             "context must be in Waiting state after External instruction"
         );
     }
@@ -1960,13 +2094,20 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
         runtime.run_slice(ctx_id, budget).unwrap();
-        assert!(matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Waiting { .. }));
+        assert!(matches!(
+            runtime.state_of(ctx_id).unwrap(),
+            ExecutionState::Waiting { .. }
+        ));
 
-        runtime.notify_event(ctx_id).expect("notify_event must succeed");
+        runtime
+            .notify_event(ctx_id)
+            .expect("notify_event must succeed");
         assert!(
             matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Running),
             "context must be Running after notify_event"
@@ -1978,7 +2119,9 @@ mod tests {
     fn notify_event_rejects_non_waiting_context() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let result = runtime.notify_event(ctx_id);
         assert!(
@@ -2018,7 +2161,9 @@ mod tests {
             },
         ];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
         let result = runtime.run_slice(ctx_id, budget).unwrap();
@@ -2026,13 +2171,19 @@ mod tests {
 
         {
             let ctx = runtime.contexts.get(&ctx_id).unwrap();
-            assert_eq!(ctx.instruction_pointer, 1, "IP must point to External instruction");
+            assert_eq!(
+                ctx.instruction_pointer, 1,
+                "IP must point to External instruction"
+            );
         }
 
         runtime.notify_event(ctx_id).unwrap();
         {
             let ctx = runtime.contexts.get(&ctx_id).unwrap();
-            assert_eq!(ctx.instruction_pointer, 2, "IP must advance past External instruction after notify_event");
+            assert_eq!(
+                ctx.instruction_pointer, 2,
+                "IP must advance past External instruction after notify_event"
+            );
         }
     }
 
@@ -2051,7 +2202,9 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         {
             let ctx = runtime.contexts.get_mut(&ctx_id).unwrap();
@@ -2120,7 +2273,10 @@ mod tests {
             "External instruction at concurrency limit must cause Waiting (backpressure), not failure"
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Waiting { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Waiting { .. }
+            ),
             "context must be in Waiting state when concurrency limit is reached"
         );
     }
@@ -2161,7 +2317,10 @@ mod tests {
             "External instruction below concurrency limit must proceed to Waiting"
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Waiting { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Waiting { .. }
+            ),
             "context must be in Waiting state after External instruction"
         );
     }
@@ -2201,7 +2360,10 @@ mod tests {
 
         // Starvation counter must be 1 after first yield.
         let count_after_first = runtime.bridge.starvation_count(ctx_id);
-        assert_eq!(count_after_first, 1, "starvation counter must be 1 after first yield");
+        assert_eq!(
+            count_after_first, 1,
+            "starvation counter must be 1 after first yield"
+        );
 
         // Resume and run second slice.
         runtime.resume(ctx_id).unwrap();
@@ -2210,7 +2372,10 @@ mod tests {
 
         // Starvation counter must be 2 after second yield.
         let count_after_second = runtime.bridge.starvation_count(ctx_id);
-        assert_eq!(count_after_second, 2, "starvation counter must be 2 after second yield");
+        assert_eq!(
+            count_after_second, 2,
+            "starvation counter must be 2 after second yield"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2267,7 +2432,10 @@ mod tests {
             "DataMutating instruction with denied capability must produce Failed(CapabilityDenied)"
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Failed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Failed { .. }
+            ),
             "context must be in Failed state after capability denial"
         );
     }
@@ -2305,7 +2473,10 @@ mod tests {
             "External instruction with denied capability must produce Failed(CapabilityDenied)"
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Failed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Failed { .. }
+            ),
             "context must be in Failed state after capability denial"
         );
     }
@@ -2384,7 +2555,9 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Add an ABDF handle to the context.
         {
@@ -2417,7 +2590,9 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let cap_set = CapabilitySet { token_ids: vec![1, 2, 3] };
+        let cap_set = CapabilitySet {
+            token_ids: vec![1, 2, 3],
+        };
         let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         // Add ABDF handles and handle_space entries to simulate in-flight resources.
@@ -2467,7 +2642,9 @@ mod tests {
     fn revoke_handle_in_context_unknown_handle_id_returns_error() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // No handles in the context — revoking a non-existent handle must fail.
         let result = runtime.revoke_handle_in_context(ctx_id, 999);
@@ -2500,7 +2677,9 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Add a handle and cancel the context first (terminal state).
         {
@@ -2576,8 +2755,14 @@ mod tests {
 
         // First run_slice: dispatches the first External instruction → Waiting.
         let budget = CostBudget::new(10_000, 10_000);
-        let result = runtime.run_slice(ctx_id, budget.clone()).expect("run_slice must not error");
-        assert_eq!(result, SliceResult::Waiting, "first external must transition to Waiting");
+        let result = runtime
+            .run_slice(ctx_id, budget.clone())
+            .expect("run_slice must not error");
+        assert_eq!(
+            result,
+            SliceResult::Waiting,
+            "first external must transition to Waiting"
+        );
 
         // active_external_count must now be 1 (one in-flight external).
         {
@@ -2589,7 +2774,9 @@ mod tests {
         }
 
         // Simulate event arrival for the first external — notify_event decrements counter.
-        runtime.notify_event(ctx_id).expect("notify_event must succeed");
+        runtime
+            .notify_event(ctx_id)
+            .expect("notify_event must succeed");
 
         // active_external_count must now be 0 again.
         {
@@ -2601,8 +2788,14 @@ mod tests {
         }
 
         // Second run_slice: dispatches the second External instruction → Waiting.
-        let result2 = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
-        assert_eq!(result2, SliceResult::Waiting, "second external must also transition to Waiting");
+        let result2 = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must not error");
+        assert_eq!(
+            result2,
+            SliceResult::Waiting,
+            "second external must also transition to Waiting"
+        );
     }
 
     /// Backpressure: when concurrency limit is already at max, the new External
@@ -2626,7 +2819,9 @@ mod tests {
 
         // Dispatch first external (counter → 1).
         let budget = CostBudget::new(10_000, 10_000);
-        runtime.run_slice(ctx_id, budget.clone()).expect("first run_slice");
+        runtime
+            .run_slice(ctx_id, budget.clone())
+            .expect("first run_slice");
 
         // Manually simulate that the context is still Waiting (no notify_event).
         // Force back to Running so we can call run_slice again.
@@ -2639,7 +2834,11 @@ mod tests {
         // Second run_slice: concurrency limit reached → backpressure Waiting.
         // active_external_count must NOT be incremented (instruction not dispatched).
         let result = runtime.run_slice(ctx_id, budget).expect("second run_slice");
-        assert_eq!(result, SliceResult::Waiting, "backpressure must produce Waiting");
+        assert_eq!(
+            result,
+            SliceResult::Waiting,
+            "backpressure must produce Waiting"
+        );
 
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
         assert_eq!(
@@ -2655,11 +2854,15 @@ mod tests {
     fn external_budget_exhaustion_fails_closed() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Budget with external_budget = 0 — any External instruction exhausts it.
         let budget = CostBudget::new(10_000, 0);
-        let result = runtime.run_slice(ctx_id, budget).expect("run_slice must return Ok(SliceResult)");
+        let result = runtime
+            .run_slice(ctx_id, budget)
+            .expect("run_slice must return Ok(SliceResult)");
 
         assert!(
             matches!(result, SliceResult::Failed(BcibError::ResourceExhausted(_))),
@@ -2667,7 +2870,10 @@ mod tests {
             result
         );
         assert!(
-            matches!(runtime.state_of(ctx_id).unwrap(), ExecutionState::Failed { .. }),
+            matches!(
+                runtime.state_of(ctx_id).unwrap(),
+                ExecutionState::Failed { .. }
+            ),
             "context must be in Failed state after external budget exhaustion"
         );
     }
@@ -2679,7 +2885,9 @@ mod tests {
     fn notify_event_decrements_active_external_count() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Dispatch the external instruction → Waiting, counter = 1.
         let budget = CostBudget::new(10_000, 10_000);
@@ -2687,7 +2895,10 @@ mod tests {
 
         {
             let ctx = runtime.contexts.get(&ctx_id).unwrap();
-            assert_eq!(ctx.active_external_count, 1, "counter must be 1 after dispatch");
+            assert_eq!(
+                ctx.active_external_count, 1,
+                "counter must be 1 after dispatch"
+            );
         }
 
         // Event arrives → counter decremented to 0.
@@ -2707,7 +2918,9 @@ mod tests {
     fn teardown_resets_active_external_count() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime
+            .create_context_for_test(plan, CapabilitySet::default())
+            .unwrap();
 
         // Dispatch external → counter = 1.
         let budget = CostBudget::new(10_000, 10_000);

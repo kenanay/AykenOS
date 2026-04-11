@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define AYKEN_ABI_VERSION 0x00010000u
+#define AYKEN_ABI_VERSION 0x00010002u
 
 #define CTX_R15      0u
 #define CTX_R14      8u

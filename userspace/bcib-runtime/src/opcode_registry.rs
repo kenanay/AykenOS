@@ -12,7 +12,6 @@
 ///
 /// v0.2 reserved opcode IDs are locked in `RESERVED_V02` and MUST NOT be
 /// reused or redefined (Requirement 12.5, 12.6).
-
 use crate::types::{BcibError, CostUnit, OpcodeId, SideEffectClass};
 use crate::types::{COST_DATA_MUTATING, COST_EXTERNAL, COST_PURE};
 
@@ -112,21 +111,21 @@ const fn build_table() -> [Option<OpcodeDescriptor>; OPCODE_TABLE_SIZE] {
     // -----------------------------------------------------------------------
     table[0x10] = Some(OpcodeDescriptor {
         id: 0x10,
-        name: "DataCreate",   // v0.2 reserved — kept with original semantics
+        name: "DataCreate", // v0.2 reserved — kept with original semantics
         class: OpcodeClass::Memory,
         side_effect: SideEffectClass::DataMutating,
         cost: COST_DATA_MUTATING,
     });
     table[0x11] = Some(OpcodeDescriptor {
         id: 0x11,
-        name: "DataAdd",      // v0.2 reserved
+        name: "DataAdd", // v0.2 reserved
         class: OpcodeClass::Memory,
         side_effect: SideEffectClass::DataMutating,
         cost: COST_DATA_MUTATING,
     });
     table[0x12] = Some(OpcodeDescriptor {
         id: 0x12,
-        name: "DataQuery",    // v0.2 reserved
+        name: "DataQuery", // v0.2 reserved
         class: OpcodeClass::Memory,
         side_effect: SideEffectClass::DataMutating,
         cost: COST_DATA_MUTATING,
@@ -158,7 +157,7 @@ const fn build_table() -> [Option<OpcodeDescriptor>; OPCODE_TABLE_SIZE] {
     // -----------------------------------------------------------------------
     table[0x20] = Some(OpcodeDescriptor {
         id: 0x20,
-        name: "UiRender",     // v0.2 reserved — kept with original semantics
+        name: "UiRender", // v0.2 reserved — kept with original semantics
         class: OpcodeClass::Data,
         side_effect: SideEffectClass::DataMutating,
         cost: COST_DATA_MUTATING,
@@ -183,7 +182,7 @@ const fn build_table() -> [Option<OpcodeDescriptor>; OPCODE_TABLE_SIZE] {
     // -----------------------------------------------------------------------
     table[0x30] = Some(OpcodeDescriptor {
         id: 0x30,
-        name: "AiAsk",        // v0.2 reserved
+        name: "AiAsk", // v0.2 reserved
         class: OpcodeClass::Ai,
         side_effect: SideEffectClass::External,
         cost: COST_EXTERNAL,
@@ -280,7 +279,10 @@ pub fn is_reserved_v02(id: OpcodeId) -> bool {
 // ---------------------------------------------------------------------------
 
 const _: () = {
-    assert!(COST_PURE < COST_DATA_MUTATING, "COST_PURE must be less than COST_DATA_MUTATING");
+    assert!(
+        COST_PURE < COST_DATA_MUTATING,
+        "COST_PURE must be less than COST_DATA_MUTATING"
+    );
     assert!(
         COST_DATA_MUTATING < COST_EXTERNAL,
         "COST_DATA_MUTATING must be less than COST_EXTERNAL"
@@ -323,7 +325,11 @@ mod tests {
     #[test]
     fn v02_reserved_ids_are_locked() {
         for &id in RESERVED_V02 {
-            assert!(is_reserved_v02(id), "0x{:02X} should be flagged as reserved", id);
+            assert!(
+                is_reserved_v02(id),
+                "0x{:02X} should be flagged as reserved",
+                id
+            );
         }
         // A non-reserved id should not be flagged
         assert!(!is_reserved_v02(0x02));
@@ -332,19 +338,40 @@ mod tests {
     #[test]
     fn side_effect_classes_match_spec() {
         // Control opcodes are Pure
-        assert_eq!(lookup_opcode(0x00).unwrap().side_effect, SideEffectClass::Pure);
-        assert_eq!(lookup_opcode(0x02).unwrap().side_effect, SideEffectClass::Pure);
+        assert_eq!(
+            lookup_opcode(0x00).unwrap().side_effect,
+            SideEffectClass::Pure
+        );
+        assert_eq!(
+            lookup_opcode(0x02).unwrap().side_effect,
+            SideEffectClass::Pure
+        );
 
         // Data opcodes are DataMutating
-        assert_eq!(lookup_opcode(0x10).unwrap().side_effect, SideEffectClass::DataMutating);
-        assert_eq!(lookup_opcode(0x21).unwrap().side_effect, SideEffectClass::DataMutating);
+        assert_eq!(
+            lookup_opcode(0x10).unwrap().side_effect,
+            SideEffectClass::DataMutating
+        );
+        assert_eq!(
+            lookup_opcode(0x21).unwrap().side_effect,
+            SideEffectClass::DataMutating
+        );
 
         // AI/UI opcodes are External
-        assert_eq!(lookup_opcode(0x30).unwrap().side_effect, SideEffectClass::External);
-        assert_eq!(lookup_opcode(0x40).unwrap().side_effect, SideEffectClass::External);
+        assert_eq!(
+            lookup_opcode(0x30).unwrap().side_effect,
+            SideEffectClass::External
+        );
+        assert_eq!(
+            lookup_opcode(0x40).unwrap().side_effect,
+            SideEffectClass::External
+        );
 
         // Diagnostics opcodes are Pure
-        assert_eq!(lookup_opcode(0x50).unwrap().side_effect, SideEffectClass::Pure);
+        assert_eq!(
+            lookup_opcode(0x50).unwrap().side_effect,
+            SideEffectClass::Pure
+        );
     }
 
     /// Verify O(1) dispatch: every possible u8 value either resolves to a

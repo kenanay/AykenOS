@@ -1,3 +1,4 @@
+use bcib_runtime::types::CapabilityTokenId;
 /// Golden Fixture Integration Tests — BCIB v0.2 Corpus Validation
 ///
 /// Requirements: 1.5, 12.3, 12.4
@@ -16,12 +17,9 @@
 ///   - ai_ask.bcib             — AiAsk (External)
 ///   - invalid_magic.bcib      — negative: bad magic → BCIB_ERR_INVALID_GRAPH
 ///   - unsupported_version.bcib — negative: version 0x0004 → BCIB_ERR_UNSUPPORTED_VERSION
-
 use bcib_runtime::{
-    BcibError, BcibVerifierPlanner, CapabilitySet, ResourceLimits,
-    BCIB_VERSION_V02,
+    BcibError, BcibVerifierPlanner, CapabilitySet, ResourceLimits, BCIB_VERSION_V02,
 };
-use bcib_runtime::types::CapabilityTokenId;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,11 +30,7 @@ use bcib_runtime::types::CapabilityTokenId;
 /// Panics with a clear message if the file is missing — this is a CI FAIL
 /// condition (Requirement 12.3: fixture mismatch → CI FAIL).
 fn load_fixture(name: &str) -> Vec<u8> {
-    let path = format!(
-        "{}/tests/fixtures/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    );
+    let path = format!("{}/tests/fixtures/{}", env!("CARGO_MANIFEST_DIR"), name);
     std::fs::read(&path).unwrap_or_else(|e| {
         panic!(
             "FIXTURE MISMATCH — CI FAIL: cannot load fixture '{}': {}\n\
@@ -411,7 +405,11 @@ fn fixture_canonical_hash_stable_across_calls() {
 
     for (name, needs_cap) in &valid_fixtures {
         let data = load_fixture(name);
-        let caps = if *needs_cap { caps_with_token() } else { empty_caps() };
+        let caps = if *needs_cap {
+            caps_with_token()
+        } else {
+            empty_caps()
+        };
 
         let plan = planner
             .verify_and_plan(&data, &caps, &default_limits())
@@ -451,7 +449,11 @@ fn fixture_canonical_hashes_are_distinct() {
     let mut hashes = Vec::new();
     for (name, needs_cap) in &valid_fixtures {
         let data = load_fixture(name);
-        let caps = if *needs_cap { caps_with_token() } else { empty_caps() };
+        let caps = if *needs_cap {
+            caps_with_token()
+        } else {
+            empty_caps()
+        };
         let plan = planner
             .verify_and_plan(&data, &caps, &default_limits())
             .unwrap_or_else(|e| panic!("FIXTURE MISMATCH — {}: {:?}", name, e));
@@ -462,11 +464,9 @@ fn fixture_canonical_hashes_are_distinct() {
     for i in 0..hashes.len() {
         for j in (i + 1)..hashes.len() {
             assert_ne!(
-                hashes[i].1,
-                hashes[j].1,
+                hashes[i].1, hashes[j].1,
                 "FIXTURE MISMATCH — fixtures '{}' and '{}' must have distinct canonical hashes",
-                hashes[i].0,
-                hashes[j].0
+                hashes[i].0, hashes[j].0
             );
         }
     }
@@ -492,8 +492,9 @@ fn fixture_v02_backward_compatibility() {
         let data = load_fixture(name);
 
         // Verify the fixture actually has v0.2 header
-        let header = bcib_runtime::parse_header(&data)
-            .unwrap_or_else(|e| panic!("FIXTURE MISMATCH — {}: parse_header failed: {:?}", name, e));
+        let header = bcib_runtime::parse_header(&data).unwrap_or_else(|e| {
+            panic!("FIXTURE MISMATCH — {}: parse_header failed: {:?}", name, e)
+        });
         assert_eq!(
             header.version, BCIB_VERSION_V02,
             "FIXTURE MISMATCH — {}: fixture must use v0.2 header (0x0002) for backward-compat test",
@@ -501,7 +502,11 @@ fn fixture_v02_backward_compatibility() {
         );
 
         // v3 engine must accept v0.2 programs (backward-compatible, Requirement 1.5)
-        let caps = if *needs_cap { caps_with_token() } else { empty_caps() };
+        let caps = if *needs_cap {
+            caps_with_token()
+        } else {
+            empty_caps()
+        };
         planner
             .verify_and_plan(&data, &caps, &default_limits())
             .unwrap_or_else(|e| {

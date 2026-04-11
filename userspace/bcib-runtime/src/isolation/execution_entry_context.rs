@@ -1,17 +1,16 @@
-
 /// Privilege levels for execution entry validation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrivilegeLevel {
-    Ring0,  // Kernel space
-    Ring3,  // User space
+    Ring0, // Kernel space
+    Ring3, // User space
 }
 
 /// Origin of syscall dispatch for validation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyscallOrigin {
-    KernelDispatcher,   // Real kernel syscall dispatcher
-    UserspaceMock,      // Fake/test simulation (INVALID)
-    DirectCall,         // Direct function call (INVALID)
+    KernelDispatcher, // Real kernel syscall dispatcher
+    UserspaceMock,    // Fake/test simulation (INVALID)
+    DirectCall,       // Direct function call (INVALID)
 }
 
 /// Call stack fingerprint for bypass detection
@@ -25,8 +24,8 @@ pub struct CallStackFingerprint {
 /// Execution slot ownership validation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SlotOwnership {
-    KernelAllocated,    // Allocated by kernel scheduler
-    UserAllocated,      // Allocated by userspace (INVALID for BCIB)
+    KernelAllocated, // Allocated by kernel scheduler
+    UserAllocated,   // Allocated by userspace (INVALID for BCIB)
 }
 
 /// Real execution entry context that cannot be faked
@@ -35,22 +34,22 @@ pub enum SlotOwnership {
 pub struct ExecutionEntryContext {
     /// Caller privilege level - must be Ring0 for valid BCIB entry
     pub caller_privilege_level: PrivilegeLevel,
-    
+
     /// Syscall dispatch origin - must be KernelDispatcher
     pub syscall_dispatch_origin: SyscallOrigin,
-    
+
     /// Call stack fingerprint for bypass detection
     pub call_stack_fingerprint: CallStackFingerprint,
-    
+
     /// Execution slot ownership validation
     pub execution_slot_ownership: SlotOwnership,
-    
+
     /// Actual syscall ID from kernel dispatcher (not injected)
     pub actual_syscall_id: u64,
-    
+
     /// Process ID for validation
     pub process_id: u32,
-    
+
     /// Thread ID for validation
     pub thread_id: u32,
 }
@@ -78,7 +77,7 @@ impl ExecutionEntryContext {
             thread_id,
         }
     }
-    
+
     /// Validate that this is a real kernel entry context
     pub fn is_valid_kernel_entry(&self) -> bool {
         self.caller_privilege_level == PrivilegeLevel::Ring0
@@ -86,32 +85,41 @@ impl ExecutionEntryContext {
             && self.execution_slot_ownership == SlotOwnership::KernelAllocated
             && self.call_stack_fingerprint.has_kernel_frame
     }
-    
+
     /// Detect bypass attempts
     pub fn detect_bypass_attempt(&self) -> Option<String> {
         if self.syscall_dispatch_origin != SyscallOrigin::KernelDispatcher {
-            return Some(format!("Invalid syscall origin: {:?}", self.syscall_dispatch_origin));
+            return Some(format!(
+                "Invalid syscall origin: {:?}",
+                self.syscall_dispatch_origin
+            ));
         }
-        
+
         if self.caller_privilege_level != PrivilegeLevel::Ring0 {
-            return Some(format!("Invalid privilege level: {:?}", self.caller_privilege_level));
+            return Some(format!(
+                "Invalid privilege level: {:?}",
+                self.caller_privilege_level
+            ));
         }
-        
+
         if self.execution_slot_ownership != SlotOwnership::KernelAllocated {
-            return Some(format!("Invalid slot ownership: {:?}", self.execution_slot_ownership));
+            return Some(format!(
+                "Invalid slot ownership: {:?}",
+                self.execution_slot_ownership
+            ));
         }
-        
+
         if !self.call_stack_fingerprint.has_kernel_frame {
             return Some("No kernel frame in call stack - bypass attempt detected".to_string());
         }
-        
+
         // Check for suspicious call stack patterns
         for frame in &self.call_stack_fingerprint.frames {
             if frame.contains("test_") || frame.contains("debug_") || frame.contains("internal_") {
                 return Some(format!("Suspicious call stack frame detected: {}", frame));
             }
         }
-        
+
         None
     }
 }

@@ -33,6 +33,9 @@ extern uint64_t sys_v2_capability_revoke(uint64_t token_id);
 extern uint64_t sys_v2_exit(uint64_t exit_code);
 extern uint64_t sys_v2_debug_putchar(uint64_t character);
 extern uint64_t sys_v2_complete_execution(uint64_t execution_id, uint64_t completion_code);
+extern uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation, uint64_t *buffer, uint64_t buffer_size);
+extern uint64_t sys_v2_external_call(uint64_t call_id, uint64_t *args, uint64_t arg_count);
+extern uint64_t sys_v2_abdf_operation(uint64_t operation_type, uint64_t handle_id, uint64_t *data, uint64_t data_size);
 
 /* Context detection - simplified for Phase-16 implementation */
 static execution_context_type_t detect_execution_context(uint64_t context_id) {
@@ -184,6 +187,15 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
             
         case SYS_V2_COMPLETE_EXECUTION:
             return sys_v2_complete_execution(arg1, arg2);
+            
+        case SYS_V2_DEVICE_OPERATION:
+            return sys_v2_device_operation(arg1, arg2, (uint64_t *)arg3, arg4);
+            
+        case SYS_V2_EXTERNAL_CALL:
+            return sys_v2_external_call(arg1, (uint64_t *)arg2, arg3);
+            
+        case SYS_V2_ABDF_OPERATION:
+            return sys_v2_abdf_operation(arg1, arg2, (uint64_t *)arg3, arg4);
             
         default:
             boundary_fail_closed_termination(BOUNDARY_ERR_UNAUTHORIZED_SYSCALL, context_id,

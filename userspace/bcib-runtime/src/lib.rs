@@ -7,15 +7,14 @@
 ///
 /// Shared types live in `types`. The legacy `executor` module is preserved
 /// for backward compatibility; existing call sites are not broken.
-
 pub mod abdf_boundary;
 pub mod binary_format;
 pub mod capability_manager;
 pub mod compat;
 pub mod cost_tracker;
 pub mod diagnostics;
-pub mod executor;
 pub mod execution_runtime;
+pub mod executor;
 pub mod integration_tests;
 pub mod isolation;
 pub mod opcode_registry;
@@ -30,8 +29,7 @@ pub mod verifier_planner;
 // v0.2 backward-compatible re-exports (existing call sites must not break)
 // ---------------------------------------------------------------------------
 pub use executor::{
-    BcibExecutor, BcibGraph, CapabilityManager, CapabilityToken, ExecutionContext,
-    ExecutionError,
+    BcibExecutor, BcibGraph, CapabilityManager, CapabilityToken, ExecutionContext, ExecutionError,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,43 +46,43 @@ pub use verifier_planner::BcibVerifierPlanner;
 pub use capability_manager::{CapabilityCheck, CapabilityResource, NoopCapabilityManager};
 
 pub use execution_runtime::{
-    BcibExecutionRuntime, EventDescriptor, EventKind,
-    ExecutionResult as RuntimeExecutionResult,
+    BcibExecutionRuntime, EventDescriptor, EventKind, ExecutionResult as RuntimeExecutionResult,
     ExecutionState, ResumeToken,
 };
 
-pub use scheduler_bridge::{ExecutionId, ExecutionResult as BridgeExecutionResult, SchedulerSubmitBridge};
+pub use scheduler_bridge::{
+    ExecutionId, ExecutionResult as BridgeExecutionResult, SchedulerSubmitBridge,
+};
 
 pub use abdf_boundary::AbdfHandle;
 
 pub use pools::{BoundedPool, ExecutionSlot, HandleEntry, IsolatedHandleSpace, IsolatedSlotSpace};
 
 pub use binary_format::{
-    parse_header, parse_section_table, BcibHeader, SectionEntry, SectionId,
-    BCIB_MAGIC, BCIB_VERSION_V02, BCIB_VERSION_V3, HEADER_SIZE, SECTION_ENTRY_SIZE,
+    parse_header, parse_section_table, BcibHeader, SectionEntry, SectionId, BCIB_MAGIC,
+    BCIB_VERSION_V02, BCIB_VERSION_V3, HEADER_SIZE, SECTION_ENTRY_SIZE,
 };
 
-pub use opcode_registry::{lookup_opcode, is_reserved_v02, OpcodeClass, OpcodeDescriptor, RESERVED_V02};
+pub use opcode_registry::{
+    is_reserved_v02, lookup_opcode, OpcodeClass, OpcodeDescriptor, RESERVED_V02,
+};
 
 pub use compat::{check_version_compatibility, validate_opcode_no_conflict, CompatResult};
 
 pub use program_cache::{ProgramCache, ProgramCacheKey};
 
 pub use diagnostics::{
-    BcibDiagnostics, CostDiagnosticsResponse, CostDiagnosticsSnapshot,
-    EpistemicBoundary, ExecutionDiagnosticsResponse, ExecutionStateSnapshot,
-    LifecycleDiagnosticsResponse, LifecycleTransitionRecord,
+    BcibDiagnostics, CostDiagnosticsResponse, CostDiagnosticsSnapshot, EpistemicBoundary,
+    ExecutionDiagnosticsResponse, ExecutionStateSnapshot, LifecycleDiagnosticsResponse,
+    LifecycleTransitionRecord,
 };
 
 // ---------------------------------------------------------------------------
 // Phase-16 Isolation & Boundary Enforcement re-exports
 // ---------------------------------------------------------------------------
 pub use isolation::{
-    IsolationError, ViolationType, ErrorCode,
-    ConstitutionalRule, RuleViolation, ConstitutionalEnforcer,
-    RuntimeBridge, SideEffectIntent, SideEffectResult,
-    ExecutionSandbox, SandboxViolation,
-    SideEffectDeclaration, SideEffectOrdering,
-    BoundaryViolation, BoundaryEnforcer,
-    FailClosedTermination, TerminationReason,
+    BoundaryEnforcer, BoundaryViolation, ConstitutionalEnforcer, ConstitutionalRule, ErrorCode,
+    ExecutionSandbox, FailClosedTermination, IsolationError, RuleViolation, RuntimeBridge,
+    SandboxViolation, SideEffectDeclaration, SideEffectIntent, SideEffectOrdering,
+    SideEffectResult, TerminationReason, ViolationType,
 };

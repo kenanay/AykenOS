@@ -340,6 +340,11 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 **Description:** Operations requiring capabilities fail without valid capability.
 **Test:** Generate data-mutating and external instructions without capabilities. Verify that all such operations fail with capability violation errors.
 
+### Property 13: Fail-Closed Kernel Enforcement
+**Type:** Error Condition + Invariant
+**Description:** Forbidden syscalls from BCIB-role processes result in kernel-level termination with no execution continuation.
+**Test:** Generate BCIB-role process attempting forbidden syscall (e.g., `SYS_V2_SUBMIT_EXECUTION`). Verify QEMU kernel trace shows: (1) `BCIB_FORBIDDEN_BEFORE` marker, (2) `[[AYKEN_SYSCALL_ENTER]]` marker, (3) `[[AYKEN_BOUNDARY_KILL]]` marker, (4) NO `BCIB_FORBIDDEN_AFTER`, (5) NO `[[AYKEN_SYSCALL_EXIT]]`, (6) NO `[[AYKEN_SCHED_RESUME]]`, (7) NO further logs from same process.
+
 ## Constitutional Compliance
 
 This feature enforces the following NON_OVERRIDABLE constitutional rules:
@@ -363,8 +368,146 @@ The following CI gates are mandatory for this feature:
 4. `ci-gate-determinism`: Verifies side-effect determinism and execution reproducibility
 5. `ci-gate-capability-enforcement`: Verifies capability scope and validation
 6. `ci-gate-fail-closed`: Verifies fail-closed behavior for all violation types
+7. `ci-gate-fail-closed-proof`: Verifies kernel-level fail-closed enforcement with QEMU trace evidence
 
 All gates must pass before this feature can be merged to mainline.
+
+Gate dependency ordering:
+```
+ci-gate-hygiene
+    ↓
+ci-gate-constitutional
+    ↓
+ci-gate-bcib-isolation
+    ↓
+ci-gate-abdf-immutability
+    ↓
+ci-gate-boundary-enforcement
+    ↓
+ci-gate-determinism
+    ↓
+ci-gate-capability-enforcement
+    ↓
+ci-gate-fail-closed
+    ↓
+ci-gate-fail-closed-proof ← Kernel-level evidence validation
+    ↓
+MERGE ALLOWED
+```
+
+## Requirement 16: Kernel-Level Validation & Evidence Contract
+
+**User Story:** As a security auditor, I want all kernel-level security claims to be validated with QEMU-based kernel trace evidence, so that boundary enforcement is provably correct and not just theoretically sound.
+
+#### Acceptance Criteria
+
+1. THE System SHALL NOT consider kernel-level claims valid without QEMU-based kernel trace evidence
+2. THE System SHALL require canonical marker flow for fail-closed proof validation
+3. THE Canonical marker flow SHALL be: `BCIB_FORBIDDEN_BEFORE` → `[[AYKEN_SYSCALL_ENTER]]` → `[[AYKEN_BOUNDARY_KILL]]` → (NO FURTHER EXECUTION)
+4. THE `[[AYKEN_BOUNDARY_KILL]]` marker SHALL be emitted BEFORE scheduler removal to prove kill decision was made
+5. THE System SHALL reject proofs where `BCIB_FORBIDDEN_AFTER` appears after kill marker
+6. THE System SHALL reject proofs where `[[AYKEN_SYSCALL_EXIT]]` appears after forbidden syscall
+7. THE System SHALL reject proofs where `[[AYKEN_SCHED_RESUME]]` appears after kill marker
+8. THE System SHALL reject proofs where any process logs appear after kill marker
+9. THE System SHALL guarantee hard stop: process removed from scheduler, execution slot cleared, no continuation path
+9. THE Userspace tests SHALL NOT constitute proof of kernel-level enforcement
+10. THE Emulated or harness tests SHALL NOT constitute proof of kernel-level enforcement
+11. THE QEMU kernel trace SHALL be the sole authoritative evidence for kernel boundary claims
+12. THE System SHALL provide deterministic audit markers for all boundary enforcement events
+13. THE CI gate `ci-gate-fail-closed-proof` SHALL validate marker sequence correctness
+14. THE CI gate SHALL validate absence of continuation markers after kill
+15. THE CI gate SHALL validate kernel trace authenticity and completeness
+16. THE CI gate SHALL validate that `[[AYKEN_BOUNDARY_KILL]]` appears before scheduler removal
+17. THE CI gate SHALL validate process identity consistency across all markers (BEFORE, ENTER, KILL must have same process_id)
+18. THE CI gate SHALL validate exactly ONE `[[AYKEN_BOUNDARY_KILL]]` marker is present (zero or multiple = FAIL)
+19. THE CI gate SHALL validate bounded and deterministic execution window between `[[AYKEN_SYSCALL_ENTER]]` and `[[AYKEN_BOUNDARY_KILL]]`
+
+### Correctness Property 13: Fail-Closed Kernel Enforcement
+
+**Type:** Error Condition + Invariant
+**Description:** Forbidden syscalls from BCIB-role processes result in kernel-level termination with no execution continuation.
+**Test:** Generate BCIB-role process attempting forbidden syscall (e.g., `SYS_V2_SUBMIT_EXECUTION`). Verify QEMU kernel trace shows: (1) `BCIB_FORBIDDEN_BEFORE` marker with process_id, (2) `[[AYKEN_SYSCALL_ENTER]]` marker with same process_id, (3) exactly ONE `[[AYKEN_BOUNDARY_KILL]]` marker with same process_id, (4) bounded execution window between ENTER and KILL, (5) NO `BCIB_FORBIDDEN_AFTER`, (6) NO `[[AYKEN_SYSCALL_EXIT]]`, (7) NO `[[AYKEN_SCHED_RESUME]]`, (8) NO further logs from same process.
+
+### Negative Guarantees (Critical)
+
+The following markers MUST NOT appear after `[[AYKEN_BOUNDARY_KILL]]`:
+- `BCIB_FORBIDDEN_AFTER` - indicates execution continued after forbidden attempt
+- `[[AYKEN_SYSCALL_EXIT]]` - indicates syscall returned instead of terminating
+- `[[AYKEN_SCHED_RESUME]]` - indicates process was rescheduled
+- Any printf, debug marker, or syscall from the same process - indicates incomplete termination
+
+### Process Identity Guarantee (Critical)
+
+All markers in the canonical flow MUST belong to the same process:
+- `BCIB_FORBIDDEN_BEFORE` must include process_id
+- `[[AYKEN_SYSCALL_ENTER]]` must have same process_id
+- `[[AYKEN_BOUNDARY_KILL]]` must have same process_id
+- Any marker from different process_id invalidates the proof
+- Prevents exploit: Process A killed, Process B logs, gate incorrectly passes
+
+### Single Kill Guarantee (Critical)
+
+Exactly ONE `[[AYKEN_BOUNDARY_KILL]]` marker must be present:
+- Zero kills = enforcement failed, violation not terminated
+- Multiple kills = unstable system, double execution, or race condition
+- Both cases must FAIL the gate
+
+### Bounded Execution Window (Critical)
+
+The execution window between `[[AYKEN_SYSCALL_ENTER]]` and `[[AYKEN_BOUNDARY_KILL]]` must be:
+- Bounded: Limited number of log lines or time delta (e.g., < 10 lines, < 100ms)
+- Deterministic: Same violation produces same window size across runs
+- Unbounded window indicates system hang or delayed enforcement
+- Non-deterministic window indicates race condition or timing issue
+
+### Fail-Closed Definition
+
+Fail-closed enforcement means:
+- Irreversible termination - process cannot be resumed
+- No continuation path - no code executes after kill marker
+- No recovery mechanism - system does not attempt to fix or retry
+- Deterministic outcome - same violation always produces same termination
+
+### Host vs Kernel Evidence Distinction
+
+**Host-level tests** (userspace unit tests, harness tests):
+- Prove host harness behavior only
+- Validate API contracts and error returns
+- Test code logic and data structures
+- DO NOT prove kernel boundary enforcement
+- DO NOT prove syscall trap behavior
+- DO NOT prove scheduler termination
+
+**Kernel-level evidence** (QEMU kernel trace):
+- Proves actual kernel trap path execution
+- Validates syscall dispatcher behavior
+- Confirms scheduler termination
+- Shows real boundary enforcement
+- Provides authoritative security proof
+
+### CI Gate: ci-gate-fail-closed-proof
+
+**Purpose:** Validate fail-closed enforcement with kernel-level evidence
+
+**Input:** QEMU kernel trace log from boundary violation test
+
+**Validation Steps:**
+1. Verify marker sequence: `BCIB_FORBIDDEN_BEFORE` → `[[AYKEN_SYSCALL_ENTER]]` → `[[AYKEN_BOUNDARY_KILL]]`
+2. Scan for forbidden continuation markers after kill
+3. Verify no logs from same process after kill
+4. Confirm deterministic error code in kernel trace
+
+**Pass Criteria:**
+- All required markers present in correct order
+- Zero continuation markers after kill
+- Kernel trace shows process removal from scheduler
+- Execution slot cleared and not reused
+
+**Fail Criteria:**
+- Missing required markers
+- Continuation markers present after kill
+- Process logs appear after kill marker
+- Non-deterministic or missing error code
 
 ## Final Invariant
 
@@ -373,4 +516,5 @@ BCIB = sandboxed execution (Ring3, bounded memory, capability-controlled)
 ABDF = immutable data (handle-only, snapshot-consistent, mutation-controlled)
 Runtime_Bridge = sole interface (capability-enforced, auditable, fail-closed)
 Boundary = strictly enforced (no bypass, no escape, deterministic termination)
+Proof = kernel-level evidence (QEMU trace, marker flow, negative guarantees)
 ```

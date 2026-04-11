@@ -25,7 +25,6 @@
 ///   side-channels (Requirement 21.1).
 ///
 /// Requirements: 5.1, 5.2, 5.3, 14.1, 14.2, 14.3, 14.5, 21.1
-
 use crate::types::{BcibError, CapabilityTokenId, ExecutionContextId};
 
 // ---------------------------------------------------------------------------

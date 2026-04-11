@@ -1570,6 +1570,9 @@ static proc_t *proc_alloc(proc_type_t type, const char *name)
     p->pid = proc_alloc_pid();
     p->type = type;
     p->state = PROC_READY;
+    p->execution_role = (type == PROC_TYPE_USER)
+        ? PROC_EXECUTION_ROLE_USER
+        : PROC_EXECUTION_ROLE_KERNEL;
     p->name = name;
     // PML4 will be set by caller (proc_create_user_process or proc_create_kernel_process)
     p->pml4_phys = 0;  // Initialize to 0, will be set by caller

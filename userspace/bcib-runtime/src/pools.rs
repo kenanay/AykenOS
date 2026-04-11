@@ -15,7 +15,6 @@
 /// Cross-context transfer is only permitted through `CapabilityManager::transfer()`.
 /// There is no automatic inheritance path — sub-contexts cannot inherit parent
 /// capabilities without explicit transfer (Requirements 14.6, 15.4).
-
 use crate::capability_manager::CapabilityManager;
 use crate::types::{BcibError, CapabilityTokenId, ExecutionContextId};
 
@@ -133,7 +132,10 @@ pub struct ExecutionSlot {
 
 impl ExecutionSlot {
     pub fn new(slot_id: u32) -> Self {
-        Self { slot_id, data: Vec::new() }
+        Self {
+            slot_id,
+            data: Vec::new(),
+        }
     }
 }
 
@@ -171,9 +173,7 @@ impl IsolatedSlotSpace {
     /// Create a new slot space owned by `owner_id` with `capacity` slots.
     pub fn new(owner_id: ExecutionContextId, capacity: usize) -> Self {
         // Pre-populate the pool with `capacity` slots.
-        let items: Vec<ExecutionSlot> = (0..capacity as u32)
-            .map(ExecutionSlot::new)
-            .collect();
+        let items: Vec<ExecutionSlot> = (0..capacity as u32).map(ExecutionSlot::new).collect();
         Self {
             owner: owner_id,
             pool: BoundedPool::from_items(items),
@@ -192,7 +192,11 @@ impl IsolatedSlotSpace {
     /// Release a slot on behalf of `ctx_id`.
     ///
     /// Returns `BCIB_ERR_ISOLATION_VIOLATION` if `ctx_id != owner`.
-    pub fn release(&mut self, ctx_id: ExecutionContextId, slot: ExecutionSlot) -> Result<(), BcibError> {
+    pub fn release(
+        &mut self,
+        ctx_id: ExecutionContextId,
+        slot: ExecutionSlot,
+    ) -> Result<(), BcibError> {
         self.check_owner(ctx_id)?;
         self.pool.release(slot);
         Ok(())
@@ -206,9 +210,7 @@ impl IsolatedSlotSpace {
         self.check_owner(ctx_id)?;
         // Reconstruct the pool at full capacity — all slots are considered returned.
         let capacity = self.pool.capacity();
-        let items: Vec<ExecutionSlot> = (0..capacity as u32)
-            .map(ExecutionSlot::new)
-            .collect();
+        let items: Vec<ExecutionSlot> = (0..capacity as u32).map(ExecutionSlot::new).collect();
         self.pool = BoundedPool::from_items(items);
         Ok(())
     }
@@ -433,7 +435,11 @@ mod tests {
         let mut pool: BoundedPool<u32> = BoundedPool::from_items(vec![1]);
         // Release an extra item — pool must not exceed capacity.
         pool.release(99);
-        assert_eq!(pool.available_count(), 1, "pool must not grow beyond capacity");
+        assert_eq!(
+            pool.available_count(),
+            1,
+            "pool must not grow beyond capacity"
+        );
     }
 
     #[test]
@@ -506,7 +512,9 @@ mod tests {
         let _s2 = space.acquire(1).unwrap();
         assert_eq!(space.available_count(), 1);
 
-        space.release_all(1).expect("release_all should succeed for owner");
+        space
+            .release_all(1)
+            .expect("release_all should succeed for owner");
         assert_eq!(space.available_count(), 3);
     }
 
@@ -634,14 +642,20 @@ mod tests {
     fn transfer_slot_with_valid_capability_succeeds() {
         let mut mgr = CapabilityManager::new(8);
         // Bind a CrossContextTransfer token to ctx 1.
-        let token_id = mgr.bind(CapabilityResource::CrossContextTransfer, 1).unwrap();
+        let token_id = mgr
+            .bind(CapabilityResource::CrossContextTransfer, 1)
+            .unwrap();
 
         let mut space = IsolatedSlotSpace::new(1, 4);
         // Transfer ownership from ctx 1 to ctx 2 using the capability token.
-        space.transfer_slot(&mut mgr, token_id, 1, 2).expect("valid transfer must succeed");
+        space
+            .transfer_slot(&mut mgr, token_id, 1, 2)
+            .expect("valid transfer must succeed");
 
         // ctx 2 is now the owner — it can acquire slots.
-        space.acquire(2).expect("new owner ctx 2 should be able to acquire");
+        space
+            .acquire(2)
+            .expect("new owner ctx 2 should be able to acquire");
         // ctx 1 can no longer access the space.
         let result = space.acquire(1);
         assert!(
@@ -655,13 +669,19 @@ mod tests {
     #[test]
     fn transfer_handle_with_valid_capability_succeeds() {
         let mut mgr = CapabilityManager::new(8);
-        let token_id = mgr.bind(CapabilityResource::CrossContextTransfer, 1).unwrap();
+        let token_id = mgr
+            .bind(CapabilityResource::CrossContextTransfer, 1)
+            .unwrap();
 
         let mut space = IsolatedHandleSpace::new(1, 4);
-        space.transfer_handle(&mut mgr, token_id, 1, 2).expect("valid transfer must succeed");
+        space
+            .transfer_handle(&mut mgr, token_id, 1, 2)
+            .expect("valid transfer must succeed");
 
         // ctx 2 is now the owner.
-        space.acquire(2, 100).expect("new owner ctx 2 should be able to register handle");
+        space
+            .acquire(2, 100)
+            .expect("new owner ctx 2 should be able to register handle");
         // ctx 1 can no longer access the space.
         let result = space.acquire(1, 200);
         assert!(
@@ -678,7 +698,9 @@ mod tests {
     fn automatic_inheritance_attempt_is_rejected() {
         let mut mgr = CapabilityManager::new(8);
         // Bind a token to ctx 1 (parent).
-        let token_id = mgr.bind(CapabilityResource::CrossContextTransfer, 1).unwrap();
+        let token_id = mgr
+            .bind(CapabilityResource::CrossContextTransfer, 1)
+            .unwrap();
 
         let mut space = IsolatedSlotSpace::new(1, 4);
         // ctx 2 (child) tries to transfer using ctx 1's token without owning it.

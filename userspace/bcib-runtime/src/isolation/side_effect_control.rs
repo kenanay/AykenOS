@@ -6,8 +6,7 @@
 ///
 /// This is a placeholder implementation for Task 1. Full implementation will be
 /// completed in subsequent tasks.
-
-use crate::types::{SideEffectClass, ExecutionContextId};
+use crate::types::{ExecutionContextId, SideEffectClass};
 
 /// Side-effect declaration before execution
 #[derive(Debug, Clone)]
@@ -38,14 +37,16 @@ impl SideEffectOrdering {
             declarations: Vec::new(),
         }
     }
-    
+
     /// Declare side-effects before execution
     pub fn declare_side_effects(&mut self, declarations: Vec<SideEffectDeclaration>) {
         self.declarations = declarations;
     }
-    
+
     /// Check if side-effect is declared
     pub fn is_declared(&self, opcode: u8, class: SideEffectClass) -> bool {
-        self.declarations.iter().any(|d| d.opcode == opcode && d.class == class)
+        self.declarations
+            .iter()
+            .any(|d| d.opcode == opcode && d.class == class)
     }
 }

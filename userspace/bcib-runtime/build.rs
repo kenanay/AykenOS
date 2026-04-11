@@ -7,7 +7,6 @@
 ///
 /// Requirements: 12.3, 12.4 — golden fixtures must be defined and validated
 /// in CI; fixture mismatch must cause CI FAIL.
-
 use std::fs;
 use std::path::Path;
 
@@ -17,12 +16,20 @@ fn main() {
 
     // Generate each fixture
     write_fixture(fixtures_dir, "nop_end.bcib", &build_nop_end());
-    write_fixture(fixtures_dir, "data_create_query.bcib", &build_data_create_query());
+    write_fixture(
+        fixtures_dir,
+        "data_create_query.bcib",
+        &build_data_create_query(),
+    );
     write_fixture(fixtures_dir, "data_add.bcib", &build_data_add());
     write_fixture(fixtures_dir, "ui_render.bcib", &build_ui_render());
     write_fixture(fixtures_dir, "ai_ask.bcib", &build_ai_ask());
     write_fixture(fixtures_dir, "invalid_magic.bcib", &build_invalid_magic());
-    write_fixture(fixtures_dir, "unsupported_version.bcib", &build_unsupported_version());
+    write_fixture(
+        fixtures_dir,
+        "unsupported_version.bcib",
+        &build_unsupported_version(),
+    );
 
     // Tell Cargo to re-run this script only if it changes
     println!("cargo:rerun-if-changed=build.rs");
@@ -30,8 +37,7 @@ fn main() {
 
 fn write_fixture(dir: &Path, name: &str, data: &[u8]) {
     let path = dir.join(name);
-    fs::write(&path, data)
-        .unwrap_or_else(|e| panic!("failed to write fixture {}: {}", name, e));
+    fs::write(&path, data).unwrap_or_else(|e| panic!("failed to write fixture {}: {}", name, e));
 }
 
 // ---------------------------------------------------------------------------
@@ -66,17 +72,17 @@ fn build_bcib(version: u16, instr_bytes: &[u8]) -> Vec<u8> {
     let mut buf = Vec::with_capacity(HEADER_SIZE + SECTION_ENTRY_SIZE + instr_len);
 
     // --- Header (16 bytes) ---
-    buf.extend_from_slice(b"BCIB");                          // magic [0..4]
-    buf.extend_from_slice(&version.to_le_bytes());           // version [4..6]
-    buf.extend_from_slice(&0u16.to_le_bytes());              // flags [6..8]
-    buf.extend_from_slice(&1u16.to_le_bytes());              // section_count=1 [8..10]
-    buf.extend_from_slice(&[0u8; 4]);                        // reserved [10..14]
-    buf.extend_from_slice(&[0u8; 2]);                        // tail bytes [14..16]
+    buf.extend_from_slice(b"BCIB"); // magic [0..4]
+    buf.extend_from_slice(&version.to_le_bytes()); // version [4..6]
+    buf.extend_from_slice(&0u16.to_le_bytes()); // flags [6..8]
+    buf.extend_from_slice(&1u16.to_le_bytes()); // section_count=1 [8..10]
+    buf.extend_from_slice(&[0u8; 4]); // reserved [10..14]
+    buf.extend_from_slice(&[0u8; 2]); // tail bytes [14..16]
 
     // --- Section table entry (8 bytes) ---
     buf.extend_from_slice(&SECTION_INSTRUCTIONS.to_le_bytes()); // section_id [16..18]
-    buf.extend_from_slice(&instr_offset.to_le_bytes());          // offset [18..22]
-    buf.extend_from_slice(&(instr_len as u16).to_le_bytes());    // length [22..24]
+    buf.extend_from_slice(&instr_offset.to_le_bytes()); // offset [18..22]
+    buf.extend_from_slice(&(instr_len as u16).to_le_bytes()); // length [22..24]
 
     // --- Instruction data ---
     buf.extend_from_slice(instr_bytes);

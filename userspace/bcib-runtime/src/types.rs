@@ -4,7 +4,6 @@
 /// All three layers (verifier_planner, execution_runtime, scheduler_bridge)
 /// communicate exclusively through these types — no cross-layer implementation
 /// dependencies are permitted.
-
 use std::fmt;
 
 // ---------------------------------------------------------------------------
@@ -46,11 +45,15 @@ impl fmt::Display for BcibError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BcibError::InvalidGraph(m) => write!(f, "BCIB_ERR_INVALID_GRAPH: {}", m),
-            BcibError::ControlFlowViolation(m) => write!(f, "BCIB_ERR_CONTROL_FLOW_VIOLATION: {}", m),
+            BcibError::ControlFlowViolation(m) => {
+                write!(f, "BCIB_ERR_CONTROL_FLOW_VIOLATION: {}", m)
+            }
             BcibError::CapabilityDenied(m) => write!(f, "BCIB_ERR_CAPABILITY_DENIED: {}", m),
             BcibError::BoundsViolation(m) => write!(f, "BCIB_ERR_BOUNDS_VIOLATION: {}", m),
             BcibError::UnsupportedVersion(m) => write!(f, "BCIB_ERR_UNSUPPORTED_VERSION: {}", m),
-            BcibError::IllegalStateTransition(m) => write!(f, "BCIB_ERR_ILLEGAL_STATE_TRANSITION: {}", m),
+            BcibError::IllegalStateTransition(m) => {
+                write!(f, "BCIB_ERR_ILLEGAL_STATE_TRANSITION: {}", m)
+            }
             BcibError::AbdfAccessDenied(m) => write!(f, "BCIB_ERR_ABDF_ACCESS_DENIED: {}", m),
             BcibError::AbdfHandleRevoked(m) => write!(f, "BCIB_ERR_ABDF_HANDLE_REVOKED: {}", m),
             BcibError::IsolationViolation(m) => write!(f, "BCIB_ERR_ISOLATION_VIOLATION: {}", m),
@@ -177,7 +180,10 @@ pub struct ExecutionPlan {
 impl ExecutionPlan {
     /// Construct a new plan. Only `BcibVerifierPlanner` should call this.
     pub(crate) fn new(instructions: Vec<BcibInstruction>, version: u16) -> Self {
-        Self { instructions, version }
+        Self {
+            instructions,
+            version,
+        }
     }
 
     /// Read-only view of the planned instructions.
@@ -291,7 +297,11 @@ pub struct CostBudget {
 
 impl CostBudget {
     pub fn new(total: CostUnit, external_budget: CostUnit) -> Self {
-        Self { total, remaining: total, external_budget }
+        Self {
+            total,
+            remaining: total,
+            external_budget,
+        }
     }
 }
 

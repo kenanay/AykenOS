@@ -6,6 +6,23 @@ This implementation plan converts the Phase-16 design into discrete coding tasks
 
 **CRITICAL DEPENDENCY:** Execution closure is a PRODUCTION BLOCKER, not an IMPLEMENTATION BLOCKER. Isolation infrastructure MAY be implemented before closure completion, but production deployment is FORBIDDEN until execution closure is completed with kernel-level evidence.
 
+## Production Closure Rule (GLOBAL - MANDATORY)
+
+**NO TASK** that claims kernel-boundary enforcement, isolation, or fail-closed behavior may be marked COMPLETE without `ci-gate-fail-closed-proof` PASS.
+
+**Affected Tasks:** Task 3 (execution entry), Task 5 (Runtime_Bridge syscall path), Task 6 (sandbox), Task 10 (fail-closed enforcement)
+
+**Evidence Requirement:**
+- Host tests, harness tests, or emulated validation are NOT sufficient for production closure
+- QEMU kernel trace with canonical marker flow is MANDATORY
+- Negative guarantees must be validated (no continuation after kill)
+- Hard stop must be proven (scheduler removal, no process logs after kill)
+
+**Closure Validation:**
+- `ci-gate-fail-closed-proof` must PASS before any kernel-boundary task is marked complete
+- Missing QEMU evidence = task remains INCOMPLETE regardless of host test status
+- Continuation markers after kill = task FAILS closure validation
+
 **Key Implementation Principles:**
 - Phase-15 compatibility: BCIB core semantics remain unchanged
 - Fail-closed enforcement: All violations result in deterministic termination
@@ -76,6 +93,11 @@ All violations must:
   - Enforcement Level: Kernel-level authoritative
   - Userspace validation is not sufficient for execution entry enforcement
   - Validation must occur at syscall dispatch / kernel execution-slot boundary before context, slot, memory, or handle allocation
+  - **PRODUCTION CLOSURE REQUIREMENT:**
+    - Task 3 CANNOT be marked complete without `ci-gate-fail-closed-proof` PASS
+    - QEMU kernel trace must prove invalid entry rejection with no context/slot/memory/handle allocation
+    - Host tests alone DO NOT satisfy production closure
+    - Valid dispatcher path AND invalid entry path must both produce deterministic QEMU/kernel audit evidence
   - Forbidden Implementation:
     - String-based syscall validation
     - Pattern-based entry filtering such as `test_`, `debug_`, or `internal_`
@@ -90,9 +112,12 @@ All violations must:
     - Invalid entry must not create an execution context
     - Invalid entry must not allocate an execution slot or result mapping
     - Invalid entry must return a deterministic error code
+    - `[[AYKEN_BOUNDARY_KILL]]` must be emitted BEFORE scheduler removal
   - Evidence Required:
     - QEMU/kernel trace: invalid entry attempt is rejected
     - QEMU/kernel trace: no context or slot allocation occurs after invalid entry
+    - QEMU/kernel trace: canonical marker flow (FORBIDDEN_BEFORE → SYSCALL_ENTER → BOUNDARY_KILL)
+    - QEMU/kernel trace: negative guarantees validated (no continuation markers after kill)
   - Closure Status: ARCHITECTURALLY CORRECTED; KERNEL-ENTRY MODEL INTRODUCED; SECURITY BEHAVIOR PARTIALLY VERIFIED; FINAL TEST HARNESS / CODEBASE CLOSURE PENDING
   - Host Closure Evidence:
     - `execution_entry_integration_test` passes without abnormal harness exit
@@ -106,6 +131,7 @@ All violations must:
     - Legacy string/pattern/call-stack validation must be removed from the production authority path or explicitly isolated as test-only/non-authoritative
     - Task 3 security-relevant warnings must be resolved before production closure, including `static_mut_refs` and transitional unused imports/dead code
     - Valid dispatcher path and invalid entry path must both produce deterministic QEMU/kernel audit/proof evidence
+    - **`ci-gate-fail-closed-proof` must PASS before Task 3 can be marked complete**
   - _Requirements: 1.3, 1.4_
 
 - [x] 4. Implement ABDF Handle Management System
@@ -147,41 +173,68 @@ All violations must:
     - **Property 7: Handle Revocation**
     - **Validates: Requirements 9.7**
 
-- [x] 5. Implement Runtime_Bridge core interface and lifecycle
-  - Closure Status: SYSCALL ADAPTER LANDED; KERNEL INTEGRATION PENDING
-  - Implementation Evidence:
-    - Runtime_Bridge now uses SyscallAdapter for kernel interaction path
-    - execute_device_operation() calls sys_v2_device_operation() (placeholder)
-    - execute_external_call() calls sys_v2_external_call() (placeholder)
-    - Fake vec![] returns moved from Runtime_Bridge to SyscallAdapter
-    - `cargo test --lib` for `bcib-runtime` passes with 425 tests
-  - Syscall Adapter Status:
-    - SyscallAdapter layer created (userspace/bcib-runtime/src/syscall_adapter.rs)
-    - Runtime_Bridge → SyscallAdapter call path established
-    - Syscall adapter contains PLACEHOLDER implementations (TODO markers)
-    - New syscalls defined: SYS_V2_DEVICE_OPERATION (1010), SYS_V2_EXTERNAL_CALL (1011), SYS_V2_ABDF_OPERATION (1012)
-  - Architectural Achievement:
-    - Runtime_Bridge NEVER calls kernel APIs directly (Requirement 3.4 enforced)
-    - Syscall-only call path established
-    - Single point of kernel integration created
-    - Correct architectural boundary preserved
-  - Production Blockers:
-    - SyscallAdapter syscalls are PLACEHOLDER (return dummy data)
-    - Kernel syscall handlers NOT implemented (syscall_v2_hardened.c)
-    - No real syscall ABI invocation
-    - No QEMU/kernel evidence
-    - static_mut_refs warnings remain in fail_closed.rs
-    - unused field/import warnings in ExecutionSandbox, BoundaryEnforcer
-  - Next Steps (REQUIRED for production):
-    - Implement kernel syscall handlers in syscall_v2_hardened.c
-    - Replace placeholder syscall implementations with real syscall ABI invocations
-    - Device operation handler (SYS_V2_DEVICE_OPERATION)
-    - External call handler (SYS_V2_EXTERNAL_CALL)
-    - ABDF operation handler (SYS_V2_ABDF_OPERATION)
-    - Generate QEMU/kernel evidence for syscall path
-    - Resolve static_mut_refs and unused warnings
-  - Current Level: Userspace mediation layer complete; kernel closure pending
-  - Enforcement Level: Kernel boundary remains authoritative
+- [-] 5. Implement Runtime_Bridge core interface and lifecycle
+  - Closure Status: REAL TRAP PATH WIRED; QEMU PROOF INFRASTRUCTURE READY; RUNTIME_BRIDGE PRODUCTION CLOSURE PENDING
+  - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
+    - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
+    - Build script: `scripts/build-runtime-bridge-tests.sh`
+    - QEMU harness: `scripts/qemu-runtime-bridge-proof-harness.sh`
+    - Evidence directory: `evidence/runtime-bridge-proof/`
+    - Allowed path test: Proves 1012/1013/1014 syscalls succeed with Runtime_Bridge role
+    - Forbidden path test: Proves 1003 syscall triggers fail-closed termination
+    - Next step: Run harness, generate traces, validate with `ci-gate-fail-closed-proof`
+  - **PRODUCTION CLOSURE REQUIREMENT:**
+    - Runtime_Bridge syscall path is NOT considered complete without QEMU kernel trace evidence
+    - Task 5 CANNOT be marked complete without `ci-gate-fail-closed-proof` PASS
+    - Host syscall adapter tests prove argument marshalling only, NOT kernel subsystem integration
+    - QEMU trace must prove Runtime_Bridge allowed syscalls (1012/1013/1014) reach hardened dispatcher
+    - QEMU trace must prove Runtime_Bridge forbidden syscall (SYS_V2_SUBMIT_EXECUTION) is denied/terminated on real trap path
+  - Syscall Interface Status:
+    - Syscall numbers defined: SYS_V2_DEVICE_OPERATION (12), SYS_V2_EXTERNAL_CALL (13), SYS_V2_ABDF_OPERATION (14)
+    - Call path direction: Runtime_Bridge → SyscallAdapter → syscall4() → INT 0x80 → hardened kernel dispatcher
+    - Architecture correct: Runtime_Bridge NEVER calls kernel APIs directly ✓
+    - x86_64 syscall path now uses the AykenOS INT 0x80 gate instead of fake success ✓
+    - Non-x86_64 non-test builds fail closed with ENOSYS instead of pretending success ✓
+  - CRITICAL GAPS (BLOCKING PRODUCTION):
+    - **QEMU canonical closure still fails**: `phase_4_4_syscall_roundtrip_audit.sh` reaches syscall enter/return but not `[U][SYSCALL_OK]`
+    - **Runtime_Bridge syscalls lack QEMU proof**: 1012/1013/1014 are wired, but no Ring3 Runtime_Bridge-role trace proves handler activation
+    - **Kernel handlers are STUBS**: Mock data (0xDEADBEEF, fake ABDF), not real DevFS/ABDF
+    - **Runtime_Bridge process role assignment is not production-complete**: default process roles are fixed, but bridge-specific Ring3 role launch evidence is missing
+    - **Host tests are not production evidence**: syscall adapter tests prove argument marshalling only, not kernel subsystem integration
+  - What EXISTS (Architectural Skeleton):
+    - SyscallAdapter layer structure (userspace/bcib-runtime/src/syscall_adapter.rs)
+    - Kernel handler stubs (kernel/sys/syscall_v2.c: sys_v2_device_operation, sys_v2_external_call, sys_v2_abdf_operation)
+    - Hardened dispatcher integration (kernel/sys/syscall_v2_hardened.c)
+    - Correct call direction (no direct kernel API calls)
+    - ABI/range alignment across shared ABI, kernel wrappers, hardened dispatcher, and enforcement matrix
+    - Process execution_role defaults: user processes start as PROC_EXECUTION_ROLE_USER; kernel processes start as PROC_EXECUTION_ROLE_KERNEL
+  - What is MISSING (Execution Reality):
+    - Runtime_Bridge-role Ring3 process path that exercises SYS_V2_DEVICE_OPERATION / SYS_V2_EXTERNAL_CALL / SYS_V2_ABDF_OPERATION in QEMU
+    - Real DevFS integration in handlers
+    - Real ABDF substrate integration in handlers
+    - Canonical syscall audit completion marker after hardened enforcement
+    - End-to-end kernel trace proving Runtime_Bridge allowed syscalls and forbidden SUBMIT_EXECUTION denial on the real trap path
+  - Evidence (2026-04-11):
+    - Host: `cargo test --manifest-path userspace/bcib-runtime/Cargo.toml --lib` → 426 passed, 0 failed; 8 warnings remain
+    - Kernel build: `make all` → PASS
+    - EFI image refresh: `make efi-img` → PASS
+    - QEMU: `phase_4_4_syscall_roundtrip_audit.sh --out-dir out/reports/task5_syscall_roundtrip_2026-04-11-realimg` → FAIL; debugcon shows `[[AYKEN_SYSCALL_ENTER]]`, `[[AYKEN_SYSCALL_RETURN]]`, `P10_CAP_ENFORCED`; serial shows `[ENFORCEMENT] Enforcement matrix validation passed`; canonical `[U][SYSCALL_OK]` absent
+  - Production Blockers (MUST COMPLETE):
+    1. ✅ QEMU proof infrastructure created (test binaries, harness, evidence directory)
+    2. ⏳ Run QEMU harness to generate allowed/forbidden traces
+    3. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
+    4. ⏳ Validate allowed trace shows syscalls reach handlers and return
+    5. ⏳ Integrate real DevFS in device operation handler
+    6. ⏳ Integrate real ABDF substrate in ABDF operation handler
+    7. ⏳ Restore canonical syscall audit completion or replace with Task-5-specific QEMU audit
+    8. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
+    9. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
+  - Task 6 Entry Gate:
+    - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
+    - Do not treat host-only syscall adapter tests as kernel-boundary evidence
+    - Do not treat kernel handler stubs or mock data as DevFS/ABDF integration
+  - Current Level: Architecture correct; real trap wired; Runtime_Bridge production closure pending
+  - Enforcement Level: Hardened dispatcher initializes on QEMU, but Runtime_Bridge-specific enforcement is not yet proven end-to-end
   - Runtime_Bridge is not an authority layer
   - Runtime_Bridge operates strictly as a controlled mediation layer inside an `Execution_Context`
   - Critical Role Definition:
@@ -216,37 +269,52 @@ All violations must:
     - Test: Runtime_Bridge attempting `SYS_V2_SUBMIT_EXECUTION` -> FAIL
     - Test: Runtime_Bridge without required capability -> FAIL
     - Kernel trace must show no unauthorized syscall path
-  - [x] 5.1 Create Runtime_Bridge struct and capability validation
+  - [ ] 5.1 Create Runtime_Bridge struct and capability validation
+    - Current Status: STRUCTURE PRESENT; CAPABILITY ENFORCEMENT NOT PRODUCTION-CLOSED
+    - Host skeleton exists, but capability token validation must be proven on the real syscall path
+    - Placeholder success or unused capability tokens do not satisfy this task
     - Implement `RuntimeBridge` with capability-enforced operations
     - Create capability token validation and scope checking
     - Implement side-effect intent processing and execution
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12_
   
-  - [x] 5.2 Implement Runtime_Bridge lifecycle management
+  - [ ] 5.2 Implement Runtime_Bridge lifecycle management
+    - Current Status: STRUCTURE PRESENT; CONTEXT-SCOPED AUTHORITY NOT PRODUCTION-CLOSED
+    - Bridge lifecycle must be bound to real `Execution_Context` authority, not only host-side fields
     - Create bridge creation and binding to Execution_Context
     - Implement bridge teardown and cleanup mechanisms
     - Ensure bridge cannot outlive its execution context
     - Create context-scoped bridge isolation
     - _Requirements: 3.1, 13.5, 13.6_
   
-  - [x] 5.3 Implement ABDF mutation interface through Runtime_Bridge
+  - [ ] 5.3 Implement ABDF mutation interface through Runtime_Bridge
+    - Current Status: INTERFACE SHAPE PRESENT; REAL ABDF SUBSTRATE INTEGRATION MISSING
+    - Mock ABDF data or placeholder success does not satisfy mutation enforcement
     - Create controlled ABDF write path producing new objects or append-only extensions
     - Implement mutation capability validation and enforcement
     - Ensure all mutations preserve previous state and return new handles
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10_
   
-  - [x] 5.4 Write property test for capability scope invariant
+  - [ ] 5.4 Write property test for capability scope invariant
+    - Current Status: HOST TESTS MAY EXIST; REAL KERNEL-PATH CAPABILITY ENFORCEMENT TEST MISSING
+    - Tests that only assert fake syscall success are not sufficient
     - **Property 3: Capability Scope Invariant**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9**
   
-  - [x] 5.5 Write property test for mutation path enforcement
+  - [ ] 5.5 Write property test for mutation path enforcement
+    - Current Status: HOST TESTS MAY EXIST; REAL ABDF/KERNEL MUTATION PATH TEST MISSING
+    - Tests must prove rejection/commit behavior through the real syscall and ABDF path
     - **Property 9: Mutation Path Enforcement**
     - **Validates: Requirements 8.1, 8.2, 8.10**
 
-- [-] 6. Implement BCIB Execution Sandbox
+- [ ] 6. Implement BCIB Execution Sandbox
   - Enforcement Level: Authoritative sandbox/resource boundaries
   - Userspace checks alone are not sufficient for memory, context, or kernel-boundary claims
   - Kernel/MMU/syscall boundaries remain the source of truth where execution crosses into system resources
+  - **PRODUCTION CLOSURE REQUIREMENT:**
+    - Task 6 CANNOT be marked complete without `ci-gate-fail-closed-proof` PASS
+    - QEMU/runtime evidence must show no continued execution after sandbox violation
+    - Kernel-boundary claims require QEMU kernel trace evidence
   - Critical Role Definition:
     - Execution_Sandbox shall restrict BCIB execution to approved bounded memory regions
     - Execution_Sandbox shall prevent direct kernel memory visibility
@@ -389,6 +457,11 @@ All violations must:
   - Enforcement Level: Authoritative fail-closed enforcement
   - Userspace-only failure handling is not sufficient
   - Termination behavior must be enforced at the authoritative runtime / kernel boundary
+  - **PRODUCTION CLOSURE REQUIREMENT:**
+    - Task 10 CANNOT be marked complete without `ci-gate-fail-closed-proof` PASS
+    - QEMU/runtime evidence must show no continued execution after fail-closed trigger
+    - Kernel-level termination claims require QEMU kernel trace with canonical marker flow
+    - `[[AYKEN_BOUNDARY_KILL]]` must be emitted BEFORE scheduler removal
   - Critical Role Definition:
     - Fail-closed enforcement shall immediately stop execution on any isolation, boundary, capability, or memory violation
     - Fail-closed enforcement shall prevent partial state commits
@@ -466,13 +539,76 @@ All violations must:
     - **ci-gate-determinism**: Input=execution_traces.log, Output=determinism_evidence.json, Failure=NONDETERMINISM_DETECTED
     - **ci-gate-capability-enforcement**: Input=capability_tests.log, Output=capability_evidence.json, Failure=CAPABILITY_BYPASS_DETECTED
     - **ci-gate-fail-closed**: Input=violation_tests.log, Output=failclosed_evidence.json, Failure=FAIL_OPEN_DETECTED
+    - **ci-gate-fail-closed-proof**: Input=qemu_kernel_trace.log, Output=failclosed_proof_evidence.json, Failure=FAIL_CLOSED_PROOF_INVALID
   
-  - [ ] 11.2 Integrate CI gates with existing freeze chain
+  - [x] 11.2 Implement kernel-level fail-closed proof validation
+    - **Status**: IMPLEMENTED; GATE FOUNDATION READY; PRODUCTION HARDENING PENDING
+    - **Implementation**: Orchestration-only bash gate + authoritative Python validator with standardized failure codes
+    - **Documentation**: `docs/ci-gates/fail-closed-proof-validation.md`, `docs/ci-gates/IMPLEMENTATION_SUMMARY.md`, `docs/ci-gates/FAIL_CLOSED_PROOF_HARDENING_CHECKLIST.md`
+    - **Hardening Required Before Production**:
+      - Multi-run/multi-sequence correlation (prevent false positives from mixed traces)
+      - Real determinism validation (multiple runs with bounded variance)
+      - Positive scheduler removal marker (not just negative "no logs after")
+      - Golden + adversarial trace test suite
+      - Real QEMU closure on Tasks 3, 5, 6, 10
+    - Enforcement Level: Kernel-level authoritative evidence required
+    - Host-only tests DO NOT satisfy this requirement
+    - Emulated or harness tests DO NOT satisfy this requirement
+    - QEMU kernel trace is the sole authoritative evidence
+    - Critical Requirements:
+      - Canonical marker flow: BCIB_FORBIDDEN_BEFORE → [[AYKEN_SYSCALL_ENTER]] → [[AYKEN_BOUNDARY_KILL]]
+      - Negative guarantees: NO BCIB_FORBIDDEN_AFTER, NO [[AYKEN_SYSCALL_EXIT]], NO [[AYKEN_SCHED_RESUME]] after kill
+      - Hard stop guarantee: No logs from same process after kill marker
+      - Deterministic error code in kernel trace
+      - **Process identity verification**: All markers (BEFORE, ENTER, KILL) must belong to the SAME process_id
+      - **Single kill guarantee**: Exactly ONE [[AYKEN_BOUNDARY_KILL]] marker must be present (zero = FAIL, multiple = FAIL)
+      - **Bounded execution window**: Distance between [[AYKEN_SYSCALL_ENTER]] and [[AYKEN_BOUNDARY_KILL]] must be bounded and deterministic
+    - Process Identity Validation:
+      - Extract process_id from BCIB_FORBIDDEN_BEFORE marker
+      - Verify [[AYKEN_SYSCALL_ENTER]] has same process_id
+      - Verify [[AYKEN_BOUNDARY_KILL]] has same process_id
+      - Any marker from different process_id invalidates the proof
+      - Prevents exploit: Process A killed, Process B logs, gate incorrectly passes
+    - Multiple Kill Detection:
+      - Scan entire trace for [[AYKEN_BOUNDARY_KILL]] markers
+      - Count must be exactly 1
+      - Zero kills = enforcement failed
+      - Multiple kills = unstable system / double execution / race condition
+      - Both cases must FAIL the gate
+    - Execution Window Validation:
+      - Measure log lines or timestamp delta between SYSCALL_ENTER and BOUNDARY_KILL
+      - Window must be deterministic and bounded (e.g., < 10 log lines, < 100ms)
+      - Unbounded window indicates system hang or delayed enforcement
+      - Non-deterministic window indicates race condition or timing issue
+    - Forbidden Implementation:
+      - Userspace-only validation
+      - String-based marker simulation
+      - Fake kernel trace generation
+      - Accepting host test results as kernel evidence
+    - Required Implementation:
+      - QEMU-based test harness launching BCIB-role process
+      - Kernel trace capture (debugcon + serial output)
+      - Marker sequence validation script
+      - Negative assertion validation (scan after kill for forbidden markers)
+      - Hard stop verification (process removal from scheduler)
+    - Fail-Closed Requirement:
+      - Missing required markers → gate FAIL
+      - Continuation markers after kill → gate FAIL
+      - Process logs after kill → gate FAIL
+      - Non-deterministic error code → gate FAIL
+    - Evidence Required:
+      - QEMU kernel trace showing complete marker flow
+      - Proof of process termination (scheduler removal)
+      - Proof of no continuation (negative scan passes)
+      - Deterministic error code extraction
+    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8, 16.9, 16.10, 16.11, 16.12, 16.13, 16.14, 16.15_
+  
+  - [ ] 11.3 Integrate CI gates with existing freeze chain
     - Connect new gates to existing ci-gate-hygiene, ci-gate-constitutional pipeline
     - Ensure gates block merge when violations detected
     - Create gate dependency ordering and failure propagation
   
-  - [ ] 11.3 Create constitutional compliance enforcement
+  - [ ] 11.4 Create constitutional compliance enforcement
     - Implement NON_OVERRIDABLE rule enforcement for DETERMINISM.GLOBAL, MEMORY.CONTRACT.VIOLATION, KERNEL.SAFETY.CRITICAL, SECURITY.BOUNDARY.VIOLATION
     - Create Phase Matrix compliance validation (P4.4 Development phase)
     - Ensure all constitutional violations result in ERROR level enforcement

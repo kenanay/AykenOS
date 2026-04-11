@@ -190,6 +190,10 @@ static void critical_test_boundary_validation_integration(void) {
     result = boundary_validate_syscall(SYS_V2_MAP_MEMORY, EXEC_CONTEXT_RUNTIME_BRIDGE, 2000);
     CRITICAL_TEST_ASSERT(result == 0, 
                         "Boundary validation allows Runtime_Bridge MAP_MEMORY");
+
+    result = boundary_validate_syscall(SYS_V2_DEVICE_OPERATION, EXEC_CONTEXT_RUNTIME_BRIDGE, 2000);
+    CRITICAL_TEST_ASSERT(result == 0,
+                        "Boundary validation allows Runtime_Bridge DEVICE_OPERATION");
 }
 
 /**

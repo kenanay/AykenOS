@@ -45,7 +45,7 @@ int boundary_enforce_init(void);
 int boundary_validate_syscall(uint64_t syscall_num, execution_context_type_t context_type, uint64_t context_id);
 int boundary_check_bcib_submission_path(void *bcib_graph, uint64_t graph_size, uint64_t context_id);
 int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id);
-void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason);
+void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason) __attribute__((noreturn));
 int boundary_audit_violation(int violation_code, uint64_t context_id, const char *details);
 
 /* Syscall allowlist for BCIB contexts - only SYS_V2_SUBMIT_EXECUTION allowed */
@@ -57,7 +57,10 @@ int boundary_audit_violation(int violation_code, uint64_t context_id, const char
     (1 << SYS_V2_UNMAP_MEMORY) | \
     (1 << SYS_V2_CAPABILITY_BIND) | \
     (1 << SYS_V2_CAPABILITY_REVOKE) | \
-    (1 << SYS_V2_TIME_QUERY) \
+    (1 << SYS_V2_TIME_QUERY) | \
+    (1 << SYS_V2_DEVICE_OPERATION) | \
+    (1 << SYS_V2_EXTERNAL_CALL) | \
+    (1 << SYS_V2_ABDF_OPERATION) \
 )
 
 /* Constitutional compliance markers */

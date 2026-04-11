@@ -6,6 +6,7 @@
 # ============================================================
 
 include mk/paths.mk
+include mk/phase16_proof.mk
 
 # ------------------------------------------------------------
 # 1) Kernel toolchain
@@ -93,6 +94,7 @@ AYKEN_RING3_STERILE_GRAFT_UPPER_PML4_SEM ?= 0
 AYKEN_RING3_STERILE_GRAFT_UPPER_PDPT ?= 0
 AYKEN_RING3_STERILE_GRAFT_UPPER_PD ?= 0
 AYKEN_RING3_STERILE_GRAFT_UPPER_PT ?= 0
+AYKEN_PHASE16_BCIB_PROOF_TEST ?= 0
 
 ifneq ($(filter $(AYKEN_SCHED_FALLBACK),0 1),$(AYKEN_SCHED_FALLBACK))
 $(error Invalid AYKEN_SCHED_FALLBACK='$(AYKEN_SCHED_FALLBACK)'. Use 0 or 1)
@@ -683,6 +685,7 @@ KERNEL_CFLAGS += -DAYKEN_RING3_STERILE_GRAFT_UPPER_PML4_SEM=$(AYKEN_RING3_STERIL
 KERNEL_CFLAGS += -DAYKEN_RING3_STERILE_GRAFT_UPPER_PDPT=$(AYKEN_RING3_STERILE_GRAFT_UPPER_PDPT)
 KERNEL_CFLAGS += -DAYKEN_RING3_STERILE_GRAFT_UPPER_PD=$(AYKEN_RING3_STERILE_GRAFT_UPPER_PD)
 KERNEL_CFLAGS += -DAYKEN_RING3_STERILE_GRAFT_UPPER_PT=$(AYKEN_RING3_STERILE_GRAFT_UPPER_PT)
+KERNEL_CFLAGS += -DAYKEN_PHASE16_BCIB_PROOF_TEST=$(AYKEN_PHASE16_BCIB_PROOF_TEST)
 KERNEL_ASMFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 KERNEL_ASMFLAGS += -DAYKEN_RING3_FETCH_PROBE=$(AYKEN_RING3_FETCH_PROBE)
 KERNEL_ASMFLAGS += -DAYKEN_RING3_SECOND_CANONICAL_PROBE=$(AYKEN_RING3_SECOND_CANONICAL_PROBE)
@@ -1653,6 +1656,22 @@ ci-gate-constitutional: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/constitutional/report.json" "$(EVIDENCE_RUN_DIR)/reports/constitutional.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: constitutional evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-fail-closed-proof: ci-evidence-dir
+	@echo "== CI GATE FAIL-CLOSED PROOF =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "evidence_type: QEMU_KERNEL_TRACE"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/fail-closed-proof"
+	@if [ ! -f "evidence/fail-closed-proof/qemu_kernel_trace.log" ]; then \
+		echo "WARNING: QEMU trace not found, running harness..."; \
+		./scripts/qemu-fail-closed-proof-harness.sh || true; \
+	fi
+	@./scripts/ci-gate-fail-closed-proof.sh
+	@if [ -f "evidence/fail-closed-proof/failclosed_proof_evidence.json" ]; then \
+		cp -f "evidence/fail-closed-proof/failclosed_proof_evidence.json" "$(EVIDENCE_RUN_DIR)/reports/fail-closed-proof.json"; \
+	fi
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: fail-closed-proof evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-governance-policy: ci-evidence-dir
 	@echo "== CI GATE GOVERNANCE POLICY =="

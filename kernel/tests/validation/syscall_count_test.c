@@ -82,7 +82,7 @@ void test_syscall_count(void)
     fb_print("[TEST] Validating syscall count...\n");
     
     // Test 1: Verify the current syscall count and contiguous index span.
-    int expected_syscall_count = 12;
+    int expected_syscall_count = 15;
     int actual_max_syscall = SYS_V2_MAX_SYSCALL + 1;
     
     if (actual_max_syscall == expected_syscall_count) {
@@ -188,6 +188,27 @@ void test_syscall_count(void)
         return;
     }
     
+    if (SYS_V2_DEVICE_OPERATION == 12) {
+        fb_print("[TEST] ✓ SYS_V2_DEVICE_OPERATION = 12\n");
+    } else {
+        fb_print("[TEST] ✗ SYS_V2_DEVICE_OPERATION incorrect\n");
+        return;
+    }
+    
+    if (SYS_V2_EXTERNAL_CALL == 13) {
+        fb_print("[TEST] ✓ SYS_V2_EXTERNAL_CALL = 13\n");
+    } else {
+        fb_print("[TEST] ✗ SYS_V2_EXTERNAL_CALL incorrect\n");
+        return;
+    }
+    
+    if (SYS_V2_ABDF_OPERATION == 14) {
+        fb_print("[TEST] ✓ SYS_V2_ABDF_OPERATION = 14\n");
+    } else {
+        fb_print("[TEST] ✗ SYS_V2_ABDF_OPERATION incorrect\n");
+        return;
+    }
+    
     // Test 3: Verify syscall dispatcher only accepts valid range
     fb_print("[TEST] Testing syscall dispatcher range validation...\n");
     
@@ -222,7 +243,7 @@ void test_syscall_count(void)
     }
     
     fb_print("[TEST] ✓ All syscall count validation tests passed!\n");
-    fb_print("[TEST] ✓ Ring0 exposes 12 execution-centric syscalls\n");
+    fb_print("[TEST] ✓ Ring0 exposes SYS_V2_NR execution-centric syscalls\n");
     fb_print("[TEST] ✓ No legacy POSIX syscalls remain\n");
 }
 
@@ -231,14 +252,14 @@ void test_v2_syscall_dispatcher(void)
 {
     fb_print("[TEST] Validating v2 syscall dispatcher...\n");
     
-    // Test that main dispatcher only accepts 1000-1011 range
+    // Test that main dispatcher only accepts SYS_V2_BASE..SYS_V2_LAST range
     uint64_t result;
     
-    // Test valid range (1000-1011) - should be routed to v2 handler
+    // Test valid v2 range - should be routed to v2 handler
     // Note: We test the v2 handler directly since syscall_handler is internal
     result = syscall_v2_handler(6, TIME_QUERY_MONOTONIC, (uint64_t)&result, 0, 0); // SYS_V2_TIME_QUERY
     if (result != (uint64_t)-38) { // Not -ENOSYS
-        fb_print("[TEST] ✓ Valid syscall range (0-11) accepted by v2 handler\n");
+        fb_print("[TEST] ✓ Valid syscall range accepted by v2 handler\n");
     } else {
         fb_print("[TEST] ✗ Valid syscall range incorrectly rejected\n");
         return;
@@ -262,7 +283,7 @@ void test_v2_syscall_dispatcher(void)
     }
     
     fb_print("[TEST] ✓ V2 syscall handler validation passed!\n");
-    fb_print("[TEST] ✓ Only 0-11 range accepted by v2 handler, all others rejected\n");
+    fb_print("[TEST] ✓ Only v2 internal range accepted by v2 handler, all others rejected\n");
 }
 
 // Main test function
@@ -280,9 +301,9 @@ void validate_syscall_count_requirement(void)
     
     fb_print("========================================\n");
     fb_print("SYSCALL COUNT VALIDATION: PASSED\n");
-    fb_print("✓ Ring0 contains 12 execution-centric syscalls\n");
+    fb_print("✓ Ring0 contains 15 execution-centric syscalls\n");
     fb_print("✓ No legacy POSIX syscalls remain\n");
-    fb_print("✓ Only v2 syscall range 0-11 is accepted by v2 handler\n");
+    fb_print("✓ Only v2 syscall range 0-14 is accepted by v2 handler\n");
     fb_print("========================================\n");
     fb_print("\n");
 }
