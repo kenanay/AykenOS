@@ -593,7 +593,7 @@ mod tests {
     fn execution_state_ready_context() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
 
         let diag = BcibDiagnostics::new(&runtime);
@@ -607,7 +607,7 @@ mod tests {
     fn execution_state_running_context() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_plan_with_nop(), CapabilitySet::default())
+            .create_context_for_test(make_plan_with_nop(), CapabilitySet::default())
             .unwrap();
 
         // Start a slice — context transitions to Running then Completed.
@@ -625,7 +625,7 @@ mod tests {
     fn execution_state_cancelled_context() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
         runtime.cancel(ctx_id).unwrap();
 
@@ -653,7 +653,7 @@ mod tests {
     fn lifecycle_history_ready_context_has_created_to_ready() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
 
         let diag = BcibDiagnostics::new(&runtime);
@@ -671,7 +671,7 @@ mod tests {
     fn lifecycle_history_completed_context_ends_with_completed() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_plan_with_nop(), CapabilitySet::default())
+            .create_context_for_test(make_plan_with_nop(), CapabilitySet::default())
             .unwrap();
         let budget = CostBudget::new(1000, 100);
         let _ = runtime.run_slice(ctx_id, budget);
@@ -687,7 +687,7 @@ mod tests {
     fn lifecycle_history_transitions_are_ordered_by_sequence() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_plan_with_nop(), CapabilitySet::default())
+            .create_context_for_test(make_plan_with_nop(), CapabilitySet::default())
             .unwrap();
         let budget = CostBudget::new(1000, 100);
         let _ = runtime.run_slice(ctx_id, budget);
@@ -720,7 +720,7 @@ mod tests {
     fn cost_usage_after_slice_reflects_consumption() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_plan_with_nop(), CapabilitySet::default())
+            .create_context_for_test(make_plan_with_nop(), CapabilitySet::default())
             .unwrap();
         let budget = CostBudget::new(1000, 100);
         let _ = runtime.run_slice(ctx_id, budget);
@@ -740,7 +740,7 @@ mod tests {
     fn cost_usage_epistemic_boundary_always_phase14() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
 
         let diag = BcibDiagnostics::new(&runtime);
@@ -756,7 +756,7 @@ mod tests {
     fn all_endpoints_attach_epistemic_boundary() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
 
         let diag = BcibDiagnostics::new(&runtime);
@@ -775,7 +775,7 @@ mod tests {
     fn all_endpoints_pass_forbidden_field_check() {
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(make_empty_plan(), CapabilitySet::default())
+            .create_context_for_test(make_empty_plan(), CapabilitySet::default())
             .unwrap();
 
         let diag = BcibDiagnostics::new(&runtime);

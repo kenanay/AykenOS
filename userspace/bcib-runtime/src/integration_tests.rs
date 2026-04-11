@@ -1,7 +1,7 @@
 /// Integration tests for BCIB Execution Engine v3 — Task 41.2
 ///
 /// Covers:
-///   a. Full lifecycle: verify_and_plan() → create_context() → run_slice() → cancel()
+///   a. Full lifecycle: verify_and_plan() → create_context_for_test() → run_slice() → cancel()
 ///      After cancel(), verify teardown: all slots returned to pool, state is Cancelled.
 ///   b. v0.2 backward-compat: a BCIB graph with version 0x0002 either executes
 ///      compatibly or returns BCIB_ERR_UNSUPPORTED_VERSION (not silent partial execution).
@@ -91,7 +91,7 @@ mod integration_tests {
     }
 
     // -----------------------------------------------------------------------
-    // a. Full lifecycle: verify_and_plan() → create_context() → run_slice() → cancel()
+    // a. Full lifecycle: verify_and_plan() → create_context_for_test() → run_slice() → cancel()
     // Requirements: 1.5, 2.6, 3.9
     // -----------------------------------------------------------------------
 
@@ -117,7 +117,7 @@ mod integration_tests {
         // Step 2: create_context
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(plan, caps.clone())
+            .create_context_for_test(plan, caps.clone())
             .expect("create_context must succeed");
 
         // Verify initial state is Ready
@@ -177,7 +177,7 @@ mod integration_tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(plan, caps)
+            .create_context_for_test(plan, caps)
             .expect("create_context must succeed");
 
         // Cancel without running
@@ -223,7 +223,7 @@ mod integration_tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(plan, caps)
+            .create_context_for_test(plan, caps)
             .expect("create_context must succeed");
 
         // Run to completion
@@ -374,7 +374,7 @@ mod integration_tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(plan, caps)
+            .create_context_for_test(plan, caps)
             .expect("create_context must succeed");
 
         // Run a slice (may or may not complete)
@@ -439,7 +439,7 @@ mod integration_tests {
         };
 
         let ctx_id = runtime
-            .create_context_with_limits(plan, caps, tight_limits)
+            .create_context_with_limits_for_test(plan, caps, tight_limits)
             .expect("create_context_with_limits must succeed");
 
         // Run slice — should fail due to max_instruction_count exceeded.
@@ -490,10 +490,10 @@ mod integration_tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_a = runtime
-            .create_context(plan_a, caps.clone())
+            .create_context_for_test(plan_a, caps.clone())
             .expect("create_context A must succeed");
         let ctx_b = runtime
-            .create_context(plan_b, caps)
+            .create_context_for_test(plan_b, caps)
             .expect("create_context B must succeed");
 
         // Cancel context A
@@ -531,7 +531,7 @@ mod integration_tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let ctx_id = runtime
-            .create_context(plan, caps)
+            .create_context_for_test(plan, caps)
             .expect("create_context must succeed");
 
         // First cancel — must succeed

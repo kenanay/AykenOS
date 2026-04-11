@@ -6,6 +6,7 @@
 // transformation to a data-centric, AI-native operating system.
 //
 // Requirements: AC-6 - Ring0 contains exactly 10 syscalls, no POSIX syscalls remain
+// Phase-16: Integrated with boundary enforcement for BCIB/ABDF isolation
 
 #include <stdint.h>
 #include <stddef.h>
@@ -14,6 +15,7 @@
 #include "../drivers/console/fb_console.h"
 #include "../sched/sched.h"
 #include "syscall_v2.h"  // Include v2 syscall interface
+#include "syscall_v2_hardened.h"  // Phase-16: Include hardened syscall interface
 
 // Debug output via debugcon (port 0xE9)
 static void debugcon_write(const char *s)
@@ -99,8 +101,9 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     
     // Route based on Final Syscall Numbering Plan
     if (syscall_num >= 1000 && syscall_num <= 1011) {
-        // Execution-centric syscalls (v2) - Convert to 0-11 range for v2 handler
-        result = syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
+        // Execution-centric syscalls (v2) - Convert to 0-11 range for hardened handler
+        // Phase-16: Use hardened handler with boundary enforcement
+        result = syscall_v2_hardened_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
     } else {
         // Invalid syscall number - only 1000-1011 range is valid
         fb_print("[syscall] ENOSYS: invalid syscall number ");

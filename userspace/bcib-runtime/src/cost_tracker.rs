@@ -14,7 +14,7 @@
 /// These constants enforce the invariant `pure < data-mutating < external`,
 /// which reflects the relative resource cost of each side-effect class.
 
-use crate::types::{BcibError, CostUnit, COST_DATA_MUTATING, COST_EXTERNAL, COST_PURE};
+use crate::types::{BcibError, CostUnit};
 
 // Re-export constants so callers can import them from this module.
 pub use crate::types::{COST_DATA_MUTATING as DATA_MUTATING, COST_EXTERNAL as EXTERNAL, COST_PURE as PURE};
@@ -126,6 +126,7 @@ impl CostTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{COST_PURE, COST_DATA_MUTATING, COST_EXTERNAL};
 
     // -----------------------------------------------------------------------
     // Cost constant ordering invariant (Requirement 17.1)

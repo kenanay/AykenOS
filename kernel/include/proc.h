@@ -58,6 +58,15 @@ typedef enum {
     PROC_TYPE_USER
 } proc_type_t;
 
+/* Phase-16: Execution role for boundary enforcement */
+typedef enum {
+    PROC_EXECUTION_ROLE_UNKNOWN = 0,
+    PROC_EXECUTION_ROLE_BCIB = 1,
+    PROC_EXECUTION_ROLE_RUNTIME_BRIDGE = 2,
+    PROC_EXECUTION_ROLE_USER = 3,
+    PROC_EXECUTION_ROLE_KERNEL = 4
+} proc_execution_role_t;
+
 typedef enum {
     PROC_IMAGE_FLAT = 0,
     PROC_IMAGE_ELF
@@ -89,6 +98,7 @@ typedef struct proc {
     uint64_t pml4_phys;   // her process'e özel (şimdilik kernel same map)
     proc_state_t state;
     proc_type_t type;
+    proc_execution_role_t execution_role;  // Phase-16: Explicit execution role for boundary enforcement
     const char *name;
     void *wait_obj;
     uint64_t active_execution_id;

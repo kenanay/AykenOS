@@ -271,7 +271,7 @@ fn execute_host_runtime(bytes: &[u8]) -> (u64, u64, String) {
 
     let mut runtime = BcibExecutionRuntime::new();
     let runtime_context_id = runtime
-        .create_context(plan, capabilities)
+        .create_context_for_test(plan, capabilities)
         .expect("host runtime context creation failed");
     let slice = runtime
         .run_slice(runtime_context_id, CostBudget::new(10_000, 1_000))

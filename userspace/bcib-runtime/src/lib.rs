@@ -17,6 +17,7 @@ pub mod diagnostics;
 pub mod executor;
 pub mod execution_runtime;
 pub mod integration_tests;
+pub mod isolation;
 pub mod opcode_registry;
 pub mod pools;
 pub mod program_cache;
@@ -72,4 +73,17 @@ pub use diagnostics::{
     BcibDiagnostics, CostDiagnosticsResponse, CostDiagnosticsSnapshot,
     EpistemicBoundary, ExecutionDiagnosticsResponse, ExecutionStateSnapshot,
     LifecycleDiagnosticsResponse, LifecycleTransitionRecord,
+};
+
+// ---------------------------------------------------------------------------
+// Phase-16 Isolation & Boundary Enforcement re-exports
+// ---------------------------------------------------------------------------
+pub use isolation::{
+    IsolationError, ViolationType, ErrorCode,
+    ConstitutionalRule, RuleViolation, ConstitutionalEnforcer,
+    RuntimeBridge, SideEffectIntent, SideEffectResult,
+    ExecutionSandbox, SandboxViolation,
+    SideEffectDeclaration, SideEffectOrdering,
+    BoundaryViolation, BoundaryEnforcer,
+    FailClosedTermination, TerminationReason,
 };

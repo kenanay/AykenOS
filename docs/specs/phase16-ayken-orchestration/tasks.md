@@ -4,6 +4,49 @@
 **Scope:** Minimal deterministic query pipeline
 **Naming rule:** Long-lived implementation files, modules, binaries, and gates must use purpose-based names, not phase labels. The existing spec directory name is historical; new kernel-evidence surfaces must use names such as `kernel-runtime-equivalence`, `bcib-kernel-worker`, or `canonical-bcib-runtime-gate`.
 
+## Enforcement Rules (Mandatory For All Tasks)
+
+All tasks in this document must comply with the following enforcement rules.
+
+### 1. Enforcement Authority
+
+- Security-critical enforcement must be implemented at the authoritative boundary.
+- Kernel/syscall boundary enforcement is authoritative for execution, resource, memory, and capability boundaries.
+- Userspace enforcement is advisory unless a task explicitly defines it as the authoritative layer.
+- Userspace-only enforcement is not sufficient for boundary or security rules.
+
+### 2. Forbidden Implementation Patterns
+
+The following implementations are strictly forbidden:
+
+- String-based validation for syscall or execution control
+- Pattern-based filtering such as `test_`, `debug_`, or `internal_`
+- Disableable enforcement in production builds
+- Userspace-only enforcement for boundary/security rules
+- Fallback-to-success behavior after failed validation
+
+### 3. Required Enforcement Mechanism
+
+- Validation must occur at the authoritative boundary before execution continuation.
+- Boundary validation must occur before resource allocation, including context, memory, handles, execution slots, and result mappings.
+- Kernel-facing paths must validate concrete syscall IDs and ABI contracts, not names or inferred intent.
+- Enforcement must be tied to the relevant `Execution_Context` or kernel execution slot lifecycle.
+
+### 4. Fail-Closed Requirement
+
+All violations must:
+
+- Prevent execution continuation
+- Prevent unauthorized resource allocation
+- Return a deterministic error code or terminate the execution deterministically
+- Produce auditable evidence when the task is part of a runtime/kernel gate
+
+### 5. Evidence Requirement
+
+- Boundary/security enforcement must be verifiable through runtime evidence.
+- Kernel-level claims require QEMU/kernel trace evidence.
+- Host-only tests may prove host harness behavior, but they cannot close real kernel determinism tasks.
+
 ## Tasks
 
 - [x] 1. Freeze the minimal orchestration scope
@@ -14,17 +57,23 @@
   - Reference: Requirements 1, 1A, 7
 
 - [x] 2. Freeze the canonical IR contract
+  - Enforcement Level: Kernel-level authoritative where the IR contract crosses execution, capability, or submission boundaries; userspace canonicalization is advisory until submitted through the authoritative boundary.
   - [x] 2.1 Ratify the existing execution-plan subset as the only minimal orchestration canonical IR
   - [x] 2.2 Freeze the `r0 = active context/result register` invariant
   - [x] 2.3 Ensure every successful canonical plan terminates in `Return`
   - [x] 2.4 Add validation rejecting hidden state or direct `DSL -> BCIB` production shortcuts
+  - Forbidden: hidden state, direct `DSL -> BCIB` production shortcuts, string/pattern-based execution control, userspace-only authority claims
   - Reference: Requirements 2, 3
 
 - [x] 3. Implement `DSL -> Canonical IR` for the supported surface
+  - Enforcement Level: Kernel-level authoritative for execution entry; userspace parsing/lowering is not sufficient for boundary enforcement.
+  - Required: only the approved submit path may create or target an execution; validation must occur before runtime/context/resource allocation.
+  - Forbidden: string-based syscall validation, pattern-based entry filtering, userspace-only enforcement, disableable production enforcement.
   - [x] 3.1 Lower `list <context>` to `LoadContext -> Return`
   - [x] 3.2 Lower `show <context> <id>` to `LoadContext -> LoadLiteral/Compare -> ApplyFilter -> Return`
   - [x] 3.3 Lower `query <context> where <predicate>` to `LoadContext -> predicate lowering -> ApplyFilter -> Return`
   - [x] 3.4 Reject unsupported predicate forms with explicit lowering errors
+  - Evidence Required: invalid entry attempts must reject before context allocation; kernel/runtime trace must show no execution context or slot created for invalid entry when this crosses the kernel boundary.
   - Reference: Requirements 1, 2, 7
 
 - [x] 4. Add canonical IR validation
@@ -36,19 +85,31 @@
   - Reference: Requirements 2, 5, 9, 10
 
 - [x] 5. Implement NOP-free `Canonical IR -> BCIB` lowering
+  - Enforcement Level: Kernel boundary remains authoritative; lowering and runtime bridge behavior are mediation only, not authority.
+  - Critical Role: lowering and bridge layers may translate/package validated intent and bind capabilities, but must not expose kernel APIs, act as privileged userspace, or initiate execution outside the approved submit path.
+  - Forbidden: direct kernel API exposure, arbitrary syscall proxying, embedding kernel logic in bridge/lowering layers, treating bridge/lowering as execution authority, bridge-initiated `SYS_V2_SUBMIT_EXECUTION`.
+  - Required: all kernel interaction must occur via the approved syscall layer; capability validation must occur before any action; no new execution paths may be introduced.
   - [x] 5.1 Emit only `DataQuery`, `End`, and optional `TraceEmit`
   - [x] 5.2 Reject any lowering path that would require `Nop`
   - [x] 5.3 Reject any lowering path that would require `DataCreate`, `DataAdd`, `UiRender`, or `AiAsk`
   - [x] 5.4 Bind operands deterministically so the same canonical plan yields the same lowered BCIB
   - [x] 5.5 Preserve the semantic distinction between `list`, `show`, and `query` in lowering metadata
+  - Evidence Required: tests must prove forbidden opcodes fail, bridge/lowering cannot initiate execution, and no unauthorized syscall path appears in runtime/kernel evidence.
   - Reference: Requirements 3, 4, 5, 9, 10
 
 - [x] 6. Replace placeholder orchestration/submission surfaces
+  - Enforcement Level: Sandbox/submission enforcement must be authoritative at kernel/syscall/resource boundaries; userspace checks alone are not sufficient.
+  - Critical Role: orchestration/submission may reject or package work; it may not reinterpret semantic intent, elevate privileges, expand syscall surface, or bypass kernel boundary enforcement.
+  - Sandbox Requirement: BCIB execution must remain restricted to approved bounded memory regions, assigned `Execution_Context`, declared output buffers, and approved ABDF/runtime-bridge paths.
+  - Forbidden: raw pointer trust, caller-provided address trust, string-based isolation checks, pattern-based sandbox escape detection, userspace-only memory boundary enforcement, lazy boundary checks after execution start, production sandbox disablement.
+  - Required: memory bounds, input buffers, output buffers, capability sets, and cross-context access must be validated before resource touch or execution continuation.
   - [x] 6.1 Replace the `userspace/orchestration` placeholder with a real submit-only router
   - [x] 6.2 Replace placeholder submission-bridge behavior with a real submit adapter
+    - Forbidden Shortcuts: reusing caller memory without authoritative validation, treating userspace references as trusted, allowing lazy boundary checks after execution start
   - [x] 6.3 Implement non-empty, fail-closed capability/submission validation
   - [x] 6.4 Keep direct kernel-facing submit calls out of semantic parsing/lowering layers
   - [x] 6.5 Enforce explicit, non-empty context-read capability validation for the supported query surface
+  - Evidence Required: forbidden syscall attempts, missing capabilities, out-of-bounds access, raw pointer attempts, kernel-space pointer visibility attempts, and cross-context access attempts must fail closed; QEMU/runtime evidence must show no continued execution after violation for kernel-level claims.
   - Reference: Requirements 6, 7, 8, 9
 
 - [x] 7. Close the orchestration proof/replay slice

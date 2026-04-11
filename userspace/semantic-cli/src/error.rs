@@ -63,6 +63,18 @@ pub enum SemanticCLIError {
     #[error("Audit error: {message}")]
     AuditError { message: String, code: ErrorCode },
 
+    /// Kernel boundary violation (Ring3 → Ring0 boundary enforcement)
+    #[error("Kernel boundary violation: {message}")]
+    KernelBoundaryViolation { message: String, code: ErrorCode },
+
+    /// BCIB isolation violation (execution isolation breach)
+    #[error("BCIB isolation violation: {message}")]
+    BcibIsolationViolation { message: String, code: ErrorCode },
+
+    /// Runtime bridge violation (bridge bypass or misuse)
+    #[error("Runtime bridge violation: {message}")]
+    RuntimeBridgeViolation { message: String, code: ErrorCode },
+
     /// Replay verification failed
     #[error("Replay verification failed: {0}")]
     ReplayVerificationFailed(String),
@@ -158,6 +170,22 @@ pub enum ErrorCode {
     E900, // Constitutional violation - critical
     E901, // Evidence requirement violation
     E902, // Decision boundary violation
+    
+    // Kernel boundary violation errors (E950-E999)
+    E950, // BCIB isolation violation
+    E951, // Runtime bridge bypass attempt
+    E952, // Capability scope violation
+    E953, // Undeclared side effect
+    E954, // BCIB opcode violation
+    E955, // ABDF direct mutation attempt
+    E956, // ABDF handle revoked
+    E957, // ABDF type violation
+    E958, // Device access violation
+    E959, // ABDF boundary violation
+    E960, // Context isolation violation
+    E961, // Sandbox escape attempt
+    E962, // Kernel boundary violation
+    E963, // Syscall surface violation
 }
 
 impl fmt::Display for ErrorCode {
@@ -266,6 +294,30 @@ impl SemanticCLIError {
         }
     }
 
+    /// Create a kernel boundary violation error
+    pub fn kernel_boundary_violation(message: impl Into<String>, code: ErrorCode) -> Self {
+        Self::KernelBoundaryViolation {
+            message: message.into(),
+            code,
+        }
+    }
+
+    /// Create a BCIB isolation violation error
+    pub fn bcib_isolation_violation(message: impl Into<String>, code: ErrorCode) -> Self {
+        Self::BcibIsolationViolation {
+            message: message.into(),
+            code,
+        }
+    }
+
+    /// Create a runtime bridge violation error
+    pub fn runtime_bridge_violation(message: impl Into<String>, code: ErrorCode) -> Self {
+        Self::RuntimeBridgeViolation {
+            message: message.into(),
+            code,
+        }
+    }
+
     /// Create a system error
     pub fn system_error(message: impl Into<String>, code: ErrorCode) -> Self {
         Self::ExecutionError {
@@ -285,6 +337,9 @@ impl SemanticCLIError {
             Self::ContextError { code, .. } => Some(*code),
             Self::SecurityError { code, .. } => Some(*code),
             Self::AuditError { code, .. } => Some(*code),
+            Self::KernelBoundaryViolation { code, .. } => Some(*code),
+            Self::BcibIsolationViolation { code, .. } => Some(*code),
+            Self::RuntimeBridgeViolation { code, .. } => Some(*code),
             _ => None,
         }
     }

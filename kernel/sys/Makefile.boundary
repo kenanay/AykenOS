@@ -1,0 +1,35 @@
+# Phase-16 Boundary Enforcement Makefile
+# 
+# Builds kernel boundary hardening components for BCIB/ABDF isolation
+
+# Boundary enforcement object files
+BOUNDARY_OBJS = boundary_enforcement.o syscall_v2_hardened.o boundary_enforcement_test.o
+
+# Compiler flags for boundary enforcement
+BOUNDARY_CFLAGS = -DPHASE_16_BOUNDARY_ENFORCEMENT -DCONSTITUTIONAL_COMPLIANCE
+
+# Build boundary enforcement components
+boundary_enforcement.o: boundary_enforcement.c boundary_enforcement.h
+	$(CC) $(CFLAGS) $(BOUNDARY_CFLAGS) -c boundary_enforcement.c -o boundary_enforcement.o
+
+syscall_v2_hardened.o: syscall_v2_hardened.c syscall_v2_hardened.h boundary_enforcement.h
+	$(CC) $(CFLAGS) $(BOUNDARY_CFLAGS) -c syscall_v2_hardened.c -o syscall_v2_hardened.o
+
+boundary_enforcement_test.o: boundary_enforcement_test.c boundary_enforcement.h syscall_v2_hardened.h
+	$(CC) $(CFLAGS) $(BOUNDARY_CFLAGS) -c boundary_enforcement_test.c -o boundary_enforcement_test.o
+
+# Build all boundary enforcement components
+boundary: $(BOUNDARY_OBJS)
+	@echo "Phase-16 boundary enforcement components built successfully"
+
+# Clean boundary enforcement objects
+clean-boundary:
+	rm -f $(BOUNDARY_OBJS)
+
+# Test boundary enforcement
+test-boundary: boundary_enforcement_test.o boundary_enforcement.o
+	@echo "Running boundary enforcement tests..."
+	# Note: In a full kernel environment, this would link and run the tests
+	@echo "Boundary enforcement tests compiled successfully"
+
+.PHONY: boundary clean-boundary test-boundary

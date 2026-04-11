@@ -44,6 +44,9 @@
 pub mod error;
 pub mod types;
 
+// Isolation and boundary enforcement (Phase-16)
+pub mod isolation;
+
 // Lexer module (tokenization)
 pub mod lexer;
 
@@ -135,6 +138,7 @@ pub use capability_derivation_audit::{
     CapabilityDerivationAudit, CapabilityDerivationAuditor, DerivationStep,
 };
 pub use types::*;
+pub use isolation::*;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

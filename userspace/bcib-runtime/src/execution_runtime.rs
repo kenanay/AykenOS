@@ -14,6 +14,8 @@ use std::collections::HashMap;
 
 use crate::abdf_boundary::AbdfHandle;
 use crate::capability_manager::{CapabilityCheck, CapabilityResource, NoopCapabilityManager};
+use crate::isolation::execution_entry_enforcer::ExecutionEntryEnforcer;
+use crate::isolation::execution_entry_context::ExecutionEntryContext;
 use crate::pools::{IsolatedHandleSpace, IsolatedSlotSpace};
 use crate::scheduler_bridge::SchedulerSubmitBridge;
 use crate::types::{
@@ -202,6 +204,10 @@ pub struct BcibExecutionRuntime {
     /// Defaults to `NoopCapabilityManager` (Group 1–6 stub); replaced by
     /// the real `CapabilityManager` in Group 7 (Task 27).
     capability_manager: Box<dyn CapabilityCheck>,
+    /// Execution entry enforcer — validates that BCIB execution is only
+    /// initiated via approved submission paths (Requirements 1.3, 1.4).
+    /// Prevents direct invocation via test helpers, debug hooks, or internal calls.
+    entry_enforcer: ExecutionEntryEnforcer,
 }
 
 impl BcibExecutionRuntime {
@@ -211,6 +217,7 @@ impl BcibExecutionRuntime {
             next_id: 1,
             bridge: SchedulerSubmitBridge::new(),
             capability_manager: Box::new(NoopCapabilityManager),
+            entry_enforcer: ExecutionEntryEnforcer::new(),
         }
     }
 
@@ -223,7 +230,45 @@ impl BcibExecutionRuntime {
             next_id: 1,
             bridge: SchedulerSubmitBridge::new(),
             capability_manager,
+            entry_enforcer: ExecutionEntryEnforcer::new(),
         }
+    }
+
+    /// TESTING HELPER: Create an emulated kernel context for host-only tests.
+    /// This is not authoritative kernel evidence and cannot close production entry enforcement.
+    #[cfg(test)]
+    fn create_valid_kernel_context_for_test() -> ExecutionEntryContext {
+        ExecutionEntryContext::from_kernel_dispatcher(
+            1003, // SYS_V2_SUBMIT_EXECUTION
+            std::process::id(),
+            1, // thread_id
+            vec!["kernel_syscall_dispatcher".to_string(), "sys_v2_submit_execution".to_string()],
+        )
+    }
+
+    /// TESTING HELPER: Create context through the syscall-facing runtime path.
+    /// The kernel context is emulated, so this is host-only evidence.
+    #[cfg(test)]
+    pub fn create_context_for_test(
+        &mut self,
+        plan: ExecutionPlan,
+        capability_set: CapabilitySet,
+    ) -> Result<ExecutionContextId, BcibError> {
+        let kernel_context = Self::create_valid_kernel_context_for_test();
+        self.create_context_from_syscall(plan, capability_set, kernel_context)
+    }
+
+    /// TESTING HELPER: Create context with limits through the syscall-facing runtime path.
+    /// The kernel context is emulated, so this is host-only evidence.
+    #[cfg(test)]
+    pub fn create_context_with_limits_for_test(
+        &mut self,
+        plan: ExecutionPlan,
+        capability_set: CapabilitySet,
+        resource_limits: ResourceLimits,
+    ) -> Result<ExecutionContextId, BcibError> {
+        let kernel_context = Self::create_valid_kernel_context_for_test();
+        self.create_context_with_limits_from_syscall(plan, capability_set, resource_limits, kernel_context)
     }
 
     // -----------------------------------------------------------------------
@@ -234,11 +279,20 @@ impl BcibExecutionRuntime {
     ///
     /// The context starts in `Created` state and is immediately transitioned
     /// to `Ready` (plan is already validated by the Verifier/Planner layer).
-    pub fn create_context(
+    /// 
+    /// PRIVATE: Only accessible from syscall dispatcher - direct calls are forbidden
+    /// This method can only be called from create_context_from_syscall with real kernel context
+    /// NO TEST ACCESS: Tests must use create_context_from_syscall with real kernel contexts
+    fn create_context_internal(
         &mut self,
         plan: ExecutionPlan,
         capability_set: CapabilitySet,
+        entry_context: ExecutionEntryContext,
     ) -> Result<ExecutionContextId, BcibError> {
+        // **TASK 3 IMPLEMENTATION**: Real kernel-level execution entry enforcement
+        // Validate actual syscall dispatch context BEFORE any resource allocation
+        self.entry_enforcer.validate_kernel_execution_entry(&entry_context)?;
+        
         let id = self.next_id;
         self.next_id += 1;
 
@@ -263,13 +317,33 @@ impl BcibExecutionRuntime {
         Ok(id)
     }
 
+    /// PUBLIC: Real syscall dispatcher entry point with kernel context validation
+    /// This is the ONLY approved way to create execution contexts
+    pub fn create_context_from_syscall(
+        &mut self,
+        plan: ExecutionPlan,
+        capability_set: CapabilitySet,
+        entry_context: ExecutionEntryContext,
+    ) -> Result<ExecutionContextId, BcibError> {
+        self.create_context_internal(plan, capability_set, entry_context)
+    }
+
+    // Host-only tests still use emulated kernel contexts. These helpers are not
+    // authoritative kernel evidence and do not close Task 3 production enforcement.
+
     /// Create a new execution context with explicit resource limits.
-    pub fn create_context_with_limits(
+    /// PRIVATE: Only accessible from syscall dispatcher - direct calls are forbidden
+    /// NO TEST ACCESS: Tests must use create_context_with_limits_from_syscall with real kernel contexts
+    fn create_context_with_limits_internal(
         &mut self,
         plan: ExecutionPlan,
         capability_set: CapabilitySet,
         resource_limits: ResourceLimits,
+        entry_context: ExecutionEntryContext,
     ) -> Result<ExecutionContextId, BcibError> {
+        // Validate actual syscall dispatch context BEFORE any resource allocation.
+        self.entry_enforcer.validate_kernel_execution_entry(&entry_context)?;
+        
         let id = self.next_id;
         self.next_id += 1;
 
@@ -292,6 +366,37 @@ impl BcibExecutionRuntime {
 
         self.contexts.insert(id, ctx);
         Ok(id)
+    }
+
+    /// PUBLIC: Real syscall dispatcher entry point with resource limits
+    pub fn create_context_with_limits_from_syscall(
+        &mut self,
+        plan: ExecutionPlan,
+        capability_set: CapabilitySet,
+        resource_limits: ResourceLimits,
+        entry_context: ExecutionEntryContext,
+    ) -> Result<ExecutionContextId, BcibError> {
+        self.create_context_with_limits_internal(plan, capability_set, resource_limits, entry_context)
+    }
+
+    // Host-only tests still use emulated kernel contexts. These helpers are not
+    // authoritative kernel evidence and do not close Task 3 production enforcement.
+
+    /// Disable execution entry enforcement (for testing only).
+    /// 
+    /// WARNING: This should only be used in test environments.
+    /// Production code must never disable entry enforcement.
+    // REMOVED: disable_entry_enforcement() - bypass mechanism eliminated for production security
+    // Constitutional compliance: SECURITY.BOUNDARY.VIOLATION enforcement cannot be bypassed
+    
+    /// Enable execution entry enforcement (production mode).
+    pub fn enable_entry_enforcement(&mut self) {
+        self.entry_enforcer.enable_enforcement();
+    }
+    
+    /// Check if execution entry enforcement is enabled.
+    pub fn is_enforcement_enabled(&self) -> bool {
+        self.entry_enforcer.is_enforcement_enabled()
     }
 
     /// Execute up to `budget` cost units of instructions for the given context.
@@ -1139,7 +1244,7 @@ mod tests {
         let plan = ExecutionPlan::new(vec![], 0x0003);
         let cap_set = CapabilitySet::default();
 
-        let ctx_id = runtime.create_context(plan, cap_set).expect("create_context failed");
+        let ctx_id = runtime.create_context_for_test(plan, cap_set).expect("create_context failed");
 
         let state = runtime.state_of(ctx_id).expect("state_of failed");
         assert!(
@@ -1154,10 +1259,10 @@ mod tests {
     fn create_context_produces_unique_ids() {
         let mut runtime = BcibExecutionRuntime::new();
         let id_a = runtime
-            .create_context(ExecutionPlan::new(vec![], 0x0003), CapabilitySet::default())
+            .create_context_for_test(ExecutionPlan::new(vec![], 0x0003), CapabilitySet::default())
             .unwrap();
         let id_b = runtime
-            .create_context(ExecutionPlan::new(vec![], 0x0003), CapabilitySet::default())
+            .create_context_for_test(ExecutionPlan::new(vec![], 0x0003), CapabilitySet::default())
             .unwrap();
         assert_ne!(id_a, id_b, "each context must have a unique ID");
     }
@@ -1179,7 +1284,7 @@ mod tests {
     fn create_context_binds_isolated_spaces_to_context_id() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
         assert_eq!(ctx.slot_space.owner(), ctx_id);
@@ -1191,7 +1296,7 @@ mod tests {
     fn create_context_abdf_handles_empty() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let ctx = runtime.contexts.get(&ctx_id).unwrap();
         assert!(ctx.abdf_handles.is_empty(), "abdf_handles must start empty");
@@ -1207,7 +1312,7 @@ mod tests {
     fn teardown_cancel_returns_slots_to_pool() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Acquire a slot to simulate in-flight usage.
         {
@@ -1236,7 +1341,7 @@ mod tests {
     fn teardown_cancel_releases_abdf_handles() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Simulate acquired ABDF handles.
         {
@@ -1261,7 +1366,7 @@ mod tests {
     fn teardown_cancel_clears_handle_space() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Register handles in handle_space.
         {
@@ -1287,7 +1392,7 @@ mod tests {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
         let cap_set = CapabilitySet { token_ids: vec![1, 2, 3] };
-        let ctx_id = runtime.create_context(plan, cap_set).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         runtime.cancel(ctx_id).expect("cancel should succeed");
 
@@ -1303,7 +1408,7 @@ mod tests {
     fn teardown_cancel_sets_cancelled_state() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         runtime.cancel(ctx_id).expect("cancel should succeed");
 
@@ -1320,7 +1425,7 @@ mod tests {
     fn cancel_on_terminal_state_returns_illegal_transition() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // First cancel succeeds.
         runtime.cancel(ctx_id).expect("first cancel should succeed");
@@ -1341,7 +1446,7 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Simulate in-flight resources.
         {
@@ -1417,7 +1522,7 @@ mod tests {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
         let cap_set = CapabilitySet { token_ids: vec![10, 20, 30] };
-        let ctx_id = runtime.create_context(plan, cap_set).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         // Put resources in flight.
         {
@@ -1471,7 +1576,7 @@ mod tests {
             let cap_set = CapabilitySet {
                 token_ids: (0..num_capability_tokens as u64).collect(),
             };
-            let ctx_id = runtime.create_context(plan, cap_set).unwrap();
+            let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
             // Simulate in-flight resources.
             {
@@ -1539,7 +1644,7 @@ mod tests {
             })
             .collect();
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Budget of 3 — only 3 instructions can execute before yield.
         let budget = CostBudget::new(3, 0);
@@ -1576,7 +1681,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // Large budget — cost won't be the limiting factor.
@@ -1606,7 +1711,7 @@ mod tests {
             })
             .collect();
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Budget of 100 — more than enough.
         let budget = CostBudget::new(100, 0);
@@ -1624,7 +1729,7 @@ mod tests {
     fn run_slice_rejects_invalid_state() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Cancel the context — it's now in Cancelled (terminal) state.
         runtime.cancel(ctx_id).unwrap();
@@ -1666,7 +1771,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // Large budget — cost won't be the limiting factor.
@@ -1710,7 +1815,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         let budget = CostBudget::new(10_000, 0);
@@ -1754,7 +1859,7 @@ mod tests {
             let plan = ExecutionPlan::new(instructions.clone(), 0x0003);
             let mut runtime = BcibExecutionRuntime::new();
             let ctx_id = runtime
-                .create_context(plan, CapabilitySet::default())
+                .create_context_for_test(plan, CapabilitySet::default())
                 .expect("create_context must succeed");
 
             let budget = CostBudget::new(budget_total, 0);
@@ -1829,7 +1934,7 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let budget = CostBudget::new(1000, 1000);
         let result = runtime.run_slice(ctx_id, budget).expect("run_slice must not error");
@@ -1855,7 +1960,7 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let budget = CostBudget::new(1000, 1000);
         runtime.run_slice(ctx_id, budget).unwrap();
@@ -1873,7 +1978,7 @@ mod tests {
     fn notify_event_rejects_non_waiting_context() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let result = runtime.notify_event(ctx_id);
         assert!(
@@ -1913,7 +2018,7 @@ mod tests {
             },
         ];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         let budget = CostBudget::new(1000, 1000);
         let result = runtime.run_slice(ctx_id, budget).unwrap();
@@ -1946,7 +2051,7 @@ mod tests {
             required_capabilities: vec![],
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         {
             let ctx = runtime.contexts.get_mut(&ctx_id).unwrap();
@@ -1996,7 +2101,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // Simulate 1 active external handle (at the limit).
@@ -2043,7 +2148,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
@@ -2086,7 +2191,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // First slice — yields after 3 instructions.
@@ -2147,7 +2252,7 @@ mod tests {
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
         let ctx_id = runtime
-            .create_context(plan, CapabilitySet::default())
+            .create_context_for_test(plan, CapabilitySet::default())
             .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
@@ -2185,7 +2290,7 @@ mod tests {
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
         let ctx_id = runtime
-            .create_context(plan, CapabilitySet::default())
+            .create_context_for_test(plan, CapabilitySet::default())
             .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
@@ -2223,7 +2328,7 @@ mod tests {
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
         let ctx_id = runtime
-            .create_context(plan, CapabilitySet::default())
+            .create_context_for_test(plan, CapabilitySet::default())
             .unwrap();
 
         let budget = CostBudget::new(1000, 0);
@@ -2253,7 +2358,7 @@ mod tests {
         }];
         let plan = ExecutionPlan::new(instructions, 0x0003);
         let ctx_id = runtime
-            .create_context(plan, CapabilitySet::default())
+            .create_context_for_test(plan, CapabilitySet::default())
             .unwrap();
 
         let budget = CostBudget::new(1000, 1000);
@@ -2279,7 +2384,7 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Add an ABDF handle to the context.
         {
@@ -2313,7 +2418,7 @@ mod tests {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
         let cap_set = CapabilitySet { token_ids: vec![1, 2, 3] };
-        let ctx_id = runtime.create_context(plan, cap_set).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, cap_set).unwrap();
 
         // Add ABDF handles and handle_space entries to simulate in-flight resources.
         {
@@ -2362,7 +2467,7 @@ mod tests {
     fn revoke_handle_in_context_unknown_handle_id_returns_error() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // No handles in the context — revoking a non-existent handle must fail.
         let result = runtime.revoke_handle_in_context(ctx_id, 999);
@@ -2395,7 +2500,7 @@ mod tests {
 
         let mut runtime = BcibExecutionRuntime::new();
         let plan = ExecutionPlan::new(vec![], 0x0003);
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Add a handle and cancel the context first (terminal state).
         {
@@ -2466,7 +2571,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // First run_slice: dispatches the first External instruction → Waiting.
@@ -2516,7 +2621,7 @@ mod tests {
             ..ResourceLimits::default()
         };
         let ctx_id = runtime
-            .create_context_with_limits(plan, CapabilitySet::default(), limits)
+            .create_context_with_limits_for_test(plan, CapabilitySet::default(), limits)
             .unwrap();
 
         // Dispatch first external (counter → 1).
@@ -2550,7 +2655,7 @@ mod tests {
     fn external_budget_exhaustion_fails_closed() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Budget with external_budget = 0 — any External instruction exhausts it.
         let budget = CostBudget::new(10_000, 0);
@@ -2574,7 +2679,7 @@ mod tests {
     fn notify_event_decrements_active_external_count() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Dispatch the external instruction → Waiting, counter = 1.
         let budget = CostBudget::new(10_000, 10_000);
@@ -2602,7 +2707,7 @@ mod tests {
     fn teardown_resets_active_external_count() {
         let mut runtime = BcibExecutionRuntime::new();
         let plan = make_external_plan();
-        let ctx_id = runtime.create_context(plan, CapabilitySet::default()).unwrap();
+        let ctx_id = runtime.create_context_for_test(plan, CapabilitySet::default()).unwrap();
 
         // Dispatch external → counter = 1.
         let budget = CostBudget::new(10_000, 10_000);
