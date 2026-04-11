@@ -17,7 +17,6 @@
 ///   bytes 2..  : operands (operand_count × u32 LE)
 ///
 /// Total size per instruction: 2 + operand_count * 4 bytes.
-
 use crate::binary_format::{parse_header_and_sections, SectionId};
 use crate::capability_manager::{CapabilityCheck, CapabilityResource, NoopCapabilityManager};
 use crate::opcode_registry::lookup_opcode;
@@ -71,6 +70,24 @@ impl BcibVerifierPlanner {
         Ok(ExecutionPlan::new(instructions, version))
     }
 
+    /// Validate whether a BCIB graph is structurally safe to submit.
+    ///
+    /// This deliberately does not run capability validation or produce an
+    /// execution plan. Callers that cross an authority boundary must validate
+    /// semantic capabilities before using this graph-level check.
+    pub fn verify_submittable_graph(
+        &self,
+        graph: &[u8],
+        resource_limits: &ResourceLimits,
+    ) -> Result<(), BcibError> {
+        let (instructions, _) = self.verify_structural(graph)?;
+
+        self.verify_control_flow(&instructions)?;
+        self.verify_bounds(&instructions, resource_limits)?;
+
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Phase 1: Structural validation (Requirement 16.1, 16.4)
     // -----------------------------------------------------------------------
@@ -87,10 +104,7 @@ impl BcibVerifierPlanner {
     ///   5. Assign `SideEffectClass` and cost from the opcode descriptor.
     ///
     /// Returns the decoded instruction list and the BCIB version on success.
-    fn verify_structural(
-        &self,
-        graph: &[u8],
-    ) -> Result<(Vec<BcibInstruction>, u16), BcibError> {
+    fn verify_structural(&self, graph: &[u8]) -> Result<(Vec<BcibInstruction>, u16), BcibError> {
         // Single-pass decode: parse header + section table in one call.
         // Fail-fast: any header or section-table error returns immediately
         // before any instruction decoding begins (Requirement 19.1, 19.2).
@@ -124,8 +138,8 @@ impl BcibVerifierPlanner {
                 "missing Instructions section (section_id = 0x01)",
             ))?;
 
-        let instr_data = &graph
-            [instr_section.offset as usize..instr_section.offset as usize + instr_section.length as usize];
+        let instr_data = &graph[instr_section.offset as usize
+            ..instr_section.offset as usize + instr_section.length as usize];
 
         // Step 5 — decode instructions and validate each opcode.
         //
@@ -221,10 +235,7 @@ impl BcibVerifierPlanner {
     ///
     /// No heap allocation beyond the three fixed-size `Vec<bool>` / `Vec<usize>`
     /// structures; no global mutable state (DETERMINISM.GLOBAL).
-    fn verify_control_flow(
-        &self,
-        instructions: &[BcibInstruction],
-    ) -> Result<(), BcibError> {
+    fn verify_control_flow(&self, instructions: &[BcibInstruction]) -> Result<(), BcibError> {
         let n = instructions.len();
 
         // An empty program is trivially valid.
@@ -535,7 +546,7 @@ impl Default for BcibVerifierPlanner {
 mod tests {
     use super::*;
     use crate::binary_format::{
-        BCIB_VERSION_V3, BCIB_VERSION_V02, HEADER_SIZE, SECTION_ENTRY_SIZE,
+        BCIB_VERSION_V02, BCIB_VERSION_V3, HEADER_SIZE, SECTION_ENTRY_SIZE,
     };
 
     // -----------------------------------------------------------------------
@@ -571,8 +582,8 @@ mod tests {
         buf.extend_from_slice(&BCIB_VERSION_V3.to_le_bytes());
         buf.extend_from_slice(&0u16.to_le_bytes()); // flags
         buf.extend_from_slice(&1u16.to_le_bytes()); // section_count
-        buf.extend_from_slice(&[0u8; 4]);           // reserved
-        buf.extend_from_slice(&[0u8; 2]);           // header tail bytes 14-15
+        buf.extend_from_slice(&[0u8; 4]); // reserved
+        buf.extend_from_slice(&[0u8; 2]); // header tail bytes 14-15
 
         // Section table entry (8 bytes)
         buf.extend_from_slice(&(SectionId::Instructions as u16).to_le_bytes());
@@ -616,7 +627,10 @@ mod tests {
     fn verify_structural_multiple_instructions() {
         let mut instr_bytes = Vec::new();
         instr_bytes.extend(encode_instr(0x00 /* Nop, Pure */, &[]));
-        instr_bytes.extend(encode_instr(0x10 /* DataCreate, DataMutating */, &[1, 2]));
+        instr_bytes.extend(encode_instr(
+            0x10, /* DataCreate, DataMutating */
+            &[1, 2],
+        ));
         instr_bytes.extend(encode_instr(0x30 /* AiAsk, External */, &[42]));
 
         let buf = build_v3_buffer(&instr_bytes);
@@ -625,9 +639,18 @@ mod tests {
             .expect("valid multi-instruction buffer should pass");
 
         assert_eq!(instructions.len(), 3);
-        assert_eq!(instructions[0].side_effect_class, crate::types::SideEffectClass::Pure);
-        assert_eq!(instructions[1].side_effect_class, crate::types::SideEffectClass::DataMutating);
-        assert_eq!(instructions[2].side_effect_class, crate::types::SideEffectClass::External);
+        assert_eq!(
+            instructions[0].side_effect_class,
+            crate::types::SideEffectClass::Pure
+        );
+        assert_eq!(
+            instructions[1].side_effect_class,
+            crate::types::SideEffectClass::DataMutating
+        );
+        assert_eq!(
+            instructions[2].side_effect_class,
+            crate::types::SideEffectClass::External
+        );
     }
 
     /// Empty instruction section (zero instructions) → Ok with empty list.
@@ -646,7 +669,10 @@ mod tests {
         let mut buf = build_v3_buffer(&[]);
         buf[0] = b'X'; // corrupt magic
         let err = planner().verify_structural(&buf).unwrap_err();
-        assert!(matches!(err, BcibError::InvalidGraph(_)), "bad magic → InvalidGraph");
+        assert!(
+            matches!(err, BcibError::InvalidGraph(_)),
+            "bad magic → InvalidGraph"
+        );
     }
 
     /// Unsupported version → `BCIB_ERR_UNSUPPORTED_VERSION`.
@@ -700,7 +726,10 @@ mod tests {
         let instr = encode_instr(0x50 /* TraceEmit, Pure */, &[]);
         let buf = build_v3_buffer(&instr);
         let (instructions, _) = planner().verify_structural(&buf).unwrap();
-        assert_eq!(instructions[0].side_effect_class, crate::types::SideEffectClass::Pure);
+        assert_eq!(
+            instructions[0].side_effect_class,
+            crate::types::SideEffectClass::Pure
+        );
         assert_eq!(instructions[0].cost, crate::types::COST_PURE);
     }
 
@@ -709,7 +738,10 @@ mod tests {
     fn verify_structural_cost_assigned() {
         let mut instr_bytes = Vec::new();
         instr_bytes.extend(encode_instr(0x00 /* Nop, COST_PURE */, &[]));
-        instr_bytes.extend(encode_instr(0x21 /* DataWrite, COST_DATA_MUTATING */, &[]));
+        instr_bytes.extend(encode_instr(
+            0x21, /* DataWrite, COST_DATA_MUTATING */
+            &[],
+        ));
         instr_bytes.extend(encode_instr(0x31 /* AiStream, COST_EXTERNAL */, &[]));
 
         let buf = build_v3_buffer(&instr_bytes);
@@ -774,7 +806,10 @@ mod tests {
         buf.extend_from_slice(&[0u8; 8]);
 
         let err = planner().verify_structural(&buf).unwrap_err();
-        assert!(matches!(err, BcibError::InvalidGraph(_)), "overlapping sections must be rejected");
+        assert!(
+            matches!(err, BcibError::InvalidGraph(_)),
+            "overlapping sections must be rejected"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -830,9 +865,7 @@ mod tests {
     fn verify_control_flow_self_loop_jump() {
         // Instruction 0: Jump to 0 (self-loop)
         let instrs = vec![make_instr(0x02 /* Jump */, &[0])];
-        let err = planner()
-            .verify_control_flow(&instrs)
-            .unwrap_err();
+        let err = planner().verify_control_flow(&instrs).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "self-loop Jump must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -849,9 +882,7 @@ mod tests {
             make_instr(0x02 /* Jump */, &[1]),
             make_instr(0x02 /* Jump */, &[0]),
         ];
-        let err = planner()
-            .verify_control_flow(&instrs)
-            .unwrap_err();
+        let err = planner().verify_control_flow(&instrs).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "two-node cycle must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -870,9 +901,7 @@ mod tests {
             make_instr(0x00 /* Nop  */, &[]),
             make_instr(0x01 /* End  */, &[]),
         ];
-        let err = planner()
-            .verify_control_flow(&instrs)
-            .unwrap_err();
+        let err = planner().verify_control_flow(&instrs).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "unreachable instruction must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -884,9 +913,7 @@ mod tests {
     fn verify_control_flow_invalid_jump_target() {
         // 0: Jump → 99 (only 1 instruction exists)
         let instrs = vec![make_instr(0x02 /* Jump */, &[99])];
-        let err = planner()
-            .verify_control_flow(&instrs)
-            .unwrap_err();
+        let err = planner().verify_control_flow(&instrs).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "out-of-bounds jump target must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -902,9 +929,7 @@ mod tests {
             make_instr(0x03 /* JumpIf */, &[99]),
             make_instr(0x01 /* End   */, &[]),
         ];
-        let err = planner()
-            .verify_control_flow(&instrs)
-            .unwrap_err();
+        let err = planner().verify_control_flow(&instrs).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "JumpIf with out-of-bounds target must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -939,9 +964,7 @@ mod tests {
             cost: crate::types::COST_PURE,
             required_capabilities: vec![],
         };
-        let err = planner()
-            .verify_control_flow(&[instr])
-            .unwrap_err();
+        let err = planner().verify_control_flow(&[instr]).unwrap_err();
         assert!(
             matches!(err, BcibError::ControlFlowViolation(_)),
             "Jump without operand must produce BCIB_ERR_CONTROL_FLOW_VIOLATION"
@@ -1033,7 +1056,9 @@ mod tests {
     fn verify_capabilities_data_mutating_with_token_ok() {
         let instr = encode_instr(0x10 /* DataCreate, DataMutating */, &[]);
         let buf = build_v3_buffer(&instr);
-        let caps = CapabilitySet { token_ids: vec![42] };
+        let caps = CapabilitySet {
+            token_ids: vec![42],
+        };
         let plan = planner()
             .verify_and_plan(&buf, &caps, &default_limits())
             .expect("DataMutating with valid token must pass");
@@ -1050,7 +1075,9 @@ mod tests {
     fn verify_capabilities_external_with_token_ok() {
         let instr = encode_instr(0x30 /* AiAsk, External */, &[]);
         let buf = build_v3_buffer(&instr);
-        let caps = CapabilitySet { token_ids: vec![99] };
+        let caps = CapabilitySet {
+            token_ids: vec![99],
+        };
         let plan = planner()
             .verify_and_plan(&buf, &caps, &default_limits())
             .expect("External with valid token must pass");
@@ -1180,9 +1207,7 @@ mod tests {
             max_concurrent_handles: 64,
             ..default_limits()
         };
-        let err = planner()
-            .verify_and_plan(&buf, &caps, &limits)
-            .unwrap_err();
+        let err = planner().verify_and_plan(&buf, &caps, &limits).unwrap_err();
         assert!(
             matches!(err, BcibError::BoundsViolation(_)),
             "AI instruction count exceeding max_ai_quota must produce BCIB_ERR_BOUNDS_VIOLATION, got: {:?}",
@@ -1205,9 +1230,7 @@ mod tests {
             max_ai_quota: 8,
             ..default_limits()
         };
-        let err = planner()
-            .verify_and_plan(&buf, &caps, &limits)
-            .unwrap_err();
+        let err = planner().verify_and_plan(&buf, &caps, &limits).unwrap_err();
         assert!(
             matches!(err, BcibError::BoundsViolation(_)),
             "external count exceeding max_concurrent_handles must produce BCIB_ERR_BOUNDS_VIOLATION, got: {:?}",
@@ -1300,4 +1323,3 @@ mod tests {
         }
     }
 }
-

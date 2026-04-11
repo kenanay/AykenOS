@@ -8,6 +8,10 @@ authors = ["AykenOS"]
 bcib = { path = "../../ayken-core/crates/bcib" }
 dsl-parser = { path = "../dsl-parser" }
 
+[features]
+default = []
+test-support = []
+
 [dev-dependencies]
 proptest = "1"
 

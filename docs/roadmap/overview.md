@@ -199,11 +199,36 @@ Interpretation:
 10. ✅ `CURRENT_PHASE=15` formal transition tamamlandi
 
 ### 5.2 Near Term (Phase-16)
+**Status:** Faz A: 92% COMPLETE (production-candidate) | Faz B: BLOCKER (QEMU/Kernel Integration)
+
+**Faz A (COMPLETE - 92%):**
+1. ✅ Pipeline determinism (8/8 tests PASS)
+2. ✅ Runtime infrastructure (3/3 tests PASS)
+3. ✅ Host runtime / executor harness (5/5 tests PASS)
+4. ✅ DSL → Canonical IR → BCIB → Proof chain
+5. ✅ ayken-cli v0.1 shipped
+
+**Faz B (BLOCKER - Production Required):**
+1. ❌ Ring3 BCIB execution worker payload
+2. ❌ Real QEMU/kernel submission (`SYS_V2_SUBMIT_EXECUTION`)
+3. ❌ Real wait-result path (`SYS_V2_WAIT_RESULT`)
+4. ❌ Kernel result fingerprint comparison
+5. ❌ Kernel determinism proof
+
+**Critical Gap:**
+- ✅ PROVEN: Same BCIB → Same host runtime result
+- ❌ NOT PROVEN: Same BCIB → Same QEMU/kernel result
+
+**Estimated Completion:** 2-4 weeks for kernel integration
+
+**Ayken CLI Commands (Planned after Faz B):**
 1. Ayken CLI Faz B: `status` (effective authority), `risk` (advisory), `gate all` / `gate all --json` (advisory risk attached to gate summary), `closure status --json` (advisory), `closure verify` (binding), `head verify` (binding, exact SHA CI projection required), `head lineage` (advisory)
 2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect` (authority-aware observation only)
 3. Advisory authority-lineage spec: nearest verified ancestor diagnostics without inherited authority
 4. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
 5. Governance: ayrı spec ile onay gerekli
+
+**Analysis Report:** `docs/reports/YOL_HARITASI_GERCEKLESME_ANALIZI_2026_04_11.md`
 
 ### 5.2.1 Code-Structure-Derived First Slice (2026-04-10)
 1. Repo yapisina gore ilk kritik gelistirme adimi, yeni `ayken-cli` komutu eklemek degil, gercek Phase-16 BCIB toolchain/orchestration dilimini tamamlamaktir.
@@ -215,7 +240,8 @@ Interpretation:
    - mevcut authority modelini, `service != authority`, `diagnostics != decision`, `parity != consensus` sinirlarini degistirmemek
 4. Bu dilim yeni kernel semantics'i acmamalidir; mevcut ring0/ring3 runtime hattini by-pass eden ikinci bir execution authority yolu olusturmamak esastir.
 5. Kernel tarafinda scheduler-owner / ring3 runtime karmasikligi izlenmeye devam etmelidir; ancak yeni Phase-16 buyumesi, bu runtime hattini buyutmeden onun ustune tek bir userspace orchestration giris noktasi oturtmalidir.
-6. Takip dosyalari:
+6. 2026-04-11 guncellemesi: canonical BCIB v3 bytes artik host runtime ve `BcibExecutor` syscall-boundary harness uzerinden deterministic olarak dogrulanir; bu production-ready kernel closure degildir. Siradaki kritik adim purpose-named Ring3 BCIB execution worker + real QEMU/kernel submit + wait-result fingerprint karsilastirmasidir.
+7. Takip dosyalari:
    - `docs/specs/phase16-ayken-orchestration/requirements.md`
    - `docs/specs/phase16-ayken-orchestration/tasks.md`
 

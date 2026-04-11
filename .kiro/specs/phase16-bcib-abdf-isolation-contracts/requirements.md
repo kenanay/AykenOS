@@ -1,0 +1,342 @@
+# Requirements Document: Phase-16 BCIB/ABDF Isolation & Boundary Enforcement
+
+## Introduction
+
+This document specifies the isolation and boundary enforcement requirements between the BCIB (Bytecode Instruction Block) execution engine and the ABDF (Append-Based Data Format) data substrate. The feature establishes strict architectural boundaries that prevent execution context from directly accessing kernel resources, device hardware, or mutable data structures, while ensuring all interactions occur through controlled, capability-enforced interfaces.
+
+The core architectural principle is: **Execution ≠ Data**. BCIB provides sandboxed, deterministic execution in Ring3, while ABDF provides immutable, snapshot-consistent data storage. The boundary between them must be strictly enforced to maintain system integrity, determinism, and security.
+
+This feature directly enforces the NON_OVERRIDABLE constitutional rules:
+- `SECURITY.BOUNDARY.VIOLATION` - prevents Ring3 from accessing Ring0 directly
+- `KERNEL.SAFETY.CRITICAL` - ensures critical kernel safety is maintained
+- `DETERMINISM.GLOBAL` - prevents global state mutations through isolation
+- `MEMORY.CONTRACT.VIOLATION` - enforces memory safety at boundaries
+
+## Glossary
+
+- **BCIB**: Bytecode Instruction Block execution engine - sandboxed Ring3 execution runtime
+- **ABDF**: Append-Based Data Format - immutable, handle-based data substrate
+- **Runtime_Bridge**: The sole approved interface between BCIB and external systems (kernel/device/ABDF)
+- **Execution_Context**: Isolated execution environment with bounded memory and capabilities
+- **Capability**: Scoped permission token required for privileged operations
+- **Handle**: Opaque reference to ABDF data, preventing direct pointer access
+- **Segment**: Typed ABDF data unit (Input, Event, DeviceStatus, ReadResult, ExecutionResult, ExecutionTrace, Ref)
+- **Sandbox**: Execution isolation boundary preventing escape to kernel/device/raw memory
+- **Mutation_Interface**: Controlled ABDF write path producing new objects or append-only extensions
+- **Side_Effect**: Any operation that modifies state or interacts with external systems
+- **Fail_Closed**: Security posture where violations result in deterministic termination rather than undefined behavior
+
+## Requirements
+
+### Requirement 1: BCIB Execution Isolation
+
+**User Story:** As a system architect, I want BCIB execution to be strictly isolated from kernel and hardware resources, so that execution cannot bypass security boundaries or introduce non-determinism.
+
+#### Acceptance Criteria
+
+1. THE BCIB_Executor SHALL execute only in Ring3 user space
+2. THE BCIB_Executor SHALL NOT transfer policy, instruction semantics, or execution logic to Ring0
+3. WHEN BCIB needs kernel interaction, THE BCIB_Executor SHALL communicate only via `SYS_V2_SUBMIT_EXECUTION` syscall
+4. THE BCIB_Executor SHALL NOT extend the syscall surface (ABI freeze constraint)
+5. THE BCIB_Executor SHALL NOT invoke arbitrary syscalls beyond the approved execution submission interface
+6. THE BCIB_Executor SHALL NOT access DevFS directly
+7. THE BCIB_Executor SHALL NOT invoke device drivers directly
+8. THE BCIB_Executor SHALL NOT perform MMIO, IRQ, or I/O port operations
+9. IF any isolation violation occurs, THEN THE System SHALL terminate execution with `BCIB_ERR_ISOLATION_VIOLATION` and fail-closed behavior
+
+### Requirement 2: BCIB Memory Isolation
+
+**User Story:** As a security engineer, I want BCIB to operate only on bounded memory regions without raw pointer access, so that memory safety is guaranteed and kernel memory cannot be observed.
+
+#### Acceptance Criteria
+
+1. THE BCIB_Executor SHALL NOT access raw memory pointers
+2. THE BCIB_Executor SHALL NOT observe kernel memory addresses
+3. THE BCIB_Executor SHALL operate only on bounded memory regions declared before execution
+4. THE BCIB input buffer SHALL be read-only during execution
+5. THE BCIB output buffer SHALL be bounded and pre-declared before execution
+6. THE BCIB_Executor SHALL NOT allocate unbounded memory during execution
+7. IF buffer bounds are violated, THEN THE System SHALL raise `MEMORY.CONTRACT.VIOLATION` constitutional error
+
+### Requirement 3: Runtime Bridge Enforcement
+
+**User Story:** As a system architect, I want all BCIB interactions with external systems to occur exclusively through the runtime bridge, so that no execution path can bypass security controls.
+
+#### Acceptance Criteria
+
+1. THE BCIB_Executor SHALL interact with external systems ONLY via the Runtime_Bridge
+2. THE Runtime_Bridge SHALL be the sole interface for kernel operations, device access, and ABDF mutation
+3. THE BCIB_Executor SHALL NOT have direct access to syscall interfaces beyond execution submission
+4. THE BCIB_Executor SHALL NOT have direct access to device driver interfaces
+5. THE BCIB_Executor SHALL NOT have direct access to ABDF mutation primitives
+6. THE Runtime_Bridge SHALL enforce capability validation for all operations
+7. THE Runtime_Bridge SHALL log all external interactions for audit and replay
+8. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
+
+### Requirement 4: Execution Capability Scope
+
+**User Story:** As a security engineer, I want capabilities to be scoped to specific instruction types, ABDF segments, and execution contexts, so that privileges cannot be escalated or misused.
+
+#### Acceptance Criteria
+
+1. THE Capability SHALL be scoped to instruction type (pure, data-mutating, external)
+2. THE Capability SHALL be scoped to specific ABDF segment identifiers
+3. THE Capability SHALL be scoped to the current Execution_Context
+4. THE Capability SHALL NOT be global or implicit
+5. THE Capability SHALL NOT be transferable between execution contexts without explicit authorization
+6. WHEN BCIB executes a data-mutating instruction, THE Runtime_Bridge SHALL require a capability scoped to that operation and target segment
+7. WHEN BCIB executes an external instruction, THE Runtime_Bridge SHALL require a capability scoped to that external resource
+8. IF capability scope is violated, THEN THE System SHALL terminate with `BCIB_ERR_CAPABILITY_SCOPE_VIOLATION` and fail-closed behavior
+
+### Requirement 5: Side-Effect Declaration and Control
+
+**User Story:** As a verification engineer, I want all side-effects to be declared before execution and classified by type, so that execution behavior is predictable and verifiable.
+
+#### Acceptance Criteria
+
+1. THE BCIB_Executor SHALL declare all side-effects before execution begins
+2. THE BCIB_Executor SHALL classify each instruction as: `pure`, `data-mutating`, or `external`
+3. THE BCIB_Executor SHALL require capability for `data-mutating` instructions
+4. THE BCIB_Executor SHALL require capability for `external` instructions
+5. THE BCIB_Executor SHALL NOT require capability for `pure` instructions
+6. IF an undeclared side-effect occurs during execution, THEN THE System SHALL terminate with `BCIB_ERR_UNDECLARED_SIDE_EFFECT` and fail-closed behavior
+7. THE System SHALL enforce deterministic ordering of all side-effects within an execution context
+
+### Requirement 6: Deterministic Side-Effect Ordering
+
+**User Story:** As a verification engineer, I want side-effects to execute in deterministic order, so that execution is reproducible and verifiable across different runs.
+
+#### Acceptance Criteria
+
+1. THE BCIB_Executor SHALL execute side-effects in deterministic order based on instruction sequence
+2. THE BCIB_Executor SHALL NOT allow concurrent side-effects within a single execution context
+3. THE BCIB_Executor SHALL NOT allow side-effect reordering that changes observable behavior
+4. WHEN multiple side-effects target the same resource, THE Runtime_Bridge SHALL serialize them in instruction order
+5. THE System SHALL produce identical side-effect sequences for identical BCIB inputs and initial state
+6. THE System SHALL record side-effect ordering in execution trace for verification
+7. IF side-effect ordering becomes non-deterministic, THEN THE System SHALL raise `DETERMINISM.GLOBAL` constitutional error
+
+### Requirement 7: ABDF Immutability Contract
+
+**User Story:** As a data integrity engineer, I want ABDF objects to be immutable during BCIB execution, so that concurrent reads are safe and execution is deterministic.
+
+#### Acceptance Criteria
+
+1. THE ABDF SHALL be the authoritative data substrate for all persistent data
+2. THE ABDF objects SHALL be immutable during BCIB execution
+3. THE ABDF SHALL NOT allow in-place mutation of existing objects
+4. THE ABDF SHALL forbid concurrent mutable access to any object
+5. THE ABDF SHALL allow concurrent read-only access to immutable objects
+6. THE ABDF SHALL provide snapshot consistency for all read operations
+7. THE ABDF SHALL guarantee deterministic read view within an execution context
+
+### Requirement 8: ABDF Write Path and Mutation Interface
+
+**User Story:** As a data integrity engineer, I want ABDF mutations to occur only through controlled interfaces that produce new objects or append-only extensions, so that data history is preserved and mutations are auditable.
+
+#### Acceptance Criteria
+
+1. THE ABDF mutation SHALL NOT occur directly from BCIB
+2. THE ABDF mutation SHALL occur only via Runtime_Bridge and approved Mutation_Interface
+3. THE Mutation_Interface SHALL produce either a new ABDF object OR an append-only extension to an existing object
+4. THE Mutation_Interface SHALL NOT overwrite or delete existing ABDF data
+5. THE Mutation_Interface SHALL preserve previous state for all mutations
+6. THE Mutation_Interface SHALL return a new Handle for newly created or extended objects
+7. THE Mutation_Interface SHALL require capability for all mutation operations
+8. IF direct ABDF mutation is attempted, THEN THE System SHALL terminate with `ABDF_ERR_DIRECT_MUTATION` and fail-closed behavior
+
+### Requirement 9: ABDF Handle Enforcement
+
+**User Story:** As a security engineer, I want ABDF data to be accessible only via opaque handles, so that raw pointers cannot be used and memory safety is guaranteed.
+
+#### Acceptance Criteria
+
+1. THE ABDF SHALL expose data only via opaque ABDF_Handle references
+2. THE ABDF SHALL NOT expose raw memory pointers to BCIB
+3. THE ABDF_Handle SHALL be context-bound to the execution context that created or received it
+4. THE ABDF SHALL support handle revocation by the data owner
+5. WHEN a revoked handle is used, THE ABDF SHALL return `BCIB_ERR_ABDF_HANDLE_REVOKED` error
+6. THE ABDF_Handle SHALL NOT be transferable between execution contexts without explicit capability
+7. THE ABDF SHALL reject stale handles that reference deleted or expired objects
+
+### Requirement 10: ABDF Segment Type System
+
+**User Story:** As a runtime engineer, I want ABDF segments to have well-defined types, so that data interpretation is unambiguous and type safety is enforced.
+
+#### Acceptance Criteria
+
+1. THE ABDF SHALL define the following segment types: `Input`, `Event`, `DeviceStatus`, `ReadResult`, `ExecutionResult`, `ExecutionTrace`, `Ref`
+2. THE ABDF SHALL enforce type constraints for each segment type
+3. THE ABDF SHALL reject operations that violate segment type constraints
+4. THE Runtime_Bridge SHALL validate segment types before passing handles to BCIB
+5. THE BCIB SHALL receive only handles with declared segment types
+6. THE System SHALL extend segment types only through controlled schema evolution
+7. IF segment type violation occurs, THEN THE System SHALL terminate with `ABDF_ERR_TYPE_VIOLATION` and fail-closed behavior
+
+### Requirement 11: Device Access Path Isolation
+
+**User Story:** As a system architect, I want BCIB to access device data only through ABDF-provided segments, so that direct device interaction is prevented and device access is auditable.
+
+#### Acceptance Criteria
+
+1. THE BCIB SHALL access device data ONLY via ABDF-provided segments
+2. THE BCIB SHALL NOT interact directly with device drivers
+3. THE BCIB SHALL NOT perform device I/O operations directly
+4. THE BCIB SHALL NOT access device memory-mapped regions
+5. THE BCIB SHALL NOT handle device interrupts directly
+6. WHEN BCIB requires device data, THE Runtime_Bridge SHALL fetch device data and wrap it in an ABDF segment
+7. THE Runtime_Bridge SHALL provide device data as typed segments: `DeviceStatus`, `ReadResult`, or `Event`
+8. IF BCIB attempts direct device access, THEN THE System SHALL terminate with `BCIB_ERR_DEVICE_ACCESS_VIOLATION` and fail-closed behavior
+
+### Requirement 12: BCIB-ABDF Boundary Enforcement
+
+**User Story:** As a security engineer, I want the boundary between BCIB and ABDF to be strictly enforced, so that execution cannot bypass data access controls or corrupt data structures.
+
+#### Acceptance Criteria
+
+1. THE BCIB SHALL access ABDF only via handles provided by Runtime_Bridge
+2. THE BCIB SHALL NOT bypass the ABDF interface to access underlying storage
+3. THE BCIB SHALL NOT store persistent data outside ABDF
+4. THE BCIB SHALL NOT modify ABDF internal structure or metadata
+5. THE ABDF SHALL enforce capability validation for all BCIB access requests
+6. THE ABDF SHALL reject access requests that lack required capabilities
+7. IF boundary violation occurs, THEN THE System SHALL terminate with `ABDF_BOUNDARY_VIOLATION` and fail-closed behavior
+
+### Requirement 13: Cross-Context Isolation
+
+**User Story:** As a security engineer, I want execution contexts to be isolated from each other, so that one context cannot access another context's data or capabilities.
+
+#### Acceptance Criteria
+
+1. THE BCIB SHALL NOT access another Execution_Context's ABDF handles
+2. THE BCIB SHALL NOT access another Execution_Context's capabilities
+3. THE BCIB SHALL NOT access another Execution_Context's memory regions
+4. THE BCIB SHALL require explicit cross-context capability for any inter-context communication
+5. THE Runtime_Bridge SHALL enforce context isolation for all operations
+6. THE System SHALL provide controlled inter-context communication primitives that require explicit capability
+7. IF cross-context violation occurs, THEN THE System SHALL terminate with `BCIB_ERR_CONTEXT_ISOLATION_VIOLATION` and fail-closed behavior
+
+### Requirement 14: Execution Sandbox Integrity
+
+**User Story:** As a security engineer, I want BCIB execution to occur within a sandboxed runtime that cannot be escaped, so that execution cannot compromise system integrity.
+
+#### Acceptance Criteria
+
+1. THE BCIB SHALL execute within a sandboxed Execution_Context
+2. THE Sandbox SHALL prevent escape to kernel space
+3. THE Sandbox SHALL prevent escape to other execution contexts
+4. THE Sandbox SHALL prevent access to external state without declared capability
+5. THE Sandbox SHALL enforce memory bounds for all execution operations
+6. THE Sandbox SHALL enforce instruction classification and side-effect controls
+7. IF sandbox escape is attempted, THEN THE System SHALL terminate with `BCIB_ERR_SANDBOX_ESCAPE` and fail-closed behavior
+
+### Requirement 15: Fail-Closed Enforcement
+
+**User Story:** As a security engineer, I want all isolation and boundary violations to result in fail-closed termination, so that violations never result in undefined behavior or security compromise.
+
+#### Acceptance Criteria
+
+1. THE System SHALL terminate execution immediately upon detecting any isolation violation
+2. THE System SHALL terminate execution immediately upon detecting any boundary violation
+3. THE System SHALL terminate execution immediately upon detecting any capability violation
+4. THE System SHALL NOT attempt to recover from security violations
+5. THE System SHALL produce deterministic error codes for all violation types
+6. THE System SHALL log all violations to immutable audit log before termination
+7. THE System SHALL prevent partial state commits when violations occur
+
+## Correctness Properties for Property-Based Testing
+
+### Property 1: Execution Isolation Invariant
+**Type:** Invariant
+**Description:** For all BCIB executions, the execution context remains isolated from kernel and device resources.
+**Test:** Generate arbitrary BCIB instruction sequences. Verify that no execution path accesses kernel memory, device registers, or syscalls beyond `SYS_V2_SUBMIT_EXECUTION`.
+
+### Property 2: Handle Opacity Invariant
+**Type:** Invariant
+**Description:** ABDF handles never expose raw pointers or kernel addresses.
+**Test:** Generate arbitrary handle operations. Verify that handle representation contains no valid memory addresses and cannot be dereferenced as a pointer.
+
+### Property 3: Capability Scope Invariant
+**Type:** Invariant
+**Description:** Capabilities remain scoped to their declared instruction type, segment, and context.
+**Test:** Generate arbitrary capability tokens and operations. Verify that capabilities cannot be used outside their declared scope.
+
+### Property 4: Immutability Preservation
+**Type:** Invariant
+**Description:** ABDF objects remain immutable during execution.
+**Test:** Generate concurrent read operations on ABDF objects during BCIB execution. Verify that all reads return identical data and no in-place mutations occur.
+
+### Property 5: Side-Effect Determinism
+**Type:** Metamorphic
+**Description:** Identical BCIB inputs produce identical side-effect sequences.
+**Test:** Execute the same BCIB instruction sequence multiple times with identical initial state. Verify that side-effect ordering and content are identical across all runs.
+
+### Property 6: Boundary Enforcement
+**Type:** Error Condition
+**Description:** Boundary violations always result in fail-closed termination.
+**Test:** Generate BCIB instruction sequences that attempt boundary violations (direct syscall, raw pointer access, handle bypass). Verify that all violations result in deterministic error codes and fail-closed termination.
+
+### Property 7: Handle Revocation
+**Type:** State Transition
+**Description:** Revoked handles cannot be used for any operation.
+**Test:** Create handles, revoke them, then attempt operations. Verify that all operations on revoked handles return `BCIB_ERR_ABDF_HANDLE_REVOKED`.
+
+### Property 8: Context Isolation
+**Type:** Invariant
+**Description:** Execution contexts cannot access each other's resources.
+**Test:** Create multiple execution contexts with distinct handles and capabilities. Verify that no context can access another context's handles or capabilities without explicit cross-context capability.
+
+### Property 9: Mutation Path Enforcement
+**Type:** Error Condition
+**Description:** Direct ABDF mutations always fail; only Runtime_Bridge mutations succeed.
+**Test:** Generate ABDF mutation attempts from BCIB. Verify that direct mutations fail with `ABDF_ERR_DIRECT_MUTATION` and only Runtime_Bridge mutations succeed.
+
+### Property 10: Device Access Isolation
+**Type:** Error Condition
+**Description:** Direct device access from BCIB always fails.
+**Test:** Generate device access attempts (MMIO, I/O port, driver call) from BCIB. Verify that all attempts fail with `BCIB_ERR_DEVICE_ACCESS_VIOLATION`.
+
+### Property 11: Sandbox Escape Prevention
+**Type:** Error Condition
+**Description:** Sandbox escape attempts always fail with fail-closed termination.
+**Test:** Generate instruction sequences that attempt sandbox escape (kernel call, context switch, memory escape). Verify that all attempts result in `BCIB_ERR_SANDBOX_ESCAPE`.
+
+### Property 12: Capability Requirement Enforcement
+**Type:** Error Condition
+**Description:** Operations requiring capabilities fail without valid capability.
+**Test:** Generate data-mutating and external instructions without capabilities. Verify that all such operations fail with capability violation errors.
+
+## Constitutional Compliance
+
+This feature enforces the following NON_OVERRIDABLE constitutional rules:
+
+- **DETERMINISM.GLOBAL**: Enforced through side-effect declaration, deterministic ordering, and execution isolation
+- **MEMORY.CONTRACT.VIOLATION**: Enforced through bounded memory regions, handle-only access, and pointer prohibition
+- **KERNEL.SAFETY.CRITICAL**: Enforced through Ring3-only execution and syscall surface freeze
+- **SECURITY.BOUNDARY.VIOLATION**: Enforced through runtime bridge, capability scope, and fail-closed boundaries
+
+Phase Matrix compliance (P4.4 Development phase):
+- All NON_OVERRIDABLE rules are ERROR level (cannot be waived)
+- This feature is foundational security infrastructure and must pass all gates before merge
+
+## CI Gate Requirements
+
+The following CI gates are mandatory for this feature:
+
+1. `ci-gate-bcib-isolation`: Verifies BCIB execution isolation properties
+2. `ci-gate-abdf-immutability`: Verifies ABDF immutability and handle enforcement
+3. `ci-gate-boundary-enforcement`: Verifies BCIB-ABDF boundary controls
+4. `ci-gate-determinism`: Verifies side-effect determinism and execution reproducibility
+5. `ci-gate-capability-enforcement`: Verifies capability scope and validation
+6. `ci-gate-fail-closed`: Verifies fail-closed behavior for all violation types
+
+All gates must pass before this feature can be merged to mainline.
+
+## Final Invariant
+
+```
+BCIB = sandboxed execution (Ring3, bounded memory, capability-controlled)
+ABDF = immutable data (handle-only, snapshot-consistent, mutation-controlled)
+Runtime_Bridge = sole interface (capability-enforced, auditable, fail-closed)
+Boundary = strictly enforced (no bypass, no escape, deterministic termination)
+```

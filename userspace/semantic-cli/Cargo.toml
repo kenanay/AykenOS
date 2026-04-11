@@ -65,7 +65,7 @@ bit-set = "0.5"
 smallvec = "1.11"
 
 [dev-dependencies]
-bcib-runtime = { path = "../bcib-runtime" }
+bcib-runtime = { path = "../bcib-runtime", features = ["test-support"] }
 
 # Property-based testing
 proptest = "1.4"

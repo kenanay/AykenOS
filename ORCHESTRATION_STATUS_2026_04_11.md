@@ -1,11 +1,11 @@
 # Ayken Orchestration Status Report
 **Date:** 2026-04-11  
-**Commit:** cc1beffb  
+**Commit:** worktree after `567c3ba8` (uncommitted update)  
 **Authority:** Kenan AY - Architectural Steward
 
 ## Executive Summary
 
-Orchestration pipeline is **production-candidate** with proven pipeline determinism. Runtime determinism verification remains the final blocker for production deployment.
+Orchestration pipeline is **production-candidate** with proven pipeline determinism and host runtime/executor harness determinism. Real QEMU/kernel runtime determinism remains the final blocker for production deployment.
 
 ## Current State
 
@@ -51,19 +51,35 @@ test_replay_verification_detects_deviation .. ok
 test_proof_chain_binding_integrity .......... ok
 ```
 
-### ⚠️ PENDING: Kernel Runtime Integration
+### ✅ PROVEN: Host Runtime / Executor Harness
+```
+Canonical BCIB v3 → Host Runtime Completion → BcibExecutor Submit/Wait Harness → Proof Binding
+```
+
+**Evidence:**
+- 5/5 runtime equivalence tests passing
+- 0 ignored runtime equivalence tests
+- Production `LoweredCanonicalQuery.bytes` are submitted directly through `BcibGraph` / `BcibExecutor`
+- Host runtime result fingerprint is bound into proof replay material
+
+**Test Coverage:**
+```
+test_bcib_serialization_deterministic ....... ok
+test_replay_verification_detects_deviation .. ok
+test_proof_chain_binding_integrity .......... ok
+test_runtime_equivalence_with_executor ...... ok
+test_runtime_determinism_no_drift_with_executor ok
+```
+
+### ⚠️ PENDING: QEMU/Kernel Runtime Integration
 ```
 BCIB → Kernel Execution → Result
 ```
 
 **Blocking Issue:**
-- 2 runtime equivalence tests are placeholders (#[ignore])
-- Requires BcibExecutor integration with test harness
-- Cannot yet prove: same BCIB → same runtime result
-
-**Placeholder Tests:**
-1. `test_runtime_equivalence_with_executor` (#[ignore])
-2. `test_runtime_determinism_no_drift_with_executor` (#[ignore])
+- Host executor harness is proven, but it is not QEMU/kernel evidence
+- Requires real kernel submission and wait-result comparison under QEMU
+- Cannot yet prove: same BCIB → same real kernel runtime result
 
 ## Critical Distinction
 
@@ -74,22 +90,25 @@ BCIB → Kernel Execution → Result
 - BCIB serialization is deterministic ✅
 - Replay verifier detects deviations ✅
 - Proof chain binding is intact ✅
+- Same canonical BCIB v3 bytes → same host runtime/executor harness result ✅
 
 **What we CANNOT yet prove:**
-- Same BCIB → same runtime result ⚠️
-- Runtime execution is deterministic ⚠️
-- Replay matches actual execution ⚠️
+- Same BCIB → same real QEMU/kernel runtime result ⚠️
+- Kernel scheduler/runtime execution is deterministic ⚠️
+- Replay matches actual kernel execution ⚠️
 
 This is the difference between:
 - **Pipeline determinism** (proven) ✅
 - **Runtime verification infrastructure** (proven) ✅
-- **Execution determinism** (not proven) ⚠️
+- **Host runtime/executor harness determinism** (proven) ✅
+- **Kernel execution determinism** (not proven) ⚠️
 
 ## Constitutional Compliance
 
 ### DETERMINISM.GLOBAL
 - **Pipeline level:** ✅ ENFORCED AND PROVEN
-- **Runtime level:** ⚠️ NOT YET PROVEN
+- **Host runtime level:** ✅ ENFORCED AND PROVEN
+- **Kernel runtime level:** ⚠️ NOT YET PROVEN
 
 ### SECURITY.BOUNDARY.VIOLATION
 - ✅ Ring3 → Ring0 boundary enforced
@@ -131,11 +150,13 @@ All gates passing. System is CI-clean.
 ## Next Steps
 
 ### Immediate (Blocking Production)
-1. Integrate BcibExecutor runtime
-2. Implement runtime equivalence tests
-3. Verify same BCIB → same result
-4. Remove #[ignore] from runtime tests
-5. Verify all tests pass
+1. Add a purpose-named Ring3 BCIB execution worker payload for the kernel evidence path
+2. Submit production canonical BCIB v3 bytes through real QEMU/kernel `SYS_V2_SUBMIT_EXECUTION`
+3. Complete execution from Ring3 through real `SYS_V2_COMPLETE_EXECUTION`
+4. Wait through real `SYS_V2_WAIT_RESULT` and capture the result hash sidecar
+5. Compare the real kernel result fingerprint with replay/proof fingerprint
+6. Repeat the same canonical BCIB execution and verify no kernel drift
+7. Keep host-harness and kernel-production claims separate
 
 ### Future (Post-Production)
 - Performance benchmarking
@@ -151,6 +172,7 @@ All gates passing. System is CI-clean.
 - Elite-level architecture ✅
 - Proven pipeline determinism (8/8 tests) ✅
 - Proven runtime infrastructure (3/3 tests) ✅
+- Proven host runtime/executor harness determinism (5/5 tests) ✅
 - Constitutional enforcement ✅
 - Fail-closed security ✅
 - Code consistency: 100% ✅
@@ -159,16 +181,20 @@ All gates passing. System is CI-clean.
 - BCIB serialization working ✅
 - Replay verification working ✅
 - Proof chain binding working ✅
+- Host runtime / BcibExecutor harness working ✅
 - Infrastructure complete ✅
 - All compile errors resolved ✅
 
 **Remaining:**
-- Kernel runtime integration (2 tests)
+- Real QEMU/kernel runtime integration
+- Purpose-named kernel evidence gate and Ring3 execution worker payload
+- Real wait-result fingerprint capture and replay comparison
 
 **Recommendation:**
 - System is stable and ready
 - Infrastructure proven
-- Just needs kernel connection
+- Host runtime path is proven
+- Production still needs QEMU/kernel evidence
 
 ## Key Metrics
 
@@ -177,28 +203,29 @@ All gates passing. System is CI-clean.
 | Architecture | ✅ 100% |
 | Pipeline Determinism | ✅ PROVEN (8/8 tests) |
 | Runtime Infrastructure | ✅ PROVEN (3/3 tests) |
+| Host Runtime / Executor Harness | ✅ PROVEN (5/5 tests) |
 | Code Consistency | ✅ 100% |
-| Runtime Determinism | ⚠️ NOT PROVEN (2 tests pending) |
-| E2E Test Coverage | 11/13 passing (2 ignored) |
+| Kernel Runtime Determinism | ⚠️ NOT PROVEN (QEMU/kernel evidence pending) |
+| E2E Test Coverage | 13/13 passing (0 ignored) |
 | CI Gates | 5/5 passing |
-| Constitutional Compliance | ✅ (pipeline level) |
+| Constitutional Compliance | ✅ (pipeline + host runtime level) |
 | Production Ready | ❌ (blocked on kernel integration) |
 
 ## Conclusion
 
-The system is **very well designed** and **pipeline-level determinism is cryptographically proven**. However, production deployment requires runtime equivalence verification.
+The system is **very well designed** and **pipeline-level plus host runtime harness determinism are proven**. However, production deployment requires QEMU/kernel runtime equivalence verification.
 
 This is not a failure. This is honest engineering:
 - We know what we've proven
 - We know what we haven't proven
 - We know what's needed next
 
-The architecture is sound. The implementation is solid. The tests are comprehensive. We just need to connect the final piece: runtime verification.
+The architecture is sound. The implementation is solid. The tests are comprehensive. The final piece is real kernel runtime verification, not another host-side abstraction.
 
 ---
 
-**Next Milestone:** Runtime equivalence tests passing → Production-ready
+**Next Milestone:** QEMU/kernel runtime equivalence evidence → Production-ready
 
-**Estimated Effort:** Kernel runtime integration + test implementation
+**Estimated Effort:** QEMU/kernel submission + result fingerprint comparison
 
-**Risk:** Low (architecture is proven, just needs runtime connection)
+**Risk:** Low-to-medium (host runtime is proven; kernel evidence still must be produced)
