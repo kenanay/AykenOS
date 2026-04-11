@@ -4,7 +4,7 @@
 
 This implementation plan converts the Phase-16 design into discrete coding tasks for implementing strict isolation and boundary enforcement between BCIB execution and ABDF data substrate. The implementation follows fail-closed semantics with constitutional compliance for NON_OVERRIDABLE rules.
 
-**CRITICAL DEPENDENCY:** This feature is BLOCKED until execution closure (Phase-15) is completed with kernel-level evidence. Production deployment is forbidden without execution closure completion.
+**CRITICAL DEPENDENCY:** Execution closure is a PRODUCTION BLOCKER, not an IMPLEMENTATION BLOCKER. Isolation infrastructure MAY be implemented before closure completion, but production deployment is FORBIDDEN until execution closure is completed with kernel-level evidence.
 
 **Key Implementation Principles:**
 - Phase-15 compatibility: BCIB core semantics remain unchanged
@@ -16,25 +16,25 @@ This implementation plan converts the Phase-16 design into discrete coding tasks
 
 ## Tasks
 
-- [ ] 1. BLOCKER: Verify execution closure completion
-  - Verify Phase-15 execution closure is completed with kernel-level evidence
-  - Confirm BCIB core semantics are frozen and immutable
-  - Validate no execution closure dependencies remain open
-  - **BLOCKER**: Cannot proceed with isolation implementation until this passes
-  - _Requirements: Introduction dependency_
-
-- [ ] 2. Set up core isolation infrastructure and error taxonomy
+- [ ] 1. Set up core isolation infrastructure and error taxonomy
   - Create directory structure for isolation components
   - Define comprehensive error taxonomy with fail-closed semantics
   - Set up constitutional rule enforcement framework
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5_
 
-- [ ] 3. Implement kernel boundary hardening
+- [ ] 2. Implement kernel boundary hardening
   - Implement syscall submission path hardening (SYS_V2_SUBMIT_EXECUTION only)
   - Ensure no direct kernel API exposure beyond approved submission interface
   - Verify Runtime_Bridge cannot replace or bypass syscall surface
   - Create kernel boundary violation detection and fail-closed enforcement
   - _Requirements: 1.5, 1.6, 1.7, 1.8_
+
+- [ ] 3. Implement BCIB execution entry enforcement
+  - Reject direct invocation paths (test helpers, debug hooks, internal calls)
+  - Enforce syscall-only entry via approved submission path
+  - Implement execution entry point validation and fail-closed enforcement
+  - Prevent bypass of execution submission interface
+  - _Requirements: 1.3, 1.4_
 
 - [ ] 4. Implement ABDF Handle Management System
   - [ ] 4.1 Create opaque handle types and lifecycle management

@@ -73,17 +73,19 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 #### Acceptance Criteria
 
 1. THE BCIB_Executor SHALL interact with external systems ONLY via the Runtime_Bridge
-2. THE Runtime_Bridge SHALL be the sole interface for kernel operations, device access, and ABDF mutation
-3. THE BCIB_Executor SHALL NOT have direct access to syscall interfaces beyond execution submission
-4. THE BCIB_Executor SHALL NOT have direct access to device driver interfaces
-5. THE BCIB_Executor SHALL NOT have direct access to ABDF mutation primitives
-6. THE Runtime_Bridge SHALL enforce capability validation for all operations
-7. THE Runtime_Bridge SHALL be non-blocking and bounded in execution time
-8. THE Runtime_Bridge SHALL NOT introduce unbounded latency into execution
-9. THE Runtime_Bridge SHALL log all external interactions for audit and replay
-10. THE Runtime_Bridge logging SHALL be deterministic or externalized from execution trace
-11. THE Runtime_Bridge logging SHALL NOT affect execution determinism
-12. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
+2. THE Runtime_Bridge SHALL be the sole interface for device access and ABDF mutation
+3. THE Runtime_Bridge SHALL NOT expose kernel operations directly
+4. ALL kernel interaction SHALL occur exclusively via syscall interfaces (SYS_V2_SUBMIT_EXECUTION)
+5. THE BCIB_Executor SHALL NOT have direct access to syscall interfaces beyond execution submission
+6. THE BCIB_Executor SHALL NOT have direct access to device driver interfaces
+7. THE BCIB_Executor SHALL NOT have direct access to ABDF mutation primitives
+8. THE Runtime_Bridge SHALL enforce capability validation for all operations
+9. THE Runtime_Bridge SHALL be non-blocking and bounded in execution time
+10. THE Runtime_Bridge SHALL NOT introduce unbounded latency into execution
+11. THE Runtime_Bridge SHALL log all external interactions for audit and replay
+12. THE Runtime_Bridge logging SHALL be deterministic or externalized from execution trace
+13. THE Runtime_Bridge logging SHALL NOT affect execution determinism
+14. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
 
 ### Requirement 4: Execution Capability Scope
 
