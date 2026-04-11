@@ -31,9 +31,6 @@ BCIB execution yalnızca approved submission path ile başlatılabilir. Direct i
 **Karar 5 — Opaque Handles (Görünmez Referanslar)**
 ABDF nesneleri BCIB'ye doğrudan bellek adresleri (raw pointers) olarak verilmez. Verilere yalnızca context'e bağlı, iptal edilebilir `ABDF_Handle` referansları aracılığıyla erişilir.
 
-**Karar 5 — Opaque Handles (Görünmez Referanslar)**
-ABDF nesneleri BCIB'ye doğrudan bellek adresleri (raw pointers) olarak verilmez. Verilere yalnızca context'e bağlı, iptal edilebilir `ABDF_Handle` referansları aracılığıyla erişilir.
-
 **Karar 6 — Immutable Data (Değiştirilemez Veri)**
 ABDF'deki veri yansımaları (snapshots) execution sırasında sabittir (immutable). Değişiklikler yalnızca `Runtime_Bridge` üzerinden yeni nesneler oluşturarak veya "append-only" (yalnızca ekleme) uzantılarıyla yapılır.
 
