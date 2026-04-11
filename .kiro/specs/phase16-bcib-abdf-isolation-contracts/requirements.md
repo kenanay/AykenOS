@@ -6,11 +6,15 @@ This document specifies the isolation and boundary enforcement requirements betw
 
 The core architectural principle is: **Execution ≠ Data**. BCIB provides sandboxed, deterministic execution in Ring3, while ABDF provides immutable, snapshot-consistent data storage. The boundary between them must be strictly enforced to maintain system integrity, determinism, and security.
 
+**Critical Dependency:** This feature SHALL NOT be considered production-ready until BCIB execution closure (Phase-15) is completed. The isolation and boundary enforcement mechanisms depend on a stable, frozen BCIB execution model.
+
 This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 - `SECURITY.BOUNDARY.VIOLATION` - prevents Ring3 from accessing Ring0 directly
 - `KERNEL.SAFETY.CRITICAL` - ensures critical kernel safety is maintained
 - `DETERMINISM.GLOBAL` - prevents global state mutations through isolation
 - `MEMORY.CONTRACT.VIOLATION` - enforces memory safety at boundaries
+
+**Phase-15 Compatibility:** This specification SHALL NOT modify BCIB core execution semantics defined in Phase-15. BCIB remains immutable; only the runtime bridge and boundary enforcement are introduced.
 
 ## Glossary
 
@@ -38,13 +42,15 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 2. THE BCIB_Executor SHALL NOT transfer policy, instruction semantics, or execution logic to Ring0
 3. THE BCIB execution SHALL be initiated ONLY via the approved submission path
 4. THE BCIB runtime SHALL NOT be directly invocable via test helpers, debug hooks, or internal calls
-5. WHEN BCIB needs kernel interaction, THE BCIB_Executor SHALL communicate only via `SYS_V2_SUBMIT_EXECUTION` syscall
-6. THE BCIB_Executor SHALL NOT extend the syscall surface (ABI freeze constraint)
-7. THE BCIB_Executor SHALL NOT invoke arbitrary syscalls beyond the approved execution submission interface
-8. THE BCIB_Executor SHALL NOT access DevFS directly
-9. THE BCIB_Executor SHALL NOT invoke device drivers directly
-10. THE BCIB_Executor SHALL NOT perform MMIO, IRQ, or I/O port operations
-11. IF any isolation violation occurs, THEN THE System SHALL terminate execution with `BCIB_ERR_ISOLATION_VIOLATION` and fail-closed behavior
+5. THE BCIB SHALL use `SYS_V2_SUBMIT_EXECUTION` ONLY for execution submission
+6. THE BCIB SHALL NOT use syscalls for runtime interaction (device, ABDF, external operations)
+7. ALL runtime interaction (device access, ABDF mutation, external operations) SHALL occur via Runtime_Bridge
+8. THE BCIB_Executor SHALL NOT extend the syscall surface (ABI freeze constraint)
+9. THE BCIB_Executor SHALL NOT invoke arbitrary syscalls beyond the approved execution submission interface
+10. THE BCIB_Executor SHALL NOT access DevFS directly
+11. THE BCIB_Executor SHALL NOT invoke device drivers directly
+12. THE BCIB_Executor SHALL NOT perform MMIO, IRQ, or I/O port operations
+13. IF any isolation violation occurs, THEN THE System SHALL terminate execution with `BCIB_ERR_ISOLATION_VIOLATION` and fail-closed behavior
 
 ### Requirement 2: BCIB Memory Isolation
 
@@ -75,8 +81,9 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 7. THE Runtime_Bridge SHALL be non-blocking and bounded in execution time
 8. THE Runtime_Bridge SHALL NOT introduce unbounded latency into execution
 9. THE Runtime_Bridge SHALL log all external interactions for audit and replay
-10. THE Runtime_Bridge logging SHALL NOT affect execution determinism
-11. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
+10. THE Runtime_Bridge logging SHALL be deterministic or externalized from execution trace
+11. THE Runtime_Bridge logging SHALL NOT affect execution determinism
+12. IF BCIB attempts to bypass Runtime_Bridge, THEN THE System SHALL terminate with `BCIB_ERR_BRIDGE_BYPASS` and fail-closed behavior
 
 ### Requirement 4: Execution Capability Scope
 
@@ -107,6 +114,19 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 5. THE BCIB_Executor SHALL NOT require capability for `pure` instructions
 6. IF an undeclared side-effect occurs during execution, THEN THE System SHALL terminate with `BCIB_ERR_UNDECLARED_SIDE_EFFECT` and fail-closed behavior
 7. THE System SHALL enforce deterministic ordering of all side-effects within an execution context
+
+### Requirement 5a: BCIB Opcode Intent Model
+
+**User Story:** As a system architect, I want BCIB opcodes to express intent only without performing resolution or execution, so that BCIB core semantics remain unchanged from Phase-15.
+
+#### Acceptance Criteria
+
+1. THE BCIB opcodes (OP_DEVICE_READ, OP_INPUT_FETCH, etc.) SHALL express intent only
+2. THE BCIB opcodes SHALL NOT perform device access, ABDF mutation, or external operations directly
+3. THE Runtime_Bridge SHALL resolve and execute all opcode intents
+4. THE BCIB core execution semantics defined in Phase-15 SHALL NOT be modified by this specification
+5. THE BCIB SHALL remain a pure execution engine without device or data substrate knowledge
+6. IF BCIB opcodes attempt direct execution of external operations, THEN THE System SHALL terminate with `BCIB_ERR_OPCODE_VIOLATION` and fail-closed behavior
 
 ### Requirement 6: Deterministic Side-Effect Ordering
 
@@ -145,12 +165,14 @@ This feature directly enforces the NON_OVERRIDABLE constitutional rules:
 
 1. THE ABDF mutation SHALL NOT occur directly from BCIB
 2. THE ABDF mutation SHALL occur only via Runtime_Bridge and approved Mutation_Interface
-3. THE Mutation_Interface SHALL produce either a new ABDF object OR an append-only extension to an existing object
-4. THE Mutation_Interface SHALL NOT overwrite or delete existing ABDF data
-5. THE Mutation_Interface SHALL preserve previous state for all mutations
-6. THE Mutation_Interface SHALL return a new Handle for newly created or extended objects
-7. THE Mutation_Interface SHALL require capability for all mutation operations
-8. IF direct ABDF mutation is attempted, THEN THE System SHALL terminate with `ABDF_ERR_DIRECT_MUTATION` and fail-closed behavior
+3. THE Device drivers SHALL NOT write to ABDF directly
+4. THE Runtime_Bridge SHALL be the sole producer of ABDF segments
+5. THE Mutation_Interface SHALL produce either a new ABDF object OR an append-only extension to an existing object
+6. THE Mutation_Interface SHALL NOT overwrite or delete existing ABDF data
+7. THE Mutation_Interface SHALL preserve previous state for all mutations
+8. THE Mutation_Interface SHALL return a new Handle for newly created or extended objects
+9. THE Mutation_Interface SHALL require capability for all mutation operations
+10. IF direct ABDF mutation is attempted, THEN THE System SHALL terminate with `ABDF_ERR_DIRECT_MUTATION` and fail-closed behavior
 
 ### Requirement 9: ABDF Handle Enforcement
 
