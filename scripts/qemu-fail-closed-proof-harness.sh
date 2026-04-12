@@ -89,41 +89,107 @@ timeout $QEMU_TIMEOUT qemu-system-x86_64 \
 
 log_info "QEMU execution complete"
 
-# Merge debugcon and serial logs into unified trace
-log_info "Merging kernel trace outputs..."
+# Channel integrity validation (HARD FAIL rule)
+# NOTE: Task 1 scope = debugcon + serial only
+# UEFI output validation will be added in Block 2/3 for bootloader execution diagnosis
+log_info "Validating output channel integrity..."
 
+DEBUGCON_SIZE=0
+SERIAL_SIZE=0
+
+if [[ -f "$DEBUGCON_LOG" ]]; then
+    DEBUGCON_SIZE=$(stat -c%s "$DEBUGCON_LOG" 2>/dev/null || echo "0")
+fi
+
+if [[ -f "$SERIAL_LOG" ]]; then
+    SERIAL_SIZE=$(stat -c%s "$SERIAL_LOG" 2>/dev/null || echo "0")
+fi
+
+log_info "Channel sizes: debugcon=$DEBUGCON_SIZE bytes, serial=$SERIAL_SIZE bytes"
+
+# HARD FAIL: All channels zero (Task 1 scope: debugcon + serial)
+# UEFI fallback diagnosis will be implemented in Block 2 (bootloader markers)
+if [[ $DEBUGCON_SIZE -eq 0 ]] && [[ $SERIAL_SIZE -eq 0 ]]; then
+    log_error "OUTPUT_CHANNEL_FAILURE: All output channels are empty (debugcon + serial)"
+    log_error "Cannot proceed with validation - no observable evidence"
+    log_error "Possible causes:"
+    log_error "  - QEMU debugcon/serial misconfiguration"
+    log_error "  - Bootloader/kernel not emitting markers"
+    log_error "  - Output capture path broken"
+    log_error ""
+    log_error "Next diagnosis step: Check UEFI Print output (Block 2)"
+    exit 1
+fi
+
+# Keep separate channel-local traces (NO cross-channel merge)
+TRACE_DEBUGCON="$EVIDENCE_DIR/debugcon.trace"
+TRACE_SERIAL="$EVIDENCE_DIR/serial.trace"
+
+log_info "Preserving channel-local traces (no cross-channel merge)..."
+
+if [[ -f "$DEBUGCON_LOG" ]] && [[ $DEBUGCON_SIZE -gt 0 ]]; then
+    cp "$DEBUGCON_LOG" "$TRACE_DEBUGCON"
+    log_info "Debugcon trace: $TRACE_DEBUGCON"
+fi
+
+if [[ -f "$SERIAL_LOG" ]] && [[ $SERIAL_SIZE -gt 0 ]]; then
+    cp "$SERIAL_LOG" "$TRACE_SERIAL"
+    log_info "Serial trace: $TRACE_SERIAL"
+fi
+
+# Analyze markers in channel-local traces (NO sort, NO reorder)
+log_info "Analyzing channel-local traces for canonical markers..."
+
+MARKER_BEFORE=0
+MARKER_ENTER=0
+MARKER_KILL=0
+
+# Check debugcon channel
+if [[ -f "$TRACE_DEBUGCON" ]]; then
+    MARKER_BEFORE=$((MARKER_BEFORE + $(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_DEBUGCON" || echo "0")))
+    MARKER_ENTER=$((MARKER_ENTER + $(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_DEBUGCON" || echo "0")))
+    MARKER_KILL=$((MARKER_KILL + $(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_DEBUGCON" || echo "0")))
+fi
+
+# Check serial channel
+if [[ -f "$TRACE_SERIAL" ]]; then
+    MARKER_BEFORE=$((MARKER_BEFORE + $(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_SERIAL" || echo "0")))
+    MARKER_ENTER=$((MARKER_ENTER + $(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_SERIAL" || echo "0")))
+    MARKER_KILL=$((MARKER_KILL + $(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_SERIAL" || echo "0")))
+fi
+
+log_info "Marker counts (channel-local aggregation):"
+log_info "  BCIB_FORBIDDEN_BEFORE: $MARKER_BEFORE"
+log_info "  [[AYKEN_SYSCALL_ENTER]]: $MARKER_ENTER"
+log_info "  [[AYKEN_BOUNDARY_KILL]]: $MARKER_KILL"
+
+# Create unified trace for human-readable reference ONLY (NOT authoritative)
+# CRITICAL: This file is NON-AUTHORITATIVE and MUST NOT be used for temporal ordering
+# Authoritative evidence: debugcon.trace and serial.trace (channel-local only)
 {
-    echo "=== QEMU Kernel Trace ==="
+    echo "=== QEMU Kernel Trace (NON-AUTHORITATIVE SUMMARY) ==="
     echo "=== Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+    echo "=== WARNING: This file is for human reference only ==="
+    echo "=== Authoritative evidence: debugcon.trace and serial.trace ==="
+    echo "=== DO NOT use this file for temporal ordering or CI gates ==="
     echo ""
-    echo "=== Debugcon Output ==="
-    if [[ -f "$DEBUGCON_LOG" ]]; then
-        cat "$DEBUGCON_LOG"
+    echo "=== Debugcon Output (raw append order) ==="
+    if [[ -f "$TRACE_DEBUGCON" ]]; then
+        cat "$TRACE_DEBUGCON"
     else
         echo "(no debugcon output)"
     fi
     echo ""
-    echo "=== Serial Output ==="
-    if [[ -f "$SERIAL_LOG" ]]; then
-        cat "$SERIAL_LOG"
+    echo "=== Serial Output (raw append order) ==="
+    if [[ -f "$TRACE_SERIAL" ]]; then
+        cat "$TRACE_SERIAL"
     else
         echo "(no serial output)"
     fi
 } > "$TRACE_LOG"
 
-log_info "Kernel trace saved: $TRACE_LOG"
-
-# Analyze trace for markers
-log_info "Analyzing trace for canonical markers..."
-
-MARKER_BEFORE=$(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_LOG" || echo "0")
-MARKER_ENTER=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_LOG" || echo "0")
-MARKER_KILL=$(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_LOG" || echo "0")
-
-log_info "Marker counts:"
-log_info "  BCIB_FORBIDDEN_BEFORE: $MARKER_BEFORE"
-log_info "  [[AYKEN_SYSCALL_ENTER]]: $MARKER_ENTER"
-log_info "  [[AYKEN_BOUNDARY_KILL]]: $MARKER_KILL"
+log_info "Non-authoritative summary: $TRACE_LOG"
+log_info "Authoritative evidence: $TRACE_DEBUGCON, $TRACE_SERIAL"
 
 if [[ $MARKER_BEFORE -gt 0 ]] && [[ $MARKER_ENTER -gt 0 ]] && [[ $MARKER_KILL -gt 0 ]]; then
     log_info "✓ All required markers present"

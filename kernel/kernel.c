@@ -77,11 +77,12 @@ static uint8_t kernel_boot_stack[16384] __attribute__((aligned(16), section(".da
 
 
 // Early debugcon output (QEMU port 0xE9)
-static void debugcon_write(const char *s)
+static void dual_channel_write(const char *s)
 {
     if (!s) return;
     while (*s) {
         outb(0xE9, (uint8_t)*s);
+        outb(0x3F8, (uint8_t)*s);
         s++;
     }
 }
@@ -109,9 +110,9 @@ static int is_canonical_addr(uint64_t addr)
 
 static void phase10_prereq_panic(const char *reason)
 {
-    debugcon_write("[P10][PREREQ_FAIL] ");
-    debugcon_write(reason);
-    debugcon_write("\n");
+    dual_channel_write("[P10][PREREQ_FAIL] ");
+    dual_channel_write(reason);
+    dual_channel_write("\n");
     fb_print("[PANIC] Phase10-A2 prereq failed: ");
     fb_print(reason);
     fb_print("\n");
@@ -247,7 +248,7 @@ static void intentional_perf_regression_delay_if_enabled(void)
     const uint64_t if_mask = (1ull << 9);
 
     __asm__ volatile("pushfq; popq %0" : "=r"(rflags));
-    debugcon_write("[K][PERF_REGRESSION_TEST] deterministic delay start\n");
+    dual_channel_write("[K][PERF_REGRESSION_TEST] deterministic delay start\n");
 
     if ((rflags & if_mask) == 0) {
         __asm__ volatile("sti");
@@ -259,7 +260,7 @@ static void intentional_perf_regression_delay_if_enabled(void)
         __asm__ volatile("cli");
     }
 
-    debugcon_write("[K][PERF_REGRESSION_TEST] deterministic delay end\n");
+    dual_channel_write("[K][PERF_REGRESSION_TEST] deterministic delay end\n");
 #endif
 }
 
@@ -277,7 +278,7 @@ static void gate1_emit_tick_marker_if_observed(void)
 
     for (uint64_t spin = 0; spin < 50000000ull; ++spin) {
         if (timer_ticks() > start_tick) {
-            debugcon_write("[[AYKEN_TICK]]\n");
+            dual_channel_write("[[AYKEN_TICK]]\n");
             if ((rflags & if_mask) == 0) {
                 __asm__ volatile("cli");
             }
@@ -286,7 +287,7 @@ static void gate1_emit_tick_marker_if_observed(void)
         __asm__ volatile("pause");
     }
 
-    debugcon_write("[[AYKEN_TICK_MISS]]\n");
+    dual_channel_write("[[AYKEN_TICK_MISS]]\n");
     if ((rflags & if_mask) == 0) {
         __asm__ volatile("cli");
     }
@@ -338,7 +339,7 @@ void kmain_real(ayken_boot_info_t *boot)
     // Serial port test
     serial_write("KERNEL_BOOT_START\n");
     
-    debugcon_write("[K][EARLY_BOOT_OK] kmain entry\n");
+    dual_channel_write("[K][EARLY_BOOT_OK] kmain entry\n");
     // Minimal early exception visibility (no STI)
     cpu_init();
     gdt_init();
@@ -351,9 +352,9 @@ void kmain_real(ayken_boot_info_t *boot)
 #endif
 
     // 1) Framebuffer konsolu başlat
-    debugcon_write("[K][BEFORE_FB]\n");
+    dual_channel_write("[K][BEFORE_FB]\n");
     fb_console_init(boot);
-    debugcon_write("[K][AFTER_FB]\n");
+    dual_channel_write("[K][AFTER_FB]\n");
     // Validation marker: serial/stdout (COM1) after serial_init()
     fb_print("[K][QEMU_BOOT_OK]\n");
 
@@ -375,9 +376,9 @@ void kmain_real(ayken_boot_info_t *boot)
 
     // 3) EARLY INIT (CPU, GDT, IDT, paging, heap, memory map)
     fb_print("[boot] EARLY init basliyor...\n");
-    debugcon_write("[K][EARLY_INIT_BEGIN]\n");
+    dual_channel_write("[K][EARLY_INIT_BEGIN]\n");
     kernel_early_init(boot);
-    debugcon_write("[K][EARLY_INIT_DONE]\n");
+    dual_channel_write("[K][EARLY_INIT_DONE]\n");
     fb_print("[boot] EARLY init tamam.\n");
 
     // AI init removed in Phase 2.5 - Step C completion
@@ -386,21 +387,21 @@ void kmain_real(ayken_boot_info_t *boot)
 
     // 5) LATE INIT (scheduler, process, FS, syscalls)
     fb_print("[boot] LATE init basliyor...\n");
-    debugcon_write("[K][LATE_INIT_BEGIN]\n");
+    dual_channel_write("[K][LATE_INIT_BEGIN]\n");
     kernel_late_init();
-    debugcon_write("[K][LATE_INIT_RETURN]\n");
+    dual_channel_write("[K][LATE_INIT_RETURN]\n");
     fb_print("[boot] LATE init tamam.\n");
 
     // 6) Artık scheduler'a devrediyoruz
     fb_print("[boot] Kernel init tamamlandi -> scheduler baslatiliyor...\n");
     sched_perf_note_core_ready();
     fb_print("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
-    debugcon_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
+    dual_channel_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
 
     outb(0xE9, (uint8_t)'A');
     outb(0xE9, (uint8_t)'A');
     outb(0xE9, (uint8_t)'A');
-    debugcon_write("[K][ABOUT_TO_SCHED]\n");
+    dual_channel_write("[K][ABOUT_TO_SCHED]\n");
     outb(0xE9, (uint8_t)'B');
     outb(0xE9, (uint8_t)'B');
     outb(0xE9, (uint8_t)'B');
@@ -462,7 +463,7 @@ static void kernel_early_init(ayken_boot_info_t *boot)
 
 static void kernel_early_init_body(ayken_boot_info_t *boot)
 {
-    debugcon_write("[K][E1] CPU/GDT/IDT\n");
+    dual_channel_write("[K][E1] CPU/GDT/IDT\n");
 
     // ------------------------------------------------------------------------
     // 1) CPU + GDT + IDT + ISR + TSS
@@ -476,7 +477,7 @@ static void kernel_early_init_body(ayken_boot_info_t *boot)
         interrupts_install_early();
         g_early_idt_ready = 1;
     }
-    debugcon_write("[K][E2] PHYS_MEM\n");
+    dual_channel_write("[K][E2] PHYS_MEM\n");
 
     // ------------------------------------------------------------------------
     // 2) Fiziksel bellek yönetimi (UEFI memory map → bitmap)
@@ -488,19 +489,19 @@ static void kernel_early_init_body(ayken_boot_info_t *boot)
         boot->kernel_phys_start,
         boot->kernel_phys_end
     );
-    debugcon_write("[K][E3] PAGING\n");
+    dual_channel_write("[K][E3] PAGING\n");
 
     // ------------------------------------------------------------------------
     // 3) Paging (bootloader’dan verilen PML4 devralınıyor)
     // ------------------------------------------------------------------------
     paging_init(boot->pml4_phys);
-    debugcon_write("[K][E4] KHEAP\n");
+    dual_channel_write("[K][E4] KHEAP\n");
 
     // ------------------------------------------------------------------------
     // 4) Kernel heap (kmalloc/kfree)
     // ------------------------------------------------------------------------
     kheap_init();
-    debugcon_write("[K][E5] EARLY_DONE\n");
+    dual_channel_write("[K][E5] EARLY_DONE\n");
 }
 
 
@@ -520,7 +521,7 @@ static void kernel_late_init(void)
     // 0) Boot Validation Stage (Phase 10-A)
     // ---------------------------------------------------------
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-    debugcon_write("[K][LATE]0 BOOT_VALIDATION\n");
+    dual_channel_write("[K][LATE]0 BOOT_VALIDATION\n");
     fb_print("[VALIDATION] Running boot validation tests...\n");
     
     // Phase 10-A: ELF parser validation
@@ -544,7 +545,7 @@ static void kernel_late_init(void)
     // in performance gate and other validation boots that don't need unit tests.
     {
         extern void execute_alias_proof_tests(void);
-        debugcon_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
+        dual_channel_write("[K][LATE]0.1 ALIAS_PROOF_TESTS\n");
         execute_alias_proof_tests();
     }
 #endif
@@ -569,7 +570,7 @@ static void kernel_late_init(void)
         /* pml4_phys = 0: owner_proc'un pml4_phys'i kullanılmaz.
          * Gerçek PML4 tahsisi her senaryo içinde paging_create_user_pml4()
          * ile yapılır — heap tahsisi yok, tüm veri yapıları stack'te. */
-        debugcon_write("[K][LATE]0.2 ALIAS_PROOF_SELFTEST\n");
+        dual_channel_write("[K][LATE]0.2 ALIAS_PROOF_SELFTEST\n");
         proc_run_alias_proof_selftest(&alias_selftest_proc);
     }
 #endif
@@ -584,9 +585,9 @@ static void kernel_late_init(void)
     // ---------------------------------------------------------
     // 1) Interrupt controller + timer
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]1 PIC\n");
+    dual_channel_write("[K][LATE]1 PIC\n");
     pic_init();
-    debugcon_write("[K][LATE]2 TIMER\n");
+    dual_channel_write("[K][LATE]2 TIMER\n");
     // Phase 4.5 preempt validation mode: high timer frequency.
     timer_init(1000);
     gate1_emit_tick_marker_if_observed();
@@ -596,18 +597,18 @@ static void kernel_late_init(void)
     // ---------------------------------------------------------
     // 2) Scheduler mechanism & process mechanism (no policy)
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]3 SCHED_INIT\n");
+    dual_channel_write("[K][LATE]3 SCHED_INIT\n");
     sched_init();  // Ring0 mechanism only - policy in Ring3
-    debugcon_write("[K][LATE]4 PROC_INIT\n");
+    dual_channel_write("[K][LATE]4 PROC_INIT\n");
     proc_init();   // Ring0 mechanism only - policy in Ring3
     fb_print("[OK] Scheduler mechanism + Process mechanism (policy in Ring3).\n");
 
     // Passive execution-slot state tables for execution lifecycle hardening.
-    debugcon_write("[K][LATE]4.5 EXEC_SLOT\n");
+    dual_channel_write("[K][LATE]4.5 EXEC_SLOT\n");
     execution_slots_init();
     fb_print("[OK] Execution-slot tables initialized (passive runtime state only).\n");
 #if defined(AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST) && (AYKEN_PHASE10B_FAIL_CLOSED_SELFTEST == 1)
-    debugcon_write("[K][LATE]4.6 EXEC_SLOT_FAIL_CLOSED_SELFTEST\n");
+    dual_channel_write("[K][LATE]4.6 EXEC_SLOT_FAIL_CLOSED_SELFTEST\n");
 #endif
     execution_slot_run_fail_closed_selftest();
 
@@ -617,34 +618,34 @@ static void kernel_late_init(void)
     // VFS and DevFS operations now handled entirely in Ring3
     // Ring0 provides only memory mapping mechanism
     // DevFS proxy stubs redirect to Ring3 (mechanism only)
-    debugcon_write("[K][LATE]5 DEVFS\n");
+    dual_channel_write("[K][LATE]5 DEVFS\n");
     devfs_init();
     fb_print("[OK] File system mechanism ready (policy in Ring3).\n");
 
     // ---------------------------------------------------------
     // 4) Syscall mechanism interface (execution-centric only)
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]6 SYSCALL\n");
+    dual_channel_write("[K][LATE]6 SYSCALL\n");
     syscall_init();  // Ring0 mechanism only - execution-centric syscalls only
     fb_print("[OK] Syscall mechanism ready (12 execution-centric syscalls only).\n");
 
     // ---------------------------------------------------------
     // 4.1) Ring0 INT 0x80 smoke test - COMPLETELY DISABLED FOR RING3 DIAGNOSTICS
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]6.1 INT80_SMOKETEST_DISABLED\n");
+    dual_channel_write("[K][LATE]6.1 INT80_SMOKETEST_DISABLED\n");
     fb_print("[DISABLED] Ring0 INT 0x80 smoke test disabled - proceeding to Ring3 diagnostics.\n");
 
     // ---------------------------------------------------------
     // 4.1) Capability mechanism (security mechanism only)
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]7 CAP\n");
+    dual_channel_write("[K][LATE]7 CAP\n");
     capability_system_init();  // Ring0 mechanism only - policy in Ring3
     fb_print("[OK] Capability mechanism initialized (policy in Ring3).\n");
 
     // ---------------------------------------------------------
     // 5) Process creation mechanism (no policy)
     // ---------------------------------------------------------
-    debugcon_write("[K][LATE]8 PROC_CREATE_INIT\n");
+    dual_channel_write("[K][LATE]8 PROC_CREATE_INIT\n");
     proc_create_init();  // Ring0 mechanism only - policy in Ring3
     fb_print("[OK] init process created (PID 1) - mechanism only.\n");
 
@@ -689,13 +690,13 @@ static void kernel_late_init(void)
     fb_print("[VALIDATION] Policy code removal validation: COMPLETED\n");
 
     fb_print("[AykenOS] LATE INIT done.\n");
-    debugcon_write("[K][LATE]9 DONE\n");
+    dual_channel_write("[K][LATE]9 DONE\n");
     fb_print("[K][LATE_INIT_END]\n");
-    debugcon_write("[K][LATE_INIT_END]\n");
+    dual_channel_write("[K][LATE_INIT_END]\n");
     
 #ifdef AYKEN_VALIDATION
     // Gate-0: Boot validation marker
-    debugcon_write("[[AYKEN_BOOT_OK]]\n");
+    dual_channel_write("[[AYKEN_BOOT_OK]]\n");
 #endif
 
     // ---------------------------------------------------------
@@ -703,7 +704,7 @@ static void kernel_late_init(void)
     // Must run before Ring3 process preparation/dispatch path.
     // ---------------------------------------------------------
     validate_phase10_a2_prerequisites();
-    debugcon_write("P10_TSS_OK\n");
+    dual_channel_write("P10_TSS_OK\n");
 
     // ---------------------------------------------------------
     // Phase 10-A: Prepare embedded Ring3 process
@@ -713,13 +714,13 @@ static void kernel_late_init(void)
   #if defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 0)
     // Strict Gate-4 mode must preload owner authority before sched_start().
     fb_print("[PHASE10] Gate-4 strict mode: preloading owner process.\n");
-    debugcon_write("[K][PHASE10] PRELOAD_GATE4_OWNER\n");
+    dual_channel_write("[K][PHASE10] PRELOAD_GATE4_OWNER\n");
     proc_launch_gate4_policy_test();
   #else
     // Transitional Gate-4 mode: init_process_main() owns policy workload creation.
     // Skip Phase10 preloaded Ring3 path to avoid bypassing Gate-4 PID/ACCEPT markers.
     fb_print("[PHASE10] Gate-4 isolated mode: skipping preloaded Ring3 process.\n");
-    debugcon_write("[K][PHASE10] SKIP_PRELOAD_GATE4\n");
+    dual_channel_write("[K][PHASE10] SKIP_PRELOAD_GATE4\n");
   #endif
 #else
     fb_print("[PHASE10] Preparing Ring3 process...\n");

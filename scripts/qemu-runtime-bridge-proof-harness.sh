@@ -71,8 +71,35 @@ timeout 5s qemu-system-x86_64 \
     -no-shutdown \
     > /dev/null 2>&1 || true
 
-# Merge outputs
-cat "$ALLOWED_DEBUGCON" "$ALLOWED_SERIAL" 2>/dev/null | sort > "$ALLOWED_TRACE" || true
+# Channel integrity validation (HARD FAIL rule)
+# NOTE: Task 1 scope = debugcon + serial only
+# UEFI output validation will be added in Block 2/3 for bootloader execution diagnosis
+DEBUGCON_SIZE=0
+SERIAL_SIZE=0
+
+if [[ -f "$ALLOWED_DEBUGCON" ]]; then
+    DEBUGCON_SIZE=$(stat -c%s "$ALLOWED_DEBUGCON" 2>/dev/null || echo "0")
+fi
+
+if [[ -f "$ALLOWED_SERIAL" ]]; then
+    SERIAL_SIZE=$(stat -c%s "$ALLOWED_SERIAL" 2>/dev/null || echo "0")
+fi
+
+log_info "Allowed path channel sizes: debugcon=$DEBUGCON_SIZE bytes, serial=$SERIAL_SIZE bytes"
+
+# HARD FAIL: All channels zero (Task 1 scope: debugcon + serial)
+if [[ $DEBUGCON_SIZE -eq 0 ]] && [[ $SERIAL_SIZE -eq 0 ]]; then
+    log_error "OUTPUT_CHANNEL_FAILURE: All output channels are empty (allowed path)"
+    log_error "Cannot proceed with validation - no observable evidence"
+    exit 1
+fi
+
+# Keep channel-local trace (NO cross-channel merge, NO sort)
+if [[ $DEBUGCON_SIZE -gt 0 ]]; then
+    cp "$ALLOWED_DEBUGCON" "$ALLOWED_TRACE"
+elif [[ $SERIAL_SIZE -gt 0 ]]; then
+    cp "$ALLOWED_SERIAL" "$ALLOWED_TRACE"
+fi
 
 log_info "Allowed path trace: $ALLOWED_TRACE"
 
@@ -114,8 +141,35 @@ timeout 5s qemu-system-x86_64 \
     -no-shutdown \
     > /dev/null 2>&1 || true
 
-# Merge outputs
-cat "$FORBIDDEN_DEBUGCON" "$FORBIDDEN_SERIAL" 2>/dev/null | sort > "$FORBIDDEN_TRACE" || true
+# Channel integrity validation (HARD FAIL rule)
+# NOTE: Task 1 scope = debugcon + serial only
+# UEFI output validation will be added in Block 2/3 for bootloader execution diagnosis
+DEBUGCON_SIZE=0
+SERIAL_SIZE=0
+
+if [[ -f "$FORBIDDEN_DEBUGCON" ]]; then
+    DEBUGCON_SIZE=$(stat -c%s "$FORBIDDEN_DEBUGCON" 2>/dev/null || echo "0")
+fi
+
+if [[ -f "$FORBIDDEN_SERIAL" ]]; then
+    SERIAL_SIZE=$(stat -c%s "$FORBIDDEN_SERIAL" 2>/dev/null || echo "0")
+fi
+
+log_info "Forbidden path channel sizes: debugcon=$DEBUGCON_SIZE bytes, serial=$SERIAL_SIZE bytes"
+
+# HARD FAIL: All channels zero (Task 1 scope: debugcon + serial)
+if [[ $DEBUGCON_SIZE -eq 0 ]] && [[ $SERIAL_SIZE -eq 0 ]]; then
+    log_error "OUTPUT_CHANNEL_FAILURE: All output channels are empty (forbidden path)"
+    log_error "Cannot proceed with validation - no observable evidence"
+    exit 1
+fi
+
+# Keep channel-local trace (NO cross-channel merge, NO sort)
+if [[ $DEBUGCON_SIZE -gt 0 ]]; then
+    cp "$FORBIDDEN_DEBUGCON" "$FORBIDDEN_TRACE"
+elif [[ $SERIAL_SIZE -gt 0 ]]; then
+    cp "$FORBIDDEN_SERIAL" "$FORBIDDEN_TRACE"
+fi
 
 log_info "Forbidden path trace: $FORBIDDEN_TRACE"
 
