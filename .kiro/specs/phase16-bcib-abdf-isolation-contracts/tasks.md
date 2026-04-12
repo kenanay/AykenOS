@@ -173,8 +173,9 @@ All violations must:
     - **Property 7: Handle Revocation**
     - **Validates: Requirements 9.7**
 
-- [x] 5. Implement Runtime_Bridge core interface and lifecycle
+- [ ] 5. Implement Runtime_Bridge core interface and lifecycle
   - Closure Status: REAL TRAP PATH WIRED; QEMU PROOF INFRASTRUCTURE READY; RUNTIME_BRIDGE PRODUCTION CLOSURE PENDING
+  - **CRITICAL STATUS NOTE (2026-04-12):** Runtime_Bridge proof harness now produces non-empty QEMU traces, but current traces do not contain Runtime_Bridge userspace markers. Therefore Runtime_Bridge payload execution is not yet proven, handler reachability is not proven, and the current audit script must be hardened to fail when required markers are absent. Task 5 is NOT at execution-proof level yet.
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
     - Build script: `scripts/build-runtime-bridge-tests.sh`
@@ -217,38 +218,39 @@ All violations must:
   - Evidence (2026-04-12):
     - Host: `cargo test --manifest-path userspace/bcib-runtime/Cargo.toml --lib` → 426 passed, 0 failed; 8 warnings remain
     - Kernel build: `make all` → PASS
-    - EFI image refresh: `make efi-img` → PASS
+    - EFI image refresh: `make efi-img` → PASS (build success is preparatory evidence only, not closure evidence)
     - Boot-path alignment: COMPLETED (OVMF + EFI.img approach adopted, `-kernel`/`-initrd` approach removed)
     - Runtime_Bridge userspace payload: CREATED (`userspace/minimal/minimal_runtime_bridge_test.S`)
     - Runtime_Bridge minimal mode: ADDED to build system (`runtime-bridge-test` mode)
-    - Kernel rebuild with correct mode: COMPLETED (`USER_MINIMAL_MODE=runtime-bridge-test`)
+    - Kernel rebuild with correct mode: COMPLETED (`USER_MINIMAL_MODE=runtime-bridge-test`) - build completed, but runtime execution in QEMU not yet proven
     - Runtime_Bridge QEMU proof harness: FIXED (now uses OVMF + EFI.img boot path)
     - Runtime_Bridge-specific audit contract: DEFINED (markers: RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, etc.)
-    - Runtime_Bridge-specific audit script: CREATED (`tools/validation/runtime_bridge_audit.sh`)
-    - QEMU harness execution: ⏳ PENDING - No verified kernel trace evidence yet
-    - CI gates: ❌ HYGIENE GATE FAILING (3 dirty tracked files)
-    - Runtime_Bridge syscalls 1012/1013/1014: ⏳ NOT YET VALIDATED - marker presence not confirmed
+    - Runtime_Bridge-specific audit script: CREATED (`tools/validation/runtime_bridge_audit.sh`) - WARNING: script currently produces false positive PASS when markers absent
+    - QEMU harness execution: ⏳ HARNESS RUNS but produces non-empty traces WITHOUT Runtime_Bridge userspace markers
+    - CI gates: ✅ HYGIENE GATE PASS (2026-04-12)
+    - Runtime_Bridge syscalls 1012/1013/1014: ⏳ ABI/dispatcher wiring present, but semantic handler behavior not production-ready (stubs only); payload execution not confirmed
   - Production Blockers (MUST COMPLETE):
     1. ✅ QEMU proof infrastructure created (test binaries, harness, evidence directory)
     2. ✅ Fixed `qemu-runtime-bridge-proof-harness.sh` to use OVMF + EFI.img boot path (removed broken `-kernel`/`-initrd`)
     3. ✅ Runtime_Bridge-specific marker contract defined (RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, EXTERNAL_CALL_BEFORE/AFTER, ABDF_OP_BEFORE/AFTER, RUNTIME_BRIDGE_TEST_COMPLETE)
     4. ✅ Created Runtime_Bridge-specific audit script (`tools/validation/runtime_bridge_audit.sh`)
-    5. ⏳ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img`
-    6. ⏳ Run QEMU harness to generate traces and verify marker presence
-    7. ⏳ Validate trace shows syscalls 1012/1013/1014 reach handlers and return
-    8. ⏳ Resolve hygiene gate failures (3 dirty tracked files)
-    9. ⏳ Create forbidden test for fail-closed validation
-    10. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
-    11. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
-    12. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
-    13. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
-    14. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
+    5. ✅ Resolve hygiene gate failures (completed 2026-04-12)
+    6. ⏳ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img` (build completed, but runtime execution in QEMU not yet proven)
+    7. ⏳ Run QEMU harness to generate traces and verify marker presence (harness runs but markers absent - payload execution not confirmed)
+    8. ⏳ Debug why Runtime_Bridge payload does not execute (all markers = 0, execution path not proven)
+    9. ⏳ Validate trace shows syscalls 1012/1013/1014 reach handlers and return
+    10. ⏳ Create forbidden test for fail-closed validation
+    11. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
+    12. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
+    13. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
+    14. ⏳ Resolve remaining Task 5 warnings; `static_mut_refs` must remain absent
+    15. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
   - Task 6 Entry Gate:
     - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
     - Do not treat host-only syscall adapter tests as kernel-boundary evidence
     - Do not treat kernel handler stubs or mock data as DevFS/ABDF integration
-  - Current Level: Boot-path alignment in progress; Runtime_Bridge userspace payload created and integrated; QEMU proof harness still broken; Runtime_Bridge production closure pending
-  - Enforcement Level: Hardened dispatcher initializes on QEMU, but Runtime_Bridge-specific enforcement is not yet proven end-to-end
+  - Current Level: Boot-path alignment completed; QEMU proof harness prepared but not yet validated with verified trace evidence; Runtime_Bridge production closure pending
+  - Enforcement Level: Hardened dispatcher initializes on QEMU, but Runtime_Bridge-specific enforcement is not yet proven end-to-end; payload execution not confirmed
   - Runtime_Bridge is not an authority layer
   - Runtime_Bridge operates strictly as a controlled mediation layer inside an `Execution_Context`
   - Critical Role Definition:
@@ -285,6 +287,7 @@ All violations must:
     - Kernel trace must show no unauthorized syscall path
   - [ ] 5.1 Create Runtime_Bridge struct and capability validation
     - Current Status: STRUCTURE PRESENT; CAPABILITY ENFORCEMENT NOT PRODUCTION-CLOSED
+    - WARNING: Structural presence does not count as execution-proofed behavior
     - Host skeleton exists, but capability token validation must be proven on the real syscall path
     - Placeholder success or unused capability tokens do not satisfy this task
     - Implement `RuntimeBridge` with capability-enforced operations
@@ -294,6 +297,7 @@ All violations must:
   
   - [ ] 5.2 Implement Runtime_Bridge lifecycle management
     - Current Status: STRUCTURE PRESENT; CONTEXT-SCOPED AUTHORITY NOT PRODUCTION-CLOSED
+    - WARNING: Structural presence does not count as execution-proofed behavior
     - Bridge lifecycle must be bound to real `Execution_Context` authority, not only host-side fields
     - Create bridge creation and binding to Execution_Context
     - Implement bridge teardown and cleanup mechanisms
@@ -303,6 +307,7 @@ All violations must:
   
   - [ ] 5.3 Implement ABDF mutation interface through Runtime_Bridge
     - Current Status: INTERFACE SHAPE PRESENT; REAL ABDF SUBSTRATE INTEGRATION MISSING
+    - WARNING: Structural presence does not count as execution-proofed behavior
     - Mock ABDF data or placeholder success does not satisfy mutation enforcement
     - Create controlled ABDF write path producing new objects or append-only extensions
     - Implement mutation capability validation and enforcement
@@ -311,12 +316,14 @@ All violations must:
   
   - [ ] 5.4 Write property test for capability scope invariant
     - Current Status: HOST TESTS MAY EXIST; REAL KERNEL-PATH CAPABILITY ENFORCEMENT TEST MISSING
+    - WARNING: Structural presence does not count as execution-proofed behavior
     - Tests that only assert fake syscall success are not sufficient
     - **Property 3: Capability Scope Invariant**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9**
   
   - [ ] 5.5 Write property test for mutation path enforcement
     - Current Status: HOST TESTS MAY EXIST; REAL ABDF/KERNEL MUTATION PATH TEST MISSING
+    - WARNING: Structural presence does not count as execution-proofed behavior
     - Tests must prove rejection/commit behavior through the real syscall and ABDF path
     - **Property 9: Mutation Path Enforcement**
     - **Validates: Requirements 8.1, 8.2, 8.10**

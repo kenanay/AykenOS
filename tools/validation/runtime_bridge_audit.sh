@@ -59,18 +59,30 @@ fi
 log_info "Auditing Runtime_Bridge syscall path: $TRACE_LOG"
 
 # Check for required markers
-MARKER_START=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_START\]" "$TRACE_LOG" || echo "0")
-MARKER_DEVICE_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_BEFORE\]" "$TRACE_LOG" || echo "0")
-MARKER_DEVICE_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_AFTER\]" "$TRACE_LOG" || echo "0")
-MARKER_EXTERNAL_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE\]" "$TRACE_LOG" || echo "0")
-MARKER_EXTERNAL_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER\]" "$TRACE_LOG" || echo "0")
-MARKER_ABDF_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_BEFORE\]" "$TRACE_LOG" || echo "0")
-MARKER_ABDF_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_AFTER\]" "$TRACE_LOG" || echo "0")
-MARKER_COMPLETE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_COMPLETE\]" "$TRACE_LOG" || echo "0")
+MARKER_START=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_START\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_DEVICE_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_DEVICE_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_EXTERNAL_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_EXTERNAL_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_ABDF_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_ABDF_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+MARKER_COMPLETE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_COMPLETE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
 
 # Check for kernel syscall markers
-SYSCALL_ENTER=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_LOG" || echo "0")
-SYSCALL_EXIT=$(grep -c "\[\[AYKEN_SYSCALL_EXIT\]\]" "$TRACE_LOG" || echo "0")
+SYSCALL_ENTER=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+SYSCALL_EXIT=$(grep -c "\[\[AYKEN_SYSCALL_EXIT\]\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+
+# Sanitize counts (remove any whitespace/newlines)
+MARKER_START=$(echo "$MARKER_START" | tr -d '[:space:]')
+MARKER_DEVICE_BEFORE=$(echo "$MARKER_DEVICE_BEFORE" | tr -d '[:space:]')
+MARKER_DEVICE_AFTER=$(echo "$MARKER_DEVICE_AFTER" | tr -d '[:space:]')
+MARKER_EXTERNAL_BEFORE=$(echo "$MARKER_EXTERNAL_BEFORE" | tr -d '[:space:]')
+MARKER_EXTERNAL_AFTER=$(echo "$MARKER_EXTERNAL_AFTER" | tr -d '[:space:]')
+MARKER_ABDF_BEFORE=$(echo "$MARKER_ABDF_BEFORE" | tr -d '[:space:]')
+MARKER_ABDF_AFTER=$(echo "$MARKER_ABDF_AFTER" | tr -d '[:space:]')
+MARKER_COMPLETE=$(echo "$MARKER_COMPLETE" | tr -d '[:space:]')
+SYSCALL_ENTER=$(echo "$SYSCALL_ENTER" | tr -d '[:space:]')
+SYSCALL_EXIT=$(echo "$SYSCALL_EXIT" | tr -d '[:space:]')
 
 log_info "Marker counts:"
 log_info "  TEST_START: $MARKER_START"
