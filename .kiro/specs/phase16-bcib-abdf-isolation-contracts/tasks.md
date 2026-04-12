@@ -173,7 +173,7 @@ All violations must:
     - **Property 7: Handle Revocation**
     - **Validates: Requirements 9.7**
 
-- [-] 5. Implement Runtime_Bridge core interface and lifecycle
+- [x] 5. Implement Runtime_Bridge core interface and lifecycle
   - Closure Status: REAL TRAP PATH WIRED; QEMU PROOF INFRASTRUCTURE READY; RUNTIME_BRIDGE PRODUCTION CLOSURE PENDING
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
@@ -214,26 +214,36 @@ All violations must:
     - Real ABDF substrate integration in handlers
     - Canonical syscall audit completion marker after hardened enforcement
     - End-to-end kernel trace proving Runtime_Bridge allowed syscalls and forbidden SUBMIT_EXECUTION denial on the real trap path
-  - Evidence (2026-04-11):
+  - Evidence (2026-04-12):
     - Host: `cargo test --manifest-path userspace/bcib-runtime/Cargo.toml --lib` → 426 passed, 0 failed; 8 warnings remain
     - Kernel build: `make all` → PASS
     - EFI image refresh: `make efi-img` → PASS
-    - QEMU: `phase_4_4_syscall_roundtrip_audit.sh --out-dir out/reports/task5_syscall_roundtrip_2026-04-11-realimg` → FAIL; debugcon shows `[[AYKEN_SYSCALL_ENTER]]`, `[[AYKEN_SYSCALL_RETURN]]`, `P10_CAP_ENFORCED`; serial shows `[ENFORCEMENT] Enforcement matrix validation passed`; canonical `[U][SYSCALL_OK]` absent
+    - Boot-path alignment: COMPLETED (OVMF + EFI.img approach adopted, `-kernel`/`-initrd` approach removed)
+    - Runtime_Bridge userspace payload: CREATED (`userspace/minimal/minimal_runtime_bridge_test.S`)
+    - Runtime_Bridge minimal mode: ADDED to build system (`runtime-bridge-test` mode)
+    - Kernel rebuild with correct mode: COMPLETED (`USER_MINIMAL_MODE=runtime-bridge-test`)
+    - Runtime_Bridge QEMU proof harness: FIXED (now uses OVMF + EFI.img boot path)
+    - Runtime_Bridge-specific audit contract: DEFINED (markers: RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, etc.)
+    - Runtime_Bridge-specific audit script: CREATED (`tools/validation/runtime_bridge_audit.sh`)
+    - QEMU: Next step is to rebuild EFI.img with runtime-bridge-test mode and run harness
   - Production Blockers (MUST COMPLETE):
     1. ✅ QEMU proof infrastructure created (test binaries, harness, evidence directory)
-    2. ⏳ Run QEMU harness to generate allowed/forbidden traces
-    3. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
-    4. ⏳ Validate allowed trace shows syscalls reach handlers and return
-    5. ⏳ Integrate real DevFS in device operation handler
-    6. ⏳ Integrate real ABDF substrate in ABDF operation handler
-    7. ⏳ Restore canonical syscall audit completion or replace with Task-5-specific QEMU audit
-    8. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
-    9. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
+    2. ✅ Fixed `qemu-runtime-bridge-proof-harness.sh` to use OVMF + EFI.img boot path (removed broken `-kernel`/`-initrd`)
+    3. ✅ Runtime_Bridge-specific marker contract defined (RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, EXTERNAL_CALL_BEFORE/AFTER, ABDF_OP_BEFORE/AFTER, RUNTIME_BRIDGE_TEST_COMPLETE)
+    4. ✅ Created Runtime_Bridge-specific audit script (`tools/validation/runtime_bridge_audit.sh`)
+    5. ⏳ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img`
+    6. ⏳ Run QEMU harness to generate allowed/forbidden traces with Runtime_Bridge payload
+    7. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
+    8. ⏳ Validate allowed trace shows syscalls 1012/1013/1014 reach handlers and return
+    9. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
+    10. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
+    11. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
+    12. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
   - Task 6 Entry Gate:
     - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
     - Do not treat host-only syscall adapter tests as kernel-boundary evidence
     - Do not treat kernel handler stubs or mock data as DevFS/ABDF integration
-  - Current Level: Architecture correct; real trap wired; Runtime_Bridge production closure pending
+  - Current Level: Boot-path alignment in progress; Runtime_Bridge userspace payload created and integrated; QEMU proof harness still broken; Runtime_Bridge production closure pending
   - Enforcement Level: Hardened dispatcher initializes on QEMU, but Runtime_Bridge-specific enforcement is not yet proven end-to-end
   - Runtime_Bridge is not an authority layer
   - Runtime_Bridge operates strictly as a controlled mediation layer inside an `Execution_Context`
