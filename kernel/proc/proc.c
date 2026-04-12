@@ -2478,6 +2478,17 @@ proc_t *proc_create_user_process(const char *name,
                                  uint64_t image_size,
                                  proc_image_format_t fmt)
 {
+    // [K][USER_ELF_PARSE_BEGIN] - Entry point marker
+    debugcon_write("[K][USER_ELF_PARSE_BEGIN] name=");
+    debugcon_write(name ? name : "<null>");
+    debugcon_write(" image_type=");
+    debugcon_hex64((uint64_t)fmt);
+    debugcon_write(" image_size=");
+    debugcon_hex64(image_size);
+    debugcon_write(" image_ptr=");
+    debugcon_hex64((uint64_t)image);
+    debugcon_write("\n");
+    
     outb(0xE9, (uint8_t)'U');
     proc_t *p = proc_alloc(PROC_TYPE_USER, name);
     if (!p) {
@@ -2502,6 +2513,15 @@ proc_t *proc_create_user_process(const char *name,
     }
     debug_dump_pte(user_pml4, USER_TEXT_BASE, "code");
     proc_emit_user_text_root_witness(user_pml4, "load");
+    
+    // [K][USER_ELF_LOADED] - ELF parsed and loaded successfully
+    debugcon_write("[K][USER_ELF_LOADED] pid=");
+    debugcon_u32((uint32_t)p->pid);
+    debugcon_write(" entry=");
+    debugcon_hex64(entry);
+    debugcon_write(" cr3=");
+    debugcon_hex64(user_pml4);
+    debugcon_write("\n");
 
     // User stack: 2 pages in user space
     for (int i = 0; i < 2; ++i) {
@@ -2599,6 +2619,23 @@ proc_t *proc_create_user_process(const char *name,
     fb_print(" (pml4_phys=");
     fb_print_hex(p->pml4_phys);
     fb_print(")\n");
+
+    // [K][USER_PROC_READY] - Process ready for scheduler
+    debugcon_write("[K][USER_PROC_READY] pid=");
+    debugcon_u32((uint32_t)p->pid);
+    debugcon_write(" rip=");
+    debugcon_hex64(p->context.rip);
+    debugcon_write(" rsp=");
+    debugcon_hex64(p->context.rsp);
+    debugcon_write(" rsp0=");
+    debugcon_hex64(p->context.rsp0);
+    debugcon_write(" cr3=");
+    debugcon_hex64(p->context.cr3);
+    debugcon_write(" cs=");
+    debugcon_hex64(p->context.cs);
+    debugcon_write(" ss=");
+    debugcon_hex64(p->context.ss);
+    debugcon_write("\n");
 
     sched_add(p);
 

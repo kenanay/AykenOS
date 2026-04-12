@@ -6015,6 +6015,26 @@ static void sched_yield_core(int reenable_if)
             sched_arm_ring3_entry_guard_if_ring3(current_proc);
             sched_mask_irq0_before_first_ring3_entry(current_proc);
             sched_emit_pre_dispatch_text_walk_proof(current_proc);
+            
+            // [K][USER_JUMP] - About to transition to Ring3
+            if (current_proc && current_proc->context.cs == GDT_USER_CODE) {
+                sched_emit_marker("[K][USER_JUMP] pid=");
+                sched_emit_u64_dec((uint64_t)current_proc->pid);
+                sched_emit_marker(" rip=");
+                dbg_out_hex64(current_proc->context.rip);
+                sched_emit_marker(" rsp=");
+                dbg_out_hex64(current_proc->context.rsp);
+                sched_emit_marker(" rsp0=");
+                dbg_out_hex64(current_proc->context.rsp0);
+                sched_emit_marker(" cr3=");
+                dbg_out_hex64(current_proc->context.cr3);
+                sched_emit_marker(" cs=");
+                dbg_out_hex64(current_proc->context.cs);
+                sched_emit_marker(" ss=");
+                dbg_out_hex64(current_proc->context.ss);
+                sched_emit_marker("\n");
+            }
+            
             context_switch(&prev->context, &current_proc->context);
         }
         if (!reenable_if) {
@@ -6165,6 +6185,26 @@ static void sched_yield_core(int reenable_if)
         sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
         sched_mask_irq0_before_first_ring3_entry(current_proc);
         sched_emit_pre_dispatch_text_walk_proof(current_proc);
+        
+        // [K][USER_JUMP] - About to transition to Ring3
+        if (current_proc && current_proc->context.cs == GDT_USER_CODE) {
+            sched_emit_marker("[K][USER_JUMP] pid=");
+            sched_emit_u64_dec((uint64_t)current_proc->pid);
+            sched_emit_marker(" rip=");
+            dbg_out_hex64(current_proc->context.rip);
+            sched_emit_marker(" rsp=");
+            dbg_out_hex64(current_proc->context.rsp);
+            sched_emit_marker(" rsp0=");
+            dbg_out_hex64(current_proc->context.rsp0);
+            sched_emit_marker(" cr3=");
+            dbg_out_hex64(current_proc->context.cr3);
+            sched_emit_marker(" cs=");
+            dbg_out_hex64(current_proc->context.cs);
+            sched_emit_marker(" ss=");
+            dbg_out_hex64(current_proc->context.ss);
+            sched_emit_marker("\n");
+        }
+        
         context_switch(&prev->context, &current_proc->context);
         
         // Ring3 INT80 diagnostic: verify whether user code resumed after syscall.
@@ -6343,6 +6383,26 @@ void sched_block_current(void)
     sched_arm_ring3_entry_guard_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
+    
+    // [K][USER_JUMP] - About to transition to Ring3
+    if (current_proc && current_proc->context.cs == GDT_USER_CODE) {
+        sched_emit_marker("[K][USER_JUMP] pid=");
+        sched_emit_u64_dec((uint64_t)current_proc->pid);
+        sched_emit_marker(" rip=");
+        dbg_out_hex64(current_proc->context.rip);
+        sched_emit_marker(" rsp=");
+        dbg_out_hex64(current_proc->context.rsp);
+        sched_emit_marker(" rsp0=");
+        dbg_out_hex64(current_proc->context.rsp0);
+        sched_emit_marker(" cr3=");
+        dbg_out_hex64(current_proc->context.cr3);
+        sched_emit_marker(" cs=");
+        dbg_out_hex64(current_proc->context.cs);
+        sched_emit_marker(" ss=");
+        dbg_out_hex64(current_proc->context.ss);
+        sched_emit_marker("\n");
+    }
+    
     context_switch(&prev->context, &current_proc->context);
 
     enable_interrupts();
@@ -6406,6 +6466,26 @@ void sched_exit_current(void)
     sched_arm_ring3_entry_guard_if_ring3(current_proc);
     sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
+    
+    // [K][USER_JUMP] - About to transition to Ring3
+    if (current_proc && current_proc->context.cs == GDT_USER_CODE) {
+        sched_emit_marker("[K][USER_JUMP] pid=");
+        sched_emit_u64_dec((uint64_t)current_proc->pid);
+        sched_emit_marker(" rip=");
+        dbg_out_hex64(current_proc->context.rip);
+        sched_emit_marker(" rsp=");
+        dbg_out_hex64(current_proc->context.rsp);
+        sched_emit_marker(" rsp0=");
+        dbg_out_hex64(current_proc->context.rsp0);
+        sched_emit_marker(" cr3=");
+        dbg_out_hex64(current_proc->context.cr3);
+        sched_emit_marker(" cs=");
+        dbg_out_hex64(current_proc->context.cs);
+        sched_emit_marker(" ss=");
+        dbg_out_hex64(current_proc->context.ss);
+        sched_emit_marker("\n");
+    }
+    
     context_switch(&prev->context, &current_proc->context);
 
     fb_print("[PANIC] sched_exit_current returned unexpectedly\n");

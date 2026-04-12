@@ -352,16 +352,114 @@ void jump_to_ring3(void)
     }
 #endif
 
+    // [K][USER_ELF_SELECTED] - Entry marker: ELF selection point
+    debugcon_write("[K][USER_ELF_SELECTED] name=phase10-minimal type=ELF size=");
+    {
+        char buf[20];
+        uint64_t sz = (uint64_t)embedded_elf_size;
+        int i = 0;
+        if (sz == 0) {
+            buf[i++] = '0';
+        } else {
+            char tmp[20];
+            int j = 0;
+            while (sz > 0) {
+                tmp[j++] = '0' + (sz % 10);
+                sz /= 10;
+            }
+            while (j > 0) {
+                buf[i++] = tmp[--j];
+            }
+        }
+        buf[i] = '\0';
+        debugcon_write(buf);
+    }
+    debugcon_write(" ptr=");
+    {
+        uint64_t ptr = (uint64_t)embedded_elf;
+        char hex[17];
+        const char *digits = "0123456789abcdef";
+        for (int i = 0; i < 16; i++) {
+            hex[15 - i] = digits[ptr & 0xF];
+            ptr >>= 4;
+        }
+        hex[16] = '\0';
+        debugcon_write(hex);
+    }
+    debugcon_write("\n");
+
     proc_t *ring3_proc = proc_create_user_process(
         "phase10-minimal",
         embedded_elf,
         (uint64_t)embedded_elf_size,
         PROC_IMAGE_ELF
     );
+    
     if (!ring3_proc) {
+        debugcon_write("[K][USER_ELF_CREATE_FAIL]\n");
         ring3_prep_panic("[[AYKEN_RING3_PREP_FAIL]] create",
                          "[PANIC] Phase10: Ring3 process creation failed.");
     }
+    
+    // [K][USER_ELF_CREATE_OK] - Process created successfully
+    debugcon_write("[K][USER_ELF_CREATE_OK] pid=");
+    {
+        uint32_t pid = (uint32_t)ring3_proc->pid;
+        char buf[12];
+        int i = 0;
+        if (pid == 0) {
+            buf[i++] = '0';
+        } else {
+            char tmp[12];
+            int j = 0;
+            while (pid > 0) {
+                tmp[j++] = '0' + (pid % 10);
+                pid /= 10;
+            }
+            while (j > 0) {
+                buf[i++] = tmp[--j];
+            }
+        }
+        buf[i] = '\0';
+        debugcon_write(buf);
+    }
+    debugcon_write(" rip=");
+    {
+        uint64_t rip = ring3_proc->context.rip;
+        char hex[17];
+        const char *digits = "0123456789abcdef";
+        for (int i = 0; i < 16; i++) {
+            hex[15 - i] = digits[rip & 0xF];
+            rip >>= 4;
+        }
+        hex[16] = '\0';
+        debugcon_write(hex);
+    }
+    debugcon_write(" rsp=");
+    {
+        uint64_t rsp = ring3_proc->context.rsp;
+        char hex[17];
+        const char *digits = "0123456789abcdef";
+        for (int i = 0; i < 16; i++) {
+            hex[15 - i] = digits[rsp & 0xF];
+            rsp >>= 4;
+        }
+        hex[16] = '\0';
+        debugcon_write(hex);
+    }
+    debugcon_write(" cr3=");
+    {
+        uint64_t cr3 = ring3_proc->context.cr3;
+        char hex[17];
+        const char *digits = "0123456789abcdef";
+        for (int i = 0; i < 16; i++) {
+            hex[15 - i] = digits[cr3 & 0xF];
+            cr3 >>= 4;
+        }
+        hex[16] = '\0';
+        debugcon_write(hex);
+    }
+    debugcon_write("\n");
     
     // Phase-16: BCIB fail-closed proof test
     // Set execution role to BCIB for boundary enforcement testing
