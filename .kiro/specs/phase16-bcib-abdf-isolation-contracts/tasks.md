@@ -225,20 +225,24 @@ All violations must:
     - Runtime_Bridge QEMU proof harness: FIXED (now uses OVMF + EFI.img boot path)
     - Runtime_Bridge-specific audit contract: DEFINED (markers: RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, etc.)
     - Runtime_Bridge-specific audit script: CREATED (`tools/validation/runtime_bridge_audit.sh`)
-    - QEMU: Next step is to rebuild EFI.img with runtime-bridge-test mode and run harness
+    - QEMU harness execution: ⏳ PENDING - No verified kernel trace evidence yet
+    - CI gates: ❌ HYGIENE GATE FAILING (3 dirty tracked files)
+    - Runtime_Bridge syscalls 1012/1013/1014: ⏳ NOT YET VALIDATED - marker presence not confirmed
   - Production Blockers (MUST COMPLETE):
     1. ✅ QEMU proof infrastructure created (test binaries, harness, evidence directory)
     2. ✅ Fixed `qemu-runtime-bridge-proof-harness.sh` to use OVMF + EFI.img boot path (removed broken `-kernel`/`-initrd`)
     3. ✅ Runtime_Bridge-specific marker contract defined (RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, EXTERNAL_CALL_BEFORE/AFTER, ABDF_OP_BEFORE/AFTER, RUNTIME_BRIDGE_TEST_COMPLETE)
     4. ✅ Created Runtime_Bridge-specific audit script (`tools/validation/runtime_bridge_audit.sh`)
     5. ⏳ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img`
-    6. ⏳ Run QEMU harness to generate allowed/forbidden traces with Runtime_Bridge payload
-    7. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
-    8. ⏳ Validate allowed trace shows syscalls 1012/1013/1014 reach handlers and return
-    9. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
-    10. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
-    11. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
-    12. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
+    6. ⏳ Run QEMU harness to generate traces and verify marker presence
+    7. ⏳ Validate trace shows syscalls 1012/1013/1014 reach handlers and return
+    8. ⏳ Resolve hygiene gate failures (3 dirty tracked files)
+    9. ⏳ Create forbidden test for fail-closed validation
+    10. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
+    11. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
+    12. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
+    13. ⏳ Resolve hygiene and remaining Task 5 warnings; `static_mut_refs` must remain absent
+    14. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
   - Task 6 Entry Gate:
     - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
     - Do not treat host-only syscall adapter tests as kernel-boundary evidence

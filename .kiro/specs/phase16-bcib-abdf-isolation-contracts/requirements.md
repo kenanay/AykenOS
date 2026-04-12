@@ -576,3 +576,28 @@ The following markers SHALL be emitted by the Runtime_Bridge test in this order:
 5. THE Audit script SHALL provide clear PASS/FAIL verdict
 6. THE Audit script SHALL give actionable warnings when markers are missing
 7. THE Audit script SHALL exit with code 0 on PASS, non-zero on FAIL
+
+#### Validation Status (2026-04-12)
+
+**STATUS: PROOF NOT YET ESTABLISHED**
+
+**Infrastructure Ready:**
+- QEMU harness implemented with OVMF + EFI.img boot path
+- Runtime_Bridge test payload created and integrated
+- Runtime_Bridge-specific audit script created
+- Marker contract defined
+
+**NOT VERIFIED:**
+- No verified kernel trace evidence
+- Marker presence not confirmed in actual trace
+- Execution path not proven with observable evidence
+- Hygiene gate FAILING (3 dirty tracked files)
+
+**Remaining Work:**
+- Run QEMU harness and capture actual trace
+- Verify markers appear in trace output
+- Resolve hygiene violations
+- Create forbidden syscall test for fail-closed validation
+- Pass `ci-gate-fail-closed-proof`
+- Integrate real DevFS handlers (replace 0xDEADBEEF stub)
+- Integrate real ABDF handlers (replace fake ABDF stub)

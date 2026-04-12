@@ -683,37 +683,51 @@ MINIMAL_SRC := minimal_runtime_bridge_test.S
 ```
 1. Build EFI.img with runtime-bridge-test mode
    └─> USER_MINIMAL_MODE=runtime-bridge-test make efi-img
+   └─> ⏳ PENDING
 
 2. Run QEMU proof harness
    └─> ./scripts/qemu-runtime-bridge-proof-harness.sh
+   └─> ⏳ PENDING
 
 3. Harness launches QEMU with OVMF + EFI.img
    └─> Captures debugcon and serial logs
+   └─> ⏳ PENDING
 
 4. Harness runs audit script on logs
    └─> tools/validation/runtime_bridge_audit.sh
+   └─> ⏳ PENDING
 
 5. Audit script validates marker flow
-   └─> PASS: All markers present
-   └─> FAIL: Missing markers (actionable errors)
+   └─> ⏳ PENDING: Marker presence not confirmed
+   └─> ⏳ PENDING: Runtime_Bridge syscalls 1012/1013/1014 not yet validated
 
 6. Evidence stored in evidence/runtime-bridge-proof/
-   └─> qemu_kernel_trace_allowed.log
+   └─> ⏳ PENDING: No verified trace evidence yet
 ```
 
 ### Current Status (2026-04-12)
 
-**Completed:**
+**STATUS: PROOF NOT YET ESTABLISHED**
+
+**Infrastructure Ready:**
 - ✅ QEMU harness uses correct OVMF + EFI.img boot path
 - ✅ Runtime_Bridge marker contract defined
 - ✅ Runtime_Bridge audit script created
 - ✅ Harness supports multiple OVMF locations
 - ✅ Deterministic boot with blank OVMF VARS
 - ✅ Channel integrity validation
+- ✅ Runtime_Bridge test payload created and integrated
+
+**NOT VERIFIED:**
+- ❌ QEMU harness execution - no verified kernel trace evidence
+- ❌ Runtime_Bridge marker presence not confirmed in actual trace
+- ❌ Execution path not proven with observable evidence
+- ❌ Hygiene gate FAILING (3 dirty tracked files)
 
 **Pending:**
-- ⏳ Rebuild EFI.img with runtime-bridge-test mode
-- ⏳ Run harness and validate markers appear
+- ⏳ Run QEMU harness and capture actual trace
+- ⏳ Verify markers appear in trace output
+- ⏳ Resolve hygiene violations (dirty tracked files)
 - ⏳ Integrate real DevFS handlers (replace 0xDEADBEEF stub)
 - ⏳ Integrate real ABDF handlers (replace fake ABDF stub)
 - ⏳ Create forbidden test for fail-closed validation
