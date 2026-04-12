@@ -527,3 +527,215 @@ Phase-16 entegrasyonu aşağıdaki CI geçitlerinden başarıyla geçmelidir:
 5. `ci-gate-capability-enforcement`
 6. `ci-gate-fail-closed`
 7. `ci-gate-fail-closed-proof` ← **YENİ: Kernel-level evidence validation**
+
+
+---
+
+## Runtime_Bridge QEMU Proof Infrastructure (Task 5)
+
+### Overview
+
+Task 5 requires QEMU kernel trace evidence to prove Runtime_Bridge syscalls (1012/1013/1014) reach the kernel dispatcher and return correctly. This section documents the proof infrastructure created to validate Runtime_Bridge execution.
+
+### Boot Path Architecture
+
+**Critical Decision:** AykenOS uses OVMF + EFI.img boot model, NOT `-kernel`/`-initrd`.
+
+The Runtime_Bridge proof harness MUST use the same boot path as the working syscall validation infrastructure:
+
+```bash
+qemu-system-x86_64 \
+    -machine q35 \
+    -drive if=pflash,format=raw,readonly=on,file=$OVMF_CODE \
+    -drive if=pflash,format=raw,file=$OVMF_VARS_COPY \
+    -drive format=raw,file=$EFI_IMG \
+    -serial file:$SERIAL_LOG \
+    -chardev file,id=dbgcon,path=$DEBUGCON_LOG \
+    -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
+    -m 256M \
+    -no-reboot \
+    -no-shutdown \
+    -display none
+```
+
+**Key Components:**
+- **OVMF Firmware**: UEFI firmware for x86_64 (CODE + VARS)
+- **EFI.img**: Bootable disk image containing kernel + userspace payload
+- **Deterministic Boot**: Blank OVMF VARS copy prevents stale NVRAM interference
+- **Dual Channels**: Both debugcon (0xE9) and serial output captured
+
+### Runtime_Bridge Test Payload
+
+**Location:** `userspace/minimal/minimal_runtime_bridge_test.S`
+
+**Purpose:** Exercises Runtime_Bridge syscalls and emits validation markers
+
+**Syscalls Tested:**
+- `SYS_V2_DEVICE_OPERATION` (1012) - Device interaction
+- `SYS_V2_EXTERNAL_CALL` (1013) - External system calls
+- `SYS_V2_ABDF_OPERATION` (1014) - ABDF data operations
+
+**Marker Emission:**
+- Uses `SYS_V2_DEBUG_PUTCHAR` (1010) to emit markers
+- Markers appear in debugcon/serial logs
+- Deterministic ordering for validation
+
+### Marker Contract
+
+Runtime_Bridge test emits these markers in order:
+
+```
+[U][RUNTIME_BRIDGE_TEST_START]
+[U][RUNTIME_BRIDGE_DEVICE_OP_BEFORE]
+  → INT 0x80 (syscall 1012)
+  → [[AYKEN_SYSCALL_ENTER]]
+  → [[AYKEN_SYSCALL_EXIT]]
+[U][RUNTIME_BRIDGE_DEVICE_OP_AFTER]
+[U][RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE]
+  → INT 0x80 (syscall 1013)
+  → [[AYKEN_SYSCALL_ENTER]]
+  → [[AYKEN_SYSCALL_EXIT]]
+[U][RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER]
+[U][RUNTIME_BRIDGE_ABDF_OP_BEFORE]
+  → INT 0x80 (syscall 1014)
+  → [[AYKEN_SYSCALL_ENTER]]
+  → [[AYKEN_SYSCALL_EXIT]]
+[U][RUNTIME_BRIDGE_ABDF_OP_AFTER]
+[U][RUNTIME_BRIDGE_TEST_COMPLETE]
+```
+
+**Validation Logic:**
+- All `[U]` markers must be present (userspace execution)
+- At least 3 `[[AYKEN_SYSCALL_ENTER]]` markers (kernel entry)
+- At least 3 `[[AYKEN_SYSCALL_EXIT]]` markers (kernel return)
+- Completion marker proves test finished
+
+### QEMU Proof Harness
+
+**Location:** `scripts/qemu-runtime-bridge-proof-harness.sh`
+
+**Responsibilities:**
+1. Resolve OVMF firmware (supports Linux/macOS)
+2. Create temporary OVMF VARS copy
+3. Launch QEMU with correct boot path
+4. Capture debugcon and serial logs
+5. Validate channel integrity (fail if both empty)
+6. Run Runtime_Bridge audit script
+
+**OVMF Firmware Resolution:**
+Searches standard locations:
+- `/usr/share/OVMF/OVMF_CODE_4M.fd` (Linux, 4MB)
+- `/usr/share/OVMF/OVMF_CODE.fd` (Linux, standard)
+- `/usr/share/edk2/ovmf/OVMF_CODE.fd` (Alternative Linux)
+- `/usr/share/qemu/OVMF_CODE.fd` (QEMU-specific)
+- `/opt/homebrew/share/qemu/edk2-x86_64-code.fd` (macOS Homebrew)
+
+**Channel Integrity:**
+- HARD FAIL if both debugcon and serial are empty (0 bytes)
+- Prevents false positives from boot failures
+- Ensures observable evidence exists
+
+### Runtime_Bridge Audit Script
+
+**Location:** `tools/validation/runtime_bridge_audit.sh`
+
+**Purpose:** Validate Runtime_Bridge marker flow in QEMU traces
+
+**Validation Steps:**
+1. Count all Runtime_Bridge markers
+2. Verify TEST_START marker present
+3. Verify DEVICE_OP_BEFORE/AFTER pair
+4. Verify EXTERNAL_CALL_BEFORE/AFTER pair
+5. Verify ABDF_OP_BEFORE/AFTER pair
+6. Verify TEST_COMPLETE marker present
+7. Count SYSCALL_ENTER markers (expect ≥3)
+8. Count SYSCALL_EXIT markers (expect ≥3)
+
+**Output:**
+- Clear PASS/FAIL verdict
+- Marker counts for debugging
+- Actionable warnings for missing markers
+- Exit code 0 on PASS, non-zero on FAIL
+
+### Integration with Build System
+
+**Minimal Mode:** `runtime-bridge-test`
+
+**Build Command:**
+```bash
+USER_MINIMAL_MODE=runtime-bridge-test make efi-img
+```
+
+**Makefile Integration:**
+```makefile
+else ifeq ($(MINIMAL_MODE),runtime-bridge-test)
+MINIMAL_SRC := minimal_runtime_bridge_test.S
+```
+
+**Effect:**
+- Embeds Runtime_Bridge test into EFI.img
+- Kernel boots and launches Runtime_Bridge test
+- Test executes syscalls 1012/1013/1014
+- Markers appear in QEMU logs
+
+### Evidence Generation Workflow
+
+```
+1. Build EFI.img with runtime-bridge-test mode
+   └─> USER_MINIMAL_MODE=runtime-bridge-test make efi-img
+
+2. Run QEMU proof harness
+   └─> ./scripts/qemu-runtime-bridge-proof-harness.sh
+
+3. Harness launches QEMU with OVMF + EFI.img
+   └─> Captures debugcon and serial logs
+
+4. Harness runs audit script on logs
+   └─> tools/validation/runtime_bridge_audit.sh
+
+5. Audit script validates marker flow
+   └─> PASS: All markers present
+   └─> FAIL: Missing markers (actionable errors)
+
+6. Evidence stored in evidence/runtime-bridge-proof/
+   └─> qemu_kernel_trace_allowed.log
+```
+
+### Current Status (2026-04-12)
+
+**Completed:**
+- ✅ QEMU harness uses correct OVMF + EFI.img boot path
+- ✅ Runtime_Bridge marker contract defined
+- ✅ Runtime_Bridge audit script created
+- ✅ Harness supports multiple OVMF locations
+- ✅ Deterministic boot with blank OVMF VARS
+- ✅ Channel integrity validation
+
+**Pending:**
+- ⏳ Rebuild EFI.img with runtime-bridge-test mode
+- ⏳ Run harness and validate markers appear
+- ⏳ Integrate real DevFS handlers (replace 0xDEADBEEF stub)
+- ⏳ Integrate real ABDF handlers (replace fake ABDF stub)
+- ⏳ Create forbidden test for fail-closed validation
+- ⏳ Pass `ci-gate-fail-closed-proof`
+
+### Comparison: General Syscall vs Runtime_Bridge Tests
+
+| Aspect | General Syscall Test | Runtime_Bridge Test |
+|--------|---------------------|---------------------|
+| **Purpose** | Validate syscall roundtrip (any syscall) | Validate Runtime_Bridge syscalls (1012/1013/1014) |
+| **Markers** | `[U][SYSCALL_OK]` or `[[AYKEN_SYSCALL_V2_OK]]` | Runtime_Bridge-specific markers |
+| **Audit Script** | `phase_4_4_syscall_roundtrip_audit.sh` | `runtime_bridge_audit.sh` |
+| **Scope** | Phase 4.4 closure (general syscall path) | Phase-16 Task 5 (Runtime_Bridge path) |
+| **Boot Path** | OVMF + EFI.img | OVMF + EFI.img (same) |
+| **Evidence** | Proves syscall infrastructure works | Proves Runtime_Bridge syscalls work |
+
+**Key Insight:** These are two different tests with different markers and different audit scripts. Using the wrong audit script produces false negatives.
+
+### References
+
+- Working OVMF pattern: `tools/validation/syscall_roundtrip_test.sh`
+- Runtime_Bridge test payload: `userspace/minimal/minimal_runtime_bridge_test.S`
+- Phase 4.4 audit (for comparison): `tools/validation/phase_4_4_syscall_roundtrip_audit.sh`
+- Task 5 progress: `.kiro/specs/phase16-bcib-abdf-isolation-contracts/TASK_5_PROGRESS_2026_04_12.md`
+

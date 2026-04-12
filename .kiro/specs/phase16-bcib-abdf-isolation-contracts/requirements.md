@@ -518,3 +518,61 @@ Runtime_Bridge = sole interface (capability-enforced, auditable, fail-closed)
 Boundary = strictly enforced (no bypass, no escape, deterministic termination)
 Proof = kernel-level evidence (QEMU trace, marker flow, negative guarantees)
 ```
+
+
+## Requirement 17: Runtime_Bridge Syscall Path Validation
+
+**User Story:** As a system architect, I want Runtime_Bridge syscalls (1012/1013/1014) to be validated with QEMU kernel trace evidence, so that the Runtime_Bridge execution path is proven to work correctly.
+
+#### Acceptance Criteria
+
+1. THE Runtime_Bridge test SHALL emit deterministic markers for syscall execution flow
+2. THE Runtime_Bridge test SHALL use syscalls 1012 (SYS_V2_DEVICE_OPERATION), 1013 (SYS_V2_EXTERNAL_CALL), and 1014 (SYS_V2_ABDF_OPERATION)
+3. THE Runtime_Bridge test SHALL emit markers before and after each syscall
+4. THE QEMU kernel trace SHALL show syscall entry and exit for each Runtime_Bridge syscall
+5. THE Runtime_Bridge syscalls SHALL reach the kernel dispatcher and return to userspace
+6. THE Runtime_Bridge test SHALL complete with a deterministic completion marker
+7. THE System SHALL validate Runtime_Bridge marker flow using a dedicated audit script
+8. THE Audit script SHALL verify all required markers are present in correct order
+9. THE Audit script SHALL check for kernel syscall enter/exit markers
+10. IF Runtime_Bridge markers are missing, THEN THE Audit SHALL report which markers are absent
+11. IF syscall enter/exit markers are insufficient, THEN THE Audit SHALL warn about kernel dispatcher issues
+
+#### Runtime_Bridge Marker Contract
+
+The following markers SHALL be emitted by the Runtime_Bridge test in this order:
+
+1. `[U][RUNTIME_BRIDGE_TEST_START]` - Test execution begins
+2. `[U][RUNTIME_BRIDGE_DEVICE_OP_BEFORE]` - Before SYS_V2_DEVICE_OPERATION (1012)
+3. `[[AYKEN_SYSCALL_ENTER]]` - Kernel receives syscall 1012
+4. `[[AYKEN_SYSCALL_EXIT]]` - Kernel returns from syscall 1012
+5. `[U][RUNTIME_BRIDGE_DEVICE_OP_AFTER]` - After SYS_V2_DEVICE_OPERATION (1012)
+6. `[U][RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE]` - Before SYS_V2_EXTERNAL_CALL (1013)
+7. `[[AYKEN_SYSCALL_ENTER]]` - Kernel receives syscall 1013
+8. `[[AYKEN_SYSCALL_EXIT]]` - Kernel returns from syscall 1013
+9. `[U][RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER]` - After SYS_V2_EXTERNAL_CALL (1013)
+10. `[U][RUNTIME_BRIDGE_ABDF_OP_BEFORE]` - Before SYS_V2_ABDF_OPERATION (1014)
+11. `[[AYKEN_SYSCALL_ENTER]]` - Kernel receives syscall 1014
+12. `[[AYKEN_SYSCALL_EXIT]]` - Kernel returns from syscall 1014
+13. `[U][RUNTIME_BRIDGE_ABDF_OP_AFTER]` - After SYS_V2_ABDF_OPERATION (1014)
+14. `[U][RUNTIME_BRIDGE_TEST_COMPLETE]` - Test execution completes
+
+#### QEMU Boot Path Requirements
+
+1. THE Runtime_Bridge test harness SHALL use OVMF + EFI.img boot path
+2. THE Runtime_Bridge test harness SHALL NOT use `-kernel`/`-initrd` boot path (not supported by AykenOS boot model)
+3. THE Runtime_Bridge test SHALL be embedded in EFI.img via `USER_MINIMAL_MODE=runtime-bridge-test`
+4. THE QEMU harness SHALL support multiple OVMF firmware locations (Linux/macOS compatibility)
+5. THE QEMU harness SHALL use deterministic boot with blank OVMF VARS
+6. THE QEMU harness SHALL capture both debugcon and serial output channels
+7. THE QEMU harness SHALL use proper QEMU machine type (q35) and pflash drives
+
+#### Audit Script Requirements
+
+1. THE Audit script SHALL be located at `tools/validation/runtime_bridge_audit.sh`
+2. THE Audit script SHALL accept QEMU trace log as input
+3. THE Audit script SHALL validate all Runtime_Bridge markers are present
+4. THE Audit script SHALL count syscall enter/exit markers (expect at least 3 of each)
+5. THE Audit script SHALL provide clear PASS/FAIL verdict
+6. THE Audit script SHALL give actionable warnings when markers are missing
+7. THE Audit script SHALL exit with code 0 on PASS, non-zero on FAIL
