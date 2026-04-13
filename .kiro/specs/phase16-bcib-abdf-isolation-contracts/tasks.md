@@ -187,11 +187,17 @@ All violations must:
     - Validation results:
       * RUNTIME_BRIDGE_FORBIDDEN_BEFORE: 1 (present)
       * RUNTIME_BRIDGE_FORBIDDEN_AFTER: 0 (no continuation - correct!)
-      * BOUNDARY_KILL: 1 (enforcement triggered)
-      * SYSCALL_ENTER: 38 (syscalls executed)
+      * BOUNDARY_KILL: 1 (enforcement triggered with "Syscall enforcement violation")
+      * SYSCALL_ENTER: 38 (syscalls executed - marker character emission)
       * ci-gate-fail-closed-proof: PASS
     - Validator updated: `scripts/validate_fail_closed_markers.py` now supports Runtime_Bridge markers
     - Audit script: `tools/validation/runtime_bridge_forbidden_audit.sh`
+  - **EXECUTION WINDOW TIMING (2026-04-13):**
+    - Current window: 4636 lines between SYSCALL_ENTER and BOUNDARY_KILL
+    - Root cause: Scheduler continues running after violation detection; process marked for kill but not immediately terminated
+    - Validator status: PASS with warning (window < 5000 lines acceptable for multi-syscall tests)
+    - **Deferred to Task 10:** Enforcement timing hardening (immediate termination, bounded deterministic window)
+    - Note: Runtime_Bridge forbidden path proof is complete and ci-gate-fail-closed-proof passes; however, large execution-window timing remains a warning and is deferred to Task 10 fail-closed hardening. Task 5 overall remains open pending full DevFS/ABDF integration.
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
     - Build script: `scripts/build-runtime-bridge-tests.sh`
@@ -494,6 +500,11 @@ All violations must:
   - Enforcement Level: Authoritative fail-closed enforcement
   - Userspace-only failure handling is not sufficient
   - Termination behavior must be enforced at the authoritative runtime / kernel boundary
+  - **TIMING HARDENING REQUIREMENT (from Task 5):**
+    - Current state: Violation detection → process marked for kill → scheduler eventually removes → BOUNDARY_KILL (window: ~4600 lines)
+    - Required state: Violation detection → BOUNDARY_KILL → process terminal → scheduler skip (window: < 100 lines, deterministic)
+    - Task 5 forbidden path proof shows enforcement works (no continuation) but timing is not immediate
+    - Task 10 must implement immediate termination with bounded deterministic window
   - **PRODUCTION CLOSURE REQUIREMENT:**
     - Task 10 CANNOT be marked complete without `ci-gate-fail-closed-proof` PASS
     - QEMU/runtime evidence must show no continued execution after fail-closed trigger
