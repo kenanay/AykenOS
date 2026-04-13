@@ -27,6 +27,32 @@ static void debugcon_write(const char *s)
     }
 }
 
+// Helper to write integer to debugcon
+static void debugcon_write_int(int64_t value)
+{
+    char buf[32];
+    int idx = 0;
+
+    if (value == 0) {
+        outb(0xE9, '0');
+        return;
+    }
+
+    if (value < 0) {
+        outb(0xE9, '-');
+        value = -value;
+    }
+
+    while (value > 0 && idx < (int)sizeof(buf)) {
+        buf[idx++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+
+    while (idx > 0) {
+        outb(0xE9, (uint8_t)buf[--idx]);
+    }
+}
+
 uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4);
 
@@ -96,7 +122,22 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
 
     // Marker: syscall entry/return for Phase 10-A2 Task 3 roundtrip evidence.
     sched_perf_note_first_syscall_entry();
-    debugcon_write("[[AYKEN_SYSCALL_ENTER]]\n");
+    
+    // Phase-16: Emit BCIB_FORBIDDEN_BEFORE marker for BCIB contexts
+    // MUST be before AYKEN_SYSCALL_ENTER for correct marker sequence
+    if (current_proc && current_proc->execution_role == PROC_EXECUTION_ROLE_BCIB) {
+        debugcon_write("BCIB_FORBIDDEN_BEFORE process_id=");
+        debugcon_write_int((int64_t)current_proc->pid);
+        debugcon_write("\n");
+    }
+    
+    debugcon_write("[[AYKEN_SYSCALL_ENTER]] pid=");
+    if (current_proc) {
+        debugcon_write_int((int64_t)current_proc->pid);
+    } else {
+        debugcon_write("0");
+    }
+    debugcon_write("\n");
     debugcon_write("P10_SYSCALL_ENTER\n");
     
     // Route based on Final Syscall Numbering Plan

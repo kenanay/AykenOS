@@ -48,6 +48,8 @@
 #include "arch/x86_64/timer.h"
 #include "arch/x86_64/port_io.h"
 #include "include/ring3_jump.h"
+#include "include/sha256.h"
+#include "include/embedded_elf.h"
 
 // AI modules removed in Phase 2.5 - Step C completion
 // All AI functionality moved to Ring3 userspace
@@ -306,6 +308,34 @@ static inline void reload_cs(uint16_t sel)
         :
         : [sel] "r"((uint64_t)sel)
         : "rax", "memory");
+}
+
+// Helper functions for boot-time payload hash verification
+static int hex_nibble(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+static int parse_sha256_hex(const char *hex, uint8_t out[32]) {
+    if (!hex) return -1;
+    for (uint32_t i = 0; i < 32u; ++i) {
+        int hi = hex_nibble(hex[i * 2u]);
+        int lo = hex_nibble(hex[i * 2u + 1u]);
+        if (hi < 0 || lo < 0) return -1;
+        out[i] = (uint8_t)((hi << 4) | lo);
+    }
+    if (hex[64] != '\0') return -1;
+    return 0;
+}
+
+static int sha256_equal(const uint8_t lhs[32], const uint8_t rhs[32]) {
+    uint8_t diff = 0u;
+    for (uint32_t i = 0; i < 32u; ++i) {
+        diff |= (uint8_t)(lhs[i] ^ rhs[i]);
+    }
+    return diff == 0u;
 }
 
 void kmain_real(ayken_boot_info_t *boot)
@@ -698,6 +728,73 @@ static void kernel_late_init(void)
     // Gate-0: Boot validation marker
     dual_channel_write("[[AYKEN_BOOT_OK]]\n");
 #endif
+
+    // ---------------------------------------------------------
+    // Phase 3: Boot-Time Payload Verification (Phase A - Observable Mismatch)
+    // Task 3.3: Emit boot marker with mode/hash for payload authority verification
+    // ---------------------------------------------------------
+    {
+        // Phase A: Verify mode string matches compile-time define
+        // Compare DAYKEN_USER_MINIMAL_MODE_STRING with embedded_elf_mode
+        #ifdef DAYKEN_USER_MINIMAL_MODE_STRING
+        const char *compile_mode = DAYKEN_USER_MINIMAL_MODE_STRING;
+        const char *embedded_mode = embedded_elf_mode;
+        int mode_match = 1;
+        
+        // Simple string comparison
+        while (*compile_mode && *embedded_mode) {
+            if (*compile_mode != *embedded_mode) {
+                mode_match = 0;
+                break;
+            }
+            compile_mode++;
+            embedded_mode++;
+        }
+        if (*compile_mode != *embedded_mode) {
+            mode_match = 0;
+        }
+        
+        if (!mode_match) {
+            // Phase A: Observable mismatch - emit marker but DO NOT halt
+            dual_channel_write("[K][PAYLOAD_MODE_MISMATCH]\n");
+            fb_print("[WARN] Payload mode mismatch detected\n");
+        }
+        #endif
+
+        // Phase A: Verify embedded hash by computing actual hash and comparing
+        // Parse the embedded hash string to binary
+        uint8_t expected_hash[32];
+        uint8_t computed_hash[32];
+        int hash_valid = 1;
+
+        if (parse_sha256_hex(embedded_elf_sha256, expected_hash) != 0) {
+            // Hash string is malformed
+            hash_valid = 0;
+        } else {
+            // Compute actual SHA256 of embedded ELF bytes
+            ayken_sha256_compute(embedded_elf, (uint64_t)embedded_elf_size, computed_hash);
+            
+            // Compare computed hash with expected hash
+            if (!sha256_equal(expected_hash, computed_hash)) {
+                hash_valid = 0;
+            }
+        }
+
+        if (!hash_valid) {
+            // Phase A: Observable mismatch - emit marker but DO NOT halt
+            dual_channel_write("[K][PAYLOAD_HASH_MISMATCH]\n");
+            fb_print("[WARN] Payload hash mismatch detected\n");
+        }
+
+        // Emit boot marker with mode and hash (CRITICAL: both required)
+        dual_channel_write("[K][PAYLOAD_MODE=");
+        dual_channel_write(embedded_elf_mode);
+        dual_channel_write("]\n");
+        
+        dual_channel_write("[K][PAYLOAD_SHA=");
+        dual_channel_write(embedded_elf_sha256);
+        dual_channel_write("]\n");
+    }
 
     // ---------------------------------------------------------
     // Phase 10-A2 Task 1: Validate TSS/GDT/IDT prerequisites

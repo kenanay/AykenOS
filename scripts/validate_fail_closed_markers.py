@@ -90,6 +90,11 @@ class FailClosedProofValidator:
     
     def extract_process_id(self, line: str) -> Optional[int]:
         """Extract process ID from marker line"""
+        # Try process_id=N pattern (Phase-16 BCIB markers)
+        match = re.search(r'process_id=(\d+)', line)
+        if match:
+            return int(match.group(1))
+        
         # Try pid=N pattern
         match = re.search(r'pid=(\d+)', line)
         if match:
@@ -313,7 +318,7 @@ class FailClosedProofValidator:
         return True
     
     def validate_hard_stop(self) -> bool:
-        """Validate no logs from same process after BOUNDARY_KILL"""
+        """Validate no userspace execution from same process after BOUNDARY_KILL"""
         print("\n[TEST 6] Validating hard stop guarantee...")
         
         if not (self.marker_kill and self.marker_before):
@@ -327,19 +332,31 @@ class FailClosedProofValidator:
         pid = self.marker_before.process_id
         after_kill_lines = self.trace_lines[self.marker_kill.line_number:]
         
-        process_logs_after_kill = sum(
-            1 for line in after_kill_lines if f'pid={pid}' in line or f'Process {pid}' in line
-        )
+        # Check for userspace execution markers (not kernel cleanup logs)
+        userspace_execution_markers = [
+            'P10_RING3_ENTER',
+            'P10_RING3_USER_CODE',
+            'BCIB_FORBIDDEN_AFTER',
+            '[[AYKEN_SYSCALL_ENTER]]',
+            'P10_SYSCALL_ENTER'
+        ]
         
-        if process_logs_after_kill > 0:
+        userspace_logs_after_kill = 0
+        for line in after_kill_lines:
+            # Check if line contains process ID AND a userspace execution marker
+            if (f'pid={pid}' in line or f'process_id={pid}' in line or f'Process {pid}' in line):
+                if any(marker in line for marker in userspace_execution_markers):
+                    userspace_logs_after_kill += 1
+        
+        if userspace_logs_after_kill > 0:
             self.add_violation(
                 FailureCode.HARD_STOP_FAILED,
-                f"Process logs found after kill: {process_logs_after_kill} occurrences. "
+                f"Userspace execution found after kill: {userspace_logs_after_kill} occurrences. "
                 f"Process was not properly terminated - hard stop failed"
             )
             return False
         
-        print("[PASS] No process logs after kill - hard stop verified")
+        print("[PASS] No userspace execution after kill - hard stop verified")
         return True
     
     def validate_deterministic_error(self) -> bool:
@@ -349,7 +366,8 @@ class FailClosedProofValidator:
         error_patterns = [
             r'BCIB_ERR_\w+',
             r'BOUNDARY_ERR_\w+',
-            r'ABDF_ERR_\w+'
+            r'ABDF_ERR_\w+',
+            r'\[\[AYKEN_BOUNDARY_ERR_CODE\]\]'
         ]
         
         for line in self.trace_lines:

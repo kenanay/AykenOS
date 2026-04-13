@@ -401,6 +401,16 @@ void jump_to_ring3(void)
                          "[PANIC] Phase10: Ring3 process creation failed.");
     }
     
+    // Phase-16: Set execution role based on minimal mode
+    // BCIB-forbidden test requires BCIB execution role for boundary enforcement
+    if (embedded_elf_mode[0] == 'b' && embedded_elf_mode[1] == 'c' &&
+        embedded_elf_mode[2] == 'i' && embedded_elf_mode[3] == 'b' &&
+        embedded_elf_mode[4] == '-' && embedded_elf_mode[5] == 'f') {
+        // Mode starts with "bcib-f" -> bcib-forbidden
+        ring3_proc->execution_role = PROC_EXECUTION_ROLE_BCIB;
+        debugcon_write("[K][EXEC_ROLE] BCIB (bcib-forbidden mode)\n");
+    }
+    
     // [K][USER_ELF_CREATE_OK] - Process created successfully
     debugcon_write("[K][USER_ELF_CREATE_OK] pid=");
     {

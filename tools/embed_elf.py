@@ -19,6 +19,11 @@ def parse_args() -> argparse.Namespace:
         default="embedded_elf",
         help="Base symbol name (default: embedded_elf)",
     )
+    parser.add_argument(
+        "--mode",
+        default="phase10a2",
+        help="Payload mode string (default: phase10a2)",
+    )
     return parser.parse_args()
 
 
@@ -43,6 +48,7 @@ def main() -> int:
     input_path = Path(args.input)
     output_path = Path(args.output)
     symbol = args.symbol
+    mode = args.mode
 
     if not input_path.is_file():
         raise SystemExit(f"missing input ELF: {input_path}")
@@ -62,6 +68,17 @@ def main() -> int:
         f"{format_array(blob)}}};\n\n"
         f"static const size_t {symbol}_size = sizeof({symbol});\n\n"
         f"static const char {symbol}_sha256[] = \"{blob_sha256}\";\n\n"
+        f"static const char {symbol}_mode[] = \"{mode}\";\n\n"
+        f"static inline int verify_{symbol}_hash(const char *expected) {{\n"
+        f"    if (!expected) return -1;\n"
+        f"    const char *a = {symbol}_sha256;\n"
+        f"    const char *b = expected;\n"
+        f"    while (*a && *b) {{\n"
+        f"        if (*a != *b) return -1;\n"
+        f"        a++; b++;\n"
+        f"    }}\n"
+        f"    return (*a == *b) ? 0 : -1;\n"
+        f"}}\n\n"
         f"#endif /* {guard} */\n"
     )
 

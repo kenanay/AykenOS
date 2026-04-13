@@ -61,14 +61,66 @@ mkdir -p "$EVIDENCE_DIR"
 
 log_info "Starting Runtime_Bridge QEMU proof harness..."
 log_info "Note: Runtime_Bridge test is embedded in EFI.img via USER_MINIMAL_MODE=runtime-bridge-test"
-log_info "Ensure EFI.img was built with: USER_MINIMAL_MODE=runtime-bridge-test make efi-img"
 
-# Check if EFI image exists (correct boot path)
+# Build EFI image with runtime-bridge-test payload
+log_info "Building EFI image with runtime-bridge-test payload..."
+if ! USER_MINIMAL_MODE=runtime-bridge-test KERNEL_PROFILE=validation AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 make efi-img > "$EVIDENCE_DIR/build.log" 2>&1; then
+    log_error "Build failed. Check: $EVIDENCE_DIR/build.log"
+    exit 1
+fi
+
 EFI_IMG="$PROJECT_ROOT/out/build/EFI.img"
 if [[ ! -f "$EFI_IMG" ]]; then
     log_error "EFI image not found: $EFI_IMG"
-    log_error "Run 'USER_MINIMAL_MODE=runtime-bridge-test make efi-img' first"
     exit 1
+fi
+
+log_info "✓ EFI image built: $EFI_IMG"
+
+# Verify build manifest (AUTHORITY)
+MANIFEST="$PROJECT_ROOT/out/build/payload_manifest.json"
+if [[ ! -f "$MANIFEST" ]]; then
+    log_error "❌ MANIFEST_MISSING: Build manifest not found: $MANIFEST"
+    log_error "   This violates the payload authority chain"
+    exit 1
+fi
+
+log_info "Verifying build manifest..."
+MANIFEST_MODE=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['selected_mode'])" 2>/dev/null || echo "")
+MANIFEST_PAYLOAD_SHA=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['payload_sha256'])" 2>/dev/null || echo "")
+MANIFEST_EMBEDDED_SHA=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['embedded_header_sha256'])" 2>/dev/null || echo "")
+
+if [[ "$MANIFEST_MODE" != "runtime-bridge-test" ]]; then
+    log_error "❌ MODE_MISMATCH: Manifest shows selected_mode='$MANIFEST_MODE' (expected 'runtime-bridge-test')"
+    log_error "   This violates the Mode Authority Invariant"
+    exit 1
+fi
+
+if [[ "$MANIFEST_PAYLOAD_SHA" != "$MANIFEST_EMBEDDED_SHA" ]]; then
+    log_error "❌ HASH_MISMATCH: Manifest payload_sha256 != embedded_header_sha256"
+    log_error "   Payload: $MANIFEST_PAYLOAD_SHA"
+    log_error "   Embedded: $MANIFEST_EMBEDDED_SHA"
+    log_error "   This violates the Payload Integrity Invariant"
+    exit 1
+fi
+
+log_info "✓ Manifest verification passed"
+log_info "  Mode: $MANIFEST_MODE"
+log_info "  Hash: $MANIFEST_PAYLOAD_SHA"
+
+# Verify build log (DIAGNOSTIC - WARNING only)
+if grep -q 'DAYKEN_USER_MINIMAL_MODE_STRING="runtime-bridge-test"' "$EVIDENCE_DIR/build.log"; then
+    log_info "✓ Build log shows correct mode string (diagnostic)"
+else
+    log_warn "⚠ Build log does not show DAYKEN_USER_MINIMAL_MODE_STRING=\"runtime-bridge-test\" (diagnostic only)"
+fi
+
+# Verify build log (DIAGNOSTIC - WARNING only)
+BUILD_LOG="$EVIDENCE_DIR/build.log"
+if [[ -f "$BUILD_LOG" ]] && grep -q 'DAYKEN_USER_MINIMAL_MODE_STRING="runtime-bridge-test"' "$BUILD_LOG"; then
+    log_info "✓ Build log shows correct mode string (diagnostic)"
+elif [[ -f "$BUILD_LOG" ]]; then
+    log_warn "⚠ Build log does not show DAYKEN_USER_MINIMAL_MODE_STRING=\"runtime-bridge-test\" (diagnostic only)"
 fi
 
 # Resolve OVMF firmware
@@ -156,6 +208,30 @@ elif [[ $SERIAL_SIZE -gt 0 ]]; then
 fi
 
 log_info "Allowed path trace: $ALLOWED_TRACE"
+
+# Verify boot marker (AUTHORITY)
+BOOT_MODE_FOUND=0
+BOOT_LOG=""
+
+if [[ $DEBUGCON_SIZE -gt 0 ]]; then
+    BOOT_LOG="$ALLOWED_DEBUGCON"
+elif [[ $SERIAL_SIZE -gt 0 ]]; then
+    BOOT_LOG="$ALLOWED_SERIAL"
+fi
+
+if [[ -n "$BOOT_LOG" ]]; then
+    if grep -q '\[K\]\[PAYLOAD_MODE=runtime-bridge-test\]' "$BOOT_LOG"; then
+        BOOT_MODE_FOUND=1
+        log_info "✓ Boot marker [K][PAYLOAD_MODE=runtime-bridge-test] found"
+    fi
+fi
+
+if [[ $BOOT_MODE_FOUND -eq 0 ]]; then
+    log_error "❌ BOOT_MARKER_MISSING: Boot log does not contain [K][PAYLOAD_MODE=runtime-bridge-test]"
+    log_error "   This violates the Mode Authority Invariant (boot verification)"
+    rm -rf "$RUN_TMP_DIR"
+    exit 1
+fi
 
 # Analyze allowed trace using Runtime_Bridge-specific audit script
 if [[ -x "$PROJECT_ROOT/tools/validation/runtime_bridge_audit.sh" ]]; then

@@ -5,6 +5,15 @@
 #include "../include/serial.h"
 #include "../include/proc.h"
 
+/* Debugcon helper for marker emission */
+static void debugcon_write(const char *s) {
+    if (!s) return;
+    while (*s) {
+        __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*s), "Nd"((uint16_t)0xE9));
+        s++;
+    }
+}
+
 /* Debug printf implementation using serial output */
 static void debug_printf(const char *fmt, ...) {
     /* Simple implementation - just write the format string for now */
@@ -75,6 +84,22 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         switch (current_proc->execution_role) {
             case PROC_EXECUTION_ROLE_BCIB:
                 context_type = EXEC_CONTEXT_BCIB;
+                /* Debug: Confirm we're in BCIB context */
+                serial_write("[HARDENED] BCIB context detected, syscall_num=");
+                {
+                    char buf[32];
+                    int i = 0, n = (int)syscall_num;
+                    if (n == 0) buf[i++] = '0';
+                    else {
+                        char tmp[32];
+                        int j = 0;
+                        while (n > 0) { tmp[j++] = '0' + (n % 10); n /= 10; }
+                        while (j > 0) buf[i++] = tmp[--j];
+                    }
+                    buf[i] = '\0';
+                    serial_write(buf);
+                }
+                serial_write("\n");
                 break;
             case PROC_EXECUTION_ROLE_RUNTIME_BRIDGE:
                 context_type = EXEC_CONTEXT_RUNTIME_BRIDGE;

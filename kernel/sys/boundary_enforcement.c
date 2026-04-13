@@ -5,6 +5,15 @@
 #include "../include/execution_slot.h"
 #include "../include/proc.h"
 
+/* Debugcon helper for marker emission */
+static void debugcon_write(const char *s) {
+    if (!s) return;
+    while (*s) {
+        __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*s), "Nd"((uint16_t)0xE9));
+        s++;
+    }
+}
+
 /* Debug printf implementation using serial output */
 static void debug_printf(const char *fmt, ...) {
     /* Simple implementation - just write the format string for now */
@@ -248,7 +257,52 @@ void boundary_fail_closed_termination(int violation_code, uint64_t context_id, c
                 violation_code, context_id, reason ? reason : "Unknown");
     
     /* QEMU PROOF MARKER - Critical for fail-closed evidence */
-    serial_write("[[AYKEN_BOUNDARY_KILL]]\n");
+    /* Use debugcon for immediate visibility in QEMU trace */
+    debugcon_write("[[AYKEN_BOUNDARY_KILL]] process_id=");
+    if (current_proc) {
+        char buf[32];
+        int i = 0, n = (int)current_proc->pid;
+        if (n == 0) buf[i++] = '0';
+        else {
+            char tmp[32];
+            int j = 0;
+            while (n > 0) { tmp[j++] = '0' + (n % 10); n /= 10; }
+            while (j > 0) buf[i++] = tmp[--j];
+        }
+        buf[i] = '\0';
+        debugcon_write(buf);
+    } else {
+        debugcon_write("0");
+    }
+    debugcon_write("\n");
+    
+    /* Emit deterministic error code for validator */
+    debugcon_write("[[AYKEN_BOUNDARY_ERR_CODE]] code=");
+    {
+        char buf[32];
+        int i = 0, n = violation_code;
+        if (n == 0) buf[i++] = '0';
+        else {
+            char tmp[32];
+            int j = 0;
+            while (n > 0) { tmp[j++] = '0' + (n % 10); n /= 10; }
+            while (j > 0) buf[i++] = tmp[--j];
+        }
+        buf[i] = '\0';
+        debugcon_write(buf);
+    }
+    debugcon_write(" reason=");
+    debugcon_write(reason ? reason : "Unknown");
+    debugcon_write("\n");
+    
+    /* Also write to serial for logging */
+    serial_write("[[AYKEN_BOUNDARY_KILL]] pid=");
+    if (current_proc) {
+        boundary_write_i64((int64_t)current_proc->pid);
+    } else {
+        serial_write("0");
+    }
+    serial_write("\n");
     serial_write("[[AYKEN_BOUNDARY_CODE_");
     boundary_write_i64((int64_t)violation_code);
     serial_write("]]\n");

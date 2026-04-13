@@ -771,6 +771,15 @@ USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
 USER_MINIMAL_BIN_SHA = $(USER_MINIMAL_DIR)/user.bin.sha256
 USER_MINIMAL_DEFAULT_MODE := phase10a2
+
+# Validate USER_MINIMAL_MODE if set
+ifneq ($(strip $(USER_MINIMAL_MODE)),)
+  VALID_MODES := phase10a2 entry-proof runtime-bridge-test phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden
+  ifeq ($(filter $(USER_MINIMAL_MODE),$(VALID_MODES)),)
+    $(error Invalid USER_MINIMAL_MODE='$(USER_MINIMAL_MODE)'. Valid values: $(VALID_MODES))
+  endif
+endif
+
 USER_MINIMAL_EFFECTIVE_MODE := $(if $(strip $(USER_MINIMAL_MODE)),$(strip $(USER_MINIMAL_MODE)),$(USER_MINIMAL_DEFAULT_MODE))
 USER_MINIMAL_MODE_STAMP = $(USER_MINIMAL_DIR)/.mode.$(USER_MINIMAL_EFFECTIVE_MODE)
 KERNEL_CFLAGS += -DAYKEN_USER_MINIMAL_MODE_STRING=\"$(USER_MINIMAL_EFFECTIVE_MODE)\"
@@ -780,6 +789,7 @@ USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
                        $(USER_MINIMAL_DIR)/Makefile
 EMBED_ELF_TOOL = tools/embed_elf.py
 EMBEDDED_ELF_HEADER = kernel/include/embedded_elf.h
+PAYLOAD_MANIFEST = $(AYKEN_BUILD_DIR)/payload_manifest.json
 
 # Kernel image contains Ring0 code only.
 # Ring3 userspace components are built via separate userspace targets.
@@ -1013,10 +1023,15 @@ $(PROFILE_STAMP): FORCE
 		echo "$(KERNEL_PROFILE)" > $(PROFILE_STAMP); \
 	fi
 
-$(KERNEL_OBJS): $(PROFILE_STAMP) $(EMBEDDED_ELF_HEADER)
+$(KERNEL_OBJS): $(PROFILE_STAMP) $(EMBEDDED_ELF_HEADER) $(PAYLOAD_MANIFEST)
 
-$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP) $(KERNEL_LINK_EXTRA_DEPS)
+$(KERNEL_ELF): $(KERNEL_OBJS) linker.ld $(PROFILE_STAMP) $(KERNEL_LINK_EXTRA_DEPS) $(PAYLOAD_MANIFEST)
 	@mkdir -p $(dir $@)
+	@if [ ! -f "$(PAYLOAD_MANIFEST)" ]; then \
+		echo "[ERROR] Payload manifest missing: $(PAYLOAD_MANIFEST)"; \
+		echo "[ERROR] Kernel build cannot complete without manifest (AUTHORITY)"; \
+		exit 1; \
+	fi
 	$(KERNEL_LD) -T linker.ld $(KERNEL_LDFLAGS) $(KERNEL_LINK_EXTRA_FLAGS) $(if $(strip $(KERNEL_MAP)),-Map=$(KERNEL_MAP),) -o $@ $(KERNEL_OBJS)
 
 kernel.elf: $(KERNEL_ELF)
@@ -1134,9 +1149,43 @@ $(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Building minimal user binary..."
 	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" user.bin
 
-$(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL)
+$(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Generating embedded ELF header..."
-	@python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER)
+	@EXPECTED_PAYLOAD_HASH=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER) --mode $(USER_MINIMAL_EFFECTIVE_MODE); \
+	EMBEDDED_HASH=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
+	if [ "$$EXPECTED_PAYLOAD_HASH" != "$$EMBEDDED_HASH" ]; then \
+		echo "[ERROR] Payload hash mismatch!"; \
+		echo "  Expected: $$EXPECTED_PAYLOAD_HASH"; \
+		echo "  Embedded: $$EMBEDDED_HASH"; \
+		exit 1; \
+	fi; \
+	echo "[PHASE10] Hash verification passed: $$EMBEDDED_HASH"
+
+# Generate build manifest (AUTHORITY) - must complete before kernel link
+$(PAYLOAD_MANIFEST): $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
+	@echo "[PHASE10] Generating payload manifest (AUTHORITY)..."
+	@mkdir -p $(dir $@)
+	@PAYLOAD_SHA=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	EMBEDDED_SHA=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
+	TIMESTAMP=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
+	printf '{\n  "selected_mode": "%s",\n  "payload_sha256": "%s",\n  "embedded_header_sha256": "%s",\n  "build_timestamp": "%s"\n}\n' \
+		"$(USER_MINIMAL_EFFECTIVE_MODE)" "$$PAYLOAD_SHA" "$$EMBEDDED_SHA" "$$TIMESTAMP" > $@
+	@echo "[PHASE10] Manifest generated: $@"
+
+# Explicit hash verification target for CI gates
+.PHONY: verify-payload-hash
+verify-payload-hash: $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
+	@echo "[PHASE10] Verifying payload hash..."
+	@EXPECTED_HASH=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	EMBEDDED_HASH=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
+	if [ "$$EXPECTED_HASH" != "$$EMBEDDED_HASH" ]; then \
+		echo "[ERROR] Payload hash verification failed!"; \
+		echo "  Expected: $$EXPECTED_HASH"; \
+		echo "  Embedded: $$EMBEDDED_HASH"; \
+		exit 1; \
+	fi; \
+	echo "[PHASE10] Hash verification passed: $$EMBEDDED_HASH"
 
 -include $(KERNEL_DEPS)
 

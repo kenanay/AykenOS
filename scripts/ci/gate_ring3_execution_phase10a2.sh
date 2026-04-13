@@ -220,6 +220,48 @@ EOF
   exit 1
 fi
 
+# Verify build manifest (AUTHORITY)
+MANIFEST="${ROOT}/out/build/payload_manifest.json"
+if [[ ! -f "${MANIFEST}" ]]; then
+  cat > "${REPORT_JSON}" <<EOF
+{
+  "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
+  "verdict": "FAIL",
+  "violations_count": 1,
+  "violations": ["manifest_missing"]
+}
+EOF
+  echo "manifest_missing" > "${VIOLATIONS_TXT}"
+  echo "ring3-execution-phase10a2: FAIL (manifest_missing)"
+  exit 2
+fi
+
+MANIFEST_MODE=$(python3 -c "import json; print(json.load(open('${MANIFEST}'))['selected_mode'])" 2>/dev/null || echo "")
+if [[ "${MANIFEST_MODE}" != "${EXPECTED_USER_MINIMAL_MODE}" ]]; then
+  cat > "${REPORT_JSON}" <<EOF
+{
+  "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
+  "verdict": "FAIL",
+  "violations_count": 1,
+  "violations": ["manifest_mode_mismatch:expected=${EXPECTED_USER_MINIMAL_MODE}:actual=${MANIFEST_MODE}"]
+}
+EOF
+  echo "manifest_mode_mismatch:expected=${EXPECTED_USER_MINIMAL_MODE}:actual=${MANIFEST_MODE}" > "${VIOLATIONS_TXT}"
+  echo "ring3-execution-phase10a2: FAIL (manifest_mode_mismatch)"
+  exit 2
+fi
+
+# Verify build log (DIAGNOSTIC - WARNING only)
+if grep -q "DAYKEN_USER_MINIMAL_MODE_STRING=\"${EXPECTED_USER_MINIMAL_MODE}\"" "${BUILD_LOG}"; then
+  echo "Build log mode string verification: PASS (diagnostic)" >> "${BUILD_LOG}"
+else
+  echo "WARNING: Build log does not show DAYKEN_USER_MINIMAL_MODE_STRING=\"${EXPECTED_USER_MINIMAL_MODE}\" (diagnostic only)" >> "${BUILD_LOG}"
+fi
+
 set +e
 "${BOOT_AUDIT}" \
   --timeout "${QEMU_TIMEOUT}" \
@@ -241,6 +283,23 @@ if ! wait_for_marker_log; then
 EOF
   echo "authoritative_debugcon_missing" > "${VIOLATIONS_TXT}"
   echo "ring3-execution-phase10a2: FAIL (authoritative_debugcon_missing)"
+  exit 2
+fi
+
+# Verify boot marker (AUTHORITY)
+if ! grep -q '\[K\]\[PAYLOAD_MODE=phase10a2\]' "${MARKER_LOG}"; then
+  cat > "${REPORT_JSON}" <<EOF
+{
+  "gate": "ring3-execution-phase10a2",
+  "enforced_ayken_cr3_pcid": ${ENFORCED_AYKEN_CR3_PCID},
+  "observed_ayken_cr3_pcid": ${AYKEN_CR3_PCID},
+  "verdict": "FAIL",
+  "violations_count": 1,
+  "violations": ["boot_marker_missing"]
+}
+EOF
+  echo "boot_marker_missing" > "${VIOLATIONS_TXT}"
+  echo "ring3-execution-phase10a2: FAIL (boot_marker_missing)"
   exit 2
 fi
 
