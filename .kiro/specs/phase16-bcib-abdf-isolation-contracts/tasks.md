@@ -174,8 +174,24 @@ All violations must:
     - **Validates: Requirements 9.7**
 
 - [ ] 5. Implement Runtime_Bridge core interface and lifecycle
-  - Closure Status: BLOCKED BY NON-DETERMINISTIC DEBUG OUTPUT (OBSERVABILITY FAILURE)
-  - **CRITICAL STATUS NOTE (2026-04-13):** Payload execution is LIKELY WORKING (syscall evidence: 25 syscalls for 25-character marker), but observability layer is BROKEN. Debug output shows marker fragmentation/interleaving: `[[AYKEN_SYSCALL_ENTER]] U[[AYKEN_SYSCALL_RETURN]]` indicates characters are being emitted but kernel log pipeline is non-deterministic. Root cause: DEBUG_PUTCHAR is not atomic, syscall logs interleave with userspace markers. Task 5 remains incomplete pending deterministic debug channel fix.
+  - Closure Status: OBSERVABILITY RESOLVED; FORBIDDEN PATH PROOF COMPLETE; MINIMAL SUBSTRATE INTEGRATION DONE; PRODUCTION CLOSURE PENDING FULL INTEGRATION
+  - **STATUS UPDATE (2026-04-13):**
+    - ✅ Observability blocker RESOLVED: Kernel-side marker reconstruction implemented for Runtime_Bridge ping markers
+    - ✅ Forbidden path proof COMPLETE: `ci-gate-fail-closed-proof` PASS with Runtime_Bridge forbidden syscall (1003)
+    - ✅ Minimal substrate integration DONE: ABDF uses execution slots, device has registry validation
+    - ⏳ Full production integration PENDING: sys_v2_external_call remains log-only, real DevFS/ABDF integration needed
+  - **FORBIDDEN PATH VALIDATION (2026-04-13):**
+    - Payload: `userspace/minimal/minimal_runtime_bridge_forbidden.S`
+    - Forbidden syscall: SYS_V2_SUBMIT_EXECUTION (1003) with Runtime_Bridge role
+    - QEMU trace: `evidence/runtime-bridge-proof/qemu_kernel_trace_forbidden.log`
+    - Validation results:
+      * RUNTIME_BRIDGE_FORBIDDEN_BEFORE: 1 (present)
+      * RUNTIME_BRIDGE_FORBIDDEN_AFTER: 0 (no continuation - correct!)
+      * BOUNDARY_KILL: 1 (enforcement triggered)
+      * SYSCALL_ENTER: 38 (syscalls executed)
+      * ci-gate-fail-closed-proof: PASS
+    - Validator updated: `scripts/validate_fail_closed_markers.py` now supports Runtime_Bridge markers
+    - Audit script: `tools/validation/runtime_bridge_forbidden_audit.sh`
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
     - Build script: `scripts/build-runtime-bridge-tests.sh`
@@ -235,16 +251,16 @@ All violations must:
     3. ✅ Runtime_Bridge-specific marker contract defined (RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, EXTERNAL_CALL_BEFORE/AFTER, ABDF_OP_BEFORE/AFTER, RUNTIME_BRIDGE_TEST_COMPLETE)
     4. ✅ Created Runtime_Bridge-specific audit script (`tools/validation/runtime_bridge_audit.sh`)
     5. ✅ Resolve hygiene gate failures (completed 2026-04-12)
-    6. ⏳ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img` (build completed, but runtime execution in QEMU not yet proven)
-    7. ⏳ Run QEMU harness to generate traces and verify marker presence (harness runs but markers absent - payload execution not confirmed)
-    8. ⏳ Debug why Runtime_Bridge payload does not execute (all markers = 0, execution path not proven)
-    9. ⏳ Validate trace shows syscalls 1012/1013/1014 reach handlers and return
-    10. ⏳ Create forbidden test for fail-closed validation
-    11. ⏳ Validate forbidden trace with `ci-gate-fail-closed-proof` (must PASS)
+    6. ✅ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img` (build completed, runtime execution proven)
+    7. ✅ Run QEMU harness to generate traces and verify marker presence (harness runs, markers present and validated)
+    8. ✅ Debug why Runtime_Bridge payload does not execute (RESOLVED: observability issue, not execution issue)
+    9. ✅ Validate trace shows syscalls 1012/1013/1014 reach handlers and return (validated with allowed path)
+    10. ✅ Create forbidden test for fail-closed validation (minimal_runtime_bridge_forbidden.S created)
+    11. ✅ Validate forbidden trace with `ci-gate-fail-closed-proof` (PASS - forbidden syscall 1003 triggers BOUNDARY_KILL)
     12. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
     13. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
     14. ⏳ Resolve remaining Task 5 warnings; `static_mut_refs` must remain absent
-    15. ⏳ **`ci-gate-fail-closed-proof` must PASS before Task 5 can be marked complete**
+    15. ✅ **`ci-gate-fail-closed-proof` PASS achieved for Runtime_Bridge forbidden path**
   - Task 6 Entry Gate:
     - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
     - Do not treat host-only syscall adapter tests as kernel-boundary evidence
