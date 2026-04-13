@@ -50,7 +50,8 @@ typedef enum {
     PROC_READY = 0,
     PROC_RUNNING,
     PROC_BLOCKED,
-    PROC_ZOMBIE
+    PROC_ZOMBIE,
+    PROC_TERMINAL  // Phase-16 Task 10: Immediate kill, never reschedule
 } proc_state_t;
 
 typedef enum {

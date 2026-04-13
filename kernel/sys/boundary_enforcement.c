@@ -252,6 +252,9 @@ int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id) {
 void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason) {
     extern proc_t *current_proc;
     
+    /* PHASE-16 TASK 10: IMMEDIATE TERMINATION PATH */
+    /* CRITICAL: Emit markers FIRST, then immediate state change, then context switch */
+    
     /* Log violation before termination */
     debug_printf("[BOUNDARY] FAIL-CLOSED TERMINATION: Code=%d, Context=%lu, Reason=%s\n",
                 violation_code, context_id, reason ? reason : "Unknown");
@@ -331,50 +334,30 @@ void boundary_fail_closed_termination(int violation_code, uint64_t context_id, c
     
     /* HARD FAIL-CLOSED TERMINATION - NO RETURN */
     if (current_proc && current_proc->type == PROC_TYPE_USER) {
-        /* Terminate current user process immediately */
-        debug_printf("[BOUNDARY] Terminating user process PID=%d due to boundary violation\n", current_proc->pid);
-        
-        /* Abort any active execution slots for this process */
-        if (current_proc->active_execution_id != 0) {
-            /* Find and abort the execution slot */
-            execution_slot_guard_t slot_guard;
-            execution_slot_enter_critical(&slot_guard);
-            
-            exec_slot_t *slot = execution_slot_find_locked(current_proc->active_execution_id);
-            if (slot) {
-                execution_slot_require_finish_locked(slot, EXEC_SLOT_ABORTED, "boundary_violation");
-                debug_printf("[BOUNDARY] Aborted execution slot %lu\n", current_proc->active_execution_id);
-            }
-            
-            execution_slot_exit_critical(&slot_guard);
-            current_proc->active_execution_id = 0;
-        }
-        
-        /* Mark process as zombie and initiate teardown */
-        current_proc->state = PROC_ZOMBIE;
+        /* PHASE-16 TASK 10: IMMEDIATE TERMINATION */
+        /* Step 1: Mark process as TERMINAL immediately - scheduler will NEVER reschedule */
+        current_proc->state = PROC_TERMINAL;
         current_proc->wait_obj = NULL;
         
-        /* Teardown process surfaces */
-        proc_teardown_exit_surfaces(current_proc, NULL, NULL, 0);
+        debug_printf("[BOUNDARY] Process PID=%d marked TERMINAL - will never reschedule\n", current_proc->pid);
         
-        /* Remove from scheduler */
+        /* Step 2: Remove from runqueue IMMEDIATELY - no more scheduling */
+        extern void sched_remove_process_everywhere(proc_t *p);
         sched_remove_process_everywhere(current_proc);
         
-        debug_printf("[BOUNDARY] Process terminated and removed from scheduler\n");
+        debug_printf("[BOUNDARY] Process removed from scheduler runqueue\n");
         
-        /* CRITICAL: Force immediate context switch - NEVER RETURN */
-        /* This is the HARD fail-closed guarantee */
-        debug_printf("[BOUNDARY] HARD FAIL-CLOSED: Forcing immediate context switch\n");
-        
-        /* Disable interrupts to prevent any further execution */
+        /* Step 3: Disable interrupts and force immediate context switch */
         __asm__ volatile("cli");
         
-        /* Force scheduler to run - this will switch away from terminated process */
+        debug_printf("[BOUNDARY] IMMEDIATE TERMINATION: Forcing context switch - NEVER RETURN\n");
+        
+        /* Force scheduler to run - this will switch away from TERMINAL process */
         extern void sched_yield(void);
         sched_yield();
         
-        /* If we somehow reach here (should be impossible), halt */
-        debug_printf("[BOUNDARY] CRITICAL: Execution continued after fail-closed - HALTING\n");
+        /* UNREACHABLE: If we reach here, system is broken */
+        debug_printf("[BOUNDARY] CRITICAL: Execution continued after TERMINAL - HALTING\n");
         while (1) {
             __asm__ volatile("hlt");
         }

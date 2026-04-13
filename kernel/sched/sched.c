@@ -1874,7 +1874,7 @@ static proc_t *sched_select_next_mailbox(
             }
             sched_perf_note_mailbox_arbiter_candidate_lookup_enter();
             proc_t *cand = proc_find_by_pid((int)pid);
-            if (cand && (cand->state == PROC_READY || cand->state == PROC_RUNNING)) {
+            if (cand && (cand->state == PROC_READY || cand->state == PROC_RUNNING) && cand->state != PROC_TERMINAL) {
                 sched_perf_note_mailbox_arbiter_candidate_lookup_exit();
                 sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
                 sched_perf_note_mailbox_arbiter_path_switch_enter();

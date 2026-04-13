@@ -496,7 +496,7 @@ All violations must:
     - **Property 8: Context Isolation**
     - **Validates: Requirements 13.1, 13.2, 13.3, 13.8**
 
-- [ ] 10. Implement fail-closed enforcement and error handling
+- [x] 10. Implement fail-closed enforcement and error handling
   - Enforcement Level: Authoritative fail-closed enforcement
   - Userspace-only failure handling is not sufficient
   - Termination behavior must be enforced at the authoritative runtime / kernel boundary
@@ -555,7 +555,7 @@ All violations must:
     - Test: repeated identical violation -> same error code and same terminal state
     - Test: audit failure -> termination still occurs
     - QEMU/runtime evidence must show no continued execution after fail-closed trigger
-  - [ ] 10.1 Create comprehensive fail-closed termination system
+  - [x] 10.1 Create comprehensive fail-closed termination system
     - Implement immediate execution termination for all isolation and boundary violations
     - Create deterministic error code generation for all violation types
     - Implement immutable audit logging before termination
@@ -570,7 +570,7 @@ All violations must:
       7. Finalize terminal state and audit evidence
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7_
   
-  - [ ] 10.2 Write integration tests for fail-closed behavior
+  - [x] 10.2 Write integration tests for fail-closed behavior
     - Test all violation scenarios result in proper fail-closed termination
     - Verify deterministic error codes and audit logging
     - Forbidden Test Substitutions:
