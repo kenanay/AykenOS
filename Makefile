@@ -774,7 +774,7 @@ USER_MINIMAL_DEFAULT_MODE := phase10a2
 
 # Validate USER_MINIMAL_MODE if set
 ifneq ($(strip $(USER_MINIMAL_MODE)),)
-  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden
+  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden execution-delivery-proof phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden
   ifeq ($(filter $(USER_MINIMAL_MODE),$(VALID_MODES)),)
     $(error Invalid USER_MINIMAL_MODE='$(USER_MINIMAL_MODE)'. Valid values: $(VALID_MODES))
   endif

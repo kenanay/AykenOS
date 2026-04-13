@@ -30,6 +30,8 @@ else ifeq ($(MINIMAL_MODE),runtime-bridge-ping)
 MINIMAL_SRC := minimal_runtime_bridge_ping.S
 else ifeq ($(MINIMAL_MODE),runtime-bridge-forbidden)
 MINIMAL_SRC := minimal_runtime_bridge_forbidden.S
+else ifeq ($(MINIMAL_MODE),execution-delivery-proof)
+MINIMAL_SRC := minimal_execution_delivery_proof.S
 else ifeq ($(MINIMAL_MODE),entry-proof)
 MINIMAL_SRC := minimal_entry_proof.S
 else ifeq ($(MINIMAL_MODE),bcib-forbidden)
