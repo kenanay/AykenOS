@@ -37,6 +37,7 @@ static const syscall_enforcement_entry_t SYSCALL_ENFORCEMENT_MATRIX[] = {
             (1 << SYS_V2_CAPABILITY_BIND) |
             (1 << SYS_V2_CAPABILITY_REVOKE) |
             (1 << SYS_V2_TIME_QUERY) |
+            (1 << SYS_V2_DEBUG_PUTCHAR) |
             (1 << SYS_V2_DEVICE_OPERATION) |
             (1 << SYS_V2_EXTERNAL_CALL) |
             (1 << SYS_V2_ABDF_OPERATION)

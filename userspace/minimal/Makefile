@@ -26,6 +26,8 @@ else ifeq ($(MINIMAL_MODE),syscall-v2-runtime)
 MINIMAL_SRC := minimal_syscall_v2_runtime.S
 else ifeq ($(MINIMAL_MODE),runtime-bridge-test)
 MINIMAL_SRC := minimal_runtime_bridge_test.S
+else ifeq ($(MINIMAL_MODE),runtime-bridge-forbidden)
+MINIMAL_SRC := minimal_runtime_bridge_forbidden.S
 else ifeq ($(MINIMAL_MODE),entry-proof)
 MINIMAL_SRC := minimal_entry_proof.S
 else ifeq ($(MINIMAL_MODE),bcib-forbidden)

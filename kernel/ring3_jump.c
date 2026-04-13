@@ -410,6 +410,16 @@ void jump_to_ring3(void)
         ring3_proc->execution_role = PROC_EXECUTION_ROLE_BCIB;
         debugcon_write("[K][EXEC_ROLE] BCIB (bcib-forbidden mode)\n");
     }
+    // Runtime_Bridge test requires RUNTIME_BRIDGE execution role for syscall enforcement
+    else if (embedded_elf_mode[0] == 'r' && embedded_elf_mode[1] == 'u' &&
+             embedded_elf_mode[2] == 'n' && embedded_elf_mode[3] == 't' &&
+             embedded_elf_mode[4] == 'i' && embedded_elf_mode[5] == 'm' &&
+             embedded_elf_mode[6] == 'e' && embedded_elf_mode[7] == '-' &&
+             embedded_elf_mode[8] == 'b') {
+        // Mode starts with "runtime-b" -> runtime-bridge-test
+        ring3_proc->execution_role = PROC_EXECUTION_ROLE_RUNTIME_BRIDGE;
+        debugcon_write("[K][EXEC_ROLE] RUNTIME_BRIDGE (runtime-bridge-test mode)\n");
+    }
     
     // [K][USER_ELF_CREATE_OK] - Process created successfully
     debugcon_write("[K][USER_ELF_CREATE_OK] pid=");

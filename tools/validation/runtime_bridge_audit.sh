@@ -1,25 +1,6 @@
 #!/bin/bash
 # Runtime_Bridge Syscall Path Audit Script
 # Phase-16 Task 5: Validates Runtime_Bridge-specific marker flow
-#
-# This script validates that Runtime_Bridge syscalls (1012/1013/1014) are executed
-# and produce the expected marker sequence in QEMU kernel traces.
-#
-# Expected marker flow:
-#   [U][RUNTIME_BRIDGE_TEST_START]
-#   [U][RUNTIME_BRIDGE_DEVICE_OP_BEFORE]
-#   [[AYKEN_SYSCALL_ENTER]] (syscall 1012)
-#   [[AYKEN_SYSCALL_EXIT]] (syscall 1012)
-#   [U][RUNTIME_BRIDGE_DEVICE_OP_AFTER]
-#   [U][RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE]
-#   [[AYKEN_SYSCALL_ENTER]] (syscall 1013)
-#   [[AYKEN_SYSCALL_EXIT]] (syscall 1013)
-#   [U][RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER]
-#   [U][RUNTIME_BRIDGE_ABDF_OP_BEFORE]
-#   [[AYKEN_SYSCALL_ENTER]] (syscall 1014)
-#   [[AYKEN_SYSCALL_EXIT]] (syscall 1014)
-#   [U][RUNTIME_BRIDGE_ABDF_OP_AFTER]
-#   [U][RUNTIME_BRIDGE_TEST_COMPLETE]
 
 set -euo pipefail
 
@@ -41,11 +22,8 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Usage
 if [[ $# -lt 1 ]]; then
     echo "Usage: $0 <qemu_trace_log>"
-    echo ""
-    echo "Validates Runtime_Bridge syscall marker flow in QEMU kernel trace."
     exit 1
 fi
 
@@ -58,19 +36,38 @@ fi
 
 log_info "Auditing Runtime_Bridge syscall path: $TRACE_LOG"
 
-# Check for required markers
-MARKER_START=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_START\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_DEVICE_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_DEVICE_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_EXTERNAL_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_EXTERNAL_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_ABDF_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_BEFORE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_ABDF_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_AFTER\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-MARKER_COMPLETE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_COMPLETE\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+# Extract userspace payload output (which is interleaved with [[AYKEN_ markers)
+PAYLOAD_OUTPUT=$(python3 -c "
+import sys, re
+try:
+    with open('$TRACE_LOG') as f:
+        text = f.read()
+    # Match any characters between P10_SYSCALL_ENTER and the next [[AYKEN_ marker
+    matches = re.findall(r'P10_SYSCALL_ENTER\n(.*?)\[\[AYKEN_', text)
+    print(''.join(matches))
+except Exception as e:
+    print('')
+")
 
-# Check for kernel syscall markers
+# Create a temporary file for the payload output to make grepping easier
+TMP_PAYLOAD=$(mktemp)
+echo "$PAYLOAD_OUTPUT" > "$TMP_PAYLOAD"
+
+# Check for required markers in payload output
+MARKER_START=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_START\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_DEVICE_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_BEFORE\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_DEVICE_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_DEVICE_OP_AFTER\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_EXTERNAL_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_BEFORE\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_EXTERNAL_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_EXTERNAL_CALL_AFTER\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_ABDF_BEFORE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_BEFORE\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_ABDF_AFTER=$(grep -c "\[U\]\[RUNTIME_BRIDGE_ABDF_OP_AFTER\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+MARKER_COMPLETE=$(grep -c "\[U\]\[RUNTIME_BRIDGE_TEST_COMPLETE\]" "$TMP_PAYLOAD" 2>/dev/null || echo "0")
+
+rm -f "$TMP_PAYLOAD"
+
+# Check for kernel syscall markers in the raw trace
 SYSCALL_ENTER=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_LOG" 2>/dev/null || echo "0")
-SYSCALL_EXIT=$(grep -c "\[\[AYKEN_SYSCALL_EXIT\]\]" "$TRACE_LOG" 2>/dev/null || echo "0")
+SYSCALL_EXIT=$(grep -c "\[\[AYKEN_SYSCALL_RETURN\]\]" "$TRACE_LOG" 2>/dev/null || echo "0")
 
 # Sanitize counts (remove any whitespace/newlines)
 MARKER_START=$(echo "$MARKER_START" | tr -d '[:space:]')
@@ -126,13 +123,13 @@ fi
 
 # Expect at least 3 syscall enter/exit pairs (1012, 1013, 1014)
 if [[ $SYSCALL_ENTER -lt 3 ]]; then
-    log_warn "⚠ Expected at least 3 SYSCALL_ENTER markers, found $SYSCALL_ENTER"
-    log_warn "  This may indicate syscalls are not reaching the kernel dispatcher"
+    log_error "✗ Expected at least 3 SYSCALL_ENTER markers, found $SYSCALL_ENTER"
+    PASS=false
 fi
 
 if [[ $SYSCALL_EXIT -lt 3 ]]; then
-    log_warn "⚠ Expected at least 3 SYSCALL_EXIT markers, found $SYSCALL_EXIT"
-    log_warn "  This may indicate syscalls are not returning from the kernel"
+    log_error "✗ Expected at least 3 SYSCALL_EXIT markers, found $SYSCALL_EXIT"
+    PASS=false
 fi
 
 # Final verdict

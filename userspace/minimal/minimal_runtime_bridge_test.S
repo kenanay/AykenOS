@@ -72,13 +72,27 @@ _start:
     lea .Lmarker_abdf_before(%rip), %r12
     call emit_marker
     
-    // syscall(1014, operation=1, handle_id=123, buffer=0, size=4)
+    // Step 3a: CREATE handle
+    // syscall(1014, operation=3, handle_id=0, buffer=rsp, size=16)
+    sub $16, %rsp          // Allocate buffer
+    mov $1014, %rax
+    mov $3, %rdi           // operation: ABDF_OP_CREATE
+    xor %rsi, %rsi         // handle_id (not used for create)
+    mov %rsp, %rdx         // buffer
+    mov $16, %r10          // size
+    int $0x80
+    
+    // Load created handle from buffer (data[1])
+    mov 8(%rsp), %rsi      // handle_id for next call
+    
+    // Step 3b: READ handle
+    // syscall(1014, operation=1, handle_id=created_handle, buffer=rsp, size=16)
     mov $1014, %rax
     mov $1, %rdi           // operation: ABDF_OP_READ
-    mov $123, %rsi         // handle_id (unique marker)
-    xor %rdx, %rdx         // buffer (null for stub test)
-    mov $4, %r10           // size
+    mov %rsp, %rdx         // buffer
+    mov $16, %r10          // size
     int $0x80
+    add $16, %rsp          // Deallocate buffer
     
     // Emit AFTER marker
     lea .Lmarker_abdf_after(%rip), %r12

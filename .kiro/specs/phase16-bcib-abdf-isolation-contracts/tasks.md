@@ -174,8 +174,8 @@ All violations must:
     - **Validates: Requirements 9.7**
 
 - [ ] 5. Implement Runtime_Bridge core interface and lifecycle
-  - Closure Status: REAL TRAP PATH WIRED; QEMU PROOF INFRASTRUCTURE READY; RUNTIME_BRIDGE PRODUCTION CLOSURE PENDING
-  - **CRITICAL STATUS NOTE (2026-04-12):** Runtime_Bridge proof harness now produces non-empty QEMU traces, but current traces do not contain Runtime_Bridge userspace markers. Therefore Runtime_Bridge payload execution is not yet proven, handler reachability is not proven, and the current audit script must be hardened to fail when required markers are absent. Task 5 is NOT at execution-proof level yet.
+  - Closure Status: PROOF INFRASTRUCTURE STAGED; PAYLOAD EXECUTION BLOCKED; TASK 5 INCOMPLETE
+  - **CRITICAL STATUS NOTE (2026-04-13):** Runtime_Bridge payload execution in QEMU is not proven; Task 5 remains incomplete pending allowed-path evidence, forbidden fail-closed proof, real handler integration, and ci-gate-fail-closed-proof PASS. Execution role assignment added, DEBUG_PUTCHAR enforcement enabled, but userspace markers absent (syscall storm observed). Payload execution is the primary blocker.
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
     - Build script: `scripts/build-runtime-bridge-tests.sh`

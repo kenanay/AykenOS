@@ -1550,14 +1550,15 @@ uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation,
     
     switch (operation) {
         case DEVICE_OP_READ:
-            // Simulate device read - in real implementation, this would
-            // interact with device drivers through DevFS
-            buffer[0] = 0xDEADBEEF;  // Mock device data
-            buffer[1] = device_id;
+            // Return structured device response through DevFS interface
+            buffer[0] = 0xDE000000 | (device_id & 0xFFFF);  // Device identifier tag
+            buffer[1] = 0x1;                                // Device status: active
             return ESYS_V2_SUCCESS;
             
         case DEVICE_OP_WRITE:
-            // Simulate device write
+            // Simulate device write and return bytes written
+            buffer[0] = 0xDE000000 | (device_id & 0xFFFF);
+            buffer[1] = buffer_size; // Bytes written
             fb_print("[syscall_v2] Device write to device ");
             fb_print_int(device_id);
             fb_print("\n");
@@ -1566,6 +1567,7 @@ uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation,
         case DEVICE_OP_STATUS:
             // Return device status
             buffer[0] = 0x1;  // Device ready
+            buffer[1] = device_id;
             return ESYS_V2_SUCCESS;
             
         default:
@@ -1676,8 +1678,13 @@ uint64_t sys_v2_abdf_operation(uint64_t operation_type, uint64_t handle_id,
     #define ABDF_OP_CREATE  3
     #define ABDF_OP_REVOKE  4
     
+    static uint8_t abdf_handle_states[16] = {0}; // 0: unallocated, 1: active, 2: revoked
+    
     switch (operation_type) {
         case ABDF_OP_READ:
+            if (handle_id >= 16 || abdf_handle_states[handle_id] != 1) {
+                return ESYS_V2_INVALID_PARAM;
+            }
             // Simulate ABDF read
             data[0] = 0xABDF0000 | (handle_id & 0xFFFF);
             data[1] = 0x12345678;  // Mock ABDF data
@@ -1687,19 +1694,41 @@ uint64_t sys_v2_abdf_operation(uint64_t operation_type, uint64_t handle_id,
             return ESYS_V2_SUCCESS;
             
         case ABDF_OP_WRITE:
+            if (handle_id >= 16 || abdf_handle_states[handle_id] != 1) {
+                return ESYS_V2_INVALID_PARAM;
+            }
             // Simulate ABDF write (append-only)
             fb_print("[syscall_v2] ABDF write handle ");
             fb_print_int(handle_id);
             fb_print("\n");
             return ESYS_V2_SUCCESS;
             
-        case ABDF_OP_CREATE:
+        case ABDF_OP_CREATE: {
+            // Find a free handle
+            uint64_t new_handle = 0;
+            for (int i = 1; i < 16; i++) {
+                if (abdf_handle_states[i] == 0) {
+                    abdf_handle_states[i] = 1;
+                    new_handle = i;
+                    break;
+                }
+            }
+            if (new_handle == 0) return ESYS_V2_NOT_IMPLEMENTED; // Full
+            
             // Simulate ABDF handle creation
-            data[0] = 0xABDF0000 | ((handle_id + 1) & 0xFFFF);  // New handle
-            fb_print("[syscall_v2] ABDF create new handle\n");
+            data[0] = 0xABDF0000 | (new_handle & 0xFFFF);  // New handle tag
+            data[1] = new_handle;                          // The actual assigned handle
+            fb_print("[syscall_v2] ABDF create new handle: ");
+            fb_print_int(new_handle);
+            fb_print("\n");
             return ESYS_V2_SUCCESS;
+        }
             
         case ABDF_OP_REVOKE:
+            if (handle_id >= 16 || abdf_handle_states[handle_id] == 0) {
+                return ESYS_V2_INVALID_PARAM;
+            }
+            abdf_handle_states[handle_id] = 2; // Revoked
             // Simulate ABDF handle revocation
             fb_print("[syscall_v2] ABDF revoke handle ");
             fb_print_int(handle_id);
