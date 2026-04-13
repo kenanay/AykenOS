@@ -10,7 +10,7 @@
  */
 #ifndef SYS_V2_BASE
 #define SYS_V2_BASE        1000
-#define SYS_V2_MAX_INDEX   15
+#define SYS_V2_MAX_INDEX   14
 #define SYS_V2_NR          (SYS_V2_MAX_INDEX + 1)
 #define SYS_V2_LAST        (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 
@@ -29,9 +29,8 @@
 #define SYS_V2_DEVICE_OPERATION  12
 #define SYS_V2_EXTERNAL_CALL     13
 #define SYS_V2_ABDF_OPERATION    14
-#define SYS_V2_DEBUG_WRITE_STR   15
 
-#define SYS_V2_MAX_SYSCALL      15
+#define SYS_V2_MAX_SYSCALL      14
 #endif
 
 #endif

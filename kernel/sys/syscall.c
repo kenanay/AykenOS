@@ -20,11 +20,14 @@
 // Debug output via debugcon (port 0xE9)
 static void debugcon_write(const char *s)
 {
+    uint64_t rflags;
     if (!s) return;
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags) : : "memory");
     while (*s) {
         outb(0xE9, (uint8_t)*s);
         s++;
     }
+    __asm__ volatile("push %0; popfq" : : "r"(rflags) : "memory", "cc");
 }
 
 // Helper to write integer to debugcon
@@ -123,6 +126,10 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     // Marker: syscall entry/return for Phase 10-A2 Task 3 roundtrip evidence.
     sched_perf_note_first_syscall_entry();
     
+    // Make marker emission atomic as a block
+    uint64_t rflags_marker;
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags_marker) : : "memory");
+
     // Phase-16: Emit BCIB_FORBIDDEN_BEFORE marker for BCIB contexts
     // MUST be before AYKEN_SYSCALL_ENTER for correct marker sequence
     if (current_proc && current_proc->execution_role == PROC_EXECUTION_ROLE_BCIB) {
@@ -139,6 +146,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     }
     debugcon_write("\n");
     debugcon_write("P10_SYSCALL_ENTER\n");
+    __asm__ volatile("push %0; popfq" : : "r"(rflags_marker) : "memory", "cc");
     
     // Route based on Final Syscall Numbering Plan
     if (syscall_num >= SYS_V2_BASE && syscall_num <= SYS_V2_LAST) {
@@ -159,8 +167,10 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     
     // Marker: Syscall return
     sched_perf_note_first_syscall_exit();
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags_marker) : : "memory");
     debugcon_write("[[AYKEN_SYSCALL_RETURN]]\n");
     debugcon_write("P10_SYSCALL_RETURN\n");
+    __asm__ volatile("push %0; popfq" : : "r"(rflags_marker) : "memory", "cc");
     if (syscall_num == 1008 && result != 0) {
         // Capability negative-path enforcement marker (expected for fresh boot).
         debugcon_write("P10_CAP_ENFORCED\n");

@@ -36,12 +36,19 @@ static uint8_t debug_putchar_marker_progress[MAX_PROCS];
 // Gate-3: Ring3 runtime validation marker tracking
 static uint8_t gate3_ring3_marker_progress[MAX_PROCS];
 
+// Runtime_Bridge marker tracking (Phase-16 Task 5)
+static uint8_t rb_ping_marker_progress[MAX_PROCS];
+
 #define SYSCALL_V2_USER_MARKER "[U][SYSCALL_OK]"
 #define SYSCALL_V2_KERNEL_MARKER "[[AYKEN_SYSCALL_V2_OK]]\n"
 
 // Gate-3: Ring3 runtime proof marker
 #define GATE3_RING3_USER_MARKER "R3OK"
 #define GATE3_RING3_KERNEL_MARKER "[[AYKEN_RING3_OK]]\n"
+
+// Runtime_Bridge proof marker (Phase-16 Task 5)
+#define RUNTIME_BRIDGE_PING_USER_MARKER "[U][RUNTIME_BRIDGE_PING]"
+#define RUNTIME_BRIDGE_PING_KERNEL_MARKER "[[AYKEN_RUNTIME_BRIDGE_PING_OK]]\n"
 
 static void sys_v2_debugcon_write_string(const char *text)
 {
@@ -58,8 +65,9 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
     extern proc_t *current_proc;
     const char *expected = SYSCALL_V2_USER_MARKER;
     const char *gate3_expected = GATE3_RING3_USER_MARKER;
+    const char *rb_ping_expected = RUNTIME_BRIDGE_PING_USER_MARKER;
     int pid_slot;
-    uint8_t progress, gate3_progress;
+    uint8_t progress, gate3_progress, rb_ping_progress;
 
     if (!current_proc || current_proc->pid <= 0 || current_proc->pid > MAX_PROCS) {
         return;
@@ -68,6 +76,7 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
     pid_slot = current_proc->pid - 1;
     progress = debug_putchar_marker_progress[pid_slot];
     gate3_progress = gate3_ring3_marker_progress[pid_slot];
+    rb_ping_progress = rb_ping_marker_progress[pid_slot];
 
     // Track original syscall marker
     if ((char)character == expected[progress]) {
@@ -99,8 +108,24 @@ static void sys_v2_debug_putchar_note_marker(uint8_t character)
         gate3_progress = 0;
     }
 
+    // Runtime_Bridge: Track ping marker (Phase-16 Task 5)
+    if ((char)character == rb_ping_expected[rb_ping_progress]) {
+        rb_ping_progress++;
+    } else if ((char)character == rb_ping_expected[0]) {
+        rb_ping_progress = 1;
+    } else {
+        rb_ping_progress = 0;
+    }
+
+    if (rb_ping_expected[rb_ping_progress] == '\0') {
+        /* Runtime_Bridge: Emit deterministic kernel-origin marker */
+        sys_v2_debugcon_write_string(RUNTIME_BRIDGE_PING_KERNEL_MARKER);
+        rb_ping_progress = 0;
+    }
+
     debug_putchar_marker_progress[pid_slot] = progress;
     gate3_ring3_marker_progress[pid_slot] = gate3_progress;
+    rb_ping_marker_progress[pid_slot] = rb_ping_progress;
 }
 
 typedef uint64_t (*sys_v2_dispatch_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t);
@@ -183,13 +208,6 @@ static uint64_t sys_v2_dispatch_debug_putchar(uint64_t a1, uint64_t a2, uint64_t
     return sys_v2_debug_putchar(a1);
 }
 
-static uint64_t sys_v2_dispatch_debug_write_str(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
-{
-    (void)a3;
-    (void)a4;
-    return sys_v2_debug_write_str((const char *)a1, a2);
-}
-
 static uint64_t sys_v2_dispatch_complete_execution(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
 {
     (void)a3;
@@ -225,7 +243,6 @@ static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
     [SYS_V2_CAPABILITY_REVOKE] = sys_v2_dispatch_capability_revoke,
     [SYS_V2_EXIT] = sys_v2_dispatch_exit,
     [SYS_V2_DEBUG_PUTCHAR] = sys_v2_dispatch_debug_putchar,
-    [SYS_V2_DEBUG_WRITE_STR] = sys_v2_dispatch_debug_write_str,
     [SYS_V2_COMPLETE_EXECUTION] = sys_v2_dispatch_complete_execution,
     [SYS_V2_DEVICE_OPERATION] = sys_v2_dispatch_device_operation,
     [SYS_V2_EXTERNAL_CALL] = sys_v2_dispatch_external_call,
@@ -1452,49 +1469,16 @@ uint64_t sys_v2_debug_putchar(uint64_t character)
         return ESYS_V2_INVALID_PARAM;
     }
 
+    uint64_t rflags;
     out_char = (uint8_t)character;
 
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags) : : "memory");
     // Output character to debugcon (0xE9 port)
     outb(0xE9, out_char);
+    __asm__ volatile("push %0; popfq" : : "r"(rflags) : "memory", "cc");
 
     // Reconstruct canonical marker per PID to avoid cross-process interleaving flake.
     sys_v2_debug_putchar_note_marker(out_char);
-
-    return ESYS_V2_SUCCESS;
-}
-
-// sys_v2_debug_write_str: Atomic bounded string write for proof markers
-// 
-// Purpose: Emit proof markers atomically to prevent interleaving with kernel logs
-// Scope: Validation/proof only - NOT a general-purpose print API
-// Bounds: Maximum 256 bytes per call
-// Atomicity: Single syscall, no interruption during write
-//
-// This syscall exists solely to fix observability layer fragmentation that
-// blocks Task 5 proof validation. It is NOT intended for production logging.
-uint64_t sys_v2_debug_write_str(const char *str, uint64_t length)
-{
-    char kernel_buffer[256];
-    uint64_t copy_length;
-    uint64_t i;
-
-    // Validate parameters
-    if (str == NULL || length == 0) {
-        return ESYS_V2_INVALID_PARAM;
-    }
-
-    // Enforce bounded copy (max 256 bytes)
-    copy_length = (length > 256) ? 256 : length;
-
-    // Bounded copy from userspace (simple byte-by-byte for safety)
-    for (i = 0; i < copy_length; i++) {
-        kernel_buffer[i] = str[i];
-    }
-
-    // Atomic write to debugcon (no interruption)
-    for (i = 0; i < copy_length; i++) {
-        outb(0xE9, (uint8_t)kernel_buffer[i]);
-    }
 
     return ESYS_V2_SUCCESS;
 }

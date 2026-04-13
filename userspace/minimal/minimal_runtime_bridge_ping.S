@@ -14,12 +14,22 @@ _start:
     inc %rax
     mov %rax, 8(%rbx)
 
-    // Emit single ping marker via SYS_V2_DEBUG_WRITE_STR (1015)
-    // This is atomic - entire string written in one syscall
-    lea .Lmarker_ping(%rip), %rdi  // arg1: string pointer
-    mov $25, %rsi                   // arg2: length (25 bytes)
-    mov $1015, %rax                 // SYS_V2_DEBUG_WRITE_STR
+    // Emit ping marker character-by-character via SYS_V2_DEBUG_PUTCHAR (1010)
+    // Kernel-side atomic blocks prevent interleaving
+    lea .Lmarker_ping(%rip), %rsi  // String pointer
+    xor %rcx, %rcx                  // Character index
+
+.Lprint_loop:
+    movb (%rsi, %rcx, 1), %al      // Load character into AL
+    test %al, %al                   // Check for null terminator
+    jz .Ldone                       // Exit if null
+    
+    movzx %al, %rdi                 // Zero-extend to 64-bit for syscall arg
+    mov $1010, %rax                 // SYS_V2_DEBUG_PUTCHAR
     int $0x80
+    
+    inc %rcx                        // Next character
+    jmp .Lprint_loop
 
 .Ldone:
     // Keep mailbox epoch fresh
