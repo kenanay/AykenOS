@@ -5,7 +5,7 @@
 #include "capability.h"
 
 #define SYS_V2_BASE        1000
-#define SYS_V2_MAX_INDEX   14
+#define SYS_V2_MAX_INDEX   15
 #define SYS_V2_NR          (SYS_V2_MAX_INDEX + 1)
 #define SYS_V2_LAST        (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 
@@ -24,8 +24,9 @@
 #define SYS_V2_DEVICE_OPERATION  12
 #define SYS_V2_EXTERNAL_CALL     13
 #define SYS_V2_ABDF_OPERATION    14
+#define SYS_V2_DEBUG_WRITE_STR   15
 
-#define SYS_V2_MAX_SYSCALL      14
+#define SYS_V2_MAX_SYSCALL      15
 
 #define CAP_PERM_READ       0x01
 #define CAP_PERM_WRITE      0x02
@@ -76,6 +77,7 @@ uint64_t sys_v2_capability_bind(uint64_t execution_ctx_id, capability_token_t *t
 uint64_t sys_v2_capability_revoke(uint64_t token_id);
 uint64_t sys_v2_exit(uint64_t exit_code);
 uint64_t sys_v2_debug_putchar(uint64_t character);
+uint64_t sys_v2_debug_write_str(const char *str, uint64_t length);
 uint64_t sys_v2_complete_execution(uint64_t execution_id, uint64_t completion_code);
 uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation, uint64_t *buffer, uint64_t buffer_size);
 uint64_t sys_v2_external_call(uint64_t call_id, uint64_t *args, uint64_t arg_count);

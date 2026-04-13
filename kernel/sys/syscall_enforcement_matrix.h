@@ -16,7 +16,7 @@
 typedef struct {
     proc_execution_role_t role;
     const char *role_name;
-    uint32_t allowed_syscalls_mask;
+    uint64_t allowed_syscalls_mask;  // Changed to uint64_t to support syscall 15+
     const char *description;
 } syscall_enforcement_entry_t;
 
@@ -38,6 +38,7 @@ static const syscall_enforcement_entry_t SYSCALL_ENFORCEMENT_MATRIX[] = {
             (1 << SYS_V2_CAPABILITY_REVOKE) |
             (1 << SYS_V2_TIME_QUERY) |
             (1 << SYS_V2_DEBUG_PUTCHAR) |
+            (1 << SYS_V2_DEBUG_WRITE_STR) |
             (1 << SYS_V2_DEVICE_OPERATION) |
             (1 << SYS_V2_EXTERNAL_CALL) |
             (1 << SYS_V2_ABDF_OPERATION)
@@ -69,7 +70,7 @@ static const syscall_enforcement_entry_t SYSCALL_ENFORCEMENT_MATRIX[] = {
 /* Function declarations */
 int syscall_enforcement_validate(proc_execution_role_t role, uint64_t syscall_num);
 const char* syscall_enforcement_get_role_name(proc_execution_role_t role);
-uint32_t syscall_enforcement_get_allowed_mask(proc_execution_role_t role);
+uint64_t syscall_enforcement_get_allowed_mask(proc_execution_role_t role);
 int syscall_enforcement_validate_matrix(void);
 
 /* Critical enforcement rules - NO EXCEPTIONS */

@@ -23,10 +23,10 @@
  */
 
 #define AYKEN_SYS_V2_EXPECTED_BASE       1000
-#define AYKEN_SYS_V2_EXPECTED_MAX_INDEX  14
-#define AYKEN_SYS_V2_EXPECTED_NR         15
-#define AYKEN_SYS_V2_ABI_SIGNATURE       "Kenan-AY-20260411-runtime-bridge-ratified"
-#define AYKEN_SYS_V2_ABI_FINGERPRINT     0x4B17A514u
+#define AYKEN_SYS_V2_EXPECTED_MAX_INDEX  15
+#define AYKEN_SYS_V2_EXPECTED_NR         16
+#define AYKEN_SYS_V2_ABI_SIGNATURE       "Kenan-AY-20260413-debug-write-str-observability-fix"
+#define AYKEN_SYS_V2_ABI_FINGERPRINT     0x4B17A515u
 
 _Static_assert(SYS_V2_BASE == AYKEN_SYS_V2_EXPECTED_BASE,
                "SYS_V2_BASE modified: ABI violation");
@@ -55,8 +55,8 @@ _Static_assert(SYS_V2_DEVICE_OPERATION == 12,
 _Static_assert(SYS_V2_EXTERNAL_CALL == 13,
                "SYS_V2_EXTERNAL_CALL must remain at index 13");
 
-_Static_assert(SYS_V2_ABDF_OPERATION == SYS_V2_MAX_INDEX,
-               "SYS_V2_ABDF_OPERATION must remain the terminal index");
+_Static_assert(SYS_V2_DEBUG_WRITE_STR == SYS_V2_MAX_INDEX,
+               "SYS_V2_DEBUG_WRITE_STR must remain the terminal index");
 
 _Static_assert(sizeof(AYKEN_SYS_V2_ABI_SIGNATURE) > 1,
                "ABI signature missing");

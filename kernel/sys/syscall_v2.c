@@ -183,6 +183,13 @@ static uint64_t sys_v2_dispatch_debug_putchar(uint64_t a1, uint64_t a2, uint64_t
     return sys_v2_debug_putchar(a1);
 }
 
+static uint64_t sys_v2_dispatch_debug_write_str(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    (void)a3;
+    (void)a4;
+    return sys_v2_debug_write_str((const char *)a1, a2);
+}
+
 static uint64_t sys_v2_dispatch_complete_execution(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
 {
     (void)a3;
@@ -218,6 +225,7 @@ static const sys_v2_dispatch_fn_t sys_v2_dispatch_table[SYS_V2_NR] = {
     [SYS_V2_CAPABILITY_REVOKE] = sys_v2_dispatch_capability_revoke,
     [SYS_V2_EXIT] = sys_v2_dispatch_exit,
     [SYS_V2_DEBUG_PUTCHAR] = sys_v2_dispatch_debug_putchar,
+    [SYS_V2_DEBUG_WRITE_STR] = sys_v2_dispatch_debug_write_str,
     [SYS_V2_COMPLETE_EXECUTION] = sys_v2_dispatch_complete_execution,
     [SYS_V2_DEVICE_OPERATION] = sys_v2_dispatch_device_operation,
     [SYS_V2_EXTERNAL_CALL] = sys_v2_dispatch_external_call,
@@ -1451,6 +1459,42 @@ uint64_t sys_v2_debug_putchar(uint64_t character)
 
     // Reconstruct canonical marker per PID to avoid cross-process interleaving flake.
     sys_v2_debug_putchar_note_marker(out_char);
+
+    return ESYS_V2_SUCCESS;
+}
+
+// sys_v2_debug_write_str: Atomic bounded string write for proof markers
+// 
+// Purpose: Emit proof markers atomically to prevent interleaving with kernel logs
+// Scope: Validation/proof only - NOT a general-purpose print API
+// Bounds: Maximum 256 bytes per call
+// Atomicity: Single syscall, no interruption during write
+//
+// This syscall exists solely to fix observability layer fragmentation that
+// blocks Task 5 proof validation. It is NOT intended for production logging.
+uint64_t sys_v2_debug_write_str(const char *str, uint64_t length)
+{
+    char kernel_buffer[256];
+    uint64_t copy_length;
+    uint64_t i;
+
+    // Validate parameters
+    if (str == NULL || length == 0) {
+        return ESYS_V2_INVALID_PARAM;
+    }
+
+    // Enforce bounded copy (max 256 bytes)
+    copy_length = (length > 256) ? 256 : length;
+
+    // Bounded copy from userspace (simple byte-by-byte for safety)
+    for (i = 0; i < copy_length; i++) {
+        kernel_buffer[i] = str[i];
+    }
+
+    // Atomic write to debugcon (no interruption)
+    for (i = 0; i < copy_length; i++) {
+        outb(0xE9, (uint8_t)kernel_buffer[i]);
+    }
 
     return ESYS_V2_SUCCESS;
 }

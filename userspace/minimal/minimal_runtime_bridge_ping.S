@@ -14,19 +14,12 @@ _start:
     inc %rax
     mov %rax, 8(%rbx)
 
-    // Emit single ping marker via SYS_V2_DEBUG_PUTCHAR (1010)
-    lea .Lmarker_ping(%rip), %rsi
-.Lemit_loop:
-    movzbl (%rsi), %edi
-    test %edi, %edi
-    je .Ldone
-    
-    // SYS_V2_DEBUG_PUTCHAR = 1010
-    mov $1010, %rax
+    // Emit single ping marker via SYS_V2_DEBUG_WRITE_STR (1015)
+    // This is atomic - entire string written in one syscall
+    lea .Lmarker_ping(%rip), %rdi  // arg1: string pointer
+    mov $25, %rsi                   // arg2: length (25 bytes)
+    mov $1015, %rax                 // SYS_V2_DEBUG_WRITE_STR
     int $0x80
-    
-    inc %rsi
-    jmp .Lemit_loop
 
 .Ldone:
     // Keep mailbox epoch fresh

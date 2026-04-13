@@ -21,7 +21,7 @@ static void enforcement_debug(const char *msg) {
  */
 int syscall_enforcement_validate(proc_execution_role_t role, uint64_t syscall_num) {
     const syscall_enforcement_entry_t *entry = NULL;
-    uint32_t syscall_mask;
+    uint64_t syscall_mask;
     
     /* Find enforcement entry for role */
     for (int i = 0; i < SYSCALL_ENFORCEMENT_MATRIX_SIZE; i++) {
@@ -90,7 +90,7 @@ const char* syscall_enforcement_get_role_name(proc_execution_role_t role) {
 /**
  * Get allowed syscall mask for role
  */
-uint32_t syscall_enforcement_get_allowed_mask(proc_execution_role_t role) {
+uint64_t syscall_enforcement_get_allowed_mask(proc_execution_role_t role) {
     for (int i = 0; i < SYSCALL_ENFORCEMENT_MATRIX_SIZE; i++) {
         if (SYSCALL_ENFORCEMENT_MATRIX[i].role == role) {
             return SYSCALL_ENFORCEMENT_MATRIX[i].allowed_syscalls_mask;

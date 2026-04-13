@@ -41,6 +41,7 @@ extern uint64_t sys_v2_capability_bind(uint64_t execution_ctx_id, capability_tok
 extern uint64_t sys_v2_capability_revoke(uint64_t token_id);
 extern uint64_t sys_v2_exit(uint64_t exit_code);
 extern uint64_t sys_v2_debug_putchar(uint64_t character);
+extern uint64_t sys_v2_debug_write_str(const char *str, uint64_t length);
 extern uint64_t sys_v2_complete_execution(uint64_t execution_id, uint64_t completion_code);
 extern uint64_t sys_v2_device_operation(uint64_t device_id, uint64_t operation, uint64_t *buffer, uint64_t buffer_size);
 extern uint64_t sys_v2_external_call(uint64_t call_id, uint64_t *args, uint64_t arg_count);
@@ -209,6 +210,9 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
             
         case SYS_V2_DEBUG_PUTCHAR:
             return sys_v2_debug_putchar(arg1);
+            
+        case SYS_V2_DEBUG_WRITE_STR:
+            return sys_v2_debug_write_str((const char *)arg1, arg2);
             
         case SYS_V2_COMPLETE_EXECUTION:
             return sys_v2_complete_execution(arg1, arg2);
