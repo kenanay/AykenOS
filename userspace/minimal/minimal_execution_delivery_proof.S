@@ -7,15 +7,24 @@
 // - Complete execution with EXEC_COMPLETION_COMPLETED
 // - Expected: Delivery markers visible, no fail-closed termination
 //
-// Markers emitted via SYS_V2_DEBUG_PUTCHAR (10) for QEMU trace validation.
+// Markers: ST (start), SF (submit failed), SB (submitted), DL (delivered), 
+//          CP (completed), CF (complete failed), TO (timeout)
+//
+// ASSUMPTIONS:
+// - First user process has PID 2 (AYKEN_SCHED_OWNER_PID default)
+// - Inbox VA is mapped at 0x701000
+// - Payload VA is mapped at 0x702000
+// - Scheduler calls sched_try_pickup_execution_work() on context switches
 
 .section .text
 .global _start
 
-// Syscall numbers
-.set SYS_V2_DEBUG_PUTCHAR, 10
-.set SYS_V2_COMPLETE_EXECUTION, 11
-.set SYS_V2_SUBMIT_EXECUTION, 3
+// Syscall numbers (v2 syscalls are BASE + offset)
+.set SYS_V2_BASE, 1000
+.set SYS_V2_SUBMIT_EXECUTION, 1003
+.set SYS_V2_EXIT, 1009
+.set SYS_V2_DEBUG_PUTCHAR, 1010
+.set SYS_V2_COMPLETE_EXECUTION, 1011
 
 // Inbox constants
 .set EXECUTION_INBOX_VA, 0x701000
@@ -57,13 +66,25 @@ _start:
     mov %r15, %rdx                 // context_id
     int $0x80
     
+    // Check return value (execution_id or error)
+    test %rax, %rax
+    js .Lsubmit_failed             // Negative = error
+    
     // Save execution_id
     mov %rax, %r15                 // r15 = execution_id
 
     // Emit submitted marker
     lea .Lmarker_submitted(%rip), %r12
     call emit_marker
+    jmp .Lpoll_start
 
+.Lsubmit_failed:
+    // Submit failed - emit failure marker and exit
+    lea .Lmarker_submit_failed(%rip), %r12
+    call emit_marker
+    jmp .Lexit
+
+.Lpoll_start:
     // Poll inbox until AXIB_STATE_READY
     mov $EXECUTION_INBOX_VA, %r13
     mov $1000, %rcx                // max poll iterations
@@ -89,24 +110,38 @@ _start:
     jmp .Lexit
 
 .Linbox_ready:
-    // Inbox is ready - emit delivered marker
+    // Inbox is ready - read execution_id from inbox
+    mov INBOX_EXECUTION_ID(%r13), %r15  // r15 = execution_id from inbox
+    
+    // Emit delivered marker
     lea .Lmarker_delivered(%rip), %r12
     call emit_marker
 
-    // Complete execution: SYS_V2_COMPLETE_EXECUTION (11)
+    // Complete execution: SYS_V2_COMPLETE_EXECUTION (1011)
     mov $SYS_V2_COMPLETE_EXECUTION, %rax
-    mov %r15, %rdi                 // execution_id
+    mov %r15, %rdi                 // execution_id (from inbox)
     mov $EXEC_COMPLETION_COMPLETED, %rsi  // completion_code
     int $0x80
+
+    // Check return value (should be 0 for success)
+    test %rax, %rax
+    jnz .Lcomplete_failed
 
     // Emit completed marker
     lea .Lmarker_completed(%rip), %r12
     call emit_marker
+    jmp .Lexit
+
+.Lcomplete_failed:
+    // Completion failed - emit failure marker
+    lea .Lmarker_complete_failed(%rip), %r12
+    call emit_marker
+    jmp .Lexit
 
 .Lexit:
     // Exit cleanly
-    mov $9, %rax                   // SYS_V2_EXIT
-    xor %rdi, %rdi                 // exit_code = 0
+    mov $SYS_V2_EXIT, %rax     // SYS_V2_EXIT = 1009
+    xor %rdi, %rdi             // exit_code = 0
     int $0x80
 
 .Lloop:
@@ -135,6 +170,8 @@ emit_marker:
 .section .rodata
 .Lmarker_start:
     .asciz "ST\n"
+.Lmarker_submit_failed:
+    .asciz "SF\n"
 .Lmarker_submitted:
     .asciz "SB\n"
 .Lmarker_delivered:
@@ -143,6 +180,8 @@ emit_marker:
     .asciz "CP\n"
 .Lmarker_timeout:
     .asciz "TO\n"
+.Lmarker_complete_failed:
+    .asciz "CF\n"
 
 // Minimal BCIB graph (read-only data)
 .Lbcib_graph:
