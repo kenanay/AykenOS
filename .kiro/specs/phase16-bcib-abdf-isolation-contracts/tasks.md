@@ -174,8 +174,8 @@ All violations must:
     - **Validates: Requirements 9.7**
 
 - [ ] 5. Implement Runtime_Bridge core interface and lifecycle
-  - Closure Status: PROOF INFRASTRUCTURE STAGED; PAYLOAD EXECUTION BLOCKED; TASK 5 INCOMPLETE
-  - **CRITICAL STATUS NOTE (2026-04-13):** Runtime_Bridge payload execution in QEMU is not proven; Task 5 remains incomplete pending allowed-path evidence, forbidden fail-closed proof, real handler integration, and ci-gate-fail-closed-proof PASS. Execution role assignment added, DEBUG_PUTCHAR enforcement enabled, but userspace markers absent (syscall storm observed). Payload execution is the primary blocker.
+  - Closure Status: BLOCKED BY NON-DETERMINISTIC DEBUG OUTPUT (OBSERVABILITY FAILURE)
+  - **CRITICAL STATUS NOTE (2026-04-13):** Payload execution is LIKELY WORKING (syscall evidence: 25 syscalls for 25-character marker), but observability layer is BROKEN. Debug output shows marker fragmentation/interleaving: `[[AYKEN_SYSCALL_ENTER]] U[[AYKEN_SYSCALL_RETURN]]` indicates characters are being emitted but kernel log pipeline is non-deterministic. Root cause: DEBUG_PUTCHAR is not atomic, syscall logs interleave with userspace markers. Task 5 remains incomplete pending deterministic debug channel fix.
   - **QEMU PROOF INFRASTRUCTURE (NEW - 2026-04-11)**:
     - Test binaries: `userspace/runtime_bridge_allowed_test.c`, `userspace/runtime_bridge_forbidden_test.c`
     - Build script: `scripts/build-runtime-bridge-tests.sh`

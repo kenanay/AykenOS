@@ -1,55 +1,41 @@
-# Ultra-minimal Runtime_Bridge ping test
-# Purpose: Prove userspace payload executes
-# Single marker: [RB_PING]
+// SPDX-License-Identifier: ASAL-1.0
+// Phase-16 Task 5: Ultra-Minimal Runtime_Bridge Ping Test
+//
+// Purpose: Prove userspace execution with single marker emission
+// Expected: [U][RUNTIME_BRIDGE_PING] marker in QEMU trace
 
 .section .text
 .global _start
 
 _start:
-    # Emit single marker via debug_putchar (syscall 1010)
-    # String: "[RB_PING]\n"
-    
-    mov $1010, %rax          # SYS_V2_DEBUG_PUTCHAR
-    mov $'[', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'R', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'B', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'_', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'P', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'I', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'N', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $'G', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $']', %rdi
-    int $0x80
-    
-    mov $1010, %rax
-    mov $10, %rdi            # newline
-    int $0x80
+    // Mailbox epoch update (Phase 10 compatibility)
+    mov $0x700000, %rbx
+    mov 8(%rbx), %rax
+    inc %rax
+    mov %rax, 8(%rbx)
 
-.loop:
-    jmp .loop                # Infinite loop
+    // Emit single ping marker via SYS_V2_DEBUG_PUTCHAR (1010)
+    lea .Lmarker_ping(%rip), %rsi
+.Lemit_loop:
+    movzbl (%rsi), %edi
+    test %edi, %edi
+    je .Ldone
+    
+    // SYS_V2_DEBUG_PUTCHAR = 1010
+    mov $1010, %rax
+    int $0x80
+    
+    inc %rsi
+    jmp .Lemit_loop
 
-.section .note.GNU-stack,"",@progbits
+.Ldone:
+    // Keep mailbox epoch fresh
+    mov 8(%rbx), %rax
+    inc %rax
+    mov %rax, 8(%rbx)
+    pause
+    jmp .Ldone
+
+.section .rodata
+.Lmarker_ping:
+    .asciz "[U][RUNTIME_BRIDGE_PING]\n"
