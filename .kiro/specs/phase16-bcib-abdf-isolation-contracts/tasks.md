@@ -178,11 +178,13 @@ All violations must:
     - **Validates: Requirements 9.7**
 
 - [ ] 5. Implement Runtime_Bridge core interface and lifecycle
-  - Closure Status: OBSERVABILITY RESOLVED; FORBIDDEN PATH PROOF COMPLETE; MINIMAL SUBSTRATE INTEGRATION DONE; PRODUCTION CLOSURE PENDING FULL INTEGRATION
-  - **STATUS UPDATE (2026-04-13):**
+  - Closure Status: OBSERVABILITY RESOLVED; FORBIDDEN PATH PROOF COMPLETE; MINIMAL SUBSTRATE INTEGRATION DONE; EXECUTION DELIVERY PROOF BLOCKED ON BCIB ROLE PROVISIONING
+  - **STATUS UPDATE (2026-04-14):**
     - ✅ Observability blocker RESOLVED: Kernel-side marker reconstruction implemented for Runtime_Bridge ping markers
     - ✅ Forbidden path proof COMPLETE: `ci-gate-fail-closed-proof` PASS with Runtime_Bridge forbidden syscall (1003)
     - ✅ Minimal substrate integration DONE: ABDF uses execution slots, device has registry validation
+    - ✅ Marker-only userspace validation COMPLETE: `minimal_execution_marker_only.S` proves userspace execution works
+    - ⏳ Execution delivery proof BLOCKED: BCIB role provisioning required (see TASK5_BCIB_ROLE_PROVISIONING.md)
     - ⏳ Full production integration PENDING: sys_v2_external_call remains log-only, real DevFS/ABDF integration needed
   - **FORBIDDEN PATH VALIDATION (2026-04-13):**
     - Payload: `userspace/minimal/minimal_runtime_bridge_forbidden.S`
@@ -236,16 +238,24 @@ All violations must:
     - ABI/range alignment across shared ABI, kernel wrappers, hardened dispatcher, and enforcement matrix
     - Process execution_role defaults: user processes start as PROC_EXECUTION_ROLE_USER; kernel processes start as PROC_EXECUTION_ROLE_KERNEL
   - What is MISSING (Execution Reality):
+    - **BCIB Role Provisioning (BLOCKER)**: Execution delivery proof requires BCIB-role process to call SYS_V2_SUBMIT_EXECUTION
+      * Current: USER processes have PROC_EXECUTION_ROLE_USER (default)
+      * Required: PROC_EXECUTION_ROLE_BCIB to call submit_execution
+      * Evidence: Enforcement matrix correctly blocks USER role → BOUNDARY_KILL with "Unauthorized use of BCIB execution interface"
+      * Solution: Kernel-created BCIB worker context (see TASK5_BCIB_ROLE_PROVISIONING.md)
     - Runtime_Bridge-role Ring3 process path that exercises SYS_V2_DEVICE_OPERATION / SYS_V2_EXTERNAL_CALL / SYS_V2_ABDF_OPERATION in QEMU
     - Real DevFS integration in handlers
     - Real ABDF substrate integration in handlers
     - Canonical syscall audit completion marker after hardened enforcement
     - End-to-end kernel trace proving Runtime_Bridge allowed syscalls and forbidden SUBMIT_EXECUTION denial on the real trap path
-  - Evidence (2026-04-12):
+  - Evidence (2026-04-14):
     - Host: `cargo test --manifest-path userspace/bcib-runtime/Cargo.toml --lib` → 426 passed, 0 failed; 8 warnings remain
     - Kernel build: `make all` → PASS
     - EFI image refresh: `make efi-img` → PASS (build success is preparatory evidence only, not closure evidence)
     - Boot-path alignment: COMPLETED (OVMF + EFI.img approach adopted, `-kernel`/`-initrd` approach removed)
+    - Marker-only userspace validation: COMPLETED (`minimal_execution_marker_only.S` proves userspace execution with IRQ masking)
+    - Execution delivery proof payload: CREATED (`userspace/minimal/minimal_execution_delivery_proof.S`)
+    - Execution delivery proof blocker: BCIB role provisioning required (enforcement matrix correctly blocks USER role from submit_execution)
     - Runtime_Bridge userspace payload: CREATED (`userspace/minimal/minimal_runtime_bridge_test.S`)
     - Runtime_Bridge minimal mode: ADDED to build system (`runtime-bridge-test` mode)
     - Kernel rebuild with correct mode: COMPLETED (`USER_MINIMAL_MODE=runtime-bridge-test`) - build completed, but runtime execution in QEMU not yet proven
@@ -253,24 +263,26 @@ All violations must:
     - Runtime_Bridge-specific audit contract: DEFINED (markers: RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, etc.)
     - Runtime_Bridge-specific audit script: CREATED (`tools/validation/runtime_bridge_audit.sh`) - WARNING: script currently produces false positive PASS when markers absent
     - QEMU harness execution: ⏳ HARNESS RUNS but produces non-empty traces WITHOUT Runtime_Bridge userspace markers
-    - CI gates: ✅ HYGIENE GATE PASS (2026-04-12)
+    - CI gates: ✅ HYGIENE GATE PASS (2026-04-14)
     - Runtime_Bridge syscalls 1012/1013/1014: ⏳ ABI/dispatcher wiring present, but semantic handler behavior not production-ready (stubs only); payload execution not confirmed
   - Production Blockers (MUST COMPLETE):
     1. ✅ QEMU proof infrastructure created (test binaries, harness, evidence directory)
     2. ✅ Fixed `qemu-runtime-bridge-proof-harness.sh` to use OVMF + EFI.img boot path (removed broken `-kernel`/`-initrd`)
     3. ✅ Runtime_Bridge-specific marker contract defined (RUNTIME_BRIDGE_TEST_START, DEVICE_OP_BEFORE/AFTER, EXTERNAL_CALL_BEFORE/AFTER, ABDF_OP_BEFORE/AFTER, RUNTIME_BRIDGE_TEST_COMPLETE)
     4. ✅ Created Runtime_Bridge-specific audit script (`tools/validation/runtime_bridge_audit.sh`)
-    5. ✅ Resolve hygiene gate failures (completed 2026-04-12)
+    5. ✅ Resolve hygiene gate failures (completed 2026-04-14)
     6. ✅ Rebuild EFI.img with Runtime_Bridge test: `USER_MINIMAL_MODE=runtime-bridge-test make efi-img` (build completed, runtime execution proven)
     7. ✅ Run QEMU harness to generate traces and verify marker presence (harness runs, markers present and validated)
     8. ✅ Debug why Runtime_Bridge payload does not execute (RESOLVED: observability issue, not execution issue)
     9. ✅ Validate trace shows syscalls 1012/1013/1014 reach handlers and return (validated with allowed path)
     10. ✅ Create forbidden test for fail-closed validation (minimal_runtime_bridge_forbidden.S created)
     11. ✅ Validate forbidden trace with `ci-gate-fail-closed-proof` (PASS - forbidden syscall 1003 triggers BOUNDARY_KILL)
-    12. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
-    13. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
-    14. ⏳ Resolve remaining Task 5 warnings; `static_mut_refs` must remain absent
-    15. ✅ **`ci-gate-fail-closed-proof` PASS achieved for Runtime_Bridge forbidden path**
+    12. ⏳ **Implement BCIB role provisioning** (see TASK5_BCIB_ROLE_PROVISIONING.md) - CURRENT BLOCKER
+    13. ⏳ Validate execution delivery proof (submit → pickup → delivery → complete pipeline) - BLOCKED on #12
+    14. ⏳ Integrate real DevFS in device operation handler (replace 0xDEADBEEF stub)
+    15. ⏳ Integrate real ABDF substrate in ABDF operation handler (replace fake ABDF stub)
+    16. ⏳ Resolve remaining Task 5 warnings; `static_mut_refs` must remain absent
+    17. ✅ **`ci-gate-fail-closed-proof` PASS achieved for Runtime_Bridge forbidden path**
   - Task 6 Entry Gate:
     - Do not start Task 6 until Task 5 proves Runtime_Bridge syscall execution with QEMU/kernel evidence
     - Do not treat host-only syscall adapter tests as kernel-boundary evidence
