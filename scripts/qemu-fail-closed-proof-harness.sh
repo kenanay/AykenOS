@@ -34,6 +34,30 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+resolve_ovmf_firmware() {
+    # Known firmware locations across macOS/Linux
+    local candidates=(
+        "$PROJECT_ROOT/firmware/ovmf/OVMF_CODE.fd|$PROJECT_ROOT/firmware/ovmf/OVMF_VARS.fd"
+        "/usr/share/OVMF/OVMF_CODE_4M.fd|/usr/share/OVMF/OVMF_VARS_4M.fd"
+        "/usr/share/OVMF/OVMF_CODE.fd|/usr/share/OVMF/OVMF_VARS.fd"
+        "/usr/share/edk2/ovmf/OVMF_CODE.fd|/usr/share/edk2/ovmf/OVMF_VARS.fd"
+        "/usr/share/qemu/OVMF_CODE.fd|/usr/share/qemu/OVMF_VARS.fd"
+        "/opt/homebrew/share/qemu/edk2-x86_64-code.fd|/opt/homebrew/share/qemu/edk2-x86_64-vars.fd"
+    )
+
+    local entry code vars
+    for entry in "${candidates[@]}"; do
+        code="${entry%%|*}"
+        vars="${entry##*|}"
+        if [[ -f "${code}" && -f "${vars}" ]]; then
+            printf "%s\n%s\n" "${code}" "${vars}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # Create evidence directory
 mkdir -p "$EVIDENCE_DIR"
 
@@ -50,10 +74,39 @@ fi
 
 log_info "Found EFI image: $EFI_IMAGE"
 
+# Resolve OVMF firmware
+OVMF_PAIR="$(resolve_ovmf_firmware || true)"
+if [[ -z "$OVMF_PAIR" ]]; then
+    log_error "OVMF firmware not found"
+    log_error "Install OVMF package (e.g., 'apt install ovmf' or 'brew install qemu')"
+    exit 1
+fi
+
+OVMF_CODE="$(printf "%s\n" "$OVMF_PAIR" | sed -n '1p')"
+OVMF_VARS="$(printf "%s\n" "$OVMF_PAIR" | sed -n '2p')"
+
+log_info "Using OVMF CODE: $OVMF_CODE"
+log_info "Using OVMF VARS: $OVMF_VARS"
+
+# Create temporary directory for this run
+RUN_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fail_closed_run.XXXXXX" 2>/dev/null || mktemp -d -t fail_closed_run 2>/dev/null)"
+if [[ -z "$RUN_TMP_DIR" || ! -d "$RUN_TMP_DIR" ]]; then
+    log_error "Failed to create temporary directory"
+    exit 1
+fi
+
+# Prepare OVMF VARS copy (blank varstore for deterministic boot)
+OVMF_VARS_COPY="$RUN_TMP_DIR/OVMF_VARS.fd"
+OVMF_VARS_SIZE="$(wc -c < "$OVMF_VARS" 2>/dev/null | tr -d '[:space:]')"
+dd if=/dev/zero of="$OVMF_VARS_COPY" bs=1 count="$OVMF_VARS_SIZE" >/dev/null 2>&1
+
+# Prepare EFI image copy (avoid write-lock contention)
+EFI_IMG_RUN="$RUN_TMP_DIR/EFI.img"
+cp -f "$EFI_IMAGE" "$EFI_IMG_RUN"
+
 # QEMU configuration
 QEMU_TIMEOUT=30
 QEMU_MEMORY="256M"
-QEMU_CPU="qemu64"
 
 # Temporary files for QEMU output
 DEBUGCON_LOG="$EVIDENCE_DIR/qemu_debugcon.log"
@@ -63,22 +116,20 @@ log_info "Starting QEMU with kernel trace capture..."
 log_info "Timeout: ${QEMU_TIMEOUT}s"
 log_info "Memory: $QEMU_MEMORY"
 
-# Launch QEMU with trace capture
-# -debugcon file:$DEBUGCON_LOG captures kernel debug output
-# -serial file:$SERIAL_LOG captures serial console
-# -display none runs headless
-# -no-reboot prevents automatic reboot on crash
-
+# Launch QEMU with OVMF + EFI.img (correct boot path)
 timeout $QEMU_TIMEOUT qemu-system-x86_64 \
-    -drive format=raw,file="$EFI_IMAGE" \
-    -m "$QEMU_MEMORY" \
-    -cpu "$QEMU_CPU" \
-    -debugcon file:"$DEBUGCON_LOG" \
+    -machine q35 \
+    -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
+    -drive if=pflash,format=raw,file="$OVMF_VARS_COPY" \
+    -drive format=raw,file="$EFI_IMG_RUN" \
     -serial file:"$SERIAL_LOG" \
-    -display none \
+    -chardev file,id=dbgcon,path="$DEBUGCON_LOG" \
+    -device isa-debugcon,iobase=0xe9,chardev=dbgcon \
+    -m "$QEMU_MEMORY" \
     -no-reboot \
     -no-shutdown \
-    2>&1 | tee "$EVIDENCE_DIR/qemu_stdout.log" || {
+    -display none \
+    > /dev/null 2>&1 || {
         QEMU_EXIT=$?
         if [[ $QEMU_EXIT -eq 124 ]]; then
             log_info "QEMU timeout reached (expected for test harness)"
@@ -89,6 +140,9 @@ timeout $QEMU_TIMEOUT qemu-system-x86_64 \
 
 log_info "QEMU execution complete"
 
+# Cleanup temporary directory
+rm -rf "$RUN_TMP_DIR"
+
 # Channel integrity validation (HARD FAIL rule)
 # NOTE: Task 1 scope = debugcon + serial only
 # UEFI output validation will be added in Block 2/3 for bootloader execution diagnosis
@@ -98,11 +152,11 @@ DEBUGCON_SIZE=0
 SERIAL_SIZE=0
 
 if [[ -f "$DEBUGCON_LOG" ]]; then
-    DEBUGCON_SIZE=$(stat -c%s "$DEBUGCON_LOG" 2>/dev/null || echo "0")
+    DEBUGCON_SIZE=$(stat -c%s "$DEBUGCON_LOG" 2>/dev/null || stat -f%z "$DEBUGCON_LOG" 2>/dev/null || echo "0")
 fi
 
 if [[ -f "$SERIAL_LOG" ]]; then
-    SERIAL_SIZE=$(stat -c%s "$SERIAL_LOG" 2>/dev/null || echo "0")
+    SERIAL_SIZE=$(stat -c%s "$SERIAL_LOG" 2>/dev/null || stat -f%z "$SERIAL_LOG" 2>/dev/null || echo "0")
 fi
 
 log_info "Channel sizes: debugcon=$DEBUGCON_SIZE bytes, serial=$SERIAL_SIZE bytes"
@@ -146,16 +200,22 @@ MARKER_KILL=0
 
 # Check debugcon channel
 if [[ -f "$TRACE_DEBUGCON" ]]; then
-    MARKER_BEFORE=$((MARKER_BEFORE + $(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_DEBUGCON" || echo "0")))
-    MARKER_ENTER=$((MARKER_ENTER + $(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_DEBUGCON" || echo "0")))
-    MARKER_KILL=$((MARKER_KILL + $(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_DEBUGCON" || echo "0")))
+    BEFORE_COUNT=$(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_DEBUGCON" 2>/dev/null || echo "0")
+    ENTER_COUNT=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_DEBUGCON" 2>/dev/null || echo "0")
+    KILL_COUNT=$(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_DEBUGCON" 2>/dev/null || echo "0")
+    MARKER_BEFORE=$((MARKER_BEFORE + BEFORE_COUNT))
+    MARKER_ENTER=$((MARKER_ENTER + ENTER_COUNT))
+    MARKER_KILL=$((MARKER_KILL + KILL_COUNT))
 fi
 
 # Check serial channel
 if [[ -f "$TRACE_SERIAL" ]]; then
-    MARKER_BEFORE=$((MARKER_BEFORE + $(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_SERIAL" || echo "0")))
-    MARKER_ENTER=$((MARKER_ENTER + $(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_SERIAL" || echo "0")))
-    MARKER_KILL=$((MARKER_KILL + $(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_SERIAL" || echo "0")))
+    BEFORE_COUNT=$(grep -c "BCIB_FORBIDDEN_BEFORE" "$TRACE_SERIAL" 2>/dev/null || echo "0")
+    ENTER_COUNT=$(grep -c "\[\[AYKEN_SYSCALL_ENTER\]\]" "$TRACE_SERIAL" 2>/dev/null || echo "0")
+    KILL_COUNT=$(grep -c "\[\[AYKEN_BOUNDARY_KILL\]\]" "$TRACE_SERIAL" 2>/dev/null || echo "0")
+    MARKER_BEFORE=$((MARKER_BEFORE + BEFORE_COUNT))
+    MARKER_ENTER=$((MARKER_ENTER + ENTER_COUNT))
+    MARKER_KILL=$((MARKER_KILL + KILL_COUNT))
 fi
 
 log_info "Marker counts (channel-local aggregation):"
