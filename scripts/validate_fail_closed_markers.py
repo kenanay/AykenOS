@@ -131,7 +131,7 @@ class FailClosedProofValidator:
                 return marker
         
         # If not found and looking for FORBIDDEN_BEFORE, check userspace payload
-        if 'FORBIDDEN_BEFORE' in pattern:
+        if 'FORBIDDEN_BEFORE' in pattern or 'RTB_FB' in pattern or r'\[FB\]' in pattern or 'FB' in pattern:
             payload = self.extract_userspace_payload()
             if re.search(pattern, payload):
                 # Find approximate line number by searching for P10_SYSCALL_ENTER
@@ -161,8 +161,9 @@ class FailClosedProofValidator:
         print("\n[TEST 1] Validating canonical marker flow...")
         
         # Find required markers - support both BCIB and Runtime_Bridge forbidden paths
+        # Also support minimal markers (RTB_FB/RTB_FA) and ultra-minimal markers ([FB]/[FA] or FB/FA) for Task 10B window hardening
         self.marker_before = self.find_marker(
-            r'(BCIB_FORBIDDEN_BEFORE|RUNTIME_BRIDGE_FORBIDDEN_BEFORE)',
+            r'(BCIB_FORBIDDEN_BEFORE|RUNTIME_BRIDGE_FORBIDDEN_BEFORE|RTB_FB|\[FB\]|^FB$)',
             'FORBIDDEN_BEFORE'
         )
         self.marker_enter = self.find_marker(
@@ -300,27 +301,58 @@ class FailClosedProofValidator:
             print("[SKIP] Cannot validate - markers missing")
             return False
         
-        window_size = self.marker_kill.line_number - self.marker_enter.line_number
+        # Full observed window (includes marker emission overhead)
+        full_window = self.marker_kill.line_number - self.marker_enter.line_number
         
-        print(f"[INFO] Execution window: {window_size} lines")
+        # Count marker emission syscalls (DEBUG_PUTCHAR overhead)
+        marker_syscalls = 0
+        for i in range(self.marker_enter.line_number, self.marker_kill.line_number):
+            line = self.trace_lines[i]
+            if 'P10_SYSCALL_ENTER' in line or '[[AYKEN_SYSCALL_ENTER]]' in line:
+                marker_syscalls += 1
         
-        if window_size > max_lines:
+        # Find last marker emission syscall before forbidden syscall
+        last_marker_line = self.marker_enter.line_number
+        for i in range(self.marker_enter.line_number, self.marker_kill.line_number):
+            line = self.trace_lines[i]
+            # Look for DEBUG_PUTCHAR (1010) or marker emission patterns
+            if 'syscall=1010' in line or 'DEBUG_PUTCHAR' in line:
+                last_marker_line = i + 1
+        
+        # Effective forbidden window (forbidden syscall → BOUNDARY_KILL)
+        effective_window = self.marker_kill.line_number - last_marker_line
+        
+        print(f"[INFO] Full observed window: {full_window} lines")
+        print(f"[INFO] Marker emission syscalls: {marker_syscalls}")
+        print(f"[INFO] Effective forbidden window: {effective_window} lines")
+        
+        if full_window > max_lines:
             self.add_violation(
                 FailureCode.UNBOUNDED_EXECUTION_WINDOW,
-                f"Execution window too large: {window_size} lines (max: {max_lines}). "
+                f"Execution window too large: {full_window} lines (max: {max_lines}). "
                 f"This indicates system hang or delayed enforcement"
             )
             return False
         
-        # Warn if window is large but not excessive
-        if window_size > 100:
+        # Warn if effective window is large (indicates termination delay)
+        if effective_window > 20:
             self.warnings.append(
-                f"Large execution window: {window_size} lines. "
-                f"This may indicate multiple syscalls before forbidden path."
+                f"Large effective forbidden window: {effective_window} lines. "
+                f"Target: <20 lines for immediate termination."
             )
-            print(f"[WARN] Large execution window: {window_size} lines")
+            print(f"[WARN] Large effective forbidden window: {effective_window} lines")
+        elif effective_window <= 20:
+            print(f"[PASS] Effective forbidden window within target: {effective_window} lines")
         
-        print(f"[PASS] Bounded execution window: {window_size} lines")
+        # Warn if full window is large but not excessive
+        if full_window > 100:
+            self.warnings.append(
+                f"Large full observed window: {full_window} lines. "
+                f"This may indicate marker emission overhead or multiple syscalls before forbidden path."
+            )
+            print(f"[WARN] Large full observed window: {full_window} lines")
+        
+        print(f"[PASS] Bounded execution window: {full_window} lines (effective: {effective_window})")
         return True
     
     def validate_negative_guarantees(self) -> bool:
@@ -341,13 +373,16 @@ class FailClosedProofValidator:
         
         violations_found = False
         
-        # Check for BCIB_FORBIDDEN_AFTER or RUNTIME_BRIDGE_FORBIDDEN_AFTER in both trace and payload
+        # Check for BCIB_FORBIDDEN_AFTER or RUNTIME_BRIDGE_FORBIDDEN_AFTER or RTB_FA or [FA] or FA in both trace and payload
         forbidden_after_count = sum(
             1 for line in after_kill_lines 
-            if 'BCIB_FORBIDDEN_AFTER' in line or 'RUNTIME_BRIDGE_FORBIDDEN_AFTER' in line
+            if 'BCIB_FORBIDDEN_AFTER' in line or 'RUNTIME_BRIDGE_FORBIDDEN_AFTER' in line or 'RTB_FA' in line or '[FA]' in line or re.match(r'^FA$', line.strip())
         )
         forbidden_after_count += payload_after_kill_str.count('BCIB_FORBIDDEN_AFTER')
         forbidden_after_count += payload_after_kill_str.count('RUNTIME_BRIDGE_FORBIDDEN_AFTER')
+        forbidden_after_count += payload_after_kill_str.count('RTB_FA')
+        forbidden_after_count += payload_after_kill_str.count('[FA]')
+        forbidden_after_count += len(re.findall(r'^FA$', payload_after_kill_str, re.MULTILINE))
         
         if forbidden_after_count > 0:
             self.add_violation(
@@ -408,6 +443,8 @@ class FailClosedProofValidator:
             'P10_RING3_USER_CODE',
             'BCIB_FORBIDDEN_AFTER',
             'RUNTIME_BRIDGE_FORBIDDEN_AFTER',
+            'RTB_FA',
+            '[FA]',
             '[[AYKEN_SYSCALL_ENTER]]',
             'P10_SYSCALL_ENTER'
         ]
@@ -416,7 +453,7 @@ class FailClosedProofValidator:
         for line in after_kill_lines:
             # Check if line contains process ID AND a userspace execution marker
             if (f'pid={pid}' in line or f'process_id={pid}' in line or f'Process {pid}' in line):
-                if any(marker in line for marker in userspace_execution_markers):
+                if any(marker in line for marker in userspace_execution_markers) or re.match(r'^FA$', line.strip()):
                     userspace_logs_after_kill += 1
         
         if userspace_logs_after_kill > 0:

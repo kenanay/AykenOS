@@ -134,8 +134,9 @@ except Exception as e:
 # Auditing the trace
 PASS=true
 
-if ! echo "$PAYLOAD_OUTPUT" | grep -q "\[U\]\[RUNTIME_BRIDGE_FORBIDDEN_BEFORE\]"; then
-    log_error "✗ Missing RUNTIME_BRIDGE_FORBIDDEN_BEFORE marker in payload"
+# Support full, minimal, and ultra-minimal markers (Task 10B window hardening)
+if ! echo "$PAYLOAD_OUTPUT" | grep -qE "\[U\]\[(RUNTIME_BRIDGE_FORBIDDEN_BEFORE|RTB_FB)\]|\[FB\]|^FB$"; then
+    log_error "✗ Missing RUNTIME_BRIDGE_FORBIDDEN_BEFORE, RTB_FB, [FB], or FB marker in payload"
     PASS=false
 fi
 
@@ -149,8 +150,9 @@ if ! grep -q "\[\[AYKEN_BOUNDARY_KILL\]\]" "$FORBIDDEN_TRACE"; then
     PASS=false
 fi
 
-if echo "$PAYLOAD_OUTPUT" | grep -q "\[U\]\[RUNTIME_BRIDGE_FORBIDDEN_AFTER\]"; then
-    log_error "✗ Found RUNTIME_BRIDGE_FORBIDDEN_AFTER marker! Fail-closed is broken."
+# Check for continuation markers (full, minimal, and ultra-minimal)
+if echo "$PAYLOAD_OUTPUT" | grep -qE "\[U\]\[(RUNTIME_BRIDGE_FORBIDDEN_AFTER|RTB_FA)\]|\[FA\]|^FA$"; then
+    log_error "✗ Found RUNTIME_BRIDGE_FORBIDDEN_AFTER, RTB_FA, [FA], or FA marker! Fail-closed is broken."
     PASS=false
 fi
 

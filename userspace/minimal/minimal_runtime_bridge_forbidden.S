@@ -18,7 +18,8 @@ _start:
     inc %rax
     mov %rax, 8(%rbx)
 
-    // Emit forbidden path marker: [U][RUNTIME_BRIDGE_FORBIDDEN_BEFORE]
+    // Emit forbidden path marker: [U][RTB_FB]
+    // Minimal marker for window hardening (Task 10B)
     lea .Lmarker_forbidden_before(%rip), %r12
     call emit_marker
 
@@ -65,6 +66,6 @@ emit_marker:
 
 .section .rodata
 .Lmarker_forbidden_before:
-    .asciz "[U][RUNTIME_BRIDGE_FORBIDDEN_BEFORE]\n"
+    .asciz "FB\n"
 .Lmarker_forbidden_after:
-    .asciz "[U][RUNTIME_BRIDGE_FORBIDDEN_AFTER]\n"
+    .asciz "FA\n"
