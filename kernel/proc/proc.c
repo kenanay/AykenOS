@@ -2350,18 +2350,29 @@ static uint64_t load_flat_image(uint64_t pml4_phys, const uint8_t *image, uint64
 
 static uint64_t load_elf_image(uint64_t pml4_phys, const uint8_t *image, uint64_t size)
 {
-    if (!image || size < sizeof(elf64_ehdr_t))
+    debugcon_write("[[PROC_CREATE_ENTER_ELF_LOAD]]\n");
+    
+    if (!image || size < sizeof(elf64_ehdr_t)) {
+        debugcon_write("[[PROC_CREATE_FAIL]] reason=ELF_TOO_SMALL\n");
         return 0;
+    }
 
     const elf64_ehdr_t *ehdr = (const elf64_ehdr_t *)image;
     if (!(ehdr->e_ident[0] == 0x7F && ehdr->e_ident[1] == 'E' &&
           ehdr->e_ident[2] == 'L' && ehdr->e_ident[3] == 'F')) {
+        debugcon_write("[[PROC_CREATE_FAIL]] reason=ELF_MAGIC_INVALID\n");
+        return 0;
+    }
+    
+    debugcon_write("[[PROC_CREATE_AFTER_ELF_MAGIC_CHECK]]\n");
+
+    if (ehdr->e_phoff + (uint64_t)ehdr->e_phnum * sizeof(elf64_phdr_t) > size) {
+        debugcon_write("[[PROC_CREATE_FAIL]] reason=ELF_PHDR_OUT_OF_BOUNDS\n");
         return 0;
     }
 
-    if (ehdr->e_phoff + (uint64_t)ehdr->e_phnum * sizeof(elf64_phdr_t) > size)
-        return 0;
-
+    debugcon_write("[[PROC_CREATE_AFTER_ELF_PHDR_CHECK]]\n");
+    
     const elf64_phdr_t *phdr = (const elf64_phdr_t *)(image + ehdr->e_phoff);
     for (uint16_t i = 0; i < ehdr->e_phnum; ++i) {
         if (phdr[i].p_type != 1) // PT_LOAD
@@ -2374,8 +2385,10 @@ static uint64_t load_elf_image(uint64_t pml4_phys, const uint8_t *image, uint64_
 
         for (uint64_t off = 0; off < memsz; off += AYKEN_FRAME_SIZE) {
             uint64_t phys = proc_alloc_user_image_frame();
-            if (!phys)
+            if (!phys) {
+                debugcon_write("[[PROC_CREATE_FAIL]] reason=ELF_ALLOC_FRAME_FAILED\n");
                 return 0;
+            }
 
             uint8_t *dst = (uint8_t *)paging_phys_to_virt(phys);
             memset(dst, 0, AYKEN_FRAME_SIZE);
@@ -2391,6 +2404,11 @@ static uint64_t load_elf_image(uint64_t pml4_phys, const uint8_t *image, uint64_
         }
     }
 
+    debugcon_write("[[PROC_CREATE_AFTER_ELF_MAP]]\n");
+    debugcon_write("[[PROC_CREATE_BEFORE_RETURN]] entry=");
+    debugcon_hex64(ehdr->e_entry);
+    debugcon_write("\n");
+    
     return ehdr->e_entry;
 }
 
@@ -2506,9 +2524,15 @@ proc_t *proc_create_user_process(const char *name,
     p->context.cr3 = user_pml4;
     proc_debug_emit_ring3_creation_snapshot(user_pml4);
 
+    debugcon_write("[[PROC_CREATE_BEFORE_LOAD_IMAGE]]\n");
     uint64_t entry = load_user_image(fmt, user_pml4, image, image_size);
+    debugcon_write("[[PROC_CREATE_AFTER_LOAD_IMAGE]] entry=");
+    debugcon_hex64(entry);
+    debugcon_write("\n");
+    
     if (!entry) {
         outb(0xE9, (uint8_t)'3');
+        debugcon_write("[[PROC_CREATE_FAIL]] reason=LOAD_IMAGE_RETURNED_ZERO\n");
         goto fail;
     }
     debug_dump_pte(user_pml4, USER_TEXT_BASE, "code");
