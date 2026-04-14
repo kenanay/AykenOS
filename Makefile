@@ -1234,6 +1234,7 @@ run: efi-img
 		-boot order=c \
 		-debugcon file:$(AYKEN_LOG_DIR)/debug_run.log \
 		-global isa-debugcon.iobase=0xe9 \
+		-serial file:$(AYKEN_LOG_DIR)/serial_run.log \
 		-nographic
 
 run-preempt:
