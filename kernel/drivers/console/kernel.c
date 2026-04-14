@@ -10,6 +10,16 @@ void simple_shell_loop(void);
 // void idt_init(void);
 
 void kernel_main(ayken_boot_info_t *boot_info) {
+    // EARLIEST KERNEL ENTRY MARKER - Boot observability proof
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'K'), "Nd"((uint16_t)0xE9));
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'0'), "Nd"((uint16_t)0xE9));
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'\n'), "Nd"((uint16_t)0xE9));
+    
+    // Serial output for redundancy
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'K'), "Nd"((uint16_t)0x3F8));
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'0'), "Nd"((uint16_t)0x3F8));
+    __asm__ volatile("outb %b0, %w1" : : "a"((uint8_t)'\n'), "Nd"((uint16_t)0x3F8));
+    
     // 1. Framebuffer konsolu başlat
     fb_console_init(boot_info);
 
