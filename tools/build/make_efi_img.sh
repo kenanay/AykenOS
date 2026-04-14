@@ -41,11 +41,13 @@ if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command 
             cp "$KERNEL_ELF_PATH" "$MOUNT_VOL/"
             
             # CRITICAL FIX: Generate startup.nsh with correct content (no stray %)
-            echo "[startup.nsh oluşturuluyor]"
-            cat > "$MOUNT_VOL/startup.nsh" <<'EOF'
-fs0:
-\EFI\BOOT\BOOTX64.EFI
-EOF
+            # Place in root for UEFI shell auto-execution
+            echo "[startup.nsh oluşturuluyor (root)]"
+            printf '%s\r\n%s\r\n' 'fs0:' '\EFI\BOOT\BOOTX64.EFI' > "$MOUNT_VOL/startup.nsh"
+            
+            # Also place in EFI/BOOT for fallback
+            echo "[startup.nsh oluşturuluyor (EFI/BOOT)]"
+            printf '%s\r\n%s\r\n' 'fs0:' '\EFI\BOOT\BOOTX64.EFI' > "$MOUNT_VOL/EFI/BOOT/startup.nsh"
 
             sync
             diskutil unmount "$MOUNT_VOL" >/dev/null 2>&1 || true
@@ -81,6 +83,6 @@ mcopy -i "$IMG" "$KERNEL_ELF_PATH" ::
 
 echo "[startup.nsh kopyalanıyor]"
 # CRITICAL FIX: Generate startup.nsh with correct content (no stray %)
-printf "fs0:\n\\\\EFI\\\\BOOT\\\\BOOTX64.EFI\n" | mcopy -i "$IMG" - ::startup.nsh
+printf '%s\r\n%s\r\n' 'fs0:' '\EFI\BOOT\BOOTX64.EFI' | mcopy -i "$IMG" - ::startup.nsh
 
 echo "[*] EFI.img hazır!"
