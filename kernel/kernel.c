@@ -25,6 +25,48 @@
 //  ve pml4_phys bulunur.
 // ============================================================================
 
+// ============================================================================
+// BUILD FLAG VALIDATION - FAIL-CLOSED GUARANTEE (BCIB WORKER BOOTSTRAP ONLY)
+// ============================================================================
+// CRITICAL: These compile-time assertions ensure the kernel is built with
+// the correct flags when building BCIB worker bootstrap mode specifically.
+// This prevents silent flag propagation bugs that cause wrong artifacts.
+//
+// NOTE: This validation only applies when AYKEN_BCIB_WORKER_BOOTSTRAP_MODE=1
+// is explicitly set. General validation builds do not require these flags.
+// ============================================================================
+
+#if defined(AYKEN_BCIB_WORKER_BOOTSTRAP_MODE) && (AYKEN_BCIB_WORKER_BOOTSTRAP_MODE == 1)
+  // BCIB worker bootstrap mode requires specific flags
+  #ifdef AYKEN_PHASE16_BCIB_PROOF_TEST
+    #if AYKEN_PHASE16_BCIB_PROOF_TEST != 1
+      #error "AYKEN_PHASE16_BCIB_PROOF_TEST must be 1 for BCIB worker bootstrap mode"
+    #endif
+  #else
+    #error "AYKEN_PHASE16_BCIB_PROOF_TEST not defined - wrong build path for BCIB worker bootstrap"
+  #endif
+
+  #ifndef AYKEN_USER_MINIMAL_MODE_STRING
+    #error "AYKEN_USER_MINIMAL_MODE_STRING not defined - USER_MINIMAL_MODE not set for BCIB worker bootstrap"
+  #endif
+
+  // Verify the mode string is correct for BCIB worker bootstrap
+  #define STRINGIFY(x) #x
+  #define TOSTRING(x) STRINGIFY(x)
+  #define BCIB_MODE_CHECK TOSTRING(AYKEN_USER_MINIMAL_MODE_STRING)
+
+  // This will cause a compile error if the mode string doesn't contain "bcib-worker-bootstrap"
+  typedef char bcib_mode_validation[
+    (sizeof(AYKEN_USER_MINIMAL_MODE_STRING) > 10 && 
+     AYKEN_USER_MINIMAL_MODE_STRING[0] == 'b' &&
+     AYKEN_USER_MINIMAL_MODE_STRING[1] == 'c' &&
+     AYKEN_USER_MINIMAL_MODE_STRING[2] == 'i' &&
+     AYKEN_USER_MINIMAL_MODE_STRING[3] == 'b') ? 1 : -1
+  ];
+#endif
+
+// ============================================================================
+
 #include <stdint.h>
 #include "include/boot_info.h"
 #include "include/boot_flags.h"

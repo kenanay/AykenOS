@@ -14,6 +14,7 @@
 #include "include/proc.h"
 #include "include/mm.h"
 #include "sched/sched_mailbox.h"
+#include "include/barrier.h"
 
 #ifndef AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST
 #define AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST 0
@@ -51,16 +52,23 @@ static int ring3_seed_mailbox_candidate(proc_t *publisher,
         return 0;
     }
 
+    // SEQLOCK PROTOCOL: Write payload fields FIRST, epoch LAST
     mb->magic = AYKEN_SCHED_MB_MAGIC;
     mb->version = AYKEN_SCHED_MB_VERSION;
     mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
-    mb->epoch = epoch;
     mb->proposer_pid = (uint32_t)publisher->pid;
     mb->candidate_pid = candidate_pid;
     mb->flags = 0;
     mb->status = AYKEN_SCHED_STATUS_EMPTY;
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     mb->reserved = 0;
+    
+    // Write barrier - ensure all payload writes complete before epoch write
+    smp_wmb();
+    
+    // Write epoch LAST (commit indicator)
+    mb->epoch = epoch;
+    
     return 1;
 }
 #endif

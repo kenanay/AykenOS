@@ -1220,7 +1220,49 @@ $(EFI_IMG): $(KERNEL_ELF) $(BOOT_EFI)
 EFI.img: $(EFI_IMG)
 	cp -f "$<" "$@"
 
-efi-img: $(EFI_IMG) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI) $(LEGACY_EFI_IMG)
+# efi-img: Phony target that ensures all artifacts are built with current flags
+# CRITICAL: This target MUST NOT directly depend on $(EFI_IMG) because that would
+# trigger a rebuild with default flags. Instead, we explicitly invoke sub-makes
+# with the current flag values to ensure flag propagation.
+.PHONY: efi-img
+efi-img:
+	@# FAIL-CLOSED BUILD VALIDATION: Verify BCIB flags are set correctly
+	@if [ "$(AYKEN_PHASE16_BCIB_PROOF_TEST)" != "1" ]; then \
+		echo "ERROR: AYKEN_PHASE16_BCIB_PROOF_TEST must be 1 for BCIB worker bootstrap"; \
+		echo "Current value: $(AYKEN_PHASE16_BCIB_PROOF_TEST)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(USER_MINIMAL_MODE)" ]; then \
+		echo "ERROR: USER_MINIMAL_MODE not set"; \
+		exit 1; \
+	fi
+	@if [ "$(USER_MINIMAL_MODE)" != "bcib-worker-bootstrap" ]; then \
+		echo "ERROR: USER_MINIMAL_MODE must be 'bcib-worker-bootstrap'"; \
+		echo "Current value: $(USER_MINIMAL_MODE)"; \
+		exit 1; \
+	fi
+	@echo "✓ Build flags validated: BCIB worker bootstrap mode"
+	@# Build kernel and bootloader with current flags
+	@$(MAKE) KERNEL_PROFILE=$(KERNEL_PROFILE) \
+		AYKEN_PHASE16_BCIB_PROOF_TEST=$(AYKEN_PHASE16_BCIB_PROOF_TEST) \
+		USER_MINIMAL_MODE=$(USER_MINIMAL_MODE) \
+		AYKEN_VALIDATION=$(AYKEN_VALIDATION) \
+		$(KERNEL_ELF) $(BOOT_EFI)
+	@# Now build the EFI image (this will use the already-built artifacts)
+	@$(MAKE) KERNEL_PROFILE=$(KERNEL_PROFILE) \
+		AYKEN_PHASE16_BCIB_PROOF_TEST=$(AYKEN_PHASE16_BCIB_PROOF_TEST) \
+		USER_MINIMAL_MODE=$(USER_MINIMAL_MODE) \
+		$(EFI_IMG)
+	@# Verify the built kernel contains BCIB worker symbols
+	@echo "Verifying BCIB worker symbols in kernel..."
+	@if ! strings $(KERNEL_ELF) | grep -q "bcib-worker-bootstrap"; then \
+		echo "ERROR: Built kernel does not contain BCIB worker bootstrap marker"; \
+		echo "Build system produced wrong artifact!"; \
+		exit 1; \
+	fi
+	@echo "✓ BCIB worker symbols verified in kernel"
+	@# Build legacy artifacts
+	@$(MAKE) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI) $(LEGACY_EFI_IMG)
 
 run: efi-img
 	@# CRITICAL: Use clean NVRAM to avoid BootOrder corruption

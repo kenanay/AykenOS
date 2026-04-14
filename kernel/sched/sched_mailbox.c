@@ -16,6 +16,7 @@
 #include "../arch/x86_64/port_io.h"
 #include "sched.h"
 #include "sched_mailbox.h"
+#include "../include/barrier.h"
 
 #ifndef AYKEN_GATE45_PROOF
 #define AYKEN_GATE45_PROOF 0
@@ -264,26 +265,30 @@ static void sched_mailbox_selftest_impl(void) {
     }
 
     // CASE 1: ACCEPT (if candidate exists and runnable)
+    // SEQLOCK PROTOCOL: Write payload fields FIRST, epoch LAST
     mb->magic = AYKEN_SCHED_MB_MAGIC;
     mb->version = AYKEN_SCHED_MB_VERSION;
     mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
-    mb->epoch = 1;
     mb->proposer_pid = 0xBEEF; // kernel self-test marker
     mb->candidate_pid = candidate;
+    smp_wmb();  // Write barrier
+    mb->epoch = 1;
 
     int rc = sched_mailbox_validate_candidate(mb, &out);
     if (rc == 0 && out) marker_accept((uint32_t)out->pid, mb->epoch, (uint32_t)out->pid, "IRQ");
     else marker_reject(mb->reject_reason, mb->epoch, mb->candidate_pid);
 
     // CASE 2: STALE epoch reject
-    mb->epoch = 1; // same epoch
     mb->candidate_pid = candidate;
+    smp_wmb();  // Write barrier
+    mb->epoch = 1; // same epoch
     (void)sched_mailbox_validate_candidate(mb, &out);
     marker_reject(mb->reject_reason, mb->epoch, mb->candidate_pid);
 
     // CASE 3: BAD PID reject
-    mb->epoch = 2;
     mb->candidate_pid = 0x7FFFFFFF;
+    smp_wmb();  // Write barrier
+    mb->epoch = 2;
     (void)sched_mailbox_validate_candidate(mb, &out);
     marker_reject(mb->reject_reason, mb->epoch, mb->candidate_pid);
 
@@ -311,8 +316,9 @@ static void sched_mailbox_test_ring3_simulation_impl(proc_t *proc) {
     uint64_t current_epoch = mb->epoch;
     uint64_t next_epoch = current_epoch + 1;
     
-    // Write sequence (same as Ring3 library)
+    // SEQLOCK PROTOCOL: Write payload FIRST, epoch LAST
     mb->candidate_pid = 42;
+    __asm__ volatile("sfence" ::: "memory");  // Write barrier (same as Ring3)
     mb->epoch = next_epoch;
     
     dbg_print("[MVP-2] Simulated Ring3 write: pid=42 epoch=");
@@ -326,6 +332,7 @@ static void sched_mailbox_test_ring3_simulation_impl(proc_t *proc) {
     current_epoch = mb->epoch;
     next_epoch = current_epoch + 1;
     mb->candidate_pid = 2147483647; // Invalid PID
+    __asm__ volatile("sfence" ::: "memory");  // Write barrier
     mb->epoch = next_epoch;
     
     dbg_print("[MVP-2] Simulated Ring3 write: pid=2147483647 epoch=");

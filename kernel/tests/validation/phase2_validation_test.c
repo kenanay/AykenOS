@@ -19,6 +19,7 @@
 #include "../../sched/sched.h"
 #include "../../sched/sched_mailbox.h"
 #include "../../fs/devfs.h"
+#include "../../include/barrier.h"
 #include <stddef.h>
 
 #define memcpy __builtin_memcpy
@@ -216,16 +217,23 @@ static int validation_write_mailbox_candidate(proc_t *publisher,
         return 0;
     }
 
+    // SEQLOCK PROTOCOL: Write payload fields FIRST, epoch LAST
     mb->magic = AYKEN_SCHED_MB_MAGIC;
     mb->version = AYKEN_SCHED_MB_VERSION;
     mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
-    mb->epoch = epoch;
     mb->proposer_pid = (uint32_t)publisher->pid;
     mb->candidate_pid = candidate_pid;
     mb->flags = 0;
     mb->status = AYKEN_SCHED_STATUS_EMPTY;
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     mb->reserved = 0;
+    
+    // Write barrier - ensure all payload writes complete before epoch write
+    smp_wmb();
+    
+    // Write epoch LAST (commit indicator)
+    mb->epoch = epoch;
+    
     return 1;
 }
 

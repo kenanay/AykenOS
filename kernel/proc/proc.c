@@ -12,6 +12,7 @@
 #include "../arch/x86_64/port_io.h"
 #include "../sched/sched_mailbox.h"
 #include "../include/alias_registry.h"
+#include "../include/barrier.h"
 
 #ifndef AYKEN_GATE45_PROOF
 #define AYKEN_GATE45_PROOF 0
@@ -872,16 +873,23 @@ static int proc_write_mailbox_candidate(proc_t *publisher,
         return 0;
     }
 
+    // SEQLOCK PROTOCOL: Write payload fields FIRST, epoch LAST
     mb->magic = AYKEN_SCHED_MB_MAGIC;
     mb->version = AYKEN_SCHED_MB_VERSION;
     mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
-    mb->epoch = epoch;
     mb->proposer_pid = (uint32_t)publisher->pid;
     mb->candidate_pid = candidate_pid;
     mb->flags = 0;
     mb->status = AYKEN_SCHED_STATUS_EMPTY;
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     mb->reserved = 0;
+    
+    // Write barrier - ensure all payload writes complete before epoch write
+    smp_wmb();
+    
+    // Write epoch LAST (commit indicator)
+    mb->epoch = epoch;
+    
     return 1;
 }
 
@@ -2599,17 +2607,23 @@ proc_t *proc_create_user_process(const char *name,
 #endif
     // Bootstrap mailbox contract so first scheduler handoff has deterministic data.
     // Ring3 code still advances epoch to publish fresh decisions.
+    // SEQLOCK PROTOCOL: Write payload fields FIRST, epoch LAST
     ayken_sched_mailbox_t *mb = (ayken_sched_mailbox_t *)mb_dst;
     mb->magic = AYKEN_SCHED_MB_MAGIC;
     mb->version = AYKEN_SCHED_MB_VERSION;
     mb->kind = AYKEN_SCHED_HINT_CANDIDATE;
-    mb->epoch = 1;
     mb->proposer_pid = (uint32_t)p->pid;
     mb->candidate_pid = (uint32_t)p->pid;
     mb->flags = 0;
     mb->status = AYKEN_SCHED_STATUS_EMPTY;
     mb->reject_reason = AYKEN_SCHED_REJECT_NONE;
     mb->reserved = 0;
+    
+    // Write barrier - ensure all payload writes complete before epoch write
+    smp_wmb();
+    
+    // Write epoch LAST (commit indicator)
+    mb->epoch = 1;
 
     if (proc_map_execution_delivery_surfaces(p, user_pml4) != 0) {
         outb(0xE9, (uint8_t)'7');

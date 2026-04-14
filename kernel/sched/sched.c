@@ -21,6 +21,7 @@
 #include "../arch/x86_64/port_io.h"
 #include "../drivers/console/fb_console.h"
 #include "../include/mm.h"
+#include "../include/barrier.h"
 #include "../include/gdt_idt.h"
 
 #define memset __builtin_memset
@@ -1543,7 +1544,46 @@ static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out
         return 0;
     }
 
-    *out_mb = *src;
+    volatile const ayken_sched_mailbox_t *vsrc = (volatile const ayken_sched_mailbox_t *)src;
+    uint64_t epoch1;
+    uint64_t epoch2;
+    int retries = 0;
+    const int MAX_RETRIES = 5;
+
+    while (retries < MAX_RETRIES) {
+        epoch1 = vsrc->epoch;
+        smp_rmb();
+
+        out_mb->magic         = vsrc->magic;
+        out_mb->version       = vsrc->version;
+        out_mb->kind          = vsrc->kind;
+        out_mb->proposer_pid  = vsrc->proposer_pid;
+        out_mb->candidate_pid = vsrc->candidate_pid;
+        out_mb->flags         = vsrc->flags;
+        out_mb->status        = vsrc->status;
+        out_mb->reject_reason = vsrc->reject_reason;
+        out_mb->reserved      = vsrc->reserved;
+
+        smp_rmb();
+        epoch2 = vsrc->epoch;
+
+        if (epoch1 == epoch2 && epoch1 != 0) {
+            out_mb->epoch = epoch1;
+            break;
+        }
+        retries++;
+    }
+
+    if (retries >= MAX_RETRIES) {
+        if (switched_to_kernel_cr3) {
+            __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+            if (saved_rflags & (1ULL << 9)) {
+                __asm__ volatile("sti");
+            }
+        }
+        sched_perf_note_mailbox_snapshot_exit();
+        return 0;
+    }
 
     if (switched_to_kernel_cr3) {
         __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");

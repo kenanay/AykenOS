@@ -48,19 +48,19 @@ void ayken_sched_hint(uint32_t candidate_pid) {
     // Advance epoch (strictly monotonic)
     uint64_t next_epoch = current_epoch + 1;
     
-    // Write sequence:
-    // 1. Write candidate_pid first
-    // 2. Write epoch last (commit)
-    // 
-    // Ring0 double-read will detect torn writes if epoch changes
-    // between first and second read.
+    // SEQLOCK PROTOCOL: Write payload FIRST, epoch LAST
+    // 1. Write candidate_pid first (payload)
     mb->candidate_pid = candidate_pid;
+    
+    // 2. Write barrier - ensure payload write completes before epoch write
+    //    This prevents torn reads where Ring0 sees new epoch but old candidate_pid
+    __asm__ volatile("sfence" ::: "memory");  // Write barrier (x86-64)
+    
+    // 3. Write epoch last (commit indicator)
     mb->epoch = next_epoch;
     
-    // No explicit memory barrier needed:
-    // - Single-core system (validation profile)
-    // - Ring0 double-read provides atomicity detection
-    // - Volatile prevents compiler reordering
+    // Ring0 double-read (seqlock consumer) will detect torn writes if epoch changes
+    // between first and second read. The write barrier ensures epoch is written last.
     
     // Validation happens asynchronously on next timer tick
     // Ring0 emits markers: [[AYKEN_SCHED_MB_ACCEPT]] or [[AYKEN_SCHED_MB_REJECT]]
