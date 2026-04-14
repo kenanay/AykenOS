@@ -680,6 +680,18 @@ static void kernel_late_init(void)
     fb_print("[OK] init process created (PID 1) - mechanism only.\n");
 
     // ---------------------------------------------------------
+    // 5.1) Phase-16 Task 5: BCIB Worker Creation (Validation Profile Only)
+    // ---------------------------------------------------------
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+    dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE\n");
+    if (bcib_worker_create() == 0) {
+        fb_print("[OK] BCIB worker process created (validation profile only).\n");
+    } else {
+        fb_print("[WARN] BCIB worker creation failed or not enabled.\n");
+    }
+#endif
+
+    // ---------------------------------------------------------
     // 5) Ring3 operations removed in Phase 2.5 - Step C
     // ---------------------------------------------------------
     // Ring3 VFS demonstration removed - operations now in Ring3

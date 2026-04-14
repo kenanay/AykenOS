@@ -38,8 +38,10 @@ else ifeq ($(MINIMAL_MODE),entry-proof)
 MINIMAL_SRC := minimal_entry_proof.S
 else ifeq ($(MINIMAL_MODE),bcib-forbidden)
 MINIMAL_SRC := minimal_bcib_forbidden.S
+else ifeq ($(MINIMAL_MODE),bcib-worker-bootstrap)
+MINIMAL_SRC := minimal_bcib_worker.S
 else
-$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, or bcib-forbidden)
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, bcib-forbidden, or bcib-worker-bootstrap)
 endif
 
 CFLAGS := -target x86_64-elf \

@@ -168,4 +168,10 @@ void proc_teardown_exit_surfaces(proc_t *p,
                                  uint32_t result_count);
 void proc_emit_low_half_kheap_runtime_proof(proc_t *p, const char *phase);
 
+// Phase-16 Task 5: BCIB Role Provisioning - Worker Creation API
+// These functions are ONLY available in validation profile builds
+int bcib_worker_create(void);
+uint64_t bcib_worker_get_pid(void);
+proc_t *bcib_worker_get_proc(void);
+
 #endif
