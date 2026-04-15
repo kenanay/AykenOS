@@ -174,4 +174,8 @@ int bcib_worker_create(void);
 uint64_t bcib_worker_get_pid(void);
 proc_t *bcib_worker_get_proc(void);
 
+int user_worker_create(void);
+uint64_t user_worker_get_pid(void);
+proc_t *user_worker_get_proc(void);
+
 #endif

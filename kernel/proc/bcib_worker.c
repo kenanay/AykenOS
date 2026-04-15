@@ -33,6 +33,10 @@
 static proc_t *g_bcib_worker = NULL;
 static uint64_t g_bcib_worker_pid = 0;
 
+// USER worker state (validation profile only)
+static proc_t *g_user_worker = NULL;
+static uint64_t g_user_worker_pid = 0;
+
 // BCIB worker entry point (external assembly)
 extern void bcib_worker_entry(void);
 
@@ -145,6 +149,103 @@ proc_t *bcib_worker_get_proc(void) {
     return g_bcib_worker;
 }
 
+/**
+ * user_worker_create - Create USER worker process (validation profile only)
+ * 
+ * Creates a dedicated USER-role process during kernel initialization.
+ * This worker can poll execution inbox and complete executions.
+ * 
+ * Acceptance Criteria:
+ *   - Worker process created with deterministic PID
+ *   - Process has PROC_EXECUTION_ROLE_USER from creation
+ *   - Worker has inbox/payload regions mapped
+ *   - Worker can call SYS_V2_COMPLETE_EXECUTION without kill
+ * 
+ * Returns:
+ *   0 on success, -1 on failure
+ */
+int user_worker_create(void) {
+    bcib_debug("[[AYKEN_USER_WORKER_CREATE_BEGIN]]\n");
+    
+    // Guard: Only create once
+    if (g_user_worker != NULL) {
+        bcib_debug("[[AYKEN_USER_WORKER_CREATE_SKIP]] already_created\n");
+        return 0;
+    }
+    
+    // TEMPORARY: Use same embedded_elf for now
+    // TODO: Implement dual-payload build system
+    const uint8_t *image = embedded_elf;
+    uint64_t image_size = (uint64_t)embedded_elf_size;
+    
+    // Create user process with USER worker name
+    proc_t *worker = proc_create_user_process("user_worker", image, image_size, PROC_IMAGE_ELF);
+    
+    if (worker == NULL) {
+        bcib_debug("[[AYKEN_USER_WORKER_CREATE_FAIL]] proc_create_failed\n");
+        return -1;
+    }
+    
+    // CRITICAL: Assign USER execution role (default, but explicit for clarity)
+    // USER role allows SYS_V2_COMPLETE_EXECUTION but NOT SYS_V2_SUBMIT_EXECUTION
+    worker->execution_role = PROC_EXECUTION_ROLE_USER;
+    
+    // Store worker reference
+    g_user_worker = worker;
+    g_user_worker_pid = (uint64_t)worker->pid;
+    
+    // Emit success marker with PID and role
+    bcib_debug("[[AYKEN_USER_WORKER_CREATE_OK]] pid=");
+    
+    // Emit PID as decimal digits
+    uint64_t pid = g_user_worker_pid;
+    if (pid == 0) {
+        outb(0xE9, '0');
+        outb(0x3F8, '0');
+    } else {
+        char digits[20];
+        int i = 0;
+        while (pid > 0) {
+            digits[i++] = '0' + (pid % 10);
+            pid /= 10;
+        }
+        // Reverse digits
+        for (int j = i - 1; j >= 0; j--) {
+            outb(0xE9, (uint8_t)digits[j]);
+            outb(0x3F8, (uint8_t)digits[j]);
+        }
+    }
+    
+    bcib_debug(" role=USER\n");
+    
+    return 0;
+}
+
+/**
+ * user_worker_get_pid - Get USER worker PID
+ * 
+ * Returns the PID of the USER worker process for test coordination.
+ * 
+ * Returns:
+ *   Worker PID, or 0 if worker not created
+ */
+uint64_t user_worker_get_pid(void) {
+    return g_user_worker_pid;
+}
+
+/**
+ * user_worker_get_proc - Get USER worker process structure
+ * 
+ * Returns the process structure for the USER worker.
+ * Used for test coordination and validation.
+ * 
+ * Returns:
+ *   Worker process pointer, or NULL if worker not created
+ */
+proc_t *user_worker_get_proc(void) {
+    return g_user_worker;
+}
+
 #else // !AYKEN_VALIDATION
 
 // Production builds: BCIB worker infrastructure not available
@@ -157,6 +258,18 @@ uint64_t bcib_worker_get_pid(void) {
 }
 
 proc_t *bcib_worker_get_proc(void) {
+    return NULL;  // Not available in production
+}
+
+int user_worker_create(void) {
+    return -1;  // Not available in production
+}
+
+uint64_t user_worker_get_pid(void) {
+    return 0;  // Not available in production
+}
+
+proc_t *user_worker_get_proc(void) {
     return NULL;  // Not available in production
 }
 

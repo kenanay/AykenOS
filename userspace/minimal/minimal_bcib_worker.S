@@ -79,7 +79,7 @@ work_loop:
     mov $1003, %rax
     lea bcib_graph(%rip), %rdi  # arg1: bcib_graph pointer (REAL, not NULL!)
     mov $16, %rsi               # arg2: graph_size (sizeof(bcib_graph_t) = 16 bytes)
-    xor %rdx, %rdx              # arg3: exec_context_id = 0 (placeholder)
+    mov $3, %rdx                # arg3: target_context_id = 3 (USER worker PID)
     xor %r10, %r10              # flags = 0
     int $0x80
 
@@ -173,11 +173,49 @@ work_loop:
     mov $'\n', %al
     out %al, %dx
 
-    # Continue work loop (in real implementation, this would wait for work)
-    # For now, loop a few times to demonstrate epoch updates
-    jmp work_loop
-
-    # Exit (unreachable in current implementation)
+    # CRITICAL: Single-shot submit for pipeline proof
+    # Emit submit-once marker
+    mov $0xE9, %dx
+    mov $'[', %al
+    out %al, %dx
+    mov $'B', %al
+    out %al, %dx
+    mov $'C', %al
+    out %al, %dx
+    mov $'I', %al
+    out %al, %dx
+    mov $'B', %al
+    out %al, %dx
+    mov $'_', %al
+    out %al, %dx
+    mov $'S', %al
+    out %al, %dx
+    mov $'U', %al
+    out %al, %dx
+    mov $'B', %al
+    out %al, %dx
+    mov $'M', %al
+    out %al, %dx
+    mov $'I', %al
+    out %al, %dx
+    mov $'T', %al
+    out %al, %dx
+    mov $'_', %al
+    out %al, %dx
+    mov $'O', %al
+    out %al, %dx
+    mov $'N', %al
+    out %al, %dx
+    mov $'C', %al
+    out %al, %dx
+    mov $'E', %al
+    out %al, %dx
+    mov $']', %al
+    out %al, %dx
+    mov $'\n', %al
+    out %al, %dx
+    
+    # Exit cleanly after single submit
     mov $60, %rax
     xor %rdi, %rdi
     int $0x80

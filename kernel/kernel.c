@@ -733,6 +733,13 @@ static void kernel_late_init(void)
     } else {
         fb_print("[WARN] BCIB worker creation failed or not enabled.\n");
     }
+    
+    dual_channel_write("[K][LATE]8.2 USER_WORKER_CREATE\n");
+    if (user_worker_create() == 0) {
+        fb_print("[OK] USER worker process created (validation profile only).\n");
+    } else {
+        fb_print("[WARN] USER worker creation failed or not enabled.\n");
+    }
 #endif
 
     // ---------------------------------------------------------
