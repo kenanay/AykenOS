@@ -40,8 +40,12 @@ else ifeq ($(MINIMAL_MODE),bcib-forbidden)
 MINIMAL_SRC := minimal_bcib_forbidden.S
 else ifeq ($(MINIMAL_MODE),bcib-worker-bootstrap)
 MINIMAL_SRC := minimal_bcib_worker.S
+else ifeq ($(MINIMAL_MODE),dual-worker-pipeline)
+# Dual-payload mode: build both BCIB and USER workers
+MINIMAL_SRC := minimal_bcib_worker.S
+DUAL_PAYLOAD_MODE := 1
 else
-$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, bcib-forbidden, or bcib-worker-bootstrap)
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, bcib-forbidden, bcib-worker-bootstrap, or dual-worker-pipeline)
 endif
 
 CFLAGS := -target x86_64-elf \
@@ -67,12 +71,31 @@ LDFLAGS := -nostdlib \
            -Wl,--build-id=none \
            -Wl,-z,max-page-size=0x1000
 
-all: minimal.elf user.bin
+ifdef DUAL_PAYLOAD_MODE
+# Dual-payload mode: build both BCIB and USER workers
+all: bcib_worker.elf user_worker.elf user.bin
 
-$(MODE_STAMP): FORCE
-	@if [ ! -f $(MODE_STAMP) ] || [ "$$(cat $(MODE_STAMP) 2>/dev/null)" != "$(MINIMAL_MODE)" ]; then \
-		echo "$(MINIMAL_MODE)" > $(MODE_STAMP); \
-	fi
+bcib_worker.o: minimal_bcib_worker.S $(MODE_STAMP)
+	@echo "[DUAL-PAYLOAD] Building BCIB worker payload"
+	$(AS) $(ASFLAGS) -c -o $@ minimal_bcib_worker.S
+
+bcib_worker.elf: bcib_worker.o user.ld
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ bcib_worker.o
+
+user_worker.o: minimal_user_worker.S $(MODE_STAMP)
+	@echo "[DUAL-PAYLOAD] Building USER worker payload"
+	$(AS) $(ASFLAGS) -c -o $@ minimal_user_worker.S
+
+user_worker.elf: user_worker.o user.ld
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ user_worker.o
+
+# Legacy user.bin for compatibility (uses BCIB worker)
+user.bin: bcib_worker.elf bcib_worker.o user.ld
+	$(CC) $(CFLAGS) -nostdlib -static -Wl,-T,user.ld -Wl,--oformat=binary -Wl,-z,max-page-size=0x1000 -o $@ bcib_worker.o
+
+else
+# Single-payload mode (legacy)
+all: minimal.elf user.bin
 
 minimal.o: $(MINIMAL_SRC) $(MODE_STAMP)
 	@echo "[PHASE10] userspace mode: $(MINIMAL_MODE) ($(MINIMAL_SRC))"
@@ -83,12 +106,18 @@ minimal.elf: minimal.o user.ld
 
 user.bin: minimal.elf minimal.o user.ld
 	$(CC) $(CFLAGS) -nostdlib -static -Wl,-T,user.ld -Wl,--oformat=binary -Wl,-z,max-page-size=0x1000 -o $@ minimal.o
+endif
+
+$(MODE_STAMP): FORCE
+	@if [ ! -f $(MODE_STAMP) ] || [ "$$(cat $(MODE_STAMP) 2>/dev/null)" != "$(MINIMAL_MODE)" ]; then \
+		echo "$(MINIMAL_MODE)" > $(MODE_STAMP); \
+	fi
 
 test: minimal.elf
 	$(PYTHON) ./test_minimal_elf.py ./minimal.elf
 
 clean:
-	rm -f minimal.o minimal.elf user.bin $(MODE_STAMP)
+	rm -f minimal.o minimal.elf user.bin bcib_worker.o bcib_worker.elf user_worker.o user_worker.elf $(MODE_STAMP)
 
 .PHONY: all clean test FORCE
 FORCE:

@@ -768,13 +768,15 @@ KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
 # Phase 10: User binary embedding
 USER_MINIMAL_DIR = userspace/minimal
 USER_MINIMAL_ELF = $(USER_MINIMAL_DIR)/minimal.elf
+USER_MINIMAL_BCIB_ELF = $(USER_MINIMAL_DIR)/bcib_worker.elf
+USER_MINIMAL_USER_ELF = $(USER_MINIMAL_DIR)/user_worker.elf
 USER_MINIMAL_BIN = $(USER_MINIMAL_DIR)/user.bin
 USER_MINIMAL_BIN_SHA = $(USER_MINIMAL_DIR)/user.bin.sha256
 USER_MINIMAL_DEFAULT_MODE := phase10a2
 
 # Validate USER_MINIMAL_MODE if set
 ifneq ($(strip $(USER_MINIMAL_MODE)),)
-  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden execution-delivery-proof execution-marker-only phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden bcib-worker-bootstrap
+  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden execution-delivery-proof execution-marker-only phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden bcib-worker-bootstrap dual-worker-pipeline
   ifeq ($(filter $(USER_MINIMAL_MODE),$(VALID_MODES)),)
     $(error Invalid USER_MINIMAL_MODE='$(USER_MINIMAL_MODE)'. Valid values: $(VALID_MODES))
   endif
@@ -1142,8 +1144,24 @@ $(USER_MINIMAL_MODE_STAMP): FORCE
 	@printf "%s\n" "$(USER_MINIMAL_EFFECTIVE_MODE)" > "$@"
 
 $(USER_MINIMAL_ELF): $(USER_MINIMAL_SOURCES) $(USER_MINIMAL_MODE_STAMP)
+ifeq ($(USER_MINIMAL_EFFECTIVE_MODE),dual-worker-pipeline)
+	@echo "[DUAL-PAYLOAD] Building dual-worker payloads..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" bcib_worker.elf user_worker.elf
+	@# Create minimal.elf symlink for compatibility
+	@ln -sf bcib_worker.elf $(USER_MINIMAL_ELF)
+else
 	@echo "[PHASE10] Building minimal user ELF..."
 	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" minimal.elf
+endif
+
+# Dual-payload targets (only for dual-worker-pipeline mode)
+$(USER_MINIMAL_BCIB_ELF): $(USER_MINIMAL_SOURCES) $(USER_MINIMAL_MODE_STAMP)
+	@echo "[DUAL-PAYLOAD] Building BCIB worker ELF..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" bcib_worker.elf
+
+$(USER_MINIMAL_USER_ELF): $(USER_MINIMAL_SOURCES) $(USER_MINIMAL_MODE_STAMP)
+	@echo "[DUAL-PAYLOAD] Building USER worker ELF..."
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" user_worker.elf
 
 $(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Building minimal user binary..."
@@ -1151,6 +1169,31 @@ $(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF) $(USER_MINIMAL_MODE_STAMP)
 
 $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Generating embedded ELF header..."
+ifeq ($(USER_MINIMAL_EFFECTIVE_MODE),dual-worker-pipeline)
+	@# Dual-payload mode: embed both BCIB and USER workers
+	@$(MAKE) -C $(USER_MINIMAL_DIR) MINIMAL_MODE="$(USER_MINIMAL_EFFECTIVE_MODE)" bcib_worker.elf user_worker.elf
+	@BCIB_HASH=$$(shasum -a 256 $(USER_MINIMAL_BCIB_ELF) | awk '{print $$1}'); \
+	USER_HASH=$$(shasum -a 256 $(USER_MINIMAL_USER_ELF) | awk '{print $$1}'); \
+	python3 $(EMBED_ELF_TOOL) --bcib-input $(USER_MINIMAL_BCIB_ELF) --user-input $(USER_MINIMAL_USER_ELF) --output $(EMBEDDED_ELF_HEADER) --mode $(USER_MINIMAL_EFFECTIVE_MODE); \
+	EMBEDDED_BCIB_HASH=$$(grep 'embedded_elf_bcib_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
+	EMBEDDED_USER_HASH=$$(grep 'embedded_elf_user_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
+	if [ "$$BCIB_HASH" != "$$EMBEDDED_BCIB_HASH" ]; then \
+		echo "[ERROR] BCIB payload hash mismatch!"; \
+		echo "  Expected: $$BCIB_HASH"; \
+		echo "  Embedded: $$EMBEDDED_BCIB_HASH"; \
+		exit 1; \
+	fi; \
+	if [ "$$USER_HASH" != "$$EMBEDDED_USER_HASH" ]; then \
+		echo "[ERROR] USER payload hash mismatch!"; \
+		echo "  Expected: $$USER_HASH"; \
+		echo "  Embedded: $$EMBEDDED_USER_HASH"; \
+		exit 1; \
+	fi; \
+	echo "[DUAL-PAYLOAD] Hash verification passed:"; \
+	echo "  BCIB: $$EMBEDDED_BCIB_HASH"; \
+	echo "  USER: $$EMBEDDED_USER_HASH"
+else
+	@# Single-payload mode (legacy)
 	@EXPECTED_PAYLOAD_HASH=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
 	python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER) --mode $(USER_MINIMAL_EFFECTIVE_MODE); \
 	EMBEDDED_HASH=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
@@ -1161,6 +1204,7 @@ $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL) $(USER_MINIMAL_MOD
 		exit 1; \
 	fi; \
 	echo "[PHASE10] Hash verification passed: $$EMBEDDED_HASH"
+endif
 
 # Generate build manifest (AUTHORITY) - must complete before kernel link
 $(PAYLOAD_MANIFEST): $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
