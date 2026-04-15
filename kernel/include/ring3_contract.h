@@ -9,9 +9,16 @@
 #define AYKEN_RING3_USER_CODE_SELECTOR 0x23
 
 /* Baseline user RFLAGS: bit1 reserved set, IF forced on. */
+#if AYKEN_PHASE16_BCIB_PROOF_TEST == 1
+/* PHASE 3B FIX: Set IOPL=3 for Ring3 debugging (test builds only) */
+#define AYKEN_RING3_RFLAGS_BASE 0x3202  /* IF=1, IOPL=3 */
+#define AYKEN_RING3_RFLAGS_CLEARMASK \
+    ((1 << 14) | (1 << 16) | (1 << 17) | (1 << 8))  /* Clear NT, RF, VM, TF, but NOT IOPL */
+#else
 #define AYKEN_RING3_RFLAGS_BASE 0x202
 #define AYKEN_RING3_RFLAGS_CLEARMASK \
     ((3 << 12) | (1 << 14) | (1 << 16) | (1 << 17) | (1 << 8))
+#endif
 
 /*
  * Dedicated low-half trampoline VA used by fetch-stub validation builds.

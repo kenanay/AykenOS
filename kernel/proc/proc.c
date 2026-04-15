@@ -2635,6 +2635,14 @@ proc_t *proc_create_user_process(const char *name,
     p->context.rsp = p->stack_top - 8;  // SysV ABI: entry %rsp = 8 mod 16
     p->context.rflags = 0x202;  // IF=1 + reserved bit 1
     
+#if AYKEN_PHASE16_BCIB_PROOF_TEST == 1
+    // PHASE 3B FIX: Set IOPL=3 for Ring3 debugging
+    // Allows userspace to use 'out' instruction for marker emission
+    // SECURITY: Only enabled in test builds, NOT for production
+    p->context.rflags |= (3ULL << 12);  // Set IOPL=3 (bits 12-13)
+    debugcon_write("P10_RING3_IOPL3_SET\n");
+#endif
+    
     // Allocate kernel stack for Ring0 during Ring3→Ring0 transitions (interrupts/syscalls)
     uint64_t kernel_stack = (uint64_t)kmalloc(4096);
     if (kernel_stack == 0) {
