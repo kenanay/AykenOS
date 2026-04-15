@@ -55,13 +55,13 @@ AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT ?= 2
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST ?= 0
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT ?= 2
 AYKEN_ALIAS_PROOF_SELFTEST ?= 0
-AYKEN_RING3_FETCH_PROBE ?= 0
+AYKEN_RING3_FETCH_PROBE ?= 1
 AYKEN_RING3_SECOND_CANONICAL_PROBE ?= 0
 AYKEN_RING3_FRESH_FRAME_PROBE ?= 0
 AYKEN_RING3_IRETQ_DIAG_PROBE ?= 0
-AYKEN_RING3_POST_CR3_TEXT_PROBE ?= 0
+AYKEN_RING3_POST_CR3_TEXT_PROBE ?= 1
 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY ?= 0
-AYKEN_RING3_ENTRY_GUARD ?= 0
+AYKEN_RING3_ENTRY_GUARD ?= 1
 AYKEN_SHARE_KERNEL_UPPER_HALF ?= 0
 AYKEN_RING3_LOW_FETCH_STUB ?= 0
 AYKEN_RING3_CANONICAL_FETCH_STUB ?= 0
@@ -1280,8 +1280,8 @@ efi-img:
 		echo "ERROR: USER_MINIMAL_MODE not set"; \
 		exit 1; \
 	fi
-	@if [ "$(USER_MINIMAL_MODE)" != "bcib-worker-bootstrap" ]; then \
-		echo "ERROR: USER_MINIMAL_MODE must be 'bcib-worker-bootstrap'"; \
+	@if [ "$(USER_MINIMAL_MODE)" != "bcib-worker-bootstrap" ] && [ "$(USER_MINIMAL_MODE)" != "dual-worker-pipeline" ]; then \
+		echo "ERROR: USER_MINIMAL_MODE must be 'bcib-worker-bootstrap' or 'dual-worker-pipeline'"; \
 		echo "Current value: $(USER_MINIMAL_MODE)"; \
 		exit 1; \
 	fi
@@ -1299,7 +1299,7 @@ efi-img:
 		$(EFI_IMG)
 	@# Verify the built kernel contains BCIB worker symbols
 	@echo "Verifying BCIB worker symbols in kernel..."
-	@if ! strings $(KERNEL_ELF) | grep -q "bcib-worker-bootstrap"; then \
+	@if ! strings $(KERNEL_ELF) | grep -qE "(bcib-worker-bootstrap|dual-worker-pipeline)"; then \
 		echo "ERROR: Built kernel does not contain BCIB worker bootstrap marker"; \
 		echo "Build system produced wrong artifact!"; \
 		exit 1; \
