@@ -198,11 +198,11 @@ int boundary_check_bcib_submission_path(void *bcib_graph, uint64_t graph_size, u
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
     
-    /* TEMPORARY: Allow NULL graph for bootstrap testing
-     * TODO: Remove this after implementing real BCIB graph submission */
+    /* Validate BCIB graph pointer is in userspace */
     if (bcib_graph == NULL) {
-        serial_write("[BOUNDARY] WARNING: NULL BCIB graph (bootstrap test mode)\n");
-        return 0; /* Allow for now */
+        boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                        "NULL BCIB graph pointer");
+        return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
     
     /* Check if pointer is in kernel space (fail-closed) */
@@ -216,11 +216,31 @@ int boundary_check_bcib_submission_path(void *bcib_graph, uint64_t graph_size, u
     }
     
     /* Validate graph size is reasonable (prevent DoS) */
-    if (graph_size == 0 || graph_size > MAX_BCIB_GRAPH_SIZE) {
+    if (graph_size < 16) {  /* Minimum: sizeof(bcib_graph_t) = 16 bytes */
         boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
-                                        "Invalid BCIB graph size");
+                                        "BCIB graph too small");
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
+    
+    if (graph_size > MAX_BCIB_GRAPH_SIZE) {
+        boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                        "BCIB graph too large");
+        return BOUNDARY_ERR_ISOLATION_VIOLATION;
+    }
+    
+    /* Validate BCIB graph magic number */
+    uint32_t *magic_ptr = (uint32_t *)bcib_graph;
+    if (*magic_ptr != 0x42434942) {  /* "BCIB" in little-endian */
+        serial_write("[BOUNDARY] Invalid BCIB graph magic\n");
+        boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                        "Invalid BCIB graph magic number");
+        return BOUNDARY_ERR_ISOLATION_VIOLATION;
+    }
+    
+    /* Emit validation success marker */
+    serial_write("[BCIB_GRAPH_VALID] magic=0x42434942 size=");
+    boundary_write_u64(graph_size);
+    serial_write("\n");
     
     debug_printf("[BOUNDARY] BCIB submission path validated for context %lu\n", context_id);
     return 0;

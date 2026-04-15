@@ -1,6 +1,6 @@
 # BCIB Worker Test Payload
-# Purpose: Prove BCIB-role process can call SYS_V2_SUBMIT_EXECUTION
-# Expected: No BOUNDARY_KILL, execution accepted
+# Purpose: Prove BCIB-role process can call SYS_V2_SUBMIT_EXECUTION with valid graph
+# Expected: No BOUNDARY_KILL, execution accepted with valid BCIB graph
 #
 # Mailbox Epoch Update Fix:
 # After each work cycle, the worker must increment its mailbox epoch
@@ -13,6 +13,15 @@
 #   +0x08: epoch (8 bytes) <- CRITICAL: Must increment after work
 #   +0x10: proposer_pid (4 bytes)
 #   +0x14: candidate_pid (4 bytes)
+
+.section .rodata
+# Minimal BCIB Graph (aligned to 8 bytes, read-only)
+.align 8
+bcib_graph:
+    .long 0x42434942        # magic: "BCIB" in little-endian
+    .long 1                 # version: 1
+    .quad 0                 # entry_node: 0 (bootstrap)
+    .quad 1                 # node_count: 1 (minimal)
 
 .section .text
 .global _start
@@ -66,12 +75,12 @@ _start:
 
 work_loop:
     # Call SYS_V2_SUBMIT_EXECUTION (syscall 1003)
-    # This should NOT trigger BOUNDARY_KILL because we have BCIB role
+    # This should NOT trigger BOUNDARY_KILL because we have BCIB role AND valid graph
     mov $1003, %rax
-    xor %rdi, %rdi  # execution_id = 0 (placeholder)
-    xor %rsi, %rsi  # context_ptr = NULL (placeholder)
-    xor %rdx, %rdx  # context_size = 0
-    xor %r10, %r10  # flags = 0
+    lea bcib_graph(%rip), %rdi  # arg1: bcib_graph pointer (REAL, not NULL!)
+    mov $16, %rsi               # arg2: graph_size (sizeof(bcib_graph_t) = 16 bytes)
+    xor %rdx, %rdx              # arg3: exec_context_id = 0 (placeholder)
+    xor %r10, %r10              # flags = 0
     int $0x80
 
     # Emit success marker (if we reach here, enforcement passed)
