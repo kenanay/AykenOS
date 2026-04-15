@@ -5757,8 +5757,29 @@ void sched_init(void)
 
 void sched_start(void)
 {
+    // Phase 3A Layer 1: Immediate entry marker (before any other code)
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'[');
+    outb(0xE9, (uint8_t)'S');
+    outb(0xE9, (uint8_t)'C');
+    outb(0xE9, (uint8_t)'H');
+    outb(0xE9, (uint8_t)'E');
+    outb(0xE9, (uint8_t)'D');
+    outb(0xE9, (uint8_t)'_');
+    outb(0xE9, (uint8_t)'S');
+    outb(0xE9, (uint8_t)'T');
+    outb(0xE9, (uint8_t)'A');
+    outb(0xE9, (uint8_t)'R');
+    outb(0xE9, (uint8_t)'T');
+    outb(0xE9, (uint8_t)']');
+    outb(0xE9, (uint8_t)']');
+    outb(0xE9, (uint8_t)'\n');
+    
     proc_drain_deferred_reap();
     sched_perf_note_first_scheduler_activity();
+    
+    // Phase 3A Layer 1: Scheduler entry marker
+    sched_emit_marker("[[AYKEN_SCHED_START_ENTRY]]\n");
 
     // Runtime-observed config marker for CI/gates (independent from shell env echo).
     sched_emit_marker("[K][CFG] user_minimal_mode=");
@@ -5931,6 +5952,12 @@ void sched_start(void)
     sched_force_ring3_entry_cr3_to_sterile_root(current_proc);
     sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
+    
+    // Phase 3A Layer 1: First scheduler decision marker
+    sched_emit_marker("[[AYKEN_SCHED_FIRST_DECISION]] pid=");
+    sched_emit_u64_dec((uint64_t)current_proc->pid);
+    sched_emit_marker("\n");
+    
     switch_to_first(&current_proc->context);
     
     // DEBUG: This should never be reached if switch_to_first works
@@ -5944,6 +5971,13 @@ void sched_start(void)
 static void sched_yield_core(int reenable_if)
 {
     proc_drain_deferred_reap();
+    
+    // Phase 3A Layer 1: Scheduler tick marker (called from IRQ0)
+    static uint8_t sched_tick_marker_emitted = 0;
+    if (!sched_tick_marker_emitted) {
+        sched_tick_marker_emitted = 1;
+        sched_emit_marker("[[AYKEN_SCHED_TICK]]\n");
+    }
 
     SCHED_DBG_OUT((uint8_t)'[');
     SCHED_DBG_OUT((uint8_t)'S');

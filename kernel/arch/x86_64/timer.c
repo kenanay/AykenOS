@@ -150,6 +150,15 @@ void timer_isr_c(void *frame_ptr)
     execution_slot_guard_t slot_guard = {0};
     execution_slot_trace_scope_t trace_scope = {0};
     tick_count++;
+    
+    // Phase 3A Layer 2: IRQ0 tick marker
+    static uint8_t irq0_marker_emitted = 0;
+    if (!irq0_marker_emitted && tick_count >= 1) {
+        irq0_marker_emitted = 1;
+        timer_debugcon_write("[[AYKEN_IRQ0_TICK]] count=");
+        timer_debugcon_hex64(tick_count);
+        timer_debugcon_write("\n");
+    }
 
     execution_slot_enter_critical(&slot_guard);
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_TIMEOUT_IRQ);

@@ -477,10 +477,12 @@ void kmain_real(ayken_boot_info_t *boot)
     outb(0xE9, (uint8_t)'B');
     outb(0xE9, (uint8_t)'B');
     outb(0xE9, (uint8_t)'B');
+    outb(0xE9, (uint8_t)'\n');
     sched_start();
     outb(0xE9, (uint8_t)'C');
     outb(0xE9, (uint8_t)'C');
     outb(0xE9, (uint8_t)'C');
+    outb(0xE9, (uint8_t)'\n');
 
     // Normalde buraya dönmez; yine de güvenlik için
     for (;;) {
