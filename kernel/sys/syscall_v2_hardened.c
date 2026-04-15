@@ -139,6 +139,10 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         boundary_init_done = 1;
     }
     
+    /* CRITICAL FIX: Register context_type in boundary_states[] AFTER init, BEFORE enforcement checks
+     * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
+    boundary_set_context_type(context_id, context_type, process_id);
+    
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
     boundary_result = boundary_validate_syscall(syscall_num, context_type, context_id);
     if (boundary_result != 0) {

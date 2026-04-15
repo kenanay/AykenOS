@@ -122,6 +122,24 @@ int boundary_enforce_init(void) {
 }
 
 /**
+ * Set context type for a given context_id
+ * Called by syscall dispatcher to register context type before enforcement checks
+ * 
+ * CRITICAL: This must be called BEFORE boundary_detect_bridge_bypass() to ensure
+ * boundary_states[] array is populated with correct context_type
+ */
+void boundary_set_context_type(uint64_t context_id, execution_context_type_t context_type, uint64_t process_id) {
+    if (!boundary_initialized) {
+        return; /* Silently fail if not initialized - init will happen soon */
+    }
+    
+    boundary_state_t *state = &boundary_states[context_id % MAX_EXECUTION_CONTEXTS];
+    state->context_type = context_type;
+    state->context_id = context_id;
+    state->process_id = process_id;
+}
+
+/**
  * Validate syscall against execution context type
  * Enforces Requirements 1.5, 1.6, 1.7, 1.8 using explicit enforcement matrix
  */
