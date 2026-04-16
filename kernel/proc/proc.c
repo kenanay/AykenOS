@@ -2343,9 +2343,42 @@ static uint64_t load_flat_image(uint64_t pml4_phys, const uint8_t *image, uint64
     uint8_t *dst = (uint8_t *)paging_phys_to_virt(phys);
     memset(dst, 0, AYKEN_FRAME_SIZE);
 
+#ifdef AYKEN_RING3_STERILE_PAYLOAD_TEST
+    // STERILE PAYLOAD TEST: Ultra-minimal code to isolate exception handler path
+    // This bypasses all I/O and complex instructions to test pure Ring3 transition
+    debugcon_write("[[STERILE_PAYLOAD_ACTIVE]] nop+jmp\n");
+    debugcon_write("[[STERILE_U_CHAR_VALUE]] ");
+    outb(0xE9, (uint8_t)'U');
+    debugcon_write("\n");
+    
+    // [[USERSPACE_ENTRY]] - First instruction in Ring3
+    // Emit 'U' to debugcon (port 0xE9) to prove we reached userspace
+    dst[0] = 0x66;  // operand-size prefix for mov dx, imm16
+    dst[1] = 0xBA;  // mov dx, imm16
+    dst[2] = 0xE9;  // 0xE9 (debugcon port)
+    dst[3] = 0x00;  // high byte
+    dst[4] = 0xB0;  // mov al, imm8
+    dst[5] = 'U';   // 'U' character
+    dst[6] = 0xEE;  // out dx, al
+    dst[7] = 0x90;  // nop
+    dst[8] = 0xEB;  // jmp rel8
+    dst[9] = 0xFE;  // -2 (infinite loop to self)
+    
+    // Debug: print the actual bytes written
+    debugcon_write("[[STERILE_BYTES]] ");
+    for (int i = 0; i < 10; i++) {
+        outb(0xE9, "0123456789ABCDEF"[dst[i] >> 4]);
+        outb(0xE9, "0123456789ABCDEF"[dst[i] & 0xF]);
+        outb(0xE9, ' ');
+    }
+    debugcon_write("\n");
+    (void)image;
+    (void)size;
+#else
     uint64_t copy = size < AYKEN_FRAME_SIZE ? size : AYKEN_FRAME_SIZE;
     if (image && copy)
         memcpy(dst, image, copy);
+#endif
 
     debugcon_write("[CODE]=");
     debugcon_hex8(dst[0]);
@@ -2416,7 +2449,29 @@ static uint64_t load_elf_image(uint64_t pml4_phys, const uint8_t *image, uint64_
     debugcon_write("[[PROC_CREATE_BEFORE_RETURN]] entry=");
     debugcon_hex64(ehdr->e_entry);
     debugcon_write("\n");
-    
+
+#ifdef AYKEN_RING3_STERILE_PAYLOAD_TEST
+    debugcon_write("[[STERILE_PAYLOAD_ACTIVE]] nop+jmp\n");
+    uint64_t pte = paging_get_pte_in_pml4(pml4_phys, ehdr->e_entry);
+    if (pte & 1) { // Check if Present bit is set
+        uint64_t phys = pte & ~0xFFFULL;
+        uint8_t *entry_ptr = (uint8_t *)paging_phys_to_virt(phys + (ehdr->e_entry & 0xFFF));
+        if (entry_ptr) {
+            // Emit 'U' to debugcon to prove we reached userspace
+            entry_ptr[0] = 0x66;  // operand-size prefix for mov dx, imm16
+            entry_ptr[1] = 0xBA;  // mov dx, imm16
+            entry_ptr[2] = 0xE9;  // 0xE9 (debugcon port)
+            entry_ptr[3] = 0x00;  // high byte
+            entry_ptr[4] = 0xB0;  // mov al, imm8
+            entry_ptr[5] = 'U';   // 'U' character
+            entry_ptr[6] = 0xEE;  // out dx, al
+            entry_ptr[7] = 0x90;  // nop
+            entry_ptr[8] = 0xEB;  // jmp rel8
+            entry_ptr[9] = 0xFE;  // -2 (infinite loop)
+        }
+    }
+#endif
+
     return ehdr->e_entry;
 }
 
@@ -2556,6 +2611,7 @@ proc_t *proc_create_user_process(const char *name,
     debugcon_write("\n");
 
     // User stack: 2 pages in user space
+    debugcon_write("[[USER_STACK_MAP_BEGIN]]\n");
     for (int i = 0; i < 2; ++i) {
         uint64_t phys = phys_alloc_frame();
         if (!phys) {
@@ -2567,7 +2623,13 @@ proc_t *proc_create_user_process(const char *name,
         memset(dst, 0, AYKEN_FRAME_SIZE);
         paging_map_page_in_pml4(user_pml4, virt, phys,
                                 AYKEN_PTE_USER | AYKEN_PTE_WRITABLE);
+        debugcon_write("[[USER_STACK_PAGE]] va=");
+        debugcon_hex64(virt);
+        debugcon_write(" pa=");
+        debugcon_hex64(phys);
+        debugcon_write("\n");
     }
+    debugcon_write("[[USER_STACK_MAP_DONE]]\n");
 
     // Scratch page for Ring3 INT80 diagnostics (pre/post syscall canary + result buffer)
     uint64_t canary_phys = phys_alloc_frame();
