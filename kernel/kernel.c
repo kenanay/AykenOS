@@ -131,6 +131,32 @@ static void dual_channel_write(const char *s)
     }
 }
 
+static int kernel_streq(const char *a, const char *b)
+{
+    if (!a || !b) {
+        return 0;
+    }
+    while (*a && *b) {
+        if (*a != *b) {
+            return 0;
+        }
+        a++;
+        b++;
+    }
+    return *a == '\0' && *b == '\0';
+}
+
+static int kernel_mode_uses_bcib_workers(void)
+{
+#ifdef AYKEN_USER_MINIMAL_MODE_STRING
+    const char *mode = AYKEN_USER_MINIMAL_MODE_STRING;
+    return kernel_streq(mode, "bcib-worker-bootstrap") ||
+           kernel_streq(mode, "dual-worker-pipeline");
+#else
+    return 0;
+#endif
+}
+
 struct gdtr_snapshot {
     uint16_t limit;
     uint64_t base;
@@ -727,18 +753,29 @@ static void kernel_late_init(void)
     // 5.1) Phase-16 Task 5: BCIB Worker Creation (Validation Profile Only)
     // ---------------------------------------------------------
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
-    dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE\n");
-    if (bcib_worker_create() == 0) {
-        fb_print("[OK] BCIB worker process created (validation profile only).\n");
+    if (kernel_mode_uses_bcib_workers()) {
+        dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE\n");
+        if (bcib_worker_create() == 0) {
+            fb_print("[OK] BCIB worker process created (validation profile only).\n");
+        } else {
+            fb_print("[WARN] BCIB worker creation failed or not enabled.\n");
+        }
+
+        dual_channel_write("[K][LATE]8.2 USER_WORKER_CREATE\n");
+        if (user_worker_create() == 0) {
+            fb_print("[OK] USER worker process created (validation profile only).\n");
+        } else {
+            fb_print("[WARN] USER worker creation failed or not enabled.\n");
+        }
     } else {
-        fb_print("[WARN] BCIB worker creation failed or not enabled.\n");
-    }
-    
-    dual_channel_write("[K][LATE]8.2 USER_WORKER_CREATE\n");
-    if (user_worker_create() == 0) {
-        fb_print("[OK] USER worker process created (validation profile only).\n");
-    } else {
-        fb_print("[WARN] USER worker creation failed or not enabled.\n");
+        dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE_SKIP mode=");
+#ifdef AYKEN_USER_MINIMAL_MODE_STRING
+        dual_channel_write(AYKEN_USER_MINIMAL_MODE_STRING);
+#else
+        dual_channel_write("unknown");
+#endif
+        dual_channel_write("\n");
+        fb_print("[OK] BCIB worker creation skipped for non-BCIB user mode.\n");
     }
 #endif
 

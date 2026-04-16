@@ -40,6 +40,8 @@ Env controls:
   PERF_PREEMPT_MB_SELFTEST=0|1                 (default: 0)
   PERF_PREEMPT_DETERMINISTIC_EXIT=0|1          (default: 1)
   PERF_PREEMPT_RING3_ENTRY_GUARD=0|1           (default: 1 for syscall-v2-runtime, else 0)
+  PERF_PREEMPT_RING3_FETCH_PROBE=0|1           (default: 0)
+  PERF_PREEMPT_POST_CR3_TEXT_PROBE=0|1         (default: 0)
   PERF_PREEMPT_BUILD_DEBUG_SCHED=0|1           (default: make profile)
   PERF_PREEMPT_BUILD_DEBUG_IRQ=0|1             (default: make profile)
   PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET=csv      (default: 0,1)
@@ -76,6 +78,8 @@ PREEMPT_BOOTSTRAP_POLICY="${PERF_PREEMPT_BOOTSTRAP_POLICY:-1}"
 PREEMPT_MB_SELFTEST="${PERF_PREEMPT_MB_SELFTEST:-0}"
 PREEMPT_DETERMINISTIC_EXIT="${PERF_PREEMPT_DETERMINISTIC_EXIT:-1}"
 PREEMPT_RING3_ENTRY_GUARD="${PERF_PREEMPT_RING3_ENTRY_GUARD:-}"
+PREEMPT_RING3_FETCH_PROBE="${PERF_PREEMPT_RING3_FETCH_PROBE:-0}"
+PREEMPT_POST_CR3_TEXT_PROBE="${PERF_PREEMPT_POST_CR3_TEXT_PROBE:-0}"
 PREEMPT_BUILD_DEBUG_SCHED="${PERF_PREEMPT_BUILD_DEBUG_SCHED:-}"
 PREEMPT_BUILD_DEBUG_IRQ="${PERF_PREEMPT_BUILD_DEBUG_IRQ:-}"
 PREEMPT_EXPECTED_QEMU_EXIT_SET="${PERF_PREEMPT_EXPECTED_QEMU_EXIT_SET:-0,1}"
@@ -478,6 +482,8 @@ PREEMPT_BUILD_ARGS=(
   "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
   "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
   "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
+  "AYKEN_RING3_FETCH_PROBE=${PREEMPT_RING3_FETCH_PROBE}"
+  "AYKEN_RING3_POST_CR3_TEXT_PROBE=${PREEMPT_POST_CR3_TEXT_PROBE}"
 )
 if [[ -n "${PREEMPT_BUILD_DEBUG_SCHED}" ]]; then
   PREEMPT_BUILD_ARGS+=("AYKEN_DEBUG_SCHED=${PREEMPT_BUILD_DEBUG_SCHED}")
@@ -493,6 +499,8 @@ fi
   echo "[PERF]   mb_selftest=${PREEMPT_MB_SELFTEST}"
   echo "[PERF]   deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
   echo "[PERF]   ring3_entry_guard=${PREEMPT_RING3_ENTRY_GUARD}"
+  echo "[PERF]   ring3_fetch_probe=${PREEMPT_RING3_FETCH_PROBE}"
+  echo "[PERF]   post_cr3_text_probe=${PREEMPT_POST_CR3_TEXT_PROBE}"
   echo "[PERF]   debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
   echo "[PERF]   debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
 } >> "${BUILD_LOG}"
@@ -531,6 +539,8 @@ PREEMPT_TEST_ENV=(
   "AYKEN_MB_SELFTEST=${PREEMPT_MB_SELFTEST}"
   "AYKEN_DETERMINISTIC_EXIT=${PREEMPT_DETERMINISTIC_EXIT}"
   "AYKEN_RING3_ENTRY_GUARD=${PREEMPT_RING3_ENTRY_GUARD}"
+  "AYKEN_RING3_FETCH_PROBE=${PREEMPT_RING3_FETCH_PROBE}"
+  "AYKEN_RING3_POST_CR3_TEXT_PROBE=${PREEMPT_POST_CR3_TEXT_PROBE}"
   "PREEMPT_METRICS_OUT=${PREEMPT_METRICS_TXT}"
   "PREEMPT_ANALYSIS_LOG_OUT=${PREEMPT_ANALYSIS_LOG}"
 )
@@ -570,6 +580,10 @@ PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE="$(extract_kv_text "contract_build_deb
 PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE="$(extract_kv_text "contract_build_debug_irq_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_RING3_ENTRY_GUARD="$(extract_kv_text "contract_ring3_entry_guard" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE="$(extract_kv_text "contract_ring3_entry_guard_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_FETCH_PROBE="$(extract_kv_text "contract_ring3_fetch_probe" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_RING3_FETCH_PROBE_SOURCE="$(extract_kv_text "contract_ring3_fetch_probe_source" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE="$(extract_kv_text "contract_post_cr3_text_probe" "${PREEMPT_METRICS_TXT}")"
+PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE_SOURCE="$(extract_kv_text "contract_post_cr3_text_probe_source" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_USER_MODE="$(extract_kv_text "observed_user_minimal_mode" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_BOOTSTRAP="$(extract_kv_text "observed_bootstrap_policy" "${PREEMPT_METRICS_TXT}")"
 PREEMPT_OBSERVED_MB_SELFTEST="$(extract_kv_text "observed_mb_selftest" "${PREEMPT_METRICS_TXT}")"
@@ -665,6 +679,12 @@ if [[ "${PREEMPT_CONTRACT_DETERMINISTIC_EXIT}" != "${PREEMPT_DETERMINISTIC_EXIT}
 fi
 if [[ "${PREEMPT_CONTRACT_RING3_ENTRY_GUARD}" != "${PREEMPT_RING3_ENTRY_GUARD}" ]]; then
   record_violation "preempt_contract_not_consumed:ring3_entry_guard:expected=${PREEMPT_RING3_ENTRY_GUARD}:actual=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
+fi
+if [[ "${PREEMPT_CONTRACT_RING3_FETCH_PROBE}" != "${PREEMPT_RING3_FETCH_PROBE}" ]]; then
+  record_violation "preempt_contract_not_consumed:ring3_fetch_probe:expected=${PREEMPT_RING3_FETCH_PROBE}:actual=${PREEMPT_CONTRACT_RING3_FETCH_PROBE:-missing}"
+fi
+if [[ "${PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE}" != "${PREEMPT_POST_CR3_TEXT_PROBE}" ]]; then
+  record_violation "preempt_contract_not_consumed:post_cr3_text_probe:expected=${PREEMPT_POST_CR3_TEXT_PROBE}:actual=${PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE:-missing}"
 fi
 if [[ "${PREEMPT_OBSERVED_USER_MODE}" != "${PREEMPT_USER_MINIMAL_MODE}" ]]; then
   record_violation "preempt_observed_mismatch:user_minimal_mode:expected=${PREEMPT_USER_MINIMAL_MODE}:observed=${PREEMPT_OBSERVED_USER_MODE:-missing}"
@@ -1540,6 +1560,8 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_deterministic_exit=${PREEMPT_DETERMINISTIC_EXIT}"
   echo "preempt_build_debug_sched=${PREEMPT_BUILD_DEBUG_SCHED:-<make-default>}"
   echo "preempt_build_debug_irq=${PREEMPT_BUILD_DEBUG_IRQ:-<make-default>}"
+  echo "preempt_ring3_fetch_probe=${PREEMPT_RING3_FETCH_PROBE}"
+  echo "preempt_post_cr3_text_probe=${PREEMPT_POST_CR3_TEXT_PROBE}"
   echo "preempt_expected_qemu_exit_set=${PREEMPT_EXPECTED_QEMU_EXIT_SET}"
   echo "measurement_contract=${MEASUREMENT_CONTRACT}"
   echo "ayken_sched_fallback=${SCHED_FALLBACK}"
@@ -1555,6 +1577,8 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_contract_build_debug_sched=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED:-missing}"
   echo "preempt_contract_build_debug_irq=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ:-missing}"
   echo "preempt_contract_ring3_entry_guard=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD:-missing}"
+  echo "preempt_contract_ring3_fetch_probe=${PREEMPT_CONTRACT_RING3_FETCH_PROBE:-missing}"
+  echo "preempt_contract_post_cr3_text_probe=${PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE:-missing}"
   echo "preempt_contract_user_minimal_mode_source=${PREEMPT_CONTRACT_USER_MODE_SOURCE:-missing}"
   echo "preempt_contract_bootstrap_policy_source=${PREEMPT_CONTRACT_BOOTSTRAP_SOURCE:-missing}"
   echo "preempt_contract_mb_selftest_source=${PREEMPT_CONTRACT_MB_SELFTEST_SOURCE:-missing}"
@@ -1562,6 +1586,8 @@ DRIFT_AUTHORITY_HASH="$(compute_authority_hash)"
   echo "preempt_contract_build_debug_sched_source=${PREEMPT_CONTRACT_BUILD_DEBUG_SCHED_SOURCE:-missing}"
   echo "preempt_contract_build_debug_irq_source=${PREEMPT_CONTRACT_BUILD_DEBUG_IRQ_SOURCE:-missing}"
   echo "preempt_contract_ring3_entry_guard_source=${PREEMPT_CONTRACT_RING3_ENTRY_GUARD_SOURCE:-missing}"
+  echo "preempt_contract_ring3_fetch_probe_source=${PREEMPT_CONTRACT_RING3_FETCH_PROBE_SOURCE:-missing}"
+  echo "preempt_contract_post_cr3_text_probe_source=${PREEMPT_CONTRACT_POST_CR3_TEXT_PROBE_SOURCE:-missing}"
   echo "preempt_observed_user_minimal_mode=${PREEMPT_OBSERVED_USER_MODE:-missing}"
   echo "preempt_observed_bootstrap_policy=${PREEMPT_OBSERVED_BOOTSTRAP:-missing}"
   echo "preempt_observed_mb_selftest=${PREEMPT_OBSERVED_MB_SELFTEST:-missing}"

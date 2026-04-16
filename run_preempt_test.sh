@@ -128,6 +128,36 @@ if [[ "${AYKEN_RING3_ENTRY_GUARD+x}" == "x" ]]; then
   CONTRACT_RING3_ENTRY_GUARD_SOURCE="env"
 fi
 
+CONTRACT_RING3_FETCH_PROBE="0"
+CONTRACT_RING3_FETCH_PROBE_SOURCE="harness_default"
+if [[ "${AYKEN_RING3_FETCH_PROBE+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_RING3_FETCH_PROBE}" ]]; then
+    echo "ERROR: AYKEN_RING3_FETCH_PROBE is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_RING3_FETCH_PROBE}" != "0" && "${AYKEN_RING3_FETCH_PROBE}" != "1" ]]; then
+    echo "ERROR: AYKEN_RING3_FETCH_PROBE must be 0 or 1 (got '${AYKEN_RING3_FETCH_PROBE}')"
+    exit 1
+  fi
+  CONTRACT_RING3_FETCH_PROBE="${AYKEN_RING3_FETCH_PROBE}"
+  CONTRACT_RING3_FETCH_PROBE_SOURCE="env"
+fi
+
+CONTRACT_POST_CR3_TEXT_PROBE="0"
+CONTRACT_POST_CR3_TEXT_PROBE_SOURCE="harness_default"
+if [[ "${AYKEN_RING3_POST_CR3_TEXT_PROBE+x}" == "x" ]]; then
+  if [[ -z "${AYKEN_RING3_POST_CR3_TEXT_PROBE}" ]]; then
+    echo "ERROR: AYKEN_RING3_POST_CR3_TEXT_PROBE is set but empty"
+    exit 1
+  fi
+  if [[ "${AYKEN_RING3_POST_CR3_TEXT_PROBE}" != "0" && "${AYKEN_RING3_POST_CR3_TEXT_PROBE}" != "1" ]]; then
+    echo "ERROR: AYKEN_RING3_POST_CR3_TEXT_PROBE must be 0 or 1 (got '${AYKEN_RING3_POST_CR3_TEXT_PROBE}')"
+    exit 1
+  fi
+  CONTRACT_POST_CR3_TEXT_PROBE="${AYKEN_RING3_POST_CR3_TEXT_PROBE}"
+  CONTRACT_POST_CR3_TEXT_PROBE_SOURCE="env"
+fi
+
 OBSERVED_USER_MINIMAL_MODE="<unknown>"
 OBSERVED_BOOTSTRAP_POLICY="<unknown>"
 OBSERVED_MB_SELFTEST="<unknown>"
@@ -174,6 +204,10 @@ write_preempt_metrics() {
     echo "contract_build_debug_irq_source=${CONTRACT_BUILD_DEBUG_IRQ_SOURCE}"
     echo "contract_ring3_entry_guard=${CONTRACT_RING3_ENTRY_GUARD}"
     echo "contract_ring3_entry_guard_source=${CONTRACT_RING3_ENTRY_GUARD_SOURCE}"
+    echo "contract_ring3_fetch_probe=${CONTRACT_RING3_FETCH_PROBE}"
+    echo "contract_ring3_fetch_probe_source=${CONTRACT_RING3_FETCH_PROBE_SOURCE}"
+    echo "contract_post_cr3_text_probe=${CONTRACT_POST_CR3_TEXT_PROBE}"
+    echo "contract_post_cr3_text_probe_source=${CONTRACT_POST_CR3_TEXT_PROBE_SOURCE}"
     echo "observed_user_minimal_mode=${OBSERVED_USER_MINIMAL_MODE:-<unknown>}"
     echo "observed_bootstrap_policy=${OBSERVED_BOOTSTRAP_POLICY:-<unknown>}"
     echo "observed_mb_selftest=${OBSERVED_MB_SELFTEST:-<unknown>}"
@@ -241,6 +275,8 @@ fi
 if [[ "${CONTRACT_RING3_ENTRY_GUARD_SOURCE}" == "env" ]]; then
   MAKE_BUILD_ARGS+=(AYKEN_RING3_ENTRY_GUARD="${CONTRACT_RING3_ENTRY_GUARD}")
 fi
+MAKE_BUILD_ARGS+=(AYKEN_RING3_FETCH_PROBE="${CONTRACT_RING3_FETCH_PROBE}")
+MAKE_BUILD_ARGS+=(AYKEN_RING3_POST_CR3_TEXT_PROBE="${CONTRACT_POST_CR3_TEXT_PROBE}")
 
 if [[ "$FORCE_EFI_REBUILD" == "1" || ! -f "$EFI_IMG" ]]; then
   if [[ "$FORCE_EFI_REBUILD" == "1" && "$PREEMPT_CLEAN_REBUILD" == "1" ]]; then
@@ -780,6 +816,8 @@ echo "Observed bootstrap: ${OBSERVED_BOOTSTRAP_POLICY}"
 echo "Observed selftest : ${OBSERVED_MB_SELFTEST}"
 echo "Observed det-exit : ${OBSERVED_DETERMINISTIC_EXIT}"
 echo "Observed entry guard: ${OBSERVED_RING3_ENTRY_GUARD}"
+echo "Contract fetch probe: ${CONTRACT_RING3_FETCH_PROBE}"
+echo "Contract post-CR3 probe: ${CONTRACT_POST_CR3_TEXT_PROBE}"
 echo "MARK PID2 entries : $mark_pid2_count"
 echo "MARK PID3 entries : $mark_pid3_count"
 echo "MARK alternations : $mark_alt_count"
