@@ -1270,22 +1270,27 @@ EFI.img: $(EFI_IMG)
 # with the current flag values to ensure flag propagation.
 .PHONY: efi-img
 efi-img:
-	@# FAIL-CLOSED BUILD VALIDATION: Verify BCIB flags are set correctly
-	@if [ "$(AYKEN_PHASE16_BCIB_PROOF_TEST)" != "1" ]; then \
-		echo "ERROR: AYKEN_PHASE16_BCIB_PROOF_TEST must be 1 for BCIB worker bootstrap"; \
-		echo "Current value: $(AYKEN_PHASE16_BCIB_PROOF_TEST)"; \
-		exit 1; \
-	fi
+	@# FAIL-CLOSED BUILD VALIDATION: Verify mode-specific flags are set correctly.
 	@if [ -z "$(USER_MINIMAL_MODE)" ]; then \
 		echo "ERROR: USER_MINIMAL_MODE not set"; \
 		exit 1; \
 	fi
-	@if [ "$(USER_MINIMAL_MODE)" != "bcib-worker-bootstrap" ] && [ "$(USER_MINIMAL_MODE)" != "dual-worker-pipeline" ]; then \
-		echo "ERROR: USER_MINIMAL_MODE must be 'bcib-worker-bootstrap' or 'dual-worker-pipeline'"; \
-		echo "Current value: $(USER_MINIMAL_MODE)"; \
-		exit 1; \
+	@case "$(USER_MINIMAL_MODE)" in \
+		phase10a2|entry-proof|runtime-bridge-test|runtime-bridge-ping|runtime-bridge-forbidden|execution-delivery-proof|execution-marker-only|phase10a2-text-witness-bp|syscall-v2-runtime|bcib-forbidden|bcib-worker-bootstrap|dual-worker-pipeline) ;; \
+		*) \
+			echo "ERROR: invalid USER_MINIMAL_MODE"; \
+			echo "Current value: $(USER_MINIMAL_MODE)"; \
+			exit 1; \
+			;; \
+	esac
+	@if [ "$(USER_MINIMAL_MODE)" = "bcib-worker-bootstrap" ] || [ "$(USER_MINIMAL_MODE)" = "dual-worker-pipeline" ]; then \
+		if [ "$(AYKEN_PHASE16_BCIB_PROOF_TEST)" != "1" ]; then \
+			echo "ERROR: AYKEN_PHASE16_BCIB_PROOF_TEST must be 1 for BCIB worker bootstrap"; \
+			echo "Current value: $(AYKEN_PHASE16_BCIB_PROOF_TEST)"; \
+			exit 1; \
+		fi; \
 	fi
-	@echo "✓ Build flags validated: BCIB worker bootstrap mode"
+	@echo "✓ Build flags validated: USER_MINIMAL_MODE=$(USER_MINIMAL_MODE)"
 	@# Build kernel and bootloader with current flags
 	@$(MAKE) KERNEL_PROFILE=$(KERNEL_PROFILE) \
 		AYKEN_PHASE16_BCIB_PROOF_TEST=$(AYKEN_PHASE16_BCIB_PROOF_TEST) \
@@ -1297,14 +1302,16 @@ efi-img:
 		AYKEN_PHASE16_BCIB_PROOF_TEST=$(AYKEN_PHASE16_BCIB_PROOF_TEST) \
 		USER_MINIMAL_MODE=$(USER_MINIMAL_MODE) \
 		$(EFI_IMG)
-	@# Verify the built kernel contains BCIB worker symbols
-	@echo "Verifying BCIB worker symbols in kernel..."
-	@if ! strings $(KERNEL_ELF) | grep -qE "(bcib-worker-bootstrap|dual-worker-pipeline)"; then \
-		echo "ERROR: Built kernel does not contain BCIB worker bootstrap marker"; \
-		echo "Build system produced wrong artifact!"; \
-		exit 1; \
+	@# Verify BCIB worker markers only for BCIB worker modes.
+	@if [ "$(USER_MINIMAL_MODE)" = "bcib-worker-bootstrap" ] || [ "$(USER_MINIMAL_MODE)" = "dual-worker-pipeline" ]; then \
+		echo "Verifying BCIB worker symbols in kernel..."; \
+		if ! strings $(KERNEL_ELF) | grep -qE "(bcib-worker-bootstrap|dual-worker-pipeline)"; then \
+			echo "ERROR: Built kernel does not contain BCIB worker bootstrap marker"; \
+			echo "Build system produced wrong artifact!"; \
+			exit 1; \
+		fi; \
+		echo "✓ BCIB worker symbols verified in kernel"; \
 	fi
-	@echo "✓ BCIB worker symbols verified in kernel"
 	@# Build legacy artifacts
 	@$(MAKE) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI) $(LEGACY_EFI_IMG)
 
