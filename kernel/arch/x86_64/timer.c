@@ -146,12 +146,6 @@ _Static_assert(sizeof(irq_timer_frame_t) == IRQF_SIZE, "irq frame: size");
 // C handler called from ASM stub (argument: pointer to saved IRQ frame on kernel stack)
 void timer_isr_c(void *frame_ptr)
 {
-    // CRITICAL DIAGNOSTIC: First thing - prove IRQ is firing
-    outb(0xE9, (uint8_t)'I');
-    outb(0xE9, (uint8_t)'R');
-    outb(0xE9, (uint8_t)'Q');
-    outb(0xE9, (uint8_t)'\n');
-    
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
     execution_slot_guard_t slot_guard = {0};
     execution_slot_trace_scope_t trace_scope = {0};

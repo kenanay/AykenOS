@@ -163,18 +163,6 @@ context_switch:
     ret
 
 .L_ring3_ret:
-    ; CRITICAL DIAGNOSTIC: Prove we're about to execute iretq to Ring3
-    mov al, 'I'
-    out 0xE9, al
-    mov al, 'R'
-    out 0xE9, al
-    mov al, 'E'
-    out 0xE9, al
-    mov al, 'T'
-    out 0xE9, al
-    mov al, 10
-    out 0xE9, al
-    
     ; Canonical Ring3 entry path: all CR3/RFLAGS/IRETQ semantics live in ring3_enter.S.
     mov rsp, [rsi + CTX_RSP0]
     mov rdi, r11 ; rip
@@ -282,27 +270,6 @@ timer_isr_asm:
     pop rcx
     pop rbx
     pop rax
-    
-    ; CRITICAL DIAGNOSTIC: Prove IRQ is returning via iretq
-    push rax
-    mov al, 'I'
-    out 0xE9, al
-    mov al, 'R'
-    out 0xE9, al
-    mov al, 'Q'
-    out 0xE9, al
-    mov al, '_'
-    out 0xE9, al
-    mov al, 'R'
-    out 0xE9, al
-    mov al, 'E'
-    out 0xE9, al
-    mov al, 'T'
-    out 0xE9, al
-    mov al, 10
-    out 0xE9, al
-    pop rax
-    
     iretq
 
 ; -----------------------------------------------------------------------------

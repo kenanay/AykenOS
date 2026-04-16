@@ -5970,14 +5970,6 @@ void sched_start(void)
 
 static void sched_yield_core(int reenable_if)
 {
-    // CRITICAL DIAGNOSTIC: Prove scheduler is being called
-    outb(0xE9, (uint8_t)'S');
-    outb(0xE9, (uint8_t)'C');
-    outb(0xE9, (uint8_t)'H');
-    outb(0xE9, (uint8_t)'E');
-    outb(0xE9, (uint8_t)'D');
-    outb(0xE9, (uint8_t)'\n');
-    
     proc_drain_deferred_reap();
     
     // Phase 3A Layer 1: Scheduler tick marker (called from IRQ0)
@@ -6116,15 +6108,6 @@ static void sched_yield_core(int reenable_if)
                 dbg_out_hex64(current_proc->context.ss);
                 sched_emit_marker("\n");
             }
-            
-            // CRITICAL DIAGNOSTIC: Prove context_switch is being called
-            outb(0xE9, (uint8_t)'S');
-            outb(0xE9, (uint8_t)'W');
-            outb(0xE9, (uint8_t)'I');
-            outb(0xE9, (uint8_t)'T');
-            outb(0xE9, (uint8_t)'C');
-            outb(0xE9, (uint8_t)'H');
-            outb(0xE9, (uint8_t)'\n');
             
             context_switch(&prev->context, &current_proc->context);
         }
