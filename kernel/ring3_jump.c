@@ -310,6 +310,7 @@ void jump_to_ring3(void)
     uint8_t expected_hash[32];
     uint8_t computed_hash[32];
 
+    debugcon_write("[[RING3_JUMP_CALL]] Function entry\n");
     debugcon_write("[K][PHASE10] KERNEL_BEFORE_RING3\n");
     fb_print("[PHASE10] Preparing Ring3 process for scheduler dispatch...\n");
 

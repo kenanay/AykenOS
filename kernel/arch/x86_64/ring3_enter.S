@@ -208,16 +208,27 @@ ring3_enter_iretq:
     // still comes from the Ring3 #BP path (`P10_RING3_USER_CODE`).
     EMIT_CSTR p10_cr3_switch
     EMIT_CSTR p10_ring3_enter
+    // Test marker - single outb to see if we get here
+    pushq %rax
+    movb $'X', %al
+    outb %al, $0xE9
+    popq %rax
 #if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
     // Diagnostic-only fetch probe stays on this transition page; scheduler-side
     // C helpers must not extend the post-CR3 execution footprint.
-    call ring3_enter_post_cr3_kernel_probe
+    // Inline 'K' marker instead of call
+    movb $'K', %al
+    outb %al, $0xE9
 #if defined(AYKEN_RING3_SECOND_CANONICAL_PROBE) && (AYKEN_RING3_SECOND_CANONICAL_PROBE == 1)
     movabsq $AYKEN_RING3_SECOND_CANONICAL_PROBE_VA, %rax
     invlpg (%rax)
 #else
     movabsq $AYKEN_RING3_TRAMPOLINE_VA, %rax
 #endif
+    // [[BEFORE_TRAMPOLINE_JUMP]] - Marker before jumping to trampoline
+    movb $'B', %al
+    outb %al, $0xE9
+    movabsq $AYKEN_RING3_TRAMPOLINE_VA, %rax
     jmp *%rax
 #else
 #if defined(AYKEN_RING3_CANONICAL_FETCH_STUB) && (AYKEN_RING3_CANONICAL_FETCH_STUB == 1)
@@ -263,17 +274,21 @@ ring3_enter:
     .section .ring3_transition_probe, "ax", @progbits
     .p2align 12
 ring3_enter_post_cr3:
+    // Emit 'T' marker at trampoline entry
+    pushq %rax
+    movb $'T', %al
+    outb %al, $0xE9
+    popq %rax
     mov %rcx, %cr3
     mov %cr3, %rax
     cmp %rcx, %rax
     jne .L_probe_cr3_mismatch
     movb $'L', %al
     outb %al, $0xE9
-    nop
-    movb $'F', %al
+    // Continue to IRETQ instead of looping
+    movb $'A', %al
     outb %al, $0xE9
-1:
-    jmp 1b
+    iretq
 .L_probe_cr3_mismatch:
     movb $'M', %al
     outb %al, $0xE9
@@ -287,6 +302,11 @@ ring3_enter_post_cr3:
     // Canonical post-CR3 window: dedicated page, no adjacent kernel text.
     mov %rcx, %cr3
     EMIT_POST_CR3_TEXT_PROBE
+    
+    // [[IRETQ_ABOUT_TO_EXECUTE]] - Critical marker before privilege drop
+    movb $'A', %al
+    outb %al, $0xE9
+    
 #if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
     jmp 1f
 1:
@@ -324,8 +344,17 @@ ring3_enter_trampoline:
     mov %rcx, %cr3
 #endif
 #else
+    // [[TRAMPOLINE_ENTRY]] - Marker before CR3 switch in trampoline
+    movb $'T', %al
+    outb %al, $0xE9
+    
     mov %rcx, %cr3
     EMIT_POST_CR3_TEXT_PROBE
+    
+    // [[IRETQ_ABOUT_TO_EXECUTE]] - Trampoline path marker
+    movb $'A', %al
+    outb %al, $0xE9
+    
 #if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
     jmp 1f
 1:
