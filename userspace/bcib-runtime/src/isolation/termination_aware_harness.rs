@@ -33,7 +33,7 @@ pub enum TerminationReason {
 }
 
 /// Global termination capture registry for test harness
-/// Uses thread-local storage to avoid race conditions between concurrent tests
+/// Uses execution-local storage to avoid race conditions between concurrent tests
 thread_local! {
     static TERMINATION_REGISTRY: std::cell::RefCell<Option<Arc<Mutex<Vec<TerminationEvent>>>>> = std::cell::RefCell::new(None);
 }

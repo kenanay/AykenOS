@@ -95,7 +95,7 @@ pub enum SideEffectResult {
 pub struct RuntimeBridge {
     /// Execution context this bridge is bound to (Requirement 3.1)
     context_id: ExecutionContextId,
-    /// Handle manager for ABDF access (shared, thread-safe)
+    /// Handle manager for ABDF access (shared, concurrency-safe)
     handle_manager: Arc<Mutex<HandleManager>>,
     /// Capability checker for validation
     capability_checker: Arc<dyn CapabilityCheck + Send + Sync>,
