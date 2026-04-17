@@ -270,8 +270,17 @@ fn execute_host_runtime(bytes: &[u8]) -> (u64, u64, String) {
     let plan_hash = plan.canonical_hash();
 
     let mut runtime = BcibExecutionRuntime::new();
+    let kernel_context = bcib_runtime::isolation::execution_entry_context::ExecutionEntryContext::from_kernel_dispatcher(
+        1003, // SYS_V2_SUBMIT_EXECUTION
+        std::process::id(),
+        1, // thread_id
+        vec![
+            "kernel_syscall_dispatcher".to_string(),
+            "sys_v2_submit_execution".to_string(),
+        ],
+    );
     let runtime_context_id = runtime
-        .create_context_for_test(plan, capabilities)
+        .create_context_from_syscall(plan, capabilities, kernel_context)
         .expect("host runtime context creation failed");
     let slice = runtime
         .run_slice(runtime_context_id, CostBudget::new(10_000, 1_000))
