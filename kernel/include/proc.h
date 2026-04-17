@@ -118,7 +118,12 @@ typedef struct proc {
     // Phase 11: Alias-aware address space leak proof
     alias_registry_t alias_reg;      /* alias eşleme kaydı */
     uint8_t teardown_started;        /* 0=normal, 1=teardown aktif (Freeze Invariant) */
-    uint8_t reserved_phase11[7];     /* alignment padding */
+    
+    // Performance: Deferred validation flag
+    // Set in IRQ handler when validation is needed, cleared after validation in scheduler
+    uint8_t validation_pending;      /* 0=no validation needed, 1=validation pending */
+    
+    uint8_t reserved_phase11[6];     /* alignment padding (was 7, now 6) */
     
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
     // Gate-4 isolated proof: per-process publish marker one-shot latch.
