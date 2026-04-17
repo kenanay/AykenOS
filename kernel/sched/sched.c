@@ -1862,50 +1862,6 @@ static proc_t *sched_select_next_mailbox(
         }
     }
 
-    // FAST PATH: For keep-running case, check snapshot first to avoid expensive extract/validate.
-    // This optimization skips arbiter/extract/validate phases when prev is still running
-    // and mailbox candidate matches prev->pid.
-    if (allow_keep_running && prev && prev->type == PROC_TYPE_USER &&
-        prev->state == PROC_RUNNING && owner->mailbox_pa) {
-        ayken_sched_mailbox_t mb_snapshot_fast;
-        if (sched_mailbox_read_snapshot(owner, &mb_snapshot_fast)) {
-            if (mb_snapshot_fast.epoch > owner->mailbox_last_epoch &&
-                mb_snapshot_fast.candidate_pid == (uint32_t)prev->pid &&
-                mb_snapshot_fast.kind == AYKEN_SCHED_HINT_CANDIDATE) {
-                // Fast path: candidate matches current process, skip expensive phases
-                SCHED_MB_DECISION_BEGIN();
-                sched_emit_perf_mb_candidate_visibility_marker("visible", (uint32_t)prev->pid);
-                sched_perf_note_mailbox_arbiter_path_keep_running_enter();
-                
-                uint64_t old_last_epoch = owner->mailbox_last_epoch;
-                owner->mailbox_last_epoch = mb_snapshot_fast.epoch;
-                sched_perf_note_mailbox_consume(
-                    sched_site_name(site),
-                    old_last_epoch,
-                    owner->mailbox_last_epoch,
-                    mb_snapshot_fast.epoch,
-                    "scheduler_keep_running_consume_fast");
-                
-                if (decision_id) {
-                    *decision_id = mb_snapshot_fast.epoch;
-                }
-                if (decision_pid) {
-                    *decision_pid = (uint32_t)prev->pid;
-                }
-                if (decision_src_pid) {
-                    *decision_src_pid = (uint32_t)owner->pid;
-                }
-                if (used_mailbox) {
-                    *used_mailbox = 1;
-                }
-                sched_perf_note_mailbox_arbiter_decision_path_keep_running();
-                sched_perf_note_mailbox_arbiter_candidate_accept_keep_running();
-                sched_perf_note_mailbox_arbiter_path_keep_running_exit();
-                SCHED_MB_ARBITER_RETURN(prev);
-            }
-        }
-    }
-
     // Single-authority path: only owner mailbox is consumed.
     {
         uint64_t epoch = 0;
