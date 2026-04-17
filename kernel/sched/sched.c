@@ -6046,6 +6046,14 @@ static void sched_yield_core(int reenable_if)
 {
     proc_drain_deferred_reap();
     
+    // Process deferred mailbox validation (moved out of IRQ path for performance).
+    // IRQ sets mailbox_validation_pending flag, we process it here in scheduler-safe context.
+    proc_t *current = current_proc;
+    if (current && current->mailbox_validation_pending) {
+        current->mailbox_validation_pending = 0;  // Clear flag before validation
+        sched_mailbox_validate_ring3(current);
+    }
+    
     // Phase 3A Layer 1: Scheduler tick marker (called from IRQ0)
     static uint8_t sched_tick_marker_emitted = 0;
     if (!sched_tick_marker_emitted) {

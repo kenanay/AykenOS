@@ -219,19 +219,18 @@ void timer_isr_c(void *frame_ptr)
         current_proc->context.ss = (uint16_t)frame->ss;
         __asm__ volatile("mov %%cr3, %0" : "=r"(current_proc->context.cr3));
 
-        // Timer-driven mailbox validation is enabled in:
-        // - transitional bootstrap-policy mode, or
-        // - Gate-4 isolated policy proof mode.
+        // Deferred validation: Set flag in IRQ, process in scheduler-safe context.
+        // This moves expensive validation (BCIB, boundary, probes) out of IRQ path.
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
    ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
     (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
 #if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
         // Gate-4/4.5 isolated proofs validate owner authority only.
         if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
-            sched_mailbox_validate_ring3(current_proc);
+            current_proc->mailbox_validation_pending = 1;
         }
 #else
-        sched_mailbox_validate_ring3(current_proc);
+        current_proc->mailbox_validation_pending = 1;
 #endif
 #endif
 

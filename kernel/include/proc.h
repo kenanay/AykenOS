@@ -108,6 +108,11 @@ typedef struct proc {
     // MVP-1: Scheduler bridge mailbox (Ring3 → Ring0 interaction)
     uint64_t mailbox_pa;        // Physical address of per-process mailbox
     uint64_t mailbox_last_epoch; // Last validated epoch (monotonicity check)
+    
+    // Deferred validation: IRQ sets flag, scheduler-safe context processes
+    volatile uint8_t mailbox_validation_pending;
+    uint8_t reserved_validation[7];  // alignment padding
+    
     uint64_t execution_inbox_pa;
     uint64_t execution_payload_pas[AYKEN_EXECUTION_PAYLOAD_WINDOW_PAGES];
     uint64_t execution_output_mapped_id;
