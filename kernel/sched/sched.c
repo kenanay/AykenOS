@@ -1646,11 +1646,7 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
         sched_perf_note_mailbox_extract_exit();
         return 0;
     }
-    // CRITICAL FIX: Only reject if epoch is STRICTLY less than last consumed epoch.
-    // Equal epoch is valid when mailbox is updated but not yet consumed by scheduler.
-    // This fixes the no_candidate=60 fallback regression where valid candidates
-    // were being rejected due to overly aggressive epoch staleness check.
-    if (mb->epoch == 0 || mb->epoch < owner->mailbox_last_epoch) {
+    if (mb->epoch == 0 || mb->epoch <= owner->mailbox_last_epoch) {
         sched_emit_perf_mb_extract_reason_marker("epoch_stale");
         sched_perf_note_mailbox_extract_exit();
         return 0;
@@ -1852,10 +1848,7 @@ static proc_t *sched_select_next_mailbox(
         prev->state == PROC_RUNNING && owner->mailbox_pa) {
         ayken_sched_mailbox_t mb_snapshot;
         if (sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
-            // CRITICAL FIX: Use strict < instead of <= for epoch staleness check.
-            // Equal epoch is valid when mailbox is updated but not yet consumed.
-            // This fixes the fast-path bypass regression (no_candidate=60 fallback).
-            if (mb_snapshot.epoch < owner->mailbox_last_epoch ||
+            if (mb_snapshot.epoch <= owner->mailbox_last_epoch ||
                 mb_snapshot.candidate_pid == 0 ||
                 mb_snapshot.kind != AYKEN_SCHED_HINT_CANDIDATE) {
                 SCHED_MB_DECISION_BEGIN();
