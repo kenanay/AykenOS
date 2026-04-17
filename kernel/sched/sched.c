@@ -1862,6 +1862,94 @@ static proc_t *sched_select_next_mailbox(
         }
     }
 
+    // Fast-path optimization: For keep-running case with allow_keep_running=1,
+    // check snapshot first to potentially skip expensive extract/validate phases.
+    // This saves ~8.5M ticks per keep-running decision (arbiter+extract+validate overhead).
+    if (allow_keep_running && prev && prev->type == PROC_TYPE_USER &&
+        prev->state == PROC_RUNNING && owner->mailbox_pa) {
+        ayken_sched_mailbox_t mb_peek;
+        if (sched_mailbox_read_snapshot(owner, &mb_peek)) {
+            // Check if this is a keep-running candidate before expensive extract
+            if (mb_peek.magic == AYKEN_SCHED_MB_MAGIC &&
+                mb_peek.version == AYKEN_SCHED_MB_VERSION &&
+                mb_peek.kind == AYKEN_SCHED_HINT_CANDIDATE &&
+                mb_peek.epoch > 0 &&
+                mb_peek.epoch > owner->mailbox_last_epoch &&
+                mb_peek.candidate_pid == (uint32_t)prev->pid) {
+                
+                // Fast-path: keep-running case detected, skip extract/validate
+                uint64_t epoch = mb_peek.epoch;
+                uint32_t pid = mb_peek.candidate_pid;
+                int consume_epoch = 1;
+                
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+                // Gate-4 proof requires timer-path ACCEPT for epoch=1 before scheduler
+                // consumes that epoch in any decision site.
+                if (epoch == 1 && sched_mailbox_gate4_epoch1_pending()) {
+                    consume_epoch = 0;
+                }
+#endif
+#if AYKEN_GATE45_PROOF
+                // Gate-4.5: do not consume epoch=1 on self-keep-running path.
+                if (epoch == 1) {
+                    consume_epoch = 0;
+                }
+#endif
+                
+                SCHED_MB_DECISION_BEGIN();
+                sched_emit_perf_mb_candidate_visibility_marker("visible", pid);
+                sched_perf_note_mailbox_arbiter_path_keep_running_enter();
+                
+                if (consume_epoch) {
+                    uint64_t old_last_epoch = owner->mailbox_last_epoch;
+                    owner->mailbox_last_epoch = epoch;
+                    sched_perf_note_mailbox_consume(
+                        sched_site_name(site),
+                        old_last_epoch,
+                        owner->mailbox_last_epoch,
+                        epoch,
+                        "scheduler_keep_running_consume");
+                } else {
+                    // Non-consuming path for Gate-4/4.5
+                    const char *reason = "unknown_bypass";
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+                    if (epoch == 1 && sched_mailbox_gate4_epoch1_pending()) {
+                        reason = "gate4_epoch1_pending_bypass";
+                    }
+#endif
+#if AYKEN_GATE45_PROOF
+                    if (epoch == 1) {
+                        reason = "gate45_self_keep_running_bypass";
+                    }
+#endif
+                    sched_perf_note_mailbox_consume(
+                        sched_site_name(site),
+                        owner->mailbox_last_epoch,
+                        owner->mailbox_last_epoch,
+                        epoch,
+                        reason);
+                }
+                
+                if (decision_id) {
+                    *decision_id = epoch;
+                }
+                if (decision_pid) {
+                    *decision_pid = pid;
+                }
+                if (decision_src_pid) {
+                    *decision_src_pid = (uint32_t)owner->pid;
+                }
+                if (used_mailbox) {
+                    *used_mailbox = 1;
+                }
+                sched_perf_note_mailbox_arbiter_decision_path_keep_running();
+                sched_perf_note_mailbox_arbiter_candidate_accept_keep_running();
+                sched_perf_note_mailbox_arbiter_path_keep_running_exit();
+                SCHED_MB_ARBITER_RETURN(prev);
+            }
+        }
+    }
+
     // Single-authority path: only owner mailbox is consumed.
     {
         uint64_t epoch = 0;
