@@ -202,7 +202,8 @@ jobs:
           fi
 
           if [ "${CLI_AVAILABLE}" = "true" ]; then
-            out/cargo/debug/ayken-cli --json gate all > ayken-gate.json 2>/dev/null
+            ADVISORY_RUN_ID="advisory-${RUN_ID}"
+            RUN_ID="${ADVISORY_RUN_ID}" out/cargo/debug/ayken-cli --json gate all > ayken-gate.json 2>/dev/null
             GATE_EXIT=$?
             out/cargo/debug/ayken-cli --json status > ayken-status.json 2>/dev/null
             STATUS_EXIT=$?
