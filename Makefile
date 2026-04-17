@@ -790,6 +790,7 @@ USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
 EMBED_ELF_TOOL = tools/embed_elf.py
 EMBEDDED_ELF_HEADER = kernel/include/embedded_elf.h
 PAYLOAD_MANIFEST = $(AYKEN_BUILD_DIR)/payload_manifest.json
+SHA256_FILE_CMD = { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(1)"; else LC_ALL=C LANG=C shasum -a 256 "$(1)"; fi; } | awk '{print $$1}'
 
 # Kernel image contains Ring0 code only.
 # Ring3 userspace components are built via separate userspace targets.
@@ -1151,7 +1152,7 @@ $(USER_MINIMAL_BIN): $(USER_MINIMAL_ELF) $(USER_MINIMAL_MODE_STAMP)
 
 $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL) $(USER_MINIMAL_MODE_STAMP)
 	@echo "[PHASE10] Generating embedded ELF header..."
-	@EXPECTED_PAYLOAD_HASH=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	@EXPECTED_PAYLOAD_HASH=$$($(call SHA256_FILE_CMD,$(USER_MINIMAL_ELF))); \
 	python3 $(EMBED_ELF_TOOL) --input $(USER_MINIMAL_ELF) --output $(EMBEDDED_ELF_HEADER) --mode $(USER_MINIMAL_EFFECTIVE_MODE); \
 	EMBEDDED_HASH=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
 	if [ "$$EXPECTED_PAYLOAD_HASH" != "$$EMBEDDED_HASH" ]; then \
@@ -1166,7 +1167,7 @@ $(EMBEDDED_ELF_HEADER): $(USER_MINIMAL_ELF) $(EMBED_ELF_TOOL) $(USER_MINIMAL_MOD
 $(PAYLOAD_MANIFEST): $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
 	@echo "[PHASE10] Generating payload manifest (AUTHORITY)..."
 	@mkdir -p $(dir $@)
-	@PAYLOAD_SHA=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	@PAYLOAD_SHA=$$($(call SHA256_FILE_CMD,$(USER_MINIMAL_ELF))); \
 	EMBEDDED_SHA=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
 	TIMESTAMP=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
 	printf '{\n  "selected_mode": "%s",\n  "payload_sha256": "%s",\n  "embedded_header_sha256": "%s",\n  "build_timestamp": "%s"\n}\n' \
@@ -1177,7 +1178,7 @@ $(PAYLOAD_MANIFEST): $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
 .PHONY: verify-payload-hash
 verify-payload-hash: $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_ELF)
 	@echo "[PHASE10] Verifying payload hash..."
-	@EXPECTED_HASH=$$(shasum -a 256 $(USER_MINIMAL_ELF) | awk '{print $$1}'); \
+	@EXPECTED_HASH=$$($(call SHA256_FILE_CMD,$(USER_MINIMAL_ELF))); \
 	EMBEDDED_HASH=$$(grep 'embedded_elf_sha256\[\]' $(EMBEDDED_ELF_HEADER) | sed 's/.*"\(.*\)".*/\1/'); \
 	if [ "$$EXPECTED_HASH" != "$$EMBEDDED_HASH" ]; then \
 		echo "[ERROR] Payload hash verification failed!"; \
