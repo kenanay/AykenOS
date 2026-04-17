@@ -222,17 +222,15 @@ void timer_isr_c(void *frame_ptr)
         // Timer-driven mailbox validation is enabled in:
         // - transitional bootstrap-policy mode, or
         // - Gate-4 isolated policy proof mode.
+        //
+        // PERFORMANCE FIX: Deferred validation
+        // Instead of validating in IRQ handler (hot path), mark for deferred validation.
+        // Validation will be performed in scheduler (after IRQ, before scheduling decision).
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
    ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
     (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
-#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
-        // Gate-4/4.5 isolated proofs validate owner authority only.
-        if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
-            sched_mailbox_validate_ring3(current_proc);
-        }
-#else
-        sched_mailbox_validate_ring3(current_proc);
-#endif
+        // Mark for deferred validation (don't validate in IRQ)
+        current_proc->validation_pending = 1;
 #endif
 
         // Tell context_switch.asm old user state is already snapshotted.

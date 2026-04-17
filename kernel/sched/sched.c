@@ -5972,6 +5972,22 @@ static void sched_yield_core(int reenable_if)
 {
     proc_drain_deferred_reap();
     
+    // PERFORMANCE FIX: Deferred validation
+    // Validate mailbox BEFORE scheduling decision, but AFTER IRQ (not in hot path)
+    // This moves validation out of IRQ handler to improve performance
+    extern proc_t *current_proc;
+    if (current_proc && current_proc->validation_pending) {
+#if defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)
+        // Gate-4/4.5 isolated proofs validate owner authority only
+        if ((uint32_t)current_proc->pid == AYKEN_SCHED_OWNER_PID) {
+            sched_mailbox_validate_ring3(current_proc);
+        }
+#else
+        sched_mailbox_validate_ring3(current_proc);
+#endif
+        current_proc->validation_pending = 0;
+    }
+    
     // Phase 3A Layer 1: Scheduler tick marker (called from IRQ0)
     static uint8_t sched_tick_marker_emitted = 0;
     if (!sched_tick_marker_emitted) {
