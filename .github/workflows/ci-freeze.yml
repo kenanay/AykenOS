@@ -203,10 +203,27 @@ jobs:
 
           if [ "${CLI_AVAILABLE}" = "true" ]; then
             ADVISORY_RUN_ID="advisory-${RUN_ID}"
-            RUN_ID="${ADVISORY_RUN_ID}" out/cargo/debug/ayken-cli --json gate all > ayken-gate.json 2>/dev/null
-            GATE_EXIT=$?
-            out/cargo/debug/ayken-cli --json status > ayken-status.json 2>/dev/null
-            STATUS_EXIT=$?
+            ADVISORY_WORKTREE="${RUNNER_TEMP}/ayken-advisory-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            rm -rf "${ADVISORY_WORKTREE}"
+            git worktree add --detach "${ADVISORY_WORKTREE}" HEAD >/dev/null 2>&1
+            WORKTREE_EXIT=$?
+
+            if [ "${WORKTREE_EXIT}" -eq 0 ]; then
+              (
+                cd "${ADVISORY_WORKTREE}" || exit 1
+                RUN_ID="${ADVISORY_RUN_ID}" "${GITHUB_WORKSPACE}/out/cargo/debug/ayken-cli" --json gate all > "${GITHUB_WORKSPACE}/ayken-gate.json" 2>/dev/null
+              )
+              GATE_EXIT=$?
+              (
+                cd "${ADVISORY_WORKTREE}" || exit 1
+                "${GITHUB_WORKSPACE}/out/cargo/debug/ayken-cli" --json status > "${GITHUB_WORKSPACE}/ayken-status.json" 2>/dev/null
+              )
+              STATUS_EXIT=$?
+              git worktree remove --force "${ADVISORY_WORKTREE}" >/dev/null 2>&1 || true
+            else
+              GATE_EXIT=1
+              STATUS_EXIT=1
+            fi
           else
             GATE_EXIT=1
             STATUS_EXIT=1
