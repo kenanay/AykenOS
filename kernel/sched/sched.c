@@ -1510,6 +1510,47 @@ static ayken_sched_mailbox_t *sched_mailbox_view_for_owner(proc_t *owner)
     return (ayken_sched_mailbox_t *)paging_phys_to_virt(owner->mailbox_pa);
 }
 
+// Lightweight epoch peek: CR3 switch but only read epoch field (no full copy).
+// Used for stale epoch fast-path detection before expensive full snapshot.
+static uint64_t sched_mailbox_peek_epoch(proc_t *owner)
+{
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys();
+    uint64_t saved_rflags = 0;
+    int switched_to_kernel_cr3 = 0;
+    uint64_t epoch = 0;
+    const ayken_sched_mailbox_t *src = NULL;
+
+    if (!owner || !owner->mailbox_pa) {
+        return 0;
+    }
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    if (kernel_cr3 &&
+        ((active_cr3 & AYKEN_PTE_ADDR_MASK) != (kernel_cr3 & AYKEN_PTE_ADDR_MASK))) {
+        __asm__ volatile("pushfq; popq %0" : "=r"(saved_rflags));
+        __asm__ volatile("cli");
+        __asm__ volatile("mov %0, %%cr3" :: "r"(kernel_cr3) : "memory");
+        switched_to_kernel_cr3 = 1;
+    }
+    src = (const ayken_sched_mailbox_t *)paging_phys_to_virt(owner->mailbox_pa);
+
+    if (src) {
+        volatile const ayken_sched_mailbox_t *vsrc = (volatile const ayken_sched_mailbox_t *)src;
+        epoch = vsrc->epoch;
+        smp_rmb();
+    }
+
+    if (switched_to_kernel_cr3) {
+        __asm__ volatile("mov %0, %%cr3" :: "r"(active_cr3) : "memory");
+        if (saved_rflags & (1ULL << 9)) {
+            __asm__ volatile("sti");
+        }
+    }
+
+    return epoch;
+}
+
 static int sched_mailbox_read_snapshot(proc_t *owner, ayken_sched_mailbox_t *out_mb)
 {
     uint64_t active_cr3 = 0;
@@ -1844,8 +1885,23 @@ static proc_t *sched_select_next_mailbox(
 #endif
     }
 
+    // Fast-path: peek epoch before expensive full snapshot.
+    // If epoch is stale, skip snapshot/extract/validate entirely.
     if (allow_keep_running && prev && prev->type == PROC_TYPE_USER &&
         prev->state == PROC_RUNNING && owner->mailbox_pa) {
+        uint64_t peek_epoch = sched_mailbox_peek_epoch(owner);
+        if (peek_epoch > 0 && peek_epoch <= owner->mailbox_last_epoch) {
+            // Stale epoch: skip all expensive phases
+            SCHED_MB_DECISION_BEGIN();
+            SCHED_MB_REASON("no_candidate");
+            sched_perf_note_mailbox_arbiter_path_fallback_enter();
+            sched_perf_note_mailbox_arbiter_decision_path_fallback();
+            sched_perf_note_mailbox_arbiter_keep_running_fallback();
+            sched_perf_note_mailbox_arbiter_path_fallback_exit();
+            SCHED_MB_ARBITER_RETURN(prev);
+        }
+        
+        // Epoch is fresh or unknown: do full validation
         ayken_sched_mailbox_t mb_snapshot;
         if (sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
             if (mb_snapshot.epoch <= owner->mailbox_last_epoch ||
