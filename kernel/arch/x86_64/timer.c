@@ -222,6 +222,10 @@ void timer_isr_c(void *frame_ptr)
         // Timer-driven mailbox validation is enabled in:
         // - transitional bootstrap-policy mode, or
         // - Gate-4 isolated policy proof mode.
+        //
+        // PERFORMANCE TEST: Temporarily disabled to isolate IRQ validation overhead
+        // This is a diagnostic patch to confirm IRQ validation is the bottleneck
+#if 0  // DISABLED FOR PERFORMANCE TEST
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
    ((defined(AYKEN_SCHED_BOOTSTRAP_POLICY) && (AYKEN_SCHED_BOOTSTRAP_POLICY == 1)) || \
     (defined(AYKEN_GATE4_POLICY_TEST) && (AYKEN_GATE4_POLICY_TEST == 1)))
@@ -234,6 +238,7 @@ void timer_isr_c(void *frame_ptr)
         sched_mailbox_validate_ring3(current_proc);
 #endif
 #endif
+#endif  // DISABLED FOR PERFORMANCE TEST
 
         // Tell context_switch.asm old user state is already snapshotted.
         sched_irq_user_ctx_saved = 1;
