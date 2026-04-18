@@ -1915,21 +1915,7 @@ static proc_t *sched_select_next_mailbox(
             SCHED_MB_ARBITER_RETURN(prev);
         }
         
-        // Epoch is fresh or unknown: do full validation
-        ayken_sched_mailbox_t mb_snapshot;
-        if (sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
-            if (mb_snapshot.epoch <= owner->mailbox_last_epoch ||
-                mb_snapshot.candidate_pid == 0 ||
-                mb_snapshot.kind != AYKEN_SCHED_HINT_CANDIDATE) {
-                SCHED_MB_DECISION_BEGIN();
-                SCHED_MB_REASON("no_candidate");
-                sched_perf_note_mailbox_arbiter_path_fallback_enter();
-                sched_perf_note_mailbox_arbiter_decision_path_fallback();
-                sched_perf_note_mailbox_arbiter_keep_running_fallback();
-                sched_perf_note_mailbox_arbiter_path_fallback_exit();
-                SCHED_MB_ARBITER_RETURN(prev);
-            }
-        }
+        // Epoch is fresh: proceed to extract (which will do full validation)
     }
 
     // Single-authority path: only owner mailbox is consumed.
