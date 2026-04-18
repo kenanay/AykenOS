@@ -208,6 +208,15 @@ switch_to_first:
 ; Timer Interrupt Handler (IRQ0 -> Vector 32)
 ; -----------------------------------------------------------------------------
 timer_isr_asm:
+    ; Minimal liveness probe (prints * on every tick)
+    push rax
+    push rdx
+    mov dx, 0xE9
+    mov al, '*'
+    out dx, al
+    pop rdx
+    pop rax
+
     ; Save full GP register context.
     push rax
     push rbx

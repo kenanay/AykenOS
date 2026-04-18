@@ -5,7 +5,46 @@
 #include "../include/serial.h"
 #include "../include/proc.h"
 
-/* Debugcon helper for marker emission */
+/* Debugcon helper for marker emission with timestamp */
+static inline uint64_t read_tsc(void) {
+    uint32_t lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+static void debugcon_write_with_timestamp(const char *marker) {
+    uint64_t rflags, ts;
+    if (!marker) return;
+    
+    ts = read_tsc();
+    
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags) : : "memory");
+    
+    // Emit marker
+    while (*marker) {
+        __asm__ volatile("outb %0, %1" : : "a"((uint8_t)*marker), "Nd"((uint16_t)0xE9));
+        marker++;
+    }
+    
+    // Emit space
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)' '), "Nd"((uint16_t)0xE9));
+    
+    // Emit timestamp in hex
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'0'), "Nd"((uint16_t)0xE9));
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'x'), "Nd"((uint16_t)0xE9));
+    for (int i = 15; i >= 0; i--) {
+        uint8_t nibble = (ts >> (i * 4)) & 0xF;
+        uint8_t ch = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
+        __asm__ volatile("outb %0, %1" : : "a"(ch), "Nd"((uint16_t)0xE9));
+    }
+    
+    // Emit newline
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)'\n'), "Nd"((uint16_t)0xE9));
+    
+    __asm__ volatile("push %0; popfq" : : "r"(rflags) : "memory", "cc");
+}
+
+/* Original debugcon helper for non-timestamped markers */
 static void debugcon_write(const char *s) {
     uint64_t rflags;
     if (!s) return;
@@ -74,6 +113,35 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     execution_context_type_t context_type;
     int boundary_result;
     
+    /* DIAGNOSTIC: Anchored sequence tracking for second syscall proof
+     * When SYS_V2_DEBUG_PUTCHAR('S') is seen, set anchor and start counting
+     * subsequent syscalls as ANCHORED_SEQ_1, ANCHORED_SEQ_2, etc.
+     */
+    static int test_anchor_seen = 0;
+    static uint64_t anchored_seq = 0;
+    
+    /* Check if this is the anchor syscall (debug_putchar 'S') */
+    if (syscall_num == 10 && arg1 == 0x53) {  /* SYS_V2_DEBUG_PUTCHAR, 'S' */
+        test_anchor_seen = 1;
+        anchored_seq = 0;
+        debugcon_write_with_timestamp("DIAG_TEST_ANCHOR_SET");
+    }
+    
+    /* If anchor is set, emit anchored sequence markers for subsequent syscalls */
+    if (test_anchor_seen && syscall_num == 10) {
+        anchored_seq++;
+        if (anchored_seq == 1) {
+            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_1");
+        } else if (anchored_seq == 2) {
+            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_2");
+        } else if (anchored_seq == 3) {
+            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_3");
+        }
+    }
+    
+    /* DIAGNOSTIC: Kernel handler entry */
+    debugcon_write_with_timestamp("DIAG_KERNEL_HANDLER_ENTRY");
+    
     /* Get current execution context - EXPLICIT ROLE MODEL */
     extern proc_t *current_proc;
     uint64_t context_id = 0;
@@ -124,10 +192,24 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         context_type = EXEC_CONTEXT_KERNEL;
     }
     
+    /* DIAGNOSTIC: Context detection complete */
+    debugcon_write_with_timestamp("DIAG_CONTEXT_DETECTION_DONE");
+    
     /* Initialize boundary enforcement if not already done */
     static int boundary_init_done = 0;
+    static uint64_t boundary_init_call_count = 0;
+    
+    /* DIAGNOSTIC: Track how many times we enter this block */
+    boundary_init_call_count++;
+    
     if (!boundary_init_done) {
+        /* DIAGNOSTIC: Flag is 0 - entering init path */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_ENTER");
+        
         boundary_enforce_init();
+        
+        /* DIAGNOSTIC: boundary_enforce_init() complete */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_ENFORCE_INIT_DONE");
         
         /* CRITICAL: Validate enforcement matrix integrity */
         if (syscall_enforcement_validate_matrix() != 0) {
@@ -136,12 +218,27 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
             return BOUNDARY_ERR_ISOLATION_VIOLATION;
         }
         
+        /* DIAGNOSTIC: syscall_enforcement_validate_matrix() complete */
+        debugcon_write_with_timestamp("DIAG_MATRIX_VALIDATE_DONE");
+        
         boundary_init_done = 1;
+        
+        /* DIAGNOSTIC: Flag set to 1 - init complete */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_FLAG_SET");
+    } else {
+        /* DIAGNOSTIC: Flag is 1 - skipping init (fast path) */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_SKIPPED");
     }
+    
+    /* DIAGNOSTIC: Boundary init complete */
+    debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_DONE");
     
     /* CRITICAL FIX: Register context_type in boundary_states[] AFTER init, BEFORE enforcement checks
      * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
     boundary_set_context_type(context_id, context_type, process_id);
+    
+    /* DIAGNOSTIC: Context registration complete */
+    debugcon_write_with_timestamp("DIAG_CONTEXT_REGISTRATION_DONE");
     
 #if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
@@ -151,11 +248,17 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         return (uint64_t)boundary_result;
     }
     
+    /* DIAGNOSTIC: Boundary validation complete */
+    debugcon_write_with_timestamp("DIAG_BOUNDARY_VALIDATE_DONE");
+    
     /* Additional boundary checks for specific syscalls */
     boundary_result = boundary_detect_bridge_bypass(syscall_num, context_id);
     if (boundary_result != 0) {
         return (uint64_t)boundary_result;
     }
+    
+    /* DIAGNOSTIC: Bridge bypass detection complete */
+    debugcon_write_with_timestamp("DIAG_BRIDGE_BYPASS_CHECK_DONE");
 #else
     /* Phase 16 boundary enforcement disabled for performance measurement */
     (void)boundary_result; /* Suppress unused variable warning */
@@ -180,12 +283,18 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         }
     }
     
+    /* DIAGNOSTIC: BCIB submission check complete */
+    debugcon_write_with_timestamp("DIAG_BCIB_SUBMISSION_CHECK_DONE");
+    
     /* Validate syscall number range */
     if (syscall_num >= SYS_V2_NR) {
         boundary_fail_closed_termination(BOUNDARY_ERR_UNAUTHORIZED_SYSCALL, context_id,
                                         "Syscall number exceeds maximum allowed");
         return ESYS_V2_INVALID_SYSCALL;
     }
+    
+    /* DIAGNOSTIC: Syscall range check complete */
+    debugcon_write_with_timestamp("DIAG_SYSCALL_RANGE_CHECK_DONE");
     
     /* Dispatch to original syscall handlers after boundary validation */
     switch (syscall_num) {

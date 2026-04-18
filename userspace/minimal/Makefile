@@ -44,8 +44,12 @@ else ifeq ($(MINIMAL_MODE),dual-worker-pipeline)
 # Dual-payload mode: build both BCIB and USER workers
 MINIMAL_SRC := minimal_bcib_worker.S
 DUAL_PAYLOAD_MODE := 1
+else ifeq ($(MINIMAL_MODE),second-syscall-proof)
+MINIMAL_SRC := minimal_second_syscall_proof.S
+else ifeq ($(MINIMAL_MODE),ring3-spin-probe)
+MINIMAL_SRC := minimal_ring3_spin_probe.S
 else
-$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, bcib-forbidden, bcib-worker-bootstrap, or dual-worker-pipeline)
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, runtime-bridge-test, entry-proof, bcib-forbidden, bcib-worker-bootstrap, dual-worker-pipeline, or second-syscall-proof)
 endif
 
 CFLAGS := -target x86_64-elf \

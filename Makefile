@@ -801,7 +801,7 @@ USER_MINIMAL_DEFAULT_MODE := phase10a2
 
 # Validate USER_MINIMAL_MODE if set
 ifneq ($(strip $(USER_MINIMAL_MODE)),)
-  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden execution-delivery-proof execution-marker-only phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden bcib-worker-bootstrap dual-worker-pipeline
+  VALID_MODES := phase10a2 entry-proof runtime-bridge-test runtime-bridge-ping runtime-bridge-forbidden execution-delivery-proof execution-marker-only phase10a2-text-witness-bp syscall-v2-runtime bcib-forbidden bcib-worker-bootstrap dual-worker-pipeline second-syscall-proof ring3-spin-probe
   ifeq ($(filter $(USER_MINIMAL_MODE),$(VALID_MODES)),)
     $(error Invalid USER_MINIMAL_MODE='$(USER_MINIMAL_MODE)'. Valid values: $(VALID_MODES))
   endif
@@ -1302,7 +1302,7 @@ efi-img:
 		exit 1; \
 	fi
 	@case "$(USER_MINIMAL_MODE)" in \
-		phase10a2|entry-proof|runtime-bridge-test|runtime-bridge-ping|runtime-bridge-forbidden|execution-delivery-proof|execution-marker-only|phase10a2-text-witness-bp|syscall-v2-runtime|bcib-forbidden|bcib-worker-bootstrap|dual-worker-pipeline) ;; \
+		phase10a2|entry-proof|runtime-bridge-test|runtime-bridge-ping|runtime-bridge-forbidden|execution-delivery-proof|execution-marker-only|phase10a2-text-witness-bp|syscall-v2-runtime|bcib-forbidden|bcib-worker-bootstrap|dual-worker-pipeline|second-syscall-proof|ring3-spin-probe) ;; \
 		*) \
 			echo "ERROR: invalid USER_MINIMAL_MODE"; \
 			echo "Current value: $(USER_MINIMAL_MODE)"; \
@@ -2948,6 +2948,26 @@ ci-gate-performance-local: ci-evidence-dir
 ci-gate-performance-stability: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE STABILITY =="
 	@echo "run_id: $(RUN_ID)"
+
+# Ring3 Spin Probe (scheduler-primary-regression-rca prerequisite)
+# Purpose: Verify Ring3 fetch/execute pipeline works
+# Expected: [R3_FETCH_OK] marker appears in timer interrupt
+ci-gate-ring3-spin-probe: ci-evidence-dir
+	@echo "== CI GATE RING3 SPIN PROBE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "purpose: Verify Ring3 fetch/execute pipeline"
+	@bash scripts/qemu-ring3-spin-probe-harness.sh
+
+# Second Syscall Init Skip Proof (scheduler-primary-regression-rca)
+# Purpose: Verify boundary_init_done flag works correctly
+# Expected: 1st syscall takes init path, 2nd syscall takes skip path
+ci-gate-second-syscall-init-skip-proof: ci-evidence-dir
+	@echo "== CI GATE SECOND SYSCALL INIT SKIP PROOF =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "spec: scheduler-primary-regression-rca"
+	@echo "purpose: Verify boundary_init_done flag behavior"
+	@bash scripts/qemu-second-syscall-proof-harness.sh
+	@echo "OK: second-syscall-init-skip-proof evidence collected"
 	@echo "perf_stability_contract_file: $(PERF_STABILITY_CONTRACT_FILE)"
 	@echo "perf_stability_profile: $(PERF_STABILITY_PROFILE)"
 	@PERF_STABILITY_PROFILE="$(PERF_STABILITY_PROFILE)" \

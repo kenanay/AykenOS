@@ -159,6 +159,20 @@ void timer_isr_c(void *frame_ptr)
         timer_debugcon_hex64(tick_count);
         timer_debugcon_write("\n");
     }
+    
+    // Ring3 Execution Probe: Detect if userspace is executing
+    // If we reach here from Ring3, it means fetch/execute pipeline works
+    static uint8_t ring3_fetch_marker_emitted = 0;
+    if (!ring3_fetch_marker_emitted && (frame->cs & 0x3) == 0x3) {
+        ring3_fetch_marker_emitted = 1;
+        timer_debugcon_write("[R3_FETCH_OK] RIP=");
+        timer_debugcon_hex64(frame->rip);
+        timer_debugcon_write(" CR3=");
+        uint64_t cr3_val;
+        __asm__ volatile("mov %%cr3, %0" : "=r"(cr3_val));
+        timer_debugcon_hex64(cr3_val);
+        timer_debugcon_write("\n");
+    }
 
     execution_slot_enter_critical(&slot_guard);
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_TIMEOUT_IRQ);

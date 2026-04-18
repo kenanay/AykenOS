@@ -179,9 +179,13 @@ ring3_enter_iretq:
     testq $0x200, %rdx
     jz .L_rflags_if_off
     EMIT_CSTR p10_rflags_if_on
+    EMIT_HEX64 %rdx
+    EMIT_CSTR p10_newline
     jmp .L_rflags_if_ok
 .L_rflags_if_off:
     EMIT_CSTR p10_rflags_if_off
+    EMIT_HEX64 %rdx
+    EMIT_CSTR p10_newline
     FAIL_CLOSED
 .L_rflags_if_ok:
 
@@ -207,7 +211,28 @@ ring3_enter_iretq:
     // These are last reliable kernel-side markers; actual user-code proof
     // still comes from the Ring3 #BP path (`P10_RING3_USER_CODE`).
     EMIT_CSTR p10_cr3_switch
+    
+    // Dump PIC mask before P10_RING3_ENTER
+    EMIT_CSTR p10_pic_mask
+    inb $0x21, %al
+    movzbq %al, %r12
+    EMIT_HEX64 %r12
+    inb $0xA1, %al
+    movzbq %al, %r12
+    EMIT_HEX64 %r12
+    EMIT_CSTR p10_newline
+
     EMIT_CSTR p10_ring3_enter
+
+    // Dump PIC mask after P10_RING3_ENTER
+    EMIT_CSTR p10_pic_mask
+    inb $0x21, %al
+    movzbq %al, %r12
+    EMIT_HEX64 %r12
+    inb $0xA1, %al
+    movzbq %al, %r12
+    EMIT_HEX64 %r12
+    EMIT_CSTR p10_newline
 #if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
     // Diagnostic-only fetch probe stays on this transition page; scheduler-side
     // C helpers must not extend the post-CR3 execution footprint.
@@ -441,6 +466,8 @@ ring3_enter_final_iret_trampoline:
 	.section .rodata
 p10_cr3_switch:
     .asciz "P10_CR3_SWITCH\n"
+p10_pic_mask:
+    .asciz "PIC_MASK M/S: "
 p10_ring3_attempt:
     .asciz "P10_RING3_ATTEMPT\n"
 p10_ring3_commit:
