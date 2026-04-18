@@ -2978,6 +2978,44 @@ ci-gate-second-syscall-init-skip-proof: ci-evidence-dir
 			--contract-profile "$(PERF_STABILITY_PROFILE)"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/performance-stability/report.json" "$(EVIDENCE_RUN_DIR)/reports/performance-stability.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+
+# Preservation Tests (scheduler-primary-regression-rca Task 2)
+# Purpose: Verify preservation properties before optimization
+# Expected: All tests PASS on unfixed code (baseline behavior)
+ci-gate-preservation-tests: ci-evidence-dir
+	@echo "== CI GATE PRESERVATION TESTS =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "spec: scheduler-primary-regression-rca"
+	@echo "task: 2 - Preservation property tests"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/preservation-tests"
+	@echo
+	@echo ">> Test 1: Boundary Init Idempotency"
+	@bash scripts/qemu-second-syscall-proof-harness.sh
+	@python3 scripts/ci/test_boundary_init_idempotency.py out/second-syscall-evidence/debugcon.log \
+		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test1_idempotency.log"
+	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test1_idempotency.log"; then \
+		echo "❌ FAIL: Boundary init idempotency test failed"; \
+		exit 1; \
+	fi
+	@echo
+	@echo ">> Test 2: Diagnostic Flags Verification"
+	@bash scripts/ci/verify_diagnostic_flags.sh \
+		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_diagnostic_flags.log"
+	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_diagnostic_flags.log"; then \
+		echo "❌ FAIL: Diagnostic flags verification failed"; \
+		exit 1; \
+	fi
+	@echo
+	@echo "============================================================"
+	@echo " PRESERVATION TESTS SUMMARY"
+	@echo "============================================================"
+	@echo "✅ All preservation tests PASSED"
+	@echo "   → boundary_init_done idempotency verified"
+	@echo "   → Diagnostic flags isolation verified"
+	@echo
+	@echo "Preservation baseline established for Task 3 optimization"
+	@echo "Evidence: $(EVIDENCE_RUN_DIR)/preservation-tests/"
+	@echo "OK: preservation-tests gate passed"
 	@echo "OK: performance-stability evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-performance-learning-review: ci-evidence-dir
