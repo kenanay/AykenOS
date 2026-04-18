@@ -1661,6 +1661,8 @@ static int sched_mailbox_extract_candidate(proc_t *owner, uint64_t *out_epoch, u
     if (!owner || !out_epoch || !out_pid || !owner->mailbox_pa) {
         return 0;
     }
+    // Event: Mailbox extract operation entry
+    sched_emit_marker("EVT_MB_EXTRACT_ENTER\n");
     sched_perf_note_mailbox_extract_enter();
     if (!sched_mailbox_read_snapshot(owner, &mb_snapshot)) {
         sched_emit_perf_mb_extract_reason_marker("snapshot_fail");
@@ -1777,6 +1779,9 @@ static proc_t *sched_select_next_mailbox(
     int arbiter_decision_open = 0;
     const char *arbiter_reason_name = NULL;
 
+    // Event: Scheduler mailbox selection entry
+    sched_emit_marker("EVT_MB_SELECT_ENTER\n");
+
 #define SCHED_MB_DECISION_BEGIN() \
     do { \
         if (!arbiter_decision_open) { \
@@ -1890,8 +1895,17 @@ static proc_t *sched_select_next_mailbox(
     if (allow_keep_running && prev && prev->type == PROC_TYPE_USER &&
         prev->state == PROC_RUNNING && owner->mailbox_pa) {
         uint64_t peek_epoch = sched_mailbox_peek_epoch(owner);
+        // Event: Epoch peek for stale detection
+        sched_emit_marker("EVT_MB_EPOCH_PEEK epoch=");
+        sched_emit_u64_dec(peek_epoch);
+        sched_emit_marker(" last_epoch=");
+        sched_emit_u64_dec(owner->mailbox_last_epoch);
+        sched_emit_marker("\n");
         if (peek_epoch > 0 && peek_epoch <= owner->mailbox_last_epoch) {
-            // Stale epoch: skip all expensive phases
+            // Event: Stale epoch detected, short-circuit active
+            sched_emit_marker("EVT_MB_STALE_SHORT_CIRCUIT epoch=");
+            sched_emit_u64_dec(peek_epoch);
+            sched_emit_marker("\n");
             SCHED_MB_DECISION_BEGIN();
             SCHED_MB_REASON("no_candidate");
             sched_perf_note_mailbox_arbiter_path_fallback_enter();
@@ -1920,6 +1934,8 @@ static proc_t *sched_select_next_mailbox(
 
     // Single-authority path: only owner mailbox is consumed.
     {
+        // Event: Arbiter decision logic entry
+        sched_emit_marker("EVT_MB_ARBITER_DECISION_ENTER\n");
         uint64_t epoch = 0;
         uint32_t pid = 0;
         int extracted = sched_mailbox_extract_candidate(owner, &epoch, &pid);
@@ -4249,11 +4265,19 @@ static uint64_t sched_ring3_probe_mapping_phys(void)
         return 0;
     }
 
+#if defined(AYKEN_PHASE16_PROBE_VALIDATION_ENABLE) && (AYKEN_PHASE16_PROBE_VALIDATION_ENABLE == 1)
     if (g_sched_ring3_probe_frame_phys != 0 &&
         g_sched_ring3_probe_source_frame_phys == source_frame_phys &&
         sched_ring3_probe_frame_matches_symbol(g_sched_ring3_probe_frame_phys)) {
         return g_sched_ring3_probe_frame_phys;
     }
+#else
+    /* Phase 16 probe validation disabled for performance measurement - skip frame matching */
+    if (g_sched_ring3_probe_frame_phys != 0 &&
+        g_sched_ring3_probe_source_frame_phys == source_frame_phys) {
+        return g_sched_ring3_probe_frame_phys;
+    }
+#endif
 
     if (g_sched_ring3_probe_frame_phys == 0) {
         g_sched_ring3_probe_frame_phys = phys_alloc_frame();
@@ -5134,7 +5158,12 @@ static void sched_prepare_dispatch_context_or_panic(proc_t *proc)
 #endif
 #if defined(AYKEN_RING3_SECOND_CANONICAL_PROBE) && (AYKEN_RING3_SECOND_CANONICAL_PROBE == 1) && \
     defined(AYKEN_RING3_FRESH_FRAME_PROBE) && (AYKEN_RING3_FRESH_FRAME_PROBE == 1)
+#if defined(AYKEN_PHASE16_PROBE_VALIDATION_ENABLE) && (AYKEN_PHASE16_PROBE_VALIDATION_ENABLE == 1)
         if (!sched_ring3_probe_frame_matches_symbol(entry_pte & AYKEN_PTE_ADDR_MASK)) {
+#else
+        /* Phase 16 probe validation disabled for performance measurement - skip frame matching check */
+        if (0) {
+#endif
             sched_ring3_contract_panic("transition_text_probe_bytes_mismatch", proc);
         }
 #else

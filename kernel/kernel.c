@@ -123,12 +123,17 @@ static uint8_t kernel_boot_stack[16384] __attribute__((aligned(16), section(".da
 // Early debugcon output (QEMU port 0xE9)
 static void dual_channel_write(const char *s)
 {
+#if defined(AYKEN_PHASE16_DIAGNOSTIC_MARKERS_ENABLE) && (AYKEN_PHASE16_DIAGNOSTIC_MARKERS_ENABLE == 1)
     if (!s) return;
     while (*s) {
         outb(0xE9, (uint8_t)*s);
         outb(0x3F8, (uint8_t)*s);
         s++;
     }
+#else
+    /* Phase 16 diagnostic markers disabled for performance measurement */
+    (void)s; /* Suppress unused parameter warning */
+#endif
 }
 
 static int kernel_streq(const char *a, const char *b)
@@ -753,6 +758,8 @@ static void kernel_late_init(void)
     // 5.1) Phase-16 Task 5: BCIB Worker Creation (Validation Profile Only)
     // ---------------------------------------------------------
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_PHASE16_BCIB_WORKER_ENABLE) && (AYKEN_PHASE16_BCIB_WORKER_ENABLE == 1)
+    dual_channel_write("[K][PERF_RCA] BCIB_WORKER_ENABLE=1\n");
     if (kernel_mode_uses_bcib_workers()) {
         dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE\n");
         if (bcib_worker_create() == 0) {
@@ -777,6 +784,12 @@ static void kernel_late_init(void)
         dual_channel_write("\n");
         fb_print("[OK] BCIB worker creation skipped for non-BCIB user mode.\n");
     }
+#else
+    // Phase 16 BCIB worker creation disabled for performance measurement
+    dual_channel_write("[K][PERF_RCA] BCIB_WORKER_ENABLE=0\n");
+    dual_channel_write("[K][LATE]8.1 BCIB_WORKER_CREATE_DISABLED\n");
+    fb_print("[PERF_RCA] BCIB worker creation disabled (AYKEN_PHASE16_BCIB_WORKER_ENABLE=0).\n");
+#endif
 #endif
 
     // ---------------------------------------------------------

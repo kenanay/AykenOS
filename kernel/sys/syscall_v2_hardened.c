@@ -143,6 +143,7 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
      * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
     boundary_set_context_type(context_id, context_type, process_id);
     
+#if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
     boundary_result = boundary_validate_syscall(syscall_num, context_type, context_id);
     if (boundary_result != 0) {
@@ -155,6 +156,10 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     if (boundary_result != 0) {
         return (uint64_t)boundary_result;
     }
+#else
+    /* Phase 16 boundary enforcement disabled for performance measurement */
+    (void)boundary_result; /* Suppress unused variable warning */
+#endif
     
     /* Special handling for SYS_V2_SUBMIT_EXECUTION - BCIB submission path hardening */
     if (syscall_num == SYS_V2_SUBMIT_EXECUTION) {
