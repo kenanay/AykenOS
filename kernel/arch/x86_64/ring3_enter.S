@@ -23,6 +23,8 @@ ring3_transition_trace_emitted:
     .byte 0
 ring3_transition_trace_emit_now:
     .byte 0
+entry_diag_samples:
+    .quad 0
 
 .section .text
 
@@ -38,6 +40,10 @@ ring3_transition_trace_emit_now:
 
 #ifndef AYKEN_RING3_IRETQ_DIAG_PROBE
 #define AYKEN_RING3_IRETQ_DIAG_PROBE 0
+#endif
+
+#ifndef AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE
+#define AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE 0
 #endif
 
 #ifndef AYKEN_RING3_POST_CR3_TEXT_PROBE
@@ -139,6 +145,35 @@ ring3_transition_trace_emit_now:
     mov (%r11), %r10
     EMIT_HEX64 %r10
     EMIT_CSTR p10_newline
+#endif
+.endm
+
+// Entry segmentation profiling macro (bounded sampling)
+// CRITICAL: Uses only caller-saved registers to avoid clobbering user state
+.macro EMIT_ENTRY_SEG_TSC label
+#if defined(AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE) && (AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE == 1)
+    // Check if we've already collected enough samples
+    // Use memory-to-memory compare to avoid clobbering registers
+    cmpq $3, entry_diag_samples(%rip)
+    jge 1f
+    // Save caller-saved registers we'll use
+    pushq %rax
+    pushq %rdx
+    pushq %r9
+    // Read TSC
+    rdtsc
+    shl $32, %rdx
+    or %rdx, %rax
+    mov %rax, %r9
+    // Emit marker
+    EMIT_CSTR \label
+    EMIT_HEX64 %r9
+    EMIT_CSTR p10_newline
+    // Restore registers
+    popq %r9
+    popq %rdx
+    popq %rax
+1:
 #endif
 .endm
 
@@ -335,8 +370,32 @@ ring3_enter_post_cr3:
     .p2align 12
 ring3_enter_post_cr3:
     // Canonical post-CR3 window: dedicated page, no adjacent kernel text.
+    
+    // PATCH H: Entry segmentation profiling - START
+    EMIT_ENTRY_SEG_TSC diag_entry_seg_start
+    
+    // CR3 pivot
     mov %rcx, %cr3
+    
+    // PATCH H: After CR3 pivot
+    EMIT_ENTRY_SEG_TSC diag_entry_seg_after_cr3
+    
     EMIT_POST_CR3_TEXT_PROBE
+    
+    // PATCH H: After text proof (if enabled)
+    EMIT_ENTRY_SEG_TSC diag_entry_seg_after_text_proof
+    
+    // PATCH H: Before IRET
+    EMIT_ENTRY_SEG_TSC diag_entry_seg_before_iret
+    
+    // PATCH H: Increment sample counter (register-safe)
+#if defined(AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE) && (AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE == 1)
+    cmpq $3, entry_diag_samples(%rip)
+    jge 1f
+    incq entry_diag_samples(%rip)
+1:
+#endif
+    
 #if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
     jmp 1f
 1:
@@ -519,3 +578,11 @@ p10_rflags_if_on:
     .asciz "P10_RFLAGS_IF_ON\n"
 p10_rflags_if_off:
     .asciz "P10_RFLAGS_IF_OFF\n"
+diag_entry_seg_start:
+    .asciz "DIAG_ENTRY_SEG_START="
+diag_entry_seg_after_cr3:
+    .asciz "DIAG_ENTRY_SEG_AFTER_CR3="
+diag_entry_seg_after_text_proof:
+    .asciz "DIAG_ENTRY_SEG_AFTER_TEXT_PROOF="
+diag_entry_seg_before_iret:
+    .asciz "DIAG_ENTRY_SEG_BEFORE_IRET="
