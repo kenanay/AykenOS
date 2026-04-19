@@ -102,9 +102,8 @@ typedef struct proc {
     proc_type_t type;
     proc_execution_role_t execution_role;  // Phase-16: Explicit execution role for boundary enforcement
     
-    /* PATCH C1: Context type cache for hot-path optimization
-     * Cached from execution_role to eliminate per-syscall computation
-     * Updated only on role transitions (cold-path)
+    /* Boundary context cache for syscall hot-path enforcement.
+     * Cached from execution_role and updated only through role transitions.
      */
     uint8_t boundary_context_type_cached;  // execution_context_type_t cached value
     uint8_t boundary_cache_valid;          // 1 if cache valid, 0 if needs update

@@ -1,5 +1,9 @@
 # Execution Path Forced Proof
 
+> **2026-04-19 correction:** The unconditional marker approach was diagnostic-only and is now
+> superseded. Syscall marker writes are guarded by `AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE` so
+> production CI performance runs do not measure debugcon I/O. Use freeze artifacts for marker proof.
+
 **Date**: 2026-04-19  
 **Status**: READY FOR CI  
 **Purpose**: Prove syscall execution path with unconditional markers

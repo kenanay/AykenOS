@@ -1,5 +1,9 @@
 # Patch C Verification Plan
 
+> **2026-04-19 correction:** This plan is superseded. Marker checks must read the freeze artifact
+> `evidence/run-*/gates/performance/boot-audit/qemu_debugcon.log`, not only `gh run view --log`.
+> Production performance runs now keep syscall diagnostics disabled by default.
+
 **Date**: 2026-04-19  
 **Status**: AWAITING CI EVIDENCE  
 **Commit**: c0830308

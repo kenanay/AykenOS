@@ -1,5 +1,9 @@
 # Patch C - Next Action Plan
 
+> **2026-04-19 correction:** The "system does not use it" conclusion below was too strong.
+> The reliable RCA is: production syscall diagnostics polluted the hot path and role-cache updates
+> were not centralized. Patch D makes syscall diagnostics opt-in and fixes cache coherency.
+
 **Date**: 2026-04-19  
 **Status**: 🔴 CRITICAL - Zero Impact Confirmed  
 **User Verdict**: "Implemented" ≠ "Effective"

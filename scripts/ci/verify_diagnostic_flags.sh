@@ -48,10 +48,22 @@ if [[ "${AYKEN_RING3_FRESH_FRAME_PROBE:-0}" == "1" ]]; then
     PRODUCTION_MODE=0
 fi
 
+if [[ "${AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE:-0}" == "1" ]]; then
+    echo "⚠️  WARNING: AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE=1 detected"
+    echo "   Syscall diagnostic markers are opt-in and must stay out of production performance runs"
+    PRODUCTION_MODE=0
+fi
+
 # Check Makefile for diagnostic flag definitions in default/production targets
 if grep -E "^(all|efi-img|kernel\.elf):.*AYKEN_RING3_FETCH_PROBE=1" Makefile 2>/dev/null; then
     echo "⚠️  WARNING: AYKEN_RING3_FETCH_PROBE=1 found in production Makefile target"
     echo "   Production builds should not define this flag"
+    PRODUCTION_MODE=0
+fi
+
+if grep -E "^AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE[[:space:]]*\\?=[[:space:]]*1" Makefile 2>/dev/null; then
+    echo "⚠️  WARNING: AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE defaults to 1"
+    echo "   Syscall diagnostic markers must be explicit opt-in"
     PRODUCTION_MODE=0
 fi
 
@@ -65,6 +77,7 @@ if [[ $PRODUCTION_MODE -eq 1 ]]; then
     echo
     echo "Property Verified:"
     echo "  → AYKEN_RING3_FETCH_PROBE is disabled (0 or undefined)"
+    echo "  → AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE defaults to disabled"
     echo "  → No diagnostic flags detected in production build"
     echo "  → False blocker from Task 1 cannot recur"
     exit 0

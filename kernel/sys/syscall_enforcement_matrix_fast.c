@@ -12,6 +12,8 @@ syscall_enforcement_fast_entry_t SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_R
 /* Initialization flag */
 int syscall_enforcement_fast_initialized = 0;
 
+#define SYS_V2_ALL_FROZEN_SYSCALLS_MASK ((1ULL << SYS_V2_NR) - 1ULL)
+
 /**
  * Initialize fast enforcement table from enforcement rules
  * MUST be called during kernel boot (cold path)
@@ -38,11 +40,11 @@ void syscall_enforcement_fast_init(void) {
         (1ULL << SYS_V2_ABDF_OPERATION)
     );
     
-    /* User: all syscalls allowed */
-    SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_USER].allowed_syscalls = 0xFFFFFFFFFFFFFFFFULL;
+    /* User: all frozen v2 syscalls allowed */
+    SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_USER].allowed_syscalls = SYS_V2_ALL_FROZEN_SYSCALLS_MASK;
     
-    /* Kernel: all syscalls allowed */
-    SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_KERNEL].allowed_syscalls = 0xFFFFFFFFFFFFFFFFULL;
+    /* Kernel: all frozen v2 syscalls allowed */
+    SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_KERNEL].allowed_syscalls = SYS_V2_ALL_FROZEN_SYSCALLS_MASK;
     
     /* Unknown: no syscalls allowed (fail-closed) */
     SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_UNKNOWN].allowed_syscalls = 0;
@@ -81,6 +83,16 @@ int syscall_enforcement_fast_validate_table(void) {
     /* Verify unknown role has no syscalls */
     uint64_t unknown_mask = SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_UNKNOWN].allowed_syscalls;
     if (unknown_mask != 0) {
+        return -1;
+    }
+
+    if (SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_USER].allowed_syscalls !=
+        SYS_V2_ALL_FROZEN_SYSCALLS_MASK) {
+        return -1;
+    }
+
+    if (SYSCALL_ENFORCEMENT_FAST_TABLE[PROC_EXECUTION_ROLE_KERNEL].allowed_syscalls !=
+        SYS_V2_ALL_FROZEN_SYSCALLS_MASK) {
         return -1;
     }
     

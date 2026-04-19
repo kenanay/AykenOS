@@ -32,6 +32,7 @@ cd "$REPO_ROOT"
 # Use validation profile to ensure diagnostic markers are present
 USER_MINIMAL_MODE=second-syscall-proof \
 KERNEL_PROFILE=validation \
+AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE=1 \
 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 \
 AYKEN_RING3_FETCH_PROBE=0 \
 make efi-img

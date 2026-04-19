@@ -1,5 +1,9 @@
 # Patch C Status Summary
 
+> **2026-04-19 correction:** This status is superseded by Patch D. The zero-impact metrics remain
+> useful, but marker checks must use the freeze artifact debugcon file, not only the Actions shell log.
+> Syscall diagnostics now default off for production performance runs.
+
 **Date**: 2026-04-19  
 **Commit**: 44f0f7e1  
 **Status**: 🔍 AWAITING CI EVIDENCE

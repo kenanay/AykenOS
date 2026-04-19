@@ -6,6 +6,10 @@
 #include "../include/execution_slot.h"
 #include "../include/proc.h"
 
+#ifndef AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE
+#define AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE 0
+#endif
+
 /* Debugcon helper for marker emission */
 static void debugcon_write(const char *s) {
     if (!s) return;
@@ -182,6 +186,14 @@ int boundary_validate_syscall(uint64_t syscall_num, execution_context_type_t con
                                         "Boundary enforcement not initialized");
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
+
+    if (syscall_num >= SYS_V2_NR) {
+        enforcement_result = BOUNDARY_ERR_UNAUTHORIZED_SYSCALL;
+        boundary_audit_violation(enforcement_result, context_id, "Syscall number exceeds frozen v2 range");
+        boundary_fail_closed_termination(enforcement_result, context_id,
+                                        "Syscall number exceeds frozen v2 range");
+        return enforcement_result;
+    }
     
     /* Convert context type to execution role */
     switch (context_type) {
@@ -288,10 +300,15 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
     
-    /* PATCH C2 VERIFICATION: Forced marker to prove fast-path is executing */
-    extern void debugcon_write(const char *s);
+    if (ctx_type == EXEC_CONTEXT_UNKNOWN) {
+        boundary_audit_violation(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                "Unknown execution context in bridge bypass check");
+        boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                        "Unknown execution context in bridge bypass check");
+        return BOUNDARY_ERR_ISOLATION_VIOLATION;
+    }
     
-    /* PATCH C2: Early exit for common case (USER, KERNEL, UNKNOWN)
+    /* PATCH C2: Early exit for common case (USER, KERNEL)
      * These contexts cannot bypass - no deep checks needed
      * This is the hot-path optimization: single branch + early return
      */
@@ -304,7 +321,9 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
          * No bypass possible, no deep checks needed
          * Just verify syscall number is in range (fast check)
          */
+#if defined(AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE) && (AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE == 1)
         debugcon_write("PATCH_C2_FAST_PATH\n");
+#endif
         
         if (syscall_num > SYS_V2_MAX_SYSCALL) {
             boundary_audit_violation(BOUNDARY_ERR_BRIDGE_BYPASS, context_id,
@@ -317,7 +336,9 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
     }
     
     /* SLOW PATH: Restricted contexts (BCIB, RUNTIME_BRIDGE) need deep checks */
+#if defined(AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE) && (AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE == 1)
     debugcon_write("PATCH_C2_SLOW_PATH\n");
+#endif
     
     /* Check for attempts to extend syscall surface (Requirement 1.8) */
     if (syscall_num > SYS_V2_MAX_SYSCALL) {

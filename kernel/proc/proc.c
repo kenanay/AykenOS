@@ -13,7 +13,7 @@
 #include "../sched/sched_mailbox.h"
 #include "../include/alias_registry.h"
 #include "../include/barrier.h"
-#include "../sys/boundary_enforcement.h"  /* PATCH C1: For boundary_role_to_context_type() */
+#include "../include/proc_role_cache.h"
 
 #ifndef AYKEN_GATE45_PROOF
 #define AYKEN_GATE45_PROOF 0
@@ -1579,17 +1579,9 @@ static proc_t *proc_alloc(proc_type_t type, const char *name)
     p->pid = proc_alloc_pid();
     p->type = type;
     p->state = PROC_READY;
-    p->execution_role = (type == PROC_TYPE_USER)
-        ? PROC_EXECUTION_ROLE_USER
-        : PROC_EXECUTION_ROLE_KERNEL;
-    
-    /* PATCH C1: Initialize context type cache */
-    {
-        extern execution_context_type_t boundary_role_to_context_type(int role);
-        execution_context_type_t ctx_type = boundary_role_to_context_type(p->execution_role);
-        p->boundary_context_type_cached = (uint8_t)ctx_type;
-        p->boundary_cache_valid = 1;
-    }
+    (void)proc_set_execution_role(p, (type == PROC_TYPE_USER)
+                                      ? PROC_EXECUTION_ROLE_USER
+                                      : PROC_EXECUTION_ROLE_KERNEL);
     
     p->name = name;
     // PML4 will be set by caller (proc_create_user_process or proc_create_kernel_process)

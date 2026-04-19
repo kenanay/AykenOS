@@ -6,6 +6,17 @@
 #include "../include/serial.h"
 #include "../include/proc.h"
 
+#ifndef AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE
+#define AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE 0
+#endif
+
+#if defined(AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE) && (AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE == 1)
+#define AYKEN_SYSCALL_DIAG_ENABLED 1
+#else
+#define AYKEN_SYSCALL_DIAG_ENABLED 0
+#endif
+
+#if AYKEN_SYSCALL_DIAG_ENABLED
 /* Debugcon helper for marker emission with timestamp */
 static inline uint64_t read_tsc(void) {
     uint32_t lo, hi;
@@ -13,7 +24,7 @@ static inline uint64_t read_tsc(void) {
     return ((uint64_t)hi << 32) | lo;
 }
 
-static void debugcon_write_with_timestamp(const char *marker) {
+static void syscall_diag_marker(const char *marker) {
     uint64_t rflags, ts;
     if (!marker) return;
     
@@ -56,6 +67,17 @@ static void debugcon_write(const char *s) {
     }
     __asm__ volatile("push %0; popfq" : : "r"(rflags) : "memory", "cc");
 }
+
+#define syscall_diag_write(s) debugcon_write((s))
+#else
+static inline void syscall_diag_marker(const char *marker) {
+    (void)marker;
+}
+
+static inline void syscall_diag_write(const char *s) {
+    (void)s;
+}
+#endif
 
 /* Debug printf implementation using serial output */
 static void debug_printf(const char *fmt, ...) {
@@ -111,12 +133,8 @@ static execution_context_type_t detect_execution_context(uint64_t context_id) {
  */
 uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
                                      uint64_t arg2, uint64_t arg3, uint64_t arg4) {
-    /* FORCED EXECUTION PROOF - UNCONDITIONAL
-     * If this handler is called, this marker MUST appear in debugcon log.
-     * No conditions, no macros, no optimizations can remove this.
-     * Missing marker = handler not executing = wrong execution path.
-     */
-    debugcon_write("HARDENED_ENTRY\n");
+    /* Opt-in syscall path proof. Disabled in production performance builds. */
+    syscall_diag_write("HARDENED_ENTRY\n");
     
     execution_context_type_t context_type;
     int boundary_result;
@@ -132,23 +150,23 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     if (syscall_num == 10 && arg1 == 0x53) {  /* SYS_V2_DEBUG_PUTCHAR, 'S' */
         test_anchor_seen = 1;
         anchored_seq = 0;
-        debugcon_write_with_timestamp("DIAG_TEST_ANCHOR_SET");
+        syscall_diag_marker("DIAG_TEST_ANCHOR_SET");
     }
     
     /* If anchor is set, emit anchored sequence markers for subsequent syscalls */
     if (test_anchor_seen && syscall_num == 10) {
         anchored_seq++;
         if (anchored_seq == 1) {
-            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_1");
+            syscall_diag_marker("DIAG_ANCHORED_SEQ_1");
         } else if (anchored_seq == 2) {
-            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_2");
+            syscall_diag_marker("DIAG_ANCHORED_SEQ_2");
         } else if (anchored_seq == 3) {
-            debugcon_write_with_timestamp("DIAG_ANCHORED_SEQ_3");
+            syscall_diag_marker("DIAG_ANCHORED_SEQ_3");
         }
     }
     
     /* DIAGNOSTIC: Kernel handler entry */
-    debugcon_write_with_timestamp("DIAG_KERNEL_HANDLER_ENTRY");
+    syscall_diag_marker("DIAG_KERNEL_HANDLER_ENTRY");
     
     /* Get current execution context - EXPLICIT ROLE MODEL */
     extern proc_t *current_proc;
@@ -212,7 +230,7 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     }
     
     /* DIAGNOSTIC: Context detection complete */
-    debugcon_write_with_timestamp("DIAG_CONTEXT_DETECTION_DONE");
+    syscall_diag_marker("DIAG_CONTEXT_DETECTION_DONE");
     
     /* Initialize boundary enforcement if not already done */
     static int boundary_init_done = 0;
@@ -223,12 +241,12 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     
     if (!boundary_init_done) {
         /* DIAGNOSTIC: Flag is 0 - entering init path */
-        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_ENTER");
+        syscall_diag_marker("DIAG_BOUNDARY_INIT_ENTER");
         
         boundary_enforce_init();
         
         /* DIAGNOSTIC: boundary_enforce_init() complete */
-        debugcon_write_with_timestamp("DIAG_BOUNDARY_ENFORCE_INIT_DONE");
+        syscall_diag_marker("DIAG_BOUNDARY_ENFORCE_INIT_DONE");
         
         /* CRITICAL: Validate enforcement matrix integrity */
         /* PATCH B: Use fast table validation instead of legacy matrix scan */
@@ -239,39 +257,39 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         }
         
         /* DIAGNOSTIC: syscall_enforcement_validate_matrix() complete */
-        debugcon_write_with_timestamp("DIAG_MATRIX_VALIDATE_DONE");
+        syscall_diag_marker("DIAG_MATRIX_VALIDATE_DONE");
         
         boundary_init_done = 1;
         
         /* DIAGNOSTIC: Flag set to 1 - init complete */
-        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_FLAG_SET");
+        syscall_diag_marker("DIAG_BOUNDARY_INIT_FLAG_SET");
     } else {
         /* DIAGNOSTIC: Flag is 1 - skipping init (fast path) */
-        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_SKIPPED");
+        syscall_diag_marker("DIAG_BOUNDARY_INIT_SKIPPED");
     }
     
     /* DIAGNOSTIC: Boundary init complete */
-    debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_DONE");
+    syscall_diag_marker("DIAG_BOUNDARY_INIT_DONE");
     
     /* PATCH C1: Context type is now cached in proc_t, no need to set per-syscall
      * The boundary_set_context_type() call is removed from hot-path
      * Context type is read directly from current_proc->boundary_context_type_cached above
      */
     
-    /* PATCH C VERIFICATION: Forced marker to prove cache path is executing */
+    /* PATCH C verification marker, emitted only in opt-in syscall diagnostic builds. */
     if (current_proc && current_proc->boundary_cache_valid) {
-        debugcon_write_with_timestamp("PATCH_C_CACHE_HIT");
+        syscall_diag_marker("PATCH_C_CACHE_HIT");
     } else {
-        debugcon_write_with_timestamp("PATCH_C_CACHE_MISS");
+        syscall_diag_marker("PATCH_C_CACHE_MISS");
     }
     
 #if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
     
     /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Syscall validation */
-    debugcon_write_with_timestamp("DIAG_HOT_VALIDATE_SYSCALL_ENTER");
+    syscall_diag_marker("DIAG_HOT_VALIDATE_SYSCALL_ENTER");
     boundary_result = boundary_validate_syscall(syscall_num, context_type, context_id);
-    debugcon_write_with_timestamp("DIAG_HOT_VALIDATE_SYSCALL_DONE");
+    syscall_diag_marker("DIAG_HOT_VALIDATE_SYSCALL_DONE");
     
     if (boundary_result != 0) {
         /* Boundary violation detected - fail-closed termination already triggered */
@@ -279,21 +297,21 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     }
     
     /* DIAGNOSTIC: Boundary validation complete */
-    debugcon_write_with_timestamp("DIAG_BOUNDARY_VALIDATE_DONE");
+    syscall_diag_marker("DIAG_BOUNDARY_VALIDATE_DONE");
     
     /* Additional boundary checks for specific syscalls */
     
     /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Bridge bypass detection */
-    debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_ENTER");
+    syscall_diag_marker("DIAG_HOT_BYPASS_CHECK_ENTER");
     boundary_result = boundary_detect_bridge_bypass(context_type, syscall_num, context_id);  /* PATCH C2: Pass cached context_type */
-    debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_DONE");
+    syscall_diag_marker("DIAG_HOT_BYPASS_CHECK_DONE");
     
     if (boundary_result != 0) {
         return (uint64_t)boundary_result;
     }
     
     /* DIAGNOSTIC: Bridge bypass detection complete */
-    debugcon_write_with_timestamp("DIAG_BRIDGE_BYPASS_CHECK_DONE");
+    syscall_diag_marker("DIAG_BRIDGE_BYPASS_CHECK_DONE");
 #else
     /* Phase 16 boundary enforcement disabled for performance measurement */
     (void)boundary_result; /* Suppress unused variable warning */
@@ -306,9 +324,9 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         uint64_t exec_context_id = arg3;
         
         /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - BCIB submission check */
-        debugcon_write_with_timestamp("DIAG_HOT_BCIB_SUBMIT_ENTER");
+        syscall_diag_marker("DIAG_HOT_BCIB_SUBMIT_ENTER");
         boundary_result = boundary_check_bcib_submission_path(bcib_graph, graph_size, exec_context_id);
-        debugcon_write_with_timestamp("DIAG_HOT_BCIB_SUBMIT_DONE");
+        syscall_diag_marker("DIAG_HOT_BCIB_SUBMIT_DONE");
         
         if (boundary_result != 0) {
             return (uint64_t)boundary_result;
@@ -323,7 +341,7 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     }
     
     /* DIAGNOSTIC: BCIB submission check complete */
-    debugcon_write_with_timestamp("DIAG_BCIB_SUBMISSION_CHECK_DONE");
+    syscall_diag_marker("DIAG_BCIB_SUBMISSION_CHECK_DONE");
     
     /* Validate syscall number range */
     if (syscall_num >= SYS_V2_NR) {
@@ -333,7 +351,7 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     }
     
     /* DIAGNOSTIC: Syscall range check complete */
-    debugcon_write_with_timestamp("DIAG_SYSCALL_RANGE_CHECK_DONE");
+    syscall_diag_marker("DIAG_SYSCALL_RANGE_CHECK_DONE");
     
     /* Dispatch to original syscall handlers after boundary validation */
     switch (syscall_num) {

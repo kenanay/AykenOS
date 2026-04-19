@@ -1,5 +1,10 @@
 # Patch C Zero Impact - Root Cause Diagnosis
 
+> **2026-04-19 correction:** The "missing hot-path markers" conclusion below was based on the
+> GitHub Actions shell log, not the uploaded freeze artifact. Shell-log absence is non-authoritative.
+> Current remediation separates syscall diagnostics behind `AYKEN_SYSCALL_DIAGNOSTIC_MARKERS_ENABLE=0`
+> by default and fixes role-cache coherency at role transitions.
+
 **Date**: 2026-04-19  
 **Status**: CRITICAL INVESTIGATION  
 **CI Run**: 24633589543  

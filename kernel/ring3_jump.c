@@ -12,6 +12,7 @@
 #include "ring3_jump.h"
 #include "gdt_idt.h"
 #include "include/proc.h"
+#include "include/proc_role_cache.h"
 #include "include/mm.h"
 #include "sched/sched_mailbox.h"
 #include "include/barrier.h"
@@ -415,7 +416,7 @@ void jump_to_ring3(void)
         embedded_elf_mode[2] == 'i' && embedded_elf_mode[3] == 'b' &&
         embedded_elf_mode[4] == '-' && embedded_elf_mode[5] == 'f') {
         // Mode starts with "bcib-f" -> bcib-forbidden
-        ring3_proc->execution_role = PROC_EXECUTION_ROLE_BCIB;
+        (void)proc_set_execution_role(ring3_proc, PROC_EXECUTION_ROLE_BCIB);
         debugcon_write("[K][EXEC_ROLE] BCIB (bcib-forbidden mode)\n");
     }
     // Runtime_Bridge test requires RUNTIME_BRIDGE execution role for syscall enforcement
@@ -425,7 +426,7 @@ void jump_to_ring3(void)
              embedded_elf_mode[6] == 'e' && embedded_elf_mode[7] == '-' &&
              embedded_elf_mode[8] == 'b') {
         // Mode starts with "runtime-b" -> runtime-bridge-test
-        ring3_proc->execution_role = PROC_EXECUTION_ROLE_RUNTIME_BRIDGE;
+        (void)proc_set_execution_role(ring3_proc, PROC_EXECUTION_ROLE_RUNTIME_BRIDGE);
         debugcon_write("[K][EXEC_ROLE] RUNTIME_BRIDGE (runtime-bridge-test mode)\n");
     }
     
@@ -492,7 +493,7 @@ void jump_to_ring3(void)
     // Phase-16: BCIB fail-closed proof test
     // Set execution role to BCIB for boundary enforcement testing
     #if defined(AYKEN_PHASE16_BCIB_PROOF_TEST) && (AYKEN_PHASE16_BCIB_PROOF_TEST == 1)
-    ring3_proc->execution_role = PROC_EXECUTION_ROLE_BCIB;
+    (void)proc_set_execution_role(ring3_proc, PROC_EXECUTION_ROLE_BCIB);
     fb_print("[PHASE16] User process role set to BCIB for fail-closed proof test\n");
     #endif
 

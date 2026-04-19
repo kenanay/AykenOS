@@ -1,5 +1,9 @@
 # Patch C CI Verdict - Run 24633856103
 
+> **2026-04-19 correction:** The performance failure is valid, but marker absence from
+> `gh run view --log` is not authoritative. Raw QEMU debugcon evidence must come from the
+> freeze artifact. Patch D addresses production syscall diagnostic I/O and role-cache coherency.
+
 **Date**: 2026-04-19  
 **Commit**: 3150692d  
 **Run ID**: gh-24633856103-1  

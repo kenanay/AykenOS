@@ -1,5 +1,10 @@
 # Patch C Final Status - Execution Path Investigation Required
 
+> **2026-04-19 correction:** This document is superseded by Patch D RCA.
+> Missing marker strings in `gh run view --log` are not authoritative execution-path evidence because
+> CI freeze stores raw performance debugcon output in the uploaded evidence artifact. The current fix
+> is syscall diagnostic isolation plus coherent role-cache updates, not treating Patch C as dead code.
+
 **Date**: 2026-04-19  
 **Status**: ❌ ZERO IMPACT + MARKERS MISSING  
 **Verdict**: CODE NOT EXECUTING OR WRONG TARGET
