@@ -39,10 +39,18 @@ static volatile uint64_t tick_count = 0;
 static volatile uint32_t timer_frequency_hz_value = 100;
 static volatile uint32_t timer_initialized = 0;
 
-static void timer_debugcon_write(const char *s)
+void timer_debugcon_write(const char *s)
 {
     while (*s) {
         outb(0xE9, (uint8_t)(*s++));
+    }
+}
+
+void timer_debugcon_hex(uint32_t value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (int i = 7; i >= 0; --i) {
+        outb(0xE9, (uint8_t)hex[(value >> (i * 4)) & 0xF]);
     }
 }
 
@@ -54,7 +62,7 @@ static void timer_debugcon_hex16(uint16_t value)
     }
 }
 
-static void timer_debugcon_hex64(uint64_t value)
+void timer_debugcon_hex64(uint64_t value)
 {
     static const char hex[] = "0123456789ABCDEF";
     for (int i = 15; i >= 0; --i) {
@@ -103,6 +111,10 @@ static void timer_maybe_exit_on_proof_done(void)
 
     if (!proof_done_emitted && proof_done) {
         proof_done_emitted = 1;
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+        extern void entry_diag_dump(void);
+        entry_diag_dump();
+#endif
         timer_debugcon_write("[[AYKEN_PROOF_DONE]]\n");
         // Primary deterministic exit path for CI (if device is present):
         // qemu-system-x86_64 -device isa-debug-exit,iobase=0x501,iosize=0x04
@@ -165,6 +177,17 @@ void timer_isr_c(void *frame_ptr)
     static uint8_t ring3_fetch_marker_emitted = 0;
     if (!ring3_fetch_marker_emitted && (frame->cs & 0x3) == 0x3) {
         ring3_fetch_marker_emitted = 1;
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+        extern uint32_t entry_diag_index;
+        extern struct entry_diag_sample { uint32_t phase; uint32_t aux; uint64_t tsc; } entry_diag_buffer[1024];
+        if (entry_diag_index < 1024) {
+            uint64_t tsc;
+            __asm__ volatile("lfence; rdtsc; shl $32, %%rdx; or %%rdx, %%rax" : "=a"(tsc) : : "rcx", "rdx");
+            entry_diag_buffer[entry_diag_index].phase = 5; // ENTRY_DIAG_FIRST_FETCH_OK
+            entry_diag_buffer[entry_diag_index].tsc = tsc;
+            entry_diag_index++;
+        }
+#endif
         timer_debugcon_write("[R3_FETCH_OK] RIP=");
         timer_debugcon_hex64(frame->rip);
         timer_debugcon_write(" CR3=");

@@ -148,34 +148,62 @@ entry_diag_samples:
 #endif
 .endm
 
-// Entry segmentation profiling macro (bounded sampling)
-// CRITICAL: Uses only caller-saved registers to avoid clobbering user state
-.macro EMIT_ENTRY_SEG_TSC label
-#if defined(AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE) && (AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE == 1)
-    // Check if we've already collected enough samples
-    // Use memory-to-memory compare to avoid clobbering registers
-    cmpq $3, entry_diag_samples(%rip)
-    jge 1f
-    // Save caller-saved registers we'll use
+// In-memory diagnostic profiling (Patch J)
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+.section .data
+.p2align 4
+.global entry_diag_buffer
+entry_diag_buffer:
+    .space 16 * 1024  // 1024 elements of 16 bytes each
+.global entry_diag_index
+entry_diag_index:
+    .long 0
+.global entry_diag_enabled
+entry_diag_enabled:
+    .long 1
+.section .text
+
+.macro RECORD_DIAG_TSC phase_id
     pushq %rax
     pushq %rdx
-    pushq %r9
+    pushq %rcx
+    pushq %r8
+
     // Read TSC
+    lfence
     rdtsc
     shl $32, %rdx
     or %rdx, %rax
-    mov %rax, %r9
-    // Emit marker
-    EMIT_CSTR \label
-    EMIT_HEX64 %r9
-    EMIT_CSTR p10_newline
-    // Restore registers
-    popq %r9
+    
+    // Get index
+    movl entry_diag_index(%rip), %ecx
+    cmpl $1024, %ecx
+    jae 1f
+    
+    // Calculate address: entry_diag_buffer + index * 16
+    movl %ecx, %r8d
+    shl $4, %r8d
+    leaq entry_diag_buffer(%rip), %rcx
+    addq %r8, %rcx
+    
+    // Save phase_id
+    movl $\phase_id, (%rcx)
+    
+    // Save tsc
+    movq %rax, 8(%rcx)
+    
+    // Increment index
+    incl entry_diag_index(%rip)
+1:
+    popq %r8
+    popq %rcx
     popq %rdx
     popq %rax
-1:
-#endif
 .endm
+#else
+.macro RECORD_DIAG_TSC phase_id
+.endm
+#endif
 
 //
 // ring3_enter_iretq(rip, rsp, rflags, user_cr3) noreturn
@@ -371,30 +399,17 @@ ring3_enter_post_cr3:
 ring3_enter_post_cr3:
     // Canonical post-CR3 window: dedicated page, no adjacent kernel text.
     
-    // PATCH H: Entry segmentation profiling - START
-    EMIT_ENTRY_SEG_TSC diag_entry_seg_start
+    // PATCH J: Entry profiling
+    RECORD_DIAG_TSC 1
     
     // CR3 pivot
+    RECORD_DIAG_TSC 2
     mov %rcx, %cr3
-    
-    // PATCH H: After CR3 pivot
-    EMIT_ENTRY_SEG_TSC diag_entry_seg_after_cr3
+    RECORD_DIAG_TSC 3
     
     EMIT_POST_CR3_TEXT_PROBE
     
-    // PATCH H: After text proof (if enabled)
-    EMIT_ENTRY_SEG_TSC diag_entry_seg_after_text_proof
-    
-    // PATCH H: Before IRET
-    EMIT_ENTRY_SEG_TSC diag_entry_seg_before_iret
-    
-    // PATCH H: Increment sample counter (register-safe)
-#if defined(AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE) && (AYKEN_RING3_ENTRY_SEGMENTATION_PROFILE == 1)
-    cmpq $3, entry_diag_samples(%rip)
-    jge 1f
-    incq entry_diag_samples(%rip)
-1:
-#endif
+    RECORD_DIAG_TSC 4
     
 #if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)
     jmp 1f

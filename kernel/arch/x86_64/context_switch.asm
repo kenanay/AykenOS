@@ -16,6 +16,11 @@ extern sched_take_resched
 extern sched_yield_irq
 extern ring3_enter_iretq
 
+%ifdef AYKEN_RING3_ENTRY_MEM_PROFILE
+extern entry_diag_buffer
+extern entry_diag_index
+%endif
+
 ; cpu_context_t ABI offsets (single source of truth)
 %include "ayken_abi.inc"
 
@@ -290,6 +295,37 @@ timer_isr_asm:
 syscall_isr:
     ; Preserve original RAX syscall number before register shuffling.
     mov r11, rax
+
+%ifdef AYKEN_RING3_ENTRY_MEM_PROFILE
+    push rax
+    push rdx
+    push rcx
+    push r8
+
+    lfence
+    rdtsc
+    shl rdx, 32
+    or rax, rdx
+
+    mov ecx, dword [rel entry_diag_index]
+    cmp ecx, 1024
+    jae .L_skip_diag
+
+    mov r8d, ecx
+    shl r8d, 4
+    lea rcx, [rel entry_diag_buffer]
+    add rcx, r8
+
+    mov dword [rcx], 6 ; ENTRY_DIAG_FIRST_KERNEL_REENTRY
+    mov qword [rcx + 8], rax
+
+    inc dword [rel entry_diag_index]
+.L_skip_diag:
+    pop r8
+    pop rcx
+    pop rdx
+    pop rax
+%endif
 
     ; Save caller-saved registers we preserve for user return.
     push r11
