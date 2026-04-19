@@ -18,6 +18,12 @@
 
 .extern sched_emit_ring3_frame_proof
 
+.section .bss
+ring3_transition_trace_emitted:
+    .byte 0
+
+.section .text
+
 // Frozen selector / RFLAGS contract shared with C.
 .set SEG_USER_DATA,   AYKEN_RING3_USER_DATA_SELECTOR
 .set SEG_USER_CODE,   AYKEN_RING3_USER_CODE_SELECTOR
@@ -171,13 +177,25 @@ ring3_enter_iretq:
     andq $0xFFFFFFFFFFFFF000, %rcx
 #endif
 
-    // Keep marker stream deterministic.
+    // Keep the verbose transition proof one-shot. MARK:SW/MARK:IRET and
+    // AYKEN_PERF markers remain per-transition for the preempt contract.
+    xorl %r13d, %r13d
+    cmpb $0, ring3_transition_trace_emitted(%rip)
+    jne .L_ring3_trace_state_loaded
+    movb $1, ring3_transition_trace_emitted(%rip)
+    movb $1, %r13b
+.L_ring3_trace_state_loaded:
     cli
+    testb %r13b, %r13b
+    jz .L_skip_ring3_attempt_trace
     EMIT_CSTR p10_ring3_attempt
+.L_skip_ring3_attempt_trace:
 
     // Validation marker: IF bit policy after sanitization.
     testq $0x200, %rdx
     jz .L_rflags_if_off
+    testb %r13b, %r13b
+    jz .L_rflags_if_ok
     EMIT_CSTR p10_rflags_if_on
     EMIT_HEX64 %rdx
     EMIT_CSTR p10_newline
@@ -207,6 +225,8 @@ ring3_enter_iretq:
     mov %r12, %rcx
 #endif
 
+    testb %r13b, %r13b
+    jz .L_skip_ring3_commit_trace
     EMIT_CSTR p10_ring3_commit
     // These are last reliable kernel-side markers; actual user-code proof
     // still comes from the Ring3 #BP path (`P10_RING3_USER_CODE`).
@@ -233,6 +253,7 @@ ring3_enter_iretq:
     movzbq %al, %r12
     EMIT_HEX64 %r12
     EMIT_CSTR p10_newline
+.L_skip_ring3_commit_trace:
 #if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
     // Diagnostic-only fetch probe stays on this transition page; scheduler-side
     // C helpers must not extend the post-CR3 execution footprint.

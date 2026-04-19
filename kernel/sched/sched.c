@@ -2674,6 +2674,7 @@ static uint64_t sched_dbg_idt_entry_offset(const struct idt_entry *entry)
 void sched_emit_ring3_frame_proof(const uint64_t *frame_rsp)
 {
 #if AYKEN_DEBUG_SCHED
+    static uint8_t frame_proof_emitted = 0;
     const struct idt_entry *gp = &idt_table[13];
     const struct idt_entry *pf = &idt_table[14];
     const uint64_t ctx_rsp0 = current_proc ? current_proc->context.rsp0 : 0;
@@ -2681,6 +2682,10 @@ void sched_emit_ring3_frame_proof(const uint64_t *frame_rsp)
     if (!frame_rsp) {
         return;
     }
+    if (frame_proof_emitted) {
+        return;
+    }
+    frame_proof_emitted = 1;
 
     sched_emit_marker("P10_RING3_FRAME_PROOF FRSP=");
     dbg_out_hex64((uint64_t)(uintptr_t)frame_rsp);
@@ -3561,6 +3566,7 @@ static void __attribute__((unused)) sched_emit_walk_level_detail_line(const char
 static void sched_emit_pre_dispatch_text_walk_proof(const proc_t *proc)
 {
 #if AYKEN_DEBUG_SCHED
+    static uint8_t text_walk_proof_emitted = 0;
     sched_walk_snapshot_t target_text_walk;
     uint64_t active_cr3 = 0;
     uint64_t kernel_cr3;
@@ -3576,6 +3582,10 @@ static void sched_emit_pre_dispatch_text_walk_proof(const proc_t *proc)
     if (!proc || ((proc->context.cs & 0x3u) != 0x3u) || proc->context.cr3 == 0) {
         return;
     }
+    if (text_walk_proof_emitted) {
+        return;
+    }
+    text_walk_proof_emitted = 1;
 
     __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
 
