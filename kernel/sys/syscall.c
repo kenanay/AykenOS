@@ -152,6 +152,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     if (syscall_num >= SYS_V2_BASE && syscall_num <= SYS_V2_LAST) {
         // Execution-centric syscalls (v2) - Convert to internal index for hardened handler
         // Phase-16: Use hardened handler with boundary enforcement
+        debugcon_write("DISPATCH_TO_HARDENED\n");  // FORCED PROOF: Dispatch path verification
         result = syscall_v2_hardened_handler(syscall_num - SYS_V2_BASE, arg1, arg2, arg3, arg4);
     } else {
         // Invalid syscall number - only the frozen v2 public range is valid

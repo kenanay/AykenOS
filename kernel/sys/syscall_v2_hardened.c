@@ -111,6 +111,13 @@ static execution_context_type_t detect_execution_context(uint64_t context_id) {
  */
 uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
                                      uint64_t arg2, uint64_t arg3, uint64_t arg4) {
+    /* FORCED EXECUTION PROOF - UNCONDITIONAL
+     * If this handler is called, this marker MUST appear in debugcon log.
+     * No conditions, no macros, no optimizations can remove this.
+     * Missing marker = handler not executing = wrong execution path.
+     */
+    debugcon_write("HARDENED_ENTRY\n");
+    
     execution_context_type_t context_type;
     int boundary_result;
     
