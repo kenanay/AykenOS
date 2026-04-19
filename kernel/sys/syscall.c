@@ -113,6 +113,18 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
 {
     uint64_t result;
 
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+    extern void entry_diag_record_c(uint32_t phase, uint32_t aux);
+    static uint32_t entry_diag_first_syscall_seen = 0;
+    static uint32_t entry_diag_kernel_reentry_seen = 0;
+    
+    // Phase 5: FIRST_FETCH (first syscall only)
+    if (!entry_diag_first_syscall_seen) {
+        entry_diag_record_c(5, (uint32_t)syscall_num);
+        entry_diag_first_syscall_seen = 1;
+    }
+#endif
+
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     static uint8_t low_half_kheap_syscall_runtime_proof_emitted = 0;
     if (!low_half_kheap_syscall_runtime_proof_emitted &&
@@ -167,6 +179,15 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
     
     // Marker: Syscall return
     sched_perf_note_first_syscall_exit();
+    
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+    // Phase 7: KERNEL_REENTRY (first syscall return only)
+    if (!entry_diag_kernel_reentry_seen) {
+        entry_diag_record_c(7, 0);
+        entry_diag_kernel_reentry_seen = 1;
+    }
+#endif
+    
     __asm__ volatile("pushfq; pop %0; cli" : "=r"(rflags_marker) : : "memory");
     debugcon_write("[[AYKEN_SYSCALL_RETURN]]\n");
     debugcon_write("P10_SYSCALL_RETURN\n");

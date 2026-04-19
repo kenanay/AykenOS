@@ -399,16 +399,18 @@ ring3_enter_post_cr3:
 ring3_enter_post_cr3:
     // Canonical post-CR3 window: dedicated page, no adjacent kernel text.
     
-    // PATCH J: Entry profiling
+    // PATCH J: Entry profiling - Phase 1: COMMIT
     RECORD_DIAG_TSC 1
     
-    // CR3 pivot
+    // CR3 pivot - Phase 2: CR3_SWITCH_ENTER
     RECORD_DIAG_TSC 2
     mov %rcx, %cr3
+    // Phase 3: CR3_SWITCH_EXIT
     RECORD_DIAG_TSC 3
     
     EMIT_POST_CR3_TEXT_PROBE
     
+    // Phase 4: RING3_ENTER (before IRETQ)
     RECORD_DIAG_TSC 4
     
 #if defined(AYKEN_RING3_IRETQ_DIAG_PROBE) && (AYKEN_RING3_IRETQ_DIAG_PROBE == 1)

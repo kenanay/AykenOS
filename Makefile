@@ -65,7 +65,8 @@ AYKEN_RING3_POST_CR3_TEXT_PROBE ?= 0
 AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY ?= 0
 # Patch I-B: ENTRY_GUARD A/B test - disable ENTRY_GUARD
 AYKEN_RING3_ENTRY_GUARD ?= 0
-AYKEN_RING3_ENTRY_MEM_PROFILE ?= 0
+# Patch J: In-memory entry profiling - ENABLED for measurement
+AYKEN_RING3_ENTRY_MEM_PROFILE ?= 1
 AYKEN_SHARE_KERNEL_UPPER_HALF ?= 0
 AYKEN_RING3_LOW_FETCH_STUB ?= 0
 # Patch I-C2: Configuration invalid (page fault) - reverted to 0

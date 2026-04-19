@@ -163,6 +163,16 @@ void timer_isr_c(void *frame_ptr)
     execution_slot_trace_scope_t trace_scope = {0};
     tick_count++;
     
+#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
+    // Phase 6: FIRST_IRQ (one-shot, first IRQ only)
+    extern void entry_diag_record_c(uint32_t phase, uint32_t aux);
+    static uint8_t entry_diag_first_irq_seen = 0;
+    if (!entry_diag_first_irq_seen) {
+        entry_diag_record_c(6, 0);
+        entry_diag_first_irq_seen = 1;
+    }
+#endif
+    
     // Phase 3A Layer 2: IRQ0 tick marker
     static uint8_t irq0_marker_emitted = 0;
     if (!irq0_marker_emitted && tick_count >= 1) {
@@ -177,17 +187,6 @@ void timer_isr_c(void *frame_ptr)
     static uint8_t ring3_fetch_marker_emitted = 0;
     if (!ring3_fetch_marker_emitted && (frame->cs & 0x3) == 0x3) {
         ring3_fetch_marker_emitted = 1;
-#if defined(AYKEN_RING3_ENTRY_MEM_PROFILE) && (AYKEN_RING3_ENTRY_MEM_PROFILE == 1)
-        extern uint32_t entry_diag_index;
-        extern struct entry_diag_sample { uint32_t phase; uint32_t aux; uint64_t tsc; } entry_diag_buffer[1024];
-        if (entry_diag_index < 1024) {
-            uint64_t tsc;
-            __asm__ volatile("lfence; rdtsc; shl $32, %%rdx; or %%rdx, %%rax" : "=a"(tsc) : : "rcx", "rdx");
-            entry_diag_buffer[entry_diag_index].phase = 5; // ENTRY_DIAG_FIRST_FETCH_OK
-            entry_diag_buffer[entry_diag_index].tsc = tsc;
-            entry_diag_index++;
-        }
-#endif
         timer_debugcon_write("[R3_FETCH_OK] RIP=");
         timer_debugcon_hex64(frame->rip);
         timer_debugcon_write(" CR3=");
