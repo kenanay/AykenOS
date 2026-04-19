@@ -235,14 +235,20 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     
     /* CRITICAL FIX: Register context_type in boundary_states[] AFTER init, BEFORE enforcement checks
      * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
-    boundary_set_context_type(context_id, context_type, process_id);
     
-    /* DIAGNOSTIC: Context registration complete */
-    debugcon_write_with_timestamp("DIAG_CONTEXT_REGISTRATION_DONE");
+    /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Context type registration */
+    debugcon_write_with_timestamp("DIAG_HOT_CTX_TYPE_ENTER");
+    boundary_set_context_type(context_id, context_type, process_id);
+    debugcon_write_with_timestamp("DIAG_HOT_CTX_TYPE_DONE");
     
 #if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
+    
+    /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Syscall validation */
+    debugcon_write_with_timestamp("DIAG_HOT_VALIDATE_SYSCALL_ENTER");
     boundary_result = boundary_validate_syscall(syscall_num, context_type, context_id);
+    debugcon_write_with_timestamp("DIAG_HOT_VALIDATE_SYSCALL_DONE");
+    
     if (boundary_result != 0) {
         /* Boundary violation detected - fail-closed termination already triggered */
         return (uint64_t)boundary_result;
@@ -252,7 +258,12 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     debugcon_write_with_timestamp("DIAG_BOUNDARY_VALIDATE_DONE");
     
     /* Additional boundary checks for specific syscalls */
+    
+    /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Bridge bypass detection */
+    debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_ENTER");
     boundary_result = boundary_detect_bridge_bypass(syscall_num, context_id);
+    debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_DONE");
+    
     if (boundary_result != 0) {
         return (uint64_t)boundary_result;
     }
@@ -270,7 +281,11 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         uint64_t graph_size = arg2;
         uint64_t exec_context_id = arg3;
         
+        /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - BCIB submission check */
+        debugcon_write_with_timestamp("DIAG_HOT_BCIB_SUBMIT_ENTER");
         boundary_result = boundary_check_bcib_submission_path(bcib_graph, graph_size, exec_context_id);
+        debugcon_write_with_timestamp("DIAG_HOT_BCIB_SUBMIT_DONE");
+        
         if (boundary_result != 0) {
             return (uint64_t)boundary_result;
         }
