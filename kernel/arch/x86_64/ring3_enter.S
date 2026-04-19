@@ -21,6 +21,8 @@
 .section .bss
 ring3_transition_trace_emitted:
     .byte 0
+ring3_transition_trace_emit_now:
+    .byte 0
 
 .section .text
 
@@ -177,16 +179,17 @@ ring3_enter_iretq:
     andq $0xFFFFFFFFFFFFF000, %rcx
 #endif
 
-    // Keep the verbose transition proof one-shot. MARK:SW/MARK:IRET and
-    // AYKEN_PERF markers remain per-transition for the preempt contract.
-    xorl %r13d, %r13d
+    // Keep the verbose transition proof one-shot without touching restored
+    // user callee-saved registers. MARK:SW/MARK:IRET and AYKEN_PERF markers
+    // remain per-transition for the preempt contract.
+    movb $0, ring3_transition_trace_emit_now(%rip)
     cmpb $0, ring3_transition_trace_emitted(%rip)
     jne .L_ring3_trace_state_loaded
     movb $1, ring3_transition_trace_emitted(%rip)
-    movb $1, %r13b
+    movb $1, ring3_transition_trace_emit_now(%rip)
 .L_ring3_trace_state_loaded:
     cli
-    testb %r13b, %r13b
+    cmpb $0, ring3_transition_trace_emit_now(%rip)
     jz .L_skip_ring3_attempt_trace
     EMIT_CSTR p10_ring3_attempt
 .L_skip_ring3_attempt_trace:
@@ -194,7 +197,7 @@ ring3_enter_iretq:
     // Validation marker: IF bit policy after sanitization.
     testq $0x200, %rdx
     jz .L_rflags_if_off
-    testb %r13b, %r13b
+    cmpb $0, ring3_transition_trace_emit_now(%rip)
     jz .L_rflags_if_ok
     EMIT_CSTR p10_rflags_if_on
     EMIT_HEX64 %rdx
@@ -219,13 +222,13 @@ ring3_enter_iretq:
     pushq %r11
 
 #if AYKEN_DEBUG_SCHED == 1
-    mov %rcx, %r12
-    mov %rsp, %rdi
+    pushq %rcx
+    leaq 8(%rsp), %rdi
     call sched_emit_ring3_frame_proof
-    mov %r12, %rcx
+    popq %rcx
 #endif
 
-    testb %r13b, %r13b
+    cmpb $0, ring3_transition_trace_emit_now(%rip)
     jz .L_skip_ring3_commit_trace
     EMIT_CSTR p10_ring3_commit
     // These are last reliable kernel-side markers; actual user-code proof
@@ -235,11 +238,11 @@ ring3_enter_iretq:
     // Dump PIC mask before P10_RING3_ENTER
     EMIT_CSTR p10_pic_mask
     inb $0x21, %al
-    movzbq %al, %r12
-    EMIT_HEX64 %r12
+    movzbq %al, %rdi
+    EMIT_HEX64 %rdi
     inb $0xA1, %al
-    movzbq %al, %r12
-    EMIT_HEX64 %r12
+    movzbq %al, %rdi
+    EMIT_HEX64 %rdi
     EMIT_CSTR p10_newline
 
     EMIT_CSTR p10_ring3_enter
@@ -247,12 +250,13 @@ ring3_enter_iretq:
     // Dump PIC mask after P10_RING3_ENTER
     EMIT_CSTR p10_pic_mask
     inb $0x21, %al
-    movzbq %al, %r12
-    EMIT_HEX64 %r12
+    movzbq %al, %rdi
+    EMIT_HEX64 %rdi
     inb $0xA1, %al
-    movzbq %al, %r12
-    EMIT_HEX64 %r12
+    movzbq %al, %rdi
+    EMIT_HEX64 %rdi
     EMIT_CSTR p10_newline
+    movb $0, ring3_transition_trace_emit_now(%rip)
 .L_skip_ring3_commit_trace:
 #if defined(AYKEN_RING3_FETCH_PROBE) && (AYKEN_RING3_FETCH_PROBE == 1)
     // Diagnostic-only fetch probe stays on this transition page; scheduler-side
