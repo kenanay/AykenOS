@@ -16,7 +16,7 @@ extern sched_take_resched
 extern sched_yield_irq
 extern ring3_enter_iretq
 
-%ifdef AYKEN_RING3_ENTRY_MEM_PROFILE
+%if AYKEN_RING3_ENTRY_MEM_PROFILE == 1
 extern entry_diag_buffer
 extern entry_diag_index
 %endif
@@ -296,7 +296,7 @@ syscall_isr:
     ; Preserve original RAX syscall number before register shuffling.
     mov r11, rax
 
-%ifdef AYKEN_RING3_ENTRY_MEM_PROFILE
+%if AYKEN_RING3_ENTRY_MEM_PROFILE == 1
     push rax
     push rdx
     push rcx
