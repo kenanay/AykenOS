@@ -1,5 +1,6 @@
 #include "boundary_enforcement.h"
 #include "syscall_enforcement_matrix.h"
+#include "syscall_enforcement_matrix_fast.h"  /* PATCH B: Fast-path bitmask optimization */
 #include "../include/ayken.h"
 #include "../include/serial.h"
 #include "../include/execution_slot.h"
@@ -115,6 +116,9 @@ int boundary_enforce_init(void) {
     boundary_zero_memory(violation_audit_log, (uint64_t)sizeof(violation_audit_log));
     violation_log_index = 0;
     
+    /* PATCH B: Initialize fast enforcement table */
+    syscall_enforcement_fast_init();
+    
     boundary_initialized = 1;
     
     debug_printf("[BOUNDARY] Kernel boundary enforcement initialized\n");
@@ -142,6 +146,9 @@ void boundary_set_context_type(uint64_t context_id, execution_context_type_t con
 /**
  * Validate syscall against execution context type
  * Enforces Requirements 1.5, 1.6, 1.7, 1.8 using explicit enforcement matrix
+ * 
+ * PATCH B: Fast-path bitmask optimization
+ * Target: Reduce from 195k ticks to <50k ticks
  */
 int boundary_validate_syscall(uint64_t syscall_num, execution_context_type_t context_type, uint64_t context_id) {
     proc_execution_role_t role;
@@ -172,13 +179,13 @@ int boundary_validate_syscall(uint64_t syscall_num, execution_context_type_t con
             break;
     }
     
-    /* Use explicit enforcement matrix - NO HEURISTICS */
-    enforcement_result = syscall_enforcement_validate(role, syscall_num);
-    if (enforcement_result != 0) {
-        /* Log the specific violation */
+    /* PATCH B: Fast-path bitmask validation - O(1) lookup */
+    if (!syscall_enforcement_fast_validate(role, (uint32_t)syscall_num)) {
+        /* Syscall denied - fail closed */
         const char *role_name = syscall_enforcement_get_role_name(role);
         debug_printf("Syscall %lu denied for role %s", syscall_num, role_name);
         
+        enforcement_result = BOUNDARY_ERR_UNAUTHORIZED_SYSCALL;
         boundary_audit_violation(enforcement_result, context_id, "Syscall denied by enforcement matrix");
         boundary_fail_closed_termination(enforcement_result, context_id, "Syscall enforcement violation");
         return enforcement_result;

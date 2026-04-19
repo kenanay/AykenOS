@@ -1,6 +1,7 @@
 #include "syscall_v2.h"
 #include "boundary_enforcement.h"
 #include "syscall_enforcement_matrix.h"
+#include "syscall_enforcement_matrix_fast.h"  /* PATCH B: Fast-path bitmask optimization */
 #include "../include/ayken.h"
 #include "../include/serial.h"
 #include "../include/proc.h"
@@ -212,7 +213,8 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         debugcon_write_with_timestamp("DIAG_BOUNDARY_ENFORCE_INIT_DONE");
         
         /* CRITICAL: Validate enforcement matrix integrity */
-        if (syscall_enforcement_validate_matrix() != 0) {
+        /* PATCH B: Use fast table validation instead of legacy matrix scan */
+        if (syscall_enforcement_fast_validate_table() != 0) {
             boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
                                             "Enforcement matrix validation failed - system compromised");
             return BOUNDARY_ERR_ISOLATION_VIOLATION;

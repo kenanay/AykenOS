@@ -65,7 +65,8 @@ typedef enum {
     PROC_EXECUTION_ROLE_BCIB = 1,
     PROC_EXECUTION_ROLE_RUNTIME_BRIDGE = 2,
     PROC_EXECUTION_ROLE_USER = 3,
-    PROC_EXECUTION_ROLE_KERNEL = 4
+    PROC_EXECUTION_ROLE_KERNEL = 4,
+    PROC_EXECUTION_ROLE_MAX = 5  /* Sentinel for array bounds checking */
 } proc_execution_role_t;
 
 typedef enum {
