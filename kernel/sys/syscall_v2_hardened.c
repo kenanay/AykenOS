@@ -152,41 +152,52 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
         context_id = (uint64_t)current_proc->pid;
         process_id = (uint64_t)current_proc->pid;
         
-        /* CRITICAL FIX: Use explicit execution role instead of heuristics */
-        switch (current_proc->execution_role) {
-            case PROC_EXECUTION_ROLE_BCIB:
-                context_type = EXEC_CONTEXT_BCIB;
-                /* Debug: Confirm we're in BCIB context */
-                serial_write("[HARDENED] BCIB context detected, syscall_num=");
-                {
-                    char buf[32];
-                    int i = 0, n = (int)syscall_num;
-                    if (n == 0) buf[i++] = '0';
-                    else {
-                        char tmp[32];
-                        int j = 0;
-                        while (n > 0) { tmp[j++] = '0' + (n % 10); n /= 10; }
-                        while (j > 0) buf[i++] = tmp[--j];
-                    }
-                    buf[i] = '\0';
-                    serial_write(buf);
+        /* PATCH C1: Read cached context type (hot-path optimization)
+         * Cache is updated only on role transitions (cold-path)
+         * This eliminates per-syscall role-to-context conversion
+         */
+        if (current_proc->boundary_cache_valid) {
+            context_type = (execution_context_type_t)current_proc->boundary_context_type_cached;
+        } else {
+            /* Cache invalid - fall back to role-based detection (should never happen) */
+            switch (current_proc->execution_role) {
+                case PROC_EXECUTION_ROLE_BCIB:
+                    context_type = EXEC_CONTEXT_BCIB;
+                    break;
+                case PROC_EXECUTION_ROLE_RUNTIME_BRIDGE:
+                    context_type = EXEC_CONTEXT_RUNTIME_BRIDGE;
+                    break;
+                case PROC_EXECUTION_ROLE_USER:
+                    context_type = EXEC_CONTEXT_USERSPACE;
+                    break;
+                case PROC_EXECUTION_ROLE_KERNEL:
+                    context_type = EXEC_CONTEXT_KERNEL;
+                    break;
+                default:
+                    /* Unknown role - fail closed */
+                    boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                                    "Unknown execution role - fail closed");
+                    return BOUNDARY_ERR_ISOLATION_VIOLATION;
+            }
+        }
+        
+        /* Debug: Confirm context type for BCIB */
+        if (context_type == EXEC_CONTEXT_BCIB) {
+            serial_write("[HARDENED] BCIB context detected, syscall_num=");
+            {
+                char buf[32];
+                int i = 0, n = (int)syscall_num;
+                if (n == 0) buf[i++] = '0';
+                else {
+                    char tmp[32];
+                    int j = 0;
+                    while (n > 0) { tmp[j++] = '0' + (n % 10); n /= 10; }
+                    while (j > 0) buf[i++] = tmp[--j];
                 }
-                serial_write("\n");
-                break;
-            case PROC_EXECUTION_ROLE_RUNTIME_BRIDGE:
-                context_type = EXEC_CONTEXT_RUNTIME_BRIDGE;
-                break;
-            case PROC_EXECUTION_ROLE_USER:
-                context_type = EXEC_CONTEXT_USERSPACE;
-                break;
-            case PROC_EXECUTION_ROLE_KERNEL:
-                context_type = EXEC_CONTEXT_KERNEL;
-                break;
-            default:
-                /* Unknown role - fail closed */
-                boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
-                                                "Unknown execution role - fail closed");
-                return BOUNDARY_ERR_ISOLATION_VIOLATION;
+                buf[i] = '\0';
+                serial_write(buf);
+            }
+            serial_write("\n");
         }
     } else {
         /* No current process - kernel context */
@@ -235,13 +246,10 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     /* DIAGNOSTIC: Boundary init complete */
     debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_DONE");
     
-    /* CRITICAL FIX: Register context_type in boundary_states[] AFTER init, BEFORE enforcement checks
-     * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
-    
-    /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Context type registration */
-    debugcon_write_with_timestamp("DIAG_HOT_CTX_TYPE_ENTER");
-    boundary_set_context_type(context_id, context_type, process_id);
-    debugcon_write_with_timestamp("DIAG_HOT_CTX_TYPE_DONE");
+    /* PATCH C1: Context type is now cached in proc_t, no need to set per-syscall
+     * The boundary_set_context_type() call is removed from hot-path
+     * Context type is read directly from current_proc->boundary_context_type_cached above
+     */
     
 #if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */

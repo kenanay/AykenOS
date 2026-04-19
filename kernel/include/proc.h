@@ -101,6 +101,15 @@ typedef struct proc {
     proc_state_t state;
     proc_type_t type;
     proc_execution_role_t execution_role;  // Phase-16: Explicit execution role for boundary enforcement
+    
+    /* PATCH C1: Context type cache for hot-path optimization
+     * Cached from execution_role to eliminate per-syscall computation
+     * Updated only on role transitions (cold-path)
+     */
+    uint8_t boundary_context_type_cached;  // execution_context_type_t cached value
+    uint8_t boundary_cache_valid;          // 1 if cache valid, 0 if needs update
+    uint8_t reserved_patch_c1[6];          // alignment padding
+    
     const char *name;
     void *wait_obj;
     uint64_t active_execution_id;

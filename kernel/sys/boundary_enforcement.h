@@ -49,6 +49,9 @@ int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id);
 void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason) __attribute__((noreturn));
 int boundary_audit_violation(int violation_code, uint64_t context_id, const char *details);
 
+/* PATCH C1: Context type cache helper - converts role to context type (cold-path only) */
+execution_context_type_t boundary_role_to_context_type(int role);
+
 /* Syscall allowlist for BCIB contexts - only SYS_V2_SUBMIT_EXECUTION allowed */
 #define BCIB_ALLOWED_SYSCALLS_MASK (1 << SYS_V2_SUBMIT_EXECUTION)
 

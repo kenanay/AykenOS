@@ -24,6 +24,7 @@
 #include "../include/serial.h"
 #include "../include/embedded_elf.h"
 #include "../arch/x86_64/port_io.h"
+#include "../sys/boundary_enforcement.h"  /* PATCH C1: For boundary_role_to_context_type() */
 #include <stddef.h>
 
 // Validation profile guard
@@ -96,6 +97,14 @@ int bcib_worker_create(void) {
     // This is the kernel-authoritative role assignment that enables
     // the worker to call SYS_V2_SUBMIT_EXECUTION without enforcement violation
     worker->execution_role = PROC_EXECUTION_ROLE_BCIB;
+    
+    /* PATCH C1: Update context type cache after role change */
+    {
+        extern execution_context_type_t boundary_role_to_context_type(int role);
+        execution_context_type_t ctx_type = boundary_role_to_context_type(worker->execution_role);
+        worker->boundary_context_type_cached = (uint8_t)ctx_type;
+        worker->boundary_cache_valid = 1;
+    }
     
     // Store worker reference
     g_bcib_worker = worker;
@@ -199,6 +208,14 @@ int user_worker_create(void) {
     // CRITICAL: Assign USER execution role (default, but explicit for clarity)
     // USER role allows SYS_V2_COMPLETE_EXECUTION but NOT SYS_V2_SUBMIT_EXECUTION
     worker->execution_role = PROC_EXECUTION_ROLE_USER;
+    
+    /* PATCH C1: Update context type cache after role change */
+    {
+        extern execution_context_type_t boundary_role_to_context_type(int role);
+        execution_context_type_t ctx_type = boundary_role_to_context_type(worker->execution_role);
+        worker->boundary_context_type_cached = (uint8_t)ctx_type;
+        worker->boundary_cache_valid = 1;
+    }
     
     // Store worker reference
     g_user_worker = worker;

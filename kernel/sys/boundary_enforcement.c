@@ -103,6 +103,29 @@ static void boundary_write_u64(uint64_t value)
 }
 
 /**
+ * PATCH C1: Convert execution role to context type
+ * Cold-path only - called during role transitions, not in syscall hot-path
+ * Uses lookup table for O(1) conversion with fail-closed for invalid roles
+ */
+execution_context_type_t boundary_role_to_context_type(int role) {
+    /* Lookup table indexed by proc_execution_role_t */
+    static const execution_context_type_t role_to_context[] = {
+        [PROC_EXECUTION_ROLE_UNKNOWN] = EXEC_CONTEXT_UNKNOWN,
+        [PROC_EXECUTION_ROLE_BCIB] = EXEC_CONTEXT_BCIB,
+        [PROC_EXECUTION_ROLE_RUNTIME_BRIDGE] = EXEC_CONTEXT_RUNTIME_BRIDGE,
+        [PROC_EXECUTION_ROLE_USER] = EXEC_CONTEXT_USERSPACE,
+        [PROC_EXECUTION_ROLE_KERNEL] = EXEC_CONTEXT_KERNEL,
+    };
+    
+    /* Fail-closed: invalid role returns UNKNOWN */
+    if (role < 0 || role >= PROC_EXECUTION_ROLE_MAX) {
+        return EXEC_CONTEXT_UNKNOWN;
+    }
+    
+    return role_to_context[role];
+}
+
+/**
  * Initialize boundary enforcement subsystem
  * Must be called during kernel initialization
  */
