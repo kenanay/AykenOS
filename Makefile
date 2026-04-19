@@ -43,7 +43,8 @@ AYKEN_GATE4_POLICY_TEST ?= 0
 AYKEN_GATE45_PROOF ?= 0
 AYKEN_DETERMINISTIC_EXIT ?= 0
 KERNEL_EXPORT_POLICY ?= 1
-AYKEN_CR3_PCID ?= 0
+# Patch I-C1: PCID A/B test - enable PCID to measure TLB flush cost impact
+AYKEN_CR3_PCID ?= 1
 AYKEN_C2_STRICT_MARKERS ?= 0
 # Phase10-C1 default: strict mailbox-owner bootstrap (no transitional policy bridge).
 AYKEN_SCHED_BOOTSTRAP_POLICY ?= 0
