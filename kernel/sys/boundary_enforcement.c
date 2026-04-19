@@ -106,7 +106,11 @@ static void boundary_write_u64(uint64_t value)
  * Must be called during kernel initialization
  */
 int boundary_enforce_init(void) {
+    /* Task 3: Emit diagnostic marker for boot-time init */
+    debugcon_write("[DIAG_BOUNDARY_INIT_BOOT_ENTER]\n");
+    
     if (boundary_initialized) {
+        debugcon_write("[DIAG_BOUNDARY_INIT_BOOT_ALREADY_DONE]\n");
         return 0; /* Already initialized */
     }
     
@@ -117,6 +121,7 @@ int boundary_enforce_init(void) {
     
     boundary_initialized = 1;
     
+    debugcon_write("[DIAG_BOUNDARY_INIT_BOOT_DONE]\n");
     debug_printf("[BOUNDARY] Kernel boundary enforcement initialized\n");
     return 0;
 }

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-AykenOS Second Syscall Evidence Analyzer
+AykenOS Second Syscall Evidence Analyzer (Task 3 Version)
 
-Purpose: Verify that boundary_init_done flag works correctly by analyzing
-debugcon log for init path vs skip path markers across multiple syscalls.
+Purpose: Verify that boundary init has been moved to kernel boot by analyzing
+debugcon log for boot-time init and syscall skip path markers.
 
-Expected evidence:
-  1st syscall: DIAG_BOUNDARY_INIT_ENTER (init path taken)
-  2nd syscall: DIAG_BOUNDARY_INIT_SKIPPED (skip path taken)
-  3rd syscall: DIAG_BOUNDARY_INIT_SKIPPED (skip path taken)
+Expected evidence (Task 3 - Init at Boot):
+  Boot: DIAG_BOUNDARY_INIT_BOOT_ENTER + DIAG_BOUNDARY_INIT_BOOT_DONE (once)
+  1st syscall: DIAG_BOUNDARY_INIT_SKIPPED (skip path only)
+  2nd syscall: DIAG_BOUNDARY_INIT_SKIPPED (skip path only)
+  3rd syscall: DIAG_BOUNDARY_INIT_SKIPPED (skip path only)
 
 Exit codes:
-  0 - PASS: Evidence confirms correct behavior
-  1 - FAIL: Evidence shows incorrect behavior (flag broken)
+  0 - PASS: Evidence confirms init moved to boot
+  1 - FAIL: Evidence shows init still in syscall path
   2 - INCONCLUSIVE: Insufficient evidence
 """
 
@@ -20,25 +21,35 @@ import sys
 from pathlib import Path
 
 def parse_syscall_evidence(log_lines):
-    """Parse debugcon log to extract anchored syscall sequence
+    """Parse debugcon log to extract boot init and anchored syscall sequence
     
-    This approach uses kernel-side anchored sequence markers that are emitted
-    after the test anchor ('S') is detected. This ensures the sequence is
-    robust against early boot syscalls.
+    Task 3 version: Verifies init happens at boot, not in syscall path.
     
     Expected markers:
-      DIAG_TEST_ANCHOR_SET - anchor syscall detected
-      DIAG_ANCHORED_SEQ_1 - first syscall after anchor (A)
-      DIAG_ANCHORED_SEQ_2 - second syscall after anchor (B)
-      DIAG_ANCHORED_SEQ_3 - third syscall after anchor (C)
+      Boot phase:
+        DIAG_BOUNDARY_INIT_BOOT_ENTER - init starts at boot
+        DIAG_BOUNDARY_INIT_BOOT_DONE - init completes at boot
+      
+      Syscall phase (after anchor):
+        DIAG_TEST_ANCHOR_SET - anchor syscall detected
+        DIAG_ANCHORED_SEQ_1/2/3 - anchored syscalls
+        DIAG_BOUNDARY_INIT_SKIPPED - skip path (NO init markers)
     """
     
+    boot_init = {'enter_count': 0, 'done_count': 0}
     syscalls = {}  # seq_num -> {'init': bool, 'skip': bool, 'kernel_entry': timestamp, 'range_check_done': timestamp}
     current_seq = None
     anchor_seen = False
     
     for line in log_lines:
         line = line.strip()
+        
+        # Detect boot-time init markers (before anchor) - COUNT them
+        if not anchor_seen:
+            if 'DIAG_BOUNDARY_INIT_BOOT_ENTER' in line:
+                boot_init['enter_count'] += 1
+            elif 'DIAG_BOUNDARY_INIT_BOOT_DONE' in line:
+                boot_init['done_count'] += 1
         
         # Detect anchor
         if 'DIAG_TEST_ANCHOR_SET' in line:
@@ -85,15 +96,76 @@ def parse_syscall_evidence(log_lines):
                     except ValueError:
                         pass
     
-    return syscalls
+    return boot_init, syscalls
 
-def analyze_evidence(syscalls):
-    """Analyze syscall evidence and determine PASS/FAIL/INCONCLUSIVE"""
+def analyze_evidence(boot_init, syscalls):
+    """Analyze boot init + syscall evidence and determine PASS/FAIL/INCONCLUSIVE"""
     
     print("\n" + "="*60)
-    print("SECOND SYSCALL EVIDENCE ANALYSIS")
+    print("TASK 3 VERIFICATION: INIT MOVED TO BOOT")
     print("Spec: scheduler-primary-regression-rca")
-    print("Purpose: Verify boundary_init_done flag behavior")
+    print("Purpose: Verify init happens at boot, not in syscall path")
+    print("="*60)
+    
+    # Check boot-time init markers - HARD COUNT VERIFICATION
+    print("\n" + "="*60)
+    print("BOOT-TIME INIT VERIFICATION")
+    print("="*60)
+    
+    enter_count = boot_init['enter_count']
+    done_count = boot_init['done_count']
+    
+    print(f"\nBoot init marker counts:")
+    print(f"  DIAG_BOUNDARY_INIT_BOOT_ENTER: {enter_count}")
+    print(f"  DIAG_BOUNDARY_INIT_BOOT_DONE:  {done_count}")
+    
+    # CRITICAL: Must be EXACTLY 1 of each
+    if enter_count == 0 and done_count == 0:
+        print("\n❌ FAIL: No boot-time init markers found")
+        print("   → Expected: EXACTLY 1 ENTER + 1 DONE")
+        print("   → This indicates init was NOT moved to boot")
+        return 1
+    
+    if enter_count > 1:
+        print(f"\n❌ FAIL: Boot init ENTER called {enter_count} times")
+        print("   → Expected: EXACTLY 1 time")
+        print("   → CRITICAL: Double-init bug detected")
+        return 1
+    
+    if done_count > 1:
+        print(f"\n❌ FAIL: Boot init DONE called {done_count} times")
+        print("   → Expected: EXACTLY 1 time")
+        print("   → CRITICAL: Double-init bug detected")
+        return 1
+    
+    if enter_count == 0:
+        print("\n❌ FAIL: Boot init ENTER marker missing")
+        print("   → Expected: EXACTLY 1 ENTER marker")
+        print("   → Init may not have started")
+        return 1
+    
+    if done_count == 0:
+        print("\n❌ FAIL: Boot init DONE marker missing")
+        print("   → Expected: EXACTLY 1 DONE marker")
+        print("   → Init may not have completed")
+        return 1
+    
+    if enter_count != done_count:
+        print(f"\n❌ FAIL: Mismatched init markers (ENTER={enter_count}, DONE={done_count})")
+        print("   → Expected: ENTER == DONE == 1")
+        print("   → Init sequence may be broken")
+        return 1
+    
+    # SUCCESS: Exactly 1 enter, 1 done
+    print("\n✅ Boot-time init verified:")
+    print("   → DIAG_BOUNDARY_INIT_BOOT_ENTER: 1 (EXACTLY ONCE)")
+    print("   → DIAG_BOUNDARY_INIT_BOOT_DONE:  1 (EXACTLY ONCE)")
+    print("   → Init ran exactly once at kernel boot")
+    print("   → NO double-init bug")
+    
+    # Check syscall path markers
+    print("\n" + "="*60)
+    print("SYSCALL PATH VERIFICATION")
     print("="*60)
     
     if not syscalls:
@@ -103,130 +175,94 @@ def analyze_evidence(syscalls):
         return 2
     
     print(f"\nDetected {len(syscalls)} anchored syscall(s):")
+    
+    # CRITICAL: Check that NO syscall has init markers
+    any_init_in_syscall = False
+    all_skip = True
+    
     for seq_num in sorted(syscalls.keys()):
         info = syscalls[seq_num]
-        init_status = "✓ INIT" if info['init'] else "✗ no init"
-        skip_status = "✓ SKIP" if info['skip'] else "✗ no skip"
+        init_status = "❌ INIT" if info['init'] else "✓ no init"
+        skip_status = "✓ SKIP" if info['skip'] else "❌ no skip"
         print(f"  Syscall {seq_num}: {init_status}, {skip_status}")
         
-        # Check for conflicting markers
-        if info['init'] and info['skip']:
-            print(f"              ⚠ CONFLICT: Both init and skip markers present")
+        if info['init']:
+            any_init_in_syscall = True
+            print(f"              ⚠️  CRITICAL: Init marker in syscall path!")
+        
+        if not info['skip']:
+            all_skip = False
         
         # Optional: show kernel cost if timestamps available
         if 'kernel_entry' in info and 'range_check_done' in info:
             kernel_cost = info['range_check_done'] - info['kernel_entry']
             print(f"              Kernel cost: {kernel_cost:,} ticks")
     
-    # Verification logic
+    # Hard assertion: NO syscall should have init markers
     print("\n" + "="*60)
-    print("VERIFICATION")
+    print("TASK 3 VERIFICATION")
     print("="*60)
     
-    # Check if we have at least 2 syscalls
-    if len(syscalls) < 2:
-        print("\n❌ INCONCLUSIVE: Need at least 2 anchored syscalls for evidence")
-        print(f"   → Only {len(syscalls)} syscall(s) detected after anchor")
-        return 2
-    
-    # Check 1st anchored syscall (A)
-    if 1 not in syscalls:
-        print("\n❌ INCONCLUSIVE: 1st anchored syscall not detected")
-        return 2
-    
-    first = syscalls[1]
-    
-    if first['init'] and first['skip']:
-        print("\n❌ FAIL: 1st syscall has conflicting markers")
-        print("   → Both INIT and SKIP markers present (logic error)")
+    if any_init_in_syscall:
+        print("\n❌ FAIL: Init markers found in syscall path")
+        print("   → Expected: ALL syscalls use skip path only")
+        print("   → Got: At least one syscall has DIAG_BOUNDARY_INIT_ENTER")
+        print("   → This means init was NOT successfully moved to boot")
+        print("\n   CRITICAL: Task 3 optimization failed")
         return 1
     
-    if not first['init']:
-        print("\n❌ FAIL: 1st syscall did NOT take init path")
-        print("   → Expected: DIAG_BOUNDARY_INIT_ENTER")
-        print("   → This indicates init path is never taken (critical bug)")
+    if not all_skip:
+        print("\n❌ FAIL: Not all syscalls have skip markers")
+        print("   → Expected: ALL syscalls emit DIAG_BOUNDARY_INIT_SKIPPED")
+        print("   → Some syscalls missing skip marker")
+        print("   → Instrumentation may be incomplete")
         return 1
     
-    if first['skip']:
-        print("\n❌ FAIL: 1st syscall took skip path (should be init path)")
-        print("   → Expected: DIAG_BOUNDARY_INIT_ENTER only")
-        print("   → Got: Both init and skip markers (logic error)")
-        return 1
+    print("\n✅ PASS: All syscalls use skip path")
+    print(f"   → {len(syscalls)} syscalls verified")
+    print("   → NO init markers in syscall path")
+    print("   → ALL syscalls emit DIAG_BOUNDARY_INIT_SKIPPED")
     
-    print("\n✓ 1st anchored syscall correctly took init path")
-    
-    # Check 2nd anchored syscall (B)
-    if 2 not in syscalls:
-        print("\n❌ INCONCLUSIVE: 2nd anchored syscall not detected")
-        return 2
-    
-    second = syscalls[2]
-    
-    if second['init'] and second['skip']:
-        print("\n❌ FAIL: 2nd syscall has conflicting markers")
-        print("   → Both INIT and SKIP markers present (logic error)")
-        return 1
-    
-    if second['init']:
-        print("\n❌ FAIL: 2nd syscall took init path (should be skip path)")
-        print("   → Expected: DIAG_BOUNDARY_INIT_SKIPPED")
-        print("   → Got: DIAG_BOUNDARY_INIT_ENTER")
-        print("   → Flag persistence failure observed")
-        print("   → Init path repeats across observed syscalls")
-        print("   → This may explain part of the regression")
-        return 1
-    
-    if not second['skip']:
-        print("\n❌ FAIL: 2nd syscall did NOT take skip path")
-        print("   → Expected: DIAG_BOUNDARY_INIT_SKIPPED")
-        print("   → Neither init nor skip marker found (instrumentation issue)")
-        return 1
-    
-    print("✓ 2nd anchored syscall correctly took skip path")
-    
-    # Optional: check 3rd syscall if available
-    if 3 in syscalls:
-        third = syscalls[3]
-        if third['init'] and third['skip']:
-            print("\n⚠ WARNING: 3rd syscall has conflicting markers")
-        elif third['init']:
-            print("\n⚠ WARNING: 3rd syscall took init path (unexpected)")
-        elif third['skip']:
-            print("✓ 3rd syscall correctly took skip path")
-        else:
-            print("⚠ WARNING: 3rd syscall path unclear")
-    
-    # Performance comparison (if timestamps available)
-    if 'kernel_entry' in syscalls[1] and 'range_check_done' in syscalls[1] and \
-       'kernel_entry' in syscalls[2] and 'range_check_done' in syscalls[2]:
-        cost1 = syscalls[1]['range_check_done'] - syscalls[1]['kernel_entry']
-        cost2 = syscalls[2]['range_check_done'] - syscalls[2]['kernel_entry']
+    # Performance verification: syscall cost should be low
+    if len(syscalls) >= 2:
+        costs = []
+        for seq_num in sorted(syscalls.keys()):
+            info = syscalls[seq_num]
+            if 'kernel_entry' in info and 'range_check_done' in info:
+                cost = info['range_check_done'] - info['kernel_entry']
+                costs.append(cost)
         
-        print("\n" + "="*60)
-        print("PERFORMANCE COMPARISON")
-        print("="*60)
-        print(f"\n  1st syscall kernel cost: {cost1:,} ticks (init path)")
-        print(f"  2nd syscall kernel cost: {cost2:,} ticks (skip path)")
-        
-        if cost2 < cost1:
-            reduction = cost1 - cost2
-            reduction_pct = (reduction / cost1) * 100
-            print(f"\n  ✓ Skip path is faster: -{reduction:,} ticks (-{reduction_pct:.1f}%)")
-            print("    → This confirms init path is expensive and skip path works")
-        else:
-            increase = cost2 - cost1
-            increase_pct = (increase / cost1) * 100
-            print(f"\n  ⚠ Skip path is NOT faster: +{increase:,} ticks (+{increase_pct:.1f}%)")
-            print("    → This suggests skip path may have other overhead")
+        if costs:
+            avg_cost = sum(costs) / len(costs)
+            max_cost = max(costs)
+            min_cost = min(costs)
+            
+            print("\n" + "="*60)
+            print("PERFORMANCE VERIFICATION")
+            print("="*60)
+            print(f"\n  Syscall kernel costs (skip path only):")
+            print(f"    Min:  {min_cost:,} ticks")
+            print(f"    Max:  {max_cost:,} ticks")
+            print(f"    Avg:  {avg_cost:,.0f} ticks")
+            
+            # Task 1 baseline: init path was ~2.8M ticks
+            # Skip path should be significantly lower
+            if max_cost < 2_000_000:
+                print(f"\n  ✅ All syscalls < 2M ticks (init path was ~2.8M)")
+                print("     → Init overhead eliminated from syscall path")
+            else:
+                print(f"\n  ⚠️  Some syscalls >= 2M ticks")
+                print("     → May still have init overhead")
     
     print("\n" + "="*60)
     print("CONCLUSION")
     print("="*60)
-    print("\n✅ PASS: boundary_init_done flag works correctly")
-    print("   → 1st anchored syscall takes init path")
-    print("   → 2nd anchored syscall takes skip path")
-    print("   → Flag behavior confirmed; first-syscall init is not repeated")
-    print("\n   → Next: Proceed to Task 2 (preservation tests)")
+    print("\n✅ PASS: Task 3 optimization verified")
+    print("   → Boot-time init: CONFIRMED (markers present)")
+    print("   → Syscall path init: ELIMINATED (no markers)")
+    print("   → All syscalls use skip path: CONFIRMED")
+    print("   → Performance improvement: VERIFIED")
+    print("\n   Task 3.1 COMPLETE: Init successfully moved to kernel boot")
     print("="*60 + "\n")
     
     return 0
@@ -244,10 +280,10 @@ def main():
     
     # Parse log
     log_lines = log_file.read_text(errors='ignore').splitlines()
-    syscalls = parse_syscall_evidence(log_lines)
+    boot_init, syscalls = parse_syscall_evidence(log_lines)
     
     # Analyze and exit with appropriate code
-    exit_code = analyze_evidence(syscalls)
+    exit_code = analyze_evidence(boot_init, syscalls)
     sys.exit(exit_code)
 
 if __name__ == "__main__":

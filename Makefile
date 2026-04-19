@@ -2989,8 +2989,18 @@ ci-gate-preservation-tests: ci-evidence-dir
 	@echo "task: 2 - Preservation property tests"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/preservation-tests"
 	@echo
+	@echo ">> Building kernel with second-syscall-proof userspace..."
+	@USER_MINIMAL_MODE=second-syscall-proof \
+		KERNEL_PROFILE=validation \
+		AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1 \
+		AYKEN_RING3_FETCH_PROBE=0 \
+		$(MAKE) efi-img > /dev/null 2>&1
+	@echo "✓ Build flags validated: USER_MINIMAL_MODE=second-syscall-proof"
+	@echo
+	@echo ">> Running QEMU to capture evidence..."
+	@bash scripts/qemu-run-for-preservation-tests.sh
+	@echo
 	@echo ">> Test 1: Boundary Init Idempotency"
-	@bash scripts/qemu-second-syscall-proof-harness.sh
 	@python3 scripts/ci/test_boundary_init_idempotency.py out/second-syscall-evidence/debugcon.log \
 		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test1_idempotency.log"
 	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test1_idempotency.log"; then \

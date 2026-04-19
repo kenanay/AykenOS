@@ -5,13 +5,13 @@ AykenOS Boundary Init Idempotency Test
 Purpose: Verify that boundary_init_done flag prevents repeated initialization
 across multiple syscalls. This is the CRITICAL preservation test for Task 2.
 
-Expected Behavior (on unfixed code):
-- First anchored syscall: DIAG_BOUNDARY_INIT_ENTER marker present
-- Second anchored syscall: DIAG_BOUNDARY_INIT_SKIPPED marker present
-- Third+ anchored syscalls: DIAG_BOUNDARY_INIT_SKIPPED marker present
+Expected Behavior (after Task 3 optimization):
+- Init happens at kernel boot (kernel_late_init)
+- ALL anchored syscalls: DIAG_BOUNDARY_INIT_SKIPPED marker present
+- NO syscall should take init path (init moved to boot)
 
 Spec: scheduler-primary-regression-rca
-Task: 2 - Preservation property tests
+Task: 2 - Preservation property tests (updated for Task 3)
 """
 
 import sys
@@ -55,27 +55,18 @@ def parse_debugcon_log(log_path):
     return syscalls
 
 def verify_idempotency(syscalls):
-    """Verify boundary_init_done idempotency property."""
+    """Verify boundary_init_done idempotency property (Task 3: init at boot)."""
     if len(syscalls) < 2:
         return False, f"Need at least 2 syscalls, found {len(syscalls)}"
     
-    # First syscall MUST take init path
-    first = syscalls[0]
-    if not first['init_enter']:
-        return False, "First syscall did NOT take init path (missing DIAG_BOUNDARY_INIT_ENTER)"
-    if not first['init_done']:
-        return False, "First syscall did NOT complete init (missing DIAG_BOUNDARY_INIT_DONE)"
-    if first['init_skipped']:
-        return False, "First syscall incorrectly took skip path"
-    
-    # All subsequent syscalls MUST take skip path
-    for i, syscall in enumerate(syscalls[1:], start=2):
+    # After Task 3: ALL syscalls MUST take skip path (init moved to kernel boot)
+    for i, syscall in enumerate(syscalls, start=1):
         if not syscall['init_skipped']:
             return False, f"Syscall #{i} did NOT take skip path (missing DIAG_BOUNDARY_INIT_SKIPPED)"
         if syscall['init_enter']:
-            return False, f"Syscall #{i} incorrectly took init path"
+            return False, f"Syscall #{i} incorrectly took init path (init should happen at boot)"
     
-    return True, f"Idempotency verified: 1st init, {len(syscalls)-1} skip"
+    return True, f"Idempotency verified: all {len(syscalls)} syscalls skip (init at boot)"
 
 def main():
     if len(sys.argv) < 2:
@@ -124,8 +115,8 @@ def main():
         print()
         print("Property Verified:")
         print("  → boundary_init_done flag prevents repeated initialization")
-        print("  → First anchored syscall takes init path")
-        print("  → Subsequent anchored syscalls take skip path")
+        print("  → Init happens at kernel boot (kernel_late_init)")
+        print("  → All anchored syscalls take skip path")
         sys.exit(0)
     else:
         print(f"❌ FAIL: {message}")

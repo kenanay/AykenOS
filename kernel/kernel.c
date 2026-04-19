@@ -79,6 +79,8 @@
 #include "fs/devfs.h"
 #include "include/syscall.h"
 #include "include/capability.h"
+#include "sys/boundary_enforcement.h"
+#include "sys/syscall_enforcement_matrix.h"
 
 #include "drivers/console/fb_console.h"
 #include "serial.h"
@@ -735,13 +737,26 @@ static void kernel_late_init(void)
     fb_print("[OK] Syscall mechanism ready (12 execution-centric syscalls only).\n");
 
     // ---------------------------------------------------------
-    // 4.1) Ring0 INT 0x80 smoke test - COMPLETELY DISABLED FOR RING3 DIAGNOSTICS
+    // 4.1) Boundary enforcement initialization (Task 3 optimization)
     // ---------------------------------------------------------
-    dual_channel_write("[K][LATE]6.1 INT80_SMOKETEST_DISABLED\n");
+    dual_channel_write("[K][LATE]6.1 BOUNDARY_INIT\n");
+    boundary_enforce_init();
+    
+    /* Validate enforcement matrix integrity at boot */
+    if (syscall_enforcement_validate_matrix() != 0) {
+        fb_print("[PANIC] Enforcement matrix validation failed - system compromised\n");
+        while (1) __asm__ volatile("cli; hlt");
+    }
+    fb_print("[OK] Boundary enforcement initialized and validated.\n");
+
+    // ---------------------------------------------------------
+    // 4.2) Ring0 INT 0x80 smoke test - COMPLETELY DISABLED FOR RING3 DIAGNOSTICS
+    // ---------------------------------------------------------
+    dual_channel_write("[K][LATE]6.2 INT80_SMOKETEST_DISABLED\n");
     fb_print("[DISABLED] Ring0 INT 0x80 smoke test disabled - proceeding to Ring3 diagnostics.\n");
 
     // ---------------------------------------------------------
-    // 4.1) Capability mechanism (security mechanism only)
+    // 4.3) Capability mechanism (security mechanism only)
     // ---------------------------------------------------------
     dual_channel_write("[K][LATE]7 CAP\n");
     capability_system_init();  // Ring0 mechanism only - policy in Ring3
