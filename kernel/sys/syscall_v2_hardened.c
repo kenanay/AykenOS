@@ -271,7 +271,7 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     
     /* DIAGNOSTIC: HOT-PATH MICRO-PROFILE - Bridge bypass detection */
     debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_ENTER");
-    boundary_result = boundary_detect_bridge_bypass(syscall_num, context_id);
+    boundary_result = boundary_detect_bridge_bypass(context_type, syscall_num, context_id);  /* PATCH C2: Pass cached context_type */
     debugcon_write_with_timestamp("DIAG_HOT_BYPASS_CHECK_DONE");
     
     if (boundary_result != 0) {

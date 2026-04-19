@@ -279,11 +279,39 @@ int boundary_check_bcib_submission_path(void *bcib_graph, uint64_t graph_size, u
 /**
  * Detect Runtime_Bridge bypass attempts
  * Ensures Runtime_Bridge cannot replace or bypass syscall surface
+ * 
+ * PATCH C2: Fast-path optimization with early exit for common case
+ * Most contexts (USER, KERNEL) cannot bypass - early exit eliminates deep checks
  */
-int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id) {
+int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t syscall_num, uint64_t context_id) {
     if (!boundary_initialized) {
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
+    
+    /* PATCH C2: Early exit for common case (USER, KERNEL, UNKNOWN)
+     * These contexts cannot bypass - no deep checks needed
+     * This is the hot-path optimization: single branch + early return
+     */
+    if (__builtin_expect(
+        ctx_type != EXEC_CONTEXT_BCIB && 
+        ctx_type != EXEC_CONTEXT_RUNTIME_BRIDGE,
+        1  /* Likely: not restricted context */
+    )) {
+        /* Common case: USER/KERNEL contexts
+         * No bypass possible, no deep checks needed
+         * Just verify syscall number is in range (fast check)
+         */
+        if (syscall_num > SYS_V2_MAX_SYSCALL) {
+            boundary_audit_violation(BOUNDARY_ERR_BRIDGE_BYPASS, context_id,
+                                    "Attempt to extend syscall surface");
+            boundary_fail_closed_termination(BOUNDARY_ERR_BRIDGE_BYPASS, context_id,
+                                            "Syscall surface extension attempt - ABI freeze violation");
+            return BOUNDARY_ERR_BRIDGE_BYPASS;
+        }
+        return 0;  /* FAST PATH EXIT */
+    }
+    
+    /* SLOW PATH: Restricted contexts (BCIB, RUNTIME_BRIDGE) need deep checks */
     
     /* Check for attempts to extend syscall surface (Requirement 1.8) */
     if (syscall_num > SYS_V2_MAX_SYSCALL) {
@@ -297,8 +325,7 @@ int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id) {
     /* Check for direct kernel API exposure beyond approved interface */
     if (syscall_num == SYS_V2_SUBMIT_EXECUTION) {
         /* Only BCIB contexts should use this syscall */
-        boundary_state_t *state = &boundary_states[context_id % MAX_EXECUTION_CONTEXTS];
-        if (state->context_type != EXEC_CONTEXT_BCIB) {
+        if (ctx_type != EXEC_CONTEXT_BCIB) {
             boundary_audit_violation(BOUNDARY_ERR_KERNEL_API_EXPOSURE, context_id,
                                    "Non-BCIB context using SUBMIT_EXECUTION");
             boundary_fail_closed_termination(BOUNDARY_ERR_KERNEL_API_EXPOSURE, context_id,

@@ -127,11 +127,11 @@ static void test_bridge_bypass_detection(void) {
     uint64_t context_id = 0x2600;
     
     /* Test 1: Syscall surface extension should be detected */
-    int result = boundary_detect_bridge_bypass(SYS_V2_MAX_SYSCALL + 1, context_id);
+    int result = boundary_detect_bridge_bypass(EXEC_CONTEXT_RUNTIME_BRIDGE, SYS_V2_MAX_SYSCALL + 1, context_id);
     TEST_ASSERT(result == BOUNDARY_ERR_BRIDGE_BYPASS, "Syscall surface extension detected");
     
     /* Test 2: Valid syscall should pass */
-    result = boundary_detect_bridge_bypass(SYS_V2_MAP_MEMORY, context_id);
+    result = boundary_detect_bridge_bypass(EXEC_CONTEXT_USER, SYS_V2_MAP_MEMORY, context_id);
     TEST_ASSERT(result == 0, "Valid syscall passes bypass detection");
 }
 

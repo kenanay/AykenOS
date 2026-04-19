@@ -45,7 +45,7 @@ int boundary_enforce_init(void);
 int boundary_validate_syscall(uint64_t syscall_num, execution_context_type_t context_type, uint64_t context_id);
 void boundary_set_context_type(uint64_t context_id, execution_context_type_t context_type, uint64_t process_id);
 int boundary_check_bcib_submission_path(void *bcib_graph, uint64_t graph_size, uint64_t context_id);
-int boundary_detect_bridge_bypass(uint64_t syscall_num, uint64_t context_id);
+int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t syscall_num, uint64_t context_id);  /* PATCH C2: Added ctx_type parameter */
 void boundary_fail_closed_termination(int violation_code, uint64_t context_id, const char *reason) __attribute__((noreturn));
 int boundary_audit_violation(int violation_code, uint64_t context_id, const char *details);
 
