@@ -170,7 +170,17 @@ log_info "Attempting to compile boundary enforcement components..."
 cd "$PROJECT_ROOT/kernel/sys"
 
 # Check if we can compile the boundary enforcement files
-if command -v gcc >/dev/null 2>&1; then
+if command -v clang >/dev/null 2>&1; then
+    # Try to compile (syntax check only)
+    if clang --target=x86_64-elf -c -I../include -I../../shared/abi boundary_enforcement.c -o /tmp/boundary_test.o 2>/dev/null; then
+        log_info "Boundary enforcement compiles successfully"
+        rm -f /tmp/boundary_test.o
+    else
+        log_error "Boundary enforcement compilation failed"
+        GATE_RESULT="FAIL"
+        VIOLATIONS_DETECTED=$((VIOLATIONS_DETECTED + 1))
+    fi
+elif command -v gcc >/dev/null 2>&1; then
     # Try to compile (syntax check only)
     if gcc -c -I../include -I../../shared/abi boundary_enforcement.c -o /tmp/boundary_test.o 2>/dev/null; then
         log_info "Boundary enforcement compiles successfully"
@@ -181,7 +191,7 @@ if command -v gcc >/dev/null 2>&1; then
         VIOLATIONS_DETECTED=$((VIOLATIONS_DETECTED + 1))
     fi
 else
-    log_warn "GCC not available, skipping compilation test"
+    log_warn "GCC/Clang not available, skipping compilation test"
 fi
 
 cd "$PROJECT_ROOT"
