@@ -288,6 +288,9 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
         return BOUNDARY_ERR_ISOLATION_VIOLATION;
     }
     
+    /* PATCH C2 VERIFICATION: Forced marker to prove fast-path is executing */
+    extern void debugcon_write(const char *s);
+    
     /* PATCH C2: Early exit for common case (USER, KERNEL, UNKNOWN)
      * These contexts cannot bypass - no deep checks needed
      * This is the hot-path optimization: single branch + early return
@@ -301,6 +304,8 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
          * No bypass possible, no deep checks needed
          * Just verify syscall number is in range (fast check)
          */
+        debugcon_write("PATCH_C2_FAST_PATH\n");
+        
         if (syscall_num > SYS_V2_MAX_SYSCALL) {
             boundary_audit_violation(BOUNDARY_ERR_BRIDGE_BYPASS, context_id,
                                     "Attempt to extend syscall surface");
@@ -312,6 +317,7 @@ int boundary_detect_bridge_bypass(execution_context_type_t ctx_type, uint64_t sy
     }
     
     /* SLOW PATH: Restricted contexts (BCIB, RUNTIME_BRIDGE) need deep checks */
+    debugcon_write("PATCH_C2_SLOW_PATH\n");
     
     /* Check for attempts to extend syscall surface (Requirement 1.8) */
     if (syscall_num > SYS_V2_MAX_SYSCALL) {

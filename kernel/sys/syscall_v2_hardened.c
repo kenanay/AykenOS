@@ -251,6 +251,13 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
      * Context type is read directly from current_proc->boundary_context_type_cached above
      */
     
+    /* PATCH C VERIFICATION: Forced marker to prove cache path is executing */
+    if (current_proc && current_proc->boundary_cache_valid) {
+        debugcon_write_with_timestamp("PATCH_C_CACHE_HIT");
+    } else {
+        debugcon_write_with_timestamp("PATCH_C_CACHE_MISS");
+    }
+    
 #if defined(AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE) && (AYKEN_PHASE16_BOUNDARY_ENFORCEMENT_ENABLE == 1)
     /* Phase-16 Boundary Enforcement: Validate syscall against context */
     
