@@ -47,7 +47,53 @@ Syscall Breakdown:
 
 **Artifact**: `scripts/ci/test_boundary_init_idempotency.py`
 
-### Test 2: Diagnostic Flags Verification ✅ PASS
+### Test 2: Anchored Sequence Detection ✅ PASS
+
+**Purpose**: Verify that anchor detection and sequence flow work correctly, preventing regression of the syscall normalization bug.
+
+**Result**:
+```
+Markers detected: ['ANCHOR', 'SEQ1', 'SEQ2', 'SEQ3']
+
+✅ PASS: Anchor + sequence 1→2→3 verified
+```
+
+**Property Verified**:
+- Anchor detection works correctly (DIAG_TEST_ANCHOR_SET)
+- Sequence flow is correct (1 → 2 → 3)
+- Normalized syscall numbering preserved
+
+**Artifact**: `scripts/ci/test_anchored_sequence.py`
+
+### Test 3: Skip Path Performance ✅ PASS
+
+**Purpose**: Verify that skip path is significantly faster than init path (ratio-based test).
+
+**Result**:
+```
+Syscall #1 cost: 208,289,792 ticks (INIT)
+Syscall #2 cost: 3,322,000 ticks (SKIP)
+Syscall #3 cost: 1,044,000 ticks (SKIP)
+Syscall #4 cost: 1,025,000 ticks (SKIP)
+Syscall #5 cost: 961,000 ticks (SKIP)
+
+Analysis:
+  Init cost:      208,289,792 ticks
+  Best skip cost: 961,000 ticks
+  Ratio:          0.00
+  Improvement:    99.5%
+
+✅ PASS: Skip path is 99.5% faster (>50% required)
+```
+
+**Property Verified**:
+- Init path is measurably expensive
+- Skip path is significantly faster (99.5% improvement)
+- Performance guarantee maintained (>50% required)
+
+**Artifact**: `scripts/ci/test_skip_path_performance.py`
+
+### Test 4: Diagnostic Flags Verification ✅ PASS
 
 **Purpose**: Verify that diagnostic flags like `AYKEN_RING3_FETCH_PROBE` are disabled in production builds.
 
@@ -91,18 +137,24 @@ The following behaviors are GUARANTEED to be preserved by Task 3 optimization:
    - First syscall: init path (DIAG_BOUNDARY_INIT_ENTER)
    - Subsequent syscalls: skip path (DIAG_BOUNDARY_INIT_SKIPPED)
 
-2. **Diagnostic Isolation**: Production builds do NOT enable diagnostic flags
+2. **Anchored Sequence**: Anchor detection and sequence flow work correctly
+   - DIAG_TEST_ANCHOR_SET marker present
+   - DIAG_ANCHORED_SEQ_1/2/3 markers in correct order
+   - Normalized syscall numbering preserved
+
+3. **Performance Guarantee**: Skip path is at least 50% faster than init path
+   - Current evidence: 99.5% faster (208M → 961k ticks)
+   - Minimum guarantee: 50% faster
+   - Regression detection: ratio-based test
+
+4. **Diagnostic Isolation**: Production builds do NOT enable diagnostic flags
    - AYKEN_RING3_FETCH_PROBE=0 or undefined
    - No false blockers from diagnostic artifacts
 
-3. **Functional Correctness**: All syscalls produce correct results
+5. **Functional Correctness**: All syscalls produce correct results
    - Boundary enforcement works correctly
    - Syscall dispatch works correctly
    - Context switching works correctly
-
-4. **Performance Baseline**: Skip path is significantly faster than init path
-   - Current evidence: 64.8% faster (2,835,000 → 999,000 ticks)
-   - Minimum guarantee: 50% faster
 
 ## Task 3 Readiness
 

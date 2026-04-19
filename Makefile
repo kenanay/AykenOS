@@ -2998,10 +2998,26 @@ ci-gate-preservation-tests: ci-evidence-dir
 		exit 1; \
 	fi
 	@echo
-	@echo ">> Test 2: Diagnostic Flags Verification"
+	@echo ">> Test 2: Anchored Sequence Detection"
+	@python3 scripts/ci/test_anchored_sequence.py out/second-syscall-evidence/debugcon.log \
+		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_anchored_sequence.log"
+	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_anchored_sequence.log"; then \
+		echo "❌ FAIL: Anchored sequence test failed"; \
+		exit 1; \
+	fi
+	@echo
+	@echo ">> Test 3: Skip Path Performance"
+	@python3 scripts/ci/test_skip_path_performance.py out/second-syscall-evidence/debugcon.log \
+		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test3_skip_path_performance.log"
+	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test3_skip_path_performance.log"; then \
+		echo "❌ FAIL: Skip path performance test failed"; \
+		exit 1; \
+	fi
+	@echo
+	@echo ">> Test 4: Diagnostic Flags Verification"
 	@bash scripts/ci/verify_diagnostic_flags.sh \
-		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_diagnostic_flags.log"
-	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test2_diagnostic_flags.log"; then \
+		| tee "$(EVIDENCE_RUN_DIR)/preservation-tests/test4_diagnostic_flags.log"
+	@if ! grep -q "✅ PASS" "$(EVIDENCE_RUN_DIR)/preservation-tests/test4_diagnostic_flags.log"; then \
 		echo "❌ FAIL: Diagnostic flags verification failed"; \
 		exit 1; \
 	fi
@@ -3011,6 +3027,8 @@ ci-gate-preservation-tests: ci-evidence-dir
 	@echo "============================================================"
 	@echo "✅ All preservation tests PASSED"
 	@echo "   → boundary_init_done idempotency verified"
+	@echo "   → Anchored sequence detection verified"
+	@echo "   → Skip path performance guarantee verified"
 	@echo "   → Diagnostic flags isolation verified"
 	@echo
 	@echo "Preservation baseline established for Task 3 optimization"
