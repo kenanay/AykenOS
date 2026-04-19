@@ -195,13 +195,43 @@ uint64_t syscall_v2_hardened_handler(uint64_t syscall_num, uint64_t arg1,
     /* DIAGNOSTIC: Context detection complete */
     debugcon_write_with_timestamp("DIAG_CONTEXT_DETECTION_DONE");
     
-    /* TASK 3 OPTIMIZATION: Boundary init moved to kernel boot (kernel_late_init)
-     * This eliminates first-syscall cold-path overhead (~1.8ms)
-     * Preservation guarantee: idempotency, anchored sequence, performance, diagnostic isolation
-     */
+    /* Initialize boundary enforcement if not already done */
+    static int boundary_init_done = 0;
+    static uint64_t boundary_init_call_count = 0;
     
-    /* DIAGNOSTIC: Boundary init skipped (moved to boot) - emit skip marker for test compatibility */
-    debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_SKIPPED");
+    /* DIAGNOSTIC: Track how many times we enter this block */
+    boundary_init_call_count++;
+    
+    if (!boundary_init_done) {
+        /* DIAGNOSTIC: Flag is 0 - entering init path */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_ENTER");
+        
+        boundary_enforce_init();
+        
+        /* DIAGNOSTIC: boundary_enforce_init() complete */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_ENFORCE_INIT_DONE");
+        
+        /* CRITICAL: Validate enforcement matrix integrity */
+        if (syscall_enforcement_validate_matrix() != 0) {
+            boundary_fail_closed_termination(BOUNDARY_ERR_ISOLATION_VIOLATION, context_id,
+                                            "Enforcement matrix validation failed - system compromised");
+            return BOUNDARY_ERR_ISOLATION_VIOLATION;
+        }
+        
+        /* DIAGNOSTIC: syscall_enforcement_validate_matrix() complete */
+        debugcon_write_with_timestamp("DIAG_MATRIX_VALIDATE_DONE");
+        
+        boundary_init_done = 1;
+        
+        /* DIAGNOSTIC: Flag set to 1 - init complete */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_FLAG_SET");
+    } else {
+        /* DIAGNOSTIC: Flag is 1 - skipping init (fast path) */
+        debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_SKIPPED");
+    }
+    
+    /* DIAGNOSTIC: Boundary init complete */
+    debugcon_write_with_timestamp("DIAG_BOUNDARY_INIT_DONE");
     
     /* CRITICAL FIX: Register context_type in boundary_states[] AFTER init, BEFORE enforcement checks
      * This ensures boundary_detect_bridge_bypass() can correctly validate BCIB context */
