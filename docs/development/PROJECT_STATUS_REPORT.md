@@ -1,12 +1,13 @@
 # AykenOS Project Status Report (Code + Evidence Snapshot)
 
-**Date:** 2026-04-09
-**Status:** Phase-10 / Phase-11 / Phase-12 / Phase-13 / Phase-14 / Phase-15 Official Closure Confirmed + CURRENT_PHASE=15 + Phase-15 OFFICIALLY CLOSED
-**Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`, `run-local-p13-kill-switch-20260315T000051Z`, `phase15-official-closure`
+**Date:** 2026-04-24
+**Status:** Phase-15 OFFICIALLY CLOSED + Phase-16 Faz B ACTIVE DEVELOPMENT + Ring3 First-Retirement Breakthrough
+**Evidence Basis:** `local-freeze-p10p11`, `local-phase11-closure`, `run-run-local-phase12c-closure-2026-03-11`, `run-local-p13-kill-switch-20260315T000051Z`, `phase15-official-closure`, `phase16-faz-b-ring3-first-retirement-breakthrough`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b`
 **Evidence Git SHA (Phase-12C):** `01d1cb5c`
 **Evidence Git SHA (Phase-13):** `40158350`
 **Evidence Git SHA (Phase-15):** `48970cd0`
+**Current Development SHA:** `ad837f86` + uncommitted Phase-16 Faz B changes
 **Closure Sync SHA:** `fe9031d7`
 **Official CI (Phase-10/11):** `ci-freeze` run `22797401328` (`pull_request`, `success`)
 **Official CI (Phase-12):** `ci-freeze` run `23099070483` (`success`) — PR #62
@@ -18,6 +19,7 @@
 **Official Closure Tag (Phase-15):** `phase15-official-closure` at `48970cd0`
 **Phase-13 Kill-Switch Tag:** `phase13-kill-switch-gates-pass` at `0ec4bb5e`
 **CURRENT_PHASE:** `15` (formal transition at `48970cd0`)
+**Phase-16 Status:** ACTIVE DEVELOPMENT (Faz B - QEMU/Kernel Integration)
 **Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64` (updated PR #104)
 
 ## Executive Summary
@@ -30,6 +32,8 @@ Bu rapor, repo kodu, local evidence run'lari ve remote `ci-freeze` sonucu uzerin
 - `Phase-14` distributed observability hardening tum workstream'ler merge edildi, official closure confirmed
 - `Phase-15` BCIB Execution Engine v3 official closure confirmed — `ci-freeze` run `24213727039` (PR #104)
 - `CURRENT_PHASE=15` formal transition tamamlandi
+- **Phase-16 Faz B ACTIVE:** Ring3 BCIB execution worker payload development ongoing
+- **BREAKTHROUGH:** Ring3 first-retirement starvation problem SOLVED (2026-04-24)
 - BCIB v3: uc katmanli mimari (BcibVerifierPlanner, BcibExecutionRuntime, SchedulerSubmitBridge), 293 test PASS, 12 property test PASS
 - `ayken-cli` v0.1 (Faz A wrapper) shipped: `tools/ayken-cli/` — CC=clang enforcement, fail-closed policy, gate/closure visibility
 - `ayken/` toolchain experimental/parked: `ayken/STATUS.md`
@@ -151,28 +155,63 @@ Meaning:
 4. `ayken-cli` v0.1 (Faz A wrapper) shipped under `tools/ayken-cli/`
 5. Formal phase pointer remains `CURRENT_PHASE=15`; Phase-16 is pending governance/spec activation
 
+### 2.7 Phase-16 (ACTIVE DEVELOPMENT)
+Current classification:
+`Phase-16 Faz B = ACTIVE DEVELOPMENT (QEMU/Kernel Integration)`
+
+**Breakthrough (2026-04-24):**
+Ring3 first-retirement starvation problem SOLVED via `minimal_bcib_first_retire_probe.S`:
+
+**Problem:** Pure proof-off koşuda userland'e geçiliyor ama `_start` içindeki ilk instruction bile retire etmiyor.
+
+**Solution:** Stackless probe with 3x `SYS_V2_DEBUG_PUTCHAR` calls proved Ring3 infrastructure is working:
+- **Evidence:** A, B, C characters successfully printed via syscalls
+- **RIP progression:** 0x400000 → 0x40004B (instruction retirement confirmed)
+- **Syscall trace:** `[[AYKEN_SYSCALL_ENTER]] A [[AYKEN_SYSCALL_RETURN]]` pattern verified
+
+**Resolved doubts:**
+- ✅ Ring3 entry is NOT broken
+- ✅ Instruction retirement is NOT zero
+- ✅ int80 syscall path is working
+- ✅ Post-syscall guard is functional
+- ✅ Stackless minimal payload can execute
+
+**Current focus:** BCIB worker payload logic/debug (prebuilt vs source-built worker)
+
 ## 3) Boundary and Scope
 1. Official closure here means local evidence basis plus remote `ci-freeze` confirmation are both satisfied.
 2. `CURRENT_PHASE=15` — formal transition executed at `48970cd0`.
 3. Phase-10/11/12/13/14/15 all OFFICIALLY CLOSED.
-4. Phase-15 official closure truth is anchored at `reports/phase15_official_closure/closure_index.json`.
-5. Historical Phase-14 tracker/spec surfaces remain reference-only and MUST NOT override Phase-15 closure truth.
-6. `proofd` MUST NOT drift into authority, majority, or control-plane semantics.
-7. `ABDF` and `BCIB` remain existing substrates; Phase-16 may orchestrate them but may not redefine their authority boundaries.
+4. **Phase-16 Faz B ACTIVE DEVELOPMENT** — Ring3 first-retirement breakthrough achieved (2026-04-24).
+5. Phase-15 official closure truth is anchored at `reports/phase15_official_closure/closure_index.json`.
+6. Historical Phase-14 tracker/spec surfaces remain reference-only and MUST NOT override Phase-15 closure truth.
+7. `proofd` MUST NOT drift into authority, majority, or control-plane semantics.
+8. `ABDF` and `BCIB` remain existing substrates; Phase-16 may orchestrate them but may not redefine their authority boundaries.
+9. **Current development state:** Uncommitted changes in 11 kernel/userspace files for Phase-16 Faz B work.
 
 ## 4) Current Risk Surface
 1. En kritik authority riski truth surface drift'tir; human-readable reports ile machine-readable closure artifacts ayni closure verdict'i korumalidir.
 2. `proofd` MUST still not drift into authority, majority, truth-election, or control-plane semantics.
 3. Replay stability ve interrupt-order nondeterminism hala izlenmesi gereken altyapisal risk olarak kalir.
 4. Phase-16 orchestration layer mevcut authority modelini by-pass edemez; local tooling sadece advisory olabilir.
+5. **Development risk:** Uncommitted changes may cause hygiene gate failures; commit discipline required for CI compliance.
+6. **Integration risk:** BCIB worker payload logic requires careful debugging to avoid regression in Ring3 execution path.
 
 ## 5) Next Steps
 1. Keep `reports/phase15_official_closure/` as the canonical Phase-15 authority package.
-2. Keep Phase-16 orchestration constrained to thin wrapper scope while authority remains CI-bound.
-3. Implement Phase-16 commands in thin orchestration form only: `status`, `risk`, `gate all`, `closure status --json`, `closure verify`, `head verify`, `head lineage`, `bcib verify`, `bcib hash`, `bcib inspect`, while keeping verified-head integrity separate from official closure, requiring exact-SHA CI projections for head authority, treating BCIB inspection as an authority-aware observation surface only, and attaching advisory risk to `gate all --json`.
-4. Define authority-lineage as advisory-only ancestry diagnostics; do not inherit authority across SHAs.
-5. Keep monitoring replay stability under interrupt ordering nondeterminism.
-6. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
+2. **Phase-16 Faz B completion:** Focus on BCIB worker payload logic/debug after Ring3 first-retirement breakthrough.
+3. **Immediate tasks:** 
+   - Debug prebuilt vs source-built BCIB worker differences
+   - Implement real kernel submission path (`SYS_V2_SUBMIT_EXECUTION`)
+   - Implement real kernel wait-result path (`SYS_V2_WAIT_RESULT`)
+   - Establish kernel result fingerprint comparison
+   - Prove kernel determinism
+4. Keep Phase-16 orchestration constrained to thin wrapper scope while authority remains CI-bound.
+5. Implement Phase-16 commands in thin orchestration form only: `status`, `risk`, `gate all`, `closure status --json`, `closure verify`, `head verify`, `head lineage`, `bcib verify`, `bcib hash`, `bcib inspect`, while keeping verified-head integrity separate from official closure, requiring exact-SHA CI projections for head authority, treating BCIB inspection as an authority-aware observation surface only, and attaching advisory risk to `gate all --json`.
+6. Define authority-lineage as advisory-only ancestry diagnostics; do not inherit authority across SHAs.
+7. Keep monitoring replay stability under interrupt ordering nondeterminism.
+8. Preserve `service != authority`, `diagnostics != decision`, `parity != consensus`, and `graph = derived diagnostics`.
+9. **Commit discipline:** Resolve uncommitted changes to restore hygiene gate compliance.
 
 ## References
 - `README.md`

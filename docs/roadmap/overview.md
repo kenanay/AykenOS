@@ -1,14 +1,15 @@
-# AykenOS Roadmap - Code and Evidence Status (2026-04-10)
+# AykenOS Roadmap - Code and Evidence Status (2026-04-24)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
 ## Scope
 Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence run'lari ve remote `ci-freeze` confirmation uzerinden ozetler.
 
-- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
+- Evidence basis: `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-faz-b-ring3-first-retirement-breakthrough`
 - Evidence git SHA (Phase-10/11): `9cb2171b`
 - Evidence git SHA (Phase-12C): `01d1cb5c`
 - Evidence git SHA (Phase-13): `40158350`
 - Evidence git SHA (Phase-15): `48970cd0`
+- Current development SHA: `ad837f86` + uncommitted Phase-16 Faz B changes
 - Closure sync SHA (Phase-10/11): `fe9031d7`
 - Official CI (Phase-10/11): `ci-freeze` run `22797401328` (`success`)
 - Official CI (Phase-12): `ci-freeze` run `23099070483` (`success`) — PR #62
@@ -25,6 +26,7 @@ Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence ru
 - Phase-13 closure state: `CLOSED (official closure confirmed)`
 - Phase-14 closure state: `CLOSED (official closure confirmed)`
 - Phase-15 closure state: `CLOSED (official closure confirmed)`
+- Phase-16 status: `Faz B ACTIVE DEVELOPMENT (Ring3 breakthrough achieved 2026-04-24)`
 
 ## 1) Architectural Baseline
 
@@ -161,7 +163,29 @@ Interpretation:
 6. Official closure tag: `phase15-official-closure` at `48970cd0`
 7. Remote `ci-freeze` run `24213727039` confirmed (PR #104, success)
 
-### 3.7 Official Closure Basis
+### 3.7 Phase-16 (ACTIVE DEVELOPMENT)
+`Phase-16 Faz B = ACTIVE DEVELOPMENT (QEMU/Kernel Integration)`
+
+**Breakthrough (2026-04-24):**
+Ring3 first-retirement starvation problem SOLVED via `minimal_bcib_first_retire_probe.S`:
+
+**Problem:** Pure proof-off koşuda userland'e geçiliyor ama `_start` içindeki ilk instruction bile retire etmiyor.
+
+**Solution:** Stackless probe with 3x `SYS_V2_DEBUG_PUTCHAR` calls proved Ring3 infrastructure is working:
+- **Evidence:** A, B, C characters successfully printed via syscalls
+- **RIP progression:** 0x400000 → 0x40004B (instruction retirement confirmed)
+- **Syscall trace:** `[[AYKEN_SYSCALL_ENTER]] A [[AYKEN_SYSCALL_RETURN]]` pattern verified
+
+**Resolved doubts:**
+- ✅ Ring3 entry is NOT broken
+- ✅ Instruction retirement is NOT zero
+- ✅ int80 syscall path is working
+- ✅ Post-syscall guard is functional
+- ✅ Stackless minimal payload can execute
+
+**Current focus:** BCIB worker payload logic/debug (prebuilt vs source-built worker)
+
+### 3.8 Official Closure Basis
 1. Phase-10/11 underlying evidence: `local-freeze-p10p11` + `local-phase11-closure` at `9cb2171b`.
 2. Phase-10/11 remote confirmation: `ci-freeze` run `22797401328` on `fe9031d7` (success).
 3. Phase-10/11 official closure tag: `phase10-phase11-official-closure` at `fe9031d7`.
@@ -183,6 +207,8 @@ Interpretation:
 4. ✅ Phase-13 kill-switch gate suite 6/6 PASS — 4 invariant HOLD.
 5. ✅ Phase-14 Architecture Map §4 workstreams COMPLETE ve official closure confirmed.
 6. `proofd` ve graph/diagnostics buyumesi parity semantics'ini `consensus` veya authority surface'e kaydirmamalidir.
+7. **Development risk:** Uncommitted changes may cause hygiene gate failures; commit discipline required for CI compliance.
+8. **Integration risk:** BCIB worker payload logic requires careful debugging to avoid regression in Ring3 execution path.
 
 ## 5) Roadmap Decision
 
@@ -198,12 +224,19 @@ Interpretation:
 9. ✅ `ayken-cli` v0.1 (Faz A wrapper) shipped: `tools/ayken-cli/`
 10. ✅ `CURRENT_PHASE=15` formal transition tamamlandi
 
-### 5.2 Near Term (Phase-16)
-1. Ayken CLI Faz B: `status` (effective authority), `risk` (advisory), `gate all` / `gate all --json` (advisory risk attached to gate summary), `closure status --json` (advisory), `closure verify` (binding), `head verify` (binding, exact SHA CI projection required), `head lineage` (advisory)
-2. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect` (authority-aware observation only)
-3. Advisory authority-lineage spec: nearest verified ancestor diagnostics without inherited authority
-4. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
-5. Governance: ayrı spec ile onay gerekli
+### 5.2 Near Term (Phase-16 - ACTIVE)
+1. **Phase-16 Faz B completion:** Focus on BCIB worker payload logic/debug after Ring3 first-retirement breakthrough
+2. **Immediate tasks:**
+   - Debug prebuilt vs source-built BCIB worker differences
+   - Implement real kernel submission path (`SYS_V2_SUBMIT_EXECUTION`)
+   - Implement real kernel wait-result path (`SYS_V2_WAIT_RESULT`)
+   - Establish kernel result fingerprint comparison
+   - Prove kernel determinism
+3. Ayken CLI Faz B: `status` (effective authority), `risk` (advisory), `gate all` / `gate all --json` (advisory risk attached to gate summary), `closure status --json` (advisory), `closure verify` (binding), `head verify` (binding, exact SHA CI projection required), `head lineage` (advisory)
+4. Ayken CLI Faz C: `bcib verify`, `bcib hash`, `bcib inspect` (authority-aware observation only)
+5. Advisory authority-lineage spec: nearest verified ancestor diagnostics without inherited authority
+6. BCIB toolchain surface (DSL → BCIB pipeline CLI entegrasyonu)
+7. Governance: ayrı spec ile onay gerekli
 
 ### 5.3 Explicit Non-Goals
 1. `Phase-12` local distributed trust calismalarini `Phase-11` closure kanitiymis gibi gostermek
@@ -252,5 +285,5 @@ Phase-13 official closure icin saglananlar:
 - `docs/specs/phase14-distributed-observability/README.md`
 
 ---
-**Son Guncelleme:** 2026-04-10
-**Guncelleme Yontemi:** Phase-15 OFFICIALLY CLOSED + official closure authority consolidation + CURRENT_PHASE=15 + Phase-16 pending
+**Son Guncelleme:** 2026-04-24
+**Guncelleme Yontemi:** Phase-15 OFFICIALLY CLOSED + Phase-16 Faz B ACTIVE DEVELOPMENT + Ring3 first-retirement breakthrough achieved + BCIB worker payload debug in progress

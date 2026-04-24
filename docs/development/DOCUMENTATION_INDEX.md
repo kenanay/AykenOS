@@ -1,8 +1,8 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-10
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure`
+**Last Updated:** 2026-04-24
+**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-faz-b-ring3-first-retirement-breakthrough`
 
 ## Current Status
 - **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
@@ -12,8 +12,9 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Observability Hardening:** `Phase-14` officially closed — all 5 workstreams merged
 - **BCIB Execution Engine v3:** `Phase-15` officially closed — `ci-freeze` run `24213727039` (PR #104)
 - **Formal Governance Pointer:** `CURRENT_PHASE=15` (formal transition at `48970cd0`)
-- **Active Phase:** Phase-16 pending — Ayken CLI Faz B + BCIB toolchain surface
+- **Active Phase:** Phase-16 Faz B ACTIVE DEVELOPMENT — Ring3 breakthrough achieved (2026-04-24)
 - **Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64` (PR #104)
+- **Latest Breakthrough:** Ring3 first-retirement starvation SOLVED, BCIB worker payload debug in progress
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -22,12 +23,14 @@ Current repo truth icin once su dosyalari referans alin:
 2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
 3. `docs/roadmap/overview.md`
 4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-6. `reports/phase15_official_closure/closure_index.json`
-7. `reports/phase13_official_closure_candidate/closure_index.json`
-8. `reports/phase12_official_closure_candidate/closure_manifest.json`
-9. `reports/phase10_phase11_official_closure_index.json`
-10. `Makefile`
+5. `AYKENOS_SON_DURUM_RAPORU_2026_04_24.md` — **Latest breakthrough report**
+6. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+7. `reports/phase15_official_closure/closure_index.json`
+8. `reports/phase13_official_closure_candidate/closure_index.json`
+9. `reports/phase12_official_closure_candidate/closure_manifest.json`
+10. `reports/phase10_phase11_official_closure_index.json`
+11. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **Ring3 breakthrough evidence**
+12. `Makefile`
 11. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
