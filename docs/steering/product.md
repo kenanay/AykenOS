@@ -83,12 +83,15 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - **Phase 11 Verification**: OFFICIALLY CLOSED (ledger, ETI, replay, proof bundle, remote CI confirmed)
 - **Phase 12 Trust Layer**: OFFICIALLY CLOSED (P12-01..P12-18 complete, remote CI run `23099070483` confirmed)
 - **Phase 13 Kill-Switch**: GATES PASS (6/6 kill-switch gates PASS, tag `phase13-kill-switch-gates-pass`)
-- **Constitutional System**: Phases 1-12 COMPLETE (governance framework active)
-- **Architecture Freeze**: ACTIVE (stabilization before AI integration)
+- **Phase 14 Observability**: OFFICIALLY CLOSED (distributed observability, 5 workstreams complete)
+- **Phase 15 BCIB Engine**: OFFICIALLY CLOSED (BCIB Execution Engine v3, ci-freeze#24213727039, PR #104)
+- **Phase 16 Verification Layer**: OFFICIALLY CLOSED (MVP complete, evidence chain verified, trust anchor established)
+- **Constitutional System**: Phases 1-16 COMPLETE (governance framework active)
+- **Architecture Freeze**: ACTIVE (stabilization through Phase-17)
 - **Worktree-Local Ring3 Rule**: executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
-- **CI Enforcement**: strict freeze chain includes dedicated `Ring3 User Leaf Rule` before broader `Ring3 Execution Phase10a2`, followed by low-half scaffold, mailbox/runtime gates, alias proof, and Phase-13 kill-switch enforcement
-- **Pre-CI Discipline**: Local advisory (4 core gates, ~30-60s, fail-closed)
-- **CURRENT_PHASE**: `12` (formal transition completed at `0adb2a84`)
+- **CI Enforcement**: strict freeze chain includes dedicated `Ring3 User Leaf Rule` before broader `Ring3 Execution Phase10a2`, followed by low-half scaffold, mailbox/runtime gates, alias proof, Phase-13 kill-switch enforcement, and Phase-16 verification layer gates
+- **Pre-CI Discipline**: Local advisory (5 core gates, ~60-90s, fail-closed) + verification layer integration
+- **CURRENT_PHASE**: `16` (formal transition completed, Phase-17 execution pipeline pending)
 
 ## License
 

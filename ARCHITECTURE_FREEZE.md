@@ -1,9 +1,10 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.2  
-**Status:** ACTIVE FREEZE  
+**Version:** 1.3  
+**Status:** ACTIVE FREEZE (Phase-17 Integration)  
 **Effective Date:** 2026-02-13  
+**Last Update:** 2026-04-25 (Phase-17 Verification Layer Integration)  
 **Owner:** AykenOS Core Architecture Team  
 **Authority:** Kenan AY
 

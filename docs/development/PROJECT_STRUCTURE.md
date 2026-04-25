@@ -8,14 +8,14 @@ Bu dokümantasyon, AykenOS projesinin dizin yapısını ve bileşenlerini detayl
 
 **Güncel Durum:**
 - **Core OS:** Phase 4.5 TAMAMLANDI ✅
-- **Phase 10–13:** OFFICIALLY CLOSED ✅
-- **Phase 14:** OFFICIALLY CLOSED ✅ (distributed observability, 5 workstream)
-- **Phase 15:** OFFICIALLY CLOSED ✅ (BCIB Execution Engine v3, ci-freeze#24213727039, PR #104)
-- **CURRENT_PHASE:** 15
-- **Phase 16:** Faz B ACTIVE DEVELOPMENT ✅ (Ring3 breakthrough achieved 2026-04-24)
+- **Phase 10–15:** OFFICIALLY CLOSED ✅
+- **Phase 16:** OFFICIALLY CLOSED ✅ (Verification Layer MVP COMPLETE)
+- **CURRENT_PHASE:** 16
+- **Phase 17:** PENDING 🔄 (Execution Pipeline + System Completion)
+- **Verification Layer:** `tools/verification/` COMPLETE ✅ (Evidence chain, trust anchor, constitutional enforcement)
 - **Ayken CLI:** `tools/ayken-cli/` v0.1 (Faz A wrapper) — CC=clang enforcement, fail-closed
 - **ayken/:** experimental/parked — `ayken/STATUS.md`
-- **Latest Breakthrough:** Ring3 first-retirement starvation SOLVED
+- **Latest Achievement:** Verification Layer MVP delivered with evidence chain integrity
 
 ---
 
