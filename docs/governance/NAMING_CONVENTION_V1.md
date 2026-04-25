@@ -12,6 +12,7 @@ The goal is:
 - preserve backward stability for existing names
 - force new execution-path work to use execution-centric terminology
 - prevent classical OS naming from silently re-entering new execution-path code
+- keep new identifiers independent from temporary phase/faz labels
 
 This document does not redefine ABI ownership or runtime semantics. It governs
 future naming choices only.
@@ -37,6 +38,48 @@ The following categories are treated as frozen existing terms:
 - legacy scheduler/process names that are already embedded in stable files
 
 Frozen existing terms are not retroactively renamed by this policy.
+
+## Time-Stable Identifier Rule
+
+Phase/faz labels are planning and governance metadata. They are not stable
+technical identities.
+
+Therefore, new code MUST NOT encode phase/faz names into stable identifiers
+such as:
+
+- function names
+- method names
+- type/struct/enum names
+- module names
+- constant and macro names
+- feature flag names
+- non-temporary script names
+- stable API/CLI surface identifiers
+
+Examples of forbidden new identifier patterns include, but are not limited to:
+
+- `phase16_submit_execution`
+- `faz_b_wait_result`
+- `phase16_executor_t`
+- `AYKEN_PHASE16_RUNTIME_ENABLE`
+
+Instead, identifiers SHOULD describe durable domain meaning such as surface,
+invariant, authority, determinism, execution, result binding, or closure role.
+
+Examples of preferred durable naming:
+
+- `submit_execution`
+- `wait_result`
+- `execution_result_fingerprint`
+- `determinism_gate`
+- `closure_status`
+
+Allowed exceptions:
+
+- documentation titles and roadmap labels
+- phase-scoped closure/evidence artifact directories and report filenames
+- historical references kept for auditability
+- existing frozen identifiers until an explicit rename plan is ratified
 
 ## Preferred New Terms
 
@@ -173,6 +216,7 @@ Forbidden term patterns are defined in:
 When adding new execution-path code:
 
 - use `executor`, not `worker`
+- do not embed current phase/faz labels into new identifiers
 - use `dispatch`, not `task scheduling` for execution delivery concepts
 - use `delivery surface`, not `worker inbox` in new abstractions
 - keep existing frozen names untouched unless a dedicated rename plan exists

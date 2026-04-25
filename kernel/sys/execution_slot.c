@@ -23,6 +23,10 @@ static execution_trace_actor_t g_execution_trace_actor = EXEC_TRACE_ACTOR_NONE;
 
 #define AYKEN_EXECUTION_RESULT_BASE_VA (EXECUTION_PAYLOAD_VA + AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE)
 
+#ifndef AYKEN_BCIB_STUB_RESULT_VALUE_U64
+#define AYKEN_BCIB_STUB_RESULT_VALUE_U64 0xDEADBEEFCAFEBABEULL
+#endif
+
 static uint64_t execution_slot_read_rflags(void)
 {
     uint64_t rflags = 0;
@@ -124,6 +128,55 @@ static void execution_slot_debugcon_write_sha256(const uint8_t digest[AYKEN_SHA2
         execution_slot_debugcon_write_char(hex_digits[(digest[i] >> 4) & 0x0Fu]);
         execution_slot_debugcon_write_char(hex_digits[digest[i] & 0x0Fu]);
     }
+}
+
+static int execution_slot_copy_into_frames_locked(const uint64_t *frames,
+                                                  uint32_t frame_count,
+                                                  uint64_t start_offset,
+                                                  const void *src,
+                                                  uint64_t size)
+{
+    const uint8_t *src_bytes = (const uint8_t *)src;
+    uint64_t remaining = size;
+    uint64_t offset = start_offset;
+
+    if (!frames || frame_count == 0) {
+        return -1;
+    }
+    if (remaining == 0) {
+        return 0;
+    }
+    if (!src_bytes) {
+        return -1;
+    }
+
+    while (remaining > 0) {
+        uint32_t frame_index = (uint32_t)(offset / AYKEN_FRAME_SIZE);
+        uint64_t frame_offset = offset % AYKEN_FRAME_SIZE;
+        uint64_t chunk_size;
+        uint8_t *dst;
+
+        if (frame_index >= frame_count || frames[frame_index] == 0) {
+            return -1;
+        }
+
+        dst = (uint8_t *)paging_phys_to_virt(frames[frame_index]);
+        if (!dst) {
+            return -1;
+        }
+
+        chunk_size = AYKEN_FRAME_SIZE - frame_offset;
+        if (chunk_size > remaining) {
+            chunk_size = remaining;
+        }
+
+        memcpy(dst + frame_offset, src_bytes, chunk_size);
+        src_bytes += chunk_size;
+        offset += chunk_size;
+        remaining -= chunk_size;
+    }
+
+    return 0;
 }
 
 static void execution_slot_emit_fail_closed_proof_locked(const char *site,
@@ -952,6 +1005,47 @@ int execution_slot_prepare_output_locked(exec_slot_t *slot)
 
     slot->output_frame_count = AYKEN_EXECUTION_OUTPUT_WINDOW_PAGES;
     slot->output_size = 0;
+    return 0;
+}
+
+int execution_slot_write_output_v1_locked(exec_slot_t *slot,
+                                          const void *payload,
+                                          uint64_t payload_size)
+{
+    ayken_execution_output_v1_t header;
+
+    if (!slot || !slot->in_use || slot->state != EXEC_SLOT_RUNNING) {
+        return -1;
+    }
+    if (slot->output_frame_count != AYKEN_EXECUTION_OUTPUT_WINDOW_PAGES) {
+        return -1;
+    }
+    if (payload_size > (AYKEN_EXECUTION_OUTPUT_WINDOW_SIZE - sizeof(header))) {
+        return -1;
+    }
+
+    memset(&header, 0, sizeof(header));
+    header.magic = AYKEN_EXECUTION_OUTPUT_MAGIC;
+    header.abi_version = AYKEN_EXECUTION_OUTPUT_VERSION;
+    header.bytes_written = payload_size;
+
+    if (execution_slot_copy_into_frames_locked(slot->output_frames,
+                                               slot->output_frame_count,
+                                               0,
+                                               &header,
+                                               sizeof(header)) != 0) {
+        return -1;
+    }
+    if (payload_size > 0 &&
+        execution_slot_copy_into_frames_locked(slot->output_frames,
+                                               slot->output_frame_count,
+                                               sizeof(header),
+                                               payload,
+                                               payload_size) != 0) {
+        return -1;
+    }
+
+    slot->output_size = sizeof(header) + payload_size;
     return 0;
 }
 

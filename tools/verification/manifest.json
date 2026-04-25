@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "mode": "verification_layer",
+  "default_tier": "standard",
+  "gates": [
+    {
+      "id": "boot_integrity",
+      "command": "make ci-gate-boot-observability",
+      "evidence": "gates/boot_integrity/report.json",
+      "required_verdict": "PASS",
+      "blocking": true,
+      "performance_tier": "fast",
+      "timeout": 120,
+      "determinism_level": "marker",
+      "required_markers": [
+        "[[AYKEN_BOOT_OK]]"
+      ],
+      "forbidden_markers": [
+        "UEFI Interactive Shell",
+        "PANIC",
+        "PF!"
+      ],
+      "unique_marker_sequence": false
+    },
+    {
+      "id": "ring3_runtime",
+      "command": "make ci-gate-ring3-first-retire",
+      "evidence": "gates/ring3_runtime/report.json",
+      "required_verdict": "PASS",
+      "blocking": true,
+      "performance_tier": "standard",
+      "timeout": 180,
+      "determinism_level": "marker",
+      "required_markers": [
+        "[USER_BP]",
+        "P10_RING3_USER_CODE"
+      ],
+      "forbidden_markers": [
+        "GP!",
+        "PF!",
+        "UD"
+      ],
+      "unique_marker_sequence": true,
+      "depends_on": [
+        "boot_integrity"
+      ]
+    },
+    {
+      "id": "bcib_determinism",
+      "command": "make ci-gate-bcib-determinism-verification",
+      "evidence": "gates/bcib_determinism/report.json",
+      "required_verdict": "PASS",
+      "blocking": true,
+      "performance_tier": "heavy",
+      "timeout": 600,
+      "determinism_level": "artifact",
+      "allowed_determinism_levels": [
+        "artifact"
+      ],
+      "forbidden_markers": [
+        "PF!",
+        "BOUNDARY_VIOLATION",
+        "fallback_path=1"
+      ],
+      "build_fingerprint_required": true,
+      "expected_invariants": [
+        "bcib_output_deterministic",
+        "no_boundary_violations"
+      ]
+    },
+    {
+      "id": "determinism_global_enforcement",
+      "command": "make ci-gate-determinism-global",
+      "evidence": "gates/determinism_global_enforcement/report.json",
+      "required_verdict": "PASS",
+      "blocking": true,
+      "performance_tier": "standard",
+      "timeout": 240,
+      "determinism_level": "marker",
+      "required_markers": [
+        "DETERMINISM_CHECK_START",
+        "DETERMINISM_CHECK_OK"
+      ],
+      "forbidden_markers": [
+        "DETERMINISM.GLOBAL",
+        "GLOBAL_STATE_MUTATION",
+        "UNSEEDED_RNG",
+        "SYSTEM_TIME_IN_LOGIC"
+      ],
+      "unique_marker_sequence": false,
+      "expected_invariants": [
+        "no_global_state_mutations",
+        "no_unseeded_random",
+        "no_system_time_in_business_logic"
+      ]
+    }
+  ]
+}

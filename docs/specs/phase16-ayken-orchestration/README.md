@@ -44,6 +44,8 @@ Provide a controlled orchestration surface for build, verification, and closure 
 - no authority override from local tools
 - no mutation of closure artifacts without CI confirmation
 - reuse existing `proof-verifier`, `semantic-cli`, and `bcib-runtime` surfaces instead of copying logic
+- phase/faz labels are documentation and governance metadata only; they MUST NOT be embedded into new stable code identifiers such as function names, method names, type names, module names, constants, feature flags, or CLI/API surface names
+- new naming SHOULD prefer durable domain meaning (`closure`, `determinism`, `authority`, `execution`, `result`) instead of time-sensitive labels such as `phase16` or `faz_b`
 
 ## Out of Scope
 
@@ -55,3 +57,4 @@ Provide a controlled orchestration surface for build, verification, and closure 
 ## Related Specs
 
 - `docs/specs/authority-lineage-v1/README.md`
+- `docs/governance/NAMING_CONVENTION_V1.md`

@@ -1,0 +1,149 @@
+{
+  "title": "AykenOS Verification Manifest Schema",
+  "description": "Schema for verification layer manifest configuration",
+  "type": "object",
+  "required": ["version", "mode", "gates"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Manifest schema version",
+      "const": 1
+    },
+    "mode": {
+      "type": "string",
+      "description": "Verification mode",
+      "const": "verification_layer"
+    },
+    "default_tier": {
+      "type": "string",
+      "description": "Default performance tier when not specified",
+      "enum": ["fast", "standard", "heavy"],
+      "default": "standard"
+    },
+    "gates": {
+      "type": "array",
+      "description": "Array of gate definitions",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "command",
+          "evidence",
+          "required_verdict",
+          "blocking",
+          "determinism_level"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique gate identifier (snake_case, no phase numbers)",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "not": {
+              "pattern": "phase[0-9]"
+            }
+          },
+          "command": {
+            "type": "string",
+            "description": "Command to execute (must match allowlist pattern)",
+            "pattern": "^make ci-gate-"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Path to evidence file relative to gate directory (orchestrator prepends run_id and attempt)",
+            "pattern": "^gates/"
+          },
+          "required_verdict": {
+            "type": "string",
+            "description": "Expected verdict for gate to pass",
+            "enum": ["PASS", "FAIL"]
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "Whether gate failure blocks overall verification"
+          },
+          "performance_tier": {
+            "type": "string",
+            "description": "Performance classification for filtering",
+            "enum": ["fast", "standard", "heavy"],
+            "default": "standard"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout in seconds (default 300)",
+            "minimum": 1,
+            "default": 300
+          },
+          "determinism_level": {
+            "type": "string",
+            "description": "Scope of determinism guarantee",
+            "enum": ["artifact", "trace", "marker", "scheduling-independent"]
+          },
+          "allowed_determinism_levels": {
+            "type": "array",
+            "description": "Allowed determinism levels for this gate (prevents wrong level selection)",
+            "items": {
+              "type": "string",
+              "enum": ["artifact", "trace", "marker", "scheduling-independent"]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "required_markers": {
+            "type": "array",
+            "description": "Markers that must appear in execution output",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "forbidden_markers": {
+            "type": "array",
+            "description": "Markers that must not appear in execution output",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "unique_marker_sequence": {
+            "type": "boolean",
+            "description": "Whether marker sequence must have no duplicates (for strict marker-level determinism)",
+            "default": false
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Gate IDs that must execute before this gate",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "expected_invariants": {
+            "type": "array",
+            "description": "Invariant names that must pass for correctness validation",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "build_fingerprint_required": {
+            "type": "boolean",
+            "description": "Whether evidence must include build fingerprint",
+            "default": false
+          },
+          "required_fields": {
+            "type": "object",
+            "description": "Required fields and their expected values in evidence",
+            "additionalProperties": true
+          },
+          "required_closure_verdict": {
+            "type": "string",
+            "description": "Required closure verdict for determinism gates"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

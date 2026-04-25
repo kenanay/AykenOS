@@ -1,0 +1,169 @@
+{
+  "title": "AykenOS Verification Report Schema",
+  "description": "Schema for aggregated verification report",
+  "type": "object",
+  "required": [
+    "run_id",
+    "timestamp",
+    "status",
+    "mode",
+    "mutation",
+    "tier",
+    "gates_checked",
+    "gates_passed",
+    "gates_failed",
+    "gates_skipped",
+    "gates_error",
+    "gates_timeout",
+    "gates",
+    "determinism_summary",
+    "evidence_files",
+    "evidence_hash"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "description": "Unique run identifier",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of report generation",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "description": "Overall verification status",
+      "enum": ["PASS", "FAIL"]
+    },
+    "mode": {
+      "type": "string",
+      "description": "Verification mode",
+      "const": "verification_layer"
+    },
+    "mutation": {
+      "type": "boolean",
+      "description": "Whether system was mutated (must be false)",
+      "const": false
+    },
+    "tier": {
+      "type": "string",
+      "description": "Performance tier executed",
+      "enum": ["fast", "standard", "heavy"]
+    },
+    "execution_mode": {
+      "type": "string",
+      "description": "CI execution mode",
+      "enum": ["shadow", "hard_gate"]
+    },
+    "gates_checked": {
+      "type": "integer",
+      "description": "Total number of gates checked",
+      "minimum": 0
+    },
+    "gates_passed": {
+      "type": "integer",
+      "description": "Number of gates that passed",
+      "minimum": 0
+    },
+    "gates_failed": {
+      "type": "integer",
+      "description": "Number of gates that failed",
+      "minimum": 0
+    },
+    "gates_skipped": {
+      "type": "integer",
+      "description": "Number of gates skipped",
+      "minimum": 0
+    },
+    "gates_error": {
+      "type": "integer",
+      "description": "Number of gates with errors",
+      "minimum": 0
+    },
+    "gates_timeout": {
+      "type": "integer",
+      "description": "Number of gates that timed out",
+      "minimum": 0
+    },
+    "gates": {
+      "type": "object",
+      "description": "Gate results keyed by gate ID",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["verdict", "blocking", "determinism_level"],
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "description": "Gate verdict",
+            "enum": ["PASS", "FAIL", "SKIPPED", "ERROR", "TIMEOUT"]
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "Whether gate is blocking"
+          },
+          "determinism_level": {
+            "type": "string",
+            "description": "Gate determinism level",
+            "enum": ["artifact", "trace", "marker", "scheduling-independent"]
+          },
+          "evidence_path": {
+            "type": "string",
+            "description": "Path to evidence file"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "description": "Gate execution duration in milliseconds",
+            "minimum": 0
+          },
+          "error_message": {
+            "type": "string",
+            "description": "Error message if gate failed"
+          }
+        }
+      }
+    },
+    "determinism_summary": {
+      "type": "object",
+      "description": "Count of gates by determinism level",
+      "required": ["artifact", "trace", "marker", "scheduling-independent"],
+      "properties": {
+        "artifact": {
+          "type": "integer",
+          "description": "Number of artifact-level deterministic gates",
+          "minimum": 0
+        },
+        "trace": {
+          "type": "integer",
+          "description": "Number of trace-level deterministic gates",
+          "minimum": 0
+        },
+        "marker": {
+          "type": "integer",
+          "description": "Number of marker-level deterministic gates",
+          "minimum": 0
+        },
+        "scheduling-independent": {
+          "type": "integer",
+          "description": "Number of scheduling-independent gates",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence_files": {
+      "type": "array",
+      "description": "Sorted list of evidence file paths used to compute evidence_hash",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "evidence_hash": {
+      "type": "string",
+      "description": "Canonical SHA256 hash of all evidence (deterministic, computed from sorted evidence_files)",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "additionalProperties": false
+}
