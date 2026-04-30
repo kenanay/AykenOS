@@ -105,9 +105,29 @@ record_violation() {
   echo "$1" >> "${VIOLATIONS_TXT}"
 }
 
+is_ignored_untracked_path() {
+  case "$1" in
+    # GitHub advisory reporting may materialize temporary gate/status snapshots
+    # in the repo root. These are not source-of-truth workspace mutations.
+    ayken-gate.json|ayken-status.json|ayken-comment.json)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 # 1) Git state discipline.
 git -C "${ROOT}" status --porcelain > "${GIT_STATUS_TXT}"
-awk '/^\?\?/ {print $2}' "${GIT_STATUS_TXT}" > "${UNTRACKED_TXT}" || true
+: > "${UNTRACKED_TXT}"
+while IFS= read -r path; do
+  [[ -z "${path}" ]] && continue
+  if is_ignored_untracked_path "${path}"; then
+    continue
+  fi
+  printf '%s\n' "${path}" >> "${UNTRACKED_TXT}"
+done < <(awk '/^\?\?/ {print $2}' "${GIT_STATUS_TXT}")
 git -C "${ROOT}" diff --name-only > "${MODIFIED_TXT}"
 git -C "${ROOT}" diff --cached --name-only > "${STAGED_TXT}"
 
