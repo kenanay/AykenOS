@@ -1482,13 +1482,13 @@ phase13-official-closure-prep:
 	@echo "OK: closure candidate at $(PHASE13_CLOSURE_OUTPUT_DIR)"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency ci-gate-bcib-stub-determinism
 	@echo "Local freeze suite completed successfully (local performance authority active; tooling-isolation/alias-proof/kill-switch skipped)!"
 
 # CI boundary gate with evidence collection
@@ -2169,19 +2169,20 @@ ci-gate-replay-v1: ci-gate-replay-determinism
 	@echo "OK: replay-v1 alias passed (replay-determinism bootstrap)"
 
 ci-gate-bcib-stub-determinism: ci-evidence-dir
-	@echo "== CI GATE BCIB STUB DETERMINISM =="
+	@echo "== CI GATE BCIB STUB DETERMINISM (v1 - Phase-16) =="
 	@echo "run_id: $(RUN_ID)"
 	@echo "kernel_profile: validation (enforced)"
-	@echo "mode: stub (AYKEN_BCIB_STUB_RESULT_ENABLE=1 — infrastructure/pipeline determinism)"
-	@echo "scope: two-run QEMU parity on deterministic stub output"
-	@echo "NOTE: This gate validates CI pipeline stability, NOT real execution determinism."
-	@echo "NOTE: Real execution determinism (stub=OFF) is tracked as Phase-17 backlog."
+	@echo "mode: build_validation (AYKEN_BCIB_STUB_RESULT_ENABLE=1)"
+	@echo "scope: stub infrastructure build validation"
+	@echo "validates: kernel builds with stub enabled, stub functions present, markers present"
+	@echo ""
+	@echo "NOTE: This is v1 build validation gate (Phase-16 scope)."
+	@echo "NOTE: Runtime validation requires bcib_worker (Phase-17 backlog)."
+	@echo "NOTE: Does NOT validate runtime determinism or full BCIB pipeline."
 	@BCIB_KERNEL_PROFILE="validation" \
-	 BCIB_QEMU_TIMEOUT="$(PERF_QEMU_TIMEOUT)" \
 	 bash scripts/ci/gate_bcib_kernel_determinism.sh \
 		--evidence-dir "$(BCIB_DETERMINISM_EVIDENCE_DIR)"
 	@cp -f "$(BCIB_DETERMINISM_EVIDENCE_DIR)/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-stub-determinism.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=bcib-stub-determinism
 	@echo "OK: bcib-stub-determinism evidence at $(EVIDENCE_RUN_DIR)"
 
 # ci-gate-bcib-determinism: real execution determinism (stub=OFF, Phase-17 backlog)
