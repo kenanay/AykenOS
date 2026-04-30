@@ -89,6 +89,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--run-dir", required=True, help="Evidence run directory.")
     parser.add_argument(
+        "--gate",
+        help=(
+            "Evaluate exit status only for the named gate while still generating "
+            "the cumulative summary artifacts."
+        ),
+    )
+    parser.add_argument(
         "--require-kill-switch-completeness",
         action="store_true",
         help="Fail when expected kill-switch gates are not discovered in the run.",
@@ -325,6 +332,20 @@ def build_summary(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def gate_scope_status(summary: dict[str, Any], gate_name: str) -> tuple[bool, str]:
+    gate = summary["gates"].get(gate_name)
+    if gate is None:
+        return False, f"ERROR: summary missing gate {gate_name}"
+
+    verdict = str(gate.get("verdict", "UNKNOWN"))
+    status, detail = classify_gate_acceptance(gate)
+    if status == "PASS":
+        return True, ""
+
+    suffix = f" ({detail})" if detail else ""
+    return False, f"ERROR: gate summary verdict is {verdict} for {gate_name}{suffix}"
+
+
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, sort_keys=True)
@@ -387,9 +408,19 @@ def main() -> int:
     write_json(reports_dir / "kill_switch_summary.json", kill_switch_payload)
     write_kill_switch_text(reports_dir / "kill_switch_summary.txt", kill_switch_payload)
 
-    if summary["verdict"] != "PASS":
+    if args.gate:
+        gate_ok, gate_error = gate_scope_status(summary, args.gate)
+        if not gate_ok:
+            print(gate_error)
+            return 2
+    elif summary["verdict"] != "PASS":
+        print(f"ERROR: summary verdict is {summary['verdict']} ({summary_path})")
         return 2
     if args.require_kill_switch_completeness and coverage["missing_gates"]:
+        print(
+            "ERROR: kill-switch coverage incomplete "
+            f"({reports_dir / 'kill_switch_summary.json'})"
+        )
         return 2
     return 0
 

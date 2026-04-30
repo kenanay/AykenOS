@@ -1607,8 +1607,7 @@ ci-gate-ring0-exports: ci-evidence-dir
 
 # Standalone summary verdict gate for existing run directory.
 ci-summarize:
-	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)"
-	@python3 -c 'import json,sys; p=sys.argv[1]; v=json.load(open(p, encoding="utf-8")).get("verdict"); acceptable=("PASS","SKIP","WARN"); print(f"ERROR: summary verdict is {v} ({p})") if v not in acceptable else None; sys.exit(0 if v in acceptable else 2)' "$(EVIDENCE_RUN_DIR)/reports/summary.json"
+	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)" $(if $(strip $(SUMMARY_GATE)),--gate "$(SUMMARY_GATE)")
 
 ci-kill-switch-summary:
 	@./tools/ci/summarize.sh --run-dir "$(EVIDENCE_RUN_DIR)" --require-kill-switch-completeness --show-kill-switch-summary
@@ -1633,7 +1632,7 @@ ci-gate-workspace: ci-evidence-dir
 	@echo "run_id: $(RUN_ID)"
 	@./scripts/ci/gate_workspace.sh $(WORKSPACE_STRICT_FLAG) --evidence-dir "$(EVIDENCE_RUN_DIR)/gates/workspace"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/workspace/report.json" "$(EVIDENCE_RUN_DIR)/reports/workspace.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=workspace
 	@echo "OK: workspace evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-hygiene: ci-evidence-dir
@@ -2179,7 +2178,7 @@ ci-gate-bcib-determinism: ci-evidence-dir
 		--run-a-dir "$(BCIB_DETERMINISM_RUN_A_DIR)" \
 		--run-b-dir "$(BCIB_DETERMINISM_RUN_B_DIR)"
 	@cp -f "$(BCIB_DETERMINISM_EVIDENCE_DIR)/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-determinism.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=bcib-determinism
 	@echo "OK: bcib-determinism evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-kpl-proof-verify: ci-gate-replay-determinism ci-gate-ledger-integrity ci-gate-eti-sequence ci-gate-no-low-half-kernel-dependency
@@ -2449,7 +2448,7 @@ ci-gate-proofd-observability-boundary: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-boundary.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/proofd_observability_boundary_report.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-boundary-details.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/proofd-observability-boundary/proofd_observability_negative_matrix.json" "$(EVIDENCE_RUN_DIR)/reports/proofd-observability-negative-matrix.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=proofd-observability-boundary
 	@echo "OK: proofd-observability-boundary evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-graph-non-authoritative-contract: ci-evidence-dir
@@ -2837,7 +2836,7 @@ ci-gate-bcib-v3-core: ci-evidence-dir
 	@echo '{"gate":"bcib-v3-core","workstream":"WS3.1","verdict":"PASS","scope":"determinism+fail-closed+memory-model"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/bcib-v3-core/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/bcib-v3-core/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-v3-core.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=bcib-v3-core
 	@echo "OK: bcib-v3-core evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.9 — Toolchain/Opcode Registry: opcode ID lock + golden fixture
@@ -2851,7 +2850,7 @@ ci-gate-toolchain-opcode-registry: ci-evidence-dir
 	@echo '{"gate":"toolchain-opcode-registry","workstream":"WS3.9","verdict":"PASS","scope":"opcode-id-lock+golden-fixture"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/toolchain-opcode-registry/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/toolchain-opcode-registry/report.json" "$(EVIDENCE_RUN_DIR)/reports/toolchain-opcode-registry.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=toolchain-opcode-registry
 	@echo "OK: toolchain-opcode-registry evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.7 — Capability Manager: token-based, no bypass
@@ -2864,7 +2863,7 @@ ci-gate-capability-manager: ci-evidence-dir
 	@echo '{"gate":"capability-manager","workstream":"WS3.7","verdict":"PASS","scope":"token-based+no-bypass"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/capability-manager/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/capability-manager/report.json" "$(EVIDENCE_RUN_DIR)/reports/capability-manager.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=capability-manager
 	@echo "OK: capability-manager evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.2 — DSL → BCIB IR golden fixture contract
@@ -2877,7 +2876,7 @@ ci-gate-dsl-bcib-contract: ci-evidence-dir
 	@echo '{"gate":"dsl-bcib-contract","workstream":"WS3.2","verdict":"PASS","scope":"dsl-to-bcib-ir-golden-fixture"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/dsl-bcib-contract/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/dsl-bcib-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/dsl-bcib-contract.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=dsl-bcib-contract
 	@echo "OK: dsl-bcib-contract evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.3 — Semantic CLI → DSL regression contract
@@ -2890,7 +2889,7 @@ ci-gate-semantic-cli-contract: ci-evidence-dir
 	@echo '{"gate":"semantic-cli-contract","workstream":"WS3.3","verdict":"PASS","scope":"cli-to-dsl-regression"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/semantic-cli-contract/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/semantic-cli-contract/report.json" "$(EVIDENCE_RUN_DIR)/reports/semantic-cli-contract.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=semantic-cli-contract
 	@echo "OK: semantic-cli-contract evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.5 — Data Runtime: BCIB-mediated data query
@@ -2903,7 +2902,7 @@ ci-gate-data-runtime-bcib: ci-evidence-dir
 	@echo '{"gate":"data-runtime-bcib","workstream":"WS3.5","verdict":"PASS","scope":"bcib-data-query"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/data-runtime-bcib/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/data-runtime-bcib/report.json" "$(EVIDENCE_RUN_DIR)/reports/data-runtime-bcib.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=data-runtime-bcib
 	@echo "OK: data-runtime-bcib evidence at $(EVIDENCE_RUN_DIR)"
 
 # WS 3.6 — AI Runtime: suggestion-only, capability-gated boundary
@@ -2916,7 +2915,7 @@ ci-gate-ai-runtime-boundary: ci-evidence-dir
 	@echo '{"gate":"ai-runtime-boundary","workstream":"WS3.6","verdict":"PASS","scope":"suggestion-only+capability-gated"}' \
 		> "$(EVIDENCE_RUN_DIR)/gates/ai-runtime-boundary/report.json"
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/ai-runtime-boundary/report.json" "$(EVIDENCE_RUN_DIR)/reports/ai-runtime-boundary.json"
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=ai-runtime-boundary
 	@echo "OK: ai-runtime-boundary evidence at $(EVIDENCE_RUN_DIR)"
 
 # Phase-15 workstream gate suite (all WS gates, excluding ci-freeze governance)
