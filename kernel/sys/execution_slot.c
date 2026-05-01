@@ -729,9 +729,9 @@ int execution_slot_finish_locked(exec_slot_t *slot, exec_slot_state_t next_state
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
     /* Capture lifecycle markers based on target state */
-    if (next_state == EXEC_SLOT_EXECUTED) {
+    if (next_state == EXEC_SLOT_COMPLETED) {
         execution_slot_marker_capture_locked(slot, MARKER_EXEC_COMPLETE_OK);
-    } else if (next_state == EXEC_SLOT_COMPLETED) {
+    } else if (next_state == EXEC_SLOT_RESULT_MAPPED) {
         execution_slot_marker_capture_locked(slot, MARKER_WAIT_OK);
     }
 #endif
@@ -1575,8 +1575,8 @@ int execution_slot_transition_locked(exec_slot_t *slot,
     slot->state = next_state;
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture EXEC_START marker when entering EXECUTING state */
-    if (next_state == EXEC_SLOT_EXECUTING) {
+    /* Capture EXEC_START marker when entering RUNNING state */
+    if (next_state == EXEC_SLOT_RUNNING) {
         execution_slot_marker_capture_locked(slot, MARKER_EXEC_START);
     }
 #endif

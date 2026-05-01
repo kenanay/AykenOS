@@ -18,7 +18,7 @@ MARKER_WAIT_OK              → Wait completed
 
 ### 1. MARKER_EXEC_START
 **Location:** `execution_slot_transition_locked()`
-- **When:** Transition to `EXEC_SLOT_EXECUTING`
+- **When:** Transition to `EXEC_SLOT_RUNNING`
 - **Rationale:** Execution phase begins
 
 ### 2. MARKER_EXEC_OUTPUT_WRITTEN
@@ -28,7 +28,7 @@ MARKER_WAIT_OK              → Wait completed
 
 ### 3. MARKER_EXEC_COMPLETE_OK
 **Location:** `execution_slot_finish_locked()`
-- **When:** Transition to `EXEC_SLOT_EXECUTED`
+- **When:** Transition to `EXEC_SLOT_COMPLETED`
 - **Rationale:** Execution phase complete
 
 ### 4. MARKER_VERIFY_START
@@ -48,7 +48,7 @@ MARKER_WAIT_OK              → Wait completed
 
 ### 7. MARKER_WAIT_OK
 **Location:** `execution_slot_finish_locked()`
-- **When:** Transition to `EXEC_SLOT_COMPLETED`
+- **When:** Transition to `EXEC_SLOT_RESULT_MAPPED`
 - **Rationale:** Full lifecycle complete
 
 ## Implementation Rules
