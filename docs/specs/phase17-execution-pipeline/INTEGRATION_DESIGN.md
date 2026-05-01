@@ -186,60 +186,99 @@ execution_slot_emit_marker_locked(slot, MARKER_EXEC_START);
 
 ---
 
-## 7.2. Validation Ordering: Monotonic vs Exact
+## 7.2. Validation Ordering: Strict Sequential
 
-### Phase 1 (Incremental): Monotonic Check
+### Phase 1 (Incremental): Strict Sequential Check
 
-**Rule:** `marker > last_marker` (strictly increasing)
+**Rule:** `marker == last_marker + 1` (exact next marker)
 
-**Allows:**
-- Future optional markers (gaps OK in Phase 1)
-- Flexible evolution
+**Enforces:**
+- Exact sequential order
+- No gaps
+- No backward markers
+- No duplicate markers
 
 **Catches:**
-- Backward markers (e.g., 5 → 3)
-- Duplicate markers (e.g., 3 → 3)
+- Gap (e.g., 0 → 2, missing 1)
+- Backward (e.g., 0 → 2 → 1)
+- Duplicate (e.g., 0 → 1 → 1)
 
 **Example:**
 ```c
-// Valid: 0 → 2 → 5 (gaps allowed)
-// Invalid: 0 → 2 → 1 (backward)
-// Invalid: 0 → 2 → 2 (duplicate)
+// Valid: 0 → 1 → 2 → 3 → 4 → 5 → 6 (exact sequence)
+// Invalid: 0 → 2 (gap, missing 1)
+// Invalid: 0 → 1 → 0 (backward)
+// Invalid: 0 → 1 → 1 (duplicate)
+```
+
+**Implementation:**
+```c
+// Check strict sequential ordering
+if (slot->last_marker != MARKER_INVALID) {
+    if (marker != slot->last_marker + 1) {
+        return -EINVAL;  // Not exact next marker
+    }
+}
 ```
 
 ---
 
-### Phase 2 (Full Sequence): Exact Sequential Check
+### Phase 2 (Full Sequence): Complete Sequence Check
 
-**Rule:** All markers present, no gaps
+**Rule:** All markers present, exact count
 
 **Enforces:**
 - Complete sequence (bitmap == MARKER_MASK)
-- No missing markers
 - Exact count (marker_count == MARKER_COUNT)
+- No missing markers
 
 **Example:**
 ```c
-// Valid: 0 → 1 → 2 → 3 → 4 → 5 → 6 (complete)
-// Invalid: 0 → 2 → 5 (gaps detected in Phase 2)
+// Valid: bitmap = 0b01111111 (all 7 markers present)
+// Invalid: bitmap = 0b01011111 (marker 5 missing)
 ```
 
 ---
 
-### Rationale for Two-Level Ordering
+### Rationale for Strict Sequential
 
-**Why not strict sequential in Phase 1?**
-- Future-proofing: Optional markers may be added
-- Flexibility: Allows evolution without breaking existing code
-- Fail-fast: Still catches backward/duplicate immediately
+**Why strict sequential in Phase 1?**
+- **Header contract alignment**: `execution_marker_validate_transition()` enforces strict sequential
+- **Determinism guarantee**: Exact sequence required for correctness
+- **Fail-fast**: Errors detected immediately at emission time
+- **CI alignment**: Existing tests assume strict sequential
 
 **Why strict sequential in Phase 2?**
 - Pre-commit guard: Must be complete before publish
-- Determinism: Exact sequence required for correctness
 - Evidence: Full sequence proves execution integrity
+- Consistency: Same rule in both phases (simpler)
 
 **Rule:**
-> Phase 1 = monotonic (flexible). Phase 2 = exact (strict).
+> Phase 1 = strict sequential (fail-fast). Phase 2 = complete sequence (fail-closed).
+
+---
+
+### Future Extension: Monotonic Ordering (Phase-18+)
+
+**Deferred to Phase-18:**
+- Monotonic ordering (`marker > last_marker`)
+- Optional markers support
+- Flexible evolution
+
+**Rationale for Deferral:**
+- Current header contract is strict sequential
+- API change required for monotonic support
+- Migration path needs design
+- Phase-17 focuses on determinism proof, not flexibility
+
+**Migration Path (Future):**
+1. Update `execution_marker_validate_transition()` contract
+2. Add optional marker support to header
+3. Update CI tests for monotonic validation
+4. Migrate Phase 1 to monotonic check
+
+**Current Decision:**
+> Phase-17 uses **strict sequential** in both phases. Monotonic is future work.
 
 ---
 
@@ -590,11 +629,11 @@ if (slot->marker_bitmap & (1 << marker)) {
     return -EINVAL;  // Duplicate detected
 }
 
-// Check monotonic ordering (if not first marker)
-// Phase 1: Relaxed (monotonic only, allows gaps for future optional markers)
+// Check strict sequential ordering (if not first marker)
+// Phase 1: Strict sequential (exact next marker)
 if (slot->last_marker != MARKER_INVALID) {
-    if (marker <= slot->last_marker) {
-        return -EINVAL;  // Non-monotonic (backward or duplicate)
+    if (marker != slot->last_marker + 1) {
+        return -EINVAL;  // Not exact next marker (gap or backward)
     }
 }
 
@@ -606,7 +645,7 @@ slot->marker_count++;
 
 **Full Sequence Validation:**
 ```c
-// Check all markers present (Phase 2: Strict)
+// Check all markers present (Phase 2: Complete sequence)
 if (slot->marker_bitmap != MARKER_MASK) {
     return -EINVAL;  // Missing markers
 }
@@ -615,24 +654,13 @@ if (slot->marker_bitmap != MARKER_MASK) {
 if (slot->marker_count != MARKER_COUNT) {
     return -EINVAL;  // Count mismatch
 }
-
-// Check exact sequential order (Phase 2 only)
-for (uint8_t i = 0; i < MARKER_COUNT; i++) {
-    if (!(slot->marker_bitmap & (1 << i))) {
-        return -EINVAL;  // Gap detected
-    }
-}
 ```
 
-**Rationale for Two-Level Ordering:**
-- **Phase 1 (Incremental)**: Monotonic check only (`marker > last_marker`)
-  - Allows future optional markers
-  - Catches backward/duplicate immediately
-  - Flexible for evolution
-- **Phase 2 (Full Sequence)**: Exact sequential check
-  - Enforces complete sequence
-  - Detects gaps
-  - Strict validation before commit
+**Rationale for Strict Sequential:**
+- **Header contract alignment**: `execution_marker_validate_transition()` enforces strict sequential
+- **Determinism guarantee**: Exact sequence required
+- **Fail-fast**: Errors detected immediately
+- **Consistency**: Same rule in both phases
 
 **Debug Output:**
 ```c
@@ -1170,9 +1198,9 @@ evidence/run-<RUN_ID>/
 - ❌ **Old**: `if (bitmap != 0b01111111)` (hardcoded)
 - ✅ **New**: `if (bitmap != MARKER_MASK)` (computed from MARKER_COUNT)
 
-**7. Incremental Validation Relaxation:**
-- ❌ **Old**: `marker == last_marker + 1` (strict sequential)
-- ✅ **New**: `marker > last_marker` (monotonic, allows future optional markers)
+**7. Incremental Validation Ordering:**
+- ❌ **Old**: Monotonic (`marker > last_marker`, allows gaps)
+- ✅ **New**: Strict sequential (`marker == last_marker + 1`)
 
 **8. Error Code Field:**
 - ❌ **Old**: `reserved_marker` (unused padding)
@@ -1183,8 +1211,10 @@ evidence/run-<RUN_ID>/
 - ✅ **New**: Explicit mandatory rule with enforcement strategy
 
 **10. Validation Ordering Clarification:**
-- ❌ **Old**: Single ordering rule
-- ✅ **New**: Two-level ordering (Phase 1: monotonic, Phase 2: exact)
+- ❌ **Old**: Monotonic Phase 1, exact Phase 2
+- ✅ **New**: Strict sequential in both phases (header contract alignment)
+
+**Rationale:** `execution_marker_validate_transition()` enforces strict sequential. Monotonic ordering deferred to Phase-18 (requires API change).
 
 ### Design Improvements
 
@@ -1200,8 +1230,9 @@ evidence/run-<RUN_ID>/
 
 **Future-Proofing:**
 - Computed marker mask (adapts to MARKER_COUNT changes)
-- Monotonic Phase 1 (allows optional markers)
+- Strict sequential (header contract alignment)
 - Error code field (scheduler visibility, telemetry)
+- Monotonic ordering (Phase-18 future extension)
 
 **Debuggability:**
 - Bitmap visualization (0b0111111)
