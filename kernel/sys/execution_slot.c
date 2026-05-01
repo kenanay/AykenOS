@@ -364,6 +364,13 @@ static void execution_slot_zero_slot(exec_slot_t *slot)
     slot->trace_count = 0;
     slot->trace_head = 0;
     memset(slot->trace_entries, 0, sizeof(slot->trace_entries));
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    slot->marker_bitmap = 0;
+    slot->marker_count = 0;
+    slot->last_marker = 0;
+    slot->marker_error_code = 0;
+    memset(slot->marker_sequence, 0, sizeof(slot->marker_sequence));
+#endif
 }
 
 static void execution_slot_zero_queue(execution_context_queue_t *queue)
