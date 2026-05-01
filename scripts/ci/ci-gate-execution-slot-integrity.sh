@@ -117,10 +117,12 @@ fi
 cat > "$EVIDENCE_DIR/report.json" <<EOF
 {
   "gate": "execution-slot-integrity",
+  "verdict": "PASS",
   "run_id": "$RUN_ID",
-  "result": "PASS",
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "commit": "$(git rev-parse HEAD)",
+  "violations": [],
+  "violations_count": 0,
   "checks": {
     "line_count_c": {
       "actual": $LINES_C,
@@ -140,6 +142,10 @@ cat > "$EVIDENCE_DIR/report.json" <<EOF
     "prototype_indicators": {
       "found": [$(printf '"%s",' "${FOUND_INDICATORS[@]}" | sed 's/,$//')]
     }
+  },
+  "meta": {
+    "purpose": "prevent_production_code_overwrite",
+    "incident_reference": "commit_b3e2aee7_overwrite_recovery"
   }
 }
 EOF
