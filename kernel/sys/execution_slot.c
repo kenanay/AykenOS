@@ -303,7 +303,15 @@ static inline void execution_slot_marker_capture_locked(
 {
     slot->marker_bitmap |= (uint8_t)(1u << marker);
     slot->last_marker = (uint8_t)marker;
-    slot->marker_count++;
+    
+    // Bounds-safe sequence capture for validation
+    if (slot->marker_count < 7) {
+        slot->marker_sequence[slot->marker_count] = (uint8_t)marker;
+        slot->marker_count++;
+    } else {
+        // Overflow: signal error but don't corrupt sequence array
+        slot->marker_error_code = 3;  // Marker overflow
+    }
 }
 #endif
 
