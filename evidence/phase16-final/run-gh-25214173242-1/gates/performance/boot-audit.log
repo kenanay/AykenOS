@@ -1,0 +1,17 @@
+[0;36mℹ Phase 4.4 QEMU Boot Audit[0m
+[0;36mℹ Timeout: 30s[0m
+[0;36mℹ Marker: [K][BOOT_OK] Phase 4.4 minimal boot reached[0m
+[0;36mℹ Logs: evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_boot.log, evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_boot.err[0m
+[0;36mℹ OVMF detected: firmware/ovmf/OVMF_CODE.fd[0m
+[0;36mℹ OVMF vars copy: evidence/run-gh-25214173242-1/gates/performance/boot-audit/OVMF_VARS.fd[0m
+[0;32m✓ Canonical boot marker detected.[0m
+
+================== Phase 4.4 QEMU Boot Audit ==================
+Early Marker: [K][EARLY_BOOT_OK]
+Late Marker: [K][BOOT_OK] Phase 4.4 minimal boot reached
+Timeout: 30s
+Logs: evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_boot.log, evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_boot.err
+Serial: evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_serial.log
+Debugcon: evidence/run-gh-25214173242-1/gates/performance/boot-audit/qemu_debugcon.log
+Result: PASS
+===============================================================

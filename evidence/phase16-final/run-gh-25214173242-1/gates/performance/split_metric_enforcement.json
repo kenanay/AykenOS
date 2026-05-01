@@ -1,0 +1,95 @@
+{
+  "current_authority": "github-hosted-ubuntu-24.04-x64",
+  "current_env_hash": "edbe5bed0e83075ace80b5d9aa09588613afceedd8304e30891a20aae2dc4a67",
+  "gate": "performance-split-enforcement",
+  "global": {
+    "blocking_violation_count": 0,
+    "consecutive_violation_limit": 2,
+    "disabled_reason": "",
+    "enforcement_enabled": false,
+    "enforcement_requested": false,
+    "multi_metric_triggered": false,
+    "multi_metric_violation_limit": 2,
+    "shadow_requested": false,
+    "shadow_violation_count": 0,
+    "variance_guard": 0.1
+  },
+  "metrics": {
+    "entry_latency_ticks": {
+      "available": true,
+      "consecutive_violations": 0,
+      "enforcement_enabled": false,
+      "notes": [],
+      "policy_present": false,
+      "policy_status": null,
+      "requested": false,
+      "rollback_active": false,
+      "rollback_reason": "",
+      "rollback_triggered": false,
+      "status": "inactive",
+      "threshold_ticks": null,
+      "value_ticks": 18930414.0,
+      "variance_ratio": null
+    },
+    "syscall_gate_return_latency_ticks": {
+      "available": true,
+      "consecutive_violations": 0,
+      "enforcement_enabled": false,
+      "notes": [],
+      "policy_present": false,
+      "policy_status": null,
+      "requested": false,
+      "rollback_active": false,
+      "rollback_reason": "",
+      "rollback_triggered": false,
+      "status": "inactive",
+      "threshold_ticks": null,
+      "value_ticks": 2507132.0,
+      "variance_ratio": null
+    },
+    "syscall_latency_ticks_pure": {
+      "available": true,
+      "consecutive_violations": 0,
+      "enforcement_enabled": false,
+      "notes": [],
+      "policy_present": false,
+      "policy_status": null,
+      "requested": false,
+      "rollback_active": false,
+      "rollback_reason": "",
+      "rollback_triggered": false,
+      "status": "inactive",
+      "threshold_ticks": null,
+      "value_ticks": 2185530.0,
+      "variance_ratio": null
+    }
+  },
+  "mode": "disabled",
+  "note": "Default-off scaffold only. This surface is non-authoritative until a later activation PR explicitly consumes it.",
+  "policy_authority": null,
+  "policy_path": "/home/runner/work/AykenOS/AykenOS/scripts/ci/perf-threshold-policy.json",
+  "policy_present": false,
+  "policy_trust_reason": "policy_missing",
+  "policy_trusted": false,
+  "policy_verification": {
+    "actual": {
+      "authority": null,
+      "env_hash": null,
+      "env_hash_consistent": null,
+      "git_sha": null,
+      "git_sha_consistent": null
+    },
+    "expected": {
+      "authority": "github-hosted-ubuntu-24.04-x64",
+      "env_hash": "edbe5bed0e83075ace80b5d9aa09588613afceedd8304e30891a20aae2dc4a67",
+      "env_hash_source": "runtime_computed",
+      "git_sha": "8f5321164141d657071caca8ffca2ca3c0365359"
+    },
+    "policy_path": "/home/runner/work/AykenOS/AykenOS/scripts/ci/perf-threshold-policy.json",
+    "reason": "policy_missing",
+    "schema_version": 1,
+    "trusted": false
+  },
+  "policy_verification_path": "evidence/run-gh-25214173242-1/gates/performance/split_metric_policy_verification.json",
+  "schema_version": 1
+}
