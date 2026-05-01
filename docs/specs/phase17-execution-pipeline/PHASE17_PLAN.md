@@ -188,8 +188,24 @@ EXECUTING → VERIFYING → VERIFIED → COMMITTED
 
 **Kurallar:**
 1. Verify PASS olmadan commit YOK
-2. `SYS_V2_WAIT_RESULT` sadece doğrulanmış sonucu döndürür
-3. Userspace doğrulaması advisory (otorite değil)
+2. **Commit = result buffer publish to userspace** (not internal state change)
+3. `SYS_V2_WAIT_RESULT` sadece doğrulanmış sonucu döndürür
+4. Userspace doğrulaması advisory (otorite değil)
+
+**Kritik Ayrım:**
+```c
+// ❌ YANLIŞ: Internal state change = commit
+slot->state = SLOT_STATE_COMMITTED;  // Bu commit DEĞİL
+
+// ✅ DOĞRU: Result buffer publish = commit
+publish_result_to_userspace(slot);   // Bu commit
+```
+
+**Neden Kritik?**
+> Eğer commit = internal state change olursa:
+> - Userspace partial data görebilir
+> - Determinism bozulur
+> - Verification anlamsızlaşır
 
 ### 4.3 Implementasyon
 
@@ -205,23 +221,37 @@ typedef enum {
     SLOT_STATE_FAILED
 } execution_slot_state_t;
 
-int execution_slot_verify(execution_slot_t *slot) {
-    // 1. Compute execution_context_snapshot_hash
-    uint8_t context_hash[32];
-    compute_context_snapshot_hash(slot, context_hash);
-    
-    // 2. Compute raw_output_hash
-    uint8_t output_hash[32];
-    compute_raw_output_hash(slot->result_buffer, slot->result_size, output_hash);
-    
-    // 3. Generate execution_fingerprint
-    uint8_t fingerprint[32];
-    generate_execution_fingerprint(slot, fingerprint);
-    
-    // 4. Verify contract
-    if (!verify_execution_contract(slot, context_hash, output_hash, fingerprint)) {
-        slot->state = SLOT_STATE_FAILED;
-        return -1;
+typedef enum {
+    VERIFICATION_MODE_STRICT,   // CI / debug (full verification)
+    VERIFICATION_MODE_RELAXED   // Runtime (lightweight checks)
+} verification_mode_t;
+
+int execution_slot_verify(execution_slot_t *slot, verification_mode_t mode) {
+    // Performance-critical path: conditional verification
+    if (unlikely(mode == VERIFICATION_MODE_STRICT)) {
+        // 1. Compute execution_context_snapshot_hash
+        uint8_t context_hash[32];
+        compute_context_snapshot_hash(slot, context_hash);
+        
+        // 2. Compute raw_output_hash
+        uint8_t output_hash[32];
+        compute_raw_output_hash(slot->result_buffer, slot->result_size, output_hash);
+        
+        // 3. Generate execution_fingerprint
+        uint8_t fingerprint[32];
+        generate_execution_fingerprint(slot, fingerprint);
+        
+        // 4. Verify contract
+        if (!verify_execution_contract(slot, context_hash, output_hash, fingerprint)) {
+            slot->state = SLOT_STATE_FAILED;
+            return -1;
+        }
+    } else {
+        // Relaxed mode: lightweight sanity checks only
+        if (!verify_slot_sanity(slot)) {
+            slot->state = SLOT_STATE_FAILED;
+            return -1;
+        }
     }
     
     // 5. Transition to VERIFIED
@@ -229,6 +259,11 @@ int execution_slot_verify(execution_slot_t *slot) {
     return 0;
 }
 ```
+
+**Performance Contract:**
+- **STRICT mode:** CI, debug, validation builds (full hash + fingerprint)
+- **RELAXED mode:** Runtime (sanity checks only, no crypto overhead)
+- Heavy verification **CI'da** yapılır, runtime'da değil
 
 ---
 
@@ -323,9 +358,37 @@ evidence/run-<RUN_ID>/gates/fingerprint-consistency/
 
 **Durum:** Korunur (regression detection için)
 
-**Kapsam:** Build validation ve trace window drift detection (NOT real execution determinism)
+**Kapsam:** Build validation ve trace window drift detection
+
+**Guarantee Level:** `build_only`
+
+**Evidence Report Contract:**
+```json
+{
+  "gate": "bcib-stub-build-integrity",
+  "result": "PASS",
+  "guarantee_level": "build_only",
+  "does_prove": [
+    "compile_success",
+    "marker_strings_present",
+    "trace_window_stable"
+  ],
+  "does_not_prove": [
+    "execution",
+    "determinism",
+    "pipeline_integrity",
+    "real_bcib_processing"
+  ],
+  "note": "This gate validates build artifacts only. Real execution determinism requires Phase-17 gates."
+}
+```
 
 **Kural:** Phase-17 gate'leri **ek olarak** çalışır, stub gate'i replace etmez.
+
+**Kritik Uyarı:**
+> `build-integrity PASS` ≠ "BCIB hazır"  
+> Sadece compile + marker check  
+> Real execution Phase-17'de kanıtlanır
 
 ---
 
@@ -684,9 +747,126 @@ AI model internal state Phase-17 kapsamında değil (Phase-18).
 
 ---
 
+## 15. İlk İmplementasyon Sırası (Kritik)
+
+### 15.1 Phase-17 Başlangıç Şartı
+
+**Önce:**
+1. Phase-16 official closure tamamlanmalı
+2. `phase16-official-closure` tag mevcut olmalı
+
+**Sonra:**
+Phase-17 başlayabilir
+
+---
+
+### 15.2 İlk İmplementasyon: Inline Verification Skeleton
+
+**Hedef:** Kernel-generated result'e geçiş
+
+**Sıra:**
+```
+1. Inline verification skeleton (kernel/sys/execution_slot.c)
+   - State machine (EXECUTING → VERIFYING → VERIFIED → COMMITTED)
+   - Verification mode (STRICT / RELAXED)
+   - Commit = result buffer publish
+
+2. ci-gate-bcib-determinism v2 (kernel output based)
+   - Python-generated result → KERNEL-GENERATED result
+   - İki run parity (kernel output)
+   - Evidence: raw_output.bin (kernel-produced)
+
+3. Real BCIB execution path aktif
+   - Stub devre dışı (AYKEN_BCIB_STUB_RESULT_ENABLE=0)
+   - Gerçek execution hattı
+```
+
+**Kritik Kural:**
+> Python-generated result → KERNEL-GENERATED result geçişi yapılmadan  
+> Phase-17 başlamış sayılmaz
+
+---
+
+### 15.3 Neden Bu Sıra?
+
+**Eğer sıra değişirse:**
+- Gate önce → implementasyon sonra ❌
+  - Gate neyi test ediyor? (belirsiz)
+  
+- Implementasyon önce → gate sonra ✔
+  - Gate gerçek davranışı test ediyor
+
+**AykenOS Kuralı:**
+> İmplementasyon → sonra gate  
+> Gate → sonra iddia
+
+---
+
+## 16. Performans Regression Riski
+
+### 16.1 Risk
+
+**Inline verification her path'te çalışırsa:**
+```
+scheduler latency ↑
+syscall latency ↑
+throughput ↓
+```
+
+**Sonuç:** Phase-17 performans regression üretir (kaçınılmaz)
+
+---
+
+### 16.2 Çözüm
+
+**Verification Mode:**
+```c
+typedef enum {
+    VERIFICATION_MODE_STRICT,   // CI / debug (full verification)
+    VERIFICATION_MODE_RELAXED   // Runtime (lightweight checks)
+} verification_mode_t;
+```
+
+**Kullanım:**
+```c
+#ifdef AYKEN_VALIDATION
+    verification_mode_t mode = VERIFICATION_MODE_STRICT;
+#else
+    verification_mode_t mode = VERIFICATION_MODE_RELAXED;
+#endif
+
+execution_slot_verify(slot, mode);
+```
+
+**Kural:**
+- CI / validation builds: STRICT (full hash + fingerprint)
+- Runtime / release builds: RELAXED (sanity checks only)
+
+---
+
+## 17. Son Uyarılar
+
+### 17.1 Yapılmazsa Phase-17 Çöker
+
+❌ Inline verification her path'te full crypto  
+❌ Commit = internal state change  
+❌ Build-integrity PASS = "BCIB hazır" algısı  
+❌ Python-generated result devam eder
+
+---
+
+### 17.2 Yapılırsa Phase-17 Başarılı
+
+✅ Verification mode (STRICT / RELAXED)  
+✅ Commit = result buffer publish  
+✅ Build-integrity guarantee_level açık  
+✅ Kernel-generated result geçişi
+
+---
+
 **Hazırlayan:** Kenan AY - Architectural Steward  
 **Tarih:** 01 Mayıs 2026  
-**Versiyon:** 1.0  
+**Versiyon:** 1.1 (Critical Risks Addressed)  
 **Durum:** PLANNING
 
 **© 2026 Kenan AY - AykenOS Project**
