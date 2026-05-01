@@ -3,6 +3,10 @@
 **AykenOS - The Constitutional AI Operating System**  
 *Anayasal Yapay Zeka İşletim Sistemi*
 
+**Son Güncelleme:** 26 Nisan 2026  
+**Proje Durumu:** Phase-16 Faz B (Ring3 Infrastructure PROVEN)  
+**Dokümantasyon Versiyonu:** v2.1
+
 ## 📋 Genel Strateji
 
 ### Hedef Kitle
@@ -39,22 +43,27 @@ docs/
 ### Seviye 2: Alt Kategoriler
 
 #### 01-baslangic/
-- `hizli-baslangic.html` - Quick Start Guide
+- `hizli-baslangic.html` - Quick Start Guide ✅ (Mevcut)
 - `sistem-gereksinimleri.html` - System Requirements
-- `kurulum-rehberi.html` - Installation Guide
+- `kurulum-rehberi.html` - Installation Guide ✅ (Mevcut)
 - `ilk-adimlar.html` - First Steps
 - `vs-code-kurulumu.html` - VS Code Setup
+- `kod-yapisini-kesfetme.html` - Code Structure Exploration ✅ (Mevcut)
+- `mimari-felsefe.html` - Architectural Philosophy ✅ (Mevcut)
 
 #### 02-mimari/
-- `genel-bakis.html` - Architecture Overview
+- `genel-bakis.html` - Architecture Overview ✅ (Mevcut)
 - `cekirdek-mimari.html` - Kernel Architecture
 - `kullanici-alani.html` - Userspace Architecture
 - `guvenlik-modeli.html` - Security Model
 - `bellek-yonetimi.html` - Memory Management
 - `surecler-ve-threadler.html` - Processes & Threads
+- `ring0-ring3-ayirimi.html` - Ring0/Ring3 Separation
+- `syscall-arayuzu.html` - Syscall Interface (1000-1010)
+- `bcib-execution-engine.html` - BCIB Execution Engine
 
 #### 03-anayasal-sistem/
-- `anayasal-yonetisim.html` - Constitutional Governance
+- `anayasal-yonetisim.html` - Constitutional Governance ✅ (Mevcut)
 - `kural-sistemi.html` - Rule System
 - `allow-sistemi.html` - Allow System
 - `waiver-sistemi.html` - Waiver System
@@ -63,6 +72,9 @@ docs/
 - `mars-sistemi.html` - Module Architecture Risk Score
 - `arre-sistemi.html` - Allow → Refactor Recommendation Engine
 - `arh-sistemi.html` - Auto-Refactor Hints
+- `ci-gates.html` - CI Gates System (21+ Gates)
+- `evidence-system.html` - Evidence System
+- `phase-matrix.html` - Phase Matrix Authority
 
 #### 04-gelistirme/
 - `gelistirici-rehberi.html` - Developer Guide
@@ -71,14 +83,21 @@ docs/
 - `debugging.html` - Debugging Guide
 - `performans-optimizasyonu.html` - Performance Optimization
 - `ci-cd-entegrasyonu.html` - CI/CD Integration
+- `build-system.html` - Build System (Makefile)
+- `toolchain-setup.html` - Toolchain Setup
+- `qemu-testing.html` - QEMU Testing
+- `ring3-development.html` - Ring3 Development
 
 #### 05-api-referans/
 - `abdf-api.html` - ABDF Format API
 - `bcib-api.html` - BCIB Format API
 - `kernel-api.html` - Kernel API
 - `userspace-api.html` - Userspace API
-- `cli-komutlari.html` - CLI Commands
+- `cli-komutlari.html` - CLI Commands (ayken-cli v0.1)
 - `rust-crates.html` - Rust Crates Reference
+- `syscall-reference.html` - Syscall Reference (1000-1010)
+- `abi-specification.html` - ABI Specification
+- `capability-api.html` - Capability System API
 
 #### 06-felsefe/
 - `tasarim-felsefesi.html` - Design Philosophy
@@ -86,6 +105,9 @@ docs/
 - `anayasal-ilkeler.html` - Constitutional Principles
 - `determinizm.html` - Determinism
 - `mimari-estetiği.html` - Architectural Aesthetics
+- `execution-centric-paradigm.html` - Execution-Centric Paradigm
+- `ai-native-design.html` - AI-Native Design Philosophy
+- `mechanism-policy-separation.html` - Mechanism-Policy Separation
 
 #### 07-topluluk/
 - `katkida-bulunma.html` - Contributing Guide
@@ -93,6 +115,8 @@ docs/
 - `topluluk-rehberi.html` - Community Guide
 - `iletisim.html` - Communication Channels
 - `etkinlikler.html` - Events & Meetups
+- `governance-participation.html` - Governance Participation
+- `constitutional-compliance.html` - Constitutional Compliance Guide
 
 #### 08-ornekler/
 - `basit-uygulama.html` - Simple Application
@@ -100,6 +124,9 @@ docs/
 - `userspace-servisi.html` - Userspace Service
 - `anayasal-entegrasyon.html` - Constitutional Integration
 - `performans-olcumu.html` - Performance Measurement
+- `bcib-worker-example.html` - BCIB Worker Example
+- `ring3-policy-example.html` - Ring3 Policy Example
+- `capability-usage.html` - Capability Usage Examples
 
 #### 09-sorun-giderme/
 - `sik-sorunlar.html` - Common Issues
@@ -107,6 +134,10 @@ docs/
 - `debug-araclari.html` - Debug Tools
 - `performans-sorunlari.html` - Performance Issues
 - `anayasal-ihlaller.html` - Constitutional Violations
+- `build-problems.html` - Build Problems
+- `qemu-issues.html` - QEMU Issues
+- `ring3-debugging.html` - Ring3 Debugging
+- `ci-gate-failures.html` - CI Gate Failures
 
 #### 10-referans/
 - `terimler-sozlugu.html` - Glossary
@@ -114,63 +145,117 @@ docs/
 - `yapilandirma-referansi.html` - Configuration Reference
 - `mimari-kararlari.html` - Architecture Decision Records
 - `surum-notlari.html` - Release Notes
+- `phase-history.html` - Phase History
+- `constitutional-rules.html` - Constitutional Rules Reference
+- `performance-baselines.html` - Performance Baselines
 
 ## 🎯 Öncelik Sıralaması
 
 ### Faz 1: Temel Dokümantasyon (Hafta 1-2)
 **Hedef**: Yeni kullanıcıların sistemi anlayıp kullanmaya başlaması
+**Durum**: Phase-16 Faz B breakthrough sonrası güncelleme
 
 1. **Kritik Öncelik**:
    - `01-baslangic/hizli-baslangic.html` ✅ (Mevcut)
-   - `01-baslangic/kurulum-rehberi.html`
-   - `02-mimari/genel-bakis.html`
-   - `03-anayasal-sistem/anayasal-yonetisim.html`
+   - `01-baslangic/kurulum-rehberi.html` ✅ (Mevcut - güncelleme gerekli)
+   - `02-mimari/genel-bakis.html` ✅ (Mevcut - Phase-16 güncellemesi gerekli)
+   - `03-anayasal-sistem/anayasal-yonetisim.html` ✅ (Mevcut)
 
 2. **Yüksek Öncelik**:
-   - `01-baslangic/sistem-gereksinimleri.html`
-   - `01-baslangic/vs-code-kurulumu.html`
-   - `04-gelistirme/gelistirici-rehberi.html`
-   - `06-felsefe/tasarim-felsefesi.html`
+   - `01-baslangic/sistem-gereksinimleri.html` (Yeni - Phase-16 gereksinimleri)
+   - `01-baslangic/vs-code-kurulumu.html` (Yeni)
+   - `04-gelistirme/gelistirici-rehberi.html` (Yeni - Ring3 development odaklı)
+   - `06-felsefe/execution-centric-paradigm.html` (Yeni - 11 syscall paradigması)
 
 ### Faz 2: Teknik Derinlik (Hafta 3-4)
 **Hedef**: Geliştiricilerin sistem üzerinde çalışmaya başlaması
+**Odak**: Ring3 infrastructure ve BCIB worker development
 
 1. **Kritik Öncelik**:
-   - `03-anayasal-sistem/kural-sistemi.html`
-   - `03-anayasal-sistem/allow-sistemi.html`
-   - `03-anayasal-sistem/waiver-sistemi.html`
-   - `05-api-referans/cli-komutlari.html`
+   - `03-anayasal-sistem/ci-gates.html` (Yeni - 21+ gates sistemi)
+   - `03-anayasal-sistem/phase-matrix.html` (Yeni - Phase Matrix Authority)
+   - `05-api-referans/syscall-reference.html` (Yeni - 1000-1010 syscalls)
+   - `05-api-referans/cli-komutlari.html` (Güncelleme - ayken-cli v0.1)
 
 2. **Yüksek Öncelik**:
-   - `02-mimari/cekirdek-mimari.html`
-   - `02-mimari/kullanici-alani.html`
-   - `04-gelistirme/kod-standartlari.html`
-   - `05-api-referans/abdf-api.html`
-   - `05-api-referans/bcib-api.html`
+   - `02-mimari/ring0-ring3-ayirimi.html` (Yeni - Constitutional boundary)
+   - `02-mimari/bcib-execution-engine.html` (Yeni - Phase-15 BCIB v3)
+   - `04-gelistirme/build-system.html` (Yeni - Makefile sistemi)
+   - `04-gelistirme/ring3-development.html` (Yeni - Ring3 policy development)
 
 ### Faz 3: İleri Seviye (Hafta 5-6)
 **Hedef**: Uzman kullanıcılar ve katkıda bulunanlar için kaynak
+**Odak**: Constitutional system ve performance optimization
 
 1. **Kritik Öncelik**:
-   - `03-anayasal-sistem/ahs-sistemi.html`
-   - `03-anayasal-sistem/ahts-sistemi.html`
-   - `03-anayasal-sistem/mars-sistemi.html`
-   - `07-topluluk/katkida-bulunma.html`
+   - `03-anayasal-sistem/ahs-sistemi.html` (Güncelleme - ≥95 threshold)
+   - `03-anayasal-sistem/evidence-system.html` (Yeni - Immutable evidence)
+   - `07-topluluk/constitutional-compliance.html` (Yeni - Compliance guide)
+   - `08-ornekler/bcib-worker-example.html` (Yeni - Phase-16 Faz B)
 
 2. **Yüksek Öncelik**:
-   - `03-anayasal-sistem/arre-sistemi.html`
-   - `03-anayasal-sistem/arh-sistemi.html`
-   - `08-ornekler/anayasal-entegrasyon.html`
-   - `09-sorun-giderme/sik-sorunlar.html`
+   - `03-anayasal-sistem/ahts-sistemi.html` (Güncelleme)
+   - `03-anayasal-sistem/mars-sistemi.html` (Güncelleme)
+   - `09-sorun-giderme/ring3-debugging.html` (Yeni - Ring3 troubleshooting)
+   - `09-sorun-giderme/ci-gate-failures.html` (Yeni - CI gate debugging)
 
 ### Faz 4: Tamamlama (Hafta 7-8)
 **Hedef**: Kapsamlı referans ve topluluk kaynakları
+**Odak**: Performance baselines ve multi-architecture support
 
 1. **Orta Öncelik**:
-   - Kalan API referans sayfaları
-   - Detaylı örnekler ve tutorial'lar
-   - Sorun giderme rehberleri
-   - Topluluk ve katkı rehberleri
+   - `10-referans/phase-history.html` (Yeni - Phase 1-16 history)
+   - `10-referans/performance-baselines.html` (Yeni - Baseline locks)
+   - `08-ornekler/capability-usage.html` (Yeni - Capability examples)
+   - `09-sorun-giderme/build-problems.html` (Yeni - Build troubleshooting)
+
+## 📊 Proje Durumu Güncellemesi (2026-04-26)
+
+### Tamamlanan Fazlar
+- ✅ **Phase-15**: BCIB Execution Engine v3 (Official Closure)
+- ✅ **Phase-16 Faz A**: ayken-cli v0.1 (92% Complete)
+- 🔄 **Phase-16 Faz B**: Ring3 Infrastructure (30% - Ring3 breakthrough achieved)
+
+### Kritik Başarılar
+- ✅ Ring3 First-Retirement Starvation SOLVED (2026-04-24)
+- ✅ Syscall Infrastructure PROVEN
+- ✅ Instruction Retirement VALIDATED
+- ✅ 293 unit/integration tests + 12 property tests PASS
+
+### Güncel Teknik Metrikler
+```
+Kod Tabanı:              ~55,000 LOC (kernel + userspace + tools)
+Test Kapsamı:            ~75-80%
+Constitutional Tests:    350+ passing
+CI Gates:                21+ active
+Architecture Health:     ≥95 (AHS threshold)
+```
+
+### Dokümantasyon Güncellemesi Gereken Alanlar
+
+1. **Ring3 Infrastructure** (Yüksek Öncelik)
+   - Ring3 first-retirement breakthrough
+   - Syscall path validation
+   - Instruction retirement proof
+   - BCIB worker payload development
+
+2. **Constitutional System** (Yüksek Öncelik)
+   - 21+ CI gates sistemi
+   - Phase Matrix Authority
+   - Evidence system (immutable)
+   - Performance baseline locks
+
+3. **Build System** (Orta Öncelik)
+   - Profile-based builds (release/validation)
+   - Feature flag system
+   - Multi-platform support
+   - Deterministic builds
+
+4. **API References** (Orta Öncelik)
+   - ayken-cli v0.1 commands
+   - BCIB v3 API
+   - Syscall 1000-1010 reference
+   - Capability system API
 
 ## 📝 İçerik Standartları
 

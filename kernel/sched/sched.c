@@ -53,6 +53,14 @@ extern volatile uint32_t phase10_ring3_user_code_seen;
 #define AYKEN_DETERMINISTIC_EXIT 0
 #endif
 
+#ifndef AYKEN_BCIB_STUB_RESULT_ENABLE
+#define AYKEN_BCIB_STUB_RESULT_ENABLE 0
+#endif
+
+#ifndef AYKEN_BCIB_STUB_RESULT_VALUE_U64
+#define AYKEN_BCIB_STUB_RESULT_VALUE_U64 0xDEADBEEFCAFEBABEULL
+#endif
+
 #ifndef AYKEN_RING3_SECOND_CANONICAL_PROBE
 #define AYKEN_RING3_SECOND_CANONICAL_PROBE 0
 #endif
@@ -2319,6 +2327,77 @@ static void sched_reset_execution_delivery_surface(proc_t *worker)
     memset(inbox->reserved, 0, sizeof(inbox->reserved));
 }
 
+static int sched_string_equals(const char *lhs, const char *rhs)
+{
+    if (!lhs || !rhs) {
+        return 0;
+    }
+
+    while (*lhs != '\0' && *rhs != '\0') {
+        if (*lhs != *rhs) {
+            return 0;
+        }
+        lhs++;
+        rhs++;
+    }
+
+    return *lhs == '\0' && *rhs == '\0';
+}
+
+static int sched_should_materialize_bcib_stub_result(const proc_t *worker,
+                                                     const exec_slot_t *slot)
+{
+#if AYKEN_BCIB_STUB_RESULT_ENABLE
+    if (!worker || !slot || worker->type != PROC_TYPE_USER) {
+        return 0;
+    }
+    if (!worker->name || !sched_string_equals(worker->name, "bcib_worker")) {
+        return 0;
+    }
+    if (slot->state != EXEC_SLOT_RUNNING) {
+        return 0;
+    }
+
+    return slot->owner_pid == (uint64_t)worker->pid &&
+           slot->target_context_id == (uint64_t)worker->pid;
+#else
+    (void)worker;
+    (void)slot;
+    return 0;
+#endif
+}
+
+static int sched_complete_bcib_stub_result_locked(proc_t *worker, exec_slot_t *slot)
+{
+#if AYKEN_BCIB_STUB_RESULT_ENABLE
+    static const uint64_t stub_result = (uint64_t)AYKEN_BCIB_STUB_RESULT_VALUE_U64;
+
+    if (!sched_should_materialize_bcib_stub_result(worker, slot)) {
+        return 0;
+    }
+
+    if (execution_slot_write_output_v1_locked(slot,
+                                              &stub_result,
+                                              sizeof(stub_result)) != 0 ||
+        execution_slot_validate_output_locked(slot, NULL) != 0 ||
+        execution_slot_prepare_result_locked(slot) != 0) {
+        return -1;
+    }
+
+    sched_emit_marker("[EXEC_OUTPUT_WRITTEN]\n");
+    execution_slot_require_finish_locked(slot,
+                                         EXEC_SLOT_COMPLETED,
+                                         "sched_complete_bcib_stub_result_locked");
+    sched_reset_execution_delivery_surface(worker);
+    sched_emit_marker("[EXEC_COMPLETE_OK]\n");
+    return 1;
+#else
+    (void)worker;
+    (void)slot;
+    return 0;
+#endif
+}
+
 static int sched_publish_execution_delivery(proc_t *worker, const exec_slot_t *slot)
 {
     ayken_execution_inbox_v1_t *inbox;
@@ -2410,6 +2489,8 @@ int sched_try_pickup_execution_work(void)
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_PICKUP);
     slot = execution_slot_pickup_locked((uint64_t)current_proc->pid);
     if (slot) {
+        int stub_result = 0;
+
         current_proc->active_execution_id = slot->execution_id;
         if (execution_slot_prepare_output_locked(slot) != 0 ||
             proc_bind_execution_output_window(current_proc,
@@ -2424,6 +2505,17 @@ int sched_try_pickup_execution_work(void)
                                                  EXEC_SLOT_ABORTED,
                                                  "sched_try_pickup_execution_work");
             slot = NULL;
+        } else {
+            stub_result = sched_complete_bcib_stub_result_locked(current_proc, slot);
+            if (stub_result < 0) {
+                sched_reset_execution_delivery_surface(current_proc);
+                proc_unmap_execution_output_window(current_proc);
+                current_proc->active_execution_id = 0;
+                execution_slot_require_finish_locked(slot,
+                                                     EXEC_SLOT_FAILED,
+                                                     "sched_try_pickup_execution_work:stub_result");
+                slot = NULL;
+            }
         }
     }
     execution_slot_trace_scope_exit(&trace_scope);

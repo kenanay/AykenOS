@@ -126,6 +126,9 @@ int execution_slot_store_bcib_locked(exec_slot_t *slot,
                                      const void *bcib_graph,
                                      uint64_t graph_size);
 int execution_slot_prepare_output_locked(exec_slot_t *slot);
+int execution_slot_write_output_v1_locked(exec_slot_t *slot,
+                                          const void *payload,
+                                          uint64_t payload_size);
 int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published_size);
 int execution_slot_can_publish_locked(const exec_slot_t *slot);
 uint64_t execution_slot_result_va_locked(const exec_slot_t *slot);
