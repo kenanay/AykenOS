@@ -1,10 +1,10 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.3  
-**Status:** ACTIVE FREEZE (Phase-17 Integration)  
+**Version:** 1.4  
+**Status:** ACTIVE FREEZE (Phase-17 Execution Pipeline)  
 **Effective Date:** 2026-02-13  
-**Last Update:** 2026-04-25 (Phase-17 Verification Layer Integration)  
+**Last Update:** 2026-05-01 (Phase-16 Official Closure + Phase-17 Preparation)  
 **Owner:** AykenOS Core Architecture Team  
 **Authority:** Kenan AY
 
@@ -594,19 +594,19 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-04-03):**
-- ✅ All CI gates active and passing (23-gate ci-freeze chain)
+**Current Status (2026-05-01):**
+- ✅ All CI gates active and passing (32-gate ci-freeze chain)
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
-- ✅ Phase-13 kill-switch gates: 12/12 PASS (`coverage: COMPLETE`)
-- ✅ Phase-13 service-backed verification expansion: COMPLETE (SHA `a44febed`)
-- ✅ Phase-13 formal transition: COMPLETE (CI run `23694185775`, PR #68, tag: `phase13-formal-transition`)
-- ✅ Phase-13 Architecture Map §4 workstreams: COMPLETE (PR #71–#77)
-- ✅ Phase-13 OFFICIALLY CLOSED (CI run `23706742211`, PR #81, tag: `phase13-official-closure-confirmed`)
-- ✅ `CURRENT_PHASE=14` formal transition completed (`8b23fe0d`)
-- ✅ Performance baseline lock updated (gha-ubuntu24-20260323.65.1-X64, PR #83)
-- ✅ Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run `ci-freeze#23999026616`, tag: `phase14-official-closure-confirmed`)
+- ✅ Phase-13 distributed observability: OFFICIALLY CLOSED (CI run `23706742211`, PR #81)
+- ✅ Phase-14 observability hardening: OFFICIALLY CLOSED (CI run `23999026616`)
+- ✅ Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run `24213727039`, PR #104)
+- ✅ Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (CI run `25214173242`, tag `phase16-official-closure`)
+- ✅ `CURRENT_PHASE=16` formal transition completed (`ca73da9e`)
+- ✅ Performance baseline lock updated (gha-ubuntu24-20260413.86.1-X64, 2026-04-26)
+- ✅ Phase-16 Official Closure: COMPLETE (commit `a359028c`, tag `phase16-official-closure`)
+- 🔄 Phase-17 Execution Pipeline: READY TO START (Phase-16 closure confirmed)
 
 ---
 
@@ -832,30 +832,55 @@ Phase-14 (Distributed Observability Hardening) resmi olarak KAPALI. Aşağıdaki
 
 ---
 
+## 15.2 Phase-16 Post-Closure Immutability Lock
+
+**Effective:** 2026-05-01 | **Authority:** CI run `25214173242` | **HEAD SHA:** `a359028cca8a5f55719906415353174b75ea1c30` | **Tag:** `phase16-official-closure`
+
+Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme dosyaları **değiştirilemez (IMMUTABLE)**:
+
+- `docs/specs/phase16-verification-layer/PHASE16_CLOSURE_PREP.md`
+- `docs/specs/phase17-execution-pipeline/PHASE17_PLAN.md`
+- `docs/specs/phase17-execution-pipeline/IMPLEMENTATION_RULES.md`
+- `docs/specs/phase17-execution-pipeline/MINIMAL_EXECUTION_PATH.md`
+- `docs/specs/phase17-execution-pipeline/GATE_VALIDATION_SCOPE.md`
+- `docs/specs/PHASE_TRANSITION_ALIGNMENT.md`
+- `reports/phase16_official_closure/closure_manifest.json`
+- `reports/phase16_official_closure/LIMITATIONS.md`
+
+**Kapanış Sonrası Değişmezler:**
+- `determinism: stub` — Phase-16 stub-level determinism iddiası geriye dönük olarak değiştirilemez
+- `verification_mode: external` — Phase-16 external verification iddiası geriye dönük olarak değiştirilemez
+- `real_execution: false` — Phase-16 real execution olmadığı iddiası geriye dönük olarak değiştirilemez
+- Limitations listesi — Phase-16 kısıtlamaları geriye dönük olarak değiştirilemez
+- Evidence snapshot — `evidence/phase16-final/` klasörü geriye dönük olarak değiştirilemez
+
+**Etiket Koruması:** `phase16-official-closure` etiketi korumalıdır; force-push yasaktır. Yeni bir kapanış iddiası yeni bir etiket gerektirir.
+
+**Kapsam Dondurma:** Bu faz kapsamına yeni iddia, yeni determinism seviyesi veya yeni verification modu eklenemez. Real execution determinism Phase-17 gerektirir.
+
+**Phase-17 Önkoşul:** Phase-17 implementation ancak `phase16-official-closure` etiketi push edildikten sonra başlayabilir.
+
+---
+
 ## 16. Document Control
 
-**Version:** 2.0  
+**Version:** 1.5  
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-03-28  
-**Next Review:** 2026-04-11  
+**Last Review:** 2026-05-01  
+**Next Review:** 2026-05-15  
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 2.0 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616, tag: phase14-official-closure-confirmed) |
-| 1.9 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14; perf baseline updated (PR #83) |
-| 1.8 | 2026-03-29 | Kenan AY | Phase-13 Architecture Map §4 workstreams COMPLETE (PR #71-#77); closure prep pending |
-| 1.7 | 2026-03-28 | Kenan AY | Phase-13 formal transition COMPLETE (PR #68, CI run #23694185775); CURRENT_PHASE=13 |
-| 1.6 | 2026-03-28 | Kenan AY | Phase-13 kill-switch 12/12 PASS; service-backed verification expansion COMPLETE; closure prep pending |
-| 1.5 | 2026-03-16 | Kenan AY | CI gate list updated to 23-gate chain; Phase-10/11/12 closure status; Phase-13 kill-switch PASS |
-| 1.4 | 2026-03-02 | Kenan AY | Status update: Phase 10-A1 complete, Phase 10-A2 in progress |
-| 1.3 | 2026-02-25 | Kenan AY | Added ci-gate-drift-activation gate documentation |
-| 1.2 | 2026-02-22 | Kenan AY | Added ci-gate-sched-bridge-runtime gate documentation |
-| 1.1 | 2026-02-13 | Kenan AY | Boundary enforcement updated to symbol-scan + deterministic evidence schema |
+| 1.5 | 2026-05-01 | Kenan AY | Phase-16 OFFICIALLY CLOSED (CI run #25214173242, tag phase16-official-closure); Phase-17 ready to start |
+| 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: COMPLETE (closure pending); Phase-17 preparation |
+| 1.3 | 2026-04-25 | Kenan AY | Phase-15 OFFICIALLY CLOSED (CI run #24213727039, PR #104); Phase-16 Verification Layer Integration |
+| 1.2 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616) |
+| 1.1 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14 |
 | 1.0 | 2026-02-13 | Kenan AY | Initial freeze document |
 
 ---
