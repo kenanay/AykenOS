@@ -134,6 +134,115 @@ EXEC_SLOT_RESULT_MAPPED (result published to userspace)
 
 ---
 
+---
+
+## 7.1. Return Value Enforcement (CRITICAL)
+
+### Mandatory Check Rule
+
+**ALL marker emission call sites MUST check return value.**
+
+**Correct Pattern:**
+```c
+int result = execution_slot_emit_marker_locked(slot, MARKER_EXEC_START);
+if (result != 0) {
+    // Handle failure: set terminal state, emit evidence
+    slot->state = EXEC_SLOT_FAILED;
+    slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+    slot->marker_error_code = result;
+    execution_slot_emit_marker_validation_failure(slot, result);
+    return -EINVAL;
+}
+```
+
+**FORBIDDEN Pattern:**
+```c
+// ❌ WRONG: Unchecked call
+execution_slot_emit_marker_locked(slot, MARKER_EXEC_START);
+// Execution continues even if validation failed → SILENT CORRUPTION
+```
+
+### Enforcement Strategy
+
+**Code Review:**
+- Every PR adding marker emission MUST show return value check
+- Reviewer MUST verify no unchecked calls
+
+**CI Gate (Future):**
+- Static analysis: detect unchecked `execution_slot_emit_marker_locked()` calls
+- Fail CI if unchecked call found
+
+**Rationale:**
+> Unchecked return value = validation bypass = silent corruption = determinism violation
+
+**Impact of Violation:**
+- Validation fails but execution continues
+- Invalid marker sequence reaches userspace
+- Determinism guarantee broken
+- CI evidence invalid
+
+**Rule:**
+> **NO EXCEPTIONS.** Every call site checks return value. Period.
+
+---
+
+## 7.2. Validation Ordering: Monotonic vs Exact
+
+### Phase 1 (Incremental): Monotonic Check
+
+**Rule:** `marker > last_marker` (strictly increasing)
+
+**Allows:**
+- Future optional markers (gaps OK in Phase 1)
+- Flexible evolution
+
+**Catches:**
+- Backward markers (e.g., 5 → 3)
+- Duplicate markers (e.g., 3 → 3)
+
+**Example:**
+```c
+// Valid: 0 → 2 → 5 (gaps allowed)
+// Invalid: 0 → 2 → 1 (backward)
+// Invalid: 0 → 2 → 2 (duplicate)
+```
+
+---
+
+### Phase 2 (Full Sequence): Exact Sequential Check
+
+**Rule:** All markers present, no gaps
+
+**Enforces:**
+- Complete sequence (bitmap == MARKER_MASK)
+- No missing markers
+- Exact count (marker_count == MARKER_COUNT)
+
+**Example:**
+```c
+// Valid: 0 → 1 → 2 → 3 → 4 → 5 → 6 (complete)
+// Invalid: 0 → 2 → 5 (gaps detected in Phase 2)
+```
+
+---
+
+### Rationale for Two-Level Ordering
+
+**Why not strict sequential in Phase 1?**
+- Future-proofing: Optional markers may be added
+- Flexibility: Allows evolution without breaking existing code
+- Fail-fast: Still catches backward/duplicate immediately
+
+**Why strict sequential in Phase 2?**
+- Pre-commit guard: Must be complete before publish
+- Determinism: Exact sequence required for correctness
+- Evidence: Full sequence proves execution integrity
+
+**Rule:**
+> Phase 1 = monotonic (flexible). Phase 2 = exact (strict).
+
+---
+
 ## 7. Validation Strategy (Two-Phase)
 
 ### Phase 1: Incremental Validation (Per-Marker)
@@ -316,14 +425,15 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
 **Phase 1 Failure (Incremental):**
 ```c
 // Marker emission fails
-execution_slot_emit_marker_locked(slot, marker);
-// Returns: -EINVAL
-
-// Caller handles failure:
-slot->state = EXEC_SLOT_FAILED;
-slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
-execution_slot_emit_marker_validation_failure(slot, result);
-return -EINVAL;
+int result = execution_slot_emit_marker_locked(slot, marker);
+if (result != 0) {
+    // CRITICAL: Caller MUST check return value
+    slot->state = EXEC_SLOT_FAILED;
+    slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+    slot->marker_error_code = validation_result;  // Record failure reason
+    execution_slot_emit_marker_validation_failure(slot, result);
+    return -EINVAL;
+}
 ```
 
 **Phase 2 Failure (Pre-Commit):**
@@ -335,6 +445,7 @@ execution_slot_prepare_hash_locked(slot);
 // Internal handling:
 slot->state = EXEC_SLOT_FAILED;
 slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+slot->marker_error_code = validation_result;  // Record failure reason
 execution_slot_release_hash_backing_locked(slot);
 execution_slot_emit_marker_validation_failure(slot, result);
 return -EINVAL;
@@ -359,31 +470,41 @@ execution_slot_runtime_panic("marker_validation_invariant_violation",
    - `slot->flags |= EXEC_SLOT_FLAG_TERMINAL`
    - Prevents scheduler retry
 
-3. **Evidence emission**
+3. **Error code recorded**
+   - `slot->marker_error_code = validation_result`
+   - Scheduler visibility, CI evidence, debug
+
+4. **Evidence emission**
    - `execution_slot_emit_marker_validation_failure(slot, result)`
    - Debugcon marker for CI/debug analysis
 
-4. **Resource cleanup**
+5. **Resource cleanup**
    - Phase 2: Release hash backing on failure
    - No result buffer publish
 
+6. **Return value enforcement (CRITICAL)**
+   - **ALL call sites MUST check return value**
+   - Failure to check = silent corruption
+   - Design requirement: No unchecked calls
+
 **Failure Codes:**
 
-| Validation Result | Slot State | Terminal | Evidence Marker |
-|-------------------|------------|----------|-----------------|
-| `MARKER_VALIDATION_INVALID_ORDER` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=INVALID_ORDER` |
-| `MARKER_VALIDATION_MISSING` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=MISSING` |
-| `MARKER_VALIDATION_DUPLICATE` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=DUPLICATE` |
-| `MARKER_VALIDATION_OUT_OF_BOUNDS` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=OUT_OF_BOUNDS` |
+| Validation Result | Slot State | Terminal | Error Code | Evidence Marker |
+|-------------------|------------|----------|------------|-----------------|
+| `MARKER_VALIDATION_INVALID_ORDER` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_INVALID_ORDER` | `[[MARKER_VALIDATION_FAIL]] reason=INVALID_ORDER` |
+| `MARKER_VALIDATION_MISSING` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_MISSING` | `[[MARKER_VALIDATION_FAIL]] reason=MISSING` |
+| `MARKER_VALIDATION_DUPLICATE` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_DUPLICATE` | `[[MARKER_VALIDATION_FAIL]] reason=DUPLICATE` |
+| `MARKER_VALIDATION_OUT_OF_BOUNDS` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_OUT_OF_BOUNDS` | `[[MARKER_VALIDATION_FAIL]] reason=OUT_OF_BOUNDS` |
+| `MARKER_VALIDATION_NON_MONOTONIC` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_NON_MONOTONIC` | `[[MARKER_VALIDATION_FAIL]] reason=NON_MONOTONIC` |
 
 **Evidence Format:**
 ```
-[[MARKER_VALIDATION_FAIL]] exec_id=<ID> generation=<GEN> reason=<REASON> bitmap=0b<BITMAP> last=<LAST> count=<COUNT>
+[[MARKER_VALIDATION_FAIL]] exec_id=<ID> generation=<GEN> reason=<REASON> error_code=<CODE> bitmap=0b<BITMAP> last=<LAST> count=<COUNT>
 ```
 
 **Example:**
 ```
-[[MARKER_VALIDATION_FAIL]] exec_id=123 generation=1 reason=INVALID_ORDER bitmap=0b0001111 last=3 count=4
+[[MARKER_VALIDATION_FAIL]] exec_id=123 generation=1 reason=NON_MONOTONIC error_code=5 bitmap=0b0001111 last=3 count=4
 ```
 
 **Rule:**
@@ -407,9 +528,27 @@ typedef struct exec_slot {
     uint8_t marker_bitmap;      // 7 bits (one per marker)
     uint8_t last_marker;        // Last emitted marker (for ordering)
     uint8_t marker_count;       // Total markers emitted
-    uint8_t reserved_marker;    // Alignment padding
+    uint8_t marker_error_code;  // Validation failure reason (if failed)
 #endif
 } exec_slot_t;
+```
+
+**Rationale:**
+
+**marker_error_code Addition:**
+1. **Scheduler visibility**: Failure reason accessible to scheduler
+2. **CI evidence**: Validation failure code in slot state
+3. **Debug**: Clear failure reason without parsing logs
+4. **Telemetry**: Future observability integration
+
+**Values:**
+```c
+#define MARKER_ERROR_NONE                0
+#define MARKER_ERROR_INVALID_ORDER       1
+#define MARKER_ERROR_MISSING             2
+#define MARKER_ERROR_DUPLICATE           3
+#define MARKER_ERROR_OUT_OF_BOUNDS       4
+#define MARKER_ERROR_NON_MONOTONIC       5
 ```
 
 **Rationale:**
@@ -438,6 +577,12 @@ slot->last_marker = MARKER_INVALID;  // 0xFF
 slot->marker_count = 0;
 ```
 
+**Constants (Future-Proof):**
+```c
+#define MARKER_INVALID 0xFF
+#define MARKER_MASK ((1 << MARKER_COUNT) - 1)  // 0b01111111 for 7 markers
+```
+
 **Marker Emission:**
 ```c
 // Check duplicate
@@ -445,10 +590,11 @@ if (slot->marker_bitmap & (1 << marker)) {
     return -EINVAL;  // Duplicate detected
 }
 
-// Check ordering (if not first marker)
+// Check monotonic ordering (if not first marker)
+// Phase 1: Relaxed (monotonic only, allows gaps for future optional markers)
 if (slot->last_marker != MARKER_INVALID) {
-    if (marker != slot->last_marker + 1) {
-        return -EINVAL;  // Out of order
+    if (marker <= slot->last_marker) {
+        return -EINVAL;  // Non-monotonic (backward or duplicate)
     }
 }
 
@@ -460,8 +606,8 @@ slot->marker_count++;
 
 **Full Sequence Validation:**
 ```c
-// Check all markers present
-if (slot->marker_bitmap != 0b01111111) {  // All 7 bits set
+// Check all markers present (Phase 2: Strict)
+if (slot->marker_bitmap != MARKER_MASK) {
     return -EINVAL;  // Missing markers
 }
 
@@ -469,7 +615,24 @@ if (slot->marker_bitmap != 0b01111111) {  // All 7 bits set
 if (slot->marker_count != MARKER_COUNT) {
     return -EINVAL;  // Count mismatch
 }
+
+// Check exact sequential order (Phase 2 only)
+for (uint8_t i = 0; i < MARKER_COUNT; i++) {
+    if (!(slot->marker_bitmap & (1 << i))) {
+        return -EINVAL;  // Gap detected
+    }
+}
 ```
+
+**Rationale for Two-Level Ordering:**
+- **Phase 1 (Incremental)**: Monotonic check only (`marker > last_marker`)
+  - Allows future optional markers
+  - Catches backward/duplicate immediately
+  - Flexible for evolution
+- **Phase 2 (Full Sequence)**: Exact sequential check
+  - Enforces complete sequence
+  - Detects gaps
+  - Strict validation before commit
 
 **Debug Output:**
 ```c
@@ -1001,6 +1164,28 @@ evidence/run-<RUN_ID>/
 - ❌ **Old**: Post-mortem (fail-slow)
 - ✅ **New**: Incremental (fail-fast) + final guard (fail-closed)
 
+### Minor Revisions (v2.1)
+
+**6. Marker Mask Future-Proofing:**
+- ❌ **Old**: `if (bitmap != 0b01111111)` (hardcoded)
+- ✅ **New**: `if (bitmap != MARKER_MASK)` (computed from MARKER_COUNT)
+
+**7. Incremental Validation Relaxation:**
+- ❌ **Old**: `marker == last_marker + 1` (strict sequential)
+- ✅ **New**: `marker > last_marker` (monotonic, allows future optional markers)
+
+**8. Error Code Field:**
+- ❌ **Old**: `reserved_marker` (unused padding)
+- ✅ **New**: `marker_error_code` (validation failure reason)
+
+**9. Return Value Enforcement:**
+- ❌ **Old**: Implicit requirement
+- ✅ **New**: Explicit mandatory rule with enforcement strategy
+
+**10. Validation Ordering Clarification:**
+- ❌ **Old**: Single ordering rule
+- ✅ **New**: Two-level ordering (Phase 1: monotonic, Phase 2: exact)
+
 ### Design Improvements
 
 **Performance:**
@@ -1011,21 +1196,29 @@ evidence/run-<RUN_ID>/
 - Fail-fast detection (per-marker)
 - Pre-commit validation (rollback possible)
 - No recursion risk (direct state assignment)
+- Return value enforcement (no silent corruption)
+
+**Future-Proofing:**
+- Computed marker mask (adapts to MARKER_COUNT changes)
+- Monotonic Phase 1 (allows optional markers)
+- Error code field (scheduler visibility, telemetry)
 
 **Debuggability:**
 - Bitmap visualization (0b0111111)
 - Clear failure point (marker emission site)
-- Evidence includes bitmap state
+- Evidence includes bitmap state + error code
+- Scheduler-visible failure reason
 
 ---
 
 **Prepared By:** Kenan AY - Architectural Steward  
 **Date:** 01 May 2026  
-**Version:** 2.0 (Revised)  
+**Version:** 2.1 (Minor Revisions)  
 **Status:** DESIGN ONLY (Implementation NOT Started)
 
 **Revision History:**
 - v1.0 (2026-05-01): Initial design
 - v2.0 (2026-05-01): Critical corrections (validation strategy, call site, failure handling, data structure)
+- v2.1 (2026-05-01): Minor revisions (marker mask, monotonic ordering, error code, return value enforcement)
 
 **© 2026 Kenan AY - AykenOS Project**
