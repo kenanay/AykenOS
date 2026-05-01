@@ -613,7 +613,15 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ `CURRENT_PHASE=16` formal transition completed (`ca73da9e`)
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260413.86.1-X64, 2026-04-26)
 - ✅ Phase-16 Official Closure: COMPLETE (commit `a56ec7c0`, tag `phase16-official-closure`)
-- 🔄 Phase-17 Execution Pipeline: READY TO START (Phase-16 closure confirmed)
+- 🔄 **Phase-17 Execution Pipeline: IN PROGRESS** (3/8 milestones complete)
+  - ✅ Foundation Sandbox (PR #126, commit 08098761)
+  - ✅ Integration Design (PR #127, commit 99b7c80d)
+  - ✅ Feature Flag + Bitmap (PR #128, commit 8cc00e5f)
+  - 🔄 Marker Capture Helper (IN PROGRESS)
+  - 🔜 Marker Emission Integration
+  - 🔜 Full Sequence Validation
+  - 🔜 Sanity Check
+  - 🔜 CI Gate
 
 ---
 
