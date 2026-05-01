@@ -134,22 +134,122 @@ EXEC_SLOT_RESULT_MAPPED (result published to userspace)
 
 ---
 
-## 7. Validation Call Site
+## 7. Validation Strategy (Two-Phase)
 
-### Primary Validation Point
+### Phase 1: Incremental Validation (Per-Marker)
+
+**Location:** Every marker emission site
+
+**Timing:** Immediately after marker emission
+
+**Purpose:** Fail-fast detection of transition violations
+
+**Logic:**
+```c
+static inline int execution_slot_emit_marker_locked(exec_slot_t *slot,
+                                                    execution_marker_t marker)
+{
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    // Validate transition
+    if (slot->last_marker != MARKER_INVALID) {
+        marker_validation_result_t result;
+        result = execution_marker_validate_transition(slot->last_marker, marker);
+        
+        if (result != MARKER_VALIDATION_OK) {
+            // Fail-fast: invalid transition detected
+            execution_slot_emit_marker_validation_failure(slot, result);
+            slot->state = EXEC_SLOT_FAILED;
+            slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+            return -EINVAL;
+        }
+    }
+    
+    // Check duplicate
+    if (slot->marker_bitmap & (1 << marker)) {
+        execution_slot_emit_marker_validation_failure(slot, MARKER_VALIDATION_DUPLICATE);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        return -EINVAL;
+    }
+    
+    // Record marker
+    slot->marker_bitmap |= (1 << marker);
+    slot->last_marker = marker;
+    slot->marker_count++;
+#endif
+    return 0;
+}
+```
+
+**Rationale:**
+1. **Fail-fast**: Errors detected immediately, not post-mortem
+2. **Deterministic**: Transition validation at emission time
+3. **Debuggable**: Clear failure point in execution trace
+4. **Safe**: No half-committed state possible
+
+---
+
+### Phase 2: Full Sequence Validation (Pre-Commit)
+
+**Location:** `execution_slot_prepare_hash_locked()` (after hash computation)
+
+**Timing:** After VERIFY_PASS, before result mapping
+
+**Purpose:** Final guard before commit
+
+**Logic:**
+```c
+static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
+{
+    // ... existing hash computation ...
+    
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    // Full sequence validation (final guard)
+    marker_validation_result_t validation_result;
+    
+    // Reconstruct marker array from bitmap
+    execution_marker_t markers[MARKER_COUNT];
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < MARKER_COUNT; i++) {
+        if (slot->marker_bitmap & (1 << i)) {
+            markers[count++] = i;
+        }
+    }
+    
+    validation_result = execution_marker_validate(markers, count);
+    
+    if (validation_result != MARKER_VALIDATION_OK) {
+        // Fail-closed: do NOT proceed to mapping
+        execution_slot_emit_marker_validation_failure(slot, validation_result);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        execution_slot_release_hash_backing_locked(slot);
+        return -EINVAL;
+    }
+#endif
+
+    // ... existing hash finalization ...
+    return 0;
+}
+```
+
+**Rationale:**
+1. **Pre-commit guard**: Validation before result mapping (rollback still possible)
+2. **Full sequence check**: Ensures no gaps or missing markers
+3. **Safe failure point**: Hash can be released, no userspace visibility yet
+4. **Terminal state**: Direct state set, no `finish_locked()` recursion
+
+---
+
+### Phase 3: Sanity Check (Post-Commit - Optional)
 
 **Location:** `execution_slot_record_result_mapping_locked()`
 
-**Timing:** After result mapping, before returning success to userspace
+**Timing:** After result mapping (sanity check only)
 
-**Rationale:**
-1. Full marker sequence is complete
-2. No partial execution validation (avoids false failures)
-3. Userspace publish boundary is clear
-4. Verification already passed (VERIFY_PASS marker present)
+**Purpose:** Detect invariant violations (should never fail if Phase 2 passed)
 
-### Validation Logic (Pseudocode)
-
+**Logic:**
 ```c
 int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
                                                 uint64_t mapped_result_va,
@@ -159,17 +259,13 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
     // ... existing validation ...
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    // Validate marker sequence
-    marker_validation_result_t validation_result;
-    validation_result = execution_marker_validate(
-        slot->markers,
-        slot->marker_count
-    );
-
-    if (validation_result != MARKER_VALIDATION_OK) {
-        // Fail-closed: do NOT publish result
-        execution_slot_emit_marker_validation_failure(slot, validation_result);
-        return execution_slot_finish_locked(slot, EXEC_SLOT_FAILED);
+    // Sanity check: marker validation should have passed in Phase 2
+    if (slot->marker_count != MARKER_COUNT) {
+        // This should NEVER happen (Phase 2 should have caught it)
+        execution_slot_runtime_panic("marker_validation_invariant_violation",
+                                     slot,
+                                     slot->state,
+                                     EXEC_SLOT_FAILED);
     }
 #endif
 
@@ -178,17 +274,27 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
 }
 ```
 
-### Secondary Validation Point (Future)
-
-**Location:** `execution_slot_prepare_result_locked()` (before VERIFY_PASS)
-
-**Purpose:** Early detection of marker order violations
-
-**Timing:** Phase-17.1 (after primary validation proven)
+**Rationale:**
+1. **Invariant check**: Detects logic bugs in Phase 1/2
+2. **Panic on violation**: Should never fail in correct implementation
+3. **Defense in depth**: Extra safety layer
 
 ---
 
-## 8. Failure Semantics
+### Validation Model Summary
+
+| Phase | Location | Timing | Purpose | Failure Mode |
+|-------|----------|--------|---------|--------------|
+| **1. Incremental** | Marker emission | Per-marker | Fail-fast transition check | `EXEC_SLOT_FAILED` (direct) |
+| **2. Full Sequence** | `prepare_hash_locked()` | Pre-commit | Final guard before mapping | `EXEC_SLOT_FAILED` (direct) |
+| **3. Sanity Check** | `record_result_mapping_locked()` | Post-commit | Invariant verification | `panic()` (should never fail) |
+
+**Critical Rule:**
+> Phase 1 and Phase 2 use **direct state assignment**. NO `finish_locked()` recursion.
+
+---
+
+## 8. Failure Semantics (Fail-Closed)
 
 ### Flag OFF (Default)
 
@@ -207,32 +313,85 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
 
 ### Flag ON + Validation FAIL
 
-**Behavior:**
-1. Result buffer **NOT published** to userspace
-2. Slot transitioned to `EXEC_SLOT_FAILED`
-3. Evidence marker written to debugcon
-4. Scheduler does **NOT** retry (terminal failure)
+**Phase 1 Failure (Incremental):**
+```c
+// Marker emission fails
+execution_slot_emit_marker_locked(slot, marker);
+// Returns: -EINVAL
+
+// Caller handles failure:
+slot->state = EXEC_SLOT_FAILED;
+slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+execution_slot_emit_marker_validation_failure(slot, result);
+return -EINVAL;
+```
+
+**Phase 2 Failure (Pre-Commit):**
+```c
+// Hash preparation fails
+execution_slot_prepare_hash_locked(slot);
+// Returns: -EINVAL
+
+// Internal handling:
+slot->state = EXEC_SLOT_FAILED;
+slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+execution_slot_release_hash_backing_locked(slot);
+execution_slot_emit_marker_validation_failure(slot, result);
+return -EINVAL;
+```
+
+**Phase 3 Failure (Sanity Check):**
+```c
+// Should NEVER happen (invariant violation)
+execution_slot_runtime_panic("marker_validation_invariant_violation",
+                             slot,
+                             slot->state,
+                             EXEC_SLOT_FAILED);
+```
+
+**Critical Rules:**
+
+1. **NO `finish_locked()` recursion**
+   - Direct state assignment: `slot->state = EXEC_SLOT_FAILED`
+   - Avoids double-finish and state corruption
+
+2. **Terminal flag set**
+   - `slot->flags |= EXEC_SLOT_FLAG_TERMINAL`
+   - Prevents scheduler retry
+
+3. **Evidence emission**
+   - `execution_slot_emit_marker_validation_failure(slot, result)`
+   - Debugcon marker for CI/debug analysis
+
+4. **Resource cleanup**
+   - Phase 2: Release hash backing on failure
+   - No result buffer publish
 
 **Failure Codes:**
 
-| Validation Result | Slot State | Evidence Marker |
-|-------------------|------------|-----------------|
-| `MARKER_VALIDATION_INVALID_ORDER` | `EXEC_SLOT_FAILED` | `[[MARKER_VALIDATION_FAIL]] reason=INVALID_ORDER` |
-| `MARKER_VALIDATION_MISSING` | `EXEC_SLOT_FAILED` | `[[MARKER_VALIDATION_FAIL]] reason=MISSING` |
-| `MARKER_VALIDATION_DUPLICATE` | `EXEC_SLOT_FAILED` | `[[MARKER_VALIDATION_FAIL]] reason=DUPLICATE` |
-| `MARKER_VALIDATION_OUT_OF_BOUNDS` | `EXEC_SLOT_FAILED` | `[[MARKER_VALIDATION_FAIL]] reason=OUT_OF_BOUNDS` |
+| Validation Result | Slot State | Terminal | Evidence Marker |
+|-------------------|------------|----------|-----------------|
+| `MARKER_VALIDATION_INVALID_ORDER` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=INVALID_ORDER` |
+| `MARKER_VALIDATION_MISSING` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=MISSING` |
+| `MARKER_VALIDATION_DUPLICATE` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=DUPLICATE` |
+| `MARKER_VALIDATION_OUT_OF_BOUNDS` | `EXEC_SLOT_FAILED` | YES | `[[MARKER_VALIDATION_FAIL]] reason=OUT_OF_BOUNDS` |
 
 **Evidence Format:**
 ```
-[[MARKER_VALIDATION_FAIL]] exec_id=<ID> generation=<GEN> reason=<REASON> expected=<EXPECTED> actual=<ACTUAL>
+[[MARKER_VALIDATION_FAIL]] exec_id=<ID> generation=<GEN> reason=<REASON> bitmap=0b<BITMAP> last=<LAST> count=<COUNT>
+```
+
+**Example:**
+```
+[[MARKER_VALIDATION_FAIL]] exec_id=123 generation=1 reason=INVALID_ORDER bitmap=0b0001111 last=3 count=4
 ```
 
 **Rule:**
-> Validation failure = **permanent failure** (no retry, no recovery)
+> Validation failure = **permanent failure** (no retry, no recovery, terminal state)
 
 ---
 
-## 9. Data Structure
+## 9. Data Structure (Bitmap Design)
 
 ### Marker Capture Buffer
 
@@ -245,23 +404,81 @@ typedef struct exec_slot {
     // ... existing fields ...
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    execution_marker_t markers[MARKER_COUNT];
-    uint8_t marker_count;
-    uint8_t marker_validation_enabled;
-    uint8_t reserved_marker[2];
+    uint8_t marker_bitmap;      // 7 bits (one per marker)
+    uint8_t last_marker;        // Last emitted marker (for ordering)
+    uint8_t marker_count;       // Total markers emitted
+    uint8_t reserved_marker;    // Alignment padding
 #endif
 } exec_slot_t;
 ```
 
-**Rules:**
-- Fixed-size array (no dynamic allocation)
-- Bounded by `MARKER_COUNT` (7 markers)
-- Zero-initialized on slot allocation
-- Cleared on slot release
+**Rationale:**
+
+**Bitmap Advantages:**
+1. **O(1) duplicate detection**: `if (bitmap & (1 << marker))`
+2. **O(1) presence check**: Single bit test
+3. **Compact**: 1 byte for 7 markers (vs 7 bytes for array)
+4. **Deterministic**: No iteration needed for validation
+5. **Debug-friendly**: Easy to visualize (0b0111111 = all markers present)
+
+**last_marker Advantages:**
+1. **Ordering enforcement**: Incremental transition validation
+2. **Fail-fast**: Detect out-of-order immediately
+3. **No array scan**: Direct comparison
 
 **Memory Impact:**
 - Flag OFF: 0 bytes (compile-time removed)
-- Flag ON: 9 bytes per slot (7 markers + 1 count + 2 reserved)
+- Flag ON: 4 bytes per slot (bitmap + last + count + padding)
+- **Savings**: 5 bytes per slot vs array design (9 bytes → 4 bytes)
+
+**Initialization:**
+```c
+slot->marker_bitmap = 0;
+slot->last_marker = MARKER_INVALID;  // 0xFF
+slot->marker_count = 0;
+```
+
+**Marker Emission:**
+```c
+// Check duplicate
+if (slot->marker_bitmap & (1 << marker)) {
+    return -EINVAL;  // Duplicate detected
+}
+
+// Check ordering (if not first marker)
+if (slot->last_marker != MARKER_INVALID) {
+    if (marker != slot->last_marker + 1) {
+        return -EINVAL;  // Out of order
+    }
+}
+
+// Record marker
+slot->marker_bitmap |= (1 << marker);
+slot->last_marker = marker;
+slot->marker_count++;
+```
+
+**Full Sequence Validation:**
+```c
+// Check all markers present
+if (slot->marker_bitmap != 0b01111111) {  // All 7 bits set
+    return -EINVAL;  // Missing markers
+}
+
+// Check count matches
+if (slot->marker_count != MARKER_COUNT) {
+    return -EINVAL;  // Count mismatch
+}
+```
+
+**Debug Output:**
+```c
+// Human-readable marker state
+debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
+                slot->marker_bitmap,
+                slot->last_marker,
+                slot->marker_count);
+```
 
 ---
 
@@ -271,18 +488,39 @@ typedef struct exec_slot {
 
 ```c
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    // Full marker capture
-    // Full sequence validation
+    // Incremental validation (per-marker)
+    // Full sequence validation (pre-commit)
     // Evidence generation on failure
 #endif
 ```
 
-**Overhead:**
-- Marker emission: ~10 cycles per marker (7 markers = 70 cycles)
-- Validation: ~50 cycles (linear scan)
-- Total: ~120 cycles per execution
+**Overhead (Per Execution):**
+
+**Phase 1 (Incremental - 7 markers):**
+- Transition check: ~5 cycles per marker
+- Duplicate check: ~3 cycles per marker (bitmap test)
+- Bitmap update: ~2 cycles per marker
+- **Subtotal**: ~70 cycles (7 markers × 10 cycles)
+
+**Phase 2 (Full Sequence - once):**
+- Bitmap scan: ~10 cycles
+- Count check: ~2 cycles
+- **Subtotal**: ~12 cycles
+
+**Phase 3 (Sanity Check - once):**
+- Count check: ~2 cycles
+- **Subtotal**: ~2 cycles
+
+**Total Overhead**: ~84 cycles per execution
+
+**Comparison to Array Design:**
+- Array design: ~120 cycles (linear scan)
+- Bitmap design: ~84 cycles (O(1) operations)
+- **Improvement**: 30% faster
 
 **Acceptable for:** CI, debug builds, validation runs
+
+---
 
 ### RELAXED Mode (Production - Future)
 
@@ -302,7 +540,21 @@ typedef struct exec_slot {
 
 ---
 
-## 11. Integration Rollout Plan
+### Memory Overhead
+
+**Per Slot:**
+- Flag OFF: 0 bytes
+- Flag ON: 4 bytes (bitmap + last + count + padding)
+
+**Total (64 slots):**
+- Flag OFF: 0 bytes
+- Flag ON: 256 bytes
+
+**Cache Impact:** Negligible (4 bytes fits in single cache line)
+
+---
+
+## 11. Integration Rollout Plan (Revised)
 
 ### Step 1: Design PR (Current)
 
@@ -312,16 +564,18 @@ typedef struct exec_slot {
 
 **Merge Criteria:**
 - Design review approved
-- Integration points validated
-- Failure semantics agreed
+- Integration points validated (Phase 1 + Phase 2)
+- Failure semantics agreed (no `finish_locked()` recursion)
+- Data structure approved (bitmap design)
 
 ---
 
-### Step 2: Feature Flag Definition
+### Step 2: Feature Flag + Data Structure
 
 **Changes:**
 - Add `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE` to `Makefile`
 - Add flag to `kernel/include/execution_slot.h`
+- Add bitmap fields to `exec_slot_t` (guarded by flag)
 - Default: `0` (OFF)
 
 **Merge Criteria:**
@@ -329,20 +583,23 @@ typedef struct exec_slot {
 - Flag OFF: all tests PASS
 - Flag OFF: ci-freeze PASS
 - No runtime behavior change
+- Struct size unchanged (flag OFF)
 
 ---
 
-### Step 3: Marker Capture Helper
+### Step 3: Marker Emission Helper (Incremental Validation)
 
 **Changes:**
 - Add `execution_slot_emit_marker_locked()` helper
-- Add marker buffer to `exec_slot_t` (guarded by flag)
-- Unit test for marker capture
+- Implements Phase 1 validation (transition + duplicate check)
+- Unit test for marker emission
 
 **Merge Criteria:**
 - Flag OFF: no behavior change
-- Flag ON: marker capture works
-- No validation logic yet (capture only)
+- Flag ON: marker emission works
+- Flag ON: duplicate detection works
+- Flag ON: transition validation works
+- No integration into production code yet
 
 ---
 
@@ -351,33 +608,51 @@ typedef struct exec_slot {
 **Changes:**
 - Add `execution_slot_emit_marker_locked()` calls to production code
 - Guarded by `#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE`
+- All 7 marker emission points
 
 **Merge Criteria:**
 - Flag OFF: regression test PASS (no behavior change)
 - Flag ON: markers captured correctly
+- Flag ON: incremental validation works
 - QEMU/debugcon evidence shows marker sequence
 
 ---
 
-### Step 5: Validation Integration
+### Step 5: Full Sequence Validation (Pre-Commit)
 
 **Changes:**
-- Add `execution_marker_validate()` call to `execution_slot_record_result_mapping_locked()`
-- Fail-closed on validation failure
+- Add Phase 2 validation to `execution_slot_prepare_hash_locked()`
+- Fail-closed on validation failure (direct state set)
+- Evidence generation on failure
 
 **Merge Criteria:**
 - Flag OFF: regression test PASS
 - Flag ON + valid sequence: execution succeeds
 - Flag ON + invalid sequence: execution fails (EXEC_SLOT_FAILED)
+- Flag ON: no `finish_locked()` recursion
 - Evidence generated on failure
 
 ---
 
-### Step 6: CI Gate Addition
+### Step 6: Sanity Check (Post-Commit)
+
+**Changes:**
+- Add Phase 3 sanity check to `execution_slot_record_result_mapping_locked()`
+- Panic on invariant violation
+
+**Merge Criteria:**
+- Flag OFF: regression test PASS
+- Flag ON: sanity check never triggers (Phase 2 catches all errors)
+- Flag ON: panic on logic bug (should never happen)
+
+---
+
+### Step 7: CI Gate Addition
 
 **Changes:**
 - Add `ci-gate-execution-marker-runtime` gate
 - Validate marker order in kernel output
+- Detect validation failures
 
 **Merge Criteria:**
 - Gate PASS with flag ON
@@ -441,7 +716,7 @@ out/evidence/run-<RUN_ID>/gates/execution-marker-runtime/
 
 ---
 
-## 14. Risk Mitigation
+## 14. Risk Mitigation (Revised)
 
 ### Risk 1: Accidental Production Code Overwrite
 
@@ -453,34 +728,86 @@ out/evidence/run-<RUN_ID>/gates/execution-marker-runtime/
 
 **Incident Reference:** Commit b3e2aee7 (1910 lines overwritten)
 
+**Status:** ✅ Mitigated
+
 ---
 
 ### Risk 2: State Machine Corruption
 
+**Original Risk:** `finish_locked()` recursion causing double-finish
+
 **Mitigation:**
-- No state machine changes
-- Marker emission AFTER operation success
-- Validation AFTER full sequence complete
-- Fail-closed on validation failure
+- **NO `finish_locked()` calls in validation failure path**
+- Direct state assignment: `slot->state = EXEC_SLOT_FAILED`
+- Terminal flag set: `slot->flags |= EXEC_SLOT_FLAG_TERMINAL`
+- Clear failure semantics documented
+
+**Status:** ✅ Mitigated (design corrected)
 
 ---
 
-### Risk 3: Determinism Violation
+### Risk 3: Half-Committed State
+
+**Original Risk:** Validation after mapping allows partial publish
+
+**Mitigation:**
+- **Primary validation moved to `prepare_hash_locked()`**
+- Validation occurs BEFORE result mapping
+- Rollback possible (hash backing can be released)
+- Post-commit validation is sanity check only (panic on violation)
+
+**Status:** ✅ Mitigated (design corrected)
+
+---
+
+### Risk 4: Determinism Violation
 
 **Mitigation:**
 - No dynamic allocation in validation
 - No I/O in validation
 - No system time in validation
 - Pure function validation logic
+- Bitmap design: O(1) deterministic operations
+
+**Status:** ✅ Mitigated
 
 ---
 
-### Risk 4: Performance Regression
+### Risk 5: Performance Regression
 
 **Mitigation:**
 - Flag OFF: zero overhead (compile-time removed)
 - Flag ON: STRICT mode only (CI/debug)
+- Bitmap design: 30% faster than array design
 - RELAXED mode deferred to Phase-18
+
+**Status:** ✅ Mitigated
+
+---
+
+### Risk 6: Post-Mortem Validation (Fail-Slow)
+
+**Original Risk:** Full sequence validation only at end (errors detected late)
+
+**Mitigation:**
+- **Incremental validation (Phase 1)**: Fail-fast per-marker
+- Transition validation at emission time
+- Duplicate detection immediate
+- Full sequence validation as final guard (Phase 2)
+
+**Status:** ✅ Mitigated (design corrected)
+
+---
+
+### Risk 7: Concurrency / Race Conditions
+
+**Mitigation:**
+- All validation under `execution_slot_guard_t` (interrupts disabled)
+- Bitmap operations atomic (single byte)
+- No shared state between slots
+- Per-slot validation state
+
+**Status:** ✅ Mitigated
 
 ---
 
@@ -608,38 +935,97 @@ evidence/run-<RUN_ID>/
 
 ---
 
-## 19. Success Criteria
+## 19. Success Criteria (Revised)
 
 ### Phase-17 Integration Complete When:
 
 ✅ Feature flag defined (default OFF)  
-✅ Marker capture implemented (guarded)  
-✅ Marker emission integrated (guarded)  
-✅ Validation integrated (fail-closed)  
+✅ Bitmap data structure implemented (4 bytes per slot)  
+✅ Incremental validation implemented (Phase 1: fail-fast)  
+✅ Marker emission integrated (guarded, per-marker validation)  
+✅ Full sequence validation implemented (Phase 2: pre-commit)  
+✅ Sanity check implemented (Phase 3: post-commit panic)  
 ✅ CI gate added (`ci-gate-execution-marker-runtime`)  
 ✅ Flag OFF: regression tests PASS  
-✅ Flag ON: marker validation PASS  
+✅ Flag ON: incremental validation PASS  
+✅ Flag ON: full sequence validation PASS  
 ✅ Evidence generated on failure  
+✅ NO `finish_locked()` recursion  
 ✅ Remote CI PASS  
 
 ---
 
-## 20. Final Rule
+## 20. Final Rule (Revised)
 
 **Integration Principle:**
-> Add, don't replace. Guard, don't assume. Fail-closed, don't ignore.
+> Add, don't replace. Guard, don't assume. Fail-fast, then fail-closed.
+
+**Validation Principle:**
+> Incremental first (fail-fast). Full sequence second (fail-closed). Sanity check last (panic).
+
+**Failure Principle:**
+> Direct state assignment. No recursion. Terminal immediately.
 
 **Merge Principle:**
-> Flag OFF = no change. Flag ON = proven correct.
+> Flag OFF = no change. Flag ON = proven correct at each phase.
 
 **Evidence Principle:**
 > Capture everything. Validate deterministically. Fail loudly.
+
+**Design Principle:**
+> Bitmap over array. O(1) over O(n). Pre-commit over post-commit.
+
+---
+
+## 21. Design Revision Summary
+
+### Critical Corrections Made
+
+**1. Validation Strategy:**
+- ❌ **Old**: Single post-commit validation
+- ✅ **New**: Three-phase validation (incremental + pre-commit + sanity)
+
+**2. Primary Call Site:**
+- ❌ **Old**: `execution_slot_record_result_mapping_locked()` (post-commit)
+- ✅ **New**: `execution_slot_prepare_hash_locked()` (pre-commit)
+
+**3. Failure Handling:**
+- ❌ **Old**: `return execution_slot_finish_locked(slot, EXEC_SLOT_FAILED)` (recursion risk)
+- ✅ **New**: Direct state assignment + terminal flag (no recursion)
+
+**4. Data Structure:**
+- ❌ **Old**: Array design (9 bytes, O(n) validation)
+- ✅ **New**: Bitmap design (4 bytes, O(1) validation)
+
+**5. Validation Model:**
+- ❌ **Old**: Post-mortem (fail-slow)
+- ✅ **New**: Incremental (fail-fast) + final guard (fail-closed)
+
+### Design Improvements
+
+**Performance:**
+- 30% faster validation (84 cycles vs 120 cycles)
+- 56% smaller memory footprint (4 bytes vs 9 bytes)
+
+**Safety:**
+- Fail-fast detection (per-marker)
+- Pre-commit validation (rollback possible)
+- No recursion risk (direct state assignment)
+
+**Debuggability:**
+- Bitmap visualization (0b0111111)
+- Clear failure point (marker emission site)
+- Evidence includes bitmap state
 
 ---
 
 **Prepared By:** Kenan AY - Architectural Steward  
 **Date:** 01 May 2026  
-**Version:** 1.0  
+**Version:** 2.0 (Revised)  
 **Status:** DESIGN ONLY (Implementation NOT Started)
+
+**Revision History:**
+- v1.0 (2026-05-01): Initial design
+- v2.0 (2026-05-01): Critical corrections (validation strategy, call site, failure handling, data structure)
 
 **© 2026 Kenan AY - AykenOS Project**
