@@ -406,6 +406,12 @@ def compare_runs(run_a: RunEvidence, run_b: RunEvidence, report: dict[str, Any])
         report["violations"].append("kernel_result_fingerprint_mismatch")
     if run_a.result_size >= 0 and run_b.result_size >= 0 and run_a.result_size != run_b.result_size:
         report["violations"].append("result_size_mismatch")
+    if (
+        run_a.trace_window_sha256
+        and run_b.trace_window_sha256
+        and run_a.trace_window_sha256 != run_b.trace_window_sha256
+    ):
+        report["violations"].append("trace_window_sha256_mismatch")
 
 
 def write_outputs(

@@ -202,6 +202,37 @@ class BcibDeterminismValidatorTest(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("result_sha256_mismatch", report.get("violations", []))
 
+    def test_fail_when_trace_window_differs(self) -> None:
+        trace_a = [
+            "boot\n",
+            "[SUBMIT_BIND]\n",
+            "[QUEUE_CREATE]\n",
+            "[DEQUEUE_HIT]\n",
+            "[PICKUP]\n",
+            "[RESULT_VA]\n",
+            "[WAIT_OK]\n",
+            "[RESULT_OK]\n",
+        ]
+        trace_b = [
+            "boot\n",
+            "[SUBMIT_BIND]\n",
+            "[QUEUE_CREATE]\n",
+            "[DEQUEUE_HIT]\n",
+            "[PICKUP]\n",
+            "[RESULT_VA]\n",
+            "[WAIT_OK]\n",
+            "[RESULT_OK] extra-jitter\n",
+        ]
+        payload = b"stable-result"
+        hash_payload = b"stable-hash"
+        self._write_run(self.run_a_dir, 1, trace_a, payload, hash_payload)
+        self._write_run(self.run_b_dir, 2, trace_b, payload, hash_payload)
+
+        rc, report, evidence = self._run()
+        self.assertEqual(rc, 2)
+        self.assertIn("trace_window_sha256_mismatch", report.get("violations", []))
+        self.assertFalse(evidence["trace_window_sha256"]["match"])
+
     def test_fail_when_fallback_is_visible_inside_execution_window(self) -> None:
         trace_a = [
             "boot\n",
