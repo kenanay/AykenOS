@@ -602,10 +602,11 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-13 distributed observability: OFFICIALLY CLOSED (CI run `23706742211`, PR #81)
 - ✅ Phase-14 observability hardening: OFFICIALLY CLOSED (CI run `23999026616`)
 - ✅ Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run `24213727039`, PR #104)
-- ✅ Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (2026-04-25, commit `489868f8`)
+- ✅ Phase-16 Verification Layer MVP: COMPLETE (closure pending)
 - ✅ `CURRENT_PHASE=16` formal transition completed (`ca73da9e`)
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260413.86.1-X64, 2026-04-26)
-- 🔄 Phase-17 Execution Pipeline: PENDING (preparation phase)
+- 🔄 Phase-16 Official Closure: PENDING (awaiting remote CI PASS)
+- 🔄 Phase-17 Execution Pipeline: PENDING (after Phase-16 closure)
 
 ---
 
@@ -845,7 +846,7 @@ Phase-14 (Distributed Observability Hardening) resmi olarak KAPALI. Aşağıdaki
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (2026-04-25); CURRENT_PHASE=16; Phase-17 preparation |
+| 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: COMPLETE (closure pending); Phase-17 preparation |
 | 1.3 | 2026-04-25 | Kenan AY | Phase-15 OFFICIALLY CLOSED (CI run #24213727039, PR #104); Phase-16 Verification Layer Integration |
 | 1.2 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616) |
 | 1.1 | 2026-04-03 | Kenan AY | Phase-13 OFFICIALLY CLOSED (PR #81, CI run #23706742211); CURRENT_PHASE=14 |
