@@ -283,6 +283,30 @@ static __attribute__((noreturn)) void execution_slot_runtime_panic(const char *s
     }
 }
 
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+/*
+ * execution_slot_marker_capture_locked - Capture execution marker (write-only)
+ * 
+ * @slot: Execution slot
+ * @marker: Marker to capture
+ * 
+ * Pure write operation - NO validation, NO error handling, NO failure path.
+ * Validation happens later in Step 5 (pre-commit guard).
+ * 
+ * Rule: WRITE FIRST → VALIDATE LATER
+ * 
+ * This helper is NOT called yet (Step 4 adds call sites).
+ */
+static inline void execution_slot_marker_capture_locked(
+    exec_slot_t *slot,
+    execution_marker_t marker)
+{
+    slot->marker_bitmap |= (uint8_t)(1u << marker);
+    slot->last_marker = (uint8_t)marker;
+    slot->marker_count++;
+}
+#endif
+
 static void execution_slot_zero_slot(exec_slot_t *slot)
 {
     uint32_t i;
