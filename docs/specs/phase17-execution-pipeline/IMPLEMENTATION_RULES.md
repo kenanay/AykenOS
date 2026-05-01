@@ -387,3 +387,69 @@ Herhangi bir kural ihlali
 **Durum:** BINDING (NON-OVERRIDABLE)
 
 **© 2026 Kenan AY - AykenOS Project**
+
+
+---
+
+## 18. Implementation Progress (Phase-17)
+
+### Completed Milestones
+
+**Milestone 1: Foundation Sandbox (PR #126)**
+- Status: ✅ MERGED (commit 08098761)
+- Date: 2026-05-01
+- Deliverables:
+  - `kernel/include/execution_marker_validation.h` (pure interface)
+  - `kernel/sys/execution_marker_validation.c` (deterministic validation)
+  - `tests/unit/execution_marker_validation_test.c` (13/13 PASS)
+  - `scripts/ci/ci-gate-execution-marker-isolation.sh` (isolation gate)
+- CI: ALL PASS
+
+**Milestone 2: Integration Design (PR #127)**
+- Status: ✅ MERGED (commit 99b7c80d)
+- Date: 2026-05-01
+- Version: 2.1.2 (Validation Timing Aligned)
+- Deliverable: `docs/specs/phase17-execution-pipeline/INTEGRATION_DESIGN.md`
+- CI: ALL PASS
+
+**Milestone 3: Feature Flag + Bitmap (PR #128)**
+- Status: ✅ MERGED (commit 8cc00e5f)
+- Date: 2026-05-01
+- Changes:
+  - `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE` flag (default: 0)
+  - Bitmap fields in `exec_slot_t` (4 bytes, guarded)
+- Verification: Flag OFF = no change, Flag ON = +4 bytes
+- CI: ALL PASS
+
+### Current Milestone
+
+**Milestone 4: Marker Capture Helper**
+- Status: 🔄 IN PROGRESS
+- Branch: `phase17-marker-capture-helper`
+- Objective: Write-only capture helper (NO validation)
+- Scope: Add `execution_slot_marker_capture_locked()` to `execution_slot.c`
+- Rule: **WRITE FIRST → VALIDATE LATER**
+
+### Upcoming Milestones
+
+**Milestone 5: Marker Emission Integration**
+- Add call sites to production code
+- Return value checks mandatory
+
+**Milestone 6: Full Sequence Validation**
+- Pre-commit validation in `prepare_hash_locked()`
+- Fail-closed on invalid sequence
+
+**Milestone 7: Sanity Check**
+- Post-commit invariant check
+- Panic on violation
+
+**Milestone 8: CI Gate**
+- `ci-gate-execution-marker-runtime`
+- Marker order validation
+
+---
+
+**Phase-17 Status:** 3/8 milestones complete (37.5%)  
+**Current Focus:** Marker capture helper (write-only)  
+**Last Updated:** 2026-05-01

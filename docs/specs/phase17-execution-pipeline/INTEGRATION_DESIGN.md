@@ -1460,3 +1460,140 @@ evidence/run-<RUN_ID>/
 - v2.1.2 (2026-05-01): Validation timing alignment (pre-commit prefix, wait-path full sequence)
 
 **© 2026 Kenan AY - AykenOS Project**
+
+
+---
+
+## 22. Implementation Progress
+
+### ✅ Completed Steps
+
+#### Step 1: Design Document (PR #127)
+- **Status:** ✅ MERGED (commit 99b7c80d)
+- **Date:** 2026-05-01
+- **Version:** 2.1.2 (Validation Timing Aligned)
+- **CI:** ALL PASS (10/10 gates + freeze)
+- **Deliverable:** `docs/specs/phase17-execution-pipeline/INTEGRATION_DESIGN.md`
+
+#### Step 2: Feature Flag + Bitmap Structure (PR #128)
+- **Status:** ✅ MERGED (commit 8cc00e5f)
+- **Date:** 2026-05-01
+- **Changes:**
+  - Added `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE` flag (default: 0)
+  - Added bitmap fields to `exec_slot_t` (4 bytes, guarded)
+  - Added flag validation (0 or 1 only)
+  - Added flag to build stamp
+- **Verification:**
+  - Flag OFF: no behavior change, struct size unchanged
+  - Flag ON: struct +4 bytes, fields unused
+- **CI:** ALL PASS (10/10 gates + freeze)
+- **Files:** `Makefile`, `kernel/include/execution_slot.h`
+
+---
+
+### 🔄 In Progress
+
+#### Step 3: Marker Capture Helper
+- **Status:** 🔄 IN PROGRESS
+- **Branch:** `phase17-marker-capture-helper`
+- **Objective:** Add write-only capture helper (NO validation, NO call sites)
+- **Scope:**
+  - Add `execution_slot_marker_capture_locked()` to `kernel/sys/execution_slot.c`
+  - Pure write: `marker_bitmap`, `last_marker`, `marker_count`
+  - **NO validation logic**
+  - **NO error handling**
+  - **NO return value**
+  - **NO call sites** (Step 4)
+- **Implementation:**
+  ```c
+  #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+  static inline void execution_slot_marker_capture_locked(
+      exec_slot_t *slot,
+      execution_marker_t marker)
+  {
+      // Pure write - no validation, no checks, no failure
+      slot->marker_bitmap |= (uint8_t)(1u << marker);
+      slot->last_marker = (uint8_t)marker;
+      slot->marker_count++;
+  }
+  #endif
+  ```
+- **Expected:**
+  - Flag OFF: helper not compiled
+  - Flag ON: helper compiled but unused
+  - No behavior change (helper not called)
+  - CI: ALL PASS
+
+---
+
+### 🔜 Upcoming Steps
+
+#### Step 4: Marker Emission Integration
+- **Objective:** Add call sites to production code
+- **Scope:**
+  - Add guarded calls to 7 emission points
+  - **Return value checks mandatory** (all call sites)
+  - Evidence generation on failure
+- **Call Sites:**
+  1. `execution_slot_pickup_locked()` → EXEC_START
+  2. `execution_slot_write_output_v()` → EXEC_OUTPUT_WRITTEN
+  3. `execution_slot_finish_locked()` → EXEC_COMPLETE_OK
+  4. `execution_slot_prepare_result_locked()` → VERIFY_START
+  5. `execution_slot_prepare_hash_locked()` → VERIFY_PASS
+  6. `execution_slot_record_result_mapping_locked()` → RESULT_OK
+  7. Userspace `wait_result` syscall → WAIT_OK
+- **Verification:**
+  - Flag OFF: regression test PASS
+  - Flag ON: markers captured correctly
+  - QEMU/debugcon evidence shows marker sequence
+
+#### Step 5: Full Sequence Validation (Pre-Commit)
+- **Objective:** Add validation to `prepare_hash_locked()`
+- **Scope:**
+  - Prefix validation (markers 0-4 present)
+  - Fail-closed on invalid sequence
+  - Direct state set (no `finish_locked()` recursion)
+  - Error code recorded
+- **Verification:**
+  - Flag OFF: regression test PASS
+  - Flag ON + valid: execution succeeds
+  - Flag ON + invalid: execution fails (EXEC_SLOT_FAILED)
+
+#### Step 6: Sanity Check (Post-Commit)
+- **Objective:** Add invariant check to `record_result_mapping_locked()`
+- **Scope:**
+  - Check marker count == MARKER_COUNT
+  - Panic on violation (should never happen)
+- **Verification:**
+  - Flag OFF: regression test PASS
+  - Flag ON: sanity check never triggers
+
+#### Step 7: CI Gate
+- **Objective:** Add `ci-gate-execution-marker-runtime`
+- **Scope:**
+  - Validate marker order in kernel output
+  - Detect validation failures
+  - Evidence format validation
+- **Verification:**
+  - Gate PASS with flag ON
+  - Gate detects marker order violations
+
+---
+
+### 📊 Progress Summary
+
+| Step | Status | PR | Commit | Date |
+|------|--------|-----|--------|------|
+| 1. Design | ✅ MERGED | #127 | 99b7c80d | 2026-05-01 |
+| 2. Flag + Bitmap | ✅ MERGED | #128 | 8cc00e5f | 2026-05-01 |
+| 3. Capture Helper | 🔄 IN PROGRESS | TBD | TBD | TBD |
+| 4. Emission Integration | 🔜 TODO | TBD | TBD | TBD |
+| 5. Validation (Pre-Commit) | 🔜 TODO | TBD | TBD | TBD |
+| 6. Sanity Check | 🔜 TODO | TBD | TBD | TBD |
+| 7. CI Gate | 🔜 TODO | TBD | TBD | TBD |
+
+---
+
+**Implementation Status:** Step 3 IN PROGRESS  
+**Last Updated:** 2026-05-01  
+**Next Milestone:** Marker capture helper (write-only, no validation)
