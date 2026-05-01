@@ -26,7 +26,48 @@ Aynı BCIB + aynı execution_context_snapshot
 
 ---
 
-## 2. Execution Slot Kuralları
+## 2. Production Code Immutability (NON-OVERRIDABLE)
+
+**Temel Kural:**
+> `kernel/sys/execution_slot.c` ve ilgili production dosyalar OVERWRITE EDİLEMEZ
+
+**Yasaklar:**
+- ❌ Production dosya overwrite (prototype ile değiştirme)
+- ❌ Büyük refactor (toplu silme/değiştirme)
+- ❌ Satır sayısı düşürme (1500+ → 500)
+- ❌ Kritik sembollerin silinmesi
+
+**İzin Verilenler:**
+- ✅ Yeni dosya ekleme (`execution_marker_validation.c`)
+- ✅ Guarded include ekleme (`#ifdef AYKEN_FEATURE`)
+- ✅ Küçük additive değişiklikler
+
+**Enforcement:**
+```bash
+# CI gate zorunlu
+ci-gate-execution-slot-integrity
+
+# Kontroller:
+- Line count >= 1500 (execution_slot.c)
+- Critical markers present (g_execution_slots, prepare_result, etc.)
+- No prototype indicators (malloc, printf, etc.)
+```
+
+**İhlal Sonucu:**
+> CI FAIL → merge BLOCKED
+
+**Rationale:**
+- Deterministic execution pipeline korunur
+- Evidence chain bozulmaz
+- CI authority geçerliliği sürer
+
+**Incident Reference:**
+> Commit b3e2aee7: 1910 satır production code yanlışlıkla prototype ile overwrite edildi.
+> Recovery: Revert + integrity gate eklendi.
+
+---
+
+## 3. Execution Slot Kuralları
 
 **Temel Kural:**
 > Tüm execution state değişimleri **yalnızca** `execution_slot` içinde yapılır

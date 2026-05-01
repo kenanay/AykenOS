@@ -84,3 +84,4 @@ AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md
 # local experiments
 _wip_local/
 kernel/include/embedded_elf.h
+tests/unit/execution_marker_validation_test
