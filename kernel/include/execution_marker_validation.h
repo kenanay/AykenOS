@@ -91,8 +91,8 @@ execution_marker_validate_transition(
  * returns: marker name string (static, never NULL)
  * 
  * NOTE:
- * This is the ONLY function that may be used for I/O.
- * The string is static and requires no allocation.
+ * No I/O is performed.
+ * Returns static string; no allocation.
  */
 const char *
 execution_marker_name(execution_marker_t marker);

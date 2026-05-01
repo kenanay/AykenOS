@@ -609,10 +609,10 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-13 distributed observability: OFFICIALLY CLOSED (CI run `23706742211`, PR #81)
 - ✅ Phase-14 observability hardening: OFFICIALLY CLOSED (CI run `23999026616`)
 - ✅ Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run `24213727039`, PR #104)
-- ✅ Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (CI run `25214173242`, tag `phase16-official-closure`)
+- ✅ Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (CI run `25214669681`, tag `phase16-official-closure`)
 - ✅ `CURRENT_PHASE=16` formal transition completed (`ca73da9e`)
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260413.86.1-X64, 2026-04-26)
-- ✅ Phase-16 Official Closure: COMPLETE (commit `a359028c`, tag `phase16-official-closure`)
+- ✅ Phase-16 Official Closure: COMPLETE (commit `a56ec7c0`, tag `phase16-official-closure`)
 - 🔄 Phase-17 Execution Pipeline: READY TO START (Phase-16 closure confirmed)
 
 ---
@@ -841,7 +841,7 @@ Phase-14 (Distributed Observability Hardening) resmi olarak KAPALI. Aşağıdaki
 
 ## 15.2 Phase-16 Post-Closure Immutability Lock
 
-**Effective:** 2026-05-01 | **Authority:** CI run `25214173242` | **HEAD SHA:** `a359028cca8a5f55719906415353174b75ea1c30` | **Tag:** `phase16-official-closure`
+**Effective:** 2026-05-01 | **Authority:** CI run `25214669681` | **HEAD SHA:** `a56ec7c001f2a2a5f918beb349297d5fe03dce87` | **Tag:** `phase16-official-closure`
 
 Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme dosyaları **değiştirilemez (IMMUTABLE)**:
 
@@ -859,7 +859,7 @@ Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme d
 - `verification_mode: external` — Phase-16 external verification iddiası geriye dönük olarak değiştirilemez
 - `real_execution: false` — Phase-16 real execution olmadığı iddiası geriye dönük olarak değiştirilemez
 - Limitations listesi — Phase-16 kısıtlamaları geriye dönük olarak değiştirilemez
-- Evidence snapshot — `evidence/phase16-final/` klasörü geriye dönük olarak değiştirilemez
+- Evidence snapshot — `evidence/phase16-final-corrected/` klasörü geriye dönük olarak değiştirilemez
 
 **Etiket Koruması:** `phase16-official-closure` etiketi korumalıdır; force-push yasaktır. Yeni bir kapanış iddiası yeni bir etiket gerektirir.
 
@@ -883,7 +883,7 @@ Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme d
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.5 | 2026-05-01 | Kenan AY | Phase-16 OFFICIALLY CLOSED (CI run #25214173242, tag phase16-official-closure); Phase-17 ready to start |
+| 1.5 | 2026-05-01 | Kenan AY | Phase-16 OFFICIALLY CLOSED (CI run #25214669681, commit a56ec7c0, tag phase16-official-closure); Phase-17 ready to start |
 | 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: COMPLETE (closure pending); Phase-17 preparation |
 | 1.3 | 2026-04-25 | Kenan AY | Phase-15 OFFICIALLY CLOSED (CI run #24213727039, PR #104); Phase-16 Verification Layer Integration |
 | 1.2 | 2026-04-08 | Kenan AY | Phase-14 distributed observability hardening: OFFICIALLY CLOSED (CI run ci-freeze#23999026616) |
