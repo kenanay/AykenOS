@@ -48,6 +48,13 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Mechanism:** wake/block, IRQ-tail reschedule (Ring0)
 - **Policy:** run-queue decisions, scheduling logic (Ring3)
 - **Fallback:** Isolated with feature flag or removed
+
+#### Production Code Protection (Phase-17+)
+- **Protected Files:** `kernel/sys/execution_slot.c`, `kernel/include/execution_slot.h`
+- **Rule:** Overwrite FORBIDDEN, changes ADDITIVE only
+- **Enforcement:** `ci-gate-execution-slot-integrity` (line count + symbol check)
+- **Rationale:** Deterministic execution pipeline immutability
+- **Incident:** Commit b3e2aee7 (1910 lines overwritten, reverted, gate added)
 - **Arbitration Contract (Yol A):** Ring3 `stage_next` = hint, Ring0 = final arbiter (accept/veto + fail-closed)
 - **Decision Record:** `docs/architecture-board/decisions/20260214-scheduler-arbitration-contract.md`
 

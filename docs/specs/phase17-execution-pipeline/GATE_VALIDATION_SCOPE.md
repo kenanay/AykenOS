@@ -8,6 +8,81 @@
 
 ---
 
+## 0. ci-gate-execution-slot-integrity
+
+### 0.1 Kapsam
+
+**Ölçer:**
+- ✅ Production code line count (execution_slot.c >= 1500)
+- ✅ Critical kernel symbols present
+- ✅ No prototype code indicators
+- ✅ File structure integrity
+
+**Ölçmez:**
+- ❌ Runtime behavior
+- ❌ Execution correctness
+- ❌ Performance
+- ❌ BCIB processing
+
+### 0.2 Guarantee Level
+
+```json
+{
+  "gate": "execution-slot-integrity",
+  "guarantee_level": "structural_protection",
+  "does_prove": [
+    "production_code_not_overwritten",
+    "critical_symbols_present",
+    "no_prototype_contamination"
+  ],
+  "does_not_prove": [
+    "runtime_correctness",
+    "determinism",
+    "execution_validity"
+  ]
+}
+```
+
+### 0.3 Validation Method
+
+**Checks:**
+```bash
+# Line count minimum
+execution_slot.c >= 1500 lines
+execution_slot.h >= 100 lines
+
+# Critical markers
+g_execution_slots
+execution_slot_prepare_result_locked
+AYKEN_BCIB_STUB_RESULT_VALUE_U64
+execution_slot_debugcon_write
+AYKEN_MAX_EXECUTION_SLOTS
+
+# Prototype indicators (should NOT be present)
+malloc, printf, fprintf, HELLO_BCIB_EXECUTION
+```
+
+### 0.4 Purpose
+
+**Protection Against:**
+- Accidental overwrite with prototype code
+- Production code deletion
+- Critical symbol removal
+
+**Incident Reference:**
+> Commit b3e2aee7: 1910 lines of production code accidentally overwritten.
+> Gate added to prevent recurrence.
+
+### 0.5 Yanlış Yorumlar
+
+❌ **YANLIŞ:** "Integrity gate PASS → execution doğru"  
+✅ **DOĞRU:** "Integrity gate PASS → production code korunmuş"
+
+❌ **YANLIŞ:** "Gate determinism garanti eder"  
+✅ **DOĞRU:** "Gate structural integrity garanti eder"
+
+---
+
 ## 1. ci-gate-bcib-stub-build-integrity
 
 ### 1.1 Kapsam
