@@ -917,6 +917,7 @@ BCIB_DETERMINISM_SOURCE_DIR ?= evidence/bcib-kernel-determinism
 BCIB_DETERMINISM_RUN_A_DIR ?= $(BCIB_DETERMINISM_SOURCE_DIR)/run-1
 BCIB_DETERMINISM_RUN_B_DIR ?= $(BCIB_DETERMINISM_SOURCE_DIR)/run-2
 BCIB_DETERMINISM_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/bcib-determinism
+BCIB_STUB_DETERMINISM_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/bcib-stub-determinism
 PHASE11_KPL_ABDF_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/abdf-snapshot-identity
 PHASE11_KPL_EXECUTION_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/execution-identity
 PHASE11_KPL_REPLAY_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/replay-v1
@@ -2181,8 +2182,8 @@ ci-gate-bcib-stub-determinism: ci-evidence-dir
 	@echo "NOTE: Does NOT validate runtime determinism or full BCIB pipeline."
 	@BCIB_KERNEL_PROFILE="validation" \
 	 bash scripts/ci/gate_bcib_kernel_determinism.sh \
-		--evidence-dir "$(BCIB_DETERMINISM_EVIDENCE_DIR)"
-	@cp -f "$(BCIB_DETERMINISM_EVIDENCE_DIR)/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-stub-determinism.json"
+		--evidence-dir "$(BCIB_STUB_DETERMINISM_EVIDENCE_DIR)"
+	@cp -f "$(BCIB_STUB_DETERMINISM_EVIDENCE_DIR)/report.json" "$(EVIDENCE_RUN_DIR)/reports/bcib-stub-determinism.json"
 	@echo "OK: bcib-stub-determinism evidence at $(EVIDENCE_RUN_DIR)"
 
 # ci-gate-bcib-determinism: real execution determinism (stub=OFF, Phase-17 backlog)
