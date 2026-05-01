@@ -8,6 +8,14 @@
 #include "execution_output_structured_abi.h"
 #include "execution_result_hash_abi.h"
 
+#ifndef AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+#define AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE 0
+#endif
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+#include "execution_marker_validation.h"
+#endif
+
 #define AYKEN_MAX_EXECUTION_SLOTS 64u
 #define AYKEN_MAX_EXECUTION_CONTEXT_QUEUES 64u
 #define AYKEN_EXECUTION_INVALID_INDEX UINT32_MAX
@@ -81,6 +89,12 @@ typedef struct exec_slot {
     uint32_t trace_count;
     uint32_t trace_head;
     execution_trace_entry_t trace_entries[AYKEN_EXECUTION_TRACE_CAPACITY];
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    uint8_t marker_bitmap;
+    uint8_t last_marker;
+    uint8_t marker_count;
+    uint8_t marker_error_code;
+#endif
 } exec_slot_t;
 
 typedef struct execution_context_queue {
