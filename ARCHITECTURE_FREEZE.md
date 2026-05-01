@@ -1,7 +1,7 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.4  
+**Version:** 1.5  
 **Status:** ACTIVE FREEZE (Phase-17 Execution Pipeline)  
 **Effective Date:** 2026-02-13  
 **Last Update:** 2026-05-01 (Phase-16 Official Closure + Phase-17 Preparation)  
