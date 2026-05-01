@@ -293,6 +293,9 @@ static __attribute__((noreturn)) void execution_slot_runtime_panic(const char *s
  * Pure write operation - NO validation, NO error handling, NO failure path.
  * Validation happens later in Step 5 (pre-commit guard).
  * 
+ * Fail-fast: Once an error occurs, all subsequent marker captures are ignored.
+ * This ensures deterministic trace and prevents garbage data.
+ * 
  * Rule: WRITE FIRST → VALIDATE LATER
  * 
  * This helper is NOT called yet (Step 4 adds call sites).
@@ -301,15 +304,20 @@ static inline void execution_slot_marker_capture_locked(
     exec_slot_t *slot,
     execution_marker_t marker)
 {
+    // Fail-fast: if error already occurred, stop processing markers
+    if (slot->marker_error_code != 0) {
+        return;
+    }
+    
     slot->marker_bitmap |= (uint8_t)(1u << marker);
     slot->last_marker = (uint8_t)marker;
     
-    // Bounds-safe sequence capture for validation
+    // Bounds-safe sequence capture with overflow protection
     if (slot->marker_count < 7) {
         slot->marker_sequence[slot->marker_count] = (uint8_t)marker;
         slot->marker_count++;
     } else {
-        // Overflow: signal error but don't corrupt sequence array
+        // Overflow: signal error and stop further marker processing
         slot->marker_error_code = 3;  // Marker overflow
     }
 }
