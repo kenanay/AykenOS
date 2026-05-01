@@ -223,20 +223,59 @@ if (slot->last_marker != MARKER_INVALID) {
 
 ---
 
-### Phase 2 (Full Sequence): Complete Sequence Check
+### Phase 2 (Pre-Commit): Verified Prefix Check
 
-**Rule:** All markers present, exact count
+**Rule:** Markers through `MARKER_VERIFY_PASS` are present, exact count
 
 **Enforces:**
-- Complete sequence (bitmap == MARKER_MASK)
-- Exact count (marker_count == MARKER_COUNT)
-- No missing markers
+- Verified prefix is complete before result mapping
+- Prefix bitmap matches `MARKER_VERIFY_PREFIX_MASK`
+- Prefix count matches `MARKER_VERIFY_PREFIX_COUNT`
+- Last marker is `MARKER_VERIFY_PASS`
 
 **Example:**
 ```c
-// Valid: bitmap = 0b01111111 (all 7 markers present)
-// Invalid: bitmap = 0b01011111 (marker 5 missing)
+// Valid before result mapping: bitmap = 0b00011111 (markers 0..4 present)
+// Invalid before result mapping: bitmap = 0b00001111 (VERIFY_PASS missing)
 ```
+
+---
+
+### Phase 3 (Publish Boundary): Result Prefix Check
+
+**Rule:** `MARKER_RESULT_OK` is emitted only after result mapping succeeds.
+
+**Enforces:**
+- Verified prefix is still intact before mapping
+- `RESULT_OK` is the exact next marker after successful mapping
+- Mapping is not attempted from invalid marker state
+
+**Example:**
+```c
+// Valid before RESULT_OK: bitmap = 0b00011111 (markers 0..4 present)
+// Valid after RESULT_OK:  bitmap = 0b00111111 (markers 0..5 present)
+```
+
+---
+
+### Phase 4 (Wait Path): Full Sequence Check
+
+**Rule:** Full canonical sequence is validated only after `MARKER_WAIT_OK`.
+
+**Enforces:**
+- Complete sequence is checked after the final marker can exist
+- Full bitmap matches `MARKER_MASK`
+- Full count matches `MARKER_COUNT`
+- No missing markers before successful `wait_result` return
+
+**Example:**
+```c
+// Valid after WAIT_OK: bitmap = 0b01111111 (all 7 markers present)
+// Invalid after WAIT_OK: bitmap = 0b00111111 (WAIT_OK missing)
+```
+
+**Critical Rule:**
+> `MARKER_WAIT_OK` is emitted in the userspace `wait_result` syscall. Therefore, any check requiring all 7 markers MUST run in the wait path, not in `execution_slot_prepare_hash_locked()`.
 
 ---
 
@@ -248,13 +287,19 @@ if (slot->last_marker != MARKER_INVALID) {
 - **Fail-fast**: Errors detected immediately at emission time
 - **CI alignment**: Existing tests assume strict sequential
 
-**Why strict sequential in Phase 2?**
-- Pre-commit guard: Must be complete before publish
-- Evidence: Full sequence proves execution integrity
-- Consistency: Same rule in both phases (simpler)
+**Why prefix validation in Phase 2?**
+- Pre-commit guard: Markers through `VERIFY_PASS` must be complete before publish
+- Correct timing: `RESULT_OK` and `WAIT_OK` cannot exist before result mapping and wait
+- Fail-closed: Invalid pre-publish state is rejected before result mapping
+- Header alignment: Prefixes are valid inputs to `execution_marker_validate()`
+
+**Why full validation in Phase 4?**
+- Complete sequence can only exist after `WAIT_OK`
+- Final evidence proves execution integrity before successful wait return
+- Missing result or wait markers are caught at the first point where they can be required
 
 **Rule:**
-> Phase 1 = strict sequential (fail-fast). Phase 2 = complete sequence (fail-closed).
+> Phase 1 = strict sequential (fail-fast). Phase 2 = verified prefix (fail-closed before mapping). Phase 3 = result boundary guard. Phase 4 = full sequence after `WAIT_OK` (fail-closed before successful wait return).
 
 ---
 
@@ -278,11 +323,11 @@ if (slot->last_marker != MARKER_INVALID) {
 4. Migrate Phase 1 to monotonic check
 
 **Current Decision:**
-> Phase-17 uses **strict sequential** in both phases. Monotonic is future work.
+> Phase-17 uses **strict sequential** for every emitted transition. Monotonic is future work.
 
 ---
 
-## 7. Validation Strategy (Two-Phase)
+## 7. Validation Strategy (Staged)
 
 ### Phase 1: Incremental Validation (Per-Marker)
 
@@ -308,6 +353,7 @@ static inline int execution_slot_emit_marker_locked(exec_slot_t *slot,
             execution_slot_emit_marker_validation_failure(slot, result);
             slot->state = EXEC_SLOT_FAILED;
             slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+            slot->marker_error_code = result;
             return -EINVAL;
         }
     }
@@ -317,6 +363,7 @@ static inline int execution_slot_emit_marker_locked(exec_slot_t *slot,
         execution_slot_emit_marker_validation_failure(slot, MARKER_VALIDATION_DUPLICATE);
         slot->state = EXEC_SLOT_FAILED;
         slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = MARKER_VALIDATION_DUPLICATE;
         return -EINVAL;
     }
     
@@ -337,13 +384,13 @@ static inline int execution_slot_emit_marker_locked(exec_slot_t *slot,
 
 ---
 
-### Phase 2: Full Sequence Validation (Pre-Commit)
+### Phase 2: Verified Prefix Validation (Pre-Commit)
 
 **Location:** `execution_slot_prepare_hash_locked()` (after hash computation)
 
 **Timing:** After VERIFY_PASS, before result mapping
 
-**Purpose:** Final guard before commit
+**Purpose:** Final pre-publish guard for markers that can exist before result mapping
 
 **Logic:**
 ```c
@@ -352,9 +399,21 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
     // ... existing hash computation ...
     
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    // Full sequence validation (final guard)
+    // Verified prefix validation (markers 0..4)
     marker_validation_result_t validation_result;
     
+    if (slot->marker_bitmap != MARKER_VERIFY_PREFIX_MASK ||
+        slot->marker_count != MARKER_VERIFY_PREFIX_COUNT ||
+        slot->last_marker != MARKER_VERIFY_PASS) {
+        execution_slot_emit_marker_validation_failure(slot,
+                                                      MARKER_VALIDATION_MISSING);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = MARKER_VALIDATION_MISSING;
+        execution_slot_release_hash_backing_locked(slot);
+        return -EINVAL;
+    }
+
     // Reconstruct marker array from bitmap
     execution_marker_t markers[MARKER_COUNT];
     uint8_t count = 0;
@@ -371,6 +430,7 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
         execution_slot_emit_marker_validation_failure(slot, validation_result);
         slot->state = EXEC_SLOT_FAILED;
         slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = validation_result;
         execution_slot_release_hash_backing_locked(slot);
         return -EINVAL;
     }
@@ -383,19 +443,19 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
 
 **Rationale:**
 1. **Pre-commit guard**: Validation before result mapping (rollback still possible)
-2. **Full sequence check**: Ensures no gaps or missing markers
+2. **Correct timing**: Only markers through `VERIFY_PASS` can exist at this point
 3. **Safe failure point**: Hash can be released, no userspace visibility yet
 4. **Terminal state**: Direct state set, no `finish_locked()` recursion
 
 ---
 
-### Phase 3: Sanity Check (Post-Commit - Optional)
+### Phase 3: Result Mapping Guard (Publish Boundary)
 
 **Location:** `execution_slot_record_result_mapping_locked()`
 
-**Timing:** After result mapping (sanity check only)
+**Timing:** Before and after result mapping
 
-**Purpose:** Detect invariant violations (should never fail if Phase 2 passed)
+**Purpose:** Guard the publish boundary and emit `RESULT_OK` only after mapping succeeds
 
 **Logic:**
 ```c
@@ -407,25 +467,94 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
     // ... existing validation ...
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    // Sanity check: marker validation should have passed in Phase 2
-    if (slot->marker_count != MARKER_COUNT) {
-        // This should NEVER happen (Phase 2 should have caught it)
-        execution_slot_runtime_panic("marker_validation_invariant_violation",
+    // Pre-publish guard: RESULT_OK cannot be emitted safely unless the
+    // verified prefix is still intact.
+    if (slot->marker_bitmap != MARKER_VERIFY_PREFIX_MASK ||
+        slot->marker_count != MARKER_VERIFY_PREFIX_COUNT ||
+        slot->last_marker != MARKER_VERIFY_PASS) {
+        execution_slot_emit_marker_validation_failure(slot,
+                                                      MARKER_VALIDATION_MISSING);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = MARKER_VALIDATION_MISSING;
+        return -EINVAL;
+    }
+#endif
+
+    // ... existing mapping logic ...
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    int result = execution_slot_emit_marker_locked(slot, MARKER_RESULT_OK);
+    if (result != 0) {
+        // The pre-publish guard should make this impossible under the slot lock.
+        execution_slot_runtime_panic("marker_result_emit_invariant_violation",
                                      slot,
                                      slot->state,
                                      EXEC_SLOT_FAILED);
     }
 #endif
 
-    // ... existing mapping logic ...
     return 0;
 }
 ```
 
 **Rationale:**
-1. **Invariant check**: Detects logic bugs in Phase 1/2
-2. **Panic on violation**: Should never fail in correct implementation
-3. **Defense in depth**: Extra safety layer
+1. **Pre-publish guard**: Invalid prefix state cannot be mapped
+2. **Marker timing**: `RESULT_OK` is emitted after mapping succeeds
+3. **Invariant panic**: Failure after the pre-publish guard indicates a logic bug
+
+---
+
+### Phase 4: Full Sequence Validation (Wait Path)
+
+**Location:** Userspace `wait_result` syscall path
+
+**Timing:** After `WAIT_OK` is emitted, before returning wait success
+
+**Purpose:** Final guard for the complete canonical marker sequence
+
+**Logic:**
+```c
+static int execution_slot_wait_result_locked(exec_slot_t *slot)
+{
+    // ... existing wait/result retrieval logic ...
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    if (slot->marker_bitmap != MARKER_RESULT_PREFIX_MASK ||
+        slot->marker_count != MARKER_RESULT_PREFIX_COUNT ||
+        slot->last_marker != MARKER_RESULT_OK) {
+        execution_slot_emit_marker_validation_failure(slot,
+                                                      MARKER_VALIDATION_MISSING);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = MARKER_VALIDATION_MISSING;
+        return -EINVAL;
+    }
+
+    int result = execution_slot_emit_marker_locked(slot, MARKER_WAIT_OK);
+    if (result != 0) {
+        return -EINVAL;
+    }
+
+    if (slot->marker_bitmap != MARKER_MASK ||
+        slot->marker_count != MARKER_COUNT) {
+        execution_slot_emit_marker_validation_failure(slot,
+                                                      MARKER_VALIDATION_MISSING);
+        slot->state = EXEC_SLOT_FAILED;
+        slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+        slot->marker_error_code = MARKER_VALIDATION_MISSING;
+        return -EINVAL;
+    }
+#endif
+
+    return 0;
+}
+```
+
+**Rationale:**
+1. **Correct timing**: The full 7-marker sequence can only exist after `WAIT_OK`
+2. **Fail-closed wait**: Invalid final sequence returns failure instead of wait success
+3. **Evidence completeness**: Final evidence includes `RESULT_OK` and `WAIT_OK`
 
 ---
 
@@ -434,11 +563,12 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
 | Phase | Location | Timing | Purpose | Failure Mode |
 |-------|----------|--------|---------|--------------|
 | **1. Incremental** | Marker emission | Per-marker | Fail-fast transition check | `EXEC_SLOT_FAILED` (direct) |
-| **2. Full Sequence** | `prepare_hash_locked()` | Pre-commit | Final guard before mapping | `EXEC_SLOT_FAILED` (direct) |
-| **3. Sanity Check** | `record_result_mapping_locked()` | Post-commit | Invariant verification | `panic()` (should never fail) |
+| **2. Verified Prefix** | `prepare_hash_locked()` | Pre-commit | Guard markers 0..4 before mapping | `EXEC_SLOT_FAILED` (direct) |
+| **3. Result Boundary** | `record_result_mapping_locked()` | Publish boundary | Guard prefix, emit `RESULT_OK` | `EXEC_SLOT_FAILED` or `panic()` |
+| **4. Full Sequence** | `wait_result` syscall | Before wait success | Validate all 7 markers | `EXEC_SLOT_FAILED` (direct) |
 
 **Critical Rule:**
-> Phase 1 and Phase 2 use **direct state assignment**. NO `finish_locked()` recursion.
+> Normal validation failures use **direct state assignment**. NO `finish_locked()` recursion. Panic is reserved for impossible invariant violations after a preflight guard.
 
 ---
 
@@ -469,15 +599,15 @@ if (result != 0) {
     // CRITICAL: Caller MUST check return value
     slot->state = EXEC_SLOT_FAILED;
     slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
-    slot->marker_error_code = validation_result;  // Record failure reason
+    slot->marker_error_code = result;  // Record failure reason
     execution_slot_emit_marker_validation_failure(slot, result);
     return -EINVAL;
 }
 ```
 
-**Phase 2 Failure (Pre-Commit):**
+**Phase 2 Failure (Pre-Commit Prefix):**
 ```c
-// Hash preparation fails
+// Hash preparation / verified-prefix validation fails
 execution_slot_prepare_hash_locked(slot);
 // Returns: -EINVAL
 
@@ -490,13 +620,33 @@ execution_slot_emit_marker_validation_failure(slot, result);
 return -EINVAL;
 ```
 
-**Phase 3 Failure (Sanity Check):**
+**Phase 3 Failure (Result Boundary):**
+```c
+// Pre-publish prefix guard fails before mapping
+slot->state = EXEC_SLOT_FAILED;
+slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+slot->marker_error_code = validation_result;
+execution_slot_emit_marker_validation_failure(slot, result);
+return -EINVAL;
+```
+
+**Phase 3 Invariant Violation (Post-Mapping Emit):**
 ```c
 // Should NEVER happen (invariant violation)
-execution_slot_runtime_panic("marker_validation_invariant_violation",
+execution_slot_runtime_panic("marker_result_emit_invariant_violation",
                              slot,
                              slot->state,
                              EXEC_SLOT_FAILED);
+```
+
+**Phase 4 Failure (Wait Path Full Sequence):**
+```c
+// Full sequence validation fails before successful wait_result return
+slot->state = EXEC_SLOT_FAILED;
+slot->flags |= EXEC_SLOT_FLAG_TERMINAL;
+slot->marker_error_code = validation_result;
+execution_slot_emit_marker_validation_failure(slot, result);
+return -EINVAL;
 ```
 
 **Critical Rules:**
@@ -518,8 +668,9 @@ execution_slot_runtime_panic("marker_validation_invariant_violation",
    - Debugcon marker for CI/debug analysis
 
 5. **Resource cleanup**
-   - Phase 2: Release hash backing on failure
-   - No result buffer publish
+   - Phase 2: Release hash backing on prefix validation failure
+   - Phase 3: No result buffer publish when pre-publish guard fails
+   - Phase 4: No successful `wait_result` return when full sequence validation fails
 
 6. **Return value enforcement (CRITICAL)**
    - **ALL call sites MUST check return value**
@@ -534,7 +685,6 @@ execution_slot_runtime_panic("marker_validation_invariant_violation",
 | `MARKER_VALIDATION_MISSING` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_MISSING` | `[[MARKER_VALIDATION_FAIL]] reason=MISSING` |
 | `MARKER_VALIDATION_DUPLICATE` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_DUPLICATE` | `[[MARKER_VALIDATION_FAIL]] reason=DUPLICATE` |
 | `MARKER_VALIDATION_OUT_OF_BOUNDS` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_OUT_OF_BOUNDS` | `[[MARKER_VALIDATION_FAIL]] reason=OUT_OF_BOUNDS` |
-| `MARKER_VALIDATION_NON_MONOTONIC` | `EXEC_SLOT_FAILED` | YES | `MARKER_ERROR_NON_MONOTONIC` | `[[MARKER_VALIDATION_FAIL]] reason=NON_MONOTONIC` |
 
 **Evidence Format:**
 ```
@@ -543,7 +693,7 @@ execution_slot_runtime_panic("marker_validation_invariant_violation",
 
 **Example:**
 ```
-[[MARKER_VALIDATION_FAIL]] exec_id=123 generation=1 reason=NON_MONOTONIC error_code=5 bitmap=0b0001111 last=3 count=4
+[[MARKER_VALIDATION_FAIL]] exec_id=123 generation=1 reason=INVALID_ORDER error_code=1 bitmap=0b0001111 last=3 count=4
 ```
 
 **Rule:**
@@ -587,7 +737,6 @@ typedef struct exec_slot {
 #define MARKER_ERROR_MISSING             2
 #define MARKER_ERROR_DUPLICATE           3
 #define MARKER_ERROR_OUT_OF_BOUNDS       4
-#define MARKER_ERROR_NON_MONOTONIC       5
 ```
 
 **Rationale:**
@@ -614,12 +763,17 @@ typedef struct exec_slot {
 slot->marker_bitmap = 0;
 slot->last_marker = MARKER_INVALID;  // 0xFF
 slot->marker_count = 0;
+slot->marker_error_code = MARKER_ERROR_NONE;
 ```
 
 **Constants (Future-Proof):**
 ```c
 #define MARKER_INVALID 0xFF
-#define MARKER_MASK ((1 << MARKER_COUNT) - 1)  // 0b01111111 for 7 markers
+#define MARKER_MASK ((1u << MARKER_COUNT) - 1u)  // 0b01111111 for 7 markers
+#define MARKER_VERIFY_PREFIX_COUNT ((uint8_t)(MARKER_VERIFY_PASS + 1u))
+#define MARKER_VERIFY_PREFIX_MASK ((uint8_t)((1u << MARKER_VERIFY_PREFIX_COUNT) - 1u))
+#define MARKER_RESULT_PREFIX_COUNT ((uint8_t)(MARKER_RESULT_OK + 1u))
+#define MARKER_RESULT_PREFIX_MASK ((uint8_t)((1u << MARKER_RESULT_PREFIX_COUNT) - 1u))
 ```
 
 **Marker Emission:**
@@ -643,16 +797,23 @@ slot->last_marker = marker;
 slot->marker_count++;
 ```
 
+**Pre-Commit Prefix Validation:**
+```c
+// Check markers through VERIFY_PASS before result mapping
+if (slot->marker_bitmap != MARKER_VERIFY_PREFIX_MASK ||
+    slot->marker_count != MARKER_VERIFY_PREFIX_COUNT ||
+    slot->last_marker != MARKER_VERIFY_PASS) {
+    return -EINVAL;  // Missing or invalid verified prefix
+}
+```
+
 **Full Sequence Validation:**
 ```c
-// Check all markers present (Phase 2: Complete sequence)
-if (slot->marker_bitmap != MARKER_MASK) {
-    return -EINVAL;  // Missing markers
-}
-
-// Check count matches
-if (slot->marker_count != MARKER_COUNT) {
-    return -EINVAL;  // Count mismatch
+// Check all markers after WAIT_OK, before successful wait_result return
+if (slot->marker_bitmap != MARKER_MASK ||
+    slot->marker_count != MARKER_COUNT ||
+    slot->last_marker != MARKER_WAIT_OK) {
+    return -EINVAL;  // Missing or invalid final sequence
 }
 ```
 
@@ -660,7 +821,7 @@ if (slot->marker_count != MARKER_COUNT) {
 - **Header contract alignment**: `execution_marker_validate_transition()` enforces strict sequential
 - **Determinism guarantee**: Exact sequence required
 - **Fail-fast**: Errors detected immediately
-- **Consistency**: Same rule in both phases
+- **Consistency**: Same transition rule at every marker emission
 
 **Debug Output:**
 ```c
@@ -680,7 +841,8 @@ debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
 ```c
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
     // Incremental validation (per-marker)
-    // Full sequence validation (pre-commit)
+    // Verified prefix validation (pre-commit)
+    // Full sequence validation (wait path)
     // Evidence generation on failure
 #endif
 ```
@@ -693,21 +855,28 @@ debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
 - Bitmap update: ~2 cycles per marker
 - **Subtotal**: ~70 cycles (7 markers × 10 cycles)
 
-**Phase 2 (Full Sequence - once):**
-- Bitmap scan: ~10 cycles
-- Count check: ~2 cycles
-- **Subtotal**: ~12 cycles
+**Phase 2 (Verified Prefix - once):**
+- Prefix bitmap check: ~4 cycles
+- Count + last check: ~4 cycles
+- **Subtotal**: ~8 cycles
 
-**Phase 3 (Sanity Check - once):**
-- Count check: ~2 cycles
-- **Subtotal**: ~2 cycles
+**Phase 3 (Result Boundary - once):**
+- Prefix guard: ~8 cycles
+- RESULT_OK emission: ~10 cycles
+- **Subtotal**: ~18 cycles
 
-**Total Overhead**: ~84 cycles per execution
+**Phase 4 (Full Sequence - once):**
+- Result prefix guard: ~8 cycles
+- WAIT_OK emission: ~10 cycles
+- Full bitmap/count check: ~6 cycles
+- **Subtotal**: ~24 cycles
+
+**Total Overhead**: ~120 cycles per execution
 
 **Comparison to Array Design:**
-- Array design: ~120 cycles (linear scan)
-- Bitmap design: ~84 cycles (O(1) operations)
-- **Improvement**: 30% faster
+- Array design: higher and scales with marker array scans
+- Bitmap design: O(1) checks at each boundary
+- **Improvement**: deterministic fixed-cost validation
 
 **Acceptable for:** CI, debug builds, validation runs
 
@@ -755,7 +924,7 @@ debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
 
 **Merge Criteria:**
 - Design review approved
-- Integration points validated (Phase 1 + Phase 2)
+- Integration points validated (incremental + prefix + result boundary + wait path)
 - Failure semantics agreed (no `finish_locked()` recursion)
 - Data structure approved (bitmap design)
 
@@ -809,36 +978,54 @@ debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
 
 ---
 
-### Step 5: Full Sequence Validation (Pre-Commit)
+### Step 5: Verified Prefix Validation (Pre-Commit)
 
 **Changes:**
-- Add Phase 2 validation to `execution_slot_prepare_hash_locked()`
+- Add Phase 2 prefix validation to `execution_slot_prepare_hash_locked()`
+- Validate markers through `MARKER_VERIFY_PASS`
 - Fail-closed on validation failure (direct state set)
 - Evidence generation on failure
 
 **Merge Criteria:**
 - Flag OFF: regression test PASS
-- Flag ON + valid sequence: execution succeeds
-- Flag ON + invalid sequence: execution fails (EXEC_SLOT_FAILED)
+- Flag ON + valid verified prefix: execution proceeds to mapping
+- Flag ON + invalid verified prefix: execution fails before mapping (EXEC_SLOT_FAILED)
 - Flag ON: no `finish_locked()` recursion
 - Evidence generated on failure
 
 ---
 
-### Step 6: Sanity Check (Post-Commit)
+### Step 6: Result Boundary Guard
 
 **Changes:**
-- Add Phase 3 sanity check to `execution_slot_record_result_mapping_locked()`
-- Panic on invariant violation
+- Add pre-publish prefix guard to `execution_slot_record_result_mapping_locked()`
+- Emit `MARKER_RESULT_OK` after mapping succeeds
+- Panic only if post-mapping marker emission violates the preflight invariant
 
 **Merge Criteria:**
 - Flag OFF: regression test PASS
-- Flag ON: sanity check never triggers (Phase 2 catches all errors)
-- Flag ON: panic on logic bug (should never happen)
+- Flag ON: invalid prefix cannot be mapped
+- Flag ON: `RESULT_OK` emitted after successful mapping
+- Flag ON: panic path is unreachable in valid execution
 
 ---
 
-### Step 7: CI Gate Addition
+### Step 7: Wait Path Full Sequence Validation
+
+**Changes:**
+- Emit `MARKER_WAIT_OK` in the userspace `wait_result` syscall path
+- Validate full 7-marker sequence after `WAIT_OK`
+- Fail before successful wait return on invalid final sequence
+
+**Merge Criteria:**
+- Flag OFF: regression test PASS
+- Flag ON + valid sequence: wait returns success
+- Flag ON + invalid final sequence: wait returns failure and slot is terminal
+- Evidence generated on failure
+
+---
+
+### Step 8: CI Gate Addition
 
 **Changes:**
 - Add `ci-gate-execution-marker-runtime` gate
@@ -860,7 +1047,7 @@ debugcon_printf("marker_bitmap=0b%07b last=%d count=%d\n",
 - ✅ `ci-gate-execution-marker-isolation` - Sandbox isolation
 - ✅ `ci-freeze` - Full freeze validation
 
-### New Gate (Step 6)
+### New Gate (Step 8)
 
 **Gate:** `ci-gate-execution-marker-runtime`
 
@@ -942,10 +1129,11 @@ out/evidence/run-<RUN_ID>/gates/execution-marker-runtime/
 **Original Risk:** Validation after mapping allows partial publish
 
 **Mitigation:**
-- **Primary validation moved to `prepare_hash_locked()`**
-- Validation occurs BEFORE result mapping
-- Rollback possible (hash backing can be released)
-- Post-commit validation is sanity check only (panic on violation)
+- **Pre-commit prefix validation moved to `prepare_hash_locked()`**
+- Markers through `VERIFY_PASS` are validated BEFORE result mapping
+- Rollback possible on prefix failure (hash backing can be released)
+- Result boundary guard prevents invalid prefix state from being mapped
+- Full sequence validation runs after `WAIT_OK`, before successful wait return
 
 **Status:** ✅ Mitigated (design corrected)
 
@@ -969,7 +1157,7 @@ out/evidence/run-<RUN_ID>/gates/execution-marker-runtime/
 **Mitigation:**
 - Flag OFF: zero overhead (compile-time removed)
 - Flag ON: STRICT mode only (CI/debug)
-- Bitmap design: 30% faster than array design
+- Bitmap design: O(1) boundary checks
 - RELAXED mode deferred to Phase-18
 
 **Status:** ✅ Mitigated
@@ -984,7 +1172,8 @@ out/evidence/run-<RUN_ID>/gates/execution-marker-runtime/
 - **Incremental validation (Phase 1)**: Fail-fast per-marker
 - Transition validation at emission time
 - Duplicate detection immediate
-- Full sequence validation as final guard (Phase 2)
+- Pre-commit prefix validation before result mapping
+- Full sequence validation at the first valid point after `WAIT_OK`
 
 **Status:** ✅ Mitigated (design corrected)
 
@@ -1134,11 +1323,13 @@ evidence/run-<RUN_ID>/
 ✅ Bitmap data structure implemented (4 bytes per slot)  
 ✅ Incremental validation implemented (Phase 1: fail-fast)  
 ✅ Marker emission integrated (guarded, per-marker validation)  
-✅ Full sequence validation implemented (Phase 2: pre-commit)  
-✅ Sanity check implemented (Phase 3: post-commit panic)  
+✅ Verified prefix validation implemented (Phase 2: pre-commit)
+✅ Result boundary guard implemented (Phase 3: publish boundary)
+✅ Full sequence validation implemented (Phase 4: wait path)
 ✅ CI gate added (`ci-gate-execution-marker-runtime`)  
 ✅ Flag OFF: regression tests PASS  
 ✅ Flag ON: incremental validation PASS  
+✅ Flag ON: pre-commit prefix validation PASS
 ✅ Flag ON: full sequence validation PASS  
 ✅ Evidence generated on failure  
 ✅ NO `finish_locked()` recursion  
@@ -1152,7 +1343,7 @@ evidence/run-<RUN_ID>/
 > Add, don't replace. Guard, don't assume. Fail-fast, then fail-closed.
 
 **Validation Principle:**
-> Incremental first (fail-fast). Full sequence second (fail-closed). Sanity check last (panic).
+> Incremental first (fail-fast). Verified prefix before mapping. Full sequence after `WAIT_OK`. Panic only for impossible invariants.
 
 **Failure Principle:**
 > Direct state assignment. No recursion. Terminal immediately.
@@ -1164,7 +1355,7 @@ evidence/run-<RUN_ID>/
 > Capture everything. Validate deterministically. Fail loudly.
 
 **Design Principle:**
-> Bitmap over array. O(1) over O(n). Pre-commit over post-commit.
+> Bitmap over array. O(1) over O(n). Validate each boundary at the first point where its markers can exist.
 
 ---
 
@@ -1174,11 +1365,11 @@ evidence/run-<RUN_ID>/
 
 **1. Validation Strategy:**
 - ❌ **Old**: Single post-commit validation
-- ✅ **New**: Three-phase validation (incremental + pre-commit + sanity)
+- ✅ **New**: Staged validation (incremental + prefix + result boundary + wait full sequence)
 
 **2. Primary Call Site:**
 - ❌ **Old**: `execution_slot_record_result_mapping_locked()` (post-commit)
-- ✅ **New**: `execution_slot_prepare_hash_locked()` (pre-commit)
+- ✅ **New**: Prefix guard at `execution_slot_prepare_hash_locked()` and full guard at `wait_result`
 
 **3. Failure Handling:**
 - ❌ **Old**: `return execution_slot_finish_locked(slot, EXEC_SLOT_FAILED)` (recursion risk)
@@ -1190,7 +1381,7 @@ evidence/run-<RUN_ID>/
 
 **5. Validation Model:**
 - ❌ **Old**: Post-mortem (fail-slow)
-- ✅ **New**: Incremental (fail-fast) + final guard (fail-closed)
+- ✅ **New**: Incremental (fail-fast) + boundary guards (fail-closed)
 
 ### Minor Revisions (v2.1)
 
@@ -1212,19 +1403,33 @@ evidence/run-<RUN_ID>/
 
 **10. Validation Ordering Clarification:**
 - ❌ **Old**: Monotonic Phase 1, exact Phase 2
-- ✅ **New**: Strict sequential in both phases (header contract alignment)
+- ✅ **New**: Strict sequential for every emitted transition (header contract alignment)
 
 **Rationale:** `execution_marker_validate_transition()` enforces strict sequential. Monotonic ordering deferred to Phase-18 (requires API change).
+
+### Timing Corrections (v2.1.2)
+
+**11. Full Sequence Validation Timing:**
+- ❌ **Old**: Full 7-marker validation in `execution_slot_prepare_hash_locked()`
+- ✅ **New**: Prefix validation in `execution_slot_prepare_hash_locked()`, full validation after `WAIT_OK`
+
+**12. Active Error Codes:**
+- ❌ **Old**: `MARKER_VALIDATION_NON_MONOTONIC` listed as active despite absent header contract
+- ✅ **New**: Active failure codes match `execution_marker_validation.h`
+
+**Rationale:** `RESULT_OK` and `WAIT_OK` cannot exist at the pre-commit hash stage. Full sequence validation must run at the first point where all markers can exist: after `WAIT_OK` in the wait path.
 
 ### Design Improvements
 
 **Performance:**
-- 30% faster validation (84 cycles vs 120 cycles)
+- O(1) boundary checks
+- Fixed-cost validation in STRICT mode
 - 56% smaller memory footprint (4 bytes vs 9 bytes)
 
 **Safety:**
 - Fail-fast detection (per-marker)
-- Pre-commit validation (rollback possible)
+- Pre-commit prefix validation (rollback possible)
+- Full sequence validation before successful wait return
 - No recursion risk (direct state assignment)
 - Return value enforcement (no silent corruption)
 
@@ -1244,12 +1449,14 @@ evidence/run-<RUN_ID>/
 
 **Prepared By:** Kenan AY - Architectural Steward  
 **Date:** 01 May 2026  
-**Version:** 2.1 (Minor Revisions)  
+**Version:** 2.1.2 (Validation Timing Alignment)
 **Status:** DESIGN ONLY (Implementation NOT Started)
 
 **Revision History:**
 - v1.0 (2026-05-01): Initial design
 - v2.0 (2026-05-01): Critical corrections (validation strategy, call site, failure handling, data structure)
-- v2.1 (2026-05-01): Minor revisions (marker mask, monotonic ordering, error code, return value enforcement)
+- v2.1 (2026-05-01): Minor revisions (marker mask, error code, return value enforcement)
+- v2.1.1 (2026-05-01): Header contract alignment (strict sequential transitions, monotonic deferred)
+- v2.1.2 (2026-05-01): Validation timing alignment (pre-commit prefix, wait-path full sequence)
 
 **© 2026 Kenan AY - AykenOS Project**
