@@ -24,9 +24,9 @@
     "note": "External verification functional. Inline verification requires Phase-17."
   },
   
-  "evidence_snapshot": "evidence/phase16-final/",
-  "evidence_source": "github_actions_artifact_25214173242",
-  "evidence_note": "Evidence from initial CI run preserved; final closure uses CI run 25214669681",
+  "evidence_snapshot": "evidence/phase16-final-corrected/",
+  "evidence_source": "github_actions_artifact_25214669681",
+  "evidence_note": "Final closure evidence from CI run 25214669681 (tag commit a56ec7c0)",
   
   "limitations": [
     "real BCIB execution not implemented",
