@@ -727,6 +727,15 @@ int execution_slot_finish_locked(exec_slot_t *slot, exec_slot_state_t next_state
         return -1;
     }
 
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture lifecycle markers based on target state */
+    if (next_state == EXEC_SLOT_EXECUTED) {
+        execution_slot_marker_capture_locked(slot, MARKER_EXEC_COMPLETE_OK);
+    } else if (next_state == EXEC_SLOT_COMPLETED) {
+        execution_slot_marker_capture_locked(slot, MARKER_WAIT_OK);
+    }
+#endif
+
     if (next_state == EXEC_SLOT_FAILED ||
         next_state == EXEC_SLOT_TIMEOUT ||
         next_state == EXEC_SLOT_ABORTED) {
@@ -1070,6 +1079,12 @@ int execution_slot_write_output_v1_locked(exec_slot_t *slot,
     }
 
     slot->output_size = sizeof(header) + payload_size;
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture EXEC_OUTPUT_WRITTEN marker after successful output write */
+    execution_slot_marker_capture_locked(slot, MARKER_EXEC_OUTPUT_WRITTEN);
+#endif
+
     return 0;
 }
 
@@ -1079,6 +1094,11 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
     const ayken_execution_output_v2_t *structured_header;
     uint64_t total_size;
     uint32_t i;
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture VERIFY_START marker at beginning of validation */
+    execution_slot_marker_capture_locked(slot, MARKER_VERIFY_START);
+#endif
 
     if (!slot || !slot->in_use || slot->state != EXEC_SLOT_RUNNING) {
         return -1;
@@ -1109,6 +1129,12 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
         if (published_size) {
             *published_size = total_size;
         }
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+        /* Capture VERIFY_PASS marker after successful v1 validation */
+        execution_slot_marker_capture_locked(slot, MARKER_VERIFY_PASS);
+#endif
+
         return 0;
     }
 
@@ -1133,6 +1159,12 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
     if (published_size) {
         *published_size = total_size;
     }
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture VERIFY_PASS marker after successful v2 validation */
+    execution_slot_marker_capture_locked(slot, MARKER_VERIFY_PASS);
+#endif
+
     return 0;
 }
 
@@ -1343,6 +1375,12 @@ int execution_slot_prepare_result_locked(exec_slot_t *slot)
     slot->mapped_result_va = 0;
     slot->mapped_hash_va = 0;
     slot->result_map_flags = AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC;
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture RESULT_OK marker after successful result preparation */
+    execution_slot_marker_capture_locked(slot, MARKER_RESULT_OK);
+#endif
+
     return execution_slot_prepare_hash_locked(slot);
 }
 
@@ -1535,6 +1573,14 @@ int execution_slot_transition_locked(exec_slot_t *slot,
 
     execution_slot_trace_append_locked(slot, expected_from, next_state);
     slot->state = next_state;
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Capture EXEC_START marker when entering EXECUTING state */
+    if (next_state == EXEC_SLOT_EXECUTING) {
+        execution_slot_marker_capture_locked(slot, MARKER_EXEC_START);
+    }
+#endif
+
     return 0;
 }
 
