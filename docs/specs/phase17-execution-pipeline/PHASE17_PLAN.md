@@ -114,6 +114,25 @@ execution_context_snapshot = {
 - Reproducible execution
 - Fail-closed semantics
 
+**Enforcement (Zorunlu):**
+```c
+// kernel/sys/execution_slot.c
+#define EXECUTION_CONTEXT_SNAPSHOT_SIZE 64
+
+_Static_assert(
+    sizeof(execution_context_snapshot_t) == EXECUTION_CONTEXT_SNAPSHOT_SIZE,
+    "execution_context_snapshot size must not change"
+);
+
+// Runtime check
+if (snapshot_contains_global_state(snapshot)) {
+    panic("execution_context_snapshot: global state leak detected");
+}
+```
+
+**Kural:**
+> Snapshot genişletme = spec change + determinism re-evaluation + CI gate update
+
 ### 2.3 Fail-Closed Kuralları (Zorunlu)
 
 | Durum | Davranış |
@@ -352,7 +371,49 @@ evidence/run-<RUN_ID>/gates/fingerprint-consistency/
 
 **Failure → Merge REJECT**
 
-### 6.3 Phase-16 Stub Gate Korunur
+---
+
+### 6.3 Gate C — Marker Order Enforcement
+
+**Hedef:** `ci-gate-marker-order`
+
+**Kontrol:**
+```bash
+make ci-gate-marker-order
+```
+
+**Validasyon:**
+- Marker sequence doğru sırada mı?
+- Zorunlu marker'lar mevcut mu?
+
+**Expected Sequence:**
+```
+[EXEC_START]
+[EXEC_OUTPUT_WRITTEN]
+[EXEC_COMPLETE_OK]
+[VERIFY_START]
+[VERIFY_PASS]
+[RESULT_OK]
+[WAIT_OK]
+```
+
+**Evidence:**
+```
+evidence/run-<RUN_ID>/gates/marker-order/
+├── markers.log
+├── sequence_check.json
+├── report.json
+└── violations.txt
+```
+
+**Failure → Merge REJECT**
+
+**Neden Kritik?**
+> Marker var ama sıra yanlış → determinism kırılır (sessizce)
+
+---
+
+### 6.4 Phase-16 Stub Gate Korunur
 
 **Hedef:** `ci-gate-bcib-stub-build-integrity`
 

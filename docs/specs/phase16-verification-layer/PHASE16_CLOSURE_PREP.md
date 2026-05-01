@@ -207,6 +207,8 @@ git commit -m "Phase-16 evidence snapshot"
   "commit_sha": "<HEAD_SHA>",
   "ci_freeze_run_id": "<RUN_ID>",
   "ci_result": "PASS",
+  "ci_authority": "remote_ci_freeze",
+  "ci_environment": "github_actions_ubuntu24_x86_64",
   
   "determinism": {
     "stub": true,
