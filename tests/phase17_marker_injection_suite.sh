@@ -61,7 +61,8 @@ run_test() {
         make qemu-test-headless > "$log_file" 2>&1 || exit_code=$?
     
     # Critical: Verify execution actually ran (not just build failure)
-    if ! grep -q "AYKEN" "$log_file"; then
+    # Use strong anchor: kernel boot signature or execution marker
+    if ! grep -q "kernel.*entry\|boot.*complete\|execution.*slot\|AYKEN.*kernel" "$log_file"; then
         echo "❌ FAIL: $test_name - Execution did not run (build failure or crash)"
         echo "   Exit code: $exit_code"
         echo "   Log: $log_file"
