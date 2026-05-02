@@ -13,6 +13,11 @@
 #include "../include/proc.h"
 #include "../include/sha256.h"
 
+/* Phase-17 injection harness (test-only, guarded in header) */
+#if defined(AYKEN_PHASE17_MARKER_INJECTION_TEST) && (AYKEN_PHASE17_MARKER_INJECTION_TEST == 1)
+#include "execution_marker_injection.h"
+#endif
+
 #define memset __builtin_memset
 #define memcpy __builtin_memcpy
 
@@ -1375,6 +1380,40 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
     }
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /*
+     * ⚠️ TEST-ONLY INJECTION HOOKS
+     * These hooks corrupt marker state BEFORE validation.
+     * Only compiled when AYKEN_PHASE17_MARKER_INJECTION_TEST=1
+     * 
+     * CRITICAL ORDER:
+     *   1. Injection (test-only, corrupts state)
+     *   2. Validation (reads state, enforces correctness)
+     *   3. Hash preparation (only if validation passes)
+     */
+    #if defined(AYKEN_PHASE17_MARKER_INJECTION_TEST) && (AYKEN_PHASE17_MARKER_INJECTION_TEST == 1)
+        #if defined(AYKEN_MARKER_INJECT_INVALID_ORDER) && (AYKEN_MARKER_INJECT_INVALID_ORDER == 1)
+            inject_invalid_order(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_DUPLICATE) && (AYKEN_MARKER_INJECT_DUPLICATE == 1)
+            inject_duplicate(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_MISSING) && (AYKEN_MARKER_INJECT_MISSING == 1)
+            inject_missing(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_OVERFLOW) && (AYKEN_MARKER_INJECT_OVERFLOW == 1)
+            inject_overflow(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_STALE_DATA) && (AYKEN_MARKER_INJECT_STALE_DATA == 1)
+            inject_stale_data(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_CORRUPT_BITMAP) && (AYKEN_MARKER_INJECT_CORRUPT_BITMAP == 1)
+            inject_corrupt_bitmap(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_PARTIAL_WRITE) && (AYKEN_MARKER_INJECT_PARTIAL_WRITE == 1)
+            inject_partial_write(slot);
+        #endif
+    #endif /* AYKEN_PHASE17_MARKER_INJECTION_TEST */
+    
     /* Pre-commit guard: validate markers before hash preparation */
     if (execution_slot_validate_markers_locked(slot) != 0) {
         return -1;
