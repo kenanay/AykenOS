@@ -51,14 +51,25 @@ run_test() {
     check_single_injection_flag
     
     # Run test with injection enabled (isolated environment)
+    # Timeout protection: 120 seconds per test (prevents CI deadlock)
     local exit_code=0
-    env -i \
+    timeout 120 env -i \
         PATH="$PATH" \
         HOME="$HOME" \
         AYKEN_PHASE17_MARKER_INJECTION_TEST=1 \
         AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1 \
         "$test_flag=1" \
         make qemu-test-headless > "$log_file" 2>&1 || exit_code=$?
+    
+    # Check for timeout (exit code 124)
+    if [ $exit_code -eq 124 ]; then
+        echo "❌ FAIL: $test_name - Timeout (120s exceeded)"
+        echo "   This indicates QEMU hang or infinite loop"
+        echo "   Log: $log_file"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        echo ""
+        return
+    fi
     
     # Critical: Verify execution actually ran (not just build failure)
     # Use strong anchor: kernel boot signature or execution marker
