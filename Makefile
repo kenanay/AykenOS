@@ -766,12 +766,19 @@ KERNEL_C_SOURCES_ALL = $(call find_files,$(KERNEL_DIR),*.c)
 KERNEL_C_TEST_SOURCES = $(filter %_test.c,$(KERNEL_C_SOURCES_ALL))
 # Ring0 topology enforces mechanism/policy separation; no default source exclusion hacks.
 # Phase 11: alias_proof_validation.c excluded from default build; included only under AYKEN_VALIDATION=1
-KERNEL_C_EXCLUDE_SOURCES = kernel/tests/validation/alias_proof_validation.c
+# Phase 17: execution_marker_injection.c excluded from default build; included only under AYKEN_PHASE17_MARKER_INJECTION_TEST=1
+KERNEL_C_EXCLUDE_SOURCES = kernel/tests/validation/alias_proof_validation.c \
+                           kernel/sys/execution_marker_injection.c
 KERNEL_C_SOURCES = $(filter-out $(KERNEL_C_TEST_SOURCES) $(KERNEL_C_EXCLUDE_SOURCES),$(KERNEL_C_SOURCES_ALL))
 
 # Phase 11: Include alias proof validation in validation builds
 ifeq ($(AYKEN_VALIDATION),1)
 KERNEL_C_SOURCES += kernel/tests/validation/alias_proof_validation.c
+endif
+
+# Phase 17: Include marker injection harness in test builds
+ifeq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),1)
+KERNEL_C_SOURCES += kernel/sys/execution_marker_injection.c
 endif
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)

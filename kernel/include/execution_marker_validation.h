@@ -46,6 +46,15 @@ typedef enum {
     MARKER_VALIDATION_OUT_OF_BOUNDS
 } marker_validation_result_t;
 
+/* Marker error codes (stored in exec_slot_t::marker_error_code) */
+typedef enum {
+    MARKER_ERROR_NONE = 0,
+    MARKER_ERROR_INVALID_ORDER = 1,
+    MARKER_ERROR_DUPLICATE = 2,
+    MARKER_ERROR_OVERFLOW = 3,
+    MARKER_ERROR_OUT_OF_BOUNDS = 4
+} marker_error_code_t;
+
 /*
  * Validate marker sequence
  * 
@@ -96,5 +105,24 @@ execution_marker_validate_transition(
  */
 const char *
 execution_marker_name(execution_marker_t marker);
+
+/*
+ * execution_slot_validate_markers_locked - Validate captured markers (read-only)
+ * 
+ * @slot: Execution slot
+ * 
+ * Pure validation - NO state mutation, NO side effects.
+ * Returns error code if validation fails.
+ * 
+ * RULE: VALIDATE AFTER WRITE
+ * This is called AFTER all markers are captured (Step 4).
+ * 
+ * Pre-commit guard: Called before state transition to COMPLETED/RESULT_MAPPED.
+ * 
+ * Returns:
+ *   0 = validation passed
+ *   non-zero = marker_error_code_t value
+ */
+int execution_slot_validate_markers_locked(const void *slot);
 
 #endif /* EXECUTION_MARKER_VALIDATION_H */

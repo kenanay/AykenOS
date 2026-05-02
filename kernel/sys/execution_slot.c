@@ -13,6 +13,11 @@
 #include "../include/proc.h"
 #include "../include/sha256.h"
 
+/* Phase-17 injection harness (test-only, guarded in header) */
+#if defined(AYKEN_PHASE17_MARKER_INJECTION_TEST) && (AYKEN_PHASE17_MARKER_INJECTION_TEST == 1)
+#include "execution_marker_injection.h"
+#endif
+
 #define memset __builtin_memset
 #define memcpy __builtin_memcpy
 
@@ -320,6 +325,76 @@ static inline void execution_slot_marker_capture_locked(
         // Overflow: signal error and stop further marker processing
         slot->marker_error_code = 3;  // Marker overflow
     }
+}
+
+/*
+ * execution_slot_validate_markers_locked - Validate captured markers (read-only)
+ * 
+ * @slot: Execution slot
+ * 
+ * Pure validation - NO state mutation, NO side effects.
+ * Returns error code if validation fails.
+ * 
+ * RULE: VALIDATE AFTER WRITE
+ * This is called AFTER all markers are captured (Step 4).
+ * 
+ * Pre-commit guard: Called before state transition to COMPLETED/RESULT_MAPPED.
+ * 
+ * Expected sequence (5 markers):
+ *   0: MARKER_EXEC_START
+ *   1: MARKER_EXEC_OUTPUT_WRITTEN
+ *   2: MARKER_EXEC_COMPLETE_OK
+ *   3: MARKER_VERIFY_START
+ *   4: MARKER_VERIFY_PASS
+ * 
+ * RESULT_OK (marker 5) is captured AFTER this validation passes.
+ * WAIT_OK (marker 6) is Phase-17 out-of-scope.
+ * 
+ * Returns:
+ *   0 = validation passed
+ *   non-zero = marker_error_code_t value
+ */
+int execution_slot_validate_markers_locked(const void *slot_ptr)
+{
+    const exec_slot_t *slot = (const exec_slot_t *)slot_ptr;
+    const uint8_t EXPECTED_COUNT = 5;
+    uint8_t i;
+    
+    if (!slot || !slot->in_use) {
+        return MARKER_ERROR_OUT_OF_BOUNDS;
+    }
+    
+    // Check if error already occurred during capture
+    if (slot->marker_error_code != 0) {
+        return slot->marker_error_code;
+    }
+    
+    // Validate count (must be exactly 5 at this point)
+    if (slot->marker_count != EXPECTED_COUNT) {
+        return MARKER_ERROR_INVALID_ORDER;
+    }
+    
+    // Validate sequence order (strict sequential: 0, 1, 2, 3, 4)
+    for (i = 0; i < EXPECTED_COUNT; i++) {
+        if (slot->marker_sequence[i] != i) {
+            return MARKER_ERROR_INVALID_ORDER;
+        }
+    }
+    
+    // Validate bitmap (must match expected markers: bits 0-4 set)
+    if (slot->marker_bitmap != 0x1F) {  // 0b00011111
+        return MARKER_ERROR_INVALID_ORDER;
+    }
+    
+    // Defensive check: ensure no garbage in unused buffer space
+    // This prevents temporal safety issues if other code accidentally reads beyond valid range
+    for (i = EXPECTED_COUNT; i < 7; i++) {
+        if (slot->marker_sequence[i] != 0) {
+            return MARKER_ERROR_INVALID_ORDER;  // Garbage detected
+        }
+    }
+    
+    return MARKER_ERROR_NONE;
 }
 #endif
 
@@ -1304,6 +1379,47 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
         return 0;
     }
 
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /*
+     * ⚠️ TEST-ONLY INJECTION HOOKS
+     * These hooks corrupt marker state BEFORE validation.
+     * Only compiled when AYKEN_PHASE17_MARKER_INJECTION_TEST=1
+     * 
+     * CRITICAL ORDER:
+     *   1. Injection (test-only, corrupts state)
+     *   2. Validation (reads state, enforces correctness)
+     *   3. Hash preparation (only if validation passes)
+     */
+    #if defined(AYKEN_PHASE17_MARKER_INJECTION_TEST) && (AYKEN_PHASE17_MARKER_INJECTION_TEST == 1)
+        #if defined(AYKEN_MARKER_INJECT_INVALID_ORDER) && (AYKEN_MARKER_INJECT_INVALID_ORDER == 1)
+            inject_invalid_order(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_DUPLICATE) && (AYKEN_MARKER_INJECT_DUPLICATE == 1)
+            inject_duplicate(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_MISSING) && (AYKEN_MARKER_INJECT_MISSING == 1)
+            inject_missing(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_OVERFLOW) && (AYKEN_MARKER_INJECT_OVERFLOW == 1)
+            inject_overflow(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_STALE_DATA) && (AYKEN_MARKER_INJECT_STALE_DATA == 1)
+            inject_stale_data(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_CORRUPT_BITMAP) && (AYKEN_MARKER_INJECT_CORRUPT_BITMAP == 1)
+            inject_corrupt_bitmap(slot);
+        #endif
+        #if defined(AYKEN_MARKER_INJECT_PARTIAL_WRITE) && (AYKEN_MARKER_INJECT_PARTIAL_WRITE == 1)
+            inject_partial_write(slot);
+        #endif
+    #endif /* AYKEN_PHASE17_MARKER_INJECTION_TEST */
+    
+    /* Pre-commit guard: validate markers before hash preparation */
+    if (execution_slot_validate_markers_locked(slot) != 0) {
+        return -1;
+    }
+#endif
+
     if (execution_slot_hash_result_frames_locked(slot, digest) != 0) {
         return -1;
     }
@@ -1406,12 +1522,17 @@ int execution_slot_prepare_result_locked(exec_slot_t *slot)
     slot->mapped_hash_va = 0;
     slot->result_map_flags = AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC;
 
+    // Prepare hash (includes validation guard for markers 0-4)
+    if (execution_slot_prepare_hash_locked(slot) != 0) {
+        return -1;
+    }
+
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture RESULT_OK marker after successful result preparation */
+    /* Capture RESULT_OK marker AFTER validation passes */
     execution_slot_marker_capture_locked(slot, MARKER_RESULT_OK);
 #endif
 
-    return execution_slot_prepare_hash_locked(slot);
+    return 0;
 }
 
 int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
