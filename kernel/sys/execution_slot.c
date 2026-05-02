@@ -1475,12 +1475,17 @@ int execution_slot_prepare_result_locked(exec_slot_t *slot)
     slot->mapped_hash_va = 0;
     slot->result_map_flags = AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC;
 
+    // Prepare hash (includes validation guard for markers 0-4)
+    if (execution_slot_prepare_hash_locked(slot) != 0) {
+        return -1;
+    }
+
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture RESULT_OK marker after successful result preparation */
+    /* Capture RESULT_OK marker AFTER validation passes */
     execution_slot_marker_capture_locked(slot, MARKER_RESULT_OK);
 #endif
 
-    return execution_slot_prepare_hash_locked(slot);
+    return 0;
 }
 
 int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
