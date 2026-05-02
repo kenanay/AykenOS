@@ -492,6 +492,28 @@ def main():
     log_info(f"Markdown report: {markdown_report}")
     log_info(f"JSON report: {json_report}")
     
+    # CI-authoritative assertion (Tier 1 hardening)
+    if os.getenv('CI') == 'true':
+        log_info("CI mode detected - verifying CI-authoritative status...")
+        try:
+            with open(json_report, 'r') as f:
+                report_json = json.load(f)
+            
+            if not report_json.get('ci_authoritative', False):
+                log_error("❌ CI-AUTHORITATIVE ASSERTION FAILED")
+                log_error("Validator claims to be CI-authoritative but JSON report says otherwise")
+                sys.exit(2)
+            
+            if not report_json.get('deterministic', False):
+                log_error("❌ DETERMINISM ASSERTION FAILED")
+                log_error("Validator must be deterministic for CI use")
+                sys.exit(2)
+            
+            log_success("✅ CI-authoritative assertions passed")
+        except Exception as e:
+            log_error(f"❌ Failed to verify CI-authoritative status: {e}")
+            sys.exit(2)
+    
     # Final output
     print()
     if validation_passed:
