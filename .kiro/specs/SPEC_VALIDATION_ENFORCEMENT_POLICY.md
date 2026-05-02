@@ -207,9 +207,9 @@ Validator claims to be CI-authoritative but JSON report says otherwise
 
 ---
 
-### Scenario 4: Legacy Spec (No ORIGINAL)
+### Scenario 4: Legacy Spec (Pre-Cutoff)
 
-**Input**: Spec exists, no `ORIGINAL_BASELINE.md`
+**Input**: Spec created before 2026-05-02 19:00:00, no `ORIGINAL_BASELINE.md`
 
 **Behavior**: ⚠️  LOGGED but ALLOWED
 
@@ -217,15 +217,36 @@ Validator claims to be CI-authoritative but JSON report says otherwise
 ```
 ⚠️  LEGACY SPEC: No ORIGINAL baseline (pre-Phase-17.5)
    Spec: my-spec
-   Status: Allowed but logged (legacy exception)
-   Future: New specs MUST have ORIGINAL baseline
+   Created: 2026-04-15T10:30:00Z
+   Status: Allowed (legacy exception)
+   Reason: Created before Phase-17.5 cutoff
 ```
 
-**Rationale**: Pre-Phase-17.5 specs grandfathered, but logged
+**Rationale**: Pre-cutoff specs grandfathered (cannot retroactively capture ORIGINAL)
 
 ---
 
-### Scenario 5: All Specs Legacy
+### Scenario 5: Legacy Freeze Violation (Post-Cutoff)
+
+**Input**: Spec created after 2026-05-02 19:00:00, no `ORIGINAL_BASELINE.md`
+
+**Behavior**: ❌ CI FAIL
+
+**Message**:
+```
+❌ LEGACY FREEZE VIOLATION
+   Spec: my-spec
+   Created: 2026-05-03T10:00:00Z
+   Cutoff: 2026-05-02 19:00:00
+   Policy: Specs created after Phase-17.5 MUST have ORIGINAL baseline
+   Required: .kiro/specs/my-spec/ORIGINAL_BASELINE.md
+```
+
+**Rationale**: Legacy freeze prevents abuse - new specs have no excuse
+
+---
+
+### Scenario 6: All Specs Legacy
 
 **Input**: Multiple specs, all legacy (no ORIGINAL)
 
@@ -241,7 +262,7 @@ Validator claims to be CI-authoritative but JSON report says otherwise
 
 ---
 
-### Scenario 6: No Specs Directory
+### Scenario 7: No Specs Directory
 
 **Input**: `.kiro/specs/` does not exist
 
@@ -260,28 +281,61 @@ Validator claims to be CI-authoritative but JSON report says otherwise
 
 ### Definition
 
-**Legacy Spec**: Spec created before Phase-17.5 (2026-05-02)
+**Legacy Spec**: Spec created before Phase-17.5 cutoff (2026-05-02 19:00:00 UTC)
 
-**Identifier**: Missing `ORIGINAL_BASELINE.md`
+**Identifier**: 
+1. Missing `ORIGINAL_BASELINE.md` AND
+2. First commit before Phase-17.5 cutoff
+
+### Legacy Freeze
+
+**Cutoff Date**: 2026-05-02 19:00:00 UTC  
+**Cutoff Commit**: 500ed7b3
+
+**Policy**: No new legacy exceptions after cutoff
+
+**Enforcement**:
+```bash
+spec_first_commit=$(git log --follow --format=%aI --reverse -- "$spec_dir" | head -1)
+spec_epoch=$(date -u -d "$spec_first_commit" +%s)
+
+if [ "$spec_epoch" -gt "$PHASE_17_5_CUTOFF_EPOCH" ]; then
+  # Created AFTER cutoff → VIOLATION
+  echo "❌ LEGACY FREEZE VIOLATION"
+  exit 1
+else
+  # Created BEFORE cutoff → LEGACY EXCEPTION
+  echo "⚠️  LEGACY SPEC: Allowed (pre-Phase-17.5)"
+fi
+```
 
 ### Behavior
 
+**Pre-Cutoff Specs** (created before 2026-05-02 19:00:00):
 - ⚠️  Logged (not silent)
-- ✅ Allowed (not blocked)
+- ✅ Allowed (legacy exception)
 - 📊 Counted in summary
+- 🔒 Frozen (no new exceptions)
+
+**Post-Cutoff Specs** (created after 2026-05-02 19:00:00):
+- ❌ MUST have ORIGINAL baseline
+- ❌ No legacy exception
+- ❌ CI FAIL if missing ORIGINAL
+- 🔒 Enforced (legacy freeze active)
 
 ### Rationale
 
 - Pre-Phase-17.5 specs cannot retroactively capture ORIGINAL
 - Blocking them would break existing work
 - Logging ensures visibility
-- Future specs have no excuse
+- **Legacy freeze prevents abuse**: New specs have no excuse
 
 ### Future
 
-- New specs (post-Phase-17.5) MUST have ORIGINAL
-- No new legacy exceptions
+- New specs (post-cutoff) MUST have ORIGINAL
+- No new legacy exceptions (frozen)
 - Existing legacy specs remain allowed
+- Legacy freeze prevents loophole
 
 ---
 
