@@ -2,14 +2,19 @@
 
 **Date**: 2026-05-02  
 **Branch**: `phase17-marker-validation-guard`  
-**Commit**: `28d0d36a`  
-**Status**: ✅ **COMPLETE**
+**Commits**: 
+- `28d0d36a` - Initial implementation
+- `99eef136` - Completion report
+- `eeb97d58` - **Critical fix: RESULT_OK capture timing**  
+**Status**: ✅ **COMPLETE & VALIDATED**
 
 ---
 
 ## Implementation Summary
 
 Phase-17 Step 5 successfully implements **pre-commit marker validation guard** with strict scope control.
+
+**Critical Fix Applied**: RESULT_OK capture timing corrected to occur AFTER validation passes (commit `eeb97d58`).
 
 ### Core Changes
 
@@ -59,6 +64,30 @@ int execution_slot_validate_markers_locked(const void *slot_ptr)
 - **Before**: `execution_slot_hash_result_frames_locked()`
 - **After**: Early return checks
 - **Timing**: Before hash computation (pre-commit)
+
+---
+
+## Critical Fix: RESULT_OK Timing
+
+### Problem Discovered
+Initial implementation captured RESULT_OK **before** validation:
+```c
+// ❌ WRONG ORDER
+execution_slot_marker_capture_locked(slot, MARKER_RESULT_OK);
+return execution_slot_prepare_hash_locked(slot);  // validation inside
+```
+
+### Solution Applied (commit `eeb97d58`)
+```c
+// ✅ CORRECT ORDER
+if (execution_slot_prepare_hash_locked(slot) != 0) {  // validation first
+    return -1;
+}
+execution_slot_marker_capture_locked(slot, MARKER_RESULT_OK);  // capture after
+return 0;
+```
+
+**Impact**: RESULT_OK (marker 5) now correctly captured **AFTER** markers 0-4 are validated.
 
 ---
 
@@ -148,8 +177,9 @@ if (slot->marker_error_code != 0) {
 
 ---
 
-## Build Verification
+## Build & Gate Verification
 
+### Build Status
 ```bash
 $ make clean && make -j$(sysctl -n hw.ncpu)
 ✅ Build successful
@@ -157,6 +187,20 @@ $ make clean && make -j$(sysctl -n hw.ncpu)
 ✅ No linker errors
 ✅ Warnings: Only pre-existing unused function warnings
 ```
+
+### Pre-CI Gates
+```bash
+$ make pre-ci
+✅ PASS: ABI Gate
+✅ PASS: Boundary Gate
+✅ PASS: Hygiene Gate
+✅ PASS: Constitutional Gate
+✅ PASS: Determinism Replay Consistency Gate
+
+== PRE-CI DISCIPLINE: ALL GATES PASS ==
+```
+
+**Evidence**: `out/evidence/run-20260502T123633Z-eeb97d58-9205/`
 
 ---
 
@@ -235,10 +279,19 @@ Phase-17 Step 5 successfully implements **pre-commit marker validation guard** w
 - ✅ Fail-fast semantics
 - ✅ Deterministic behavior
 - ✅ Build verification passed
+- ✅ **All pre-ci gates passed**
+- ✅ **Critical timing fix applied**
 
-**Status**: Ready for testing and integration.
+**Status**: **Implementation complete & validated**. Ready for QEMU runtime testing.
+
+### Next Phase: Runtime Validation
+1. Enable `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1`
+2. Run QEMU with marker validation active
+3. Test negative cases (invalid order, missing markers, overflow)
+4. Verify state transition blocking on validation failure
 
 ---
 
 **Signed**: Kenan AY - Architectural Steward  
-**Date**: 2026-05-02
+**Date**: 2026-05-02  
+**Final Commit**: `eeb97d58`
