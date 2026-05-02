@@ -78,9 +78,10 @@ userspace/minimal/.mode.*
 .ci-state-test/
 
 # Local agent/spec workspace artifacts
-.kiro/
+.kiro/*
 # Exception: specs directory must be tracked for CI validation
 !.kiro/specs/
+!.kiro/specs/**
 AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md
 
 # local experiments

@@ -1,0 +1,41 @@
+# Spec Metadata
+# Authority: Constitutional Enforcement (Phase-17.5 Tier 3)
+# Status: LEGACY SPEC (pre-Phase-17.5 cutoff)
+
+schema_version: "1.0.0"
+
+spec:
+  # Created before Phase-17.5 cutoff (legacy exception)
+  created_at: "2026-04-30T10:00:00Z"
+  
+  # Validation level achieved
+  # Note: Level 1 only (no ORIGINAL baseline available)
+  validation_level: 1
+  
+  # Pre-Phase-17.5 spec
+  phase: "pre-17.5"
+  
+  # Bugfix spec
+  spec_type: "bugfix"
+  
+  # Bugfix workflow (requirements-first)
+  workflow_type: "requirements-first"
+
+metadata:
+  name: "ABDF Hardware Contract Technical Corrections"
+  description: "Fix 7 technical inconsistencies in ABDF Hardware Contract documentation"
+  owner: "Kenan AY <kenanay2020@gmail.com>"
+  related_issues: []
+  tags:
+    - "documentation"
+    - "bugfix"
+    - "abdf"
+    - "hardware-contract"
+    - "phase-17.5-template"
+
+# Legacy Status:
+# - Created before Phase-17.5 cutoff (2026-05-02 19:00:00)
+# - ORIGINAL baseline not available (cannot be retroactively captured)
+# - Validation Level 1 achieved (FIXED-state verification only)
+# - Serves as template for Phase-17.5 validation infrastructure
+# - Metadata generated retroactively for documentation purposes
