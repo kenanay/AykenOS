@@ -1,0 +1,181 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Payload Authority Drift Detection
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate authority drift exists
+  - **Scoped PBT Approach**: Test concrete failing cases (entry-proof and runtime-bridge builds) to ensure reproducibility
+  - Test implementation details from Bug Condition in design:
+    - Build kernel with `USER_MINIMAL_MODE=entry-proof`, verify manifest shows `selected_mode: "entry-proof"` (will fail - shows phase10a2)
+    - Build kernel with `USER_MINIMAL_MODE=runtime-bridge-test`, verify manifest `payload_sha256 == embedded_header_sha256` (will fail - hash mismatch)
+    - Boot kernel with entry-proof payload, verify debugcon contains BOTH `[K][PAYLOAD_MODE=entry-proof]` AND `[K][PAYLOAD_SHA=...]` (will fail - markers not emitted)
+    - Build with `USER_MINIMAL_MODE=invalid`, verify build fails (will fail - falls back silently)
+    - Delete manifest, verify build fails before kernel compile completes (will fail - no manifest check)
+  - The test assertions should match the Expected Behavior Properties from design (requirements 2.1-2.8)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found to understand root cause:
+    - Which authority source is being used (USER_MINIMAL_MODE vs MINIMAL_MODE vs embedded header)
+    - What hash is embedded vs what hash is expected
+    - Whether boot marker is emitted and what it contains
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Default Build Behavior Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs (default phase10a2 builds):
+    - Build kernel without USER_MINIMAL_MODE set, capture build log mode string
+    - Build kernel with `USER_MINIMAL_MODE=phase10a2`, capture embedded hash
+    - Boot kernel with default payload, capture boot flow and markers
+    - Run existing CI gates (gate_ring3_execution_phase10a2.sh), capture results
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - For all default builds (USER_MINIMAL_MODE unset or phase10a2), build log shows `DAYKEN_USER_MINIMAL_MODE_STRING="phase10a2"`
+    - For all default builds, embedded hash matches phase10a2 ELF hash
+    - For all default builds, kernel boots successfully and reaches `[[AYKEN_BOOT_OK]]`
+    - For all default builds, existing CI gates pass with same results
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [x] 3. Fix for userspace payload authority drift
+
+  - [x] 3.1 Phase 1: Establish Single Source of Authority
+    - Makefile: Add USER_MINIMAL_MODE validation before building userspace payload
+      - Validate USER_MINIMAL_MODE is one of: `phase10a2`, `entry-proof`, `runtime-bridge-test`
+      - If set but invalid, HARD FAIL with explicit error message
+      - If unset, default to `phase10a2` (preserve existing behavior)
+    - Makefile: Strengthen mode stamp dependency chain
+      - Ensure `.mode.$(USER_MINIMAL_EFFECTIVE_MODE)` stamp triggers rebuild when mode changes
+      - Add explicit dependency: stamp → userspace ELF → embedded header → kernel objects
+    - Makefile: Generate build manifest (AUTHORITY) BEFORE kernel compile completes
+      - Create `out/build/payload_manifest.json` BEFORE final kernel link
+      - Manifest must be generated as part of build dependency chain (not post-build)
+      - If manifest generation fails → HARD FAIL (stop build immediately)
+      - Manifest content:
+        - `selected_mode`: USER_MINIMAL_EFFECTIVE_MODE
+        - `payload_sha256`: SHA256 of userspace ELF
+        - `embedded_header_sha256`: SHA256 from embedded_elf.h
+        - `build_timestamp`: ISO 8601 timestamp
+      - Manifest is AUTHORITATIVE source for verification
+      - Build log verification is DIAGNOSTIC only (helpful but not authoritative)
+      - **CRITICAL**: If manifest missing → kernel build MUST NOT complete
+    - _Bug_Condition: isBugCondition(input) where manifest_mode != embedded_mode OR embedded_sha != manifest_payload_sha OR boot markers missing/mismatched_
+    - _Expected_Behavior: Two correctness invariants must hold:_
+      - _Mode Authority Invariant: manifest.selected_mode == embedded_elf_mode == boot_emitted_mode_
+      - _Payload Integrity Invariant: manifest.payload_sha256 == embedded_elf_sha == boot_emitted_sha_
+    - _Preservation: Default phase10a2 builds continue to work exactly as before_
+    - _Requirements: 2.1, 2.2, 2.7, 2.8_
+
+  - [x] 3.2 Phase 2: Add Build-Time Hash Verification
+    - Makefile: Compute expected hash before embed
+      - Before generating embedded_elf.h, compute SHA256 of requested payload ELF
+      - Store in `EXPECTED_PAYLOAD_HASH` variable
+    - Makefile: Verify embedded hash after generation
+      - After generating embedded_elf.h, extract `embedded_elf_sha256` from header
+      - Compare with `EXPECTED_PAYLOAD_HASH`
+      - HARD FAIL if mismatch with explicit error showing both hashes
+      - **IMPORTANT**: Hash verification runs for ALL builds (including default phase10a2)
+      - No special cases - same verification logic for all modes
+    - Makefile: Add `verify-payload-hash` target
+      - Create explicit target for independent hash verification
+      - Used by CI gates to validate payload authority
+    - tools/embed_elf.py: Add mode metadata
+      - Add `--mode` command-line argument
+      - Emit `static const char embedded_elf_mode[] = "mode";` in header
+    - tools/embed_elf.py: Add verification helper
+      - Generate `static inline int verify_embedded_elf_hash(const char *expected)` function
+      - Returns 0 if hash matches, -1 if mismatch
+    - _Bug_Condition: isBugCondition(input) where embedded_hash != expected_hash_
+    - _Expected_Behavior: embedded_hash == compute_sha256(userspace_elf_for_mode(requested_mode))_
+    - _Preservation: Hash verification runs for all builds uniformly (no special cases)_
+    - _Requirements: 2.3, 2.5, 2.8_
+
+  - [x] 3.3 Phase 3: Add Boot-Time Verification (Phase A - Observable Mismatch)
+    - kernel/kernel.c: Emit boot marker with mode/hash
+      - After kernel initialization in `kmain_real`, emit mode/hash marker to debugcon
+      - Format: `[K][PAYLOAD_MODE=mode][PAYLOAD_SHA=hash]`
+      - **CRITICAL**: BOTH mode AND sha must be emitted (not just mode)
+      - Emit immediately after `[[AYKEN_BOOT_OK]]` marker
+    - kernel/kernel.c: Add hash verification (Observable Mismatch - Phase A)
+      - Before emitting marker, call `verify_embedded_elf_hash` with expected hash
+      - If verification fails, emit `[K][PAYLOAD_HASH_MISMATCH]` marker (DO NOT halt yet)
+      - **NOTE**: Phase B (hard fail/halt) will be added after evidence chain stabilizes
+    - kernel/kernel.c: Add mode string verification (Observable Mismatch - Phase A)
+      - Compare compile-time `DAYKEN_USER_MINIMAL_MODE_STRING` with `embedded_elf_mode`
+      - If mismatch, emit `[K][PAYLOAD_MODE_MISMATCH]` marker (DO NOT halt yet)
+      - **NOTE**: Phase B (hard fail/halt) will be added after evidence chain stabilizes
+    - _Bug_Condition: isBugCondition(input) where boot_emitted_mode == "" OR boot_emitted_sha == "" OR boot markers don't match manifest_
+    - _Expected_Behavior: boot_emitted_mode == manifest.selected_mode AND boot_emitted_sha == embedded_sha (both observable in markers)_
+    - _Preservation: Boot marker emission does not affect default phase10a2 boot flow_
+    - _Requirements: 2.4, 2.6, 2.8_
+    - _Requirements: 2.4, 2.6, 2.8_
+
+  - [x] 3.4 Phase 4: Update Build Harnesses
+    - scripts/qemu-entry-proof-harness.sh: Verify build manifest and boot marker
+      - After build, verify `out/build/payload_manifest.json` exists
+      - Verify `selected_mode == "entry-proof"` in manifest (AUTHORITY)
+      - Verify `payload_sha256 == embedded_header_sha256` in manifest (AUTHORITY)
+      - Optionally check build log for `DAYKEN_USER_MINIMAL_MODE_STRING="entry-proof"` (DIAGNOSTIC - WARNING if missing)
+      - After QEMU run, verify boot log contains `[K][PAYLOAD_MODE=entry-proof]`
+      - HARD FAIL if manifest verification or boot marker verification fails
+    - scripts/qemu-runtime-bridge-proof-harness.sh: Verify build manifest and boot marker
+      - After build, verify `out/build/payload_manifest.json` exists
+      - Verify `selected_mode == "runtime-bridge-test"` in manifest (AUTHORITY)
+      - Verify `payload_sha256 == embedded_header_sha256` in manifest (AUTHORITY)
+      - Optionally check build log for `DAYKEN_USER_MINIMAL_MODE_STRING="runtime-bridge-test"` (DIAGNOSTIC - WARNING if missing)
+      - After QEMU run, verify boot log contains `[K][PAYLOAD_MODE=runtime-bridge-test]`
+      - HARD FAIL if manifest verification or boot marker verification fails
+    - scripts/ci/gate_ring3_execution_phase10a2.sh: Verify default mode
+      - Verify `selected_mode == "phase10a2"` in manifest (AUTHORITY)
+      - Optionally check build log for `DAYKEN_USER_MINIMAL_MODE_STRING="phase10a2"` (DIAGNOSTIC - WARNING if missing)
+      - Verify boot log contains `[K][PAYLOAD_MODE=phase10a2]`
+      - HARD FAIL if manifest verification or boot marker verification fails
+    - _Bug_Condition: isBugCondition(input) where harness cannot verify payload authority_
+    - _Expected_Behavior: Harnesses verify correctness invariants using manifest (authority) and boot markers_
+    - _Preservation: Existing CI gates continue to pass with default payload_
+    - _Requirements: 2.1, 2.2, 2.4, 2.7, 2.8_
+
+  - [x] 3.5 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Payload Authority Determinism Enforced
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior (correctness invariants)
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1:
+      - Build kernel with `USER_MINIMAL_MODE=entry-proof`, verify manifest shows correct mode
+      - Build kernel with `USER_MINIMAL_MODE=runtime-bridge-test`, verify manifest hash matches
+      - Boot kernel with entry-proof payload, verify BOTH boot markers are emitted (mode AND sha)
+      - Build with `USER_MINIMAL_MODE=invalid`, verify build fails explicitly
+      - Delete manifest, verify build fails before kernel compile completes
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify correctness invariants hold (manifest-based, not log-based):
+      - Mode Authority Invariant: `manifest.selected_mode == embedded_elf_mode == boot_emitted_mode`
+      - Payload Integrity Invariant: `manifest.payload_sha256 == embedded_elf_sha == boot_emitted_sha`
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
+
+  - [x] 3.6 Verify preservation tests still pass
+    - **Property 2: Preservation** - Default Build Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2:
+      - Build kernel without USER_MINIMAL_MODE set, verify same behavior as unfixed code
+      - Build kernel with `USER_MINIMAL_MODE=phase10a2`, verify same embedded hash
+      - Boot kernel with default payload, verify same boot flow
+      - Run existing CI gates, verify they pass with same results
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions in default builds)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run all bug condition exploration tests (task 1) - should now PASS
+  - Run all preservation property tests (task 2) - should still PASS
+  - Run existing CI gates (gate_ring3_execution_phase10a2.sh) - should PASS
+  - Run entry-proof harness (qemu-entry-proof-harness.sh) - should PASS
+  - Run runtime-bridge harness (qemu-runtime-bridge-proof-harness.sh) - should PASS
+  - Verify no regressions in default phase10a2 builds
+  - Verify correctness invariant holds for all non-default payload builds
+  - If any test fails, investigate and fix before proceeding
+  - Ask the user if questions arise

@@ -177,6 +177,33 @@ jobs:
         run: |
           set -euo pipefail
           make ci-freeze
+      - name: Spec Validation Gate (Phase-17.5)
+        if: ${{ hashFiles('.kiro/specs/**') != '' }}
+        run: |
+          set -euo pipefail
+          echo "== SPEC VALIDATION GATE =="
+          echo "Checking for specs requiring validation..."
+          
+          # Find all spec directories with validation infrastructure
+          for spec_dir in .kiro/specs/*/; do
+            if [ -f "$spec_dir/ci_gate_spec_validation.sh" ]; then
+              echo "Found spec: $spec_dir"
+              export SPEC_DIR="$spec_dir"
+              make ci-gate-spec-validation
+            fi
+          done
+          
+          echo "✅ All spec validations passed"
+      - name: Upload Spec Validation Evidence
+        if: ${{ always() && hashFiles('.kiro/specs/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-validation-evidence-${{ github.run_id }}
+          path: |
+            out/evidence/**/spec-validation/**
+            .kiro/specs/**/reports/**
+          retention-days: 30
+          if-no-files-found: warn
       - name: Save drift state cache
         if: ${{ always() && hashFiles('.ci-state/**') != '' }}
         uses: actions/cache/save@v4

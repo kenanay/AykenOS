@@ -1,0 +1,16 @@
+--- /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_unexpected_change/original.md	2026-05-02 21:21:52
++++ /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_unexpected_change/fixed.md	2026-05-02 21:21:56
+@@ -2,10 +2,10 @@
+ 
+ ## 🧵 String Pool Section
+ 
+-Current implementation uses null-terminated strings.
++Current implementation uses offset+length representation.
+ 
+ ## 📐 Binary Layout (Preserved)
+ 
+-This section should NOT change.
++This section CHANGED unexpectedly!
+ 
+-Layout: [Header][Directory][Segments]
++Layout: [Header][Directory][Data][Segments]

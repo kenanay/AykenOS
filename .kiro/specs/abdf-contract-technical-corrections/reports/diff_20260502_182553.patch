@@ -1,0 +1,24 @@
+--- /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/pass_only_expected_changes/original.md	2026-05-02 21:21:21
++++ /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/pass_only_expected_changes/fixed.md	2026-05-02 21:21:27
+@@ -1,17 +1,17 @@
+-# Test Document - Original
++# Test Document - Fixed
+ 
+ ## 🧵 String Pool Section
+ 
+-Current implementation uses null-terminated strings.
++Current implementation uses offset+length representation.
+ 
+-Example: `"hello\0world\0"`
++Example: `offset=0, length=5` for "hello"
+ 
+ ## 🔒 Header Structure
+ 
+ Fields:
+ - `magic: u32`
+ - `version: u16`
+-- `checksum: u64, // XXH3 hash`
++- `checksum: u64, // XXH3-64 hash of bytes [64..total_size)`
+ - `total_size: u64`
+ 
+ ## 📐 Binary Layout (Preserved)

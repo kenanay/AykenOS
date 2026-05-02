@@ -1,0 +1,14 @@
+--- /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_context_trap/original.md	2026-05-02 21:22:19
++++ /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_context_trap/fixed.md	2026-05-02 21:22:24
+@@ -2,9 +2,9 @@
+ 
+ ## 🧵 String Pool Section
+ 
+-Current implementation uses null-terminated strings.
++Current implementation uses offset+length representation.
+ 
+-This section will change.
++This section DID change.
+ 
+ ## 📐 Binary Layout (Preserved)
+ 

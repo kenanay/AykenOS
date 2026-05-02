@@ -1,0 +1,48 @@
+{
+  "validation_passed": true,
+  "timestamp": "2026-05-02 22:02:05 UTC",
+  "version": "2.0.0",
+  "files": {
+    "original": "/Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_context_trap/original.md",
+    "original_hash": "2177d63443e187170f24dd736a3b94ff549cf6aa7c76d4ebc828b6f7d5aeff97",
+    "fixed": "/Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_context_trap/fixed.md",
+    "fixed_hash": "f6e851b14c5b15ec9a38c977bdc7c6a625aa73bdfab9d27d241b7883bfb0e153",
+    "diff": "/Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/../reports/diff_20260502_220205.patch"
+  },
+  "diff_empty": false,
+  "sections": {
+    "changed": {
+      "count": 1,
+      "sections": [
+        "ROOT > # Test Document - Context Trap > ## 🧵 String Pool Section"
+      ],
+      "ids": [
+        "string_pool_section"
+      ]
+    },
+    "expected": {
+      "count": 1,
+      "sections": [
+        "🧵 String Pool Section"
+      ],
+      "ids": [
+        "string_pool_section"
+      ]
+    },
+    "preserved": {
+      "count": 1,
+      "sections": [
+        "📐 Binary Layout (Preserved)"
+      ],
+      "ids": [
+        "binary_layout_preserved"
+      ]
+    }
+  },
+  "validation": {
+    "missing_expected_ids": [],
+    "unexpected_change_ids": []
+  },
+  "ci_authoritative": true,
+  "deterministic": true
+}

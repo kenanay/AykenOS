@@ -1,0 +1,149 @@
+# Expected Changes - ABDF Contract Technical Corrections
+# This file defines the ONLY allowed changes for preservation validation
+
+version: 1.0.0
+spec_type: bugfix
+total_fixes: 7
+
+# Each fix defines:
+# - id: unique identifier
+# - section: exact section name in document
+# - type: add | modify | replace
+# - description: what changed
+# - validation: how to verify the fix
+
+fixes:
+  - id: fix-1
+    section: "🧵 String Pool (Zero-Copy)"
+    type: modify
+    description: "Replace null-terminated representation with offset+length"
+    validation:
+      before_contains: "UTF-8 Data (null-terminated)"
+      after_contains: "UTF-8 Data (offset + length)"
+      after_not_contains: "null-terminated"
+      new_subsection: "String Representation Rules"
+    rationale: "Aligns with original design decision, prevents parser ambiguity"
+
+  - id: fix-2
+    section: "🔒 Header Structure (64 bytes)"
+    type: modify
+    description: "Define checksum validation scope"
+    validation:
+      before_contains: "checksum: u64, // XXH3 hash"
+      after_contains: "checksum: u64, // XXH3-64 hash of bytes [64..total_size)"
+      new_subsection: "Checksum Validation"
+    rationale: "Provides unambiguous specification, ensures deterministic results"
+
+  - id: fix-3
+    section: "🖥️ GPU Buffer Segment (Phase 1 Hook)"
+    type: modify
+    description: "Clarify GPU zero-copy as optimization target"
+    validation:
+      before_contains: "GPU buffer data is **directly mappable**"
+      after_contains: "designed for **direct mapping to GPU memory** (optimization target)"
+      after_contains: "Implementations MUST provide fallback"
+      new_subsection: "GPU Mapping Semantics"
+    rationale: "Sets realistic expectations, ensures data integrity across GPU paths"
+
+  - id: fix-4
+    section: "📚 References"
+    subsection: "Constitutional Note"
+    type: replace
+    description: "Separate immutability scope (core vs extensions)"
+    validation:
+      before_contains: "This contract is **immutable** in Phase 1"
+      after_contains: "Immutable Core Contract"
+      after_contains: "Versioned Extensions"
+      new_subsection: "Immutable Core Contract"
+      new_subsection: "Versioned Extensions"
+    rationale: "Clarifies what can/cannot change, guarantees backward compatibility"
+
+  - id: fix-5
+    section: "📊 Segment Directory Entry (32 bytes)"
+    type: add
+    description: "Add SegmentEntry static assertions"
+    validation:
+      after_contains: "Compile-Time Validation"
+      after_contains: "const _: () = assert!(core::mem::size_of::<SegmentEntry>() == 32)"
+      after_contains: "const _: () = assert!(core::mem::align_of::<SegmentEntry>() == 32)"
+      new_subsection: "Compile-Time Validation"
+    rationale: "Ensures struct size invariant validated at compile time"
+
+  - id: fix-6
+    section: "⚙️ Alignment Rules (IMMUTABLE)"
+    type: modify
+    description: "Separate alignment requirements (segment vs mmap)"
+    validation:
+      before_contains: "All offsets MUST be 64B aligned"
+      after_contains: "ABDF segment start offsets MUST be 64B aligned"
+      after_contains: "mmap base alignment is an OS/runtime concern"
+      new_subsection: "Alignment Versioning Note"
+    rationale: "Separates internal format from OS requirements, clarifies offset vs size"
+
+  - id: fix-7
+    section: "🔗 ABDF-BCIB Integration Contract"
+    type: add
+    description: "Add ABDF-BCIB boundary contract"
+    validation:
+      after_contains: "🔗 ABDF-BCIB Integration Contract"
+      after_contains: "Pointer-Free Guarantee"
+      after_contains: "Stable Identifiers Only"
+      after_contains: "No Layout Reinterpretation"
+      after_contains: "Memory Safety Preservation"
+      new_section: true
+    rationale: "Ensures ABDF's pointer-free memory contract not violated by BCIB"
+
+# Preservation targets - these sections MUST NOT change
+preservation:
+  - section: "📐 Binary Layout (Immutable)"
+    reason: "Core format structure"
+  
+  - section: "Memory Contract Flags (bits)"
+    reason: "ABI stability"
+  
+  - section: "Segment Types (Immutable)"
+    reason: "Type constants"
+  
+  - section: "🎨 UI Segment Structure (Phase 1 Hook)"
+    reason: "Struct definitions"
+  
+  - section: "🔢 Vector/Tensor Support (AI/GPU)"
+    reason: "Struct definitions"
+  
+  - section: "🔐 Memory Safety Contract"
+    reason: "Core guarantees"
+  
+  - section: "🚀 CPU ↔ GPU Bridge"
+    reason: "Integration flow"
+  
+  - section: "📋 Phase 1 Checklist"
+    reason: "Scope boundaries"
+  
+  - section: "🎯 Success Criteria"
+    reason: "Completion criteria"
+  
+  - section: "🔥 Critical Warnings"
+    reason: "Safety rules"
+
+# Validation rules
+validation_rules:
+  - rule: "ORIGINAL file must exist before validation"
+    enforcement: "blocking"
+  
+  - rule: "ORIGINAL hash must be captured before fixes"
+    enforcement: "blocking"
+  
+  - rule: "Bug conditions must FAIL on ORIGINAL"
+    enforcement: "blocking"
+  
+  - rule: "Bug conditions must PASS on FIXED"
+    enforcement: "blocking"
+  
+  - rule: "Diff must only contain expected_changes sections"
+    enforcement: "blocking"
+  
+  - rule: "Preservation sections must be byte-identical"
+    enforcement: "blocking"
+  
+  - rule: "Script FAIL cannot be overridden by manual verification"
+    enforcement: "blocking"
