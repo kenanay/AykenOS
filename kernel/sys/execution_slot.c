@@ -381,6 +381,14 @@ int execution_slot_validate_markers_locked(const void *slot_ptr)
         return MARKER_ERROR_INVALID_ORDER;
     }
     
+    // Defensive check: ensure no garbage in unused buffer space
+    // This prevents temporal safety issues if other code accidentally reads beyond valid range
+    for (i = EXPECTED_COUNT; i < 7; i++) {
+        if (slot->marker_sequence[i] != 0) {
+            return MARKER_ERROR_INVALID_ORDER;  // Garbage detected
+        }
+    }
+    
     return MARKER_ERROR_NONE;
 }
 #endif
