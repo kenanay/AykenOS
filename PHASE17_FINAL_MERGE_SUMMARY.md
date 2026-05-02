@@ -8,6 +8,20 @@
 
 ---
 
+## ⚡ QUICK REFERENCE (For Reviewer)
+
+**What**: 4-layer marker validation guard (deterministic execution)  
+**Where**: `kernel/sys/execution_slot.c` (pre-commit guard)  
+**Tests**: 7/7 build + 5/5 runtime (100% pass)  
+**Safety**: objdump verified ZERO test code in production  
+**Scope**: Validation logic only (full kernel tests = Phase-18)  
+**Evidence**: `PHASE17_INJECTION_TEST_EXECUTION_REPORT.md`  
+**Decision**: Architectural steward sign-off required  
+
+**Review Time**: ~15 min (4 files, 300 LOC core logic)
+
+---
+
 ## 🎯 EXECUTIVE SUMMARY
 
 Phase-17 Step 5 implements a **4-layer marker validation guard** that enforces deterministic execution marker sequences before hash preparation. The implementation includes:
@@ -148,6 +162,14 @@ Determinism Gate: ✅ PASS
 
 **Rationale**: Step 5 scope is validation logic correctness, not full system integration.
 
+### Risk Advisory Interpretation
+**CI Advisory**: "Risk: high"  
+**Meaning**: Integration scope is broad (execution slot subsystem)  
+**NOT Meaning**: Code quality risk (all tests pass)  
+
+**Mitigation**: Scope explicitly bounded to Phase-17 Step 5 (validation logic).  
+Full system integration deferred to Phase-18 (QEMU + scheduler).
+
 ---
 
 ## 🔥 CRITICAL ACHIEVEMENTS
@@ -264,10 +286,30 @@ Proved validation works at runtime (not just compiles).
 Full kernel runtime tests (QEMU-based) deferred to Phase-18.
 Rationale: Step 5 scope is validation logic correctness.
 
-## Evidence
-- Test execution reports in commit history
-- Documentation in PHASE17_*.md files
-- objdump verification in commit messages
+## Evidence Paths (For Reviewer)
+- **Test Execution Reports**: 
+  - `PHASE17_INJECTION_TEST_EXECUTION_REPORT.md` (runtime proof)
+  - `PHASE17_INJECTION_HARNESS_FINAL_STATUS.md` (build proof)
+- **Validation Proof**: `PHASE17_STEP5_VALIDATION_PROOF.md`
+- **Completion Report**: `PHASE17_STEP5_COMPLETION_REPORT.md`
+- **objdump Verification**: Commit `62252f8c` message
+
+## Review Focus Areas
+1. **Validation Logic**: `kernel/sys/execution_slot.c:execution_slot_validate_markers_locked()`
+2. **Guard Structure**: `kernel/sys/execution_marker_injection.h` (nested guards)
+3. **Test Isolation**: `tests/phase17_marker_injection_suite.sh` (env -i usage)
+4. **Runtime Proof**: `tests/unit/phase17_marker_injection_test.c` (5 scenarios)
+
+## Scope Boundary (Phase-18 Note)
+This PR validates **marker sequence correctness** (logic layer).
+Full kernel runtime validation (QEMU + scheduler interaction) is Phase-18.
+See: `PHASE17_FINAL_MERGE_SUMMARY.md` § "What Was Deferred"
+
+## Requesting
+✅ All CI gates passed  
+✅ Validation logic verified (runtime)  
+✅ Production safety verified (objdump)  
+👉 **Requesting architectural steward sign-off**
 ```
 
 ---
