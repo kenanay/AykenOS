@@ -1,0 +1,21 @@
+version: 1.0.0
+spec_type: bugfix
+total_fixes: 2
+
+fixes:
+  - id: fix-1
+    section: "🧵 String Pool Section"
+    type: modify
+    description: "Replace null-terminated with offset+length"
+    
+  - id: fix-2
+    section: "🔒 Header Structure"
+    type: modify
+    description: "Define checksum scope"
+
+preservation:
+  - section: "📐 Binary Layout (Preserved)"
+    reason: "Core format structure"
+  
+  - section: "🎯 Success Criteria (Preserved)"
+    reason: "Completion criteria"

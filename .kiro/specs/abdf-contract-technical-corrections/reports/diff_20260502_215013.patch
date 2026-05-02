@@ -1,0 +1,11 @@
+--- /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_missing_expected/original.md	2026-05-02 21:22:05
++++ /Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/test_fixtures/fail_missing_expected/fixed.md	2026-05-02 21:22:09
+@@ -2,7 +2,7 @@
+ 
+ ## 🧵 String Pool Section
+ 
+-Current implementation uses null-terminated strings.
++Current implementation uses offset+length representation.
+ 
+ ## 🔒 Header Structure
+ 

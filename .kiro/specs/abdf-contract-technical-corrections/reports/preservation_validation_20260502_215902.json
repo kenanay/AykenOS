@@ -1,0 +1,56 @@
+{
+  "validation_passed": true,
+  "timestamp": "2026-05-02 21:59:02 UTC",
+  "version": "2.0.0",
+  "files": {
+    "original": "test_fixtures/pass_only_expected_changes/original.md",
+    "original_hash": "e18b589dbdffb74a594acc2b629d1c3518c379b34761233fe538e5588fa0d66e",
+    "fixed": "test_fixtures/pass_only_expected_changes/fixed.md",
+    "fixed_hash": "d924707b8eaafeb32eb9390de8708670c7d8aac1c25285e560bfa0e6ee2f49df",
+    "diff": "/Users/asel/Desktop/AykenOS/.kiro/specs/abdf-contract-technical-corrections/reports/diff_20260502_215902.patch"
+  },
+  "diff_empty": false,
+  "sections": {
+    "changed": {
+      "count": 3,
+      "sections": [
+        "ROOT > # Test Document - Fixed > ## 🧵 String Pool Section",
+        "ROOT > # Test Document - Fixed",
+        "ROOT > # Test Document - Fixed > ## 🔒 Header Structure"
+      ],
+      "ids": [
+        "string_pool_section",
+        "test_document_fixed",
+        "header_structure"
+      ]
+    },
+    "expected": {
+      "count": 2,
+      "sections": [
+        "🧵 String Pool Section",
+        "🔒 Header Structure"
+      ],
+      "ids": [
+        "string_pool_section",
+        "header_structure"
+      ]
+    },
+    "preserved": {
+      "count": 2,
+      "sections": [
+        "📐 Binary Layout (Preserved)",
+        "🎯 Success Criteria (Preserved)"
+      ],
+      "ids": [
+        "binary_layout_preserved",
+        "success_criteria_preserved"
+      ]
+    }
+  },
+  "validation": {
+    "missing_expected_ids": [],
+    "unexpected_change_ids": []
+  },
+  "ci_authoritative": true,
+  "deterministic": true
+}

@@ -177,6 +177,20 @@ jobs:
         run: |
           set -euo pipefail
           make ci-freeze
+      - name: Spec Validation Gate (Phase-17.5)
+        run: |
+          set -euo pipefail
+          python3 tools/ci/phase17_spec_validation_gate.py
+      - name: Upload Spec Validation Evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-validation-evidence-${{ github.run_id }}
+          path: |
+            out/evidence/**/spec-validation/**
+            .kiro/specs/**/reports/**
+          retention-days: 30
+          if-no-files-found: warn
       - name: Save drift state cache
         if: ${{ always() && hashFiles('.ci-state/**') != '' }}
         uses: actions/cache/save@v4

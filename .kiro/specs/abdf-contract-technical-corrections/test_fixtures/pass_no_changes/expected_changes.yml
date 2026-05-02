@@ -1,0 +1,12 @@
+version: 1.0.0
+spec_type: bugfix
+total_fixes: 0
+
+fixes: []
+
+preservation:
+  - section: "Section A"
+    reason: "No changes expected"
+  
+  - section: "Section B"
+    reason: "No changes expected"

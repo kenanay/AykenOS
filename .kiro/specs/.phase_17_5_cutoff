@@ -1,0 +1,14 @@
+# Phase-17.5 Cutoff Date
+# Specs created after this date MUST have Level 3 validation
+# Format: YYYY-MM-DD HH:MM:SS UTC
+
+PHASE_17_5_CUTOFF_DATE="2026-05-02 19:00:00"
+PHASE_17_5_CUTOFF_COMMIT="500ed7b3"
+
+# Policy:
+# - Specs created BEFORE cutoff: Legacy exception allowed
+# - Specs created AFTER cutoff: Level 3 validation MANDATORY
+# - No new legacy exceptions after cutoff
+
+# Authority: Constitutional Enforcement (Phase-17.5)
+# Owner: Kenan AY - Architectural Steward

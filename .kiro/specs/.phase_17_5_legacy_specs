@@ -1,0 +1,28 @@
+# Phase-17.5 Legacy Spec Inventory
+#
+# Specs listed here existed before Phase-17.5 enforcement became authoritative,
+# even if this bootstrap PR is the first commit that tracks their local Kiro
+# workspace files in Git. Entries are spec directory names under .kiro/specs/.
+#
+# New post-cutoff specs MUST NOT be added here.
+
+abdf-contract-technical-corrections
+alias-aware-address-space-leak-proof
+boot-chain-observability-restoration
+ci-gate-order-doc-sync
+drift-activation-phase9
+minimal-ring3-elf-loader
+obs-cli-consumer
+phase11-verification-substrate
+phase12-distributed-verification-closure
+phase14-closure
+phase15-bcib-execution-engine
+phase16-bcib-abdf-isolation-contracts
+phase16-fazb-bcib-stub-to-real-path
+phase16-performance-regression-rca
+scheduler-mailbox-phase10c
+scheduler-primary-regression-rca
+summary-structured-insight-layer
+syscall-boundary-phase11
+tools-verification-layer
+userspace-payload-authority-drift

@@ -1,0 +1,13 @@
+version: 1.0.0
+spec_type: bugfix
+total_fixes: 1
+
+fixes:
+  - id: fix-1
+    section: "🧵 String Pool Section"
+    type: modify
+    description: "Replace null-terminated with offset+length"
+
+preservation:
+  - section: "📐 Binary Layout (Preserved)"
+    reason: "Core format structure - MUST NOT CHANGE"
