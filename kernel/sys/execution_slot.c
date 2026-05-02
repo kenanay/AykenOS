@@ -321,6 +321,68 @@ static inline void execution_slot_marker_capture_locked(
         slot->marker_error_code = 3;  // Marker overflow
     }
 }
+
+/*
+ * execution_slot_validate_markers_locked - Validate captured markers (read-only)
+ * 
+ * @slot: Execution slot
+ * 
+ * Pure validation - NO state mutation, NO side effects.
+ * Returns error code if validation fails.
+ * 
+ * RULE: VALIDATE AFTER WRITE
+ * This is called AFTER all markers are captured (Step 4).
+ * 
+ * Pre-commit guard: Called before state transition to COMPLETED/RESULT_MAPPED.
+ * 
+ * Expected sequence (5 markers):
+ *   0: MARKER_EXEC_START
+ *   1: MARKER_EXEC_OUTPUT_WRITTEN
+ *   2: MARKER_EXEC_COMPLETE_OK
+ *   3: MARKER_VERIFY_START
+ *   4: MARKER_VERIFY_PASS
+ * 
+ * RESULT_OK (marker 5) is captured AFTER this validation passes.
+ * WAIT_OK (marker 6) is Phase-17 out-of-scope.
+ * 
+ * Returns:
+ *   0 = validation passed
+ *   non-zero = marker_error_code_t value
+ */
+int execution_slot_validate_markers_locked(const void *slot_ptr)
+{
+    const exec_slot_t *slot = (const exec_slot_t *)slot_ptr;
+    const uint8_t EXPECTED_COUNT = 5;
+    uint8_t i;
+    
+    if (!slot || !slot->in_use) {
+        return MARKER_ERROR_OUT_OF_BOUNDS;
+    }
+    
+    // Check if error already occurred during capture
+    if (slot->marker_error_code != 0) {
+        return slot->marker_error_code;
+    }
+    
+    // Validate count (must be exactly 5 at this point)
+    if (slot->marker_count != EXPECTED_COUNT) {
+        return MARKER_ERROR_INVALID_ORDER;
+    }
+    
+    // Validate sequence order (strict sequential: 0, 1, 2, 3, 4)
+    for (i = 0; i < EXPECTED_COUNT; i++) {
+        if (slot->marker_sequence[i] != i) {
+            return MARKER_ERROR_INVALID_ORDER;
+        }
+    }
+    
+    // Validate bitmap (must match expected markers: bits 0-4 set)
+    if (slot->marker_bitmap != 0x1F) {  // 0b00011111
+        return MARKER_ERROR_INVALID_ORDER;
+    }
+    
+    return MARKER_ERROR_NONE;
+}
 #endif
 
 static void execution_slot_zero_slot(exec_slot_t *slot)
@@ -1303,6 +1365,13 @@ static int execution_slot_prepare_hash_locked(exec_slot_t *slot)
         slot->hashed_size == slot->result_size) {
         return 0;
     }
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    /* Pre-commit guard: validate markers before hash preparation */
+    if (execution_slot_validate_markers_locked(slot) != 0) {
+        return -1;
+    }
+#endif
 
     if (execution_slot_hash_result_frames_locked(slot, digest) != 0) {
         return -1;
