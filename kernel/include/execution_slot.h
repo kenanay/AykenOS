@@ -94,6 +94,8 @@ typedef struct exec_slot {
     uint8_t last_marker;
     uint8_t marker_count;
     uint8_t marker_error_code;
+    uint8_t marker_sequence[7];  // Sequence tracking for validation (7 markers: 0-6)
+    uint8_t reserved_marker[3];  // Padding for alignment
 #endif
 } exec_slot_t;
 

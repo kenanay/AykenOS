@@ -293,6 +293,9 @@ static __attribute__((noreturn)) void execution_slot_runtime_panic(const char *s
  * Pure write operation - NO validation, NO error handling, NO failure path.
  * Validation happens later in Step 5 (pre-commit guard).
  * 
+ * Fail-fast: Once an error occurs, all subsequent marker captures are ignored.
+ * This ensures deterministic trace and prevents garbage data.
+ * 
  * Rule: WRITE FIRST → VALIDATE LATER
  * 
  * This helper is NOT called yet (Step 4 adds call sites).
@@ -301,9 +304,22 @@ static inline void execution_slot_marker_capture_locked(
     exec_slot_t *slot,
     execution_marker_t marker)
 {
+    // Fail-fast: if error already occurred, stop processing markers
+    if (slot->marker_error_code != 0) {
+        return;
+    }
+    
     slot->marker_bitmap |= (uint8_t)(1u << marker);
     slot->last_marker = (uint8_t)marker;
-    slot->marker_count++;
+    
+    // Bounds-safe sequence capture with overflow protection
+    if (slot->marker_count < 7) {
+        slot->marker_sequence[slot->marker_count] = (uint8_t)marker;
+        slot->marker_count++;
+    } else {
+        // Overflow: signal error and stop further marker processing
+        slot->marker_error_code = 3;  // Marker overflow
+    }
 }
 #endif
 
@@ -348,6 +364,13 @@ static void execution_slot_zero_slot(exec_slot_t *slot)
     slot->trace_count = 0;
     slot->trace_head = 0;
     memset(slot->trace_entries, 0, sizeof(slot->trace_entries));
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    slot->marker_bitmap = 0;
+    slot->marker_count = 0;
+    slot->last_marker = 0;
+    slot->marker_error_code = 0;
+    memset(slot->marker_sequence, 0, sizeof(slot->marker_sequence));
+#endif
 }
 
 static void execution_slot_zero_queue(execution_context_queue_t *queue)
@@ -943,6 +966,13 @@ void execution_slot_release_locked(exec_slot_t *slot)
     slot->trace_count = 0;
     slot->trace_head = 0;
     memset(slot->trace_entries, 0, sizeof(slot->trace_entries));
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    slot->marker_bitmap = 0;
+    slot->marker_count = 0;
+    slot->last_marker = 0;
+    slot->marker_error_code = 0;
+    memset(slot->marker_sequence, 0, sizeof(slot->marker_sequence));
+#endif
     slot->in_use = 0;
 }
 
