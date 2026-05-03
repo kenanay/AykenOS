@@ -242,8 +242,10 @@ Evidence authenticity is guaranteed through:
 
 ```c
 int evidence_emit_and_verify(struct evidence_entry *entry) {
-    // Step 1: Sign evidence (with current trust root version)
-    if (!evidence_sign(entry, VCP_TRUST_ROOT_ID, current_trust_root_version)) {
+    // Step 1: Sign evidence with kernel evidence producer key
+    // CRITICAL: Kernel holds producer key (NOT trust root private key)
+    // CI verifies: (1) evidence signature with producer key, (2) producer key authorized by trust root
+    if (!evidence_sign(entry, KERNEL_EVIDENCE_PRODUCER_KEY_ID, current_trust_root_version)) {
         vcp_fail_closed(slot, "Evidence signing failed");
         return VCP_FAIL_CLOSED;
     }
@@ -443,7 +445,7 @@ void execution_slot_destroy(struct execution_slot *slot) {
 
 ```
 out/evidence/
-  run-{timestamp}-{commit_sha}/
+  run-{ci_run_id}/
     meta/
       run.json              # Run metadata (commit, phase, validation standard)
       environment.json      # Environment context
@@ -752,7 +754,7 @@ kernel/
 ```
 out/
   evidence/
-    run-{timestamp}-{commit_sha}/
+    run-{ci_run_id}/
       chain/
         global_chain.bin       ← FIXED NAME (no variation)
         head.hash              ← FIXED NAME
@@ -1698,13 +1700,14 @@ Evidence (device_id, event_type, capability_id)
 ```c
 // kernel/include/vcp_performance.h
 
-#define VCP_VALIDATION_MAX_CYCLES    10000   // vcp_runtime_validate()
-#define EVIDENCE_APPEND_MAX_CYCLES   5000    // evidence chain append
-#define SIGNATURE_VERIFY_MAX_CYCLES  20000   // signature verification
-#define FAIL_CLOSED_MAX_CYCLES       2000    // fail-closed enforcement
+// CRITICAL: Use bounded operations (NOT cycle count) for determinism
+#define VCP_VALIDATION_MAX_OPS       10      // max hash ops + signature verifications
+#define EVIDENCE_APPEND_MAX_OPS      5       // max write ops + hash computations
+#define SIGNATURE_VERIFY_MAX_OPS     1       // max signature operations
+#define FAIL_CLOSED_MAX_OPS          3       // max operations in fail-closed path
 
 struct performance_budget {
-    uint64_t max_cycles;
+    uint64_t max_operations;  // Bounded operations (NOT cycles)
     uint64_t max_memory;
     uint64_t max_io_ops;
 };
@@ -1714,16 +1717,14 @@ struct performance_budget {
 
 ```c
 int vcp_runtime_validate_with_budget(struct execution_slot *slot) {
-    uint64_t start_cycles = get_cycle_count();
+    uint64_t operation_count = 0;
     
-    // Perform validation
-    int result = vcp_runtime_validate(slot);
+    // Perform validation (count operations, not cycles)
+    int result = vcp_runtime_validate(slot, &operation_count);
     
-    uint64_t elapsed_cycles = get_cycle_count() - start_cycles;
-    
-    if (elapsed_cycles > VCP_VALIDATION_MAX_CYCLES) {
-        vcp_fail_closed(slot, "Validation timeout: exceeded budget");
-        vcp_emit_evidence(slot, "validation_timeout", elapsed_cycles);
+    if (operation_count > VCP_VALIDATION_MAX_OPS) {
+        vcp_fail_closed(slot, "Validation operation budget exceeded");
+        vcp_emit_evidence(slot, "validation_budget_exceeded", operation_count);
         return VCP_FAIL_CLOSED;
     }
     
@@ -1734,39 +1735,40 @@ int vcp_runtime_validate_with_budget(struct execution_slot *slot) {
 ### Fallback Behavior
 
 ```
-IF validation exceeds budget:
-  → fail-closed with evidence "validation timeout"
+IF validation exceeds operation budget:
+  → fail-closed with evidence "validation operation budget exceeded"
   → system halts execution
-  → no recovery (timeout = critical failure)
+  → no recovery (budget exceeded = critical failure)
 
-IF evidence exceeds budget:
-  → fail-closed with evidence "evidence timeout"
+IF evidence exceeds operation budget:
+  → fail-closed with evidence "evidence operation budget exceeded"
   → system halts execution
 
-IF signature exceeds budget:
-  → fail-closed with evidence "signature timeout"
+IF signature exceeds operation budget:
+  → fail-closed with evidence "signature operation budget exceeded"
   → system halts execution
 ```
 
 ### Property 51: Performance Budget Enforcement
 
-*For any* enforcement path (validation, evidence, signature, fail-closed), the operation SHALL complete within deterministic time bound, and budget exceeded SHALL trigger fail-closed with evidence.
+*For any* enforcement path (validation, evidence, signature, fail-closed), the operation SHALL complete within deterministic operation bound (NOT cycle count), and operation budget exceeded SHALL trigger fail-closed with evidence.
 
 **Validates: Requirements 21.1, 21.2, 21.3, 21.4, 21.5**
 
 ### Why This Matters
 
 **Without performance budget:**
-- Validation time unpredictable (DoS vector)
+- Validation operations unpredictable (DoS vector)
 - Evidence append can block indefinitely
 - Signature verification unbounded
 - System performance degrades unpredictably
 
 **With performance budget:**
-- All enforcement paths have deterministic bounds
-- Budget exceeded = critical failure (fail-closed)
-- Performance is predictable and testable
+- All enforcement paths have deterministic operation bounds
+- Operation budget exceeded = critical failure (fail-closed)
+- Performance is predictable and testable (same ops → same behavior)
 - DoS vectors are mitigated
+- **CRITICAL**: Operation-based (NOT cycle-based) ensures determinism across different CPUs
 
 **This ensures security mechanisms do not degrade system performance.**
 
