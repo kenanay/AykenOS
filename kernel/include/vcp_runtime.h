@@ -4,6 +4,28 @@
 #include <stdint.h>
 #include "execution_slot.h"
 
+#ifndef AYKEN_VCP_TRUST_VERIFICATION_TEST
+#define AYKEN_VCP_TRUST_VERIFICATION_TEST 0
+#endif
+
+#ifndef AYKEN_VCP_RUNTIME_HOOK_TEST
+#define AYKEN_VCP_RUNTIME_HOOK_TEST 0
+#endif
+
+#ifndef AYKEN_VCP_FAIL_CLOSED_TEST
+#define AYKEN_VCP_FAIL_CLOSED_TEST 0
+#endif
+
+#ifndef AYKEN_VCP_EVIDENCE_TEST
+#define AYKEN_VCP_EVIDENCE_TEST 0
+#endif
+
+#define AYKEN_VCP_TEST_HOOKS \
+    (AYKEN_VCP_TRUST_VERIFICATION_TEST || \
+     AYKEN_VCP_RUNTIME_HOOK_TEST || \
+     AYKEN_VCP_FAIL_CLOSED_TEST || \
+     AYKEN_VCP_EVIDENCE_TEST)
+
 /*
  * VCP Runtime Validation API
  * 
@@ -16,14 +38,14 @@
  * Trust Model:
  *   - Validation state MUST be verified before trust
  *   - Verification checks: capability, context, signature, nonce
- *   - Verification failure → fail-closed (no bypass)
+ *   - Verification failure -> fail-closed (no bypass)
  *   - validation_result flag is NEVER authoritative by itself
  * 
  * Constitutional Compliance:
- *   - NO global state mutations (DETERMINISM.GLOBAL)
+ *   - Nonce state is append-only and deterministic
  *   - NO capability bypass (KERNEL.CAPABILITY.BYPASS)
- *   - NO Ring3→Ring0 direct access (SECURITY.BOUNDARY.VIOLATION)
- *   - Deterministic execution (same input → same output)
+ *   - NO Ring3->Ring0 direct access (SECURITY.BOUNDARY.VIOLATION)
+ *   - Deterministic execution (same input -> same output)
  */
 
 /*
@@ -41,6 +63,8 @@ typedef enum {
     VCP_MISSING = 2,         /* Validation state is NULL (fail-closed trigger) */
     VCP_FAIL_CLOSED = 3,     /* Validation failed, execution blocked */
 } vcp_validation_result_t;
+
+#define VCP_FAIL_CLOSED_SLOT_ERROR_CODE 0x565043FCu
 
 /*
  * VCP Trust Verification Result Codes
@@ -155,20 +179,18 @@ int vcp_verify_capability(struct exec_slot *slot, vcp_validation_state_t *state)
  * 
  * Returns: Context hash (uint64_t)
  * 
- * CRITICAL: Must be deterministic (same execution → same hash)
+ * CRITICAL: Must be deterministic (same execution -> same hash)
  */
 uint64_t vcp_compute_context_hash(struct exec_slot *slot);
 
 /*
- * vcp_verify_signature - Verify VCP trust root signature
+ * vcp_verify_signature - Verify validation-state signature
  * 
  * @state: Validation state to verify
  * 
- * Verifies signature against VCP trust root.
- * Uses kernel evidence producer key model:
- *   - Kernel holds evidence producer key (NOT trust root private key)
- *   - Signature verified with producer key
- *   - CI verifies producer key authorized by trust root
+ * Verifies that signature covers the validation state fields accepted by the
+ * deterministic runtime verifier. Production trust-root crypto can replace the
+ * deterministic verifier without weakening the call contract.
  * 
  * Returns:
  *   0 - Signature valid
@@ -183,13 +205,13 @@ int vcp_verify_signature(vcp_validation_state_t *state);
  * 
  * Verifies that nonce has not been used before.
  * 
- * CRITICAL: Nonce registry MUST be append-only ledger (NOT hidden mutable global map)
- * This ensures compliance with DETERMINISM.GLOBAL constitutional rule.
+ * CRITICAL: Nonce registry MUST be append-only ledger (NOT hidden mutable map).
  * 
  * Implementation:
  *   - Nonce ledger is append-only structure
- *   - Deterministic, no global state mutation
- *   - Same execution → same nonce checks → same result
+ *   - vcp_verify_nonce() is a pure uniqueness check
+ *   - Accepted states append their nonce only after validation_result passes
+ *   - Same execution -> same nonce checks -> same result
  * 
  * Returns:
  *   0 - Nonce is unique (not replayed)
@@ -202,8 +224,8 @@ int vcp_verify_nonce(vcp_validation_state_t *state);
  * 
  * This is the main enforcement point called by BCIB, ABDF, and CLI handlers.
  * 
- * CRITICAL: This function calls vcp_verify_validation_state() FIRST,
- * then checks validation_result ONLY if trust verification passes.
+ * CRITICAL: This function calls vcp_verify_validation_state(); that verifier
+ * checks validation_result only after trust verification has passed.
  */
 
 /*
@@ -213,8 +235,8 @@ int vcp_verify_nonce(vcp_validation_state_t *state);
  * 
  * Performs runtime validation enforcement:
  *   1. Verify trust (capability + context + signature + nonce)
- *   2. Check validation result (only after trust verified)
- *   3. Emit evidence
+ *   2. Check validation result inside the verifier only after trust
+ *   3. Return fail-closed on any failure
  * 
  * Returns:
  *   VCP_VALID - Validation passed, execution may proceed
@@ -226,5 +248,108 @@ int vcp_verify_nonce(vcp_validation_state_t *state);
  *   - CLI handler (before CLI execution)
  */
 int vcp_runtime_validate(struct exec_slot *slot);
+
+/*
+ * vcp_fail_closed - Permanent fail-closed enforcement handler
+ *
+ * @slot: Execution slot to block, or NULL for non-slot failures
+ * @reason: Deterministic diagnostic reason string
+ *
+ * Permanently blocks the slot by moving it to EXEC_SLOT_ABORTED and assigning
+ * VCP_FAIL_CLOSED_SLOT_ERROR_CODE. Repeated calls are idempotent.
+ *
+ * Returns:
+ *   VCP_FAIL_CLOSED - Execution must remain blocked
+ */
+int vcp_fail_closed(struct exec_slot *slot, const char *reason);
+
+/*
+ * vcp_fail_closed_is_active - Check permanent fail-closed state
+ *
+ * Returns non-zero only when this slot was blocked by the VCP fail-closed
+ * handler. Generic EXEC_SLOT_ABORTED states are not treated as VCP failures.
+ */
+int vcp_fail_closed_is_active(const struct exec_slot *slot);
+
+/*
+ * Diagnostic evidence emission API surface.
+ *
+ * Task 5 provides diagnostic-only stub definitions. Authoritative, signed, and
+ * durable-before-proceed evidence is introduced by Tasks 20-23.
+ */
+void vcp_emit_validation_check(struct exec_slot *slot, int result);
+void vcp_emit_execution_block(struct exec_slot *slot, const char *reason);
+void vcp_emit_contract_execution(struct exec_slot *slot, const char *contract_id);
+void vcp_emit_boundary_crossing(struct exec_slot *slot, const char *boundary_id);
+
+#define VCP_DIAGNOSTIC_EVIDENCE_CAPACITY 64u
+
+typedef enum {
+    VCP_DIAG_EVENT_NONE = 0,
+    VCP_DIAG_EVENT_VALIDATION_CHECK = 1,
+    VCP_DIAG_EVENT_EXECUTION_BLOCK = 2,
+    VCP_DIAG_EVENT_CONTRACT_EXECUTION = 3,
+    VCP_DIAG_EVENT_BOUNDARY_CROSSING = 4,
+} vcp_diagnostic_evidence_type_t;
+
+typedef struct vcp_diagnostic_evidence_entry {
+    uint32_t index;
+    uint32_t event_type;
+    int32_t result;
+    uint32_t reason_hash;
+    uint32_t label_hash;
+    uint32_t reserved0;
+    uint64_t slot_id;
+    uint64_t generation;
+    uint64_t owner_pid;
+    uint64_t target_context_id;
+    uint64_t slot_state;
+    uint64_t error_code;
+    uint64_t event_result;
+    uint64_t context_hash;
+    uint64_t nonce;
+    uint64_t capability_id;
+    uint64_t evidence_id;
+} vcp_diagnostic_evidence_entry_t;
+
+#define VCP_TRUST_TRACE_CAPACITY 16u
+
+typedef enum {
+    VCP_TRACE_NONE = 0,
+    VCP_TRACE_CAPABILITY = 1,
+    VCP_TRACE_CONTEXT = 2,
+    VCP_TRACE_SIGNATURE = 3,
+    VCP_TRACE_NONCE = 4,
+    VCP_TRACE_RESULT = 5,
+    VCP_TRACE_NONCE_COMMIT = 6,
+    VCP_TRACE_FAIL_CLOSED = 7,
+} vcp_trust_trace_event_t;
+
+#if AYKEN_VCP_TEST_HOOKS
+typedef struct vcp_trust_trace {
+    uint32_t count;
+    uint32_t nonce_ledger_count;
+    uint32_t events[VCP_TRUST_TRACE_CAPACITY];
+} vcp_trust_trace_t;
+
+/*
+ * Test-mode deterministic issuer hooks.
+ *
+ * These helpers are intentionally available only in VCP validation test builds.
+ * They let property tests create states that satisfy the verifier without
+ * treating arbitrary non-zero capability/signature/nonce values as trusted.
+ */
+void vcp_test_reset_trust_environment(void);
+void vcp_test_reset_trust_trace(void);
+void vcp_test_get_trust_trace(vcp_trust_trace_t *out);
+uint32_t vcp_test_nonce_ledger_count(void);
+uint64_t vcp_test_capability_binding(struct exec_slot *slot,
+                                     vcp_validation_state_t *state);
+uint64_t vcp_test_signature(vcp_validation_state_t *state);
+void vcp_test_reset_diagnostic_evidence(void);
+uint32_t vcp_test_diagnostic_evidence_count(void);
+int vcp_test_get_diagnostic_evidence(uint32_t logical_index,
+                                     vcp_diagnostic_evidence_entry_t *out);
+#endif
 
 #endif /* AYKEN_VCP_RUNTIME_H */

@@ -44,15 +44,15 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Test validation state preservation during slot lifetime
     - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 2. Implement VCP runtime validation hook
-  - [ ] 2.1 Create VCP runtime API header `kernel/include/vcp_runtime.h`
+- [x] 2. Implement VCP runtime validation hook
+  - [x] 2.1 Create VCP runtime API header `kernel/include/vcp_runtime.h`
     - Define `vcp_runtime_validate(struct execution_slot *slot)` function signature
     - Define validation result codes: `VCP_VALID`, `VCP_INVALID`, `VCP_MISSING`, `VCP_FAIL_CLOSED`
     - Define evidence emission function signatures
     - Add constitutional compliance annotations (NO global state, NO capability bypass)
     - _Requirements: 1.2, 1.3, 1.4, 8.2, 8.3_
   
-  - [ ] 2.2 Implement runtime validation hook in `kernel/sys/vcp_runtime.c`
+  - [x] 2.2 Implement runtime validation hook in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_runtime_validate()` to check validation state in execution slot
     - Return `VCP_FAIL_CLOSED` if validation state is NULL (missing)
     - Return `VCP_INVALID` if validation state indicates invalid execution
@@ -60,26 +60,26 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Ensure deterministic execution (no global state mutations)
     - _Requirements: 1.2, 1.3, 1.5, 8.2_
   
-  - [ ] 2.3 Write property test for fail-closed on missing validation state [CRITICAL]
+  - [x] 2.3 Write property test for fail-closed on missing validation state [CRITICAL]
     - **Property 2: Fail-Closed on Missing Validation State** [CRITICAL]
     - **Validates: Requirements 1.2, 4.1, 5.3**
     - Test that execution is blocked when validation state is NULL
   
-  - [ ] 2.4 Write property test for invalid validation state blocking [CRITICAL]
+  - [x] 2.4 Write property test for invalid validation state blocking [CRITICAL]
     - **Property 3: Invalid Validation State Blocks Execution** [CRITICAL]
     - **Validates: Requirements 1.3, 2.3, 3.3**
     - Test that execution is blocked when validation state indicates invalid execution
   
-  - [ ] 2.5 Write property test for valid validation state permitting execution [CRITICAL]
+  - [x] 2.5 Write property test for valid validation state permitting execution [CRITICAL]
     - **Property 4: Valid Validation State Permits Execution** [CRITICAL]
     - **Validates: Requirements 1.5**
     - Test that execution proceeds when validation state is valid
 
-- [ ] 3. Checkpoint - Ensure all tests pass
+- [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement fail-closed enforcement mechanism
-  - [ ] 4.1 Create fail-closed handler in `kernel/sys/fail_closed.c`
+- [x] 4. Implement fail-closed enforcement mechanism
+  - [x] 4.1 Create fail-closed handler in `kernel/sys/fail_closed.c`
     - Implement `vcp_fail_closed(struct execution_slot *slot, const char *reason)` function
     - Block execution permanently (return error code, do not continue)
     - Preserve system state integrity (no partial state mutations)
@@ -87,23 +87,23 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Ensure no panic or undefined behavior (handle errors gracefully)
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 9.3_
   
-  - [ ] 4.2 Write property test for fail-closed permanence [CRITICAL]
+  - [x] 4.2 Write property test for fail-closed permanence [CRITICAL]
     - **Property 9: Fail-Closed Permanence** [CRITICAL]
     - **Validates: Requirements 4.2, 4.4**
     - Test that execution cannot continue after fail-closed is triggered
   
-  - [ ] 4.3 Write property test for fail-closed state integrity [CRITICAL]
+  - [x] 4.3 Write property test for fail-closed state integrity [CRITICAL]
     - **Property 10: Fail-Closed State Integrity** [CRITICAL]
     - **Validates: Requirements 4.5**
     - Test that system state remains consistent when fail-closed is triggered
   
-  - [ ] 4.4 Integrate fail-closed handler into runtime validation hook
+  - [x] 4.4 Integrate fail-closed handler into runtime validation hook
     - Modify `vcp_runtime_validate()` to call `vcp_fail_closed()` when validation fails
     - Ensure fail-closed is invoked for both missing and invalid validation states
     - _Requirements: 1.2, 1.3, 4.1_
 
-- [ ] 5. Implement diagnostic evidence emission stubs (DIAGNOSTIC ONLY - Authoritative evidence in Task 20-23)
-  - [ ] 5.1 Create diagnostic evidence emission API stubs in `kernel/sys/vcp_evidence.c`
+- [-] 5. Implement diagnostic evidence emission stubs (DIAGNOSTIC ONLY - Authoritative evidence in Task 20-23)
+  - [x] 5.1 Create diagnostic evidence emission API stubs in `kernel/sys/vcp_evidence.c`
     - Implement `vcp_emit_validation_check(struct execution_slot *slot, int result)` function (DIAGNOSTIC STUB)
     - Implement `vcp_emit_execution_block(struct execution_slot *slot, const char *reason)` function (DIAGNOSTIC STUB)
     - Implement `vcp_emit_contract_execution(struct execution_slot *slot, const char *contract_id)` function (DIAGNOSTIC STUB)
@@ -114,17 +114,17 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
     - _Guarantees: diagnostic telemetry only, no authority_
   
-  - [ ]* 5.2 Write property test for comprehensive evidence emission
+  - [x]* 5.2 Write property test for comprehensive evidence emission
     - **Property 8: Comprehensive Evidence Emission** [QUALITY]
     - **Validates: Requirements 2.4, 3.4, 6.1, 6.2, 6.3, 6.4**
     - Test that all validation checks, blocks, and enforcement events emit evidence
   
-  - [ ] 5.3 Write property test for fail-closed evidence completeness [CRITICAL]
+  - [x] 5.3 Write property test for fail-closed evidence completeness [CRITICAL]
     - **Property 11: Fail-Closed Evidence Completeness** [CRITICAL]
     - **Validates: Requirements 4.3, 6.6**
     - Test that fail-closed conditions emit complete failure context
   
-  - [ ] 5.4 Integrate evidence emission into runtime validation hook
+  - [x] 5.4 Integrate evidence emission into runtime validation hook
     - Modify `vcp_runtime_validate()` to call `vcp_emit_validation_check()` for all validation checks
     - Modify `vcp_fail_closed()` to call `vcp_emit_execution_block()` when blocking execution
     - _Requirements: 6.1, 6.2_
@@ -133,6 +133,20 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - **Property 21: Audit Trail Integrity**
     - **Validates: Requirements 8.6**
     - Test that evidence entries are immutable and cannot be tampered with
+  
+  - [ ] 5.6 Write property test for diagnostic evidence isolation [CRITICAL]
+    - **Property 49: Diagnostic Evidence Isolation** [CRITICAL]
+    - **Validates: Design isolation contract**
+    - Test that diagnostic evidence emission does NOT affect validation outcome
+    - Test that diagnostic evidence emission does NOT affect trust verification
+    - Test that diagnostic evidence emission does NOT affect execution path
+    - Test strategy:
+      1. Run validation with evidence enabled vs disabled → same outcome
+      2. Inject evidence buffer overflow → execution unaffected
+      3. Inject evidence write failure → execution unaffected
+      4. Verify evidence functions return void (no error propagation)
+    - **CRITICAL**: This test locks the isolation guarantee and prevents future refactoring from breaking it
+    - _Guarantees: evidence emission is side-effect free_
 
 - [ ] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
@@ -404,32 +418,32 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Ensure fail-closed is permanent (no recovery after trust failure)
     - _Requirements: 11.5_
   
-  - [ ] 18.8 Write property test for fake state rejection [CRITICAL]
+  - [x] 18.8 Write property test for fake state rejection [CRITICAL]
     - **Property 25: Fake Validation State Rejection** [CRITICAL]
     - **Validates: Requirements 11.1, 11.5**
     - Test that validation state without valid capability binding is rejected
   
-  - [ ] 18.9 Write property test for replayed state rejection [CRITICAL]
+  - [x] 18.9 Write property test for replayed state rejection [CRITICAL]
     - **Property 26: Replayed Validation State Rejection** [CRITICAL]
     - **Validates: Requirements 11.2, 11.5**
     - Test that validation state with mismatched context hash or replayed nonce is rejected
   
-  - [ ] 18.10 Write property test for signature verification [CRITICAL]
+  - [x] 18.10 Write property test for signature verification [CRITICAL]
     - **Property 27: Signature Verification Enforcement** [CRITICAL]
     - **Validates: Requirements 11.3, 11.5**
     - Test that validation state with invalid signature is rejected
   
-  - [ ] 18.11 Write property test for trust verification before enforcement [CRITICAL]
+  - [x] 18.11 Write property test for trust verification before enforcement [CRITICAL]
     - **Property 28: Trust Verification Before Enforcement** [CRITICAL]
     - **Validates: Requirements 11.4**
     - Test that trust verification happens before validation result is checked
   
-  - [ ] 18.12 Write property test for validation state trust verification [CRITICAL]
+  - [x] 18.12 Write property test for validation state trust verification [CRITICAL]
     - **Property 24: Validation State Trust Verification** [CRITICAL]
     - **Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5**
     - Test that all trust checks (capability, context, signature, nonce) are performed
   
-  - [ ]* 18.13 Write integration tests for trust token verification
+  - [x]* 18.13 Write integration tests for trust token verification
     - Test valid trust token is accepted
     - Test fake trust token is rejected (capability failure)
     - Test replayed trust token is rejected (context hash failure)
@@ -438,7 +452,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Test trust verification failure triggers fail-closed
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 19. Checkpoint - Ensure all trust verification tests pass
+- [x] 19. Checkpoint - Ensure all trust verification tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 20. Implement Evidence Foundation (CRITICAL - DETERMINISM & EMISSION CONTRACT)

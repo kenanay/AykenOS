@@ -90,6 +90,7 @@ This document specifies the requirements for transforming the AYKEN Validation C
 4. WHEN ABDF boundaries are crossed, THE Evidence_Emitter SHALL record boundary validation events
 5. THE Evidence_Emitter SHALL produce artifacts compatible with CI verification tools
 6. WHEN fail-closed occurs, THE Evidence_Emitter SHALL record complete failure context
+7. **DIAGNOSTIC EVIDENCE ISOLATION**: Diagnostic evidence emission (Task 5) MUST be side-effect free and MUST NOT affect validation, trust verification, or execution outcome under any condition
 
 ### Requirement 7: Execution Slot Lifecycle Management
 

@@ -7,56 +7,143 @@
 
 #define memset __builtin_memset
 
-/*
- * VCP Runtime Validation Implementation
- * 
- * This file implements the trust verification and runtime validation
- * enforcement for the AYKEN Validation Control Plane (VCP).
- * 
- * CRITICAL PRINCIPLE: This is a VERIFIED-INPUT system.
- * 
- * Trust verification order:
- *   1. NULL check (validation_state exists?)
- *   2. Capability binding (prevents forgery)
- *   3. Context hash (prevents replay)
- *   4. Signature (ensures authenticity)
- *   5. Nonce (prevents reuse)
- *   6. Validation result (only after trust verified)
- * 
- * Constitutional Compliance:
- *   - NO global state mutations (DETERMINISM.GLOBAL)
- *   - Deterministic execution (same input → same output)
- *   - NO capability bypass
- */
+#define VCP_NONCE_LEDGER_CAPACITY 128u
+
+static uint64_t g_vcp_nonce_ledger[VCP_NONCE_LEDGER_CAPACITY];
+static uint32_t g_vcp_nonce_ledger_count;
+
+#if AYKEN_VCP_TEST_HOOKS
+static vcp_trust_trace_t g_vcp_trust_trace;
+
+static void vcp_trace_event(uint32_t event)
+{
+    if (g_vcp_trust_trace.count < VCP_TRUST_TRACE_CAPACITY) {
+        g_vcp_trust_trace.events[g_vcp_trust_trace.count++] = event;
+    }
+    g_vcp_trust_trace.nonce_ledger_count = g_vcp_nonce_ledger_count;
+}
+#else
+#define vcp_trace_event(event) ((void)(event))
+#endif
+
+static void vcp_hash_u64(ayken_sha256_ctx_t *ctx, uint64_t value)
+{
+    ayken_sha256_update(ctx, &value, sizeof(value));
+}
+
+static uint64_t vcp_digest_u64(const uint8_t digest[AYKEN_SHA256_DIGEST_SIZE])
+{
+    uint64_t value;
+
+    value = ((uint64_t)digest[0] << 0) |
+            ((uint64_t)digest[1] << 8) |
+            ((uint64_t)digest[2] << 16) |
+            ((uint64_t)digest[3] << 24) |
+            ((uint64_t)digest[4] << 32) |
+            ((uint64_t)digest[5] << 40) |
+            ((uint64_t)digest[6] << 48) |
+            ((uint64_t)digest[7] << 56);
+
+    if (value == 0) {
+        value = 0xA7C5000000000001ULL;
+    }
+
+    return value;
+}
+
+static uint64_t vcp_compute_capability_binding_internal(struct exec_slot *slot,
+                                                        vcp_validation_state_t *state)
+{
+    static const char domain[] = "AYKEN:VCP:CAPABILITY_BINDING:v1";
+    ayken_sha256_ctx_t hash_ctx;
+    uint8_t digest[AYKEN_SHA256_DIGEST_SIZE];
+
+    if (!slot || !state) {
+        return 0;
+    }
+
+    ayken_sha256_init(&hash_ctx);
+    ayken_sha256_update(&hash_ctx, domain, sizeof(domain) - 1u);
+    vcp_hash_u64(&hash_ctx, slot->execution_id);
+    vcp_hash_u64(&hash_ctx, slot->generation);
+    vcp_hash_u64(&hash_ctx, slot->owner_pid);
+    vcp_hash_u64(&hash_ctx, slot->target_context_id);
+    vcp_hash_u64(&hash_ctx, state->contract_id);
+    vcp_hash_u64(&hash_ctx, state->boundary_policy);
+    ayken_sha256_final(&hash_ctx, digest);
+
+    return vcp_digest_u64(digest);
+}
+
+static uint64_t vcp_compute_validation_signature_internal(vcp_validation_state_t *state)
+{
+    static const char domain[] = "AYKEN:VCP:VALIDATION_SIGNATURE:v1";
+    ayken_sha256_ctx_t hash_ctx;
+    uint8_t digest[AYKEN_SHA256_DIGEST_SIZE];
+
+    if (!state) {
+        return 0;
+    }
+
+    ayken_sha256_init(&hash_ctx);
+    ayken_sha256_update(&hash_ctx, domain, sizeof(domain) - 1u);
+    vcp_hash_u64(&hash_ctx, state->validation_result);
+    vcp_hash_u64(&hash_ctx, state->contract_id);
+    vcp_hash_u64(&hash_ctx, state->boundary_policy);
+    vcp_hash_u64(&hash_ctx, state->context_hash);
+    vcp_hash_u64(&hash_ctx, state->nonce);
+    vcp_hash_u64(&hash_ctx, state->capability_id);
+    vcp_hash_u64(&hash_ctx, state->evidence_id);
+    vcp_hash_u64(&hash_ctx, state->timestamp);
+    ayken_sha256_final(&hash_ctx, digest);
+
+    return vcp_digest_u64(digest);
+}
+
+static int vcp_nonce_seen(uint64_t nonce)
+{
+    uint32_t i;
+
+    for (i = 0; i < g_vcp_nonce_ledger_count; ++i) {
+        if (g_vcp_nonce_ledger[i] == nonce) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int vcp_commit_nonce(vcp_validation_state_t *state)
+{
+    if (!state || state->nonce == 0) {
+        return -1;
+    }
+
+    if (vcp_nonce_seen(state->nonce)) {
+        return -1;
+    }
+
+    if (g_vcp_nonce_ledger_count >= VCP_NONCE_LEDGER_CAPACITY) {
+        return -1;
+    }
+
+    g_vcp_nonce_ledger[g_vcp_nonce_ledger_count++] = state->nonce;
+    vcp_trace_event(VCP_TRACE_NONCE_COMMIT);
+    return 0;
+}
 
 /*
  * vcp_compute_context_hash - Compute execution context hash
- * 
- * Computes deterministic hash of execution context to prevent replay attacks.
- * 
- * Hash inputs:
- *   - execution_slot_id (unique slot identifier)
- *   - contract_id (BCIB contract identifier from validation state)
- *   - boundary_policy (ABDF boundary policy from validation state)
- *   - metadata (additional context)
- * 
- * CRITICAL: This function MUST be deterministic.
- * Same execution context → same hash.
- * 
- * Constitutional compliance:
- *   - NO global state mutations
- *   - NO nondeterministic inputs (no wall clock, no random)
- *   - Deterministic hash algorithm (SHA256)
- * 
- * @slot: Execution slot
- * @return: Context hash (uint64_t)
+ *
+ * Computes a deterministic hash of the execution context to prevent replay
+ * across slots, generations, owners, target contexts, contracts, or boundary
+ * policies.
  */
 uint64_t vcp_compute_context_hash(struct exec_slot *slot)
 {
+    static const char domain[] = "AYKEN:VCP:CONTEXT:v1";
     ayken_sha256_ctx_t hash_ctx;
     uint8_t digest[AYKEN_SHA256_DIGEST_SIZE];
-    uint64_t context_hash;
-    uint64_t slot_id;
     uint64_t contract_id = 0;
     uint64_t boundary_policy = 0;
 
@@ -64,257 +151,217 @@ uint64_t vcp_compute_context_hash(struct exec_slot *slot)
         return 0;
     }
 
-    /* Extract context components */
-    slot_id = slot->execution_id;
-    
-    /* If validation_state exists, include contract_id and boundary_policy */
     if (slot->validation_state) {
         contract_id = slot->validation_state->contract_id;
         boundary_policy = slot->validation_state->boundary_policy;
     }
 
-    /* Compute deterministic hash */
     ayken_sha256_init(&hash_ctx);
-    ayken_sha256_update(&hash_ctx, (const char *)&slot_id, sizeof(slot_id));
-    ayken_sha256_update(&hash_ctx, (const char *)&contract_id, sizeof(contract_id));
-    ayken_sha256_update(&hash_ctx, (const char *)&boundary_policy, sizeof(boundary_policy));
+    ayken_sha256_update(&hash_ctx, domain, sizeof(domain) - 1u);
+    vcp_hash_u64(&hash_ctx, slot->execution_id);
+    vcp_hash_u64(&hash_ctx, slot->generation);
+    vcp_hash_u64(&hash_ctx, slot->owner_pid);
+    vcp_hash_u64(&hash_ctx, slot->target_context_id);
+    vcp_hash_u64(&hash_ctx, contract_id);
+    vcp_hash_u64(&hash_ctx, boundary_policy);
     ayken_sha256_final(&hash_ctx, digest);
 
-    /* Extract first 8 bytes as context_hash */
-    memset(&context_hash, 0, sizeof(context_hash));
-    context_hash = ((uint64_t)digest[0] << 0) |
-                   ((uint64_t)digest[1] << 8) |
-                   ((uint64_t)digest[2] << 16) |
-                   ((uint64_t)digest[3] << 24) |
-                   ((uint64_t)digest[4] << 32) |
-                   ((uint64_t)digest[5] << 40) |
-                   ((uint64_t)digest[6] << 48) |
-                   ((uint64_t)digest[7] << 56);
-
-    return context_hash;
+    return vcp_digest_u64(digest);
 }
 
 /*
  * vcp_verify_capability - Verify capability binding
- * 
- * Verifies that validation state is bound to a kernel-issued capability.
- * This prevents fake state injection attacks.
- * 
- * STUB IMPLEMENTATION: Returns success for now.
- * Full implementation will integrate with capability_manager.
- * 
- * @slot: Execution slot
- * @state: Validation state to verify
- * @return: 0 if valid, non-zero if invalid
+ *
+ * The current verifier uses a deterministic capability binding token derived
+ * from the slot identity and validation-state context fields. This closes the
+ * property-test gap where any non-zero capability_id was accepted as trusted.
  */
 int vcp_verify_capability(struct exec_slot *slot, vcp_validation_state_t *state)
 {
-    if (!slot || !state) {
+    uint64_t expected_capability;
+
+    if (!slot || !state || state->capability_id == 0) {
         return -1;
     }
 
-    /*
-     * TODO (Task 18.3): Implement capability binding verification
-     * 
-     * Full implementation will:
-     *   1. Check state->capability_id is valid
-     *   2. Verify capability is bound to this slot
-     *   3. Verify capability has not been revoked
-     *   4. Return failure if any check fails
-     * 
-     * For now: Accept all non-NULL states (stub)
-     */
-    if (state->capability_id == 0) {
-        return -1;  /* No capability binding */
+    expected_capability = vcp_compute_capability_binding_internal(slot, state);
+    if (state->capability_id != expected_capability) {
+        return -1;
     }
 
-    return 0;  /* Stub: capability valid */
+    return 0;
 }
 
 /*
- * vcp_verify_signature - Verify VCP trust root signature
- * 
- * Verifies signature against VCP trust root.
- * 
- * STUB IMPLEMENTATION: Returns success for now.
- * Full implementation will use cryptographic verification.
- * 
- * Evidence Producer Key Model:
- *   - Kernel holds evidence producer key (NOT trust root private key)
- *   - Signature verified with producer key
- *   - CI verifies producer key authorized by trust root
- * 
- * @state: Validation state to verify
- * @return: 0 if valid, non-zero if invalid
+ * vcp_verify_signature - Verify VCP validation-state signature
+ *
+ * Production cryptographic trust-root verification is still a later integration
+ * concern. This deterministic verifier is intentionally stricter than the old
+ * stub: the signature must cover the validation state fields, not merely be
+ * non-zero.
  */
 int vcp_verify_signature(vcp_validation_state_t *state)
 {
-    if (!state) {
+    uint64_t expected_signature;
+
+    if (!state || state->signature == 0) {
         return -1;
     }
 
-    /*
-     * TODO (Task 18.4): Implement signature verification
-     * 
-     * Full implementation will:
-     *   1. Get VCP trust root public key
-     *   2. Verify signature covers all state fields
-     *   3. Use cryptographic verification (e.g., Ed25519, ECDSA)
-     *   4. Return failure if signature invalid
-     * 
-     * For now: Accept all non-zero signatures (stub)
-     */
-    if (state->signature == 0) {
-        return -1;  /* No signature */
+    expected_signature = vcp_compute_validation_signature_internal(state);
+    if (state->signature != expected_signature) {
+        return -1;
     }
 
-    return 0;  /* Stub: signature valid */
+    return 0;
 }
 
 /*
- * vcp_verify_nonce - Verify nonce uniqueness (replay protection)
- * 
- * Verifies that nonce has not been used before.
- * 
- * CRITICAL: Nonce registry MUST be append-only ledger (NOT hidden mutable global map)
- * This ensures compliance with DETERMINISM.GLOBAL constitutional rule.
- * 
- * STUB IMPLEMENTATION: Returns success for now.
- * Full implementation will use append-only nonce ledger.
- * 
- * @state: Validation state to verify
- * @return: 0 if unique, non-zero if replayed
+ * vcp_verify_nonce - Verify nonce uniqueness
+ *
+ * This check is side-effect free. A nonce is appended to the ledger only after
+ * every trust check and validation_result check has passed, which prevents
+ * fail-closed paths from leaving partial accepted state behind.
  */
 int vcp_verify_nonce(vcp_validation_state_t *state)
 {
-    if (!state) {
+    if (!state || state->nonce == 0) {
         return -1;
     }
 
-    /*
-     * TODO (Task 18.5): Implement nonce verification with append-only ledger
-     * 
-     * Full implementation will:
-     *   1. Check nonce against append-only ledger
-     *   2. If nonce exists → replay detected → return failure
-     *   3. If nonce unique → append to ledger → return success
-     *   4. Ledger MUST be deterministic (no hidden global state)
-     * 
-     * CRITICAL: Ledger = append-only structure, NOT mutable map
-     * 
-     * For now: Accept all non-zero nonces (stub)
-     */
-    if (state->nonce == 0) {
-        return -1;  /* No nonce */
+    if (vcp_nonce_seen(state->nonce)) {
+        return -1;
     }
 
-    return 0;  /* Stub: nonce unique */
+    return 0;
 }
 
 /*
  * vcp_verify_validation_state - Verify validation state trust
- * 
- * Performs complete trust verification before trusting validation_result.
- * 
- * Verification order (CRITICAL - DO NOT REORDER):
- *   1. NULL check (state exists?)
- *   2. Capability binding (prevents forgery)
- *   3. Context hash (prevents replay)
- *   4. Signature (ensures authenticity)
- *   5. Nonce (prevents reuse)
- *   6. Validation result (only after trust verified)
- * 
- * CRITICAL PRINCIPLE: validation_result is NEVER authoritative by itself.
- * Trust verification MUST pass first.
- * 
- * @slot: Execution slot containing validation state
- * @return: VCP_VALID if all checks pass, VCP_FAIL_CLOSED otherwise
+ *
+ * Verification order is contractual:
+ *   1. validation_state present
+ *   2. capability binding
+ *   3. context hash
+ *   4. signature
+ *   5. nonce uniqueness
+ *   6. validation result
+ *   7. nonce commit for accepted states only
  */
 int vcp_verify_validation_state(struct exec_slot *slot)
 {
     vcp_validation_state_t *state;
     uint64_t computed_context_hash;
 
-    /* Step 1: NULL check (validation state exists?) */
     if (!slot || !slot->validation_state) {
-        return VCP_FAIL_CLOSED;  /* Missing state → fail-closed */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
     state = slot->validation_state;
 
-    /* Step 2: Verify capability binding (prevents forgery) */
+    vcp_trace_event(VCP_TRACE_CAPABILITY);
     if (vcp_verify_capability(slot, state) != 0) {
-        return VCP_FAIL_CLOSED;  /* Capability binding failed */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
-    /* Step 3: Verify context hash (prevents replay) */
+    vcp_trace_event(VCP_TRACE_CONTEXT);
     computed_context_hash = vcp_compute_context_hash(slot);
     if (state->context_hash != computed_context_hash) {
-        return VCP_FAIL_CLOSED;  /* Context hash mismatch → replay attack */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
-    /* Step 4: Verify signature (ensures authenticity) */
+    vcp_trace_event(VCP_TRACE_SIGNATURE);
     if (vcp_verify_signature(state) != 0) {
-        return VCP_FAIL_CLOSED;  /* Signature verification failed */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
-    /* Step 5: Verify nonce (prevents reuse) */
+    vcp_trace_event(VCP_TRACE_NONCE);
     if (vcp_verify_nonce(state) != 0) {
-        return VCP_FAIL_CLOSED;  /* Nonce replayed */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
-    /* Step 6: Check validation result (only after trust verified) */
+    vcp_trace_event(VCP_TRACE_RESULT);
     if (state->validation_result != VCP_VALID) {
-        return VCP_FAIL_CLOSED;  /* CI rejected execution */
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
     }
 
-    /* All checks passed → state is trusted */
+    if (vcp_commit_nonce(state) != 0) {
+        vcp_trace_event(VCP_TRACE_FAIL_CLOSED);
+        return VCP_FAIL_CLOSED;
+    }
+
     return VCP_VALID;
 }
 
 /*
  * vcp_runtime_validate - Runtime validation enforcement hook
- * 
- * Main enforcement point called by BCIB, ABDF, and CLI handlers.
- * 
- * Enforcement flow:
- *   1. Verify trust (capability + context + signature + nonce)
- *   2. Check validation result (only after trust verified)
- *   3. Emit evidence (Task 5 will implement)
- * 
- * CRITICAL: This function calls vcp_verify_validation_state() FIRST.
- * 
- * @slot: Execution slot to validate
- * @return: VCP_VALID if validation passed, VCP_FAIL_CLOSED otherwise
  */
 int vcp_runtime_validate(struct exec_slot *slot)
 {
     int trust_result;
 
     if (!slot) {
-        return VCP_FAIL_CLOSED;
+        vcp_emit_validation_check(slot, VCP_FAIL_CLOSED);
+        return vcp_fail_closed(slot, "null_slot");
     }
 
-    /* Step 1: Verify trust (capability + context + signature + nonce) */
+    if (vcp_fail_closed_is_active(slot)) {
+        vcp_emit_validation_check(slot, VCP_FAIL_CLOSED);
+        return vcp_fail_closed(slot, "already_fail_closed");
+    }
+
     trust_result = vcp_verify_validation_state(slot);
+    vcp_emit_validation_check(slot, trust_result);
     if (trust_result != VCP_VALID) {
-        /*
-         * Trust verification failed → fail-closed
-         * 
-         * Task 4 will implement vcp_fail_closed() to:
-         *   - Block execution permanently
-         *   - Emit evidence describing failure
-         *   - Preserve system state integrity
-         */
-        return VCP_FAIL_CLOSED;
+        return vcp_fail_closed(slot, "validation_failed");
     }
 
-    /* Step 2: Emit evidence (Task 5 will implement) */
-    /*
-     * TODO (Task 5): Emit validation check evidence
-     * vcp_emit_validation_check(slot, VCP_VALID);
-     */
-
-    /* All checks passed → execution may proceed */
     return VCP_VALID;
 }
+
+#if AYKEN_VCP_TEST_HOOKS
+void vcp_test_reset_trust_environment(void)
+{
+    memset(g_vcp_nonce_ledger, 0, sizeof(g_vcp_nonce_ledger));
+    g_vcp_nonce_ledger_count = 0;
+    vcp_test_reset_trust_trace();
+}
+
+void vcp_test_reset_trust_trace(void)
+{
+    memset(&g_vcp_trust_trace, 0, sizeof(g_vcp_trust_trace));
+    g_vcp_trust_trace.nonce_ledger_count = g_vcp_nonce_ledger_count;
+}
+
+void vcp_test_get_trust_trace(vcp_trust_trace_t *out)
+{
+    if (!out) {
+        return;
+    }
+
+    *out = g_vcp_trust_trace;
+    out->nonce_ledger_count = g_vcp_nonce_ledger_count;
+}
+
+uint32_t vcp_test_nonce_ledger_count(void)
+{
+    return g_vcp_nonce_ledger_count;
+}
+
+uint64_t vcp_test_capability_binding(struct exec_slot *slot,
+                                     vcp_validation_state_t *state)
+{
+    return vcp_compute_capability_binding_internal(slot, state);
+}
+
+uint64_t vcp_test_signature(vcp_validation_state_t *state)
+{
+    return vcp_compute_validation_signature_internal(state);
+}
+#endif

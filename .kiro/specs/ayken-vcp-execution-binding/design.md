@@ -374,7 +374,29 @@ int evidence_verify_with_trust_root_history(struct evidence_entry *entry) {
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Evidence Emission Strategy
+### Diagnostic Evidence Isolation Guarantee (Task 5)
+
+**CRITICAL PRINCIPLE**: Diagnostic evidence emission is strictly observational and MUST be side-effect free.
+
+**Isolation Contract**:
+- Diagnostic evidence emission MUST NOT affect validation outcome
+- Diagnostic evidence emission MUST NOT affect trust verification
+- Diagnostic evidence emission MUST NOT affect execution path
+- Diagnostic evidence emission failure MUST NOT trigger fail-closed
+- Diagnostic evidence emission MUST NOT block execution
+
+**Implementation Requirements**:
+- All diagnostic evidence functions MUST return `void` (no error propagation)
+- All diagnostic evidence functions MUST handle NULL inputs gracefully
+- All diagnostic evidence functions MUST handle buffer overflow gracefully
+- All diagnostic evidence functions MUST NOT allocate memory dynamically
+- All diagnostic evidence functions MUST NOT call fail-closed handlers
+
+**Rationale**: Diagnostic evidence (Task 5) is for debugging and telemetry only. Authoritative evidence (Task 20-23) will enforce fail-closed on emission failure. Mixing these concerns would create a fragile system where debug telemetry could break execution.
+
+**Verification**: Property test MUST verify that evidence emission can be disabled without affecting execution outcome.
+
+### Evidence Emission Strategy (Authoritative - Task 20-23)
 
 **Hot path** (frequent events):
 - Validation checks → slot-local chain
@@ -1171,6 +1193,18 @@ int simulate_abdf_graph(struct abdf_graph *graph) {
 *For any* graph with non-deterministic ordering or ambiguous structure, the system SHALL reject the graph before ABDF conversion and SHALL emit evidence describing the canonicalization failure.
 
 **Validates: Requirements 18.4, 18.8**
+
+### Property 49: Diagnostic Evidence Isolation
+
+*For any* diagnostic evidence emission operation (Task 5), the emission MUST be side-effect free and MUST NOT affect validation outcome, trust verification, or execution path under any condition including buffer overflow, write failure, or NULL inputs.
+
+**Test Strategy**:
+1. Execute validation with evidence enabled vs disabled → outcomes MUST be identical
+2. Inject evidence buffer overflow → execution outcome MUST be unaffected
+3. Inject evidence write failure → execution outcome MUST be unaffected
+4. Verify all diagnostic evidence functions return void (no error propagation to execution path)
+
+**Validates: Requirement 6.7 (Diagnostic Evidence Isolation), Design isolation contract**
 
 ### Why This Matters for Phase 16+
 
