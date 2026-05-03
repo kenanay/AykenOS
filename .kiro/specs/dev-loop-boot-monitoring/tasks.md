@@ -165,7 +165,7 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
   - [x] 5.4 Conditional AYKEN_BOOT_OK marker
   - _Req: R1_
 
-- [ ] 6. Checkpoint - Kernel markers operational
+- [x] 6. Checkpoint - Kernel markers operational
 
 ---
 
