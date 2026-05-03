@@ -145,7 +145,7 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 2: Isolation Property
 
-- [ ] 3. Isolation property enforcement
+- [-] 3. Isolation property enforcement
   - [ ] 3.1 Baseline comparison capability
   - [ ] 3.2 Marker consistency guarantee
   - [ ] 3.3 Failure scenario coverage

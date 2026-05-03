@@ -24,29 +24,82 @@ mkdir -p "$TEST_LOG_DIR"
 # This validates the LOGIC, not the full system
 validate_markers() {
     local log_file="$1"
-    
-    # Check marker presence
-    if ! grep -q "\[K\]\[EARLY_BOOT_OK\]" "$log_file"; then
+    local marker_positions
+    local key
+    local value
+    local early_line=0
+    local late_line=0
+    local boot_line=0
+    local early_count=0
+    local late_count=0
+    local boot_count=0
+
+    marker_positions="$(awk '
+        BEGIN {
+            early_line = 0
+            late_line = 0
+            boot_line = 0
+            early_count = 0
+            late_count = 0
+            boot_count = 0
+        }
+        index($0, "[K][EARLY_BOOT_OK]") {
+            early_count++
+            if (early_line == 0) {
+                early_line = NR
+            }
+        }
+        index($0, "[K][LATE_INIT_END]") {
+            late_count++
+            if (early_line > 0 && late_line == 0 && NR > early_line) {
+                late_line = NR
+            }
+        }
+        index($0, "[[AYKEN_BOOT_OK]]") {
+            boot_count++
+            if (late_line > 0 && boot_line == 0 && NR > late_line) {
+                boot_line = NR
+            }
+        }
+        END {
+            printf("early_line=%d\n", early_line)
+            printf("late_line=%d\n", late_line)
+            printf("boot_line=%d\n", boot_line)
+            printf("early_count=%d\n", early_count)
+            printf("late_count=%d\n", late_count)
+            printf("boot_count=%d\n", boot_count)
+        }
+    ' "$log_file")"
+
+    while IFS='=' read -r key value; do
+        case "$key" in
+            early_line) early_line="$value" ;;
+            late_line) late_line="$value" ;;
+            boot_line) boot_line="$value" ;;
+            early_count) early_count="$value" ;;
+            late_count) late_count="$value" ;;
+            boot_count) boot_count="$value" ;;
+        esac
+    done <<EOF
+$marker_positions
+EOF
+
+    if [ "$early_count" -eq 0 ]; then
         return 1
     fi
-    
-    if ! grep -q "\[K\]\[LATE_INIT_END\]" "$log_file"; then
+
+    if [ "$late_count" -eq 0 ]; then
         return 1
     fi
-    
-    if ! grep -q "\[\[AYKEN_BOOT_OK\]\]" "$log_file"; then
+
+    if [ "$boot_count" -eq 0 ]; then
         return 1
     fi
-    
-    # Check sequence
-    local early_line=$(grep -n "\[K\]\[EARLY_BOOT_OK\]" "$log_file" | head -1 | cut -d: -f1)
-    local late_line=$(grep -n "\[K\]\[LATE_INIT_END\]" "$log_file" | head -1 | cut -d: -f1)
-    local boot_line=$(grep -n "\[\[AYKEN_BOOT_OK\]\]" "$log_file" | head -1 | cut -d: -f1)
-    
-    if [ "$early_line" -gt "$late_line" ] || [ "$late_line" -gt "$boot_line" ]; then
+
+    if [ "$late_line" -eq 0 ] || [ "$boot_line" -eq 0 ]; then
         return 1
     fi
-    
+
     return 0
 }
 
@@ -75,8 +128,34 @@ else
 fi
 echo ""
 
-# Test 2: Missing EARLY_BOOT_OK (should FAIL)
-echo "Test 2: Missing EARLY_BOOT_OK marker"
+# Test 2: Existing Gate-0 marker before EARLY should still PASS
+echo "Test 2: Pre-sequence BOOT marker with canonical post-late BOOT"
+cat > "$TEST_LOG" <<'EOF'
+Firmware handoff...
+[[AYKEN_BOOT_OK]]
+[K][EARLY_BOOT_OK]
+Initializing subsystems...
+[K][LATE_INIT_END]
+Final boot steps...
+[[AYKEN_BOOT_OK]]
+System ready.
+EOF
+
+set +e
+validate_markers "$TEST_LOG"
+exit_code=$?
+set -e
+
+if [ "$exit_code" -eq 0 ]; then
+    echo "✅ PASS: Canonical post-late BOOT marker accepted"
+else
+    echo "❌ FAIL: Canonical sequence rejected (exit $exit_code)"
+    exit 1
+fi
+echo ""
+
+# Test 3: Missing EARLY_BOOT_OK (should FAIL)
+echo "Test 3: Missing EARLY_BOOT_OK marker"
 cat > "$TEST_LOG" <<'EOF'
 Boot starting...
 Initializing subsystems...
@@ -99,8 +178,8 @@ else
 fi
 echo ""
 
-# Test 3: Sequence violation (should FAIL)
-echo "Test 3: Markers in wrong order"
+# Test 4: Sequence violation (should FAIL)
+echo "Test 4: Markers in wrong order"
 cat > "$TEST_LOG" <<'EOF'
 Boot starting...
 [K][LATE_INIT_END]

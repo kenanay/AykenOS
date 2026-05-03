@@ -1,4 +1,4 @@
-a#!/bin/bash
+#!/bin/bash
 # QEMU Integration Test - Task 2 Checkpoint
 # Author: Kenan AY — System Architect
 #
@@ -58,52 +58,113 @@ if [ ! -s "$LOG_FILE" ]; then
     exit 1
 fi
 
-# Verify all required markers are present
+marker_positions="$(awk '
+    BEGIN {
+        early_line = 0
+        late_line = 0
+        boot_line = 0
+        early_count = 0
+        late_count = 0
+        boot_count = 0
+        pre_sequence_boot_count = 0
+    }
+    index($0, "[K][EARLY_BOOT_OK]") {
+        early_count++
+        if (early_line == 0) {
+            early_line = NR
+        }
+    }
+    index($0, "[K][LATE_INIT_END]") {
+        late_count++
+        if (early_line > 0 && late_line == 0 && NR > early_line) {
+            late_line = NR
+        }
+    }
+    index($0, "[[AYKEN_BOOT_OK]]") {
+        boot_count++
+        if (early_line == 0) {
+            pre_sequence_boot_count++
+        }
+        if (late_line > 0 && boot_line == 0 && NR > late_line) {
+            boot_line = NR
+        }
+    }
+    END {
+        printf("early_line=%d\n", early_line)
+        printf("late_line=%d\n", late_line)
+        printf("boot_line=%d\n", boot_line)
+        printf("early_count=%d\n", early_count)
+        printf("late_count=%d\n", late_count)
+        printf("boot_count=%d\n", boot_count)
+        printf("pre_sequence_boot_count=%d\n", pre_sequence_boot_count)
+    }
+' "$LOG_FILE")"
+
+early_line=0
+late_line=0
+boot_line=0
+early_count=0
+late_count=0
+boot_count=0
+pre_sequence_boot_count=0
+
+while IFS='=' read -r key value; do
+    case "$key" in
+        early_line) early_line="$value" ;;
+        late_line) late_line="$value" ;;
+        boot_line) boot_line="$value" ;;
+        early_count) early_count="$value" ;;
+        late_count) late_count="$value" ;;
+        boot_count) boot_count="$value" ;;
+        pre_sequence_boot_count) pre_sequence_boot_count="$value" ;;
+    esac
+done <<EOF
+$marker_positions
+EOF
+
 echo "Checking marker presence..."
 
-if ! grep -q "\[K\]\[EARLY_BOOT_OK\]" "$LOG_FILE"; then
+if [ "$early_count" -eq 0 ]; then
     echo "❌ FAIL: [K][EARLY_BOOT_OK] marker not found in boot log"
     exit 1
 fi
-echo "  ✅ [K][EARLY_BOOT_OK] found"
+echo "  ✅ [K][EARLY_BOOT_OK] found ($early_count)"
 
-if ! grep -q "\[K\]\[LATE_INIT_END\]" "$LOG_FILE"; then
+if [ "$late_count" -eq 0 ]; then
     echo "❌ FAIL: [K][LATE_INIT_END] marker not found in boot log"
     exit 1
 fi
-echo "  ✅ [K][LATE_INIT_END] found"
+echo "  ✅ [K][LATE_INIT_END] found ($late_count)"
 
-if ! grep -q "\[\[AYKEN_BOOT_OK\]\]" "$LOG_FILE"; then
+if [ "$boot_count" -eq 0 ]; then
     echo "❌ FAIL: [[AYKEN_BOOT_OK]] marker not found in boot log"
     exit 1
 fi
-echo "  ✅ [[AYKEN_BOOT_OK]] found"
+echo "  ✅ [[AYKEN_BOOT_OK]] found ($boot_count)"
 
 echo ""
 echo "Checking marker sequence..."
-
-# Extract line numbers
-early_line=$(grep -n "\[K\]\[EARLY_BOOT_OK\]" "$LOG_FILE" | head -1 | cut -d: -f1)
-late_line=$(grep -n "\[K\]\[LATE_INIT_END\]" "$LOG_FILE" | head -1 | cut -d: -f1)
-boot_line=$(grep -n "\[\[AYKEN_BOOT_OK\]\]" "$LOG_FILE" | head -1 | cut -d: -f1)
 
 echo "  [K][EARLY_BOOT_OK]: line $early_line"
 echo "  [K][LATE_INIT_END]: line $late_line"
 echo "  [[AYKEN_BOOT_OK]]: line $boot_line"
 
-# Validate sequence: EARLY < LATE < BOOT_OK
-if [ "$early_line" -ge "$late_line" ]; then
+if [ "$late_line" -eq 0 ]; then
     echo ""
     echo "❌ FAIL: Marker sequence violation"
-    echo "  Expected: EARLY_BOOT_OK (line $early_line) < LATE_INIT_END (line $late_line)"
+    echo "  Expected: EARLY_BOOT_OK before LATE_INIT_END"
     exit 1
 fi
 
-if [ "$late_line" -ge "$boot_line" ]; then
+if [ "$boot_line" -eq 0 ]; then
     echo ""
     echo "❌ FAIL: Marker sequence violation"
-    echo "  Expected: LATE_INIT_END (line $late_line) < AYKEN_BOOT_OK (line $boot_line)"
+    echo "  Expected: LATE_INIT_END before AYKEN_BOOT_OK"
     exit 1
+fi
+
+if [ "$pre_sequence_boot_count" -gt 0 ]; then
+    echo "  Note: observed $pre_sequence_boot_count pre-sequence BOOT marker(s); canonical post-late marker used."
 fi
 
 echo "  ✅ Sequence valid: EARLY → LATE → BOOT_OK"
