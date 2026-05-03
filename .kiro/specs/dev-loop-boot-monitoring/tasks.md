@@ -152,17 +152,17 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
   - [x] 3.4 Property compliance report
   - _Req: R5_
 
-- [ ] 4. Checkpoint - Isolation property validated
+- [x] 4. Checkpoint - Isolation property validated
 
 ---
 
 ### Group 3: Kernel Markers
 
-- [ ] 5. Conditional marker emission to kernel
-  - [ ] 5.1 Boot phase locations
-  - [ ] 5.2 Conditional EARLY_BOOT_OK marker
-  - [ ] 5.3 Conditional LATE_INIT_END marker
-  - [ ] 5.4 Conditional AYKEN_BOOT_OK marker
+- [x] 5. Conditional marker emission to kernel
+  - [x] 5.1 Boot phase locations
+  - [x] 5.2 Conditional EARLY_BOOT_OK marker
+  - [x] 5.3 Conditional LATE_INIT_END marker
+  - [x] 5.4 Conditional AYKEN_BOOT_OK marker
   - _Req: R1_
 
 - [ ] 6. Checkpoint - Kernel markers operational

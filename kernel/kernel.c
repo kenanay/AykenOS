@@ -338,7 +338,11 @@ void kmain_real(ayken_boot_info_t *boot)
     // Serial port test
     serial_write("KERNEL_BOOT_START\n");
     
+    // Subtask 5.2: Conditional EARLY_BOOT_OK marker
+    // Enabled in validation builds, compiled out in production
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     debugcon_write("[K][EARLY_BOOT_OK] kmain entry\n");
+#endif
     // Minimal early exception visibility (no STI)
     cpu_init();
     gdt_init();
@@ -355,7 +359,9 @@ void kmain_real(ayken_boot_info_t *boot)
     fb_console_init(boot);
     debugcon_write("[K][AFTER_FB]\n");
     // Validation marker: serial/stdout (COM1) after serial_init()
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][QEMU_BOOT_OK]\n");
+#endif
 
     // 2) Splash ekranı + mini debug terminalini aç
     fb_draw_splash_screen();
@@ -394,8 +400,10 @@ void kmain_real(ayken_boot_info_t *boot)
     // 6) Artık scheduler'a devrediyoruz
     fb_print("[boot] Kernel init tamamlandi -> scheduler baslatiliyor...\n");
     sched_perf_note_core_ready();
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
     debugcon_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
+#endif
 
     outb(0xE9, (uint8_t)'A');
     outb(0xE9, (uint8_t)'A');
@@ -778,11 +786,18 @@ static void kernel_late_init(void)
 
     fb_print("[AykenOS] LATE INIT done.\n");
     debugcon_write("[K][LATE]9 DONE\n");
+    
+    // Subtask 5.3: Conditional LATE_INIT_END marker
+    // Enabled in validation builds, compiled out in production
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][LATE_INIT_END]\n");
     debugcon_write("[K][LATE_INIT_END]\n");
+#endif
     
 #ifdef AYKEN_VALIDATION
+    // Subtask 5.4: Conditional AYKEN_BOOT_OK marker
     // Gate-0: Boot validation marker
+    // Enabled in validation builds, compiled out in production
     debugcon_write("[[AYKEN_BOOT_OK]]\n");
 #endif
 
