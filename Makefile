@@ -1255,7 +1255,9 @@ run-qemu:
 		-boot order=c \
 		-debugcon file:$(AYKEN_LOG_DIR)/debug_run.log \
 		-global isa-debugcon.iobase=0xe9 \
-		-nographic
+		-display none \
+		-serial none \
+		-monitor none
 
 run-preempt:
 	@# Phase 4.5 deterministic preempt validation runner
@@ -3073,7 +3075,7 @@ ci-gate-task9: ci-evidence-dir
 		QEMU_TIMEOUT_SECONDS=60 \
 		./scripts/checkpoint_task9_test_scripts_validated.sh
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
-	@cp -f "$(EVIDENCE_RUN_DIR)/gates/task9/result.json" "$(EVIDENCE_RUN_DIR)/reports/task9.json"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/task9/report.json" "$(EVIDENCE_RUN_DIR)/reports/task9.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: Task 9 checkpoint evidence at $(EVIDENCE_RUN_DIR)/gates/task9"
 

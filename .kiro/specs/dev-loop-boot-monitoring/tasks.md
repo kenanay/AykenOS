@@ -181,7 +181,7 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
   - [x] 8.1 VCP evidence consistency guarantee
   - _Req: R9_
 
-- [ ] 9. Checkpoint - Test scripts validated
+- [x] 9. Checkpoint - Test scripts validated
 
 ---
 

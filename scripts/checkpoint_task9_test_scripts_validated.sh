@@ -20,6 +20,7 @@ QEMU_TIMEOUT_SECONDS="${QEMU_TIMEOUT_SECONDS:-45}"
 mkdir -p "$EVIDENCE_DIR"
 
 RESULT_JSON="$EVIDENCE_DIR/result.json"
+REPORT_JSON="$EVIDENCE_DIR/report.json"
 MARKERS_TXT="$EVIDENCE_DIR/markers.txt"
 MARKER_HASH="$EVIDENCE_DIR/marker_hash.txt"
 
@@ -52,6 +53,17 @@ fail() {
 
     cat > "$RESULT_JSON" <<EOF
 {
+  "checkpoint": "task9_test_scripts_validated",
+  "status": "FAIL",
+  "reason": "$reason",
+  "maintainer": "Kenan AY"
+}
+EOF
+
+    cat > "$REPORT_JSON" <<EOF
+{
+  "gate": "task9",
+  "verdict": "FAIL",
   "checkpoint": "task9_test_scripts_validated",
   "status": "FAIL",
   "reason": "$reason",
@@ -168,6 +180,9 @@ run_positive_path() {
         AYKEN_GATE4_POLICY_TEST=0
     local run_status=$?
     set -e
+
+    # Give QEMU time to flush debugcon log
+    sleep 2
 
     # Temporary rule:
     # 124 is tolerated only if PASS marker exists.
@@ -290,6 +305,24 @@ main() {
 }
 EOF
 
+    cat > "$REPORT_JSON" <<EOF
+{
+  "gate": "task9",
+  "verdict": "PASS",
+  "checkpoint": "task9_test_scripts_validated",
+  "status": "PASS",
+  "positive_path": true,
+  "negative_path": true,
+  "log_integrity": true,
+  "marker_order": true,
+  "marker_hash": "$hash_value",
+  "clean_exit_required": false,
+  "timeout_exit_tolerated": true,
+  "note": "Timeout exit is tolerated only until controlled kernel/QEMU termination is implemented.",
+  "maintainer": "Kenan AY"
+}
+EOF
+
     echo "✅ Checkpoint 9 PASS"
     echo ""
     echo "Evidence:"
@@ -298,6 +331,7 @@ EOF
     echo "  $MARKERS_TXT"
     echo "  $MARKER_HASH"
     echo "  $RESULT_JSON"
+    echo "  $REPORT_JSON"
 }
 
 main "$@"
