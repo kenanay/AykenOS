@@ -290,7 +290,42 @@ static __attribute__((noreturn)) void execution_slot_runtime_panic(const char *s
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
 /*
- * execution_slot_marker_capture_locked - Capture execution marker (write-only)
+ * VCP Timestamp Contract Enforcement
+ * 
+ * CRITICAL RULE: Timestamps MUST be logical monotonic counters.
+ * 
+ * ALLOWED:
+ *   - Execution tick counter (timer_ticks())
+ *   - Event sequence number (monotonic increment)
+ *   - Logical clock (Lamport timestamp)
+ * 
+ * FORBIDDEN (CONSTITUTIONAL VIOLATION):
+ *   - Wall clock time (time(), gettimeofday())
+ *   - System time (CMOS RTC)
+ *   - CPU timestamp counter (rdtsc) - nondeterministic
+ *   - Any time source that varies between runs
+ * 
+ * WHY: Deterministic replay requires same execution → same timestamps.
+ * Wall clock breaks this guarantee → CI replay fails → evidence unverifiable.
+ * 
+ * ENFORCEMENT: This contract is enforced by:
+ *   1. Code review (this comment)
+ *   2. CI verification (evidence replay)
+ *   3. Constitutional rule DETERMINISM.TIME.SYSTEM
+ */
+#define VCP_TIMESTAMP_LOGICAL_ONLY 1
+
+/*
+ * VCP Timestamp Helper (PLACEHOLDER - Task 18 will implement)
+ * 
+ * Returns logical monotonic counter for VCP validation state timestamps.
+ * MUST NOT use wall clock time.
+ */
+static inline uint64_t vcp_get_logical_timestamp(void)
+{
+    /* Use execution tick counter (deterministic, monotonic) */
+    return timer_ticks();
+}
  * 
  * @slot: Execution slot
  * @marker: Marker to capture
@@ -439,6 +474,8 @@ static void execution_slot_zero_slot(exec_slot_t *slot)
     slot->trace_count = 0;
     slot->trace_head = 0;
     memset(slot->trace_entries, 0, sizeof(slot->trace_entries));
+    /* Initialize validation_state to NULL (no VCP state available - triggers fail-closed) */
+    slot->validation_state = NULL;
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
     slot->marker_bitmap = 0;
     slot->marker_count = 0;
@@ -1006,6 +1043,13 @@ exec_slot_t *execution_slot_alloc_locked(uint64_t owner_pid, uint64_t target_con
         slot->queue_next_index = AYKEN_EXECUTION_INVALID_INDEX;
         slot->wait_key.execution_id = slot->execution_id;
         slot->wait_key.generation = slot->generation;
+        
+        /*
+         * VCP validation state initialization:
+         * Set to NULL if no VCP state is available (triggers fail-closed detection).
+         * Future tasks will implement VCP state attachment mechanism.
+         */
+        slot->validation_state = NULL;
 
         return slot;
     }
@@ -1023,6 +1067,38 @@ void execution_slot_release_locked(exec_slot_t *slot)
     execution_slot_release_result_backing_locked(slot);
     execution_slot_release_output_backing_locked(slot);
     execution_slot_release_hash_backing_locked(slot);
+    
+    /*
+     * VCP validation state cleanup (LIFECYCLE CONTRACT)
+     * 
+     * Current phase: Static NULL initialization (no dynamic allocation)
+     * Future phase: Dynamic allocation with deterministic lifecycle
+     * 
+     * LIFECYCLE RULES (enforced in Task 18):
+     *   1. IF static allocation → no cleanup needed
+     *   2. IF dynamic allocation → MUST free here
+     *   3. IF capability-bound → MUST revoke capability
+     *   4. IF evidence-linked → MUST emit final evidence
+     * 
+     * DETERMINISM CONTRACT:
+     *   - Cleanup MUST be deterministic (same execution → same cleanup)
+     *   - No nondeterministic free() timing
+     *   - No hidden global state mutations
+     * 
+     * CURRENT STATE: NULL initialization only (no allocation yet)
+     * FUTURE STATE: Task 18 will implement full lifecycle
+     */
+    if (slot->validation_state != NULL) {
+        /*
+         * Phase 18 TODO: Implement deterministic cleanup
+         *   - Free allocated state (if dynamic)
+         *   - Revoke capability binding
+         *   - Emit final evidence
+         *   - Zero memory (prevent stale state reuse)
+         */
+        slot->validation_state = NULL;
+    }
+    
     slot->execution_id = 0;
     slot->owner_pid = 0;
     slot->target_context_id = 0;

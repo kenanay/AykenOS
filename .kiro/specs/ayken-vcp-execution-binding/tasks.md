@@ -19,8 +19,8 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
 
 ## Tasks
 
-- [ ] 1. Extend execution slot structure with validation state
-  - [ ] 1.1 Define validation state structure in `kernel/include/execution_slot.h`
+- [x] 1. Extend execution slot structure with validation state
+  - [x] 1.1 Define validation state structure in `kernel/include/execution_slot.h`
     - Add `struct vcp_validation_state` with FINAL ABI fields: `validation_result`, `contract_id`, `boundary_policy`, `context_hash`, `nonce`, `signature`, `capability_id`, `evidence_id`, `timestamp`
     - **CRITICAL**: This is the FINAL ABI. Do NOT evolve this structure later. Task 18 will implement verification functions for this layout.
     - Add `struct vcp_validation_state *validation_state` field to `struct execution_slot`
@@ -32,7 +32,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - **Validates: Requirements 1.1, 7.1**
     - Test that all newly created execution slots contain initialized validation state
   
-  - [ ] 1.3 Implement validation state initialization in `kernel/sys/execution_slot.c`
+  - [x] 1.3 Implement validation state initialization in `kernel/sys/execution_slot.c`
     - Modify `execution_slot_create()` to initialize `validation_state` field
     - Ensure validation state is set to NULL if no VCP state is available (for fail-closed detection)
     - Add validation state cleanup in `execution_slot_destroy()`
