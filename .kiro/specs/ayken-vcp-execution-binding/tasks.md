@@ -102,8 +102,8 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Ensure fail-closed is invoked for both missing and invalid validation states
     - _Requirements: 1.2, 1.3, 4.1_
 
-- [-] 5. Implement diagnostic evidence emission stubs (DIAGNOSTIC ONLY - Authoritative evidence in Task 20-23)
-  - **STATUS**: Implementation complete, Task 5.6 runtime verification deferred (macOS QEMU debugcon limitation)
+- [x] 5. Implement diagnostic evidence emission stubs (DIAGNOSTIC ONLY - Authoritative evidence in Task 20-23)
+  - **STATUS**: COMPLETE - All subtasks implemented and runtime verified (2026-05-03)
   - [x] 5.1 Create diagnostic evidence emission API stubs in `kernel/sys/vcp_evidence.c`
     - Implement `vcp_emit_validation_check(struct execution_slot *slot, int result)` function (DIAGNOSTIC STUB)
     - Implement `vcp_emit_execution_block(struct execution_slot *slot, const char *reason)` function (DIAGNOSTIC STUB)
@@ -135,7 +135,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - **Validates: Requirements 8.6**
     - Test that evidence entries are immutable and cannot be tampered with
   
-  - [ ]* 5.6 Write property test for diagnostic evidence isolation [CRITICAL]
+  - [x]* 5.6 Write property test for diagnostic evidence isolation [CRITICAL]
     - **Property 49: Diagnostic Evidence Isolation** [CRITICAL]
     - **Validates: Design isolation contract**
     - Test that diagnostic evidence emission does NOT affect validation outcome
@@ -148,7 +148,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
       4. Verify evidence functions return void (no error propagation)
     - **CRITICAL**: This test locks the isolation guarantee and prevents future refactoring from breaking it
     - _Guarantees: evidence emission is side-effect free_
-    - **STATUS**: Implementation complete (commit 28760935), pre-ci PASS, runtime verification deferred (macOS QEMU debugcon limitation)
+    - **STATUS**: COMPLETE - Runtime verification passed with all markers present (2026-05-03)
 
 - [ ] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
