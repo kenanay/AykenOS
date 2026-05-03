@@ -22,6 +22,7 @@ pub mod pools;
 pub mod program_cache;
 pub mod scheduler_bridge;
 pub mod types;
+pub mod vcp;
 pub mod verifier_planner;
 
 // ---------------------------------------------------------------------------
