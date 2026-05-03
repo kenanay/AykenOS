@@ -197,7 +197,32 @@ evidence.operation_id != 0                  ✅
 
 **Root Cause**: General kernel boot issue, not specific to Task 8 userspace implementation.
 
-**Status**: Requires investigation (separate from Task 8.1 userspace completion).
+**Status**: ✅ **RESOLVED** - Kernel boot operational, all VCP evidence markers confirmed
+
+---
+
+## Kernel Boot Resolution
+
+**Issue**: QEMU timeout (10s) vs UEFI shell delay (4s) prevented kernel boot  
+**Solution**: Extended timeout to 15s
+
+**Evidence Confirmed**:
+```
+[[AYKEN_BOOT_OK]]
+[K][EARLY_BOOT_OK] kmain entry
+[K][LATE]0.1.4 VCP_EVIDENCE_TESTS
+[VCP_EVIDENCE][VALIDATION_CHECK] result=0x0000000000000000 slot=0x0000000000001F41
+[VCP_EVIDENCE][CONTRACT_EXECUTION] slot=0x0000000000001F41
+[VCP_EVIDENCE][BOUNDARY_CROSSING] slot=0x0000000000001F41
+[VCP_EVIDENCE][COMPREHENSIVE]
+[VCP_EVIDENCE][FAIL_CLOSED_COMPLETE]
+[K][LATE]0.1.4 VCP_EVIDENCE_TESTS PASSED
+```
+
+**Verification**:
+- ✅ `debug_run.log` created and populated
+- ✅ All VCP evidence markers emitted
+- ✅ Test result: `VCP_EVIDENCE_TESTS PASSED`
 
 ---
 
@@ -215,14 +240,13 @@ evidence.operation_id != 0                  ✅
 
 ---
 
-## Next Steps
+## ✅ Task 8 Complete
 
-1. **Investigate kernel boot timeout** (separate issue)
-2. **Verify kernel evidence marker emission** once boot is fixed
-3. **Consider hash algorithm upgrade** for production (BLAKE3/SHA-256)
-4. **Proceed to Task 9** - Checkpoint: Test scripts validated
+**Userspace**: All 11 VCP evidence tests pass  
+**Kernel**: VCP evidence markers operational and verified  
+**Status**: COMPLETE - Ready for Task 9
 
 ---
 
 **Maintainer**: Kenan AY — System Architect  
-**Checkpoint**: VCP Evidence Consistency Guarantee - Userspace COMPLETE, Kernel Evidence PENDING
+**Checkpoint**: VCP Evidence Consistency Guarantee - **COMPLETE**
