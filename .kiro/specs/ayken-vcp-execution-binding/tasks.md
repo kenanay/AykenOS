@@ -102,17 +102,17 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Ensure fail-closed is invoked for both missing and invalid validation states
     - _Requirements: 1.2, 1.3, 4.1_
 
-- [ ] 5. Implement runtime evidence emission system
-  - [ ] 5.1 Create evidence emission API in `kernel/sys/vcp_evidence.c`
-    - Implement `vcp_emit_validation_check(struct execution_slot *slot, int result)` function
-    - Implement `vcp_emit_execution_block(struct execution_slot *slot, const char *reason)` function
-    - Implement `vcp_emit_contract_execution(struct execution_slot *slot, const char *contract_id)` function
-    - Implement `vcp_emit_boundary_crossing(struct execution_slot *slot, const char *boundary_id)` function
-    - **CRITICAL**: Authoritative evidence (global/slot chains) MUST be durable-before-proceed (synchronous write, fail-closed on failure)
+- [ ] 5. Implement diagnostic evidence emission stubs (DIAGNOSTIC ONLY - Authoritative evidence in Task 20-23)
+  - [ ] 5.1 Create diagnostic evidence emission API stubs in `kernel/sys/vcp_evidence.c`
+    - Implement `vcp_emit_validation_check(struct execution_slot *slot, int result)` function (DIAGNOSTIC STUB)
+    - Implement `vcp_emit_execution_block(struct execution_slot *slot, const char *reason)` function (DIAGNOSTIC STUB)
+    - Implement `vcp_emit_contract_execution(struct execution_slot *slot, const char *contract_id)` function (DIAGNOSTIC STUB)
+    - Implement `vcp_emit_boundary_crossing(struct execution_slot *slot, const char *boundary_id)` function (DIAGNOSTIC STUB)
+    - **CRITICAL**: These are DIAGNOSTIC STUBS ONLY. Authoritative evidence (signed, verified, durable-before-proceed) will be implemented in Task 20-23.
     - **ALLOWED**: Diagnostic ring buffer MAY be asynchronous (non-authoritative)
-    - Ensure evidence format is compatible with CI verification tools
-    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 9.4, 16.1_
-    - _Guarantees: durable evidence, no async authority_
+    - Ensure stub format is compatible with future authoritative evidence (Task 20-23)
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+    - _Guarantees: diagnostic telemetry only, no authority_
   
   - [ ]* 5.2 Write property test for comprehensive evidence emission
     - **Property 8: Comprehensive Evidence Emission** [QUALITY]
@@ -356,11 +356,13 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 18. Implement VCP Trust Token Verification (CRITICAL - MUST BE DONE BEFORE BCIB/ABDF BINDING)
-  - [ ] 18.1 Define VCP trust token layout in `kernel/include/vcp_runtime.h`
-    - Define `struct vcp_validation_state` with fields: `validation_result`, `contract_id`, `boundary_policy`, `context_hash`, `nonce`, `signature`, `capability_id`, `evidence_id`
+  - [ ] 18.1 Verify Task 1 FINAL ABI layout in `kernel/include/vcp_runtime.h`
+    - **CRITICAL**: Task 1 already defined the FINAL ABI. This task VERIFIES that layout, does NOT redefine it.
+    - Verify `struct vcp_validation_state` from Task 1.1 contains all required fields: `validation_result`, `contract_id`, `boundary_policy`, `context_hash`, `nonce`, `signature`, `capability_id`, `evidence_id`, `timestamp`
     - Add trust verification result codes: `VCP_TRUST_VERIFIED`, `VCP_TRUST_FAILED_CAPABILITY`, `VCP_TRUST_FAILED_CONTEXT`, `VCP_TRUST_FAILED_SIGNATURE`, `VCP_TRUST_FAILED_NONCE`
-    - Document trust token structure and verification requirements
+    - Document trust token verification requirements (NOT structure definition - that's in Task 1)
     - _Requirements: 11.1, 11.2, 11.3, 11.7_
+    - _Guarantees: ABI consistency, no drift_
   
   - [ ] 18.2 Implement context hash computation in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_compute_context_hash(struct execution_slot *slot)` function
@@ -806,36 +808,40 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
 
 - [ ] 28. Implement ABDF Canonical Data Layer (CRITICAL - DETERMINISM FOUNDATION)
   - [ ] 28.1 Define ABDF as canonical internal format [CRITICAL]
-    - Document: ABDF = canonical internal format (zorunlu çekirdek format)
+    - Document: ABDF = canonical internal format (kernel execution format)
     - Document: Kernel execution ONLY accepts ABDF format
     - Document: External formats (JSON, CLI, AI output) MUST convert to ABDF before execution
+    - **CRITICAL**: Converters are USERLAND tools, NOT kernel code
     - Add specification to `.kiro/governance/abdf-canonical-layer.md`
     - _Requirements: 16.4_
     - _Guarantees: deterministic execution, canonical truth_
   
-  - [ ] 28.2 Implement JSON → ABDF conversion [REQUIRED]
-    - Implement `json_to_abdf(json_input)` function in `kernel/sys/abdf_adapter.c`
-    - Ensure deterministic conversion: same JSON → same ABDF
-    - Handle JSON ambiguities (1 vs 1.0, field order, whitespace)
+  - [ ] 28.2 Document JSON → ABDF conversion contract [REQUIRED]
+    - **USERLAND TOOL**: `ayken-core/crates/abdf-builder` (Rust) or `tools/ayken-cli` (userland)
+    - **NOT KERNEL**: Kernel does NOT parse JSON
+    - Document deterministic conversion contract: same JSON → same ABDF
+    - Document JSON ambiguity handling (1 vs 1.0, field order, whitespace)
     - _Requirements: 16.5_
-    - _Guarantees: JSON input determinism_
+    - _Guarantees: JSON input determinism contract_
   
-  - [ ] 28.3 Implement CLI → ABDF conversion [REQUIRED]
-    - Implement `cli_to_abdf(cli_input)` function in `kernel/sys/abdf_adapter.c`
-    - Ensure deterministic conversion: same CLI input → same ABDF
+  - [ ] 28.3 Document CLI → ABDF conversion contract [REQUIRED]
+    - **USERLAND TOOL**: `userspace/semantic-cli` or `tools/ayken-cli`
+    - **NOT KERNEL**: Kernel does NOT parse CLI commands
+    - Document deterministic conversion contract: same CLI input → same ABDF
     - _Requirements: 16.6_
-    - _Guarantees: CLI input determinism_
+    - _Guarantees: CLI input determinism contract_
   
-  - [ ] 28.4 Implement AI output → ABDF conversion [REQUIRED]
-    - Implement `ai_output_to_abdf(ai_output)` function in `kernel/sys/abdf_adapter.c`
-    - Ensure deterministic conversion: same AI output → same ABDF
+  - [ ] 28.4 Document AI output → ABDF conversion contract [REQUIRED]
+    - **USERLAND TOOL**: AI planner output → BCIB compiler → ABDF
+    - **NOT KERNEL**: Kernel does NOT parse AI output
     - Document: AI output MUST go through ABDF canonicalization before execution
     - _Requirements: 16.7_
-    - _Guarantees: AI input determinism, no AI bypass_
+    - _Guarantees: AI input determinism contract, no AI bypass_
   
-  - [ ] 28.5 Enforce "no execution without ABDF" [CRITICAL]
+  - [ ] 28.5 Enforce "no execution without ABDF" in kernel [CRITICAL]
     - Modify `execution_slot_create()` to require ABDF payload
     - Reject non-ABDF payloads at execution slot creation
+    - Kernel validates ABDF format, does NOT convert external formats
     - Ensure evidence context_hash includes ABDF snapshot hash
     - _Requirements: 16.8_
     - _Guarantees: ABDF enforcement, no bypass_
@@ -846,12 +852,13 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Test that Input A (JSON), Input B (CLI), Input C (AI) → ABDF(A) == ABDF(B) == ABDF(C)
     - Test that same input produces identical ABDF
     - Test that ABDF snapshot hash is deterministic
+    - **NOTE**: This tests userland converters, not kernel
   
   - [ ]* 28.7 Add integration tests for ABDF canonical layer [REQUIRED]
-    - Test JSON → ABDF → execution
-    - Test CLI → ABDF → execution
-    - Test AI output → ABDF → execution
-    - Test non-ABDF payload rejection
+    - Test userland JSON → ABDF → kernel execution
+    - Test userland CLI → ABDF → kernel execution
+    - Test userland AI output → ABDF → kernel execution
+    - Test kernel rejects non-ABDF payload
     - _Requirements: 16.4, 16.5, 16.6, 16.7, 16.8_
 
 - [ ] 29. Implement Future Extension Boundary Contract (CRITICAL - AI/USERLAND GUARDRAIL)
