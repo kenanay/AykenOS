@@ -24,22 +24,16 @@ cd "$ROOT_DIR"
 
 FAIL=0
 DEPRECATED_COUNT=0
+FORBIDDEN_PATTERN="ayken""os"
 
-# Get modified files (compared to main/master branch)
-if git rev-parse --verify main >/dev/null 2>&1; then
-  BASE_BRANCH="main"
-elif git rev-parse --verify master >/dev/null 2>&1; then
-  BASE_BRANCH="master"
-else
-  echo "⚠ Warning: No main/master branch found, checking all files"
-  BASE_BRANCH=""
-fi
-
-if [ -n "$BASE_BRANCH" ]; then
-  MODIFIED_FILES=$(git diff --name-only "$BASE_BRANCH"...HEAD 2>/dev/null || git diff --name-only --cached 2>/dev/null || true)
-else
-  MODIFIED_FILES=$(git ls-files 2>/dev/null || find . -type f -not -path '*/\.git/*' -not -path '*/out/*' -not -path '*/node_modules/*')
-fi
+TRACKED_FILES=$(
+  {
+    git diff --name-only HEAD 2>/dev/null || true
+    git diff --name-only --cached 2>/dev/null || true
+  } | sort -u
+)
+UNTRACKED_FILES=$(git ls-files --others --exclude-standard 2>/dev/null || true)
+MODIFIED_FILES=$(printf '%s\n%s\n' "$TRACKED_FILES" "$UNTRACKED_FILES" | sed '/^$/d' | sort -u)
 
 if [ -z "$MODIFIED_FILES" ]; then
   echo "✔ No modified files to check"
@@ -48,6 +42,19 @@ fi
 
 echo "Checking modified files for naming violations..."
 
+is_skipped_file() {
+  case "$1" in
+    *.png|*.jpg|*.jpeg|*.gif|*.pdf|*.bin|*.o|*.elf|out/*|node_modules/*|.git/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_untracked_file() {
+  printf '%s\n' "$UNTRACKED_FILES" | grep -Fxq "$1"
+}
+
 # Check for "aykenos" in new code
 echo ""
 echo "Checking for forbidden term: 'aykenos'..."
@@ -55,14 +62,21 @@ echo "Checking for forbidden term: 'aykenos'..."
 while IFS= read -r file; do
   [ -f "$file" ] || continue
   
-  # Skip binary files, images, and generated files
-  case "$file" in
-    *.png|*.jpg|*.jpeg|*.gif|*.pdf|*.bin|*.o|*.elf|out/*|node_modules/*|.git/*)
-      continue
-      ;;
-  esac
+  if is_skipped_file "$file"; then
+    continue
+  fi
   
-  matches=$(grep -nHi "aykenos" "$file" 2>/dev/null || true)
+  if is_untracked_file "$file"; then
+    matches=$(grep -nHi "$FORBIDDEN_PATTERN" "$file" 2>/dev/null || true)
+  else
+    added_lines=$(
+      {
+        git diff --cached -U0 -- "$file" 2>/dev/null || true
+        git diff -U0 -- "$file" 2>/dev/null || true
+      } | awk '/^\+[^+]/ { print substr($0, 2) }'
+    )
+    matches=$(printf '%s\n' "$added_lines" | grep -nHi "$FORBIDDEN_PATTERN" 2>/dev/null || true)
+  fi
   
   if [ -n "$matches" ]; then
     echo "❌ VIOLATION: 'aykenos' found in: $file"

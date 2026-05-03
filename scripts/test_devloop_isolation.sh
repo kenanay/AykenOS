@@ -19,6 +19,7 @@
 set -euo pipefail
 
 RUNS="${ISOLATION_TEST_RUNS:-5}"
+QEMU_TIMEOUT_SECONDS="${QEMU_TIMEOUT_SECONDS:-30}"
 LOG_DIR="out/logs/isolation_test"
 BASELINE_MARKERS="$LOG_DIR/baseline_markers.txt"
 BASELINE_HASH="$LOG_DIR/baseline_hash.txt"
@@ -63,7 +64,7 @@ for i in $(seq 1 $RUNS); do
     
     # Run QEMU with timeout
     set +e
-    timeout 30 make run-qemu \
+    timeout "$QEMU_TIMEOUT_SECONDS" make run-qemu \
         KERNEL_PROFILE=validation \
         AYKEN_VALIDATION=1 \
         AYKEN_VCP_RUNTIME_HOOK_TEST=0 \
@@ -136,7 +137,7 @@ echo "[3/3] Analyzing results..."
 echo ""
 
 # Count unique marker sequences
-unique_sequences=$(cat "$LOG_DIR"/run_*_markers.txt | sort -u | wc -l | tr -d ' ')
+unique_sequences=$(sha256sum "$LOG_DIR"/run_*_markers.txt | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
 
 if [ "$unique_sequences" -eq 1 ]; then
     echo "✅ PASS: All $RUNS runs produced identical marker sequence"

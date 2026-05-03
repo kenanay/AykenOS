@@ -23,45 +23,18 @@ rm -f "$IMG" "$IMG_DMG"
 mkdir -p "$(dirname "$IMG")"
 
 
-if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
-    MOUNT_VOL="/Volumes/EFI"
-
-    echo "[*] FAT32 EFI image oluşturuluyor (hdiutil GPTSPUD)..."
-
-    TMP_DMG="${IMG_DMG}"
-    DEV=""
-
-    if hdiutil create -size 200m -layout GPTSPUD -partitionType EFI -fs "MS-DOS FAT32" -volname EFI "$TMP_DMG" >/dev/null 2>&1; then
-        DEV=$(hdiutil attach -nomount "$TMP_DMG" | head -n1 | awk '{print $1}')
-        if [[ -n "$DEV" ]] && diskutil mount "${DEV}s1" >/dev/null 2>&1; then
-            mkdir -p "$MOUNT_VOL/EFI/BOOT"
-            echo "[BOOTX64.EFI kopyalanıyor]"
-            cp "$BOOT_EFI_PATH" "$MOUNT_VOL/EFI/BOOT/"
-            echo "[kernel.elf kopyalanıyor]"
-            cp "$KERNEL_ELF_PATH" "$MOUNT_VOL/"
-            
-            # CRITICAL FIX: Generate startup.nsh with correct content (no stray %)
-            echo "[startup.nsh oluşturuluyor]"
-            cat > "$MOUNT_VOL/startup.nsh" <<'EOF'
-fs0:
-\EFI\BOOT\BOOTX64.EFI
-EOF
-
-            sync
-            diskutil unmount "$MOUNT_VOL" >/dev/null 2>&1 || true
-            hdiutil detach "$DEV" >/dev/null 2>&1 || true
-            mv -f "$TMP_DMG" "$IMG"
-            echo "[*] EFI.img hazır!"
-            exit 0
-        fi
-    fi
-
-    echo "[WARN] hdiutil GPTSPUD yolu başarısız, mtools fallback kullanılacak."
-    if [[ -n "${DEV:-}" ]]; then
-        hdiutil detach "$DEV" >/dev/null 2>&1 || true
-    fi
-    rm -f "$TMP_DMG"
-fi
+# CRITICAL FIX: hdiutil GPTSPUD creates DMG files that QEMU cannot boot from
+# The DMG format is not compatible with QEMU's raw disk image expectation
+# Always use mtools for QEMU-compatible FAT32 images
+# 
+# Previous hdiutil approach disabled due to boot failure:
+# - hdiutil creates Apple DMG format (not raw disk image)
+# - QEMU requires raw disk images with proper MBR/GPT + FAT32
+# - mtools creates proper raw FAT32 images that QEMU can boot
+#
+# if [[ "${FORCE_MTOOLS:-0}" != "1" ]] && [[ "$(uname)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
+#     ... hdiutil code disabled ...
+# fi
 
 echo "[*] FAT32 EFI image oluşturuluyor..."
 dd if=/dev/zero of="$IMG" bs=1M count=64 >/dev/null 2>&1
