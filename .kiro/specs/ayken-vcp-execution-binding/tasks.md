@@ -355,8 +355,8 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
 - [ ] 17. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 18. Implement VCP Trust Token Verification (CRITICAL - MUST BE DONE BEFORE BCIB/ABDF BINDING)
-  - [ ] 18.1 Verify Task 1 FINAL ABI layout in `kernel/include/vcp_runtime.h`
+- [-] 18. Implement VCP Trust Token Verification (CRITICAL - MUST BE DONE BEFORE BCIB/ABDF BINDING)
+  - [x] 18.1 Verify Task 1 FINAL ABI layout in `kernel/include/vcp_runtime.h`
     - **CRITICAL**: Task 1 already defined the FINAL ABI. This task VERIFIES that layout, does NOT redefine it.
     - Verify `struct vcp_validation_state` from Task 1.1 contains all required fields: `validation_result`, `contract_id`, `boundary_policy`, `context_hash`, `nonce`, `signature`, `capability_id`, `evidence_id`, `timestamp`
     - Add trust verification result codes: `VCP_TRUST_VERIFIED`, `VCP_TRUST_FAILED_CAPABILITY`, `VCP_TRUST_FAILED_CONTEXT`, `VCP_TRUST_FAILED_SIGNATURE`, `VCP_TRUST_FAILED_NONCE`
@@ -364,26 +364,26 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 11.1, 11.2, 11.3, 11.7_
     - _Guarantees: ABI consistency, no drift_
   
-  - [ ] 18.2 Implement context hash computation in `kernel/sys/vcp_runtime.c`
+  - [x] 18.2 Implement context hash computation in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_compute_context_hash(struct execution_slot *slot)` function
     - Hash inputs: BCIB contract_id, ABDF boundary_policy, execution_slot_id, metadata
     - Ensure deterministic hash computation (no global state)
     - _Requirements: 11.2_
   
-  - [ ] 18.3 Implement kernel capability binding in `kernel/sys/vcp_runtime.c`
+  - [x] 18.3 Implement kernel capability binding in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_verify_capability(struct execution_slot *slot, struct vcp_validation_state *state)` function
     - Verify that validation state is bound to a kernel-issued capability
     - Return failure if capability binding is invalid or missing
     - _Requirements: 11.1_
   
-  - [ ] 18.4 Implement signature verification in `kernel/sys/vcp_runtime.c`
+  - [x] 18.4 Implement signature verification in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_verify_signature(struct vcp_validation_state *state)` function
     - Add VCP trust root interface (stub for now, to be implemented with cryptographic backend)
     - Verify signature against VCP trust root
     - Return failure if signature is invalid
     - _Requirements: 11.3_
   
-  - [ ] 18.5 Implement nonce and replay protection in `kernel/sys/vcp_runtime.c`
+  - [x] 18.5 Implement nonce and replay protection in `kernel/sys/vcp_runtime.c`
     - Implement `vcp_verify_nonce(struct vcp_validation_state *state)` function
     - **CRITICAL**: Nonce registry MUST be append-only ledger (NOT hidden mutable global map)
     - Implement nonce ledger as append-only structure (deterministic, no global state mutation)
@@ -392,13 +392,13 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 11.2, 11.6, 16.2_
     - _Guarantees: replay protection, determinism compliance_
   
-  - [ ] 18.6 Integrate trust verification into runtime validation hook
+  - [x] 18.6 Integrate trust verification into runtime validation hook
     - Modify `vcp_runtime_validate()` to call `vcp_verify_validation_state()` BEFORE checking validation result
     - Ensure trust verification happens first (capability → context → signature → nonce → result)
     - Fail-closed if any trust verification step fails
     - _Requirements: 11.4, 11.5_
   
-  - [ ] 18.7 Implement fail-closed on trust verification failure
+  - [x] 18.7 Implement fail-closed on trust verification failure
     - Modify `vcp_fail_closed()` to handle trust verification failures
     - Emit evidence describing which trust check failed (capability, context, signature, nonce)
     - Ensure fail-closed is permanent (no recovery after trust failure)
