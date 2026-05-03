@@ -171,13 +171,13 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 4: Test Scripts
 
-- [ ] 7. Contract validation capability
-  - [ ] 7.1 VCP runtime hook guarantee
-  - [ ] 7.2 VCP trust guarantee
-  - [ ] 7.3 VCP fail-closed guarantee
+- [x] 7. Contract validation capability
+  - [x] 7.1 VCP runtime hook guarantee
+  - [x] 7.2 VCP trust guarantee
+  - [x] 7.3 VCP fail-closed guarantee
   - _Req: R8_
 
-- [ ] 8. Evidence validation capability
+- [~] 8. Evidence validation capability
   - [ ] 8.1 VCP evidence consistency guarantee
   - _Req: R9_
 
