@@ -1315,9 +1315,21 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 
 ### Phase 1: Core Enforcement (MVP - Foundation)
 1. **Task 1** (Execution Slot Validation State) - Foundation with FINAL ABI
-2. **Task 2** (VCP Runtime Hook) - Core enforcement point
-3. **Task 4** (Fail-Closed Mechanism) - Security guarantee
-4. **Task 18** (Trust Token Verification) - **CRITICAL: MUST BE DONE BEFORE EVIDENCE & BINDING**
+2. **Task 18** (Trust Token Verification) - **CRITICAL: SYSTEM HEART - MUST BE DONE BEFORE HOOK**
+3. **Task 2** (VCP Runtime Hook) - Core enforcement point (uses Task 18 verification)
+4. **Task 4** (Fail-Closed Mechanism) - Security guarantee
+
+**CRITICAL ORDER RATIONALE:**
+- Task 1 → ABI lock (no verification without structure)
+- Task 18 → Trust verification (capability + context + signature + nonce)
+- Task 2 → Runtime hook (calls `vcp_verify_validation_state()` from Task 18)
+- Task 4 → Fail-closed (triggered by Task 2 when verification fails)
+
+**WITHOUT Task 18 FIRST:**
+- Task 2 hook is meaningless (no verification function to call)
+- Task 4 fail-closed blocks wrong things (no trust verification)
+- System becomes "trusted-input" not "verified-input"
+- **Result: Fake state accepted, security theater**
 
 ### Phase 2: Evidence System (CRITICAL - MUST BE DONE BEFORE PRODUCTION)
 5. **Task 20** (Evidence Foundation - Determinism & Emission)
@@ -1335,7 +1347,7 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 13. **Task 16.1** (Wire enforcement points) - Integration
 14. **Task 16.2** (System-wide verification) - Validation
 
-**CRITICAL ORDER RULE**: Trust (Task 18) → Evidence (Task 20-23) → ABDF Canonical (Task 29) → Binding (Task 7-10)
+**CRITICAL ORDER RULE**: Task 1 (ABI) → Task 18 (Trust) → Task 2 (Hook) → Task 4 (Fail-Closed) → Evidence (Task 20-23) → ABDF Canonical (Task 29) → Binding (Task 7-10)
 
 ### Phase 5: Hardening
 15. **Task 11** (Lifecycle Management)
@@ -1399,7 +1411,10 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 **Why Task 18 (Trust Verification) is Critical:**
 - Without trust verification, the system is a "trusted-input system" (vulnerable to fake state injection)
 - With trust verification, the system becomes a "verified-input system" (cryptographically secure)
-- Trust verification MUST happen before BCIB/ABDF binding to prevent binding to forged validation states
+- **CRITICAL**: Trust verification MUST happen BEFORE runtime hook (Task 2) because hook calls `vcp_verify_validation_state()`
+- Task 2 without Task 18 = meaningless hook (no verification function exists)
+- Task 4 without Task 18 = fail-closed blocks wrong things (no trust checks)
+- **Correct order**: Task 1 (ABI) → Task 18 (Trust) → Task 2 (Hook) → Task 4 (Fail-Closed)
 
 **Why Task 21 (Evidence Trust Layer) is Critical:**
 - Without evidence trust, the system produces "logs" not "proof"
