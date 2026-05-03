@@ -806,8 +806,8 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
 - [ ] 28. Final checkpoint - Ensure all naming governance tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 28. Implement ABDF Canonical Data Layer (CRITICAL - DETERMINISM FOUNDATION)
-  - [ ] 28.1 Define ABDF as canonical internal format [CRITICAL]
+- [ ] 29. Implement ABDF Canonical Data Layer (CRITICAL - DETERMINISM FOUNDATION)
+  - [ ] 29.1 Define ABDF as canonical internal format [CRITICAL]
     - Document: ABDF = canonical internal format (kernel execution format)
     - Document: Kernel execution ONLY accepts ABDF format
     - Document: External formats (JSON, CLI, AI output) MUST convert to ABDF before execution
@@ -816,7 +816,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 16.4_
     - _Guarantees: deterministic execution, canonical truth_
   
-  - [ ] 28.2 Document JSON → ABDF conversion contract [REQUIRED]
+  - [ ] 29.2 Document JSON → ABDF conversion contract [REQUIRED]
     - **USERLAND TOOL**: `ayken-core/crates/abdf-builder` (Rust) or `tools/ayken-cli` (userland)
     - **NOT KERNEL**: Kernel does NOT parse JSON
     - Document deterministic conversion contract: same JSON → same ABDF
@@ -824,21 +824,21 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 16.5_
     - _Guarantees: JSON input determinism contract_
   
-  - [ ] 28.3 Document CLI → ABDF conversion contract [REQUIRED]
+  - [ ] 29.3 Document CLI → ABDF conversion contract [REQUIRED]
     - **USERLAND TOOL**: `userspace/semantic-cli` or `tools/ayken-cli`
     - **NOT KERNEL**: Kernel does NOT parse CLI commands
     - Document deterministic conversion contract: same CLI input → same ABDF
     - _Requirements: 16.6_
     - _Guarantees: CLI input determinism contract_
   
-  - [ ] 28.4 Document AI output → ABDF conversion contract [REQUIRED]
+  - [ ] 29.4 Document AI output → ABDF conversion contract [REQUIRED]
     - **USERLAND TOOL**: AI planner output → BCIB compiler → ABDF
     - **NOT KERNEL**: Kernel does NOT parse AI output
     - Document: AI output MUST go through ABDF canonicalization before execution
     - _Requirements: 16.7_
     - _Guarantees: AI input determinism contract, no AI bypass_
   
-  - [ ] 28.5 Enforce "no execution without ABDF" in kernel [CRITICAL]
+  - [ ] 29.5 Enforce "no execution without ABDF" in kernel [CRITICAL]
     - Modify `execution_slot_create()` to require ABDF payload
     - Reject non-ABDF payloads at execution slot creation
     - Kernel validates ABDF format, does NOT convert external formats
@@ -846,23 +846,26 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 16.8_
     - _Guarantees: ABDF enforcement, no bypass_
   
-  - [ ] 28.6 Add property test for canonical equivalence [CRITICAL]
-    - **Property 42: Canonical Determinism**
+  - [ ] 29.6 Add property test for canonical equivalence [CRITICAL]
+    - **Property 42: Canonical Determinism** [CRITICAL]
     - **Validates: Requirements 16.4, 16.5, 16.6, 16.7**
     - Test that Input A (JSON), Input B (CLI), Input C (AI) → ABDF(A) == ABDF(B) == ABDF(C)
     - Test that same input produces identical ABDF
     - Test that ABDF snapshot hash is deterministic
     - **NOTE**: This tests userland converters, not kernel
   
-  - [ ]* 28.7 Add integration tests for ABDF canonical layer [REQUIRED]
+  - [ ]* 29.7 Add integration tests for ABDF canonical layer [REQUIRED]
     - Test userland JSON → ABDF → kernel execution
     - Test userland CLI → ABDF → kernel execution
     - Test userland AI output → ABDF → kernel execution
     - Test kernel rejects non-ABDF payload
     - _Requirements: 16.4, 16.5, 16.6, 16.7, 16.8_
 
-- [ ] 29. Implement Future Extension Boundary Contract (CRITICAL - AI/USERLAND GUARDRAIL)
-  - [ ] 29.1 Define AI/userland extension boundary [CRITICAL]
+- [ ] 30. Checkpoint - Ensure all ABDF canonical layer tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 31. Implement Future Extension Boundary Contract (CRITICAL - AI/USERLAND GUARDRAIL)
+  - [ ] 31.1 Define AI/userland extension boundary [CRITICAL]
     - Document: AI planner = advisory-only (cannot execute directly)
     - Document: AI output → BCIB candidate → VCP validation → execution
     - Document: Userland CLI → VCP-bound execution slot
@@ -872,38 +875,38 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 16.9_
     - _Guarantees: future AI/userland integration without bypass_
   
-  - [ ] 29.2 Implement AI output validation gate [CRITICAL]
+  - [ ] 31.2 Implement AI output validation gate [CRITICAL]
     - Implement `ai_output_validate(ai_output)` function
     - Ensure AI output goes through: AI → ABDF → VCP → execution
     - Block direct AI → execution path
     - _Requirements: 16.10_
     - _Guarantees: AI cannot bypass validation_
   
-  - [ ] 29.3 Implement userland CLI validation gate [CRITICAL]
+  - [ ] 31.3 Implement userland CLI validation gate [CRITICAL]
     - Ensure CLI commands create VCP-bound execution slots
     - Block CLI → direct execution path
     - _Requirements: 16.11_
     - _Guarantees: CLI cannot bypass validation_
   
-  - [ ] 29.4 Document extension integration pattern [REQUIRED]
+  - [ ] 31.4 Document extension integration pattern [REQUIRED]
     - Document pattern: External Input → ABDF Canonicalization → VCP Validation → Execution
     - Document: This pattern applies to ALL future extensions (AI, semantic planner, auto-execution, etc.)
     - Add pattern to `.kiro/governance/extension-pattern.md`
     - _Requirements: 16.12_
     - _Guarantees: consistent extension model_
   
-  - [ ]* 29.5 Add property test for extension boundary enforcement [CRITICAL]
-    - **Property 43: Extension Boundary Enforcement**
+  - [ ] 31.5 Add property test for extension boundary enforcement [CRITICAL]
+    - **Property 43: Extension Boundary Enforcement** [CRITICAL]
     - **Validates: Requirements 16.9, 16.10, 16.11**
     - Test that AI output cannot bypass VCP validation
     - Test that CLI cannot bypass VCP validation
     - Test that all external inputs go through ABDF canonicalization
 
-- [ ] 30. Final checkpoint - Ensure all extension boundary tests pass
+- [ ] 32. Checkpoint - Ensure all extension boundary tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 30. Implement Interaction & Control Surface Layer (CRITICAL - UI/GRAPH/AI GUARDRAIL)
-  - [ ] 30.1 Define UI → ABDF builder contract [CRITICAL]
+- [ ] 33. Implement Interaction & Control Surface Layer (CRITICAL - UI/GRAPH/AI GUARDRAIL)
+  - [ ] 33.1 Define UI → ABDF builder contract [CRITICAL]
     - Document: UI actions MUST produce ABDF graph (NO direct syscall/execution)
     - Document: UI = description layer, NOT execution layer
     - Document: button → build ABDF → validate → run (if valid)
@@ -911,15 +914,16 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 17.1_
     - _Guarantees: UI cannot bypass validation_
   
-  - [ ] 30.2 Implement graph-based execution model [REQUIRED]
+  - [ ] 33.2 Implement graph-based execution model [REQUIRED]
     - Define node-based execution graph: nodes (operations), edges (dependencies)
-    - Implement `graph_to_abdf(graph)` function in `kernel/sys/abdf_adapter.c`
+    - Implement `graph_to_abdf(graph)` function in userland ABDF builder
+    - **CRITICAL**: This is a USERLAND tool, NOT kernel code
     - Ensure deterministic graph → ABDF conversion
     - Document: graph = visual programming language, ABDF = compiled form
     - _Requirements: 17.2_
     - _Guarantees: graph determinism, visual programming support_
   
-  - [ ] 30.3 Define ABDF graph representation [CRITICAL]
+  - [ ] 33.3 Define ABDF graph representation [CRITICAL]
     - Define ABDF node types: operation nodes, data nodes, control flow nodes
     - Define ABDF edge types: data dependency, control dependency, ordering
     - Ensure graph representation is immutable and deterministic
@@ -927,52 +931,52 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 17.3_
     - _Guarantees: graph safety, no infinite loops_
   
-  - [ ] 30.4 Implement data flow manipulation layer [REQUIRED]
+  - [ ] 33.4 Implement data flow manipulation layer [REQUIRED]
     - Implement data transformations as ABDF nodes
     - Implement edges as dependency graph
     - Document: NO mutable runtime graph, ONLY immutable ABDF snapshot
     - _Requirements: 17.4_
     - _Guarantees: data flow determinism_
   
-  - [ ] 30.5 Separate UI state from execution state [CRITICAL]
+  - [ ] 33.5 Separate UI state from execution state [CRITICAL]
     - Document: UI state ≠ execution state
     - Document: UI drag-drop = design only, execution = snapshot-triggered
     - Implement state separation: UI state (mutable), execution state (immutable ABDF)
     - _Requirements: 17.5_
     - _Guarantees: UI cannot corrupt execution state_
   
-  - [ ] 30.6 Implement preview/simulation layer [REQUIRED]
+  - [ ] 33.6 Implement preview/simulation layer [REQUIRED]
     - Implement `simulate_abdf_graph(graph)` function for validation preview
     - Simulate ABDF graph WITHOUT execution (dry-run mode)
     - Show validation results before execution
     - _Requirements: 17.6_
     - _Guarantees: safe preview, no side effects_
   
-  - [ ] 30.7 Add property test for UI bypass prevention [CRITICAL]
-    - **Property 44: UI Cannot Bypass VCP**
+  - [ ] 33.7 Add property test for UI bypass prevention [CRITICAL]
+    - **Property 44: UI Cannot Bypass VCP** [CRITICAL]
     - **Validates: Requirements 17.1, 17.5**
     - Test that UI actions cannot trigger execution without VCP validation
     - Test that all UI actions produce valid ABDF
   
-  - [ ] 30.8 Add property test for graph determinism [CRITICAL]
-    - **Property 45: Graph Determinism**
+  - [ ] 33.8 Add property test for graph determinism [CRITICAL]
+    - **Property 45: Graph Determinism** [CRITICAL]
     - **Validates: Requirements 17.2, 17.3**
     - Test that same graph produces identical ABDF
     - Test that graph depth limit is enforced
     - Test that cycle detection works
   
-  - [ ]* 30.9 Add integration tests for interaction layer [REQUIRED]
+  - [ ]* 33.9 Add integration tests for interaction layer [REQUIRED]
     - Test UI → ABDF → VCP → execution flow
     - Test graph → ABDF → execution flow
     - Test preview/simulation without execution
     - Test UI state separation from execution state
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
 
-- [ ] 31. Final checkpoint - Ensure all interaction layer tests pass
+- [ ] 34. Checkpoint - Ensure all interaction layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 31. Implement Graph Canonicalization Engine (CRITICAL - DETERMINISM FOUNDATION)
-  - [ ] 31.1 Define canonical graph structure [CRITICAL]
+- [ ] 35. Implement Graph Canonicalization Engine (CRITICAL - DETERMINISM FOUNDATION)
+  - [ ] 35.1 Define canonical graph structure [CRITICAL]
     - Define `struct abdf_node` with deterministic fields: `node_id`, `node_type`, `operation`, `fields[]` (sorted), `inputs[]` (sorted), `outputs[]` (sorted)
     - Define `struct abdf_edge` with deterministic fields: `source_id`, `target_id`, `edge_type`, `weight`
     - Define `struct abdf_graph` with: `nodes[]` (sorted by node_id), `edges[]` (sorted by source_id, target_id), `graph_hash`
@@ -980,7 +984,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.1, 18.7_
     - _Guarantees: deterministic structure_
   
-  - [ ] 31.2 Implement deterministic node ID assignment [CRITICAL]
+  - [ ] 35.2 Implement deterministic node ID assignment [CRITICAL]
     - Implement `compute_node_id(node)` using content-based hash (node_type || operation || fields)
     - Ensure same node content → same node_id
     - Alternative: topological sort + monotonic assignment (if content-hash not suitable)
@@ -988,7 +992,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.2_
     - _Guarantees: stable node identifiers_
   
-  - [ ] 31.3 Implement canonical node ordering [CRITICAL]
+  - [ ] 35.3 Implement canonical node ordering [CRITICAL]
     - Implement `canonicalize_nodes(graph)` function
     - Sort nodes by node_id (ascending)
     - Sort fields within each node by field_id
@@ -996,14 +1000,14 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.1, 18.7_
     - _Guarantees: deterministic node ordering_
   
-  - [ ] 31.4 Implement canonical edge ordering [CRITICAL]
+  - [ ] 35.4 Implement canonical edge ordering [CRITICAL]
     - Implement `canonicalize_edges(graph)` function
     - Sort edges by (source_id, target_id) tuple
     - Ensure deterministic edge ordering
     - _Requirements: 18.1_
     - _Guarantees: deterministic edge ordering_
   
-  - [ ] 31.5 Implement graph hash computation [CRITICAL]
+  - [ ] 35.5 Implement graph hash computation [CRITICAL]
     - Implement `compute_graph_hash(graph)` function
     - Hash canonical form: HASH(sorted_nodes || sorted_edges)
     - Ensure deterministic hash (same graph → same hash)
@@ -1011,7 +1015,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.6_
     - _Guarantees: stable graph hash_
   
-  - [ ] 31.6 Implement non-canonical graph rejection [CRITICAL]
+  - [ ] 35.6 Implement non-canonical graph rejection [CRITICAL]
     - Implement `validate_graph_canonicalization(graph)` function
     - Check 1: Nodes sorted by node_id
     - Check 2: Edges sorted by (source_id, target_id)
@@ -1021,7 +1025,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.4, 18.8_
     - _Guarantees: only canonical graphs accepted_
   
-  - [ ] 31.7 Integrate canonicalization into graph_to_abdf conversion [CRITICAL]
+  - [ ] 35.7 Integrate canonicalization into graph_to_abdf conversion [CRITICAL]
     - Modify `graph_to_abdf(input_graph, output)` to:
       1. Assign deterministic node IDs
       2. Convert to ABDF structure
@@ -1032,35 +1036,35 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 18.3, 18.4_
     - _Guarantees: all ABDF graphs are canonical_
   
-  - [ ] 31.8 Integrate graph_hash into evidence context [CRITICAL]
+  - [ ] 35.8 Integrate graph_hash into evidence context [CRITICAL]
     - Modify `compute_evidence_context_hash()` to include graph_hash
     - Ensure evidence is bound to canonical graph structure
     - Document: context_hash = HASH(slot_id || contract_id || boundary_policy || abdf_snapshot_hash || graph_hash)
     - _Requirements: 18.6_
     - _Guarantees: evidence bound to canonical graph_
   
-  - [ ] 31.9 Add property test for graph canonicalization determinism [CRITICAL]
-    - **Property 46: Graph Canonicalization Determinism**
+  - [ ] 35.9 Add property test for graph canonicalization determinism [CRITICAL]
+    - **Property 46: Graph Canonicalization Determinism** [CRITICAL]
     - **Validates: Requirements 18.1, 18.2, 18.3, 18.5**
     - Test that Graph A (UI order) and Graph B (AI order) with same logical structure → ABDF(A) == ABDF(B)
     - Test that node ordering is deterministic
     - Test that edge ordering is deterministic
   
-  - [ ] 31.10 Add property test for graph hash stability [CRITICAL]
-    - **Property 47: Graph Hash Stability**
+  - [ ] 35.10 Add property test for graph hash stability [CRITICAL]
+    - **Property 47: Graph Hash Stability** [CRITICAL]
     - **Validates: Requirements 18.6**
     - Test that graph_hash is deterministic
     - Test that graph_hash does NOT depend on insertion order
     - Test that same graph → same hash
   
-  - [ ] 31.11 Add property test for non-canonical graph rejection [CRITICAL]
-    - **Property 48: Non-Canonical Graph Rejection**
+  - [ ] 35.11 Add property test for non-canonical graph rejection [CRITICAL]
+    - **Property 48: Non-Canonical Graph Rejection** [CRITICAL]
     - **Validates: Requirements 18.4, 18.8**
     - Test that non-canonical graphs are rejected
     - Test that canonicalization failure emits evidence
     - Test that ambiguous graphs are rejected
   
-  - [ ]* 31.12 Add integration tests for graph canonicalization [REQUIRED]
+  - [ ]* 35.12 Add integration tests for graph canonicalization [REQUIRED]
     - Test UI → canonical graph → ABDF
     - Test AI → canonical graph → ABDF
     - Test CLI → canonical graph → ABDF
@@ -1068,11 +1072,11 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - Test graph_hash included in evidence
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8_
 
-- [ ] 32. Final checkpoint - Ensure all graph canonicalization tests pass
+- [ ] 36. Checkpoint - Ensure all graph canonicalization tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 32. Implement Architecture Dependency Firewall (CRITICAL - FUTURE-PROOF BOUNDARY)
-  - [ ] 32.1 Define architecture.manifest [CRITICAL]
+- [ ] 37. Implement Architecture Dependency Firewall (CRITICAL - FUTURE-PROOF BOUNDARY)
+  - [ ] 37.1 Define architecture.manifest [CRITICAL]
     - Create `.kiro/governance/architecture.manifest` file
     - Define allowed module dependencies:
       - `kernel/sys` MAY depend on: `vcp_runtime`, `fail_closed`, `evidence`, `execution_slot`
@@ -1089,7 +1093,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 19.1, 19.2, 19.4, 19.7_
     - _Guarantees: explicit dependency contract_
   
-  - [ ] 32.2 Implement ci-gate-dependency-graph [CRITICAL]
+  - [ ] 37.2 Implement ci-gate-dependency-graph [CRITICAL]
     - Create `ci-dependency-check.sh` script in `.ci/` directory
     - Parse architecture.manifest
     - Analyze source code for #include dependencies
@@ -1100,14 +1104,14 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 19.3, 19.5, 19.6_
     - _Guarantees: automated dependency enforcement_
   
-  - [ ] 32.3 Block circular dependencies [CRITICAL]
+  - [ ] 37.3 Block circular dependencies [CRITICAL]
     - Implement cycle detection in dependency graph
     - If module A depends on B and B depends on A → CI FAIL
     - Emit evidence describing circular dependency
     - _Requirements: 19.3_
     - _Guarantees: no circular dependencies_
   
-  - [ ] 32.4 Block forbidden dependencies [CRITICAL]
+  - [ ] 37.4 Block forbidden dependencies [CRITICAL]
     - Check each source file against architecture.manifest
     - If forbidden dependency detected → CI FAIL
     - Examples:
@@ -1117,22 +1121,22 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 19.4_
     - _Guarantees: no bypass paths_
   
-  - [ ] 32.5 Integrate dependency check into ci-freeze [CRITICAL]
+  - [ ] 37.5 Integrate dependency check into ci-freeze [CRITICAL]
     - Add dependency check to ci-freeze pipeline (blocking)
     - Dependency violation → CI FAIL → merge BLOCKED
     - Document: dependency violation = architectural violation
     - _Requirements: 19.6_
     - _Guarantees: CI authority enforcement_
   
-  - [ ]* 32.6 Add property test for dependency firewall [REQUIRED]
-    - **Property 49: Architecture Dependency Firewall**
+  - [ ]* 37.6 Add property test for dependency firewall [REQUIRED]
+    - **Property 49: Architecture Dependency Firewall** [REQUIRED]
     - **Validates: Requirements 19.2, 19.3, 19.4**
     - Test that forbidden dependencies are detected
     - Test that circular dependencies are detected
     - Test that dependency violations block CI
 
-- [ ] 33. Implement Device-Originated Data Boundary (CRITICAL - FUTURE DEVICE INTEGRATION)
-  - [ ] 33.1 Define DeviceEvent ABDF segment contract [CRITICAL]
+- [ ] 38. Implement Device-Originated Data Boundary (CRITICAL - FUTURE DEVICE INTEGRATION)
+  - [ ] 38.1 Define DeviceEvent ABDF segment contract [CRITICAL]
     - Define `struct abdf_device_event` in `kernel/include/abdf_device.h`:
       - `event_type` (INPUT / STATUS / ERROR)
       - `source_device_id` (device identifier)
@@ -1143,7 +1147,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 20.1, 20.2, 20.3_
     - _Guarantees: canonical device event format_
   
-  - [ ] 33.2 Define InputEvent ABDF segment contract [CRITICAL]
+  - [ ] 38.2 Define InputEvent ABDF segment contract [CRITICAL]
     - Define `struct abdf_input_event` for keyboard, mouse, touch, sensor:
       - `input_type` (KEYBOARD / MOUSE / TOUCH / SENSOR)
       - `source_device_id`
@@ -1154,7 +1158,7 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 20.6_
     - _Guarantees: canonical input format_
   
-  - [ ] 33.3 Define DeviceStatus ABDF segment contract [CRITICAL]
+  - [ ] 38.3 Define DeviceStatus ABDF segment contract [CRITICAL]
     - Define `struct abdf_device_status` for device state changes:
       - `status_type` (CONNECTED / DISCONNECTED / ERROR / READY)
       - `source_device_id`
@@ -1164,100 +1168,105 @@ This implementation plan transforms the AYKEN Validation Control Plane (VCP) fro
     - _Requirements: 20.7_
     - _Guarantees: canonical device status format_
   
-  - [ ] 33.4 Require capability for device-originated execution [CRITICAL]
+  - [ ] 38.4 Require capability for device-originated execution [CRITICAL]
     - Document: Device-originated execution MUST be capability-bound
     - Device event → execution slot creation MUST check capability
     - No capability → fail-closed
     - _Requirements: 20.4_
     - _Guarantees: device access control_
   
-  - [ ] 33.5 Require evidence for device-originated BCIB [CRITICAL]
+  - [ ] 38.5 Require evidence for device-originated BCIB [CRITICAL]
     - Document: Device-triggered BCIB execution MUST emit evidence
     - Evidence MUST include: device_id, event_type, capability_id, timestamp
     - Device-originated execution without evidence → fail-closed
     - _Requirements: 20.5_
     - _Guarantees: device execution audit trail_
   
-  - [ ] 33.6 Block direct device → execution path [CRITICAL]
+  - [ ] 38.6 Block direct device → execution path [CRITICAL]
     - Document: Device input MUST go through ABDF → VCP → execution
     - Direct device → execution bypass is FORBIDDEN
     - Add to architecture.manifest: device → execution direct (FORBIDDEN)
     - _Requirements: 20.8_
     - _Guarantees: no device bypass_
   
-  - [ ]* 33.7 Add property test for device boundary enforcement [REQUIRED]
-    - **Property 50: Device-Originated Data Boundary**
+  - [ ]* 38.7 Add property test for device boundary enforcement [REQUIRED]
+    - **Property 50: Device-Originated Data Boundary** [REQUIRED]
     - **Validates: Requirements 20.1, 20.4, 20.5, 20.8**
     - Test that device events follow ABDF contract
     - Test that device execution requires capability
     - Test that device execution emits evidence
     - Test that direct device → execution is blocked
 
-- [ ] 34. Implement Performance Budget Contract (CRITICAL - DETERMINISTIC BOUNDS)
-  - [ ] 34.1 Define VCP validation time bound [CRITICAL]
-    - Document maximum cycles for `vcp_runtime_validate()`
-    - Profile validation path under various conditions
-    - Set deterministic upper bound (e.g., 10,000 cycles)
-    - Add timeout assertion in validation code
+- [ ] 39. Implement Performance Budget Contract (CRITICAL - DETERMINISTIC BOUNDS)
+  - [ ] 39.1 Define VCP validation operation bound [CRITICAL]
+    - Document maximum bounded operations for `vcp_runtime_validate()`
+    - **CRITICAL**: Use bounded operations (hash computations, comparisons), NOT cycle count
+    - Profile validation path: count hash operations, signature verifications, comparisons
+    - Set deterministic upper bound (e.g., max 10 hash ops, 1 signature verification)
+    - Add operation counter in validation code
     - _Requirements: 21.1_
-    - _Guarantees: bounded validation time_
+    - _Guarantees: bounded validation operations_
   
-  - [ ] 34.2 Define evidence append time bound [CRITICAL]
-    - Document maximum cycles for evidence chain append
-    - Profile evidence append under various conditions
+  - [ ] 39.2 Define evidence append operation bound [CRITICAL]
+    - Document maximum bounded operations for evidence chain append
+    - **CRITICAL**: Use bounded operations (writes, hash computations), NOT cycle count
+    - Profile evidence append: count write operations, hash computations
     - Set deterministic upper bound
-    - Add timeout assertion in evidence code
+    - Add operation counter in evidence code
     - _Requirements: 21.2_
-    - _Guarantees: bounded evidence time_
+    - _Guarantees: bounded evidence operations_
   
-  - [ ] 34.3 Define signature verification budget [CRITICAL]
-    - Document maximum cycles for signature verification
-    - Profile signature verification
+  - [ ] 39.3 Define signature verification operation budget [CRITICAL]
+    - Document maximum bounded operations for signature verification
+    - **CRITICAL**: Use bounded operations (cryptographic operations), NOT cycle count
+    - Profile signature verification: count cryptographic operations
     - Set deterministic upper bound
-    - Add timeout assertion in signature code
+    - Add operation counter in signature code
     - _Requirements: 21.3_
-    - _Guarantees: bounded signature time_
+    - _Guarantees: bounded signature operations_
   
-  - [ ] 34.4 Define fail-closed path budget [CRITICAL]
-    - Document maximum cycles for fail-closed enforcement
-    - Profile fail-closed path
+  - [ ] 39.4 Define fail-closed path operation budget [CRITICAL]
+    - Document maximum bounded operations for fail-closed enforcement
+    - **CRITICAL**: Use bounded operations, NOT cycle count
+    - Profile fail-closed path: count operations
     - Set deterministic upper bound
     - Ensure fail-closed completes within budget
     - _Requirements: 21.4_
-    - _Guarantees: bounded fail-closed time_
+    - _Guarantees: bounded fail-closed operations_
   
-  - [ ] 34.5 Implement fallback behavior on budget exceeded [CRITICAL]
-    - If validation exceeds budget → fail-closed with evidence "validation timeout"
-    - If evidence exceeds budget → fail-closed with evidence "evidence timeout"
-    - If signature exceeds budget → fail-closed with evidence "signature timeout"
-    - Document: timeout = critical failure, not recoverable
+  - [ ] 39.5 Implement fallback behavior on budget exceeded [CRITICAL]
+    - If validation exceeds operation budget → fail-closed with evidence "validation operation budget exceeded"
+    - If evidence exceeds operation budget → fail-closed with evidence "evidence operation budget exceeded"
+    - If signature exceeds operation budget → fail-closed with evidence "signature operation budget exceeded"
+    - Document: operation budget exceeded = critical failure, not recoverable
     - _Requirements: 21.5_
-    - _Guarantees: timeout handling_
+    - _Guarantees: budget overflow handling_
   
-  - [ ] 34.6 Document performance budget [REQUIRED]
+  - [ ] 39.6 Document performance budget [REQUIRED]
     - Create `.kiro/governance/performance-budget.md`
-    - Document maximum cycles for each enforcement path
+    - Document maximum bounded operations for each enforcement path
     - Document maximum memory for each enforcement path
-    - Document maximum I/O for each enforcement path
+    - Document maximum I/O operations for each enforcement path
+    - **CRITICAL**: Document why bounded operations (not cycle count) ensures determinism
     - _Requirements: 21.6_
     - _Guarantees: explicit performance contract_
   
-  - [ ] 34.7 Test under load [REQUIRED]
+  - [ ] 39.7 Test under load [REQUIRED]
     - Create stress test for validation enforcement
     - Test validation under high load (1000+ concurrent slots)
-    - Verify budget maintained under load
+    - Verify operation budget maintained under load
     - _Requirements: 21.7_
     - _Guarantees: load resilience_
   
-  - [ ]* 34.8 Add property test for performance budget [REQUIRED]
-    - **Property 51: Performance Budget Enforcement**
+  - [ ]* 39.8 Add property test for performance budget [REQUIRED]
+    - **Property 51: Performance Budget Enforcement** [REQUIRED]
     - **Validates: Requirements 21.1, 21.2, 21.3, 21.4, 21.5**
-    - Test that validation completes within budget
-    - Test that evidence append completes within budget
-    - Test that signature verification completes within budget
-    - Test that budget exceeded triggers fail-closed
+    - Test that validation completes within operation budget
+    - Test that evidence append completes within operation budget
+    - Test that signature verification completes within operation budget
+    - Test that operation budget exceeded triggers fail-closed
 
-- [ ] 35. Final checkpoint - Ensure all boundary and budget tests pass
+- [ ] 40. Final checkpoint - Ensure all boundary and budget tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
@@ -1302,54 +1311,51 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 
 ## MVP Implementation Priority
 
-**CRITICAL**: Do NOT attempt all 19 tasks simultaneously. Follow this MVP sequence:
+**CRITICAL**: Do NOT attempt all tasks simultaneously. Follow this MVP sequence:
 
-### Phase 1: Core Enforcement (MVP)
+### Phase 1: Core Enforcement (MVP - Foundation)
 1. **Task 1** (Execution Slot Validation State) - Foundation with FINAL ABI
 2. **Task 2** (VCP Runtime Hook) - Core enforcement point
 3. **Task 4** (Fail-Closed Mechanism) - Security guarantee
-4. **Task 18** (Trust Token Verification) - **CRITICAL: MUST BE DONE BEFORE EVIDENCE**
+4. **Task 18** (Trust Token Verification) - **CRITICAL: MUST BE DONE BEFORE EVIDENCE & BINDING**
+
+### Phase 2: Evidence System (CRITICAL - MUST BE DONE BEFORE PRODUCTION)
 5. **Task 20** (Evidence Foundation - Determinism & Emission)
-6. **Task 21** (Evidence Trust Layer - Signature & Verification)
+6. **Task 21** (Evidence Trust Layer - Signature & Verification) ← **CRITICAL**
 7. **Task 22** (Evidence Chain Architecture - Hybrid Model)
 8. **Task 23** (Evidence System Integration)
-9. **Task 28** (ABDF Canonical Layer) - **CRITICAL: MUST BE DONE BEFORE BCIB/ABDF BINDING**
-10. **Task 16.1** (Wire enforcement points) - Integration
-11. **Task 16.2** (System-wide verification) - Validation
 
-**CRITICAL ORDER RULE**: Trust (Task 18) → Evidence (Task 20-23) → ABDF Canonical (Task 28) → Binding (Task 7-10)
+### Phase 3: ABDF Canonical Layer (CRITICAL - MUST BE DONE BEFORE BINDING)
+9. **Task 29** (ABDF Canonical Layer) - **CRITICAL: MUST BE DONE BEFORE BCIB/ABDF BINDING**
 
-### Phase 2: Binding Integration
-12. **Task 7** (BCIB Binding)
-13. **Task 8** (ABDF Binding)
-14. **Task 10** (CLI Authority Reduction)
+### Phase 4: Binding Integration
+10. **Task 7** (BCIB Binding)
+11. **Task 8** (ABDF Binding)
+12. **Task 10** (CLI Authority Reduction)
+13. **Task 16.1** (Wire enforcement points) - Integration
+14. **Task 16.2** (System-wide verification) - Validation
 
-### Phase 3: Evidence System (CRITICAL - MUST BE DONE BEFORE PRODUCTION)
-11. **Task 20** (Evidence Foundation - Determinism & Emission)
-12. **Task 21** (Evidence Trust Layer - Signature & Verification) ← **NEW, CRITICAL**
-13. **Task 22** (Evidence Chain Architecture - Hybrid Model)
-14. **Task 23** (Evidence System Integration - BCIB/ABDF/VCP)
+**CRITICAL ORDER RULE**: Trust (Task 18) → Evidence (Task 20-23) → ABDF Canonical (Task 29) → Binding (Task 7-10)
 
-### Phase 4: Hardening
+### Phase 5: Hardening
 15. **Task 11** (Lifecycle Management)
 16. **Task 13** (Constitutional Compliance)
 17. **Task 14** (Performance & Reliability)
 18. **Task 15** (CI-Runtime Consistency)
 
-### Phase 5: Governance (CRITICAL - AUTHORITY CONTROL)
+### Phase 6: Governance (CRITICAL - AUTHORITY CONTROL)
 19. **Task 25** (CI/Merge Governance) - **MUST BE DONE BEFORE PRODUCTION**
 20. **Task 27** (Naming & Directory Governance) - **MUST BE DONE BEFORE PRODUCTION**
 
-### Phase 6: Extension Boundary (CRITICAL - FUTURE-PROOF)
-21. **Task 28** (ABDF Canonical Layer) - **MUST BE DONE BEFORE AI/USERLAND**
-22. **Task 29** (Future Extension Boundary) - **MUST BE DONE BEFORE AI/USERLAND**
-23. **Task 30** (Interaction & Control Surface Layer) - **MUST BE DONE BEFORE UI/GRAPH**
-24. **Task 31** (Graph Canonicalization Engine) - **MUST BE DONE BEFORE UI/GRAPH/AI**
+### Phase 7: Extension Boundary (CRITICAL - FUTURE-PROOF)
+21. **Task 31** (Future Extension Boundary) - **MUST BE DONE BEFORE AI/USERLAND**
+22. **Task 33** (Interaction & Control Surface Layer) - **MUST BE DONE BEFORE UI/GRAPH**
+23. **Task 35** (Graph Canonicalization Engine) - **MUST BE DONE BEFORE UI/GRAPH/AI**
 
-### Phase 7: Authority Foundation (CRITICAL - ARCHITECTURAL FIREWALL)
-25. **Task 32** (Architecture Dependency Firewall) - **MUST BE DONE BEFORE PRODUCTION**
-26. **Task 33** (Device-Originated Data Boundary) - **MUST BE DONE BEFORE DRIVER INTEGRATION**
-27. **Task 34** (Performance Budget Contract) - **MUST BE DONE BEFORE PRODUCTION**
+### Phase 8: Authority Foundation (CRITICAL - ARCHITECTURAL FIREWALL)
+24. **Task 37** (Architecture Dependency Firewall) - **MUST BE DONE BEFORE PRODUCTION**
+25. **Task 38** (Device-Originated Data Boundary) - **MUST BE DONE BEFORE DRIVER INTEGRATION**
+26. **Task 39** (Performance Budget Contract) - **MUST BE DONE BEFORE PRODUCTION**
 
 **CRITICAL Rule**: If any CRITICAL test fails → STOP, no further tasks until fixed. CI authority gate (ci-freeze) is non-negotiable.
 
@@ -1365,7 +1371,7 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 
 **Device Rule**: Device inputs MUST follow ABDF canonical contract. Direct device → execution bypass is FORBIDDEN.
 
-**Performance Rule**: All enforcement paths MUST have deterministic time bounds. Budget exceeded → fail-closed.
+**Performance Rule**: All enforcement paths MUST have deterministic operation bounds (NOT cycle count). Operation budget exceeded → fail-closed.
 
 **Property Tests Marked "Optional" Are NOT Optional for Production:**
 - **CRITICAL Tests** (blocking, must pass before any merge):
@@ -1409,7 +1415,7 @@ This workflow is ONLY for creating design and planning artifacts. Implementation
 - Evidence failure → fail-closed ensures audit cannot be bypassed
 - **CRITICAL RULE**: Execution without evidence emission is invalid
 
-**Why Task 31 (Graph Canonicalization Engine) is Critical:**
+**Why Task 35 (Graph Canonicalization Engine) is Critical:**
 - Without graph canonicalization, same logical graph from different sources (UI/AI/CLI) produces different ABDF
 - Different ABDF → different hashes → different evidence → replay fails → determinism broken
 - Graph canonicalization ensures: UI order ≠ AI order ≠ CLI order → same canonical form → identical ABDF
