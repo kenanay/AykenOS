@@ -84,6 +84,8 @@ echo "Build complete. Booting QEMU validation profile..."
 echo ""
 
 set +e
+echo "fs0:" > /tmp/ayken_boot_commands.txt
+echo "\\EFI\\BOOT\\BOOTX64.EFI" >> /tmp/ayken_boot_commands.txt
 "$timeout_bin" "$QEMU_TIMEOUT_SECONDS" make run \
     KERNEL_PROFILE=validation \
     AYKEN_VALIDATION=1 \
@@ -92,7 +94,7 @@ set +e
     AYKEN_VCP_RUNTIME_HOOK_TEST=0 \
     AYKEN_VCP_TRUST_VERIFICATION_TEST=0 \
     AYKEN_MB_SELFTEST=0 \
-    AYKEN_GATE4_POLICY_TEST=0
+    AYKEN_GATE4_POLICY_TEST=0 < /tmp/ayken_boot_commands.txt
 run_status=$?
 set -e
 
