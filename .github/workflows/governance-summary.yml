@@ -1,0 +1,61 @@
+name: Governance Summary
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  governance-summary:
+    name: Governance Enforcement Summary
+    runs-on: ubuntu-latest
+    needs: []  # This job runs independently to provide overview
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Display governance status
+        run: |
+          echo "=========================================="
+          echo "Ayken Governance Enforcement"
+          echo "=========================================="
+          echo ""
+          echo "Constitutional Rules:"
+          echo "  - Evidence Isolation: Evidence NEVER used as validation input"
+          echo "  - Observation Boundary: Validation uses ONLY raw logs"
+          echo "  - Naming Compliance: 'ayken' canonical, 'aykenos' forbidden"
+          echo ""
+          echo "Enforcement Mechanisms:"
+          echo "  ✓ check_evidence_isolation.sh"
+          echo "  ✓ check_observation_boundary.sh"
+          echo "  ✓ check_naming_compliance.sh"
+          echo ""
+          echo "Constitutional Reference:"
+          echo "  .kiro/specs/dev-loop-boot-monitoring/DEV_LOOP_CONSTITUTION.md"
+          echo ""
+          echo "Requirements:"
+          echo "  - Requirement 26: Direct Observation Source Constraint"
+          echo "  - Requirement 27: Evidence State Isolation"
+          echo "  - Requirement 28: Dev Loop Scope Limitation"
+          echo "  - Requirement 29: Signature Non-Propagation"
+          echo "  - Requirement 30: Naming Enforcement Scope"
+          echo ""
+          echo "=========================================="
+          echo "Check individual workflow runs for details"
+          echo "=========================================="
+      
+      - name: Verify governance scripts exist
+        run: |
+          echo "Verifying governance enforcement scripts..."
+          test -f scripts/check_evidence_isolation.sh || { echo "❌ Missing: check_evidence_isolation.sh"; exit 1; }
+          test -f scripts/check_observation_boundary.sh || { echo "❌ Missing: check_observation_boundary.sh"; exit 1; }
+          test -f scripts/check_naming_compliance.sh || { echo "❌ Missing: check_naming_compliance.sh"; exit 1; }
+          echo "✅ All governance scripts present"
+      
+      - name: Verify constitutional document exists
+        run: |
+          echo "Verifying constitutional documentation..."
+          test -f .kiro/specs/dev-loop-boot-monitoring/DEV_LOOP_CONSTITUTION.md || { echo "❌ Missing: DEV_LOOP_CONSTITUTION.md"; exit 1; }
+          echo "✅ Constitutional document present"

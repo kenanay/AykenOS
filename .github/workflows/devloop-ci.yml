@@ -1,0 +1,288 @@
+name: AykenOS Dev Loop CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+env:
+  QEMU_TIMEOUT_SECONDS: 20
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+      
+      - name: Smoke test
+        run: |
+          chmod +x scripts/dev_loop.sh
+          ./scripts/dev_loop.sh smoke
+      
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs
+          path: out/logs/
+          retention-days: 7
+
+  contract:
+    runs-on: ubuntu-24.04
+    needs: smoke
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+      
+      - name: Contract tests
+        run: |
+          chmod +x scripts/dev_loop.sh
+          ./scripts/dev_loop.sh contract
+      
+      - name: Upload contract logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-logs
+          path: out/logs/
+          retention-days: 7
+
+  full:
+    runs-on: ubuntu-24.04
+    needs: contract
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+      
+      - name: Full validation
+        run: |
+          chmod +x scripts/dev_loop.sh
+          ./scripts/dev_loop.sh full
+      
+      - name: Upload full logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-logs
+          path: out/logs/
+          retention-days: 7
+
+  # 🔴 Auto-bisect: Only runs when PR validation fails
+  # Automatically finds the first commit that broke the system
+  auto-bisect:
+    runs-on: ubuntu-24.04
+    needs: [smoke, contract, full, isolation, performance]
+    if: failure() && github.event_name == 'pull_request'
+    timeout-minutes: 30
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history required for bisect
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+      
+      - name: Prepare scripts
+        run: |
+          chmod +x scripts/dev_loop.sh || true
+          chmod +x scripts/oracle.sh || true
+          chmod +x scripts/find_regression.sh || true
+      
+      - name: Determine good/bad commits
+        id: commits
+        run: |
+          # GOOD: merge base between PR base branch and HEAD
+          # Assumption: base branch is known-good
+          GOOD=$(git merge-base origin/${{ github.base_ref }} HEAD)
+          BAD=$(git rev-parse HEAD)
+          
+          echo "GOOD=$GOOD" >> $GITHUB_OUTPUT
+          echo "BAD=$BAD" >> $GITHUB_OUTPUT
+          
+          echo "Good commit (base): $GOOD"
+          echo "Bad commit (HEAD): $BAD"
+      
+      - name: Run automated bisect
+        run: |
+          set -euo pipefail
+          
+          GOOD="${{ steps.commits.outputs.GOOD }}"
+          BAD="${{ steps.commits.outputs.BAD }}"
+          
+          echo "=========================================="
+          echo "Automated Regression Finder (CI)"
+          echo "=========================================="
+          echo ""
+          echo "Good commit: $GOOD"
+          echo "Bad commit:  $BAD"
+          echo ""
+          
+          mkdir -p out/logs/bisect
+          
+          # Start bisect
+          git bisect start "$BAD" "$GOOD"
+          
+          # Run bisect with oracle
+          git bisect run bash -c '
+            commit=$(git rev-parse --short HEAD)
+            log="out/logs/bisect/${commit}.log"
+            
+            echo "[TEST] Testing commit $commit..."
+            
+            # Run oracle (smoke test)
+            set +e
+            ./scripts/dev_loop.sh smoke >"$log" 2>&1
+            rc=$?
+            set -e
+            
+            if [ "$rc" -eq 0 ]; then
+              echo "       ✅ PASS"
+              exit 0
+            else
+              echo "       ❌ FAIL"
+              exit 1
+            fi
+          '
+          
+          echo ""
+          echo "=========================================="
+          echo "BISECT RESULT"
+          echo "=========================================="
+          
+          # Show bisect log
+          git bisect log || true
+          
+          # Show first bad commit
+          echo ""
+          echo "First bad commit:"
+          git bisect visualize --oneline -1 || git log --oneline -1 "$(git bisect view)" 2>/dev/null || true
+          
+          # Reset bisect
+          git bisect reset
+      
+      - name: Upload bisect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bisect-logs
+          path: out/logs/bisect/
+          retention-days: 14
+      
+      - name: Comment on PR with bisect result
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read bisect logs
+            const bisectDir = 'out/logs/bisect';
+            let comment = '## 🔴 Automated Regression Detection\n\n';
+            comment += 'The dev loop validation failed. Bisect has identified the problematic commit.\n\n';
+            
+            try {
+              const files = fs.readdirSync(bisectDir);
+              const failedCommits = files.filter(f => {
+                const content = fs.readFileSync(path.join(bisectDir, f), 'utf8');
+                return content.includes('FAIL') || content.includes('ERROR');
+              });
+              
+              if (failedCommits.length > 0) {
+                comment += '### Failed Commits:\n';
+                failedCommits.forEach(f => {
+                  const commit = f.replace('.log', '');
+                  comment += `- \`${commit}\`\n`;
+                });
+              }
+              
+              comment += '\n### Bisect Logs\n';
+              comment += 'Download the `bisect-logs` artifact to see detailed logs for each tested commit.\n';
+            } catch (e) {
+              comment += '\n⚠️ Could not read bisect logs. Check the bisect-logs artifact.\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Isolation property test (constitutional requirement)
+  isolation:
+    runs-on: ubuntu-24.04
+    needs: full
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+      
+      - name: Isolation property test
+        run: |
+          chmod +x scripts/test_devloop_isolation.sh
+          ./scripts/test_devloop_isolation.sh
+      
+      - name: Upload isolation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-logs
+          path: out/logs/
+          retention-days: 7
+
+  # Performance regression check (integrates with existing perf gate)
+  performance:
+    runs-on: ubuntu-24.04
+    needs: isolation
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make jq bc
+      
+      - name: Performance regression check
+        run: |
+          chmod +x scripts/check_perf_regression.sh
+          chmod +x scripts/dev_loop.sh
+          
+          # Run dev loop to generate boot log
+          ./scripts/dev_loop.sh smoke
+          
+          # Check for performance regression (quick mode)
+          ./scripts/check_perf_regression.sh quick
+      
+      - name: Upload performance logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-logs
+          path: out/logs/
+          retention-days: 7

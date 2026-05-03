@@ -72,9 +72,15 @@ run_smoke_boot() {
         }
     fi
     
-    # Clear previous log file
+    # Clear previous log files
     : > "$BOOT_LOG" || {
         echo "❌ BOOT FAILED: Cannot write to log file: $BOOT_LOG"
+        exit 1
+    }
+    
+    # Clear debug log (actual kernel output)
+    : > "$LOG_DIR/debug_run.log" || {
+        echo "❌ BOOT FAILED: Cannot write to debug log"
         exit 1
     }
     
@@ -93,20 +99,28 @@ run_smoke_boot() {
     
     echo "qemu exit status: $qemu_status"
     
+    # Use debug_run.log for marker validation (actual kernel output)
+    local KERNEL_LOG="$LOG_DIR/debug_run.log"
+    
+    if [ ! -f "$KERNEL_LOG" ]; then
+        echo "❌ BOOT FAILED: Kernel log not found at $KERNEL_LOG"
+        exit 1
+    fi
+    
     # Subtask 1.2: Error reporting capability - Check for required markers
     local early_found=false
     local late_found=false
     local boot_found=false
     
-    if grep -q "\[K\]\[EARLY_BOOT_OK\]" "$BOOT_LOG"; then
+    if grep -q "\[K\]\[EARLY_BOOT_OK\]" "$KERNEL_LOG"; then
         early_found=true
     fi
     
-    if grep -q "\[K\]\[LATE_INIT_END\]" "$BOOT_LOG"; then
+    if grep -q "\[K\]\[LATE_INIT_END\]" "$KERNEL_LOG"; then
         late_found=true
     fi
     
-    if grep -q "\[\[AYKEN_BOOT_OK\]\]" "$BOOT_LOG"; then
+    if grep -q "\[\[AYKEN_BOOT_OK\]\]" "$KERNEL_LOG"; then
         boot_found=true
     fi
     
@@ -117,8 +131,8 @@ run_smoke_boot() {
         echo "Expected marker: [K][EARLY_BOOT_OK]"
         echo "This indicates early boot phase did not complete successfully."
         echo ""
-        echo "Last 50 lines of boot log:"
-        tail -50 "$BOOT_LOG"
+        echo "Last 50 lines of kernel log:"
+        tail -50 "$KERNEL_LOG"
         exit 1
     fi
     
@@ -128,8 +142,8 @@ run_smoke_boot() {
         echo "Expected marker: [K][LATE_INIT_END]"
         echo "This indicates late initialization phase did not complete successfully."
         echo ""
-        echo "Last 50 lines of boot log:"
-        tail -50 "$BOOT_LOG"
+        echo "Last 50 lines of kernel log:"
+        tail -50 "$KERNEL_LOG"
         exit 1
     fi
     
@@ -139,15 +153,15 @@ run_smoke_boot() {
         echo "Expected marker: [[AYKEN_BOOT_OK]]"
         echo "This indicates full boot sequence did not complete successfully."
         echo ""
-        echo "Last 50 lines of boot log:"
-        tail -50 "$BOOT_LOG"
+        echo "Last 50 lines of kernel log:"
+        tail -50 "$KERNEL_LOG"
         exit 1
     fi
     
     # Subtask 1.1: Marker sequence guarantee - Validate correct ordering
-    local early_line=$(grep -n "\[K\]\[EARLY_BOOT_OK\]" "$BOOT_LOG" | head -1 | cut -d: -f1)
-    local late_line=$(grep -n "\[K\]\[LATE_INIT_END\]" "$BOOT_LOG" | head -1 | cut -d: -f1)
-    local boot_line=$(grep -n "\[\[AYKEN_BOOT_OK\]\]" "$BOOT_LOG" | head -1 | cut -d: -f1)
+    local early_line=$(grep -n "\[K\]\[EARLY_BOOT_OK\]" "$KERNEL_LOG" | head -1 | cut -d: -f1)
+    local late_line=$(grep -n "\[K\]\[LATE_INIT_END\]" "$KERNEL_LOG" | head -1 | cut -d: -f1)
+    local boot_line=$(grep -n "\[\[AYKEN_BOOT_OK\]\]" "$KERNEL_LOG" | head -1 | cut -d: -f1)
     
     # Validate sequence: EARLY → LATE → BOOT_OK
     if [ "$early_line" -gt "$late_line" ]; then
@@ -161,8 +175,8 @@ run_smoke_boot() {
         echo "  [K][LATE_INIT_END]: line $late_line"
         echo "  [[AYKEN_BOOT_OK]]: line $boot_line"
         echo ""
-        echo "Last 50 lines of boot log:"
-        tail -50 "$BOOT_LOG"
+        echo "Last 50 lines of kernel log:"
+        tail -50 "$KERNEL_LOG"
         exit 1
     fi
     
@@ -177,8 +191,8 @@ run_smoke_boot() {
         echo "  [K][LATE_INIT_END]: line $late_line"
         echo "  [[AYKEN_BOOT_OK]]: line $boot_line"
         echo ""
-        echo "Last 50 lines of boot log:"
-        tail -50 "$BOOT_LOG"
+        echo "Last 50 lines of kernel log:"
+        tail -50 "$KERNEL_LOG"
         exit 1
     fi
     

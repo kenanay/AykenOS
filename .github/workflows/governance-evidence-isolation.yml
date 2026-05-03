@@ -1,0 +1,32 @@
+name: Evidence Isolation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  evidence-isolation:
+    name: Evidence Isolation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run evidence isolation check
+        run: |
+          chmod +x scripts/check_evidence_isolation.sh
+          ./scripts/check_evidence_isolation.sh
+      
+      - name: Upload check results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-isolation-failure
+          path: |
+            scripts/check_evidence_isolation.sh
+          retention-days: 7

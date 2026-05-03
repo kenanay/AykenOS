@@ -1,0 +1,27 @@
+name: Evidence Isolation
+
+on:
+  push:
+    branches: [ main, dev, 'feature/**', 'fix/**', 'refactor/**', 'ci/**' ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run evidence isolation check
+        run: |
+          chmod +x scripts/check_evidence_isolation.sh
+          ./scripts/check_evidence_isolation.sh
+      
+      - name: Upload evidence report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: evidence-report
+          path: out/evidence/**/reports/evidence_*.json
+          if-no-files-found: warn
