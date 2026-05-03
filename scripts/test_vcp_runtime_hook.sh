@@ -35,6 +35,10 @@ find_timeout_bin() {
 
 log_has() {
     pattern="$1"
+    if [ ! -f "$LOG_PATH" ]; then
+        return 1
+    fi
+
     if command -v rg >/dev/null 2>&1; then
         rg -q "$pattern" "$LOG_PATH"
     else
@@ -44,6 +48,11 @@ log_has() {
 
 show_log_matches() {
     pattern="$1"
+    if [ ! -f "$LOG_PATH" ]; then
+        echo "debug log missing: $LOG_PATH" >&2
+        return 0
+    fi
+
     if command -v rg >/dev/null 2>&1; then
         rg -n "$pattern" "$LOG_PATH" || true
     else
@@ -65,11 +74,8 @@ timeout_bin="$(find_timeout_bin)" || {
     exit 1
 }
 
-mkdir -p out/logs
-: > "$LOG_PATH"
-
 make clean > /dev/null 2>&1 || true
-make kernel.elf \
+make efi-img \
     KERNEL_PROFILE=validation \
     AYKEN_VALIDATION=1 \
     AYKEN_VCP_RUNTIME_HOOK_TEST=1 \
@@ -81,8 +87,11 @@ echo ""
 echo "Build complete. Booting QEMU validation profile..."
 echo ""
 
+mkdir -p "$(dirname "$LOG_PATH")"
+: > "$LOG_PATH"
+
 set +e
-"$timeout_bin" "$QEMU_TIMEOUT_SECONDS" make run \
+"$timeout_bin" "$QEMU_TIMEOUT_SECONDS" make run-qemu \
     KERNEL_PROFILE=validation \
     AYKEN_VALIDATION=1 \
     AYKEN_VCP_RUNTIME_HOOK_TEST=1 \

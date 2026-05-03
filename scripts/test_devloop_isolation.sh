@@ -35,7 +35,8 @@ mkdir -p "$LOG_DIR"
 
 # Build kernel once (same binary for all runs)
 echo "[1/3] Building kernel (validation profile)..."
-make -j8 KERNEL_PROFILE=validation \
+make -j8 efi-img \
+    KERNEL_PROFILE=validation \
     AYKEN_VALIDATION=1 \
     AYKEN_VCP_RUNTIME_HOOK_TEST=0 \
     AYKEN_VCP_FAIL_CLOSED_TEST=0 \
@@ -62,7 +63,7 @@ for i in $(seq 1 $RUNS); do
     
     # Run QEMU with timeout
     set +e
-    timeout 30 make run \
+    timeout 30 make run-qemu \
         KERNEL_PROFILE=validation \
         AYKEN_VALIDATION=1 \
         AYKEN_VCP_RUNTIME_HOOK_TEST=0 \
