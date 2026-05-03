@@ -177,8 +177,8 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
   - [x] 7.3 VCP fail-closed guarantee
   - _Req: R8_
 
-- [~] 8. Evidence validation capability
-  - [ ] 8.1 VCP evidence consistency guarantee
+- [x] 8. Evidence validation capability
+  - [x] 8.1 VCP evidence consistency guarantee
   - _Req: R9_
 
 - [ ] 9. Checkpoint - Test scripts validated
