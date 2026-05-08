@@ -254,15 +254,15 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 10: Evidence Pipeline
 
-- [ ] 21. Evidence generation pipeline
-  - [ ] 21.1 Log parser capability
-  - [ ] 21.2 Evidence generator capability
-  - [ ] 21.3 Artifact reference mechanism
-  - [ ] 21.4 Dev loop integration mechanism
-  - [ ] 21.5 CI artifact persistence capability
+- [x] 21. Evidence generation pipeline
+  - [x] 21.1 Log parser capability
+  - [x] 21.2 Evidence generator capability
+  - [x] 21.3 Artifact reference mechanism
+  - [x] 21.4 Dev loop integration mechanism
+  - [x] 21.5 CI artifact persistence capability
   - _Req: R10_
 
-- [ ] 22. Checkpoint - Evidence pipeline validated
+- [x] 22. Checkpoint - Evidence pipeline validated
 
 ---
 
