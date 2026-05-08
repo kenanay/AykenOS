@@ -205,21 +205,21 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
   - [x] 12.3 Known regression coverage
   - _Req: R21_
 
-- [ ] 13. Final checkpoint - Regression detection complete
+- [x] 13. Final checkpoint - Regression detection complete
 
 ---
 
 ### Group 7: CI Integration
 
-- [ ] 14. CI integration
-  - [ ] 14.1 CI workflow capability
-  - [ ] 14.2 Auto-bisect capability
-  - [ ] 14.3 CI workflow assurance capability
-  - [ ] 14.4 Branch protection rules
+- [x] 14. CI integration
+  - [x] 14.1 CI workflow capability
+  - [x] 14.2 Auto-bisect capability
+  - [x] 14.3 CI workflow assurance capability
+  - [x] 14.4 Branch protection rules
   - _Req: R2_
   - _Guide: docs/dev-loop/CI_INTEGRATION.md_
 
-- [ ] 15. Final checkpoint - CI integration complete
+- [x] 15. Final checkpoint - CI integration complete
 
 ---
 

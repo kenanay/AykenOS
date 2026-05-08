@@ -1,5 +1,6 @@
 #!/bin/bash
 # Oracle Script: Deterministic Validation Check
+# Author: Kenan AY — System Architect
 # Returns: 0 (PASS) or non-zero (FAIL)
 #
 # Purpose: Provides a deterministic validation check for git bisect.

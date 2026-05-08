@@ -1,3 +1,9 @@
+# AykenOS Dev Loop CI
+# Author: Kenan AY — System Architect
+#
+# Purpose: Automated validation of dev loop in CI pipeline
+# Provides smoke, contract, and full validation with auto-bisect on failure
+
 name: AykenOS Dev Loop CI
 
 on:

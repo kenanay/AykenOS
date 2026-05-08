@@ -1,5 +1,6 @@
 #!/bin/bash
 # Automated Regression Finder
+# Author: Kenan AY — System Architect
 # Uses git bisect to find the first commit that broke the system
 #
 # Purpose: Automatically identifies which commit introduced a regression

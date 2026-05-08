@@ -261,30 +261,41 @@ All CI jobs upload logs as artifacts for debugging:
 
 ## Branch Protection
 
-Recommended GitHub branch protection settings for `main` and `develop`:
+Branch protection rules ensure that all dev loop validation checks pass before code can be merged to protected branches (`main`, `develop`).
 
 ### Required Status Checks
-- ✅ `smoke`
-- ✅ `contract`
-- ✅ `full`
-- ✅ `isolation`
+- ✅ `smoke` - Quick boot validation
+- ✅ `contract` - Runtime contract validation
+- ✅ `full` - Comprehensive validation
+- ✅ `isolation` - Constitutional compliance
+- ✅ `performance` - Performance regression check
 
 **Note**: `auto-bisect` is NOT required (it only runs on failure)
 
-### Additional Settings
-- ✅ Require branches to be up to date before merging
-- ✅ Require status checks to pass before merging
-- ✅ Require pull request reviews before merging (recommended)
-
 ### Configuration
 
-1. Go to repository Settings
-2. Navigate to Branches
-3. Add branch protection rule for `main`
-4. Enable "Require status checks to pass before merging"
-5. Select required checks: `smoke`, `contract`, `full`, `isolation`
-6. Enable "Require branches to be up to date before merging"
-7. Save changes
+**Automated Setup** (Recommended):
+```bash
+./scripts/setup_branch_protection.sh
+```
+
+**Validation**:
+```bash
+./scripts/validate_branch_protection.sh
+```
+
+**Manual Setup**: See `docs/dev-loop/BRANCH_PROTECTION.md` for detailed instructions.
+
+### What Gets Enforced
+- ✅ All required status checks must pass
+- ✅ Branches must be up to date before merging
+- ✅ Pull request reviews required (1 approval)
+- ✅ Stale reviews dismissed on new commits
+- ✅ Settings apply to administrators
+- ✅ Force pushes disabled
+- ✅ Branch deletion disabled
+
+For complete documentation, see: `docs/dev-loop/BRANCH_PROTECTION.md`
 
 ## Workflow Triggers
 
@@ -417,6 +428,25 @@ The CI integration maintains constitutional compliance:
 4. **Flaky test detection**: Identify non-deterministic tests
 5. **Bisect optimization**: Use cached builds for faster bisect
 
+## CI Workflow Assurance
+
+The CI workflow configuration itself is validated using the CI workflow assurance capability:
+
+```bash
+./scripts/validate_ci_workflow.sh
+```
+
+This validates:
+- Workflow file syntax
+- Required jobs are present
+- Job dependencies are correct
+- Artifact upload is configured
+- Timeout values are reasonable
+- Required scripts exist and are executable
+- Developer attribution is present
+
+See `docs/dev-loop/CI_WORKFLOW_ASSURANCE.md` for details.
+
 ## References
 
 - Workflow file: `.github/workflows/devloop-ci.yml`
@@ -424,4 +454,9 @@ The CI integration maintains constitutional compliance:
 - Regression finder: `scripts/find_regression.sh`
 - Dev loop: `scripts/dev_loop.sh`
 - Isolation test: `scripts/test_devloop_isolation.sh`
+- CI workflow assurance: `scripts/validate_ci_workflow.sh`
+- CI workflow assurance docs: `docs/dev-loop/CI_WORKFLOW_ASSURANCE.md`
+- Branch protection setup: `scripts/setup_branch_protection.sh`
+- Branch protection validation: `scripts/validate_branch_protection.sh`
+- Branch protection docs: `docs/dev-loop/BRANCH_PROTECTION.md`
 - Spec: `.kiro/specs/dev-loop-boot-monitoring/`
