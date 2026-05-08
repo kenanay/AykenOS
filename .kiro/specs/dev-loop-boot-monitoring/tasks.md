@@ -268,12 +268,12 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 11: Web Dashboard
 
-- [ ] 23. Unified web-based observability dashboard
-  - [ ] 23.1 Dashboard architecture
-  - [ ] 23.2 Dashboard behavior
-  - [ ] 23.3 Dashboard rendering
-  - [ ] 23.4 Status visualization
-  - [ ] 23.5 Run history visualization
+- [x] 23. Unified web-based observability dashboard
+  - [x] 23.1 Dashboard architecture
+  - [x] 23.2 Dashboard behavior
+  - [x] 23.3 Dashboard rendering
+  - [x] 23.4 Status visualization
+  - [x] 23.5 Run history visualization
   - _Req: R10_
 
 - [ ] 24. Checkpoint - Web dashboard validated

@@ -531,3 +531,12 @@ case "$MODE" in
 esac
 
 echo "✅ PASS: $MODE mode"
+
+# Generate evidence artifacts (runs AFTER validation)
+# This is non-authoritative and never affects validation decisions
+if [ -f "scripts/generate_evidence.sh" ]; then
+    echo ""
+    echo "Generating evidence artifacts..."
+    RUN_ID=$(bash scripts/generate_evidence.sh 2>&1 | tail -1)
+    echo "Evidence generated: $RUN_ID"
+fi
