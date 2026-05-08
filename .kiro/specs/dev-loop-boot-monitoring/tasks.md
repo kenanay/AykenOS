@@ -199,10 +199,10 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 6: Regression Detection
 
-- [ ] 12. Automated regression finder
-  - [ ] 12.1 Oracle mechanism
-  - [ ] 12.2 Regression detection mechanism
-  - [ ] 12.3 Known regression coverage
+- [x] 12. Automated regression finder
+  - [x] 12.1 Oracle mechanism
+  - [x] 12.2 Regression detection mechanism
+  - [x] 12.3 Known regression coverage
   - _Req: R21_
 
 - [ ] 13. Final checkpoint - Regression detection complete
