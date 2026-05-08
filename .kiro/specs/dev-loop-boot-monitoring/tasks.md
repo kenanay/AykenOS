@@ -225,10 +225,10 @@ This implementation plan defines **WHAT** must be built. For **HOW** to build it
 
 ### Group 8: Performance Integration
 
-- [ ] 16. Performance regression detection integration
-  - [ ] 16.1 Performance monitoring capability in CI
-  - [ ] 16.2 Auto-bisect dependencies
-  - [ ] 16.3 Performance check capability
+- [x] 16. Performance regression detection integration
+  - [x] 16.1 Performance monitoring capability in CI
+  - [x] 16.2 Auto-bisect dependencies
+  - [x] 16.3 Performance check capability
   - _Req: R22_
   - _Guide: docs/dev-loop/PERFORMANCE_INTEGRATION.md_
 

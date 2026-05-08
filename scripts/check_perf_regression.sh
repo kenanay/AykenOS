@@ -1,5 +1,7 @@
 #!/bin/bash
 # Performance Regression Check (Dev Loop Integration)
+# Author: Kenan AY — System Architect
+#
 # Integrates with existing AykenOS performance gate infrastructure
 #
 # Purpose: Quick performance regression check for dev loop
