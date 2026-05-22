@@ -1,9 +1,9 @@
 /**
  * AykenOS Dev Loop Observability Dashboard
- * 
+ *
  * Purpose: Read-only visualization of validation evidence
  * Authority: ZERO - purely observational
- * 
+ *
  * Maintainer: Kenan AY — System Architect
  */
 
@@ -20,21 +20,21 @@ let allRuns = [];
  */
 async function init() {
     console.log('[Dashboard] Initializing...');
-    
+
     // Load available runs
     await loadRuns();
-    
+
     // Set up event listeners
     document.getElementById('runSelect').addEventListener('change', handleRunChange);
     document.getElementById('refreshBtn').addEventListener('click', handleRefresh);
-    
+
     // Load most recent run if available
     if (allRuns.length > 0) {
         currentRun = allRuns[0];
         document.getElementById('runSelect').value = currentRun;
         await loadRunData(currentRun);
     }
-    
+
     console.log('[Dashboard] Initialized');
 }
 
@@ -43,17 +43,17 @@ async function init() {
  */
 async function loadRuns() {
     console.log('[Dashboard] Loading runs...');
-    
+
     try {
         // In a real implementation, this would scan the evidence directory
         // For now, we'll use a mock implementation that checks for evidence
         const runs = await scanEvidenceDirectory();
-        
+
         allRuns = runs.sort().reverse(); // Most recent first
-        
+
         const select = document.getElementById('runSelect');
         select.innerHTML = '';
-        
+
         if (allRuns.length === 0) {
             select.innerHTML = '<option value="">No runs available</option>';
             showEmptyState();
@@ -65,7 +65,7 @@ async function loadRuns() {
                 select.appendChild(option);
             });
         }
-        
+
         console.log(`[Dashboard] Loaded ${allRuns.length} runs`);
     } catch (error) {
         console.error('[Dashboard] Error loading runs:', error);
@@ -79,7 +79,7 @@ async function loadRuns() {
 async function scanEvidenceDirectory() {
     // This is a mock implementation
     // In production, this would use a backend API or file listing
-    
+
     // For demonstration, return empty array
     // The actual implementation would scan out/evidence/run-* directories
     return [];
@@ -90,7 +90,7 @@ async function scanEvidenceDirectory() {
  */
 async function loadRunData(runId) {
     console.log(`[Dashboard] Loading run: ${runId}`);
-    
+
     try {
         // Load all evidence artifacts
         const [meta, summary, markers, perf, logs] = await Promise.all([
@@ -100,7 +100,7 @@ async function loadRunData(runId) {
             loadPerformance(runId),
             loadLogs(runId)
         ]);
-        
+
         // Update UI
         updateStatusCard(summary);
         updateMarkerCard(markers);
@@ -108,7 +108,7 @@ async function loadRunData(runId) {
         updateContextCard(meta);
         updateLogViewer(logs);
         updateHistory();
-        
+
         console.log('[Dashboard] Run data loaded');
     } catch (error) {
         console.error('[Dashboard] Error loading run data:', error);
@@ -121,7 +121,7 @@ async function loadRunData(runId) {
  */
 async function loadMetadata(runId) {
     const path = `${EVIDENCE_BASE}/${runId}/meta/run.json`;
-    
+
     try {
         const response = await fetch(path);
         if (!response.ok) {
@@ -144,20 +144,30 @@ async function loadMetadata(runId) {
  */
 async function loadSummary(runId) {
     const path = `${EVIDENCE_BASE}/${runId}/reports/summary.json`;
-    
+
     try {
         const response = await fetch(path);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        return await response.json();
+        const data = await response.json();
+
+        // Handle both old and new format
+        return {
+            boot: data.status?.boot || data.boot || 'UNKNOWN',
+            reason: data.status?.reason || 'No reason provided',
+            markers_ok: data.status?.markers_ok || data.markers_ok || false,
+            fail_closed: data.status?.fail_closed || data.fail_closed || false,
+            format_version: data.format_version || '0.0'
+        };
     } catch (error) {
         console.warn(`[Dashboard] Could not load summary: ${error.message}`);
         return {
             boot: 'UNKNOWN',
+            reason: 'Summary not available',
             markers_ok: false,
             fail_closed: false,
-            perf_regression: false
+            format_version: '0.0'
         };
     }
 }
@@ -167,7 +177,7 @@ async function loadSummary(runId) {
  */
 async function loadMarkers(runId) {
     const path = `${EVIDENCE_BASE}/${runId}/reports/markers.json`;
-    
+
     try {
         const response = await fetch(path);
         if (!response.ok) {
@@ -190,21 +200,32 @@ async function loadMarkers(runId) {
  */
 async function loadPerformance(runId) {
     const path = `${EVIDENCE_BASE}/${runId}/reports/perf.json`;
-    
+
     try {
         const response = await fetch(path);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        return await response.json();
+        const data = await response.json();
+
+        // Handle both old and new format
+        return {
+            value: data.value || data.boot_time_proxy || 0,
+            unit: data.unit || 'lines',
+            method: data.method || 'unknown',
+            valid: data.valid || false,
+            disclaimer: data.disclaimer || 'Performance data not available',
+            format_version: data.format_version || '0.0'
+        };
     } catch (error) {
         console.warn(`[Dashboard] Could not load performance: ${error.message}`);
         return {
-            boot_time_proxy: 0,
+            value: 0,
+            unit: 'unknown',
             method: 'unknown',
             valid: false,
             disclaimer: 'Performance data not available',
-            unit: 'unknown'
+            format_version: '0.0'
         };
     }
 }
@@ -214,7 +235,7 @@ async function loadPerformance(runId) {
  */
 async function loadLogs(runId) {
     const path = `${EVIDENCE_BASE}/${runId}/logs/boot.log`;
-    
+
     try {
         const response = await fetch(path);
         if (!response.ok) {
@@ -223,7 +244,7 @@ async function loadLogs(runId) {
         return await response.text();
     } catch (error) {
         console.warn(`[Dashboard] Could not load logs: ${error.message}`);
-        
+
         // Try fallback to main logs directory
         try {
             const fallbackPath = `${LOGS_BASE}/boot_watch.log`;
@@ -234,7 +255,7 @@ async function loadLogs(runId) {
         } catch (fallbackError) {
             console.warn(`[Dashboard] Fallback log load failed: ${fallbackError.message}`);
         }
-        
+
         return 'Log data not available';
     }
 }
@@ -246,11 +267,11 @@ function updateStatusCard(summary) {
     const statusBadge = document.getElementById('bootStatus');
     const validationResult = document.getElementById('validationResult');
     const runId = document.getElementById('runId');
-    
+
     // Update status badge
     statusBadge.textContent = summary.boot || 'UNKNOWN';
     statusBadge.className = 'status-badge';
-    
+
     if (summary.boot === 'PASS') {
         statusBadge.classList.add('status-pass');
     } else if (summary.boot === 'FAIL') {
@@ -258,10 +279,10 @@ function updateStatusCard(summary) {
     } else {
         statusBadge.classList.add('status-unknown');
     }
-    
+
     // Update validation result
     validationResult.textContent = summary.boot || 'UNKNOWN';
-    
+
     // Update run ID
     runId.textContent = currentRun || '—';
 }
@@ -272,14 +293,14 @@ function updateStatusCard(summary) {
 function updateMarkerCard(markers) {
     const markerStatus = document.getElementById('markerStatus');
     const markerList = document.getElementById('markerList');
-    
+
     // Determine overall marker status
     const allPresent = markers.EARLY_BOOT_OK && markers.LATE_INIT_END && markers.BOOT_OK;
-    
+
     markerStatus.textContent = allPresent ? 'ALL PRESENT' : 'INCOMPLETE';
     markerStatus.className = 'status-badge';
     markerStatus.classList.add(allPresent ? 'status-pass' : 'status-fail');
-    
+
     // Build marker list
     const markerData = [
         { name: 'EARLY_BOOT_OK', present: markers.EARLY_BOOT_OK, label: '[K][EARLY_BOOT_OK]' },
@@ -287,20 +308,20 @@ function updateMarkerCard(markers) {
         { name: 'BOOT_OK', present: markers.BOOT_OK, label: '[[AYKEN_BOOT_OK]]' },
         { name: 'FAIL_CLOSED', present: markers.FAIL_CLOSED, label: '[VCP][FAIL_CLOSED]' }
     ];
-    
+
     markerList.innerHTML = '';
     markerData.forEach(marker => {
         const li = document.createElement('li');
         li.className = 'marker-item';
-        
+
         const icon = document.createElement('span');
         icon.className = 'marker-icon';
         icon.textContent = marker.present ? '✅' : '❌';
-        
+
         const name = document.createElement('span');
         name.className = 'marker-name';
         name.textContent = marker.label;
-        
+
         li.appendChild(icon);
         li.appendChild(name);
         markerList.appendChild(li);
@@ -315,22 +336,22 @@ function updatePerformanceCard(perf) {
     const perfValue = document.getElementById('perfValue');
     const perfBar = document.getElementById('perfBar');
     const perfLabel = document.getElementById('perfLabel');
-    
+
     // Update status
     perfStatus.textContent = perf.valid ? 'VALID' : 'INVALID';
     perfStatus.className = 'status-badge';
     perfStatus.classList.add(perf.valid ? 'status-pass' : 'status-unknown');
-    
+
     // Update value
-    if (perf.valid && perf.boot_time_proxy > 0) {
-        perfValue.textContent = `${perf.boot_time_proxy} ${perf.unit || 'lines'}`;
-        
+    if (perf.valid && perf.value > 0) {
+        perfValue.textContent = `${perf.value} ${perf.unit}`;
+
         // Update bar (normalize to 0-100%)
         // Assume 2000 lines is 100%
-        const percentage = Math.min((perf.boot_time_proxy / 2000) * 100, 100);
+        const percentage = Math.min((perf.value / 2000) * 100, 100);
         perfBar.style.width = `${percentage}%`;
         perfLabel.textContent = `${Math.round(percentage)}%`;
-        
+
         // Color based on performance
         perfBar.className = 'perf-bar-fill';
         if (percentage > 80) {
@@ -349,13 +370,13 @@ function updatePerformanceCard(perf) {
  * Update context card
  */
 function updateContextCard(meta) {
-    document.getElementById('contextTimestamp').textContent = 
+    document.getElementById('contextTimestamp').textContent =
         meta.time_utc || meta.timestamp || '—';
-    document.getElementById('contextSource').textContent = 
+    document.getElementById('contextSource').textContent =
         meta.source || 'unknown';
-    document.getElementById('contextGitSha').textContent = 
+    document.getElementById('contextGitSha').textContent =
         meta.git_sha || '—';
-    document.getElementById('contextDeterministic').textContent = 
+    document.getElementById('contextDeterministic').textContent =
         meta.deterministic ? '✅ Yes' : '❌ No';
 }
 
@@ -364,7 +385,7 @@ function updateContextCard(meta) {
  */
 function updateLogViewer(logs) {
     const logViewer = document.getElementById('logViewer');
-    
+
     if (!logs || logs === 'Log data not available') {
         logViewer.innerHTML = `
             <div class="empty-state">
@@ -374,28 +395,28 @@ function updateLogViewer(logs) {
         `;
         return;
     }
-    
+
     // Parse and format logs
     const lines = logs.split('\n');
     const formattedLines = lines.map(line => {
         let className = 'log-line';
-        
+
         // Visual differentiation based on content
-        if (line.includes('[K][EARLY_BOOT_OK]') || 
-            line.includes('[K][LATE_INIT_END]') || 
+        if (line.includes('[K][EARLY_BOOT_OK]') ||
+            line.includes('[K][LATE_INIT_END]') ||
             line.includes('[[AYKEN_BOOT_OK]]')) {
             className = 'log-line marker';
-        } else if (line.toLowerCase().includes('error') || 
+        } else if (line.toLowerCase().includes('error') ||
                    line.toLowerCase().includes('panic')) {
             className = 'log-line error';
-        } else if (line.toLowerCase().includes('warning') || 
+        } else if (line.toLowerCase().includes('warning') ||
                    line.toLowerCase().includes('warn')) {
             className = 'log-line warning';
         }
-        
+
         return `<div class="${className}">${escapeHtml(line)}</div>`;
     });
-    
+
     logViewer.innerHTML = formattedLines.join('');
 }
 
@@ -404,7 +425,7 @@ function updateLogViewer(logs) {
  */
 function updateHistory() {
     const historyTable = document.getElementById('historyTable');
-    
+
     if (allRuns.length === 0) {
         historyTable.innerHTML = `
             <tr>
@@ -413,7 +434,7 @@ function updateHistory() {
         `;
         return;
     }
-    
+
     // For now, show placeholder
     // In production, this would load summary data for all runs
     historyTable.innerHTML = `
@@ -455,7 +476,7 @@ function showEmptyState() {
     document.getElementById('bootStatus').className = 'status-badge status-unknown';
     document.getElementById('validationResult').textContent = '—';
     document.getElementById('runId').textContent = '—';
-    
+
     document.getElementById('markerStatus').textContent = 'NO DATA';
     document.getElementById('markerStatus').className = 'status-badge status-unknown';
     document.getElementById('markerList').innerHTML = `
@@ -464,11 +485,11 @@ function showEmptyState() {
             <span class="marker-name">No data available</span>
         </li>
     `;
-    
+
     document.getElementById('perfStatus').textContent = 'NO DATA';
     document.getElementById('perfStatus').className = 'status-badge status-unknown';
     document.getElementById('perfValue').textContent = '—';
-    
+
     document.getElementById('logViewer').innerHTML = `
         <div class="empty-state">
             <div class="empty-state-icon">📋</div>

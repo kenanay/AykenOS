@@ -4,6 +4,8 @@
 # Production kernel code must not read vcp_validation_state.validation_result
 # directly outside vcp_runtime.c. All enforcement must flow through
 # vcp_runtime_validate() / vcp_verify_validation_state().
+#
+# Maintainer: Kenan AY — System Architect
 
 set -euo pipefail
 

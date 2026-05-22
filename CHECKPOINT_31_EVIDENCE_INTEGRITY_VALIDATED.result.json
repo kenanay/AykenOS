@@ -1,0 +1,226 @@
+{
+  "checkpoint": {
+    "id": 31,
+    "name": "Evidence Integrity Validated",
+    "status": "PASS",
+    "timestamp": "2026-05-08T23:47:17Z",
+    "maintainer": "Kenan AY — System Architect"
+  },
+  "task": {
+    "id": 30,
+    "name": "Evidence integrity hardening",
+    "requirements": ["R26", "R27"]
+  },
+  "subtasks": {
+    "30.1": {
+      "name": "Performance data format standardization",
+      "status": "PASS",
+      "validated": [
+        "format_version field present",
+        "All required fields present (value, unit, method, valid, diagnostic_only, non_authoritative, disclaimer, generated_by)",
+        "non_authoritative flag set to true",
+        "diagnostic_only flag set to true"
+      ]
+    },
+    "30.2": {
+      "name": "Summary data structure enhancement",
+      "status": "PASS",
+      "validated": [
+        "format_version field present",
+        "Enhanced structure with status, validation, isolation sections",
+        "authoritative flag set to false",
+        "non_influential flag set to true",
+        "read_only flag set to true",
+        "post_validation flag set to true"
+      ]
+    },
+    "30.3": {
+      "name": "Evidence misuse guard capability",
+      "status": "PASS",
+      "validated": [
+        "Evidence misuse guard script exists and executable",
+        "Check 1: Validation scripts do not read evidence artifacts",
+        "Check 2: Evidence not used in conditional logic",
+        "Check 3: Evidence does not affect exit status",
+        "Check 4: Dashboard is read-only",
+        "Check 5: Evidence generation after validation"
+      ],
+      "violations": 0
+    },
+    "30.4": {
+      "name": "Run history tracking",
+      "status": "PASS",
+      "validated": [
+        "Run history file exists",
+        "format_version field present",
+        "runs array present",
+        "All required fields in run entries",
+        "History limit enforced (100 runs)",
+        "Current runs added to history"
+      ],
+      "run_count": 9
+    },
+    "30.5": {
+      "name": "Diff engine enhancement",
+      "status": "PASS",
+      "validated": [
+        "Diff engine script exists and executable",
+        "Successfully compares two runs",
+        "All required sections present",
+        "Non-authority disclaimer present",
+        "Diagnostic purpose clearly stated"
+      ]
+    },
+    "30.6": {
+      "name": "Observability boundary disclosure",
+      "status": "PASS",
+      "validated": [
+        "Observability boundary document exists",
+        "All required sections present",
+        "R26 and R27 explicitly referenced",
+        "Key principles documented",
+        "Violation examples provided",
+        "Correct patterns provided",
+        "Enforcement mechanisms documented"
+      ]
+    }
+  },
+  "constitutional_compliance": {
+    "R26": {
+      "name": "Direct Observation Source Constraint",
+      "status": "PASS",
+      "checks": [
+        "Observation boundary check: PASS",
+        "Evidence misuse guard: PASS",
+        "Evidence isolation check: PASS",
+        "Summary declares raw_boot_logs source: PASS",
+        "Observability boundary disclosed: PASS"
+      ]
+    },
+    "R27": {
+      "name": "Evidence State Isolation",
+      "status": "PASS",
+      "checks": [
+        "Performance data marked non_authoritative: PASS",
+        "Summary data marked non-authoritative: PASS",
+        "Evidence misuse guard prevents violations: PASS",
+        "Evidence generation after validation: PASS",
+        "Dashboard is read-only: PASS",
+        "Diff engine includes disclaimer: PASS"
+      ]
+    },
+    "DETERMINISM.GLOBAL": {
+      "status": "PASS",
+      "checks": [
+        "Evidence generation is deterministic: PASS",
+        "Run metadata includes deterministic flag: PASS",
+        "No global state dependencies: PASS",
+        "Evidence artifacts are stateless: PASS",
+        "Run history maintains independence: PASS"
+      ]
+    }
+  },
+  "enforcement_mechanisms": {
+    "static_analysis": {
+      "check_evidence_isolation": "PASS",
+      "check_observation_boundary": "PASS",
+      "check_evidence_misuse": "PASS"
+    },
+    "runtime_validation": {
+      "evidence_format": "PASS",
+      "run_history_tracking": "PASS",
+      "diff_engine": "PASS"
+    },
+    "documentation": {
+      "observability_boundary_disclosure": "PASS"
+    }
+  },
+  "test_execution": {
+    "primary_test": {
+      "script": "scripts/test_task30_evidence_integrity.sh",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    "governance_checks": {
+      "evidence_misuse_guard": {
+        "status": "PASS",
+        "violations": 0
+      },
+      "observation_boundary": {
+        "status": "PASS"
+      },
+      "evidence_isolation": {
+        "status": "PASS"
+      }
+    }
+  },
+  "evidence_artifacts": {
+    "performance_report": {
+      "file": "out/evidence/run-20260508T234717Z-f593fde6-22163/reports/perf.json",
+      "status": "VALID",
+      "format_version": "1.0"
+    },
+    "summary_report": {
+      "file": "out/evidence/run-20260508T234717Z-f593fde6-22163/reports/summary.json",
+      "status": "VALID",
+      "format_version": "1.0"
+    },
+    "run_metadata": {
+      "file": "out/evidence/run-20260508T234717Z-f593fde6-22163/meta/run.json",
+      "status": "VALID"
+    },
+    "run_history": {
+      "file": "out/evidence/runs.json",
+      "status": "VALID",
+      "format_version": "1.0",
+      "run_count": 9
+    }
+  },
+  "pass_criteria": {
+    "all_subtasks_validated": true,
+    "r26_enforced": true,
+    "r27_enforced": true,
+    "determinism_preserved": true,
+    "evidence_format_standardized": true,
+    "summary_structure_enhanced": true,
+    "evidence_misuse_guard_operational": true,
+    "run_history_tracking_operational": true,
+    "diff_engine_enhanced": true,
+    "observability_boundary_disclosed": true
+  },
+  "fail_criteria": {
+    "any_subtask_failed": false,
+    "r26_violation": false,
+    "r27_violation": false,
+    "determinism_violation": false,
+    "evidence_format_incomplete": false,
+    "summary_missing_guarantees": false,
+    "evidence_misuse_detected": false,
+    "run_history_non_functional": false,
+    "diff_engine_missing_disclaimers": false,
+    "boundary_documentation_incomplete": false
+  },
+  "result": {
+    "status": "PASS",
+    "evidence_integrity_status": "HARDENED",
+    "constitutional_compliance": "VERIFIED",
+    "deterministic": true
+  },
+  "artifacts": {
+    "test_evidence_dir": "out/evidence/task30_integrity_test/",
+    "test_runs": [
+      "run-20260508T234716Z-f593fde6-22010",
+      "run-20260508T234717Z-f593fde6-22163"
+    ],
+    "reports": [
+      "CHECKPOINT_31_EVIDENCE_INTEGRITY_VALIDATED.md",
+      "CHECKPOINT_31_EVIDENCE_INTEGRITY_VALIDATED.result.json"
+    ]
+  },
+  "metadata": {
+    "generated_by": "Kenan AY — System Architect",
+    "timestamp": "2026-05-08T23:47:17Z",
+    "spec_path": ".kiro/specs/dev-loop-boot-monitoring/",
+    "deterministic": true
+  }
+}

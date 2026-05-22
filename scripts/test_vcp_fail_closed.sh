@@ -3,6 +3,8 @@
 #
 # This script builds the validation kernel, boots it in QEMU, and treats the
 # late-init PASS marker as the integration proof for Properties 9-10.
+#
+# Maintainer: Kenan AY — System Architect
 
 set -euo pipefail
 
