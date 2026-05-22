@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep
       
       - name: Smoke test
         run: |
@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep
       
       - name: Contract tests
         run: |
@@ -75,7 +75,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep
       
       - name: Full validation
         run: |
@@ -106,7 +106,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep
       
       - name: Prepare scripts
         run: |
@@ -246,7 +246,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep
       
       - name: Isolation property test
         run: |
@@ -272,7 +272,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq bc
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq ripgrep bc
       
       - name: Performance regression check
         run: |
