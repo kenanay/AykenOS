@@ -33,7 +33,7 @@ jobs:
       
       - name: Upload dev loop artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dev-loop-artifacts
           path: |

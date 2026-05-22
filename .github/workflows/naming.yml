@@ -20,7 +20,7 @@ jobs:
       
       - name: Upload naming report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: naming-report
           path: out/evidence/**/reports/naming_*.json

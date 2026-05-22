@@ -20,7 +20,7 @@ jobs:
       
       - name: Upload evidence report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: evidence-report
           path: out/evidence/**/reports/evidence_*.json
