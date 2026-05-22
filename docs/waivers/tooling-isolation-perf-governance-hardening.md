@@ -6,8 +6,8 @@
 - Title: Perf governance hardening requires kernel observability updates
 - Author: Codex
 - Date: 2026-04-04
-- Expiry Date: 2026-05-15
-- Related Issue: https://github.com/kenanay/AykenOS/pull/88
+- Expiry Date: 2026-06-30
+- Related Issue: https://github.com/kenanay/AykenOS/pull/88, https://github.com/kenanay/AykenOS/pull/142
 - Related RFC: N/A
 
 ## Exception Type
@@ -57,6 +57,14 @@ Etkilenen gate'ler:
    `preempt_ring3_entry_guard` and split latency surfaces.
 4. Close this waiver once baseline renewal lands and no further kernel touches
    are needed for the perf governance hardening slice.
+
+## Extension Note
+
+2026-05-22: Extended within the 90-day waiver limit because PR #142 still
+contains the perf governance hardening lineage and the baseline renewal remains
+pending on `main`. This extension does not authorize Ring0 policy movement; it
+only keeps the paired tooling/kernel hardening waiver active while CI freeze
+validates the existing branch.
 
 ## Rollback Plan
 

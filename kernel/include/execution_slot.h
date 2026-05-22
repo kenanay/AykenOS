@@ -41,7 +41,7 @@
 typedef struct vcp_validation_state {
     uint64_t validation_result;  /* VCP_VALID, VCP_INVALID, VCP_MISSING */
     uint64_t contract_id;        /* BCIB contract identifier */
-    uint64_t boundary_policy;    /* ABDF boundary policy identifier */
+    uint64_t boundary_policy;    /* ABDF boundary contract identifier */
     uint64_t context_hash;       /* Hash of execution context (includes ABDF snapshot) */
     uint64_t nonce;              /* Unique nonce for replay protection */
     uint64_t signature;          /* VCP trust root signature */
