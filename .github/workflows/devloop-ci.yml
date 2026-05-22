@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
       
       - name: Smoke test
         run: |
@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
       
       - name: Contract tests
         run: |
@@ -75,7 +75,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
       
       - name: Full validation
         run: |
@@ -106,7 +106,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
       
       - name: Prepare scripts
         run: |
@@ -246,7 +246,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq
       
       - name: Isolation property test
         run: |
@@ -272,7 +272,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 build-essential clang lld make jq bc
+          sudo apt-get install -y qemu-system-x86 build-essential clang lld make nasm mtools jq bc
       
       - name: Performance regression check
         run: |

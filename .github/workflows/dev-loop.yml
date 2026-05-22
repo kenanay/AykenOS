@@ -22,7 +22,10 @@ jobs:
             ripgrep \
             clang \
             lld \
-            make
+            make \
+            nasm \
+            mtools \
+            jq
       
       - name: Run dev loop
         env:

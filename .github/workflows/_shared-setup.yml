@@ -24,11 +24,14 @@ jobs:
             ripgrep \
             clang \
             lld \
-            make
+            make \
+            nasm \
+            mtools \
+            jq
       
       - name: Cache build artifacts
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             out/build

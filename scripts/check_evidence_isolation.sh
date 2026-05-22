@@ -57,7 +57,7 @@ SAFE_ZONES=(
 FORBIDDEN_PATTERNS=(
   "if .*out/evidence"
   "while .*out/evidence"
-  "grep .*out/evidence.*|"
+  "grep .*out/evidence.*\|"
   "awk .*out/evidence"
   "sed .*out/evidence"
 )
