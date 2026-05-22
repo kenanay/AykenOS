@@ -12,33 +12,51 @@ This design addresses the documentation synchronization required after reorderin
 
 ### Current State
 
-**Makefile `ci-freeze` target (after change):**
+**Makefile `ci-freeze` target (current authority, 2026-05-22):**
 ```makefile
 ci-freeze: ci-freeze-guard preflight-mode-guard \
   ci-gate-abi \
   ci-gate-boundary \
   ci-gate-ring0-exports \
   ci-gate-hygiene \
+  ci-gate-execution-slot-integrity \
+  ci-gate-execution-marker-isolation \
   ci-gate-tooling-isolation \
   ci-gate-constitutional \
   ci-gate-governance-policy \
+  ci-gate-naming-convention \
   ci-gate-drift-activation \
   ci-gate-structural-abi \
   ci-gate-runtime-marker-contract \
   ci-gate-user-bin-lock \
   ci-gate-embedded-elf-hash \
-  ci-gate-performance \                    # MOVED EARLIER
+  ci-gate-performance \
+  ci-gate-ring3-user-leaf-rule \
   ci-gate-ring3-execution-phase10a2 \
   ci-gate-syscall-semantics-phase10b \
+  ci-gate-low-half-kheap-scaffold \
   $(PHASE10C_FREEZE_GATE) \
+  ci-gate-mailbox-capability-negative \
   ci-gate-workspace \
   ci-gate-syscall-v2-runtime \
   ci-gate-sched-bridge-runtime \
   ci-gate-behavioral-suite \
-  ci-gate-policy-accept
+  ci-gate-policy-accept \
+  ci-gate-alias-proof \
+  ci-kill-switch-phase13 \
+  ci-gate-determinism-replay-consistency \
+  ci-gate-bcib-v3-core \
+  ci-gate-toolchain-opcode-registry \
+  ci-gate-capability-manager \
+  ci-gate-proofd-observability-boundary \
+  ci-gate-dsl-bcib-contract \
+  ci-gate-semantic-cli-contract \
+  ci-gate-data-runtime-bcib \
+  ci-gate-ai-runtime-boundary \
+  ci-gate-bcib-stub-determinism
 ```
 
-**Key Change:** `ci-gate-performance` moved from last position to before `ci-gate-ring3-execution-phase10a2`.
+**Key Change:** The previous performance-gate reorder remains in force, and the documentation now also captures the later execution-slot, marker-isolation, Phase-13, Phase-15, and Phase-17 execution-pipeline gates that were added to `ci-freeze`.
 
 ### Design Decisions
 
@@ -74,7 +92,7 @@ ci-freeze: ci-freeze-guard preflight-mode-guard \
 
 ### Component 1: tech.md Update
 
-**Location:** `.kiro/steering/tech.md`
+**Location:** `docs/steering/tech.md`
 
 **Changes Required:**
 
@@ -83,26 +101,45 @@ ci-freeze: ci-freeze-guard preflight-mode-guard \
 **Mandatory Gates (Fail-Closed):**
 ```bash
 # Individual gates (execution order is intentional for ci-freeze)
-make ci-gate-abi            # ABI stability check (MUST pass)
-make ci-gate-boundary       # Ring0/Ring3 boundary enforcement (MUST pass)
-make ci-gate-ring0-exports  # Ring0 export surface check (MUST pass)
-make ci-gate-hygiene        # Repository cleanliness (MUST pass)
-make ci-gate-tooling-isolation  # Tooling isolation check (MUST pass)
-make ci-gate-constitutional # Constitutional compliance (MUST pass)
-make ci-gate-governance-policy  # Governance policy enforcement (MUST pass)
-make ci-gate-drift-activation   # Drift blocking activation requirement (MUST pass)
-make ci-gate-structural-abi     # Structural ABI check (MUST pass)
-make ci-gate-runtime-marker-contract  # Runtime marker contract (MUST pass)
-make ci-gate-user-bin-lock      # User binary lock check (MUST pass)
-make ci-gate-embedded-elf-hash  # Embedded ELF hash check (MUST pass)
-make ci-gate-performance    # Performance regression check (MUST pass)
-make ci-gate-ring3-execution-phase10a2  # Ring3 execution validation (MUST pass)
-make ci-gate-syscall-semantics-phase10b  # Syscall semantics validation (MUST pass)
-make ci-gate-workspace      # Workspace integrity (MUST pass)
-make ci-gate-syscall-v2-runtime  # Syscall runtime validation (MUST pass)
-make ci-gate-sched-bridge-runtime  # Scheduler bridge runtime validation (MUST pass)
-make ci-gate-behavioral-suite  # Behavioral test suite (MUST pass)
-make ci-gate-policy-accept  # Policy accept proof (MUST pass)
+make ci-gate-abi
+make ci-gate-boundary
+make ci-gate-ring0-exports
+make ci-gate-hygiene
+make ci-gate-execution-slot-integrity
+make ci-gate-execution-marker-isolation
+make ci-gate-tooling-isolation
+make ci-gate-constitutional
+make ci-gate-governance-policy
+make ci-gate-naming-convention
+make ci-gate-drift-activation
+make ci-gate-structural-abi
+make ci-gate-runtime-marker-contract
+make ci-gate-user-bin-lock
+make ci-gate-embedded-elf-hash
+make ci-gate-performance
+make ci-gate-ring3-user-leaf-rule
+make ci-gate-ring3-execution-phase10a2
+make ci-gate-syscall-semantics-phase10b
+make ci-gate-low-half-kheap-scaffold
+make $(PHASE10C_FREEZE_GATE)
+make ci-gate-mailbox-capability-negative
+make ci-gate-workspace
+make ci-gate-syscall-v2-runtime
+make ci-gate-sched-bridge-runtime
+make ci-gate-behavioral-suite
+make ci-gate-policy-accept
+make ci-gate-alias-proof
+make ci-kill-switch-phase13
+make ci-gate-determinism-replay-consistency
+make ci-gate-bcib-v3-core
+make ci-gate-toolchain-opcode-registry
+make ci-gate-capability-manager
+make ci-gate-proofd-observability-boundary
+make ci-gate-dsl-bcib-contract
+make ci-gate-semantic-cli-contract
+make ci-gate-data-runtime-bcib
+make ci-gate-ai-runtime-boundary
+make ci-gate-bcib-stub-determinism
 
 # Full CI suite
 make ci                     # Standard CI (enforced gates)
@@ -110,7 +147,7 @@ make ci-freeze              # Strict freeze suite (all gates, fail-closed)
                             # Note: Gate execution order in ci-freeze is intentional
                             # - Quick checks first (ABI, boundary, hygiene)
                             # - Performance gate before expensive runtime tests
-                            # - Runtime validation gates last
+                            # - Runtime, distributed verification, and execution-pipeline gates last
 make ci-freeze-local        # Local freeze (skip perf/tooling)
 ```
 ```
@@ -146,29 +183,47 @@ The following gates execute in order during `make ci-freeze`. Execution order is
 2. `make ci-gate-boundary` - Ring0/Ring3 boundary enforcement
 3. `make ci-gate-ring0-exports` - Ring0 export surface check
 4. `make ci-gate-hygiene` - Repository cleanliness
-5. `make ci-gate-tooling-isolation` - Tooling isolation check
-6. `make ci-gate-constitutional` - Constitutional compliance
-7. `make ci-gate-governance-policy` - Governance policy enforcement
-8. `make ci-gate-drift-activation` - Drift blocking activation
-9. `make ci-gate-structural-abi` - Structural ABI check
-10. `make ci-gate-runtime-marker-contract` - Runtime marker contract
-11. `make ci-gate-user-bin-lock` - User binary lock check
-12. `make ci-gate-embedded-elf-hash` - Embedded ELF hash check
-13. `make ci-gate-performance` - Performance regression check (moved earlier for fail-fast)
-14. `make ci-gate-ring3-execution-phase10a2` - Ring3 execution validation
-15. `make ci-gate-syscall-semantics-phase10b` - Syscall semantics validation
-16. `make ci-gate-workspace` - Workspace integrity
-17. `make ci-gate-syscall-v2-runtime` - Syscall runtime validation
-18. `make ci-gate-sched-bridge-runtime` - Scheduler bridge runtime validation
-19. `make ci-gate-behavioral-suite` - Behavioral test suite
-20. `make ci-gate-policy-accept` - Policy accept proof
-21. `make ci-summarize` - Generate summary report
+5. `make ci-gate-execution-slot-integrity` - Execution slot integrity
+6. `make ci-gate-execution-marker-isolation` - Execution marker isolation
+7. `make ci-gate-tooling-isolation` - Tooling isolation check
+8. `make ci-gate-constitutional` - Constitutional compliance
+9. `make ci-gate-governance-policy` - Governance policy enforcement
+10. `make ci-gate-naming-convention` - Naming convention enforcement
+11. `make ci-gate-drift-activation` - Drift blocking activation
+12. `make ci-gate-structural-abi` - Structural ABI check
+13. `make ci-gate-runtime-marker-contract` - Runtime marker contract
+14. `make ci-gate-user-bin-lock` - User binary lock check
+15. `make ci-gate-embedded-elf-hash` - Embedded ELF hash check
+16. `make ci-gate-performance` - Performance regression check (moved earlier for fail-fast)
+17. `make ci-gate-ring3-user-leaf-rule` - Ring3 executable user-leaf rule
+18. `make ci-gate-ring3-execution-phase10a2` - Ring3 execution validation
+19. `make ci-gate-syscall-semantics-phase10b` - Syscall semantics validation
+20. `make ci-gate-low-half-kheap-scaffold` - Low-half kheap scaffold proof
+21. `make $(PHASE10C_FREEZE_GATE)` - Conditional Phase 10-C freeze gate
+22. `make ci-gate-mailbox-capability-negative` - Mailbox capability negative test
+23. `make ci-gate-workspace` - Workspace integrity
+24. `make ci-gate-syscall-v2-runtime` - Syscall runtime validation
+25. `make ci-gate-sched-bridge-runtime` - Scheduler bridge runtime validation
+26. `make ci-gate-behavioral-suite` - Behavioral test suite
+27. `make ci-gate-policy-accept` - Policy accept proof
+28. `make ci-gate-alias-proof` - Alias proof runtime check
+29. `make ci-kill-switch-phase13` - Phase-13 kill-switch gates
+30. `make ci-gate-determinism-replay-consistency` - Determinism replay consistency
+31. `make ci-gate-bcib-v3-core` - BCIB v3 core workstream
+32. `make ci-gate-toolchain-opcode-registry` - Toolchain opcode registry
+33. `make ci-gate-capability-manager` - Capability manager
+34. `make ci-gate-proofd-observability-boundary` - proofd observability boundary
+35. `make ci-gate-dsl-bcib-contract` - DSL to BCIB contract
+36. `make ci-gate-semantic-cli-contract` - Semantic CLI contract
+37. `make ci-gate-data-runtime-bcib` - Data runtime BCIB contract
+38. `make ci-gate-ai-runtime-boundary` - AI runtime boundary
+39. `make ci-gate-bcib-stub-determinism` - BCIB stub determinism
 
 **Rationale for Order:**
-- Gates 1-12: Quick validation checks (< 30s each) catch common issues early
-- Gate 13: Performance check moved earlier to catch regressions before expensive tests
-- Gates 14-20: Runtime validation gates (expensive, run after quick checks pass)
-- Gate 21: Summary generation (always runs last)
+- Gates 1-15: Quick/static/structural checks catch common issues early
+- Gate 16: Performance check catches regressions before expensive runtime tests
+- Gates 17-28: Runtime validation gates run after static and performance gates pass
+- Gates 29-39: Distributed verification and execution-pipeline contract gates run last
 ```
 
 2. **Add note in Section 2.3** about order changes:
@@ -187,7 +242,7 @@ The following gates execute in order during `make ci-freeze`. Execution order is
 ## Implementation Strategy
 
 ### Phase 1: Documentation Updates
-1. Update `.kiro/steering/tech.md` with new gate order and rationale
+1. Update `docs/steering/tech.md` with new gate order and rationale
 2. Update `docs/roadmap/freeze-enforcement-workflow.md` with synchronized order
 3. Commit both changes together
 
