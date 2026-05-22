@@ -1,0 +1,23 @@
+# Spec Metadata
+# Authority: Constitutional Enforcement (Phase-17.5 Tier 4.5)
+# Status: POST-CUTOFF SPEC
+
+schema_version: "1.0.0"
+
+created_at: "2026-05-03T00:59:49Z"
+validation_level: 3
+phase: "17.5"
+spec_type: "runtime-authority-binding"
+workflow_type: "requirements-design-tasks"
+
+metadata:
+  name: "AYKEN VCP Execution Binding"
+  description: "Runtime binding of VCP validation state to execution lifecycle."
+  owner: "Kenan AY <kenanay2020@gmail.com>"
+  related_issues:
+    - "https://github.com/kenanay/AykenOS/pull/142"
+  tags:
+    - "vcp"
+    - "execution"
+    - "runtime-enforcement"
+    - "phase-17.5"
