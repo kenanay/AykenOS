@@ -8,6 +8,21 @@
 
 ---
 
+## Candidate Evidence Update - 2026-05-25
+
+PR #144 candidate SHA `f129d4aaa37edd34b06e2f89dea57f20de57f691`
+icin lifecycle, determinism/negative, public E2E, worker completion ve
+timeout-race gates remote PASS vermistir. Ayni SHA icin locked performance
+run `26370895287` ve full strict `ci-freeze` run `26370895297` PASS
+durumundadir.
+
+Bu sonuc resmi Phase-17 closure degildir. PR #142/PR #144 review-merge
+sirasi, accepted mainline baglantisi, closure manifesti ve resmi tag
+beklenir. Validation-only konfigurasyon sahipligi ve olcum sinirlari
+`VALIDATION_FLAG_MATRIX.md` icinde kaydedilmistir.
+
+---
+
 ## 0. ci-gate-execution-slot-integrity
 
 ### 0.1 Kapsam
@@ -87,8 +102,9 @@ malloc, printf, fprintf, HELLO_BCIB_EXECUTION
 
 ### 0.6.1 Kapsam
 
-**Durum:** Local QEMU PASS (2026-05-23); remote PR CI authority pending. Bu
-hedef strict freeze zincirine henuz eklenmemistir.
+**Durum:** PR #144 candidate SHA `f129d4aa` remote PASS (run
+`26370895268`); review/merge ve official closure pending. Bu hedef strict
+freeze zincirine henuz eklenmemistir.
 
 **Olcer:**
 - Marker validation acik validation kernel'inin gercek QEMU boot'u
@@ -110,7 +126,7 @@ hedef strict freeze zincirine henuz eklenmemistir.
 {
   "gate": "execution-marker-lifecycle",
   "guarantee_level": "real_kernel_qemu_single_slot_lifecycle",
-  "status": "local_pass_remote_pending",
+  "status": "candidate_sha_remote_pass_review_merge_pending",
   "does_prove": [
     "qemu_booted_marker_enabled_kernel",
     "single_slot_lifecycle_reached_result_mapped",
@@ -138,8 +154,8 @@ Gate yalniz `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1` ve
 derler. Authoritative local transcript `qemu_debugcon.log` ciktisidir;
 validator canonical marker sirasini ve `state=6` sonucunu denetler.
 `.github/workflows/ci-gate-execution-marker-lifecycle.yml`, ayni hedefi PR
-CI evidence artifact'i olarak calistirir; sonuc olusana kadar remote authority
-kurulmus sayilmaz.
+CI evidence artifact'i olarak calistirir; candidate remote PASS resmi
+closure veya merge approval yerine gecmez.
 
 ---
 
@@ -147,8 +163,9 @@ kurulmus sayilmaz.
 
 ### 0.7.1 Kapsam
 
-**Durum:** Local QEMU PASS (2026-05-23); remote PR CI authority pending. Bu
-hedef strict freeze zincirine henuz eklenmemistir.
+**Durum:** PR #144 candidate SHA `f129d4aa` remote PASS (run
+`26370895295`); review/merge ve official closure pending. Bu hedef strict
+freeze zincirine henuz eklenmemistir.
 
 **Olcer:**
 - Ayni validation-only kernel input'iyle iki bagimsiz QEMU boot sonucu
@@ -170,7 +187,7 @@ hedef strict freeze zincirine henuz eklenmemistir.
 {
   "gate": "execution-marker-determinism",
   "guarantee_level": "real_kernel_qemu_result_repeat_and_invalid_order_rejection",
-  "status": "local_pass_remote_pending",
+  "status": "candidate_sha_remote_pass_review_merge_pending",
   "does_prove": [
     "two_qemu_boots_same_validation_input_same_kernel_result_fingerprint",
     "invalid_marker_order_rejected_before_hash_or_result_mapping_publication"
@@ -196,8 +213,8 @@ gerektirir. Negative evidence `AYKEN_PHASE17_MARKER_INJECTION_TEST=1`,
 `AYKEN_MARKER_INJECT_INVALID_ORDER=1` ve
 `AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT=1` ile yalniz validation
 profilinde uretilir. `.github/workflows/ci-gate-execution-marker-determinism.yml`
-ayni hedefi PR CI artifact'i olarak calistirir; remote sonuc olmadan closure
-otoritesi kurulmaz.
+ayni hedefi PR CI artifact'i olarak calistirir; candidate remote PASS closure
+manifesti veya tag olmadan resmi kapanis otoritesi kurmaz.
 
 ---
 
@@ -205,8 +222,9 @@ otoritesi kurulmaz.
 
 ### 0.8.1 Kapsam
 
-**Durum:** Local QEMU PASS (2026-05-24); remote PR CI authority pending. Bu
-hedef strict freeze zincirine henuz eklenmemistir.
+**Durum:** PR #144 candidate SHA `f129d4aa` remote PASS (run
+`26370895267`); review/merge ve official closure pending. Bu hedef strict
+freeze zincirine henuz eklenmemistir.
 
 **Olcer:**
 - Validation-only Ring3 payload'inin public `submit_execution(1003)` cagrisi
@@ -232,7 +250,7 @@ hedef strict freeze zincirine henuz eklenmemistir.
 {
   "gate": "execution-public-e2e",
   "guarantee_level": "validation_only_public_ring3_submit_wait_result_publication",
-  "status": "local_pass_remote_pending",
+  "status": "candidate_sha_remote_pass_review_merge_pending",
   "does_prove": [
     "ring3_invoked_public_submit_execution_1003",
     "scheduler_picked_up_submitted_slot_in_qemu",
@@ -262,8 +280,8 @@ Gate `AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1`,
 `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1` ve
 `AYKEN_RING3_ENTRY_GUARD=1` ile yalniz validation profilinde calisir;
 production default `0` olarak kalir. `.github/workflows/ci-gate-execution-public-e2e.yml`
-ayni aday evidence'i PR CI icin calistirir; remote sonuc olmadan closure
-otoritesi kurulmaz.
+ayni aday evidence'i PR CI icin calistirir; candidate remote PASS official
+closure yerine gecmez.
 
 ---
 
@@ -271,8 +289,9 @@ otoritesi kurulmaz.
 
 ### 0.9.1 Kapsam
 
-**Durum:** Local QEMU PASS (2026-05-24); remote PR CI authority pending. Bu
-hedef strict freeze zincirine henuz eklenmemistir.
+**Durum:** PR #144 candidate SHA `f129d4aa` remote PASS (run
+`26370895270`); review/merge ve official closure pending. Bu hedef strict
+freeze zincirine henuz eklenmemistir.
 
 **Olcer:**
 - Deterministic completion stub'u kapaliyken validation-only Ring3 worker'in
@@ -300,7 +319,7 @@ hedef strict freeze zincirine henuz eklenmemistir.
 {
   "gate": "execution-worker-completion",
   "guarantee_level": "validation_only_ring3_bounded_fixture_public_completion",
-  "status": "local_pass_remote_pending",
+  "status": "candidate_sha_remote_pass_review_merge_pending",
   "does_prove": [
     "ring3_read_delivered_bcib_literal_fixture_from_inbox_payload_surface",
     "ring3_wrote_validated_output_window_for_fixture_result",
@@ -332,8 +351,8 @@ Gate `AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1`,
 `AYKEN_RING3_ENTRY_GUARD=1` ile yalniz validation profilinde calisir;
 production default `0` olarak kalir.
 `.github/workflows/ci-gate-execution-worker-completion.yml` ayni aday
-evidence'i PR CI icin calistirir; remote sonuc olmadan closure otoritesi
-kurulmaz.
+evidence'i PR CI icin calistirir; candidate remote PASS official closure
+otoritesi kurmaz.
 
 ---
 
@@ -341,8 +360,9 @@ kurulmaz.
 
 ### 0.10.1 Kapsam
 
-**Durum:** Local QEMU PASS (2026-05-24); remote PR CI authority pending. Bu
-hedef strict freeze zincirine henuz eklenmemistir.
+**Durum:** PR #144 candidate SHA `f129d4aa` remote PASS (run
+`26370895296`); review/merge ve official closure pending. Bu hedef strict
+freeze zincirine henuz eklenmemistir.
 
 **Olcer:**
 - Stub kapaliyken validation-only Ring3 payload'inin public
@@ -370,7 +390,7 @@ hedef strict freeze zincirine henuz eklenmemistir.
 {
   "gate": "execution-timeout-race",
   "guarantee_level": "validation_only_real_irq_timeout_wins_over_late_completion",
-  "status": "local_pass_remote_pending",
+  "status": "candidate_sha_remote_pass_review_merge_pending",
   "does_prove": [
     "ring3_submitted_self_target_execution_through_public_1003",
     "validation_harness_armed_bounded_logical_deadline_after_running_delivery",
@@ -404,8 +424,8 @@ Gate `AYKEN_EXECUTION_RACE_SELFTEST=1`,
 `AYKEN_RING3_ENTRY_GUARD=1` ile yalniz validation profilinde calisir;
 production default `0` olarak kalir.
 `.github/workflows/ci-gate-execution-timeout-race.yml` ayni aday evidence'i
-PR CI icin calistirir; remote sonuc ve performance kabulu olmadan closure
-otoritesi kurulmaz.
+PR CI icin calistirir; candidate remote PASS ve performance kabulu dahi
+closure manifest/tag olmadan resmi kapanis otoritesi kurmaz.
 
 ---
 
@@ -413,8 +433,10 @@ otoritesi kurulmaz.
 
 ### 0.11.1 Kapsam
 
-**Durum:** Local median sub-gate PASS, fail-closed local readiness FAIL
-(2026-05-24); remote locked-authority PR CI pending. Bu hedef strict freeze
+**Durum:** Local median sub-gate PASS ve fail-closed local readiness FAIL
+kaydi korunur (2026-05-24). PR #144 candidate SHA `f129d4aa`, remote
+locked-authority run `26370895287` ile PASS vermistir; official closure,
+review/merge ve accepted mainline authority pending. Bu hedef strict freeze
 zincirine yeni bir performance olcumu eklemez; mevcut strict
 `ci-gate-performance` raporunu scoped acceptance evidence'ine baglar.
 
@@ -496,8 +518,9 @@ make ci-gate-performance-stability \
 
 `.github/workflows/ci-gate-phase17-performance-acceptance.yml`, remote modda
 locked baseline authority'sini calistirir. Yerel median PASS, committed
-baseline'i yenilemez; fail-closed local readiness PASS kurulmadan ve remote PR sonucu
-olmadan S1.6 kabul otoritesi kurulmaz.
+baseline'i yenilemez. Candidate SHA `f129d4aa` remote scoped acceptance PASS
+vermistir; bu component full `ci-freeze`, review/merge ve closure manifest/tag
+yerine gecmez.
 
 ---
 
