@@ -89,7 +89,9 @@ The workflow should:
 
 1. Push to feature branch
 2. Create PR with title: `ci(perf): renew baseline for [reason]`
-3. PR description should include:
+3. Apply the governed `baseline-update` label so CI may evaluate the
+   workflow-generated lock mutation; without it the lock remains immutable.
+4. PR description should include:
    - Reason for renewal
    - Old vs new env_hash
    - Old vs new metrics (if performance improvement)

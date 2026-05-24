@@ -209,12 +209,14 @@ If no condition is met, DO NOT proceed.
 
 1. Commit baseline lock file
 2. Create PR with appropriate title (see conditions above)
-3. Include in PR description:
+3. Apply the governed `baseline-update` label so CI can evaluate the imported
+   workflow artifact while ordinary PR lock mutations remain rejected.
+4. Include in PR description:
    - Renewal condition (env change / perf improvement / toolchain upgrade)
    - Old vs new env_hash
    - Old vs new metrics (if applicable)
    - Justification for renewal
-4. Request review from core maintainer (if perf improvement)
+5. Request review from core maintainer (if perf improvement)
 
 ### Step 5: Merge After CI Passes
 

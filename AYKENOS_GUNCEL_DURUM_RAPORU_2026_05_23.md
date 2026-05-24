@@ -15,8 +15,8 @@
 | Phase-17 kapanisi | `phase17-official-closure` etiketi/manifesti yok | Tum faz icin closure iddiasi kurulamaz |
 | Phase-17.5 | `docs/phase17-5-ci-verified` dalinda gelistirme | Review/merge otoritesi beklenir |
 | Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 ilk remote runtime gates PASS; PR-4 remote source olcumu PASS ancak scoped acceptance runner digest drift nedeniyle fail-closed; governed renewal pending |
-| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | `gha-ubuntu24-20260406.80.1-X64`; yeni hosted runner image'i farkliysa governed renewal gerekir |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 ilk remote runtime gates PASS; PR-4 remote source olcumu PASS ancak scoped acceptance runner digest drift nedeniyle fail-closed; authorized renewal artifact uretildi ve remote recheck bekler |
+| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Authorized run `26370359958` kaynakli `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a import edildi; remote acceptance olmadan otorite kazanmaz |
 
 ## Bu Degisiklikte Uygulanan Eksikler
 
@@ -63,6 +63,7 @@
 41. PR-4B `local-phase17-variance-isolation-20260524-r3` kanitinda onceki `sample-6` sapmasi yeniden uretilmedi: image-reuse tepe farki `%1.300080`, rebuild-per-run tepe farki `%0.743889` olup `%3` diagnostic esigin altinda kaldi. Bu sonuc onceki readiness FAIL'i, kok neden bekleyisini veya remote acceptance gereksinimini kaldirmaz.
 42. PR #144 ilk remote run'inda Phase-17 lifecycle/determinism/public-E2E/completion/timeout-race workflow checks PASS uretirken PR-4 source performance report da olcum ihlali olmadan PASS verdi; scoped acceptance, baseline `gha-ubuntu24-20260406.80.1-X64` ile runner `gha-ubuntu24-20260518.149.1-X64` drift'i nedeniyle fail-closed reddedildi.
 43. Baseline renewal governance yolu sertlestirildi: `perf-baseline-init.yml` generated lock'u SHA/digest/strict-policy/counter kosullariyla dogrulayip artifact olarak birakir; protected branch'e direct push yapmaz ve lock yalniz reviewed renewal PR ile alinabilir.
+44. Authorized workflow run `26370359958`, SHA `40418618` uzerinde `gha-ubuntu24-20260518.149.1-X64` lock adayini PASS ile uretti; generated file degistirilmeden PR'a alindi ve scoped acceptance workflow'u explicit `baseline-update` authorization modeliyle hizalandi.
 
 Tarihli eski faz snapshot belgelerinde, ratification oncesi `1000-1010` /
 11-syscall anlatimi tarihsel kayit olarak kalabilir; guncel ve normatif
@@ -102,6 +103,7 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 - PR-4B bounded diagnostic PASS, ayni PR-4 runtime kontrati altinda sapmanin yeniden uretilmedigini kaydeder; non-reproduction threshold/baseline degisikligi, host/QEMU nedenselligi veya remote kabul sayilmaz.
 - PR #144 remote source performance PASS, canonical baseline ile hosted runner digest'i uyusmadigi icin acceptance PASS sayilmaz; bu durum metric regression degil fail-closed environment authority drift kaydidir.
 - Baseline yenilemesi manuel degisiklik veya direct protected-branch push ile yapilamaz; yetkili workflow artifact'i ve reviewed renewal PR gerektirir.
+- Authorized renewal artifact PR'a alinmistir, ancak yeni remote locked-baseline PASS alinana kadar bu lock yalniz candidate'tir ve closure otoritesi tasimaz.
 - Validation-only yollar buyumeden once production default, olculen yuzey, owner ve kapanis kosulunu kaydeden declarative matrix olusturulmalidir.
 
 ## Bu Degisiklik Icin Yerel Dogrulama
@@ -153,15 +155,15 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 1. PR-1, PR-2, PR-2A/S1.E2E, PR-2B fixture worker completion ve PR-3 IRQ timeout-race local QEMU evidence paketlerinin clean-tree remote PR CI/review ile kabul edilmesi.
 2. Genel BCIB interpreter/opcode yuzeyi veya urunlestirilmis Ring3 worker semantic coverage kaniti; PR-2B yalniz bounded literal fixture'i kanitlar.
 3. Gerekiyorsa PR-3'un tek timeout-wins senaryosu disinda broader/exhaustive scheduler-interrupt race ve SMP coverage kaniti.
-4. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; ilk remote PR-4 source olcumu PASS olsa da digest drift nedeniyle acceptance fail-closed durdu. Yetkili artifact tabanli baseline renewal ve sonrasinda remote constitutional performance acceptance PASS gerekir.
+4. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; ilk remote PR-4 source olcumu PASS olsa da digest drift nedeniyle acceptance fail-closed durdu. Yetkili artifact tabanli baseline renewal adayi PR'a alinmistir; sonrasinda remote constitutional performance acceptance PASS gerekir.
 5. Bu kanitlara dayali Phase-17 closure manifesti ve resmi kapanis etiketi.
 6. Canonical ABI/baseline senkronizasyonunun clean-tree PR CI ile kabul edilmesi.
 
 ## Oncelik Sirasi
 
-**En oncelikli adim:** PR #144 ilk remote olcumunde metric regression gostermedi, ancak runner digest drift'i acceptance'i fail-closed durdurdu. Siradaki authority islemi artifact-only yetkili workflow ile `gha-ubuntu24-20260518.149.1-X64` renewal adayini uretmek, reviewed PR icine almak ve ayni SHA icin remote locked-baseline acceptance sonucunu yeniden almaktir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+**En oncelikli adim:** PR #144 ilk remote olcumunde metric regression gostermedi, ancak runner digest drift'i acceptance'i fail-closed durdurdu. Artifact-only yetkili workflow ile `gha-ubuntu24-20260518.149.1-X64` renewal adayi uretilip PR'a alinmistir; siradaki authority islemi yeni SHA icin remote locked-baseline acceptance sonucunu almaktir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
 
-**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - ilk remote runtime checks PASS; PR-4 source measurement PASS fakat scoped acceptance digest drift ile fail-closed; artifact-only governed renewal ve duzeltilmis SHA remote authority pending.
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - ilk remote runtime checks PASS; PR-4 source measurement PASS fakat scoped acceptance digest drift ile fail-closed; authorized renewal artifact PR'a import edildi ve yeni SHA remote authority pending.
 
 ---
 

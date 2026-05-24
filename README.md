@@ -24,10 +24,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
 **CURRENT_PHASE:** `17` (`Phase-16 OFFICIALLY CLOSED`; Phase-17 aktif, resmi closure henüz kurulmadı)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
-**Acil Blocker:** Phase-17 tam kapanışı için PR #144 ilk remote runtime checks PASS olsa da PR-4 scoped acceptance fail-closed runner digest drift'inde durdu: canonical `gha-ubuntu24-20260406.80.1-X64`, current hosted runner `gha-ubuntu24-20260518.149.1-X64`; governed renewal ve yeni remote acceptance eksik
-**Yakın Hedef:** Phase-17 closure acceptance: artifact-only yetkili workflow ile runner-image baseline renewal adayı üretmek, reviewed PR içinde almak ve düzeltilmiş SHA üzerinde remote locked-baseline performance kabulünü yeniden çalıştırmak
+**Acil Blocker:** Phase-17 tam kapanışı için PR #144 ilk remote runtime checks PASS olsa da PR-4 scoped acceptance fail-closed runner digest drift'inde durdu; authorized run `26370359958` current runner baseline adayını üretti ve PR'a alındı, ancak yeni remote locked-baseline acceptance henüz yok
+**Yakın Hedef:** Phase-17 closure acceptance: imported workflow-generated `gha-ubuntu24-20260518.149.1-X64` baseline adayıyla düzeltilmiş SHA üzerinde remote locked-baseline performance kabulünü yeniden çalıştırmak
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
-**Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64` (canonical lock: `scripts/ci/perf-baseline.lock.json`; runner-image drift requires governed renewal)
+**Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; remote acceptance PASS olana kadar closure authority değildir)
 **Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 ACTIVE / CLOSURE PENDING 🔄 | Phase-17.5 draft PR #142 under review 🔄 | Phase-18 ROADMAP ONLY
 
 **Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-16 kapanış kayıtları mevcut ✅ | Phase 16 Verification Layer MVP OFFICIALLY CLOSED ✅ (2026-04-25) | CURRENT_PHASE=17 🔄 | Phase-17 Step 5 marker guard merged (PR #134) ✅ | Phase-17 resmi kapanış kanıtı yok 🔄 | Architecture Freeze ACTIVE ✅
@@ -39,10 +39,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
-**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | validation-only gercek kernel/QEMU lifecycle, deterministic/negative, public Ring3 `1003/1004`, bounded `1003/1011/1004` completion ve IRQ timeout-race ilk PR #144 remote checks PASS (2026-05-24) | PR-4 source performance PASS ancak scoped acceptance runner digest drift ile fail-closed; governed renewal pending | closure etiketi/manifesti henuz yok
+**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | validation-only gercek kernel/QEMU lifecycle, deterministic/negative, public Ring3 `1003/1004`, bounded `1003/1011/1004` completion ve IRQ timeout-race ilk PR #144 remote checks PASS (2026-05-24) | PR-4 source performance PASS ancak scoped acceptance runner digest drift ile fail-closed; authorized renewal artifact PR'a import edildi, remote recheck pending | closure etiketi/manifesti henuz yok
 **Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure ve runtime acceptance kurulmadan aktif faz sayılmaz
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; ilk PR #144 runtime checks PASS; PR-4 source measurement PASS fakat scoped acceptance runner digest drift ile fail-closed; artifact-only governed renewal ve remote locked authority pending
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; ilk PR #144 runtime checks PASS; PR-4 source measurement PASS fakat scoped acceptance runner digest drift ile fail-closed; artifact-only governed renewal candidate imported ve remote locked authority pending
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** PR #144 remote runtime kanitlarini yeni SHA üzerinde koruyarak, detected hosted-runner digest icin yetkili artifact tabanli baseline renewal adayini üretmek ve remote locked-baseline performance acceptance'i yeniden almak
+**Next Focus:** PR #144 remote runtime kanitlarini yeni SHA üzerinde koruyarak, imported artifact tabanli baseline renewal adayi ile remote locked-baseline performance acceptance'i yeniden almak
 
 ## Authority Model
 
@@ -362,7 +362,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 24 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; PR #144 ilk remote runtime checks PASS, ancak PR-4 acceptance hosted-runner digest drift nedeniyle fail-closed durdu; artifact-only governed renewal ve closure otoritesi hâlâ bekleniyor; Phase-18 yalnızca yol haritasıdır.
+**Son Güncelleme:** 24 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; PR #144 ilk remote runtime checks PASS, PR-4 acceptance hosted-runner digest drift nedeniyle fail-closed durdu; authorized artifact renewal adayı PR'a import edildi, remote acceptance ve closure otoritesi hâlâ bekleniyor; Phase-18 yalnızca yol haritasıdır.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**
