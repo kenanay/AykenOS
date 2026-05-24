@@ -1,12 +1,12 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.5  
+**Version:** 1.6
 **Status:** ACTIVE FREEZE (Phase-17 Execution Pipeline)  
 **Effective Date:** 2026-02-13  
-**Last Update:** 2026-05-01 (Phase-16 Official Closure + Phase-17 Preparation)  
+**Last Update:** 2026-05-23 (Phase-17 authority sync + governance enforcement)
 **Owner:** AykenOS Core Architecture Team  
-**Authority:** Kenan AY
+**Authority / Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(documentation metadata; no runtime authority)*
 
 ---
 
@@ -31,8 +31,9 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 ### 2.1 Dondurulan Alanlar (IMMUTABLE)
 
 #### Syscall v2 Interface
-- **ID Range:** 1000-1010 (11 syscalls, fixed)
-- **ABI Definition:** `kernel/include/ayken_abi.h` (single source of truth)
+- **ID Range:** 1000-1011 (12 syscalls, fixed at ABI v0x00010001)
+- **Syscall Definition:** `shared/abi/syscall_v2.h` (canonical source; mirrored by `kernel/sys/syscall_v2.h`)
+- **Layout / Version Definition:** `shared/abi/ayken_abi.h` (canonical source; generated assembly include locked by CI)
 - **Register Mapping:** RDI, RSI, RDX, R10 (no alternatives)
 - **Generation:** `make generate-abi` (deterministic)
 
@@ -69,7 +70,7 @@ Bu belge, AykenOS execution-centric mimarisini mimari borç üretmeden kalıcı 
 - **Changes:** Require full RFC + freeze re-evaluation
 
 #### Kernel ↔ Userspace ABI
-- **Source:** `kernel/include/ayken_abi.h`
+- **Source:** `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h`
 - **Offsets:** Static assert protected
 - **Drift:** CI fail trigger
 
@@ -130,19 +131,21 @@ See:
 #### ID Range (FIXED)
 ```c
 #define SYS_V2_BASE       1000
-#define SYS_V2_MAX_INDEX  10
+#define SYS_V2_MAX_INDEX  11
 #define SYS_V2_NR         (SYS_V2_MAX_INDEX + 1)
 #define SYS_V2_LAST       (SYS_V2_BASE + SYS_V2_MAX_INDEX)
 ```
 
 **Debug syscall:** Included in-range as index 10 (`SYS_V2_DEBUG_PUTCHAR` → public 1010)
+**Execution completion syscall:** Included in-range as index 11 (`SYS_V2_COMPLETE_EXECUTION` → public 1011)
 
 #### Single Source of Truth
 ```
-Canonical ABI Definition: kernel/include/ayken_abi.h
+Canonical Layout Definition:  shared/abi/ayken_abi.h
+Canonical Syscall Definition: shared/abi/syscall_v2.h
 Generation Command:       make generate-abi
-Kernel Dispatcher:        Auto-generated from ayken_abi.h
-Userspace Wrapper:        Auto-generated from ayken_abi.h
+Generated ASM Include:     kernel/include/generated/ayken_abi.inc
+Kernel Syscall Mirror:     kernel/sys/syscall_v2.h
 ```
 
 #### Register ABI (IMMUTABLE)
@@ -592,7 +595,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 
 **Freeze CANNOT start until:**
 
-1. ✅ Syscall ID range finalized (1000-1010)
+1. ✅ Syscall ID range finalized (1000-1011, 12 syscalls)
 2. ✅ Userspace syscall register mapping fixed
 3. ✅ Scheduler fallback isolated or removed
 4. ✅ Tracked build artifacts cleaned
@@ -601,8 +604,10 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 7. ✅ Performance baseline established
 8. ✅ Repo clean baseline created
 
-**Current Status (2026-05-01):**
-- ✅ All CI gates active and passing (32-gate ci-freeze chain)
+**Current Status (2026-05-23):**
+- ✅ Strict chain authority synchronized to 40 gate/cluster targets plus two guard/preflight prerequisites in this change (`ci-gate-spec-purity` added before drift/runtime lanes; remote acceptance requires merge CI)
+- ✅ Execution-marker isolation gate corrected to fail closed and verify default-off integration, test-only injection, and deterministic logical ticks
+- ✅ Canonical ABI source synchronized to ratified `0x00010001` / 12-syscall lock; ABI gate now hashes and parses the `shared/abi` build inputs
 - ✅ Phase-10 runtime: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-11 verification substrate: OFFICIALLY CLOSED (remote CI run `22797401328`)
 - ✅ Phase-12 trust layer: OFFICIALLY CLOSED (remote CI run `23099070483`, PR #62)
@@ -610,18 +615,13 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - ✅ Phase-14 observability hardening: OFFICIALLY CLOSED (CI run `23999026616`)
 - ✅ Phase-15 BCIB Execution Engine v3: OFFICIALLY CLOSED (CI run `24213727039`, PR #104)
 - ✅ Phase-16 Verification Layer MVP: OFFICIALLY CLOSED (CI run `25214669681`, tag `phase16-official-closure`)
-- ✅ `CURRENT_PHASE=16` formal transition completed (`ca73da9e`)
+- ✅ `CURRENT_PHASE=17` now records the active execution-pipeline phase; Phase-16 remains the last official closure
 - ✅ Performance baseline lock updated (gha-ubuntu24-20260413.86.1-X64, 2026-04-26)
 - ✅ Phase-16 Official Closure: COMPLETE (commit `a56ec7c0`, tag `phase16-official-closure`)
-- 🔄 **Phase-17 Execution Pipeline: IN PROGRESS** (3/8 milestones complete)
-  - ✅ Foundation Sandbox (PR #126, commit 08098761)
-  - ✅ Integration Design (PR #127, commit 99b7c80d)
-  - ✅ Feature Flag + Bitmap (PR #128, commit 8cc00e5f)
-  - 🔄 Marker Capture Helper (IN PROGRESS)
-  - 🔜 Marker Emission Integration
-  - 🔜 Full Sequence Validation
-  - 🔜 Sanity Check
-  - 🔜 CI Gate
+- ✅ **Phase-17 Step 5 marker-validation guard:** merged to main (PR #134, merge `71d10691`)
+- 🔄 **Phase-17 formal closure:** NOT ESTABLISHED; no official closure tag/manifest is present
+- 🔄 **Phase-17.5 dev-loop/observability hardening:** draft PR #142; branch CI evidence is development evidence, not closure authority
+- ⏳ **Phase-18 full kernel runtime validation:** roadmap only until Phase-17 closure criteria are satisfied
 
 ---
 
@@ -797,9 +797,9 @@ cat evidence/run-<RUN_ID>/reports/summary.json
    - Violation = Immediate merge reject
 
 2. **Syscall ABI CANNOT drift**
-   - ID range: 1000-1010 (fixed)
+   - ID range: 1000-1011 (fixed at ABI v0x00010001)
    - Register mapping: RDI/RSI/RDX/R10 (fixed)
-   - Single source: `kernel/include/ayken_abi.h`
+   - Single source: `shared/abi/ayken_abi.h` + `shared/abi/syscall_v2.h`
    - Violation = CI fail + merge reject
 
 3. **CI gates CANNOT be bypassed**
@@ -879,18 +879,19 @@ Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme d
 
 ## 16. Document Control
 
-**Version:** 1.5  
+**Version:** 1.6
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-05-01  
-**Next Review:** 2026-05-15  
+**Last Review:** 2026-05-23
+**Next Review:** 2026-06-06
 **Approval Authority:** AykenOS Architecture Board  
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.6 | 2026-05-23 | Kenan AY | Corrected canonical ABI authority/version to ratified 12-syscall surface (1000-1011); made the ABI gate inspect canonical build inputs; set CURRENT_PHASE=17 without claiming closure; added normative spec-purity governance gate and Phase-18 roadmap boundary |
 | 1.5 | 2026-05-01 | Kenan AY | Phase-16 OFFICIALLY CLOSED (CI run #25214669681, commit a56ec7c0, tag phase16-official-closure); Phase-17 ready to start |
 | 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: COMPLETE (closure pending); Phase-17 preparation |
 | 1.3 | 2026-04-25 | Kenan AY | Phase-15 OFFICIALLY CLOSED (CI run #24213727039, PR #104); Phase-16 Verification Layer Integration |

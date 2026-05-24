@@ -1,5 +1,7 @@
 # AykenOS Project Status Report
 
+> Historical snapshot notice (2026-05-23): This document preserves its phase-date state. Current frozen syscall v2 authority is `shared/abi/syscall_v2.h`: `1000-1011` inclusive, 12 syscalls.
+
 **Date:** 2026-03-02  
 **Version:** v0.4.6-policy-accept + Phase 10-A1  
 **Phase:** 4.5 COMPLETE → Phase 10-A1 COMPLETE → Phase 10-A2 IN PROGRESS (40%)

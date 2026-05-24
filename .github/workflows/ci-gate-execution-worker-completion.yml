@@ -1,0 +1,52 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is workflow metadata only and has no runtime authority.
+#
+# Scope: validation-only Ring3 BCIB literal-fixture completion through public
+# syscall 1011 with kernel stub completion explicitly disabled.
+
+name: ci-gate-execution-worker-completion
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  execution-worker-completion:
+    name: "Phase-17 PR-2B - Ring3 Worker Completion Acceptance"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT: "45"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - id: gate
+        name: Run Ring3 worker completion evidence gate
+        run: |
+          set -euo pipefail
+          make ci-gate-execution-worker-completion \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}" \
+            EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT="${EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT}"
+
+      - name: Upload Ring3 worker completion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-execution-worker-completion-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/execution-worker-completion/
+            evidence/run-${{ env.RUN_ID }}/reports/execution-worker-completion.json
+          if-no-files-found: warn
+          retention-days: 30

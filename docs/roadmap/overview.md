@@ -1,6 +1,12 @@
 # AykenOS Roadmap - Code and Evidence Status (2026-04-24)
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
+> **Authority notice (2026-05-23): HISTORICAL SNAPSHOT.** This document
+> preserves the 2026-04-24 evidence view and is not the current phase or
+> execution roadmap authority. Use `CURRENT_PHASE` and
+> `CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`; Phase-16 is the last
+> official closure and Phase-17 is active with formal closure pending.
+
 ## Scope
 Bu belge, roadmap durumunu dogrudan repo kodu, Make hedefleri, local evidence run'lari ve remote `ci-freeze` confirmation uzerinden ozetler.
 

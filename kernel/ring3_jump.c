@@ -27,6 +27,18 @@
 #define AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST 0
 #endif
 
+#ifndef AYKEN_BCIB_PUBLIC_E2E_SELFTEST
+#define AYKEN_BCIB_PUBLIC_E2E_SELFTEST 0
+#endif
+
+#ifndef AYKEN_BCIB_WORKER_COMPLETION_SELFTEST
+#define AYKEN_BCIB_WORKER_COMPLETION_SELFTEST 0
+#endif
+
+#ifndef AYKEN_EXECUTION_RACE_SELFTEST
+#define AYKEN_EXECUTION_RACE_SELFTEST 0
+#endif
+
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     ((AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST == 1) || \
      (AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST == 1) || \
@@ -353,7 +365,16 @@ void jump_to_ring3(void)
 #endif
 
     proc_t *ring3_proc = proc_create_user_process(
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((AYKEN_BCIB_PUBLIC_E2E_SELFTEST == 1) || \
+     (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1))
+        "bcib_worker",
+#elif defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+        "bcib_race_worker",
+#else
         "phase10-minimal",
+#endif
         embedded_elf,
         (uint64_t)embedded_elf_size,
         PROC_IMAGE_ELF
@@ -380,6 +401,18 @@ void jump_to_ring3(void)
                          "[PANIC] Phase10: Ring3 process has no kernel rsp0.");
     }
 
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_BCIB_PUBLIC_E2E_SELFTEST == 1)
+    debugcon_write("[[AYKEN_PUBLIC_EXEC_E2E_ARMED]]\n");
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1)
+    debugcon_write("[[AYKEN_BCIB_WORKER_COMPLETION_ARMED]]\n");
+#endif
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+    debugcon_write("[[AYKEN_EXEC_TIMEOUT_RACE_ARMED]]\n");
+#endif
     debugcon_write("[[AYKEN_RING3_PREP_OK]]\n");
     debugcon_write("P10_SCHED_ARMED\n");
     fb_print("[PHASE10] Ring3 process prepared and queued.\n");

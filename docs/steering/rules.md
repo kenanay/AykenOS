@@ -38,7 +38,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 
 **Enforcement:**
 - CI Gate: `make ci-gate-abi`
-- Single source: `kernel/include/ayken_abi.h`
+- Single sources: `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h`
 - Baseline lock: `scripts/ci/abi-baseline.lock.json`
 
 **Requirements:**

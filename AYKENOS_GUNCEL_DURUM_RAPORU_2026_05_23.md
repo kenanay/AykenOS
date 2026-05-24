@@ -1,0 +1,164 @@
+# AykenOS Guncel Durum ve Uygulama Raporu - 2026-05-23
+
+**Durum tarihi:** 2026-05-23
+**Uygulama ek kaydi:** 2026-05-24 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A variance diagnostic ve PR-4B bounded isolation)
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+**Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
+
+## Yetkili Durum
+
+| Konu | Repo gercegi | Sonuc |
+|---|---|---|
+| Son resmi kapanis | `phase16-official-closure` etiketi mevcut | Phase-16 OFFICIALLY CLOSED |
+| Aktif faz | `CURRENT_PHASE=17` | Phase-17 ACTIVE / CLOSURE PENDING |
+| Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
+| Phase-17 kapanisi | `phase17-official-closure` etiketi/manifesti yok | Tum faz icin closure iddiasi kurulamaz |
+| Phase-17.5 | `docs/phase17-5-ci-verified` dalinda gelistirme | Review/merge otoritesi beklenir |
+| Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR-0 local validated; PR-1, PR-2, PR-2A/S1.E2E, PR-2B stub-off fixture completion ve PR-3 IRQ timeout-race kernel/QEMU local PASS; PR-4 readiness FAIL; PR-4A outlier diagnostic PASS; PR-4B bounded kampanyada sapma yeniden uretilmedi; kok neden ve remote locked authority pending |
+| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | `gha-ubuntu24-20260406.80.1-X64`; yeni hosted runner image'i farkliysa governed renewal gerekir |
+
+## Bu Degisiklikte Uygulanan Eksikler
+
+1. Eksik normatif spec-purity denetimi `scripts/check_spec_purity.sh` olarak eklendi.
+2. Spec-purity icin ayri GitHub Actions workflow'u ve governance summary dogrulamasi eklendi.
+3. `make ci-gate-spec-purity` strict ve local freeze zincirlerine statik, fail-closed kapi olarak eklendi; strict zincir iki guard/preflight onkosuluna ek olarak 40 gate/cluster hedefi kapsar.
+4. Adlandirma kapisi, `AykenOS` gosterim adini yalnizca README/manifest/mimari belge metadata'sinda kabul edecek; kod/CI icindeki tum yazimlarini ve yeni kucuk-harf birlesimini reddedecek bicimde duzeltildi.
+5. Mevcut `ci-gate-execution-marker-isolation` kapisindaki fail-open subshell hatasi kapatildi; default-off feature flag, test-only injection izolasyonu ve logical-tick determinism kontrati denetlenir hale getirildi.
+6. Faz, gate-order, governance ve observability dokumanlari repo gercegine gore senkronize edildi.
+7. Freeze belgesindeki eski syscall araligi, canonical syscall kaynagiyla uyumlu olarak `1000-1011` / 12 syscall seklinde duzeltildi.
+8. `shared/abi/ayken_abi.h` icindeki stale `0x00010000` surum metadata'si, zaten ratified edilmis `SYS_V2_COMPLETE_EXECUTION` yuzeyine gore `0x00010001` ile senkronize edildi; ABI gate wrapper yerine gercek `shared/abi` build girdilerini denetleyecek bicimde guclendirildi.
+9. AykenOS felsefesi, urun siniri, technical debt kontrolu ve PR siralamasini tanimlayan `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` olusturuldu; PR-0 `LOCAL VALIDATED / REMOTE AUTHORITY PENDING` olarak kaydedildi.
+10. Marker-enabled basarili akista marker capture sirasi duzeltildi; `EXEC_COMPLETE_OK` dogrulanmis output window ile pre-hash verification girisine, `WAIT_OK` ilk basarili result mapping sonrasina baglandi.
+11. Invalid result mapping verisinin state'i `RESULT_MAPPED` durumuna ilerletmesinden once reddedilmesi saglandi.
+12. Validation-only, production default-off `ci-gate-execution-marker-lifecycle` ve ona ait PR workflow'u eklendi; gercek kernel/QEMU debugcon evidence'i ile tek-slot lifecycle local PASS uretti.
+13. `ci-gate-execution-slot-integrity` ve `ci-gate-execution-marker-isolation` standalone Make hedeflerinin evidence report/summary wiring'i duzeltildi; onceki outer-run summary boslugu fail-closed kapatildi, `execution_slot_exit_critical` false warning'i giderildi ve gercek prototype indicator bulgulari fail-closed ihlal yapildi.
+14. Validation-only lifecycle ciktisina kernel result SHA-256 fingerprint marker'i eklendi; iki bagimsiz QEMU boot'unda ayni fingerprint'in uretilmesi `ci-gate-execution-marker-determinism` ile denetlendi.
+15. Test-only `invalid_order` injection, pre-publication fail-closed kanitina baglandi; bozuk prefix icin hash/result mapping yayinlanmamasi dogrulandi ve ilgili PR-2 workflow'u eklendi.
+16. Validation-only/default-off `ci-gate-execution-public-e2e`, Ring3 payload ve workflow'u eklendi; public `submit_execution(1003)` -> `wait_result(1004)` mapped-result yolu gercek QEMU boot'unda local PASS uretti.
+17. Public execution backing erisimi ve fail-closed release/cleanup yolu, user CR3 altinda kernel direct-map dereference fault'u olusturmamasi icin bounded supervisor staging ve gecici kernel-root access scope ile guclendirildi.
+18. Scheduler ilk dogrudan Ring3 dispatch'te mevcut entry-guard mekanizmasini arm eder hale getirildi; no-switch IRQ donusu original interrupt frame'ini koruyarak syscall return register'larinin bozulmasini engeller.
+19. Self-target execution slot pickup'i no-switch cadence icinde servis edilir hale getirildi; Ring0/Ring3 policy siniri veya syscall ABI genisletilmedi.
+20. Ring3 payload, mapped result'i dogruladiktan sonra mevcut canonical `debug_putchar` heartbeat'ini kullanir; interleaved debug karakterleri execution verdict'i olarak yorumlanmaz.
+21. S1.E2E validator'u fail raporunda gerceklesmemis `does_prove` iddialari yayimlamaz; aday kapsam `intended_proof_scope` olarak ayrilir ve kanit listesi yalniz PASS durumunda doldurulur.
+22. Validation-only/default-off `ci-gate-execution-worker-completion`, Ring3 fixture worker payload'i ve workflow'u eklendi; stub kapaliyken public `submit_execution(1003)` -> `complete_execution(1011)` -> `wait_result(1004)` yolu gercek QEMU boot'unda local PASS uretti.
+23. Ring3 worker'in dogrudan yazdigi output icin marker yayini, kernel output header/bounds dogrulamasindan sonraya baglandi; gecersiz output basarili lifecycle evidence'i uretmez.
+24. Completion terminal cleanup/release yolu gecici kernel-root access scope icinde tutuldu; user CR3 altinda direct-map unmap page fault'u olusturan gerileme kapatildi.
+25. PR-2B witness'i zaten ratified `complete_execution(1011)` yuzeyini kullanir; syscall ABI veya Ring0/Ring3 policy siniri genisletilmedi.
+26. Validation-only/default-off ve stub-off `ci-gate-execution-timeout-race`, Ring3 timeout-race payload'i ve aday workflow'u eklendi; delivered `RUNNING` slot icin real timer IRQ timeout-wins davranisi local QEMU'da PASS uretti.
+27. PR-3 harness'i yalniz validation image'inda delivered `RUNNING` is icin bounded logical deadline arm eder; Ring3 public `wait_result(1004)` ile `TIMEOUT` gorur ve gecikmis public `complete_execution(1011)` `ESYS_V2_INVALID_STATE` ile fail-closed reddedilir.
+28. Timer IRQ timeout terminal cleanup yolu gecici kernel-root access scope icine alindi; ilk PR-3 denemesinde user CR3 altinda gorulen direct-map page fault kapatildi ve timeout yolu tamamlanmis sonuc yayimlamadi.
+29. Worker ve timeout-race payload'larinda son userspace postcondition tanigi tek karakterli validation marker'ina indirildi; yogun IRQ/debug output altinda uzun heartbeat kaynakli timeout evidence verdict'ini bozmaz.
+30. PR-3 yeni syscall, policy veya production selftest davranisi eklemez; yalniz tek validation-only timeout-wins interleaving kanitlar.
+31. PR-4 icin `ci-gate-phase17-performance-acceptance` ve `ci-gate-phase17-performance-readiness-local` hedefleri, scoped validator ve aday GitHub Actions workflow'u eklendi; mevcut constitutional performance baseline yeniden kullanilir ve degistirilmez.
+32. Remote PR-4 modu, yalniz locked Ubuntu authority PASS, environment/image digest uyumu ve olculen build'de Phase-17 validation flag'lerinin default-off kaydi ile closure candidate bileseni olabilir; local mod daima closure-ineligible diagnostiktir.
+33. Local performance readiness repeat kosusu PASS uretti ve mevcut gitignored local baseline ile `baseline_status=match` kaydetti; boot median `11183.0 ms`, context/syscall proxy median `185.032787 ms` olup baseline lock yenilenmedi.
+34. PR-4'un mevcut olcum yuzeyi timer/preemption hot path'idir; validation-only worker completion veya timeout-race payload latency kabulunu kanitlamaz.
+35. Ayni `r2` kaniti uzerindeki local stability gate FAIL verdi: boot range `11.5443% > 5%`, context/syscall proxy range `8.6560% > 3%`; bu jitter remote acceptance oncesi incelenmesi gereken acik performans riskidir.
+36. README'deki stale performance digest metadatasi canonical lock'a gore `gha-ubuntu24-20260406.80.1-X64` olarak duzeltildi; baseline renewal bu changeset'te yapilmadi.
+37. Local PR-4 validator'u stability raporunu zorunlu input olarak alacak bicimde fail-closed sertlestirildi; ayni `r2` median PASS/stability FAIL evidence'i artik `phase17-performance-acceptance: FAIL (local_diagnostic_fail)` verir.
+38. PR-4A icin `ci-gate-phase17-performance-variance-diagnostic` eklendi; bu hedef mevcut local evidence'i yeniden olcum yapmadan okuyarak variance fingerprint ve ortak outlier siniflandirmasi uretir.
+39. PR-4A local kaniti, PASS referans run ile FAIL repeat run arasinda `repeat_run_divergence_observed` ve uc olcum proxy'sinde ortak `sample-6` sapmasi (`synchronized_sample_outlier_observed`) kaydetti; ayni ornekte QEMU elapsed sure `%8.52` artarken switch/iret marker sayilari, `proof_done` ve timeout durumu sabit kaldi. Bu sonuc acceptance veya kok neden iddiasi degildir.
+40. PR-4B icin `ci-gate-phase17-performance-variance-isolation` eklendi; ayni PR-4 deterministic preempt kontratini `image-reuse` ve `rebuild-per-run` kosullarinda terminal-counter/runtime-contract paritesi ile fail-closed denetleyerek bounded stage-localization olcumu yapar.
+41. PR-4B `local-phase17-variance-isolation-20260524-r3` kanitinda onceki `sample-6` sapmasi yeniden uretilmedi: image-reuse tepe farki `%1.300080`, rebuild-per-run tepe farki `%0.743889` olup `%3` diagnostic esigin altinda kaldi. Bu sonuc onceki readiness FAIL'i, kok neden bekleyisini veya remote acceptance gereksinimini kaldirmaz.
+
+Tarihli eski faz snapshot belgelerinde, ratification oncesi `1000-1010` /
+11-syscall anlatimi tarihsel kayit olarak kalabilir; guncel ve normatif
+otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
+
+## Guvenlik ve Mimari Kararlar
+
+- Ring0 mekanizma, Ring3 policy ayrimi degistirilmedi.
+- Gozlem/evidence verisi runtime karar girdisi yapilmadi.
+- Kenan AY atfi runtime loguna veya execution kararina eklenmedi; yalnizca belge/script metadata'si olarak kullanildi.
+- Phase-17 Step 5 birlesmesi, resmi kapanis etiketi veya closure manifesti olmadan tum faz kapanisi olarak sunulmadi.
+- Yeni spec-purity kapisi runtime yuzeyine dokunmaz; yalnizca normatif sozlesmelerde implementation syntax sizintisini engeller.
+- Marker izolasyon kapisi artik ihlalleri parent shell'de fail-closed biriktirir; test injection bridge disindaki phase-specific kernel coupling reddedilir.
+- Syscall yuzeyi genisletilmedi: mevcut ABI lock'ta zaten bulunan `1000-1011` / 12 kontrati ile canonical surum kaynaginin drift'i giderildi.
+- Lifecycle selftest'i yalnız validation profilinde ve iki acik feature flag ile calisir; flag kapaliyken declaration/definition/boot invocation production image yuzeyine girmez.
+- Invalid-order injection ve negative-expect yolu yalniz validation/lifecycle selftest konfigurasyonunda acilabilir; tum yeni flag'ler production default-off kalir.
+- Lifecycle/determinism selftest evidence'i public syscall E2E sayilmaz; yeni S1.E2E gate'i ise yalniz validation-only deterministic stub ile public result-publication yolunu kanitlar ve resmi Phase-17 kapanisi sayilmaz.
+- PR-2B worker-completion gate'i stub kapali halde yalniz tek bounded literal fixture'in public completion sonucunu kanitlar; genel BCIB interpreter, opcode kapsamı veya resmi closure iddiasi uretmez.
+- Ring3 dogrudan output yazimi ancak kernel header/bounds dogrulamasi sonrasinda acceptance marker'i uretir; gecersiz metadata fail-closed kalir.
+- Kernel-owned backing icin gecici kernel-root scope user erisim izni acmaz; user input bounded staging kopyasi execution-slot critical section'i icinde temizlenir.
+- No-switch IRQ donusu ayni Ring3 baglami icin original interrupt frame'ini korur; public syscall return degerinin preemption ile kaybi fail-closed QEMU kabulunde kapatildi.
+- PR-3 timer IRQ terminal cleanup scope duzeltmesi kullaniciya yeni mapping veya permission vermez; timeout sonrasi gecikmis `1011` basariya donusturulemez.
+- PR-3 evidence'i tek validation-injected timeout-wins interleaving ile sinirlidir; exhaustive race matrisi veya SMP safety iddiasi kurulmaz.
+
+## Performans ve Determinizm Kararlari
+
+- Kernel execution-slot altyapisinda mevcut deterministik logical tick/state trace modeli korunur.
+- `rdtsc` veya wall-clock degerleri authoritative execution evidence icine alinmaz.
+- Performans degerlendirmesi mevcut izole performance gate/baseline otoritesinde tutulur.
+- Yeni governance kapisi statik taramadir; kernel hot path veya release runtime maliyeti eklemez.
+- Public submit/wait guvenlik duzeltmesi kernel-owned backing erisimi sirasinda CR3 scope maliyeti ekleyebilir; kabul edilebilir overhead iddiasi PR-4 locked-baseline performance kaniti olmadan kurulmaz.
+- Worker completion terminal cleanup'inin kernel-root scope kapsaminda tutulmasi da olculmesi gereken ek maliyet yuzeyidir; PR-2B bu maliyet icin performans kabulu kurmaz.
+- PR-3 logical deadline/marker instrumentation'i validation-only ve default-off'tur; timer IRQ kernel-root cleanup scope mevcut deterministic preempt harness icinde yerel diagnostik PASS almistir, ancak remote PR-4 locked-authority PASS olmadan performans kabulu kurulmaz.
+- PR-4 local median alt-kapi sonucu closure veya locked-baseline authority degildir; readiness validator stability FAIL'i artik fail-closed reddeder ve validation-only worker/timeout payload latency yuzeyi bu paketin olcum iddiasi disindadir.
+- Bir onceki local stability kosusu PASS olsa da repeat `r2` stability FAIL verdi; local median PASS tek basina tekrarlanabilir performans kabulü sayilmaz.
+- PR-4A diagnostic PASS, upstream stability FAIL kararini `blocked_by_source_stability_failure` olarak korur; baseline/threshold degisikligi, remote kabul veya kok neden iddiasi kurmaz.
+- PR-4B bounded diagnostic PASS, ayni PR-4 runtime kontrati altinda sapmanin yeniden uretilmedigini kaydeder; non-reproduction threshold/baseline degisikligi, host/QEMU nedenselligi veya remote kabul sayilmaz.
+- Validation-only yollar buyumeden once production default, olculen yuzey, owner ve kapanis kosulunu kaydeden declarative matrix olusturulmalidir.
+
+## Bu Degisiklik Icin Yerel Dogrulama
+
+| Denetim | Sonuc | Kapsam |
+|---|---|---|
+| `make generate-abi` | PASS | Canonical `shared/abi/ayken_abi.h` kaynagindan `0x00010001` generated include uretimi |
+| `scripts/ci/gate_abi.sh` canonical payload validation | PASS | `shared/abi` source hash/parsing, `1000-1011` / 12 lock ve yenilenmis baseline payload karsilastirmasi |
+| `make all` | PASS | Canonical ABI metadata senkronizasyonu ile kernel build/link; Ring0 export map 193 symbol |
+| `make ci-gate-constitutional` | PASS | Constitutional syscall dogrulamasi canonical `shared/abi/syscall_v2.h` kaynagi uzerinden |
+| `./scripts/ci/ci-gate-execution-marker-isolation.sh` | PASS | Default-off guard, test-only injection izolasyonu ve logical tick kontrati |
+| `make ci-gate-execution-slot-integrity RUN_ID=local-execution-slot-integrity-20260523-final` | PASS | Standalone report/summary, production slot korumasi, fail-closed prototype reddi ve dogru bos-liste evidence JSON'u |
+| `make ci-gate-execution-marker-isolation RUN_ID=local-execution-marker-isolation-pr2-20260523` | PASS | Standalone parent-run report/summary ile fail-closed izolasyon; injection/negative flag default-off denetimi |
+| `make ci-gate-execution-marker-lifecycle RUN_ID=local-phase17-lifecycle-20260523-final` | PASS | Marker-enabled gercek kernel/QEMU tek-slot lifecycle; 7 ordered marker, `RESULT_MAPPED`; local-only authority |
+| `make ci-gate-execution-marker-lifecycle RUN_ID=local-phase17-lifecycle-20260523-pr2` | PASS | Tek-slot lifecycle regresyonu ve kernel result fingerprint emission |
+| `make ci-gate-execution-marker-determinism RUN_ID=local-phase17-determinism-negative-20260523` | PASS | Iki QEMU boot ayni SHA-256 fingerprint; invalid-order hash/mapping oncesi reddedildi; local-only authority |
+| `make ci-gate-execution-public-e2e RUN_ID=local-phase17-public-e2e-20260524-r9 EVIDENCE_ROOT=evidence EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT=35` | PASS | Public Ring3 `1003` submit, scheduler pickup/stub completion, `1004` frozen mapped-result okuma ve post-read canonical heartbeat; validation-only |
+| `make ci-gate-execution-worker-completion RUN_ID=local-phase17-worker-completion-race-regression-20260524-r2 EVIDENCE_ROOT=evidence EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT=35` | PASS | Stub kapali Ring3 fixture worker public `1003 -> 1011 -> 1004` sonucu; atomik Ring3 postcondition witness, genel interpreter degil |
+| `make ci-gate-execution-public-e2e RUN_ID=local-phase17-public-e2e-worker-regression-20260524` | PASS | Worker completion degisikligi sonrasi stub tabanli public E2E gerileme denetimi |
+| `make ci-gate-execution-marker-lifecycle RUN_ID=local-phase17-lifecycle-worker-regression-20260524` | PASS | Direct output marker/cleanup duzeltmeleri sonrasi lifecycle gerileme denetimi |
+| `make ci-gate-execution-marker-determinism RUN_ID=local-phase17-determinism-worker-regression-20260524` | PASS | Direct output marker/cleanup duzeltmeleri sonrasi repeat/negative gerileme denetimi |
+| `make ci-gate-syscall-v2-runtime RUN_ID=local-syscall-v2-worker-completion-regression-20260524` | PASS | Existing public syscall runtime kontrati ve IRQ donus register korumasi |
+| `make ci-gate-execution-timeout-race RUN_ID=local-phase17-timeout-race-20260524-r5 EVIDENCE_ROOT=evidence EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT=35` | PASS | Validation-only bounded deadline; real timer IRQ `TIMEOUT` terminali public gecikmis `1011` reddinden once kazanir; stub disabled |
+| `make ci-gate-execution-marker-determinism RUN_ID=local-phase17-determinism-race-regression-20260524 EVIDENCE_ROOT=evidence EXECUTION_MARKER_DETERMINISM_QEMU_TIMEOUT=35` | PASS | PR-3 sonrasi repeat fingerprint ve negative-order determinism kontrati gerilemedi |
+| `make ci-gate-syscall-v2-runtime RUN_ID=local-syscall-v2-race-regression-20260524 EVIDENCE_ROOT=evidence` | PASS | PR-3 timeout cleanup sonrasi frozen public syscall runtime yuzeyi gerilemedi |
+| `ci-gate-performance-local` alt-kapisi (`local-phase17-performance-readiness-20260524-r2` run'i icinde) | PASS | Existing timer/preemption harness local baseline `match`, boot median `11183.0 ms`, context/syscall proxy median `185.032787 ms`; readiness verdict'i tek basina kurmaz |
+| `make ci-gate-performance-stability RUN_ID=local-phase17-performance-readiness-20260524 EVIDENCE_ROOT=evidence` | PASS | Ilk local bes-ornekli kosu stability contract'i sagladi; resmi performance acceptance sayilmaz |
+| `make ci-gate-performance-stability RUN_ID=local-phase17-performance-readiness-20260524-r2 EVIDENCE_ROOT=evidence` | FAIL | Repeat olcumde boot/context/syscall range guard ihlalleri; jitter acik risk olarak kaydedildi, remote kabul kurulamaz |
+| `python3 tools/ci/validate_phase17_performance_acceptance.py --mode local-readiness ...r2...` (stability raporu ile hardened re-evaluation) | EXPECTED FAIL | Median PASS + stability FAIL artik `local_diagnostic_fail` uretir; fail-open readiness iddiasi kapatildi |
+| `make ci-gate-phase17-performance-variance-diagnostic RUN_ID=local-phase17-variance-diagnostic-20260524 ...` | PASS (DIAGNOSTIC ONLY) | Referans PASS / repeat FAIL divergence; ortak `sample-6` outlier; QEMU elapsed `%8.52` artarken observed terminal counts sabit; acceptance `blocked_by_source_stability_failure` olarak korunur |
+| `make ci-gate-phase17-performance-variance-isolation RUN_ID=local-phase17-variance-isolation-20260524-r3 ...` | PASS (DIAGNOSTIC ONLY) | Ayni PR-4 contract altinda image-reuse `%1.300080`, rebuild-per-run `%0.743889`; onceki outlier yeniden uretilmedi, remote acceptance halen zorunlu |
+| `python3 -m py_compile tools/ci/validate_phase17_performance_acceptance.py tools/ci/analyze_phase17_performance_variance.py tools/ci/analyze_phase17_variance_isolation.py` | PASS | PR-4/PR-4A/PR-4B validator/analyzer syntax denetimi |
+| `make clean` + `make all` (2026-05-24) | PASS | Varsayilan build; Ring0 export map 193 symbol, E2E/worker flags default-off |
+| `make ci-gate-governance` | PASS | Evidence isolation, observation boundary, naming compliance ve normative spec purity |
+| `python3 tools/ci/phase17_spec_validation_gate.py` | PASS | 2 validated spec, 19 allowlisted legacy spec, 0 violation |
+| `make -n ci-freeze` siralama kontrolu | PASS | `ci-gate-spec-purity`, drift ve performance kapilarindan once cagrilir |
+| `git diff --check` | PASS | Degisiklik hijyeni |
+
+`make ci-freeze` tam remote/clean-tree otoritesi bu calisma agaci commit
+edilip PR CI tarafindan calistirildiginda kurulacaktir; yerel PASS sonucu
+resmi faz kapanisi veya merge yetkisi olarak yorumlanmaz.
+
+ABI baseline lock degisikligi freeze kapsaminda tracked olarak yer alir; normal
+baseline kabul otoritesi de clean-tree PR CI incelemesidir.
+
+## Kapanis Icin Kalan Teknik Kabul
+
+1. PR-1, PR-2, PR-2A/S1.E2E, PR-2B fixture worker completion ve PR-3 IRQ timeout-race local QEMU evidence paketlerinin clean-tree remote PR CI/review ile kabul edilmesi.
+2. Genel BCIB interpreter/opcode yuzeyi veya urunlestirilmis Ring3 worker semantic coverage kaniti; PR-2B yalniz bounded literal fixture'i kanitlar.
+3. Gerekiyorsa PR-3'un tek timeout-wins senaryosu disinda broader/exhaustive scheduler-interrupt race ve SMP coverage kaniti.
+4. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; bu non-reproduction sonucu kok neden yerine gecmez. Siradaki authority geregi PR-4 remote constitutional locked-baseline performance acceptance PASS'tir; remote sapma halinde ayni stage-localization CI ortaminda tekrarlanir.
+5. Bu kanitlara dayali Phase-17 closure manifesti ve resmi kapanis etiketi.
+6. Canonical ABI/baseline senkronizasyonunun clean-tree PR CI ile kabul edilmesi.
+
+## Oncelik Sirasi
+
+**En oncelikli adim:** PR-4B bounded local kampanyada `sample-6` sapmasini yeniden uretmedi, ancak PR-4 readiness FAIL geri alinmadi. Siradaki authority islemi clean-tree remote PR-4 locked-baseline performance sonucunu almaktir; remote stability sapmasi gorulurse ayni stage-localization olcumu CI authority baglaminda tekrar edilmelidir. Genel BCIB semantic kapsami, feature-specific latency ve gerekebilecek broader race/SMP coverage ayrik, sinirli paketler olarak ele alinmalidir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - PR-0 local validated; PR-1 lifecycle, PR-2 determinism/negative, PR-2A public Ring3 S1.E2E, PR-2B stub-off fixture worker completion ve PR-3 IRQ timeout-race real kernel/QEMU local PASS; PR-4 readiness FAIL; PR-4A outlier diagnostic local PASS; PR-4B bounded non-reproduction local PASS; kok neden ve remote locked-baseline authority pending.
+
+---
+
+**Dijital imza / attribution:** Kenan AY - Duzenleyen, Gelistiren, Olusturan ve Mimari Sorumlu
+**Yetki notu:** Belgesel metadata; sistem otoritesi veya runtime karari degildir.

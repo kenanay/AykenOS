@@ -772,7 +772,7 @@ kernel/
 │
 ├── sys/                           # Sistem çağrıları
 │   ├── syscall.c/.o              # Syscall dispatcher
-│   ├── syscall_v2.c/.h/.o        # V2 syscall implementasyonu (1000-1010)
+│   ├── syscall_v2.c/.h/.o        # V2 syscall implementasyonu (1000-1011)
 │   ├── capability_manager.c/.o   # Capability yönetimi
 │   │
 │   └── [test files]              # Çeşitli test dosyaları
@@ -791,7 +791,7 @@ kernel/
 
 **Ring0 (Kernel Mode):**
 - Sadece mekanizma implementasyonları
-- 11 execution-centric syscall (1000-1010)
+- 12 execution-centric syscall (1000-1011)
 - Bellek yönetimi (physical, virtual, heap)
 - Context switching
 - Interrupt handling
@@ -1224,7 +1224,7 @@ Not: Root altında `README.md` dışındaki governance template dosyaları tutul
 - ✅ Bellek yönetimi (physical, virtual, heap)
 - ✅ Ring3 kullanıcı süreçleri
 - ✅ Preemptive multitasking
-- ✅ 11 execution-centric syscall (1000-1010)
+- ✅ 12 execution-centric syscall (1000-1011)
 - ✅ Capability-based security
 - ✅ Framebuffer konsolu (UTF-8/Türkçe)
 - ✅ Boot UI (splash, logo, progress)

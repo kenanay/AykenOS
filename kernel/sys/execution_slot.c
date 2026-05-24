@@ -326,6 +326,9 @@ static inline uint64_t vcp_get_logical_timestamp(void)
     /* Use execution tick counter (deterministic, monotonic) */
     return timer_ticks();
 }
+
+/*
+ * execution_slot_marker_capture_locked - Append one lifecycle marker
  * 
  * @slot: Execution slot
  * @marker: Marker to capture
@@ -336,9 +339,9 @@ static inline uint64_t vcp_get_logical_timestamp(void)
  * Fail-fast: Once an error occurs, all subsequent marker captures are ignored.
  * This ensures deterministic trace and prevents garbage data.
  * 
- * Rule: WRITE FIRST → VALIDATE LATER
+ * Rule: WRITE FIRST, VALIDATE LATER.
  * 
- * This helper is NOT called yet (Step 4 adds call sites).
+ * Callers remain behind the default-off validation feature flag.
  */
 static inline void execution_slot_marker_capture_locked(
     exec_slot_t *slot,
@@ -862,15 +865,6 @@ int execution_slot_finish_locked(exec_slot_t *slot, exec_slot_state_t next_state
         return -1;
     }
 
-#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture lifecycle markers based on target state */
-    if (next_state == EXEC_SLOT_COMPLETED) {
-        execution_slot_marker_capture_locked(slot, MARKER_EXEC_COMPLETE_OK);
-    } else if (next_state == EXEC_SLOT_RESULT_MAPPED) {
-        execution_slot_marker_capture_locked(slot, MARKER_WAIT_OK);
-    }
-#endif
-
     if (next_state == EXEC_SLOT_FAILED ||
         next_state == EXEC_SLOT_TIMEOUT ||
         next_state == EXEC_SLOT_ABORTED) {
@@ -949,6 +943,149 @@ void execution_slot_run_fail_closed_selftest(void)
                                  EXEC_SLOT_COMPLETED);
 #endif
 }
+
+#if defined(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST) && (AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST == 1)
+void execution_slot_run_marker_lifecycle_selftest(void)
+{
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    static const uint8_t bcib_payload[] = {'B', 'C', 'I', 'B', 0x17u, 0x01u};
+    static const uint64_t result_payload = AYKEN_BCIB_STUB_RESULT_VALUE_U64;
+    execution_slot_guard_t slot_guard = {0};
+    execution_slot_trace_scope_t trace_scope = {0};
+    exec_slot_t *slot = NULL;
+    exec_slot_t *picked_slot = NULL;
+    const ayken_execution_result_hash_v1_t *hash_header = NULL;
+    uint8_t i;
+    int valid = 1;
+#if defined(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT) && (AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT == 1)
+    const int expect_rejection = 1;
+#else
+    const int expect_rejection = 0;
+#endif
+
+    execution_slot_debugcon_write("[[AYKEN_EXECUTION_MARKER_LIFECYCLE_ARMED]]\n");
+    execution_slot_enter_critical(&slot_guard);
+    execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_VALIDATION);
+
+    slot = execution_slot_alloc_locked(0x1701u, 0x1702u);
+    if (!slot ||
+        execution_slot_store_bcib_locked(slot, bcib_payload, sizeof(bcib_payload)) != 0 ||
+        execution_slot_transition_locked(slot, EXEC_SLOT_CREATED, EXEC_SLOT_READY) != 0 ||
+        execution_slot_enqueue_locked(slot) != 0) {
+        valid = 0;
+    }
+
+    if (valid) {
+        picked_slot = execution_slot_pickup_locked(0x1702u);
+        if (picked_slot != slot ||
+            execution_slot_prepare_output_locked(slot) != 0 ||
+            execution_slot_write_output_v1_locked(slot,
+                                                  &result_payload,
+                                                  sizeof(result_payload)) != 0 ||
+            execution_slot_validate_output_locked(slot, NULL) != 0) {
+            valid = 0;
+        }
+    }
+
+    if (valid && expect_rejection) {
+        if (execution_slot_prepare_result_locked(slot) == 0 ||
+            slot->state != EXEC_SLOT_RUNNING ||
+            slot->hash_frame != 0 ||
+            slot->hash_size != 0 ||
+            slot->mapped_result_va != 0 ||
+            slot->mapped_hash_va != 0 ||
+            slot->marker_count != 5 ||
+            slot->marker_sequence[0] != MARKER_EXEC_START ||
+            slot->marker_sequence[1] != MARKER_EXEC_COMPLETE_OK ||
+            slot->marker_sequence[2] != MARKER_EXEC_OUTPUT_WRITTEN ||
+            slot->marker_sequence[3] != MARKER_VERIFY_START ||
+            slot->marker_sequence[4] != MARKER_VERIFY_PASS) {
+            valid = 0;
+        }
+    }
+
+    if (valid && !expect_rejection &&
+        (execution_slot_prepare_result_locked(slot) != 0 ||
+         execution_slot_finish_locked(slot, EXEC_SLOT_COMPLETED) != 0 ||
+         execution_slot_record_result_mapping_locked(
+             slot,
+             execution_slot_result_va_locked(slot),
+             execution_slot_result_hash_va_locked(slot),
+             AYKEN_PTE_USER | AYKEN_PTE_READ_ONLY | AYKEN_PTE_NO_EXEC) != 0)) {
+        valid = 0;
+    }
+
+    if (valid && !expect_rejection &&
+        (slot->state != EXEC_SLOT_RESULT_MAPPED ||
+         slot->marker_count != MARKER_COUNT ||
+         slot->marker_bitmap != 0x7Fu ||
+         slot->marker_error_code != MARKER_ERROR_NONE ||
+         execution_slot_verify_global_invariants_locked() != 0)) {
+        valid = 0;
+    }
+
+    if (valid && !expect_rejection) {
+        for (i = 0; i < MARKER_COUNT; ++i) {
+            if (slot->marker_sequence[i] != i) {
+                valid = 0;
+                break;
+            }
+        }
+    }
+
+    if (valid && !expect_rejection) {
+        hash_header = (const ayken_execution_result_hash_v1_t *)
+            paging_phys_to_virt(slot->hash_frame);
+        if (!hash_header ||
+            hash_header->magic != AYKEN_EXECUTION_RESULT_HASH_MAGIC ||
+            hash_header->abi_version != AYKEN_EXECUTION_RESULT_HASH_VERSION ||
+            hash_header->algorithm != AYKEN_RESULT_HASH_ALG_SHA256 ||
+            hash_header->hashed_size != slot->result_size) {
+            valid = 0;
+        }
+    }
+
+    if (valid && expect_rejection) {
+        for (i = 0; i < slot->marker_count; ++i) {
+            execution_slot_debugcon_write("[[AYKEN_EXECUTION_MARKER_NEGATIVE_EVENT]] name=");
+            execution_slot_debugcon_write(
+                execution_marker_name((execution_marker_t)slot->marker_sequence[i]));
+            execution_slot_debugcon_write("\n");
+        }
+        execution_slot_debugcon_write(
+            "[[AYKEN_EXECUTION_MARKER_NEGATIVE_OK]] reason=invalid_order state=2 hash_size=0 mapped=0 result_ok=0 wait_ok=0\n");
+    } else if (valid) {
+        for (i = 0; i < MARKER_COUNT; ++i) {
+            execution_slot_debugcon_write("[[AYKEN_EXECUTION_MARKER_EVENT]] name=");
+            execution_slot_debugcon_write(
+                execution_marker_name((execution_marker_t)slot->marker_sequence[i]));
+            execution_slot_debugcon_write("\n");
+        }
+        execution_slot_debugcon_write(
+            "[[AYKEN_EXECUTION_MARKER_RESULT_HASH]] sha256=");
+        execution_slot_debugcon_write_sha256(hash_header->digest);
+        execution_slot_debugcon_write("\n");
+        execution_slot_debugcon_write(
+            "[[AYKEN_EXECUTION_MARKER_LIFECYCLE_OK]] count=7 bitmap=127 state=6\n");
+    }
+
+    if (slot) {
+        execution_slot_release_locked(slot);
+    }
+    execution_slot_trace_scope_exit(&trace_scope);
+    execution_slot_exit_critical(&slot_guard);
+
+    if (!valid) {
+        execution_slot_debugcon_write("[[AYKEN_EXECUTION_MARKER_LIFECYCLE_FAIL]]\n");
+        for (;;) {
+            __asm__ volatile("cli; hlt");
+        }
+    }
+#else
+#error AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1
+#endif
+}
+#endif
 
 uint32_t execution_slots_capacity(void)
 {
@@ -1276,11 +1413,6 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
     uint64_t total_size;
     uint32_t i;
 
-#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture VERIFY_START marker at beginning of validation */
-    execution_slot_marker_capture_locked(slot, MARKER_VERIFY_START);
-#endif
-
     if (!slot || !slot->in_use || slot->state != EXEC_SLOT_RUNNING) {
         return -1;
     }
@@ -1312,7 +1444,18 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
         }
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-        /* Capture VERIFY_PASS marker after successful v1 validation */
+        /*
+         * A Ring3 worker writes directly into its output window. Once the
+         * kernel accepts that header, acknowledge the write before completion
+         * and verification markers. Stub writers already captured this event.
+         */
+        if (slot->marker_count == 1 &&
+            slot->marker_sequence[0] == MARKER_EXEC_START &&
+            slot->marker_bitmap == (uint8_t)(1u << MARKER_EXEC_START)) {
+            execution_slot_marker_capture_locked(slot, MARKER_EXEC_OUTPUT_WRITTEN);
+        }
+        execution_slot_marker_capture_locked(slot, MARKER_EXEC_COMPLETE_OK);
+        execution_slot_marker_capture_locked(slot, MARKER_VERIFY_START);
         execution_slot_marker_capture_locked(slot, MARKER_VERIFY_PASS);
 #endif
 
@@ -1342,7 +1485,13 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
     }
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
-    /* Capture VERIFY_PASS marker after successful v2 validation */
+    if (slot->marker_count == 1 &&
+        slot->marker_sequence[0] == MARKER_EXEC_START &&
+        slot->marker_bitmap == (uint8_t)(1u << MARKER_EXEC_START)) {
+        execution_slot_marker_capture_locked(slot, MARKER_EXEC_OUTPUT_WRITTEN);
+    }
+    execution_slot_marker_capture_locked(slot, MARKER_EXEC_COMPLETE_OK);
+    execution_slot_marker_capture_locked(slot, MARKER_VERIFY_START);
     execution_slot_marker_capture_locked(slot, MARKER_VERIFY_PASS);
 #endif
 
@@ -1616,19 +1765,16 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
                                                 uint64_t mapped_hash_va,
                                                 uint64_t map_flags)
 {
+    int first_mapping;
+
     if (!slot || !slot->in_use || mapped_result_va == 0) {
         return -1;
     }
 
-    if (slot->state == EXEC_SLOT_COMPLETED) {
-        execution_slot_require_transition_locked(slot,
-                                                 EXEC_SLOT_COMPLETED,
-                                                 EXEC_SLOT_RESULT_MAPPED,
-                                                 "execution_slot_record_result_mapping_locked");
-    } else if (slot->state != EXEC_SLOT_RESULT_MAPPED) {
+    if (slot->state != EXEC_SLOT_COMPLETED &&
+        slot->state != EXEC_SLOT_RESULT_MAPPED) {
         return -1;
     }
-
     if (slot->mapped_result_va != 0 && slot->mapped_result_va != mapped_result_va) {
         return -1;
     }
@@ -1639,9 +1785,24 @@ int execution_slot_record_result_mapping_locked(exec_slot_t *slot,
         return -1;
     }
 
+    first_mapping = slot->state == EXEC_SLOT_COMPLETED;
+    if (first_mapping) {
+        execution_slot_require_transition_locked(slot,
+                                                 EXEC_SLOT_COMPLETED,
+                                                 EXEC_SLOT_RESULT_MAPPED,
+                                                 "execution_slot_record_result_mapping_locked");
+    }
+
     slot->mapped_result_va = mapped_result_va;
     slot->mapped_hash_va = mapped_hash_va;
     slot->result_map_flags = map_flags;
+
+#if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+    if (first_mapping) {
+        execution_slot_marker_capture_locked(slot, MARKER_WAIT_OK);
+    }
+#endif
+
     return 0;
 }
 

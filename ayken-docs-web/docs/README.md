@@ -2,6 +2,14 @@
 
 Bu dizin, AykenOS'un tüm dokümantasyon içeriğini barındırır.
 
+## Durum Otoritesi
+
+Kategori içerikleri eğitim ve referans amaçlıdır. Güncel Phase-17
+stabilizasyon durumu için
+[`../PROJECT_STATUS_2026_05_24.md`](../PROJECT_STATUS_2026_05_24.md)
+okunmalıdır. Phase-17 formal closure pending durumundadır; PR-4A diagnostic
+PASS, performance acceptance veya closure değildir.
+
 ## Dizin Yapısı
 
 ```

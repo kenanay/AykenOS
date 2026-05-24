@@ -38,7 +38,7 @@ Without this contract matrix, layer boundaries blur, replay fails, and proof int
 | Source | Target | Format | Validation | Authority |
 |--------|--------|--------|-----------|-----------|
 | **ABDF → BCIB** | object reference | `obj_id` | type check | BCIB runtime |
-| **BCIB → Kernel** | syscall | syscall ABI (1000-1010) | capability check | kernel |
+| **BCIB → Kernel** | syscall | syscall ABI (1000-1011; 12 calls) | capability check | kernel |
 | **BCIB → Phase-11** | indirect (via kernel events) | syscall → event | ordering | Phase-11 |
 | **Kernel → Phase-11** | event | `ay_event_type_t` | sequence check | ordering layer |
 | **Phase-11 → Evidence** | serialized proof | JSON/binary | hash check | CI gates |
@@ -118,7 +118,7 @@ verification
 | Boundary | Allowed Operations | Forbidden Operations | Enforcement |
 |----------|-------------------|---------------------|-------------|
 | **BCIB → ABDF** | read segment, query meta, resolve type | modify kernel state, direct memory access | runtime validation |
-| **BCIB → Kernel** | syscall (1000-1010), capability ops | direct hardware access, interrupt injection | syscall gate |
+| **BCIB → Kernel** | syscall (1000-1011), capability ops | direct hardware access, interrupt injection | syscall gate |
 | **Kernel → Phase-11** | append ledger, append transcript | modify past entries, skip ordering | ordering layer |
 | **Phase-11 → Evidence** | serialize, export | modify evidence, delete entries | CI hygiene gate |
 
@@ -136,8 +136,8 @@ verification
 
 | ABDF Type | BCIB Opcode | Kernel Mechanism | Phase-11 Event |
 |-----------|-------------|------------------|----------------|
-| `Tabular` | `DataQuery` | syscall (1000-1010) | `AY_EVT_SYSCALL_ENTER/EXIT` |
-| `Log` | `DataAdd` | syscall (1000-1010) | `AY_EVT_SYSCALL_ENTER/EXIT` |
+| `Tabular` | `DataQuery` | syscall (1000-1011) | `AY_EVT_SYSCALL_ENTER/EXIT` |
+| `Log` | `DataAdd` | syscall (1000-1011) | `AY_EVT_SYSCALL_ENTER/EXIT` |
 | `UiScene` | `UiRender` | context switch | `AY_EVT_CTX_SWITCH` |
 | `GpuBuffer` | `DataCreate` | mailbox | `AY_EVT_MAILBOX_ACCEPT/REJECT` |
 | `Tensor` | `AiAsk` | policy swap | `AY_EVT_POLICY_SWAP` |
@@ -335,7 +335,7 @@ deterministic finalization
 
 - `ayken-core/crates/abdf/` - ABDF implementation
 - `ayken-core/crates/bcib/` - BCIB implementation
-- `kernel/include/ayken_abi.h` - Syscall ABI
+- `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h` - canonical syscall ABI
 - `docs/architecture-board/decisions/` - ADRs
 - `evidence/` - Evidence directory structure
 

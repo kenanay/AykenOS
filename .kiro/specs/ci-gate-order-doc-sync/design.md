@@ -2,7 +2,7 @@
 
 **Feature:** ci-gate-order-doc-sync  
 **Status:** Active  
-**Design Version:** 1.0
+**Design Version:** 1.1
 
 ## Design Overview
 
@@ -12,7 +12,7 @@ This design addresses the documentation synchronization required after reorderin
 
 ### Current State
 
-**Makefile `ci-freeze` target (current authority, 2026-05-22):**
+**Makefile `ci-freeze` target (current authority, 2026-05-23):**
 ```makefile
 ci-freeze: ci-freeze-guard preflight-mode-guard \
   ci-gate-abi \
@@ -25,6 +25,7 @@ ci-freeze: ci-freeze-guard preflight-mode-guard \
   ci-gate-constitutional \
   ci-gate-governance-policy \
   ci-gate-naming-convention \
+  ci-gate-spec-purity \
   ci-gate-drift-activation \
   ci-gate-structural-abi \
   ci-gate-runtime-marker-contract \
@@ -56,7 +57,7 @@ ci-freeze: ci-freeze-guard preflight-mode-guard \
   ci-gate-bcib-stub-determinism
 ```
 
-**Key Change:** The previous performance-gate reorder remains in force, and the documentation now also captures the later execution-slot, marker-isolation, Phase-13, Phase-15, and Phase-17 execution-pipeline gates that were added to `ci-freeze`.
+**Key Change:** The previous performance-gate reorder remains in force, and the strict chain now includes normative specification purity enforcement before drift/runtime lanes.
 
 ### Design Decisions
 
@@ -111,6 +112,7 @@ make ci-gate-tooling-isolation
 make ci-gate-constitutional
 make ci-gate-governance-policy
 make ci-gate-naming-convention
+make ci-gate-spec-purity
 make ci-gate-drift-activation
 make ci-gate-structural-abi
 make ci-gate-runtime-marker-contract
@@ -189,41 +191,42 @@ The following gates execute in order during `make ci-freeze`. Execution order is
 8. `make ci-gate-constitutional` - Constitutional compliance
 9. `make ci-gate-governance-policy` - Governance policy enforcement
 10. `make ci-gate-naming-convention` - Naming convention enforcement
-11. `make ci-gate-drift-activation` - Drift blocking activation
-12. `make ci-gate-structural-abi` - Structural ABI check
-13. `make ci-gate-runtime-marker-contract` - Runtime marker contract
-14. `make ci-gate-user-bin-lock` - User binary lock check
-15. `make ci-gate-embedded-elf-hash` - Embedded ELF hash check
-16. `make ci-gate-performance` - Performance regression check (moved earlier for fail-fast)
-17. `make ci-gate-ring3-user-leaf-rule` - Ring3 executable user-leaf rule
-18. `make ci-gate-ring3-execution-phase10a2` - Ring3 execution validation
-19. `make ci-gate-syscall-semantics-phase10b` - Syscall semantics validation
-20. `make ci-gate-low-half-kheap-scaffold` - Low-half kheap scaffold proof
-21. `make $(PHASE10C_FREEZE_GATE)` - Conditional Phase 10-C freeze gate
-22. `make ci-gate-mailbox-capability-negative` - Mailbox capability negative test
-23. `make ci-gate-workspace` - Workspace integrity
-24. `make ci-gate-syscall-v2-runtime` - Syscall runtime validation
-25. `make ci-gate-sched-bridge-runtime` - Scheduler bridge runtime validation
-26. `make ci-gate-behavioral-suite` - Behavioral test suite
-27. `make ci-gate-policy-accept` - Policy accept proof
-28. `make ci-gate-alias-proof` - Alias proof runtime check
-29. `make ci-kill-switch-phase13` - Phase-13 kill-switch gates
-30. `make ci-gate-determinism-replay-consistency` - Determinism replay consistency
-31. `make ci-gate-bcib-v3-core` - BCIB v3 core workstream
-32. `make ci-gate-toolchain-opcode-registry` - Toolchain opcode registry
-33. `make ci-gate-capability-manager` - Capability manager
-34. `make ci-gate-proofd-observability-boundary` - proofd observability boundary
-35. `make ci-gate-dsl-bcib-contract` - DSL to BCIB contract
-36. `make ci-gate-semantic-cli-contract` - Semantic CLI contract
-37. `make ci-gate-data-runtime-bcib` - Data runtime BCIB contract
-38. `make ci-gate-ai-runtime-boundary` - AI runtime boundary
-39. `make ci-gate-bcib-stub-determinism` - BCIB stub determinism
+11. `make ci-gate-spec-purity` - Normative specification purity
+12. `make ci-gate-drift-activation` - Drift blocking activation
+13. `make ci-gate-structural-abi` - Structural ABI check
+14. `make ci-gate-runtime-marker-contract` - Runtime marker contract
+15. `make ci-gate-user-bin-lock` - User binary lock check
+16. `make ci-gate-embedded-elf-hash` - Embedded ELF hash check
+17. `make ci-gate-performance` - Performance regression check (moved earlier for fail-fast)
+18. `make ci-gate-ring3-user-leaf-rule` - Ring3 executable user-leaf rule
+19. `make ci-gate-ring3-execution-phase10a2` - Ring3 execution validation
+20. `make ci-gate-syscall-semantics-phase10b` - Syscall semantics validation
+21. `make ci-gate-low-half-kheap-scaffold` - Low-half kheap scaffold proof
+22. `make $(PHASE10C_FREEZE_GATE)` - Conditional Phase 10-C freeze gate
+23. `make ci-gate-mailbox-capability-negative` - Mailbox capability negative test
+24. `make ci-gate-workspace` - Workspace integrity
+25. `make ci-gate-syscall-v2-runtime` - Syscall runtime validation
+26. `make ci-gate-sched-bridge-runtime` - Scheduler bridge runtime validation
+27. `make ci-gate-behavioral-suite` - Behavioral test suite
+28. `make ci-gate-policy-accept` - Policy accept proof
+29. `make ci-gate-alias-proof` - Alias proof runtime check
+30. `make ci-kill-switch-phase13` - Phase-13 kill-switch gates
+31. `make ci-gate-determinism-replay-consistency` - Determinism replay consistency
+32. `make ci-gate-bcib-v3-core` - BCIB v3 core workstream
+33. `make ci-gate-toolchain-opcode-registry` - Toolchain opcode registry
+34. `make ci-gate-capability-manager` - Capability manager
+35. `make ci-gate-proofd-observability-boundary` - proofd observability boundary
+36. `make ci-gate-dsl-bcib-contract` - DSL to BCIB contract
+37. `make ci-gate-semantic-cli-contract` - Semantic CLI contract
+38. `make ci-gate-data-runtime-bcib` - Data runtime BCIB contract
+39. `make ci-gate-ai-runtime-boundary` - AI runtime boundary
+40. `make ci-gate-bcib-stub-determinism` - BCIB stub determinism
 
 **Rationale for Order:**
-- Gates 1-15: Quick/static/structural checks catch common issues early
-- Gate 16: Performance check catches regressions before expensive runtime tests
-- Gates 17-28: Runtime validation gates run after static and performance gates pass
-- Gates 29-39: Distributed verification and execution-pipeline contract gates run last
+- Gates 1-16: Quick/static/structural checks, including spec purity, catch common issues early
+- Gate 17: Performance check catches regressions before expensive runtime tests
+- Gates 18-29: Runtime validation gates run after static and performance gates pass
+- Gates 30-40: Distributed verification and execution-pipeline contract gates run last
 ```
 
 2. **Add note in Section 2.3** about order changes:

@@ -165,7 +165,7 @@ ay_transcript_entry_t {
 
 **Event Type:** `AY_EVT_SYSCALL_ENTER`
 
-**When:** Userspace invokes syscall (1000-1010)
+**When:** Userspace invokes syscall (1000-1011; 12-call frozen v2 surface)
 
 **Ledger Entry:** NONE (syscall entry is not a decision)
 
@@ -688,7 +688,7 @@ bool ay_phase11_validate_transcript_entry(
 
 - `RUNTIME_STATE_MACHINE.md` - State machine specification
 - `ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md` - Layer contracts
-- `kernel/include/ayken_abi.h` - Syscall ABI
+- `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h` - canonical syscall ABI
 
 ---
 

@@ -22,7 +22,7 @@ use crate::types::{BcibError, ExecutionContextId};
 // Syscall constants — ABI freeze (Requirements 1.2, 1.7)
 // ---------------------------------------------------------------------------
 
-/// Syscall base offset for v2 interface (1000-1010 range, ABI freeze).
+/// Syscall base offset for v2 interface (1000-1011 range, ABI freeze).
 const SYS_V2_BASE: u64 = 1000;
 
 /// Submit a BCIB graph to Ring0 for execution.

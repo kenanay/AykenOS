@@ -4,7 +4,7 @@
 # Constitutional Design:
 # - Ring3 policy implementations (VFS, DevFS, Scheduler)
 # - No Ring0 dependencies (userspace-only)
-# - Syscall interface 1000-1010 only
+# - Syscall interface 1000-1011 only
 # ============================================================
 
 CC = clang
@@ -38,7 +38,7 @@ clean:
 # Constitutional compliance check
 check:
 	@echo "=== Constitutional Compliance Check ==="
-	@echo "✓ No syscalls beyond 1000-1010"
+	@echo "✓ No syscalls beyond 1000-1011"
 	@echo "✓ No Ring0 exports"
 	@echo "✓ Pure Ring3 policy"
 	@echo "✓ Fail-closed design"

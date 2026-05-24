@@ -1,6 +1,8 @@
 # AykenOS Faz 2 Overview
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
+> Historical snapshot notice (2026-05-23): This document preserves its phase-date plan. Current frozen syscall v2 authority is `shared/abi/syscall_v2.h`: `1000-1011` inclusive, 12 syscalls.
+
 Felsefe: "AI-native, veri konteyner OS". Faz 2 odağı; veri konteyneri + meta-FS, hiyerarşik DSL kabuk ve bunları çalıştıran hafif runtime çekirdeğini ayağa kaldırmak. AI/GL/çoklu mimari bu fazda yalnızca iskelet ve not seviyesinde.
 
 Scope (Faz 2):

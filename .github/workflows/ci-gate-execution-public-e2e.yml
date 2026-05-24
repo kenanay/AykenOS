@@ -1,0 +1,52 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is workflow metadata only and has no runtime authority.
+#
+# Scope: validation-only Ring3 public submit/wait evidence with stub completion.
+# This candidate gate does not establish Phase-17 closure authority.
+
+name: ci-gate-execution-public-e2e
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  execution-public-e2e:
+    name: "Phase-17 S1.E2E - Public Ring3 Submit/Wait Acceptance"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT: "45"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - id: gate
+        name: Run public Ring3 submit/wait evidence gate
+        run: |
+          set -euo pipefail
+          make ci-gate-execution-public-e2e \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}" \
+            EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT="${EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT}"
+
+      - name: Upload public E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-execution-public-e2e-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/execution-public-e2e/
+            evidence/run-${{ env.RUN_ID }}/reports/execution-public-e2e.json
+          if-no-files-found: warn
+          retention-days: 30

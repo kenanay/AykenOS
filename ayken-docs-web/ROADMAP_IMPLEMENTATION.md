@@ -1,5 +1,16 @@
 # AykenOS Dokümantasyon Uygulama Roadmap'i
 
+## Otorite Notu - 2026-05-24
+
+Bu dosya docs-web sayfa üretim planıdır; AykenOS runtime faz otoritesi veya
+closure manifestosu değildir. Güncel Phase-17 stabilization kaydı için
+[`PROJECT_STATUS_2026_05_24.md`](PROJECT_STATUS_2026_05_24.md) okunmalıdır.
+Bu senkronizasyonda web uygulama kodu ve statik sayfa varlıkları
+değiştirilmemiştir.
+
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY
+**Yetki sınırı:** Dokümantasyon metadata'sı; runtime veya closure otoritesi değildir.
+
 ## 📋 Mevcut Durum (31 Ocak 2026)
 
 ### ✅ Tamamlanan Çalışmalar

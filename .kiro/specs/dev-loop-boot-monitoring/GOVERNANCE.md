@@ -101,14 +101,16 @@ Validation → reads → out/evidence/          ❌
 **Purpose**: Enforces naming conventions across the codebase.
 
 **What it checks**:
-- New code does not use "aykenos" (canonical: "ayken")
+- New code/CI does not use any project-name casing (canonical code identifier: "ayken")
+- New lowercase concatenation `ayken` + `os` is rejected everywhere
 - New paths do not use "phase-*" naming
 - Only modified files are checked (legacy usage allowed)
 
 **Rules**:
 - ✅ Canonical (code artifacts): `ayken`
-- ✅ Project name (documentation only): `AykenOS`
-- ❌ Forbidden (in code/CI/files): `aykenos` (lowercase)
+- ✅ Project name (README, manifest metadata, architectural documentation only): `AykenOS`
+- ❌ Forbidden (in code/CI): any `AykenOS` casing
+- ❌ Forbidden (all new content): lowercase concatenation `ayken` + `os`
 - ❌ Forbidden: `phase-*` (in new paths)
 
 **Constitutional Reference**: Section 10 (Naming Law)
@@ -120,13 +122,13 @@ Validation → reads → out/evidence/          ❌
 **Script**: `scripts/check_spec_purity.sh`  
 **CI Workflow**: `.github/workflows/governance-spec-purity.yml`
 
-**Purpose**: Ensures specification documents contain only normative content, not implementation details.
+**Purpose**: Ensures normative requirement and task contracts contain only behavioral/capability content, not implementation syntax.
 
 **What it checks**:
-- Spec files do not contain code snippets (bash, python, javascript)
-- Spec files do not contain command examples (grep, make, git)
-- Spec files do not contain tool-specific instructions
-- Spec files do not contain JSON/YAML schemas
+- `requirements.md` and `tasks.md` do not contain executable code fences
+- Normative files do not contain command invocations or inline schema bodies
+- `design.md`, this governance guide, and implementation guides are explanatory architecture documents and are intentionally outside the normative scanner scope
+- A change that expands the normative surface MUST expand the scanner scope in the same PR
 
 **Forbidden Patterns in Spec**:
 ```bash
@@ -146,7 +148,7 @@ Validation uses grep to search logs
 Evidence is structured as JSON
 ```
 
-**Constitutional Reference**: Section 11 (Spec Purity Rule)
+**Contract Reference**: `requirements.md` Requirement Purity Rule and `tasks.md` Task Purity Rule
 
 ---
 
@@ -169,10 +171,10 @@ All governance checks run in parallel for fast feedback:
 │  └──────────────────┘  └──────────────────┘            │
 │                                                          │
 │  ┌──────────────────┐  ┌──────────────────┐            │
-│  │ Naming           │  │ Governance       │            │
-│  │ Compliance       │  │ Summary          │            │
+│  │ Naming           │  │ Spec Purity      │            │
 │  │ ✅ PASS          │  │ ✅ PASS          │            │
 │  └──────────────────┘  └──────────────────┘            │
+│                     Governance Summary ✅                │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -218,6 +220,18 @@ make ci-gate-observation-boundary
 make ci-gate-naming-compliance
 make ci-gate-spec-purity
 ```
+
+`ci-gate-spec-purity` is also a mandatory static gate in `make ci-freeze` and
+`make ci-freeze-local`. It executes immediately after naming convention
+enforcement, before drift and runtime lanes.
+
+### Attribution Boundary
+
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+
+This attribution is informational metadata only. It may appear in human-readable
+documentation, metadata, dashboards, and script headers; it MUST NOT be emitted
+as runtime authority or used in an execution decision.
 
 ---
 

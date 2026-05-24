@@ -24,6 +24,8 @@
 /kernel/include/ayken_abi.h             @ayken-architecture-board
 /kernel/include/generated/ayken_abi.inc @ayken-architecture-board
 /kernel/sys/syscall_v2.c                @ayken-architecture-board
+/shared/abi/ayken_abi.h                 @ayken-architecture-board
+/shared/abi/syscall_v2.h                @ayken-architecture-board
 /kernel/arch/x86_64/context_switch.asm  @ayken-architecture-board
 
 # ==============================================================================

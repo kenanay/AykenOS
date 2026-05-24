@@ -30,6 +30,26 @@ make ci-gate-performance-local
 # Evaluate sampled stability separately
 make ci-gate-performance-stability
 
+# Produce Phase-17 PR-4 local diagnostic readiness evidence
+# (fails closed if the local stability report fails)
+make ci-gate-phase17-performance-readiness-local
+
+# Classify an existing failing readiness run against an optional stable
+# reference; this reads evidence only and cannot grant acceptance authority
+make ci-gate-phase17-performance-variance-diagnostic \
+  RUN_ID=local-phase17-variance-diagnostic-20260524 \
+  EVIDENCE_ROOT=evidence \
+  PHASE17_VARIANCE_SOURCE_RUN_ID=local-phase17-performance-readiness-20260524-r2 \
+  PHASE17_VARIANCE_REFERENCE_RUN_ID=local-phase17-performance-readiness-20260524
+
+# Run bounded PR-4B reproduction measurements using the same deterministic
+# runtime contract in image-reuse and rebuild-per-run conditions
+make ci-gate-phase17-performance-variance-isolation \
+  RUN_ID=local-phase17-variance-isolation-20260524-r3 \
+  EVIDENCE_ROOT=evidence \
+  PHASE17_VARIANCE_ISOLATION_RUNS=3 \
+  PHASE17_VARIANCE_ISOLATION_WARMUP=1
+
 # Or run the local freeze suite with local perf authority active
 make ci-freeze-local
 ```
@@ -40,6 +60,16 @@ make ci-freeze-local
 2. **Local baseline is for development only** - Not for CI/production
 3. **CI uses separate baseline** - `scripts/ci/perf-baseline.lock.json` (GitHub-hosted)
 4. **Different authorities = different env_hash** - This is by design
+5. **Phase-17 local readiness is fail-closed diagnostic only** - It requires
+   median and local stability PASS, records `closure_eligible_component=false`,
+   and still cannot replace remote locked-authority PASS
+6. **Variance diagnosis is observation only** - A diagnostic PASS preserves
+   the source stability verdict and cannot renew baseline, relax thresholds,
+   establish root cause, or grant closure authority
+7. **Bounded non-reproduction is not acceptance** - PR-4B runs the existing
+   measurement contract in controlled image-reuse/rebuild-per-run groups;
+   a PASS or a non-reproduced outlier does not erase a prior readiness FAIL
+   or replace remote locked-baseline authority
 
 ## Workflow
 
@@ -60,8 +90,25 @@ vim kernel/kernel.c
 # Test against local baseline
 make ci-gate-performance-local
 
+# Emit scoped Phase-17 local readiness evidence; stability is enforced inside
+make ci-gate-phase17-performance-readiness-local
+
 # If performance regressed, investigate
 cat evidence/run-*/gates/performance/violations.txt
+
+# If readiness failed on stability, fingerprint and classify existing evidence
+make ci-gate-phase17-performance-variance-diagnostic \
+  RUN_ID=local-phase17-variance-diagnostic-20260524 \
+  EVIDENCE_ROOT=evidence \
+  PHASE17_VARIANCE_SOURCE_RUN_ID=local-phase17-performance-readiness-20260524-r2 \
+  PHASE17_VARIANCE_REFERENCE_RUN_ID=local-phase17-performance-readiness-20260524
+
+# Attempt bounded reproduction without changing runtime, baseline or thresholds
+make ci-gate-phase17-performance-variance-isolation \
+  RUN_ID=local-phase17-variance-isolation-20260524-r3 \
+  EVIDENCE_ROOT=evidence \
+  PHASE17_VARIANCE_ISOLATION_RUNS=3 \
+  PHASE17_VARIANCE_ISOLATION_WARMUP=1
 ```
 
 ### Refreshing Local Baseline
@@ -84,6 +131,18 @@ CI baseline is managed through GitHub Actions:
 ```
 
 This creates: `scripts/ci/perf-baseline.lock.json` (committed to repo)
+
+Phase-17 PR-4 acceptance uses the committed CI baseline without changing its
+authority or thresholds:
+
+```bash
+# Run by .github/workflows/ci-gate-phase17-performance-acceptance.yml
+make ci-gate-phase17-performance-acceptance
+```
+
+That remote target covers the existing timer/preemption hot-path measurement
+surface. It does not establish validation-only worker-completion or
+timeout-race payload latency acceptance.
 
 ## Troubleshooting
 
@@ -112,7 +171,7 @@ Local Dev:
   Authority: local-dev-Darwin-arm64
   Baseline:  scripts/ci/perf-baseline.local.lock.json (gitignored)
   Policy:    PERF_ENV_MISMATCH_POLICY=waiver
-  Entry:     make ci-gate-performance-local / make ci-freeze-local
+  Entry:     make ci-gate-performance-local / make ci-gate-phase17-performance-readiness-local / make ci-freeze-local
 
 CI/Provisional:
   Authority: github-hosted-ubuntu-latest-x64
@@ -152,3 +211,17 @@ Implementation note:
 - Pure env drift may auto-refresh only when current medians stay within baseline thresholds.
 - Metric regression is not auto-refreshed; local gate stays fail-closed when current medians exceed the local baseline contract.
 - Stability contract tuning lives outside the gate script so range/MAD/outlier policy can be adjusted without changing gate logic.
+- `ci-gate-phase17-performance-readiness-local` combines local median
+  performance evidence with `performance-stability` and fails closed on
+  instability; even PASS remains diagnostic and cannot replace remote
+  `ci-gate-phase17-performance-acceptance`.
+- `ci-gate-phase17-performance-variance-diagnostic` reads existing readiness
+  reports only. Its PASS verifies classification integrity while retaining an
+  upstream stability FAIL as `blocked_by_source_stability_failure`; its
+  fingerprint is not performance acceptance or root-cause proof.
+- `ci-gate-phase17-performance-variance-isolation` executes bounded local
+  measurements with PR-4 runtime-contract and terminal-counter parity
+  enforced. The 2026-05-24 `r3` run did not reproduce the prior `sample-6`
+  elapsed outlier (`image-reuse` peak `%1.300080`, `rebuild-per-run` peak
+  `%0.743889`, diagnostic threshold `%3`); this leaves the existing
+  readiness FAIL and remote locked-baseline acceptance requirement intact.

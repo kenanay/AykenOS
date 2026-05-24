@@ -36,12 +36,44 @@ static uint8_t debug_putchar_marker_progress[MAX_PROCS];
 // Gate-3: Ring3 runtime validation marker tracking
 static uint8_t gate3_ring3_marker_progress[MAX_PROCS];
 
+/*
+ * Public submit copies validated Ring3 input here before entering a
+ * kernel-direct-map scope. The execution-slot lock serializes this bounded
+ * supervisor-only staging buffer on the current single-CPU runtime path.
+ */
+static uint8_t sys_v2_submit_staging[AYKEN_EXECUTION_PAYLOAD_WINDOW_SIZE];
+
 #define SYSCALL_V2_USER_MARKER "[U][SYSCALL_OK]"
 #define SYSCALL_V2_KERNEL_MARKER "[[AYKEN_SYSCALL_V2_OK]]\n"
 
 // Gate-3: Ring3 runtime proof marker
 #define GATE3_RING3_USER_MARKER "R3OK"
 #define GATE3_RING3_KERNEL_MARKER "[[AYKEN_RING3_OK]]\n"
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((defined(AYKEN_BCIB_PUBLIC_E2E_SELFTEST) && (AYKEN_BCIB_PUBLIC_E2E_SELFTEST == 1)) || \
+     (defined(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST) && (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1))) && \
+    AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+static int sys_v2_validation_has_full_marker_sequence(const exec_slot_t *slot)
+{
+    uint8_t i;
+
+    if (!slot || slot->state != EXEC_SLOT_RESULT_MAPPED ||
+        slot->marker_count != MARKER_COUNT ||
+        slot->marker_bitmap != 0x7Fu ||
+        slot->marker_error_code != MARKER_ERROR_NONE) {
+        return 0;
+    }
+
+    for (i = 0; i < MARKER_COUNT; ++i) {
+        if (slot->marker_sequence[i] != i) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+#endif
 
 static void sys_v2_debugcon_write_string(const char *text)
 {
@@ -893,8 +925,10 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
     execution_slot_trace_scope_t trace_scope = {0};
     exec_slot_t *slot = NULL;
     proc_t *target_proc = NULL;
+    paging_kernel_access_scope_t kernel_access = {0};
     uint64_t owner_pid = 0;
     uint64_t execution_id;
+    int store_result;
 
     // Validate parameters
     if (bcib_graph == NULL || graph_size == 0 || context_id == 0) {
@@ -930,8 +964,17 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
     }
 
     slot->created_tick = timer_ticks();
-    if (execution_slot_store_bcib_locked(slot, bcib_graph, graph_size) != 0) {
+    __builtin_memcpy(sys_v2_submit_staging, bcib_graph, graph_size);
+    paging_kernel_access_begin(&kernel_access);
+    store_result = execution_slot_store_bcib_locked(slot,
+                                                    sys_v2_submit_staging,
+                                                    graph_size);
+    paging_kernel_access_end(&kernel_access);
+    __builtin_memset(sys_v2_submit_staging, 0, graph_size);
+    if (store_result != 0) {
+        paging_kernel_access_begin(&kernel_access);
         execution_slot_release_locked(slot);
+        paging_kernel_access_end(&kernel_access);
         execution_slot_trace_scope_exit(&trace_scope);
         execution_slot_exit_critical(&slot_guard);
         return ESYS_V2_RESOURCE_BUSY;
@@ -943,7 +986,9 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
                                              "sys_v2_submit_execution");
 
     if (execution_slot_enqueue_locked(slot) != 0) {
+        paging_kernel_access_begin(&kernel_access);
         execution_slot_release_locked(slot);
+        paging_kernel_access_end(&kernel_access);
         execution_slot_trace_scope_exit(&trace_scope);
         execution_slot_exit_critical(&slot_guard);
         return ESYS_V2_RESOURCE_BUSY;
@@ -952,6 +997,13 @@ uint64_t sys_v2_submit_execution(void *bcib_graph, uint64_t graph_size, uint64_t
     execution_id = slot->execution_id;
     execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((defined(AYKEN_BCIB_PUBLIC_E2E_SELFTEST) && (AYKEN_BCIB_PUBLIC_E2E_SELFTEST == 1)) || \
+     (defined(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST) && (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1)) || \
+     (defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)))
+    sys_v2_debugcon_write_string("[[AYKEN_PUBLIC_EXEC_SUBMIT_OK]]\n");
+#endif
 
     fb_print("[syscall_v2] submit_execution: graph=0x");
     fb_print_hex((uint64_t)bcib_graph);
@@ -989,6 +1041,7 @@ uint64_t sys_v2_wait_result(uint64_t execution_id, uint64_t timeout_ms)
         uint64_t deadline_delta;
         uint64_t mapped_result_va = 0;
         void *wait_obj = NULL;
+        paging_kernel_access_scope_t kernel_access = {0};
 
         execution_slot_enter_critical(&slot_guard);
         slot = execution_slot_find_locked(execution_id);
@@ -1017,19 +1070,39 @@ uint64_t sys_v2_wait_result(uint64_t execution_id, uint64_t timeout_ms)
             }
 
             execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_WAIT_RESULT);
+            paging_kernel_access_begin(&kernel_access);
             if (sys_v2_map_result_for_wait_locked(slot,
                                                   current_proc,
                                                   &mapped_result_va) != 0) {
+                paging_kernel_access_end(&kernel_access);
                 execution_slot_trace_scope_exit(&trace_scope);
                 execution_slot_exit_critical(&slot_guard);
                 return ESYS_V2_RESOURCE_BUSY;
             }
+            paging_kernel_access_end(&kernel_access);
             execution_slot_trace_scope_exit(&trace_scope);
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    ((defined(AYKEN_BCIB_PUBLIC_E2E_SELFTEST) && (AYKEN_BCIB_PUBLIC_E2E_SELFTEST == 1)) || \
+     (defined(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST) && (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1))) && \
+    AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
+            if (!sys_v2_validation_has_full_marker_sequence(slot)) {
+                sys_v2_debugcon_write_string("[[AYKEN_PUBLIC_EXEC_WAIT_FAIL]]\n");
+                execution_slot_exit_critical(&slot_guard);
+                return ESYS_V2_INVALID_STATE;
+            }
+            sys_v2_debugcon_write_string(
+                "[[AYKEN_PUBLIC_EXEC_WAIT_OK]] count=7 bitmap=127 state=6\n");
+#endif
 
             execution_slot_exit_critical(&slot_guard);
             return mapped_result_va;
         }
         case EXEC_SLOT_TIMEOUT:
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+            sys_v2_debugcon_write_string("[[AYKEN_EXEC_RACE_WAIT_TIMEOUT_OK]]\n");
+#endif
             execution_slot_exit_critical(&slot_guard);
             return ESYS_V2_TIMEOUT;
         case EXEC_SLOT_FAILED:
@@ -1074,6 +1147,7 @@ uint64_t sys_v2_complete_execution(uint64_t execution_id, uint64_t completion_co
     exec_slot_state_t next_state;
     proc_t *caller_proc;
     uint64_t caller_pid;
+    paging_kernel_access_scope_t kernel_access = {0};
     uint64_t result = ESYS_V2_SUCCESS;
 
     if (execution_id == 0) {
@@ -1112,24 +1186,46 @@ uint64_t sys_v2_complete_execution(uint64_t execution_id, uint64_t completion_co
         goto done;
     }
 
+    paging_kernel_access_begin(&kernel_access);
+
     if (next_state == EXEC_SLOT_COMPLETED) {
-        if (execution_slot_validate_output_locked(slot, NULL) != 0 ||
-            execution_slot_prepare_result_locked(slot) != 0) {
+        int prepare_result;
+
+        prepare_result = execution_slot_validate_output_locked(slot, NULL) != 0 ||
+            execution_slot_prepare_result_locked(slot) != 0;
+
+        if (prepare_result) {
             execution_slot_require_finish_locked(slot,
                                                  EXEC_SLOT_FAILED,
                                                  "sys_v2_complete_execution:prepare_result_failed");
+            paging_kernel_access_end(&kernel_access);
             result = ESYS_V2_INVALID_STATE;
             goto done;
         }
     }
 
     execution_slot_require_finish_locked(slot, next_state, "sys_v2_complete_execution");
+    paging_kernel_access_end(&kernel_access);
 
 done:
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+    if (result == ESYS_V2_INVALID_STATE &&
+        slot != NULL &&
+        slot->state == EXEC_SLOT_TIMEOUT) {
+        sys_v2_debugcon_write_string("[[AYKEN_EXEC_RACE_LATE_COMPLETE_REJECT_OK]]\n");
+    }
+#endif
     execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
 
     if (result == ESYS_V2_SUCCESS) {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST) && (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1)
+        if (next_state == EXEC_SLOT_COMPLETED) {
+            sys_v2_debugcon_write_string("[[AYKEN_PUBLIC_EXEC_WORKER_COMPLETE_OK]]\n");
+        }
+#endif
         fb_print("[syscall_v2] complete_execution: exec_id=");
         fb_print_int(execution_id);
         fb_print(" caller_pid=");
@@ -1432,6 +1528,32 @@ uint64_t sys_v2_debug_putchar(uint64_t character)
 
     // Reconstruct canonical marker per PID to avoid cross-process interleaving flake.
     sys_v2_debug_putchar_note_marker(out_char);
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+    /*
+     * Single-character witness: the embedded race payload emits this only
+     * after observing TIMEOUT and INVALID_STATE from the public syscalls.
+     */
+    if (out_char == (uint8_t)'R') {
+        sys_v2_debugcon_write_string("[[AYKEN_EXEC_RACE_USER_OBSERVED_OK]]\n");
+    } else if (out_char == (uint8_t)'F') {
+        sys_v2_debugcon_write_string("[[AYKEN_EXEC_TIMEOUT_RACE_USER_FAIL]]\n");
+    }
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST) && (AYKEN_BCIB_WORKER_COMPLETION_SELFTEST == 1)
+    /*
+     * Single-character witness: the embedded fixture emits this only after
+     * validating the output returned through the public wait_result path.
+     */
+    if (out_char == (uint8_t)'W') {
+        sys_v2_debugcon_write_string("[[AYKEN_BCIB_WORKER_USER_OBSERVED_OK]]\n");
+    } else if (out_char == (uint8_t)'F') {
+        sys_v2_debugcon_write_string("[[AYKEN_BCIB_WORKER_COMPLETION_USER_FAIL]]\n");
+    }
+#endif
 
     return ESYS_V2_SUCCESS;
 }

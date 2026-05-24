@@ -1,0 +1,36 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is documentation metadata only and has no runtime authority.
+
+name: Spec Purity
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  spec-purity:
+    name: Normative Spec Purity Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run normative spec purity check
+        run: |
+          chmod +x scripts/check_spec_purity.sh
+          ./scripts/check_spec_purity.sh
+
+      - name: Upload check script on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-purity-failure
+          path: |
+            scripts/check_spec_purity.sh
+            .kiro/specs/dev-loop-boot-monitoring/requirements.md
+            .kiro/specs/dev-loop-boot-monitoring/tasks.md
+          retention-days: 7

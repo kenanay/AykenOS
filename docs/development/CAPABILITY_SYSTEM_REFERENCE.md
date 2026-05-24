@@ -488,7 +488,7 @@ make ci-gate-boundary
 
 - `kernel/include/capability.h` - Capability type definitions
 - `kernel/sys/capability_manager.c` - Capability implementation
-- `kernel/sys/syscall_v2.h` - Syscall interface
+- `shared/abi/syscall_v2.h` - Canonical syscall interface
 - `ARCHITECTURE_FREEZE.md` - Freeze sözleşmesi
 
 ---

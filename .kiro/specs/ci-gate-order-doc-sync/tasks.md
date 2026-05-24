@@ -1,9 +1,9 @@
 # CI Gate Order Documentation Synchronization - Tasks
 
 **Feature:** ci-gate-order-doc-sync  
-**Status:** UPDATED - COMMIT PENDING
+**Status:** UPDATED - 2026-05-23 ENFORCEMENT RESYNC IN PROGRESS
 **Completion Date:** 2026-03-16
-**Last Resync:** 2026-05-22
+**Last Resync:** 2026-05-23
 
 ## Task List
 
@@ -58,24 +58,36 @@
 ---
 
 ### 5. Commit Documentation Updates
-**Status:** Pending
+**Status:** COMPLETE
 
 **Subtasks:**
-- [ ] 5.1 Stage both documentation files
-- [ ] 5.2 Write commit message referencing Makefile change and Constitutional Rule 7
-- [ ] 5.3 Commit changes
-- [ ] 5.4 Verify commit includes both documentation files
+- [x] 5.1 Stage both documentation files
+- [x] 5.2 Write commit message referencing Makefile change and Constitutional Rule 7
+- [x] 5.3 Commit changes (`9767c1af`, 2026-05-22)
+- [x] 5.4 Verify commit includes the synchronized documentation files
+
+---
+
+### 6. Synchronize Normative Spec-Purity Gate Addition
+**Status:** VALIDATED LOCALLY - COMMIT PENDING
+
+**Subtasks:**
+- [x] 6.1 Add normative spec-purity enforcement target to strict and local freeze chains
+- [x] 6.2 Synchronize `tech.md`, freeze workflow documentation, and this spec with the 40-gate order
+- [x] 6.3 Preserve the static-before-runtime ordering rationale
+- [x] 6.4 Record local validation: governance PASS, Tier 4.5 spec validation PASS, dry-run order verified
+- [ ] 6.5 Commit the synchronized implementation and obtain remote CI acceptance
 
 ---
 
 ## Summary
 
-**Total Tasks:** 5  
-**Completed:** 4/5  
-**Remaining:** Task 5 (commit)
+**Total Tasks:** 6
+**Completed:** 5/6
+**Remaining:** Task 6 validation and commit of the 2026-05-23 enforcement amendment
 
 **Changes Made:**
-- `docs/steering/tech.md`: Mandatory Gates section rewritten with full 39-gate ordered list, performance gate rationale documented
-- `docs/roadmap/freeze-enforcement-workflow.md`: Section 2.1 rewritten with 39-gate numbered list + Execution Order Rationale + Gate Order Change Protocol; Section 2.3 retains gate order lock note
+- `docs/steering/tech.md`: Mandatory Gates section rewritten with full 40-gate ordered list, performance gate rationale documented
+- `docs/roadmap/freeze-enforcement-workflow.md`: Section 2.1 rewritten with 40-gate numbered list + Execution Order Rationale + Gate Order Change Protocol; Section 2.3 retains gate order lock note
 - `.kiro/specs/ci-gate-order-doc-sync/design.md`: Current-state Makefile snapshot and affected path corrected
 - `.kiro/specs/ci-gate-order-doc-sync/requirements.md`: Current `ci-freeze` scope and affected documentation path corrected

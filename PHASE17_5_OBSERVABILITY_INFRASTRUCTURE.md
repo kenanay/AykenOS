@@ -1,8 +1,30 @@
 # Phase-17.5: Observability & Debug Infrastructure
 
 **Date**: 2026-05-02  
-**Status**: PREREQUISITE (before Phase-18)  
-**Authority**: Kenan AY — Architectural Steward
+**Status**: IMPLEMENTATION MAPPING / ACCEPTANCE PENDING (before Phase-18)
+**Last Authority Sync**: 2026-05-23
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY *(informational metadata only)*
+
+---
+
+## Repository Mapping (2026-05-23)
+
+The initial proposal below is retained as design history. Repository inspection
+shows that the kernel already provides deterministic execution-slot state trace
+entries, fail-closed proof emission, and global invariant checks. The active
+Phase-17.5 branch adds dev-loop/evidence hardening and governance checks without
+making observer output authoritative.
+
+The execution-marker isolation gate now rejects unexpected phase-specific
+kernel coupling without losing violations in a subshell, and verifies that
+production marker integration is default-off, injection remains test-only,
+and marker time remains based on deterministic logical ticks.
+
+Remaining acceptance work is runtime proof: boot with marker validation enabled,
+exercise the real slot lifecycle under QEMU, extract deterministic results, and
+demonstrate performance/security constraints. Authoritative evidence MUST use
+the existing logical tick model; `rdtsc` or wall-clock timing MUST NOT be added
+to execution authority.
 
 ---
 
@@ -66,7 +88,7 @@ Add **observability layer** before Phase-18:
 **Usage**:
 ```c
 void execution_slot_marker_capture_locked(exec_slot_t *slot, uint8_t marker) {
-    TRACE_MARKER(slot->id, marker, rdtsc());
+    TRACE_MARKER(slot->id, marker, timer_ticks());
     // ... existing code ...
 }
 ```
@@ -174,11 +196,11 @@ typedef struct {
 } timing_t;
 
 #define TIMING_START(label) \
-    timing_t __timing_##label = {rdtsc(), 0, #label}
+    timing_t __timing_##label = {timer_ticks(), 0, #label}
 
 #define TIMING_END(label) \
     do { \
-        __timing_##label.end = rdtsc(); \
+        __timing_##label.end = timer_ticks(); \
         kernel_log("[TIMING] %s: %llu cycles\n", \
                    __timing_##label.label, \
                    __timing_##label.end - __timing_##label.start); \
@@ -550,8 +572,7 @@ done
 
 **Signed**: Kenan AY — Architectural Steward  
 **Date**: 2026-05-02  
-**Status**: PREREQUISITE (must complete before Phase-18)  
-**Authority**: Architectural design + Phase-17 lessons learned
+**Status**: IMPLEMENTATION MAPPING / RUNTIME ACCEPTANCE PENDING
+**Authority**: Architectural design + Phase-17 lessons learned; no closure authority
 
-**Next Action**: Implement Phase-17.5 observability infrastructure
-
+**Next Action**: Validate existing deterministic observability and marker-enabled real lifecycle under QEMU before any Phase-18 activation.

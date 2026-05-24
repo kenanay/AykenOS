@@ -1,3 +1,7 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is documentation metadata only and has no runtime authority.
+
 name: Governance Summary
 
 on:
@@ -26,11 +30,13 @@ jobs:
           echo "  - Evidence Isolation: Evidence NEVER used as validation input"
           echo "  - Observation Boundary: Validation uses ONLY raw logs"
           echo "  - Naming Compliance: 'ayken' canonical, 'aykenos' forbidden"
+          echo "  - Spec Purity: Normative contracts contain no implementation syntax"
           echo ""
           echo "Enforcement Mechanisms:"
           echo "  ✓ check_evidence_isolation.sh"
           echo "  ✓ check_observation_boundary.sh"
           echo "  ✓ check_naming_compliance.sh"
+          echo "  ✓ check_spec_purity.sh"
           echo ""
           echo "Constitutional Reference:"
           echo "  .kiro/specs/dev-loop-boot-monitoring/DEV_LOOP_CONSTITUTION.md"
@@ -52,6 +58,7 @@ jobs:
           test -f scripts/check_evidence_isolation.sh || { echo "❌ Missing: check_evidence_isolation.sh"; exit 1; }
           test -f scripts/check_observation_boundary.sh || { echo "❌ Missing: check_observation_boundary.sh"; exit 1; }
           test -f scripts/check_naming_compliance.sh || { echo "❌ Missing: check_naming_compliance.sh"; exit 1; }
+          test -f scripts/check_spec_purity.sh || { echo "❌ Missing: check_spec_purity.sh"; exit 1; }
           echo "✅ All governance scripts present"
       
       - name: Verify constitutional document exists

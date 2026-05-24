@@ -216,10 +216,11 @@ See `DEV_LOOP_CONSTITUTION.md` Section 15 for amendment process.
 - ✅ Tasks: Complete (32 tasks)
 - ✅ Constitution: Complete
 - ✅ Governance: Complete
-- ⏳ Implementation: Not started
+- ✅ Implementation: Delivered on `docs/phase17-5-ci-verified` branch; merge/acceptance remains governed by CI and review
+- ✅ Governance remediation: Normative spec-purity gate and Makefile integration added (2026-05-23)
 
 ---
 
-**Last Updated**: 2026-05-03  
-**Maintainer**: Kenan AY — System Architect  
+**Last Updated**: 2026-05-23
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu**: Kenan AY (informational metadata only)
 **Spec ID**: `8228c0db-6aab-4555-8fa6-b395f776ee91`

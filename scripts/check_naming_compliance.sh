@@ -6,7 +6,8 @@
 #
 # CRITICAL RULE:
 # - "ayken" is the canonical system identifier
-# - "aykenos" is FORBIDDEN in new code
+# - The forbidden lowercase project identifier is rejected in new code
+# - The mixed-case project display name is permitted in documentation/manifests only
 # - "phase-*" naming is FORBIDDEN in new file/directory structures
 #
 # This script scans modified files and FAILS if:
@@ -55,7 +56,17 @@ is_untracked_file() {
   printf '%s\n' "$UNTRACKED_FILES" | grep -Fxq "$1"
 }
 
-# Check for "aykenos" in new code
+is_documentation_file() {
+  case "$1" in
+    README*|*.md|*.rst|*manifest*.json|*manifest*.yaml|*manifest*.yml)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+# Check for forbidden lowercase usage in all newly added content, and reject
+# any project-name casing in code/CI while allowing the display name in docs/manifest metadata.
 echo ""
 echo "Checking for forbidden term: 'aykenos'..."
 
@@ -67,7 +78,7 @@ while IFS= read -r file; do
   fi
   
   if is_untracked_file "$file"; then
-    matches=$(grep -nHi "$FORBIDDEN_PATTERN" "$file" 2>/dev/null || true)
+    matches=$(grep -nH "$FORBIDDEN_PATTERN" "$file" 2>/dev/null || true)
   else
     added_lines=$(
       {
@@ -75,13 +86,27 @@ while IFS= read -r file; do
         git diff -U0 -- "$file" 2>/dev/null || true
       } | awk '/^\+[^+]/ { print substr($0, 2) }'
     )
-    matches=$(printf '%s\n' "$added_lines" | grep -nHi "$FORBIDDEN_PATTERN" 2>/dev/null || true)
+    matches=$(printf '%s\n' "$added_lines" | grep -nH "$FORBIDDEN_PATTERN" 2>/dev/null || true)
   fi
   
   if [ -n "$matches" ]; then
     echo "❌ VIOLATION: 'aykenos' found in: $file"
     echo "$matches"
     FAIL=1
+  fi
+
+  if [ -z "$matches" ] && ! is_documentation_file "$file"; then
+    if is_untracked_file "$file"; then
+      code_matches=$(grep -niH "$FORBIDDEN_PATTERN" "$file" 2>/dev/null || true)
+    else
+      code_matches=$(printf '%s\n' "$added_lines" | grep -niH "$FORBIDDEN_PATTERN" 2>/dev/null || true)
+    fi
+
+    if [ -n "$code_matches" ]; then
+      echo "❌ VIOLATION: Project display name is documentation/manifest metadata-only; found in code/CI: $file"
+      echo "$code_matches"
+      FAIL=1
+    fi
   fi
 done <<< "$MODIFIED_FILES"
 
@@ -126,7 +151,8 @@ if [ "$FAIL" -ne 0 ]; then
   echo ""
   echo "Rules:"
   echo "  - Use 'ayken' (canonical identifier)"
-  echo "  - Do NOT use 'aykenos' in new code"
+  echo "  - Do NOT use the forbidden lowercase project identifier in new code"
+  echo "  - The project display name is permitted only in README/manifest/architecture documentation"
   echo "  - Do NOT use 'phase-*' in new file/directory names"
   echo ""
   echo "Fix:"

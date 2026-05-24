@@ -9,7 +9,7 @@
  * - Fail-closed: Invalid hints rejected by Ring0
  * 
  * ABI Compliance:
- * - No new syscalls (1000-1010 frozen)
+ * - No new syscalls (1000-1011 frozen)
  * - No Ring0 exports (165/165 ceiling maintained)
  * - Fixed VA: 0x700000 (SCHED_MAILBOX_VA)
  * 
@@ -33,7 +33,7 @@
  * Scheduler mailbox structure
  * Ring3 writes, Ring0 validates on timer tick
  * 
- * Layout matches kernel/include/ayken_abi.h
+ * Layout matches shared/abi/ayken_abi.h
  */
 typedef struct {
     uint64_t epoch;           // Monotonic counter (replay prevention)

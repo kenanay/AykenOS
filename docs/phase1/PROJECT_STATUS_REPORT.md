@@ -1,6 +1,8 @@
 # AykenOS - Proje Durum ve İlerleme Raporu
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
+> Historical snapshot notice (2026-05-23): This document preserves its phase-date plan. Current frozen syscall v2 authority is `shared/abi/syscall_v2.h`: `1000-1011` inclusive, 12 syscalls.
+
 **Oluşturan:** Kenan AY  
 **Tarih:** 03 Ocak 2026  
 **Durum:** Faz 1.5 ≈ %95 TAMAMLANDI (tarihsel kayıt)

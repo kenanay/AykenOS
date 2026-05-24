@@ -1,5 +1,7 @@
 # Phase 4.5 Progress Report (Code Reality)
 
+> Historical snapshot notice (2026-05-23): This document preserves its phase-date state. Current frozen syscall v2 authority is `shared/abi/syscall_v2.h`: `1000-1011` inclusive, 12 syscalls.
+
 **Date:** 2026-02-21  
 **Status:** IN PROGRESS  
 **Scope:** Scheduler/Runtime stabilization + CI freeze alignment  

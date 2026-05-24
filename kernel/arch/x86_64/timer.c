@@ -8,6 +8,7 @@
 #include "../../sched/sched.h"
 #include "../../sched/sched_mailbox.h"
 #include "../../include/execution_slot.h"
+#include "../../include/mm.h"
 #include "../../include/ayken_abi.h"
 #include "../../include/ayken.h"
 
@@ -149,15 +150,25 @@ void timer_isr_c(void *frame_ptr)
     irq_timer_frame_t *frame = (irq_timer_frame_t *)frame_ptr;
     execution_slot_guard_t slot_guard = {0};
     execution_slot_trace_scope_t trace_scope = {0};
+    paging_kernel_access_scope_t kernel_access = {0};
+    uint32_t timed_out;
     tick_count++;
 
     execution_slot_enter_critical(&slot_guard);
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_TIMEOUT_IRQ);
-    execution_slot_process_timeouts_locked(tick_count);
+    paging_kernel_access_begin(&kernel_access);
+    timed_out = execution_slot_process_timeouts_locked(tick_count);
+    paging_kernel_access_end(&kernel_access);
     execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
+    (void)timed_out;
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
+#if defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+    if (timed_out > 0) {
+        timer_debugcon_write("[[AYKEN_EXEC_RACE_IRQ_TIMEOUT_OK]]\n");
+    }
+#endif
     static uint8_t p10_tick_marker_emitted = 0;
     if (!p10_tick_marker_emitted && tick_count >= 1) {
         p10_tick_marker_emitted = 1;

@@ -171,7 +171,7 @@ Fixed virtual address for scheduler mailbox.
 
 ### 4. No Syscalls
 
-**Invariant:** API MUST NOT use syscalls (1000-1010 frozen).
+**Invariant:** API MUST NOT add or bypass syscalls (`SYS_V2` 1000-1011 frozen).
 
 **Enforcement:**
 - Mailbox pre-mapped by Ring0 at process creation
@@ -342,7 +342,7 @@ $ nm kernel.elf | grep -c " T "
 165  # Unchanged
 
 # Verify ABI stable
-$ git diff HEAD~1 HEAD kernel/include/ayken_abi.h
+$ git diff HEAD~1 HEAD shared/abi/ayken_abi.h shared/abi/syscall_v2.h
 (empty)
 ```
 

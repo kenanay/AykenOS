@@ -1,6 +1,12 @@
 # Constitutional Rule System - Complete Implementation Roadmap
 This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
+> **Scope notice (2026-05-23):** This document is a governance-system corpus
+> and preserves its historical implementation claims. It is not the current OS
+> execution roadmap or phase pointer. Current execution order is defined in
+> `CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` and
+> `CURRENT_PHASE`.
+
 ## 🎯 System Overview
 
 The AykenOS Constitutional Rule System is a comprehensive architectural governance framework that enforces constitutional principles through a hierarchical decision tree with exception mechanisms and continuous improvement loops.

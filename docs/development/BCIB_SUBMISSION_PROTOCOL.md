@@ -599,7 +599,7 @@ make ci-gate-syscall-v2-runtime
 
 ## 12. Referanslar
 
-- `kernel/sys/syscall_v2.h` - Syscall interface
+- `shared/abi/syscall_v2.h` - Canonical syscall interface
 - `userspace/bcib-runtime/ARCHITECTURE.md` - BCIB runtime architecture
 - `ayken-core/crates/bcib/` - BCIB format implementation
 - `ARCHITECTURE_FREEZE.md` - Freeze sözleşmesi

@@ -39,15 +39,25 @@ kernel/
 ├── proc/                # Process management
 ├── fs/                  # Filesystem stubs (minimal Ring0 interface)
 ├── drivers/             # Device drivers (console, timer, PIC)
-└── include/             # Kernel headers
-    ├── ayken_abi.h     # Single source of truth for ABI
+└── include/             # Kernel wrappers and generated headers
+    ├── ayken_abi.h     # Compatibility wrapper for shared ABI
     └── generated/       # Auto-generated headers
-        ├── ayken_abi.inc    # NASM include (from ayken_abi.h)
+        ├── ayken_abi.inc    # NASM include (from shared/abi/ayken_abi.h)
         └── ring0.exports.map # Linker export map
 ```
 
+Canonical ABI contract inputs are owned outside kernel-local wrappers:
+
+```
+shared/abi/
+├── ayken_abi.h          # Canonical ABI layout and version source
+└── syscall_v2.h         # Canonical frozen syscall surface (1000-1011 / 12)
+```
+
 ### Key Kernel Files
-- `ayken_abi.h`: ABI constants (context offsets, syscall IDs)
+- `shared/abi/ayken_abi.h`: canonical ABI layout constants and version
+- `shared/abi/syscall_v2.h`: canonical syscall IDs and frozen range
+- `kernel/include/ayken_abi.h`: kernel compatibility wrapper only
 - `context_switch.asm`: Context switching (uses CTX_* constants only)
 - `sys/syscall_v2.c`: Syscall dispatcher (1000-1011 range)
 
@@ -265,7 +275,7 @@ Ring0 exports are constitutional surface. Changes require ADR.
 
 ## ABI Change Protocol (Constitutional)
 
-Changes to `kernel/include/ayken_abi.h` require:
+Changes to `shared/abi/ayken_abi.h` or `shared/abi/syscall_v2.h` require:
 
 1. **Version Bump**: `AYKEN_ABI_VERSION` MUST increment
 2. **RFC Approval**: Architecture Board review required
