@@ -88,7 +88,7 @@ Phase-17 kapanis kapisini asamaz.
 | Marker guard | Step 5 merge edilmis; local hardening uygulanmis | Validation-only lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race local QEMU PASS; remote kabul bekler |
 | ABI | 12 syscall lock ratified; canonical version drift giderildi | Clean-tree PR CI kabulü gerekir |
 | Governance | Spec-purity ve fail-closed marker isolation bu dilimde eklendi/duzeltildi | PR CI ile otorite kazanir |
-| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; PR #144 ilk remote performance source gate PASS ancak scoped acceptance FAIL | Remote FAIL metric regression degil runner digest drift'idir; run `26370359958` artifact-only renewal lock adayini uretti, import ve yeni remote kabul bekler |
+| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | PR #144 run `26370526155` generated lock ile `locked_authority_pass` uretti; yanlis tabanli duplicate PR #143 kapatildi, temiz final recheck bekler |
 | Phase-18 | Roadmap only | Baslatilmaz |
 
 ## 4. Stratejik Karar: Stabilization-First
@@ -152,7 +152,7 @@ var olan ratified yuzeyleri ve guard'lari tutarli hale getirir.
 
 ### S1 - Phase-17 Runtime Acceptance
 
-**Status:** LOCAL QEMU LIFECYCLE/DETERMINISM/PUBLIC E2E/WORKER COMPLETION/TIMEOUT-RACE VALIDATED / PR #144 INITIAL REMOTE RUNTIME GATES PASS / LOCAL PERFORMANCE READINESS FAIL / PR-4A OUTLIER CLASSIFIED / PR-4B BOUNDED REPRODUCTION NOT OBSERVED / REMOTE PERFORMANCE BLOCKED BY RUNNER DIGEST DRIFT / AUTHORIZED RENEWAL ARTIFACT GENERATED AND IMPORT CANDIDATE STAGED / REMOTE RECHECK PENDING
+**Status:** LOCAL QEMU LIFECYCLE/DETERMINISM/PUBLIC E2E/WORKER COMPLETION/TIMEOUT-RACE VALIDATED / PR #144 INITIAL REMOTE RUNTIME GATES PASS / LOCAL PERFORMANCE READINESS FAIL / PR-4A OUTLIER CLASSIFIED / PR-4B BOUNDED REPRODUCTION NOT OBSERVED / AUTHORIZED RENEWAL ARTIFACT IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / DUPLICATE WRONG-BASE PR CLOSED / FINAL CLEAN RECHECK PENDING
 **Purpose:** Marker validation'in gercek kernel execution-slot yasam
 dongusunde calistigini kanitlamak.
 
@@ -165,7 +165,7 @@ dongusunde calistigini kanitlamak.
 | S1.3 | Deterministic result repeat | LOCAL PASS / REMOTE PENDING | Ayni validation input icin iki QEMU boot result fingerprint match | Mechanism-only; logical evidence |
 | S1.4 | Invalid sequence fail-closed | LOCAL PASS / REMOTE PENDING | Negative trace + hash/mapping oncesi red | Resource rollback veya public syscall kaniti sayilmaz |
 | S1.5 | Interrupt/race isolation | LOCAL PASS / REMOTE PENDING | Delivered `RUNNING` logical-deadline -> real timer IRQ `TIMEOUT` -> delayed public `1011` reject QEMU trace | Validation-only tek interleaving; exhaustive/SMP race sayilmaz |
-| S1.6 | Performance acceptance | LOCAL READINESS FAIL / REMOTE SOURCE PASS BUT LOCKED ACCEPTANCE FAIL-CLOSED ON CI DIGEST DRIFT / AUTHORIZED RENEWAL ARTIFACT GENERATED / REMOTE RECHECK PENDING | Existing locked-baseline timer/preemption hot-path report + scoped PR-4 acceptance report + workflow-generated renewal artifact | Validation payload latency, manual baseline edit veya closure sayilmaz |
+| S1.6 | Performance acceptance | LOCAL READINESS FAIL / INITIAL REMOTE DIGEST DRIFT FAIL-CLOSED / AUTHORIZED ARTIFACT IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL RECHECK PENDING | Existing locked-baseline timer/preemption hot-path report + scoped PR-4 acceptance report + workflow-generated renewal artifact | Validation payload latency, manual baseline edit veya closure sayilmaz |
 | S1.7 | Variance source isolation | DIAGNOSTIC LOCAL PASS / ROOT CAUSE PENDING | PASS-reference ile FAIL-repeat raporlarindan variance fingerprint ve ortak outlier siniflandirmasi | Diagnostic PASS acceptance, baseline renewal veya closure sayilmaz |
 | S1.8 | Bounded variance reproduction | DIAGNOSTIC LOCAL PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | Ayni PR-4 contract ile image-reuse ve rebuild-per-run stage-localization raporu | Non-reproduction acceptance, kok neden veya closure sayilmaz |
 
@@ -212,6 +212,12 @@ Authorized run `26370359958`, current runner digest'i icin generated lock
 adayini checkout SHA `40418618` uzerinde dogrulayip artifact olarak
 uretmistir; bu aday PR'a import edilse de acceptance ancak sonraki remote
 locked-baseline PASS ile kurulur.
+PR #144 baglaminda run `26370526155`, imported lock ve explicit
+`baseline-update` authorization ile `locked_authority_pass` uretmistir.
+Ayni head branch'i dogrudan `main`e acan duplicate PR #143, gerekli staged
+review sirasi disinda oldugu ve etiketsiz mutation'i fail-closed reddettigi
+icin kapatilmistir. Bu dokuman commit'inden sonra final clean recheck yine
+zorunludur.
 `ci-gate-phase17-performance-variance-diagnostic`, mevcut local evidence'i
 yeniden olcum yapmadan okur. Ilk PASS stability run'i ile repeat FAIL run'ini
 karsilastirir, ortak outlier/fingerprint kaydi uretir ve upstream FAIL
@@ -290,10 +296,10 @@ nondeterministic verification verdict'i uretmez.
 | PR-2A (local stacked implementation) | LOCAL QEMU PASS / REMOTE PENDING | Public Ring3 submit/wait result-publication acceptance | Public ABI payload, execution backing/IRQ correctness fix, external evidence | `1003`/`1004` mapped result witness |
 | PR-2B (local stacked implementation) | LOCAL QEMU PASS / REMOTE PENDING | Ring3 fixture worker public completion acceptance | Worker payload, direct-output marker acknowledgement, completion cleanup CR3 fix, external evidence | Stub-off `1003`/`1011`/`1004` literal-result witness |
 | PR-3 (local stacked implementation) | LOCAL QEMU PASS / REMOTE PENDING | IRQ timeout-versus-late-completion fail-closed acceptance | Validation-only running-deadline injection, timer cleanup CR3 fix, Ring3 poll/late completion witness, external evidence | IRQ `TIMEOUT` wins; delayed `1011` rejected; no completed-result publish |
-| PR-4 (remote attempt blocked by authority drift) | LOCAL READINESS FAIL / REMOTE SOURCE PASS / SCOPED FAIL-CLOSED DIGEST DRIFT / RENEWAL ARTIFACT GENERATED | Locked-baseline timer/preemption hot-path performance acceptance | Scoped validator, remote workflow, local-readiness target, evidence docs | Imported generated lock + subsequent remote constitutional PASS required |
+| PR-4 (renewal acceptance candidate) | LOCAL READINESS FAIL / INITIAL REMOTE DIGEST DRIFT / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL RECHECK PENDING | Locked-baseline timer/preemption hot-path performance acceptance | Scoped validator, remote workflow, local-readiness target, evidence docs | Final clean remote constitutional PASS + same-SHA runtime evidence required |
 | PR-4A (local diagnostic implementation) | LOCAL DIAGNOSTIC PASS / ROOT CAUSE PENDING | PR-4 local stability variance fingerprinting ve kaynak ayrimi | Existing evidence analyzer, Make target ve docs; runtime/baseline mutasyonu yok | Ortak sample siniflandirmasi; acceptance verdict'i degismez |
 | PR-4B (local bounded measurement implementation) | LOCAL DIAGNOSTIC PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | PR-4A sapmasini controlled image-reuse/rebuild-per-run kosullarinda yeniden uretme ve stage-localize etme | Existing harness collector/analyzer, Make target ve docs; runtime/baseline/threshold mutasyonu yok | Runtime/counter parity; remote acceptance verdict'i degismez |
-| PR-4C (governed renewal safety repair) | AUTHORIZED ARTIFACT PASS / IMPORT CANDIDATE STAGED / REMOTE ACCEPTANCE PENDING | Baseline init artifact-only akisini policy ile hizalamak ve runner digest renewal yolunu acmak | Init/scoped workflows, generated lock, policy/procedure docs; runtime ve threshold mutasyonu yok | Direct protected-branch push yok; explicit `baseline-update` label; reviewed remote PASS gerekir |
+| PR-4C (governed renewal safety repair) | AUTHORIZED ARTIFACT PASS / IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL RECHECK PENDING | Baseline init artifact-only akisini policy ile hizalamak ve runner digest renewal yolunu acmak | Init/scoped workflows, generated lock, policy/procedure docs; runtime ve threshold mutasyonu yok | Direct protected-branch push yok; explicit `baseline-update` label; clean remote PASS gerekir |
 
 PR koordinasyon kurallari:
 
@@ -715,11 +721,16 @@ ayni remote authority ortaminda tekrar uretilir.
   bicimde `ci-freeze` authorization modeliyle hizalanmistir.
 - Policy ve renewal procedure, generated baseline lock'un yalniz reviewed
   renewal PR ile repository'ye alinacagini aciklar.
+- PR #144 run `26370526155`, imported generated lock ile
+  `phase17-performance-acceptance: PASS (locked_authority_pass)` uretmistir.
+- Ayni branch icin staged sirayi bypass eden duplicate PR #143 kapatilmistir;
+  bu metadata/doc commit'i sonrasi yalniz dogru PR baglaminda final recheck
+  halen gereklidir.
 
-**Authority boundary:** Remote performance source PASS, existing baseline
-altinda acceptance PASS degildir; digest drift icin governed renewal artifact'i
-uretilip PR incelemesi ve yeni remote gate sonucu alinmadan Phase-17 closure
-veya performance acceptance kurulamaz.
+**Authority boundary:** PR #144 uzerindeki locked acceptance PASS bir closure
+manifesti veya Phase-17 kapanisi degildir. Duplicate PR temizligi sonrasi
+current SHA icin tum required clean-tree remote gates yeniden PASS olmadan
+merge/closure otoritesi kurulamaz.
 
 ## 10. Review Triggers
 
