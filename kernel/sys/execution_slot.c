@@ -1445,9 +1445,10 @@ int execution_slot_validate_output_locked(exec_slot_t *slot, uint64_t *published
 
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
         /*
-         * A Ring3 worker writes directly into its output window. Once the
-         * kernel accepts that header, acknowledge the write before completion
-         * and verification markers. Stub writers already captured this event.
+         * A Ring3 completion producer writes directly into its output window.
+         * Once the kernel accepts that header, acknowledge the write before
+         * completion and verification markers. Stub writers already captured
+         * this event.
          */
         if (slot->marker_count == 1 &&
             slot->marker_sequence[0] == MARKER_EXEC_START &&

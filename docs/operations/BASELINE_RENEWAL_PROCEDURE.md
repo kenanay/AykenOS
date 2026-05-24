@@ -50,6 +50,9 @@ The workflow should:
 - Exit with code `2` (expected: fail-closed with baseline write)
 - Generate artifact: `perf-baseline-evidence`
 - Create file: `scripts/ci/perf-baseline.lock.json`
+- Validate the generated lock against the checked-out SHA, pinned digest,
+  strict policy and non-zero runtime counters
+- Never push the generated lock directly to `main` or any protected branch
 
 ### Step 4: Download and Commit Baseline Lock
 
@@ -69,7 +72,9 @@ The workflow should:
      }
    }
    ```
-4. Commit to repository:
+4. Import the workflow-generated file into a reviewed baseline-renewal PR;
+   do not hand-edit fields or copy it directly to a protected branch.
+5. Commit to repository:
    ```bash
    git add scripts/ci/perf-baseline.lock.json
    git commit -m "ci(perf): renew baseline for [reason]

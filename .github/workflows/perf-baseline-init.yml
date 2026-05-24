@@ -117,19 +117,19 @@ jobs:
           echo "=== Baseline content (first 120 lines) ==="
           sed -n '1,120p' scripts/ci/perf-baseline.lock.json
 
-      - name: Commit and push baseline to main
+      - name: Validate generated baseline for PR import
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scripts/ci/perf-baseline.lock.json
-          if git diff --cached --quiet; then
-            echo "No baseline changes to commit."
-          else
-            git commit -m "perf(baseline): update lock for ${PERF_CI_IMAGE_DIGEST} via authorized CI workflow ${RUN_ID}"
-            git push origin HEAD:main
-            echo "✓ Baseline committed and pushed to main"
-          fi
+          HEAD_SHA="$(git rev-parse HEAD)"
+          jq -e --arg sha "${HEAD_SHA}" --arg digest "${PERF_CI_IMAGE_DIGEST}" '
+            .git_sha == $sha and
+            .env.ci_image_digest == $digest and
+            .policy.env_mismatch_policy == "fail" and
+            (.raw_metrics.preempt_sw_count > 0) and
+            (.raw_metrics.preempt_iret_count > 0) and
+            (.env.env_hash | test("^[0-9a-f]{64}$"))
+          ' scripts/ci/perf-baseline.lock.json >/dev/null
+          echo "Generated baseline validated for PR import: ${HEAD_SHA}"
 
       - name: Debug artifact paths before upload
         if: ${{ always() }}
