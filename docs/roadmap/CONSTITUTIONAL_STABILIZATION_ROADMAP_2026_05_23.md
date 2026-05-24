@@ -88,7 +88,7 @@ Phase-17 kapanis kapisini asamaz.
 | Marker guard | Step 5 merge edilmis; local hardening uygulanmis | Validation-only lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race local QEMU PASS; remote kabul bekler |
 | ABI | 12 syscall lock ratified; canonical version drift giderildi | Clean-tree PR CI kabulü gerekir |
 | Governance | Spec-purity ve fail-closed marker isolation bu dilimde eklendi/duzeltildi | PR CI ile otorite kazanir |
-| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | PR #144 run `26370526155` generated lock ile `locked_authority_pass` uretti; yanlis tabanli duplicate PR #143 kapatildi, temiz final recheck bekler |
+| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | PR #144 run `26370526155` generated lock ile `locked_authority_pass` uretti; final `ci-freeze` run `26370646529` low-half timer witness blocker'i gosterdi, local integration fix PASS ve remote recheck bekler |
 | Phase-18 | Roadmap only | Baslatilmaz |
 
 ## 4. Stratejik Karar: Stabilization-First
@@ -152,7 +152,7 @@ var olan ratified yuzeyleri ve guard'lari tutarli hale getirir.
 
 ### S1 - Phase-17 Runtime Acceptance
 
-**Status:** LOCAL QEMU LIFECYCLE/DETERMINISM/PUBLIC E2E/WORKER COMPLETION/TIMEOUT-RACE VALIDATED / PR #144 INITIAL REMOTE RUNTIME GATES PASS / LOCAL PERFORMANCE READINESS FAIL / PR-4A OUTLIER CLASSIFIED / PR-4B BOUNDED REPRODUCTION NOT OBSERVED / AUTHORIZED RENEWAL ARTIFACT IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / DUPLICATE WRONG-BASE PR CLOSED / FINAL CLEAN RECHECK PENDING
+**Status:** LOCAL QEMU LIFECYCLE/DETERMINISM/PUBLIC E2E/WORKER COMPLETION/TIMEOUT-RACE VALIDATED / PR #144 INITIAL REMOTE RUNTIME GATES PASS / LOCAL PERFORMANCE READINESS FAIL / PR-4A OUTLIER CLASSIFIED / PR-4B BOUNDED REPRODUCTION NOT OBSERVED / AUTHORIZED RENEWAL ARTIFACT IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL CI-FREEZE LOW-HALF TIMER WITNESS REPAIR LOCAL PASS / REMOTE RECHECK PENDING
 **Purpose:** Marker validation'in gercek kernel execution-slot yasam
 dongusunde calistigini kanitlamak.
 
@@ -168,6 +168,7 @@ dongusunde calistigini kanitlamak.
 | S1.6 | Performance acceptance | LOCAL READINESS FAIL / INITIAL REMOTE DIGEST DRIFT FAIL-CLOSED / AUTHORIZED ARTIFACT IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL RECHECK PENDING | Existing locked-baseline timer/preemption hot-path report + scoped PR-4 acceptance report + workflow-generated renewal artifact | Validation payload latency, manual baseline edit veya closure sayilmaz |
 | S1.7 | Variance source isolation | DIAGNOSTIC LOCAL PASS / ROOT CAUSE PENDING | PASS-reference ile FAIL-repeat raporlarindan variance fingerprint ve ortak outlier siniflandirmasi | Diagnostic PASS acceptance, baseline renewal veya closure sayilmaz |
 | S1.8 | Bounded variance reproduction | DIAGNOSTIC LOCAL PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | Ayni PR-4 contract ile image-reuse ve rebuild-per-run stage-localization raporu | Non-reproduction acceptance, kok neden veya closure sayilmaz |
+| S1.9 | Freeze integration timer witness | REMOTE BLOCKER OBSERVED / LOCAL FIX PASS / REMOTE RECHECK PENDING | Same-run Phase10-A2 `create -> syscall_entry -> timer_irq` low-half runtime proof | Legacy witness tamiri Phase-17 closure veya yeni runtime feature sayilmaz |
 
 `ci-gate-execution-marker-lifecycle`, `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1`
 ve `AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=1` ile yalniz validation
@@ -218,6 +219,14 @@ Ayni head branch'i dogrudan `main`e acan duplicate PR #143, gerekli staged
 review sirasi disinda oldugu ve etiketsiz mutation'i fail-closed reddettigi
 icin kapatilmistir. Bu dokuman commit'inden sonra final clean recheck yine
 zorunludur.
+Sonraki final `ci-freeze` run `26370646529`, performance gate PASS sonrasinda
+low-half scaffold kapisinda `missing_runtime_phase:timer_irq` ile fail-closed
+durmustur. Kapsam analizi, ilk scheduler dispatch'ine eklenen IRQ0 mask
+cagrisinin legacy Phase10 profilinde ilk timer witness'tan once calistigini
+gostermistir. Erken mask cagrisi kaldirilmis; yerelde low-half scaffold,
+public E2E, worker completion ve timeout-race kapilari PASS vermistir.
+Bu entegrasyon tamiri yeni SHA icin remote `ci-freeze` yeniden PASS olmadan
+authority kurmaz.
 `ci-gate-phase17-performance-variance-diagnostic`, mevcut local evidence'i
 yeniden olcum yapmadan okur. Ilk PASS stability run'i ile repeat FAIL run'ini
 karsilastirir, ortak outlier/fingerprint kaydi uretir ve upstream FAIL
@@ -300,6 +309,7 @@ nondeterministic verification verdict'i uretmez.
 | PR-4A (local diagnostic implementation) | LOCAL DIAGNOSTIC PASS / ROOT CAUSE PENDING | PR-4 local stability variance fingerprinting ve kaynak ayrimi | Existing evidence analyzer, Make target ve docs; runtime/baseline mutasyonu yok | Ortak sample siniflandirmasi; acceptance verdict'i degismez |
 | PR-4B (local bounded measurement implementation) | LOCAL DIAGNOSTIC PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | PR-4A sapmasini controlled image-reuse/rebuild-per-run kosullarinda yeniden uretme ve stage-localize etme | Existing harness collector/analyzer, Make target ve docs; runtime/baseline/threshold mutasyonu yok | Runtime/counter parity; remote acceptance verdict'i degismez |
 | PR-4C (governed renewal safety repair) | AUTHORIZED ARTIFACT PASS / IMPORTED / PR #144 LOCKED ACCEPTANCE PASS OBSERVED / FINAL RECHECK PENDING | Baseline init artifact-only akisini policy ile hizalamak ve runner digest renewal yolunu acmak | Init/scoped workflows, generated lock, policy/procedure docs; runtime ve threshold mutasyonu yok | Direct protected-branch push yok; explicit `baseline-update` label; clean remote PASS gerekir |
+| PR-4D (freeze integration repair) | REMOTE BLOCKER OBSERVED / LOCAL PASS / REMOTE RECHECK PENDING | Legacy Phase10 low-half timer runtime witness'ini Phase-17 first-dispatch guard entegrasyonundan ayirmak | Scheduler first-dispatch IRQ mask kapsam daraltmasi ve durum belgeleri | `ci-gate-low-half-kheap-scaffold` + Phase-17 public/race gates + clean remote `ci-freeze` |
 
 PR koordinasyon kurallari:
 
@@ -331,6 +341,10 @@ PR koordinasyon kurallari:
   yolunun governance duzeltmesidir. Init workflow yalniz dogrulanmis artifact
   uretir; baseline/threshold degisikligi review olmadan protected branch'e
   yazilamaz.
+- PR-4D, full freeze'in gosterdiigi legacy runtime witness gerilemesini
+  kapatir. Phase-17 public acceptance profillerinde zaten kapali olan erken
+  IRQ0 mask cagrisini legacy ilk-dispatch yolundan cikarir; yeni policy,
+  syscall veya closure iddiasi eklemez.
 - PR-1..PR-4 ayni anda production kernel refactor'i acmaz.
 - Her PR kendi evidence path'ini ve non-goal'larini aciklar.
 - Bir test yeni bir kernel bug'i gosterirse duzeltme additive ve ayrik
@@ -732,6 +746,41 @@ manifesti veya Phase-17 kapanisi degildir. Duplicate PR temizligi sonrasi
 current SHA icin tum required clean-tree remote gates yeniden PASS olmadan
 merge/closure otoritesi kurulamaz.
 
+### 2026-05-24 - PR-4D Full Freeze Low-Half Timer Witness Integration Repair
+
+**Observed remotely:**
+
+- Final PR #144 `ci-freeze` run `26370646529`, imported performance lock ile
+  performance gate'i PASS ettikten sonra `ci-gate-low-half-kheap-scaffold`
+  kapisinda `missing_runtime_phase:timer_irq` nedeniyle FAIL vermistir.
+- Ayni evidence icinde `create` ve `syscall_entry` low-half runtime kayitlari
+  mevcut, `kheap_low_half=0`, `scaffold=0` ve higher-half kontrati korunmustur;
+  blocker mapping truth degil eksik zamanli timer witness'tir.
+
+**Implemented locally:**
+
+- Phase-17 public ilk-entry guard icin eklenen scheduler ilk-dispatch
+  kurulumunda, legacy `AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=1` profiline erken
+  uygulanan IRQ0 mask cagrisi kaldirildi.
+- Public Phase-17 acceptance profilleri bu maskeyi zaten `0` tutar; degisiklik
+  yeni feature acmaz ve ilk gerçek timer IRQ uzerinden mevcut Phase10 witness
+  sirasini geri getirir.
+
+**Local evidence:**
+
+- `make ci-gate-low-half-kheap-scaffold RUN_ID=local-pr144-low-half-after-fix EVIDENCE_ROOT=evidence`
+  - PASS; required phases `create`, `syscall_entry`, `timer_irq`.
+- `make ci-gate-execution-public-e2e RUN_ID=local-pr144-public-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT=35`
+  - PASS.
+- `make ci-gate-execution-worker-completion RUN_ID=local-pr144-worker-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT=35`
+  - PASS.
+- `make ci-gate-execution-timeout-race RUN_ID=local-pr144-timeout-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT=35`
+  - PASS.
+
+**Authority boundary:** Bu local tamir remote full freeze sonucunun yerini
+almaz. Phase-17 closure kurulmadan once yeni SHA ile correct stacked PR #144
+uzerinde required remote suite ve `ci-freeze` PASS alinmalidir.
+
 ## 10. Review Triggers
 
 Bu roadmap su olaylarda guncellenir:
@@ -745,8 +794,9 @@ Bu roadmap su olaylarda guncellenir:
 7. PR-4A variance diagnosis sonucuna dayali kaynak izolasyonu veya validation matrix karari.
 8. PR-4B bounded local non-reproduction sonucunun remote PR-4 kabulunde yeniden gorulmesi ya da ihlal uretmesi.
 9. PR-4 remote locked-baseline performance acceptance sonucu veya baseline renewal/regression.
-10. Phase-17 closure candidate olusmasi.
-11. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+10. PR-4D low-half timer witness tamiri sonrasi full remote `ci-freeze` sonucu.
+11. Phase-17 closure candidate olusmasi.
+12. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 

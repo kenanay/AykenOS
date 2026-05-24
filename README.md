@@ -24,8 +24,8 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
 **CURRENT_PHASE:** `17` (`Phase-16 OFFICIALLY CLOSED`; Phase-17 aktif, resmi closure henüz kurulmadı)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
-**Acil Blocker:** Phase-17 tam kapanışı için PR #144 runtime checks ve locked performance acceptance PASS görülmüş olsa da duplicate wrong-base PR #143 temizliği sonrası current SHA full remote suite ve closure otoritesi henüz yok
-**Yakın Hedef:** Phase-17 closure acceptance: doğru stacked PR #144 üzerinde imported workflow-generated `gha-ubuntu24-20260518.149.1-X64` baseline adayıyla current SHA `ci-freeze` ve required remote checks sonucunu almak
+**Acil Blocker:** Phase-17 tam kapanışı için PR #144 runtime checks ve locked performance acceptance PASS görülmüş olsa da final `ci-freeze` run `26370646529` low-half `timer_irq` witness gerilemesini buldu; local fix PASS, yeni SHA full remote suite ve closure otoritesi henüz yok
+**Yakın Hedef:** Phase-17 closure acceptance: doğru stacked PR #144 üzerinde imported workflow-generated `gha-ubuntu24-20260518.149.1-X64` baseline adayı ve low-half timer witness tamiriyle yeni SHA `ci-freeze` ve required remote checks sonucunu almak
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; remote acceptance PASS olana kadar closure authority değildir)
 **Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 ACTIVE / CLOSURE PENDING 🔄 | Phase-17.5 draft PR #142 under review 🔄 | Phase-18 ROADMAP ONLY
@@ -39,10 +39,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
-**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | validation-only gercek kernel/QEMU lifecycle, deterministic/negative, public Ring3 `1003/1004`, bounded `1003/1011/1004` completion ve IRQ timeout-race ilk PR #144 remote checks PASS (2026-05-24) | authorized renewal import sonrasi PR #144 locked performance acceptance PASS (`26370526155`); duplicate wrong-base PR #143 kapatildi, final clean recheck pending | closure etiketi/manifesti henuz yok
+**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | validation-only gercek kernel/QEMU lifecycle, deterministic/negative, public Ring3 `1003/1004`, bounded `1003/1011/1004` completion ve IRQ timeout-race ilk PR #144 remote checks PASS (2026-05-24) | authorized renewal import sonrasi PR #144 locked performance acceptance PASS (`26370526155`); final `ci-freeze` low-half timer witness blocker'i yerelde giderildi, yeni SHA remote recheck pending | closure etiketi/manifesti henuz yok
 **Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure ve runtime acceptance kurulmadan aktif faz sayılmaz
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; authorized renewal candidate imported; PR #144 locked acceptance PASS observed; duplicate wrong-base PR closed; current SHA clean remote authority pending
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; authorized renewal candidate imported; PR #144 locked acceptance PASS observed; full-freeze low-half timer witness repair local PASS; new-SHA clean remote authority pending
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** Yalnız doğru stacked PR #144 bağlamında imported baseline adayıyla current SHA required remote suite ve `ci-freeze` PASS sonucunu almak; ardından closure candidate incelemesine geçmek
+**Next Focus:** Yalnız doğru stacked PR #144 bağlamında imported baseline adayı ve local PASS alan low-half timer witness tamiriyle yeni SHA required remote suite ve `ci-freeze` PASS sonucunu almak; ardından closure candidate incelemesine geçmek
 
 ## Authority Model
 

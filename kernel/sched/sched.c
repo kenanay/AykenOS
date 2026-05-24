@@ -5999,7 +5999,6 @@ void sched_start(void)
     sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
     sched_note_first_user_entry_if_ring3(current_proc);
     sched_arm_ring3_entry_guard_if_ring3(current_proc);
-    sched_mask_irq0_before_first_ring3_entry(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     switch_to_first(&current_proc->context);
     

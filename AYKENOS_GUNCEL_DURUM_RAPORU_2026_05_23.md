@@ -1,7 +1,7 @@
 # AykenOS Guncel Durum ve Uygulama Raporu - 2026-05-23
 
 **Durum tarihi:** 2026-05-23
-**Uygulama ek kaydi:** 2026-05-24 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A variance diagnostic ve PR-4B bounded isolation)
+**Uygulama ek kaydi:** 2026-05-24 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation ve full-freeze timer witness integration repair)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
 
@@ -15,7 +15,7 @@
 | Phase-17 kapanisi | `phase17-official-closure` etiketi/manifesti yok | Tum faz icin closure iddiasi kurulamaz |
 | Phase-17.5 | `docs/phase17-5-ci-verified` dalinda gelistirme | Review/merge otoritesi beklenir |
 | Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 ilk remote runtime gates PASS; runner digest renewal artifact import edildi; scoped run `26370526155` locked acceptance PASS; duplicate wrong-base PR #143 kapatildi ve final recheck bekler |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 runtime gates ve scoped run `26370526155` locked acceptance PASS; final `ci-freeze` run `26370646529` low-half timer witness blocker'i buldu; local fix PASS ve remote recheck bekler |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Authorized run `26370359958` kaynakli `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a import edildi; clean final remote suite olmadan closure otoritesi kazanmaz |
 
 ## Bu Degisiklikte Uygulanan Eksikler
@@ -65,6 +65,7 @@
 43. Baseline renewal governance yolu sertlestirildi: `perf-baseline-init.yml` generated lock'u SHA/digest/strict-policy/counter kosullariyla dogrulayip artifact olarak birakir; protected branch'e direct push yapmaz ve lock yalniz reviewed renewal PR ile alinabilir.
 44. Authorized workflow run `26370359958`, SHA `40418618` uzerinde `gha-ubuntu24-20260518.149.1-X64` lock adayini PASS ile uretti; generated file degistirilmeden PR'a alindi ve scoped acceptance workflow'u explicit `baseline-update` authorization modeliyle hizalandi.
 45. Correct stacked draft PR #144 run `26370526155`, imported lock uzerinde `performance: PASS` ve `phase17-performance-acceptance: PASS (locked_authority_pass)` uretti. Ayni head dalini yanlis bicimde dogrudan `main`e acan duplicate PR #143 staged review sirasi disinda oldugu icin kapatildi; current SHA final remote recheck halen gerekir.
+46. Final PR #144 `ci-freeze` run `26370646529`, performance gate PASS sonrasinda low-half scaffold kapisinda `missing_runtime_phase:timer_irq` ile fail-closed durdu; ilk scheduler dispatch'indeki erken IRQ0 mask cagrisi legacy Phase10 timer witness'ini kesiyordu. Cagri kaldirildi ve low-half/public/worker/timeout hedefleri yerelde PASS verdi; remote full-freeze recheck beklenir.
 
 Tarihli eski faz snapshot belgelerinde, ratification oncesi `1000-1010` /
 11-syscall anlatimi tarihsel kayit olarak kalabilir; guncel ve normatif
@@ -88,6 +89,7 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 - No-switch IRQ donusu ayni Ring3 baglami icin original interrupt frame'ini korur; public syscall return degerinin preemption ile kaybi fail-closed QEMU kabulunde kapatildi.
 - PR-3 timer IRQ terminal cleanup scope duzeltmesi kullaniciya yeni mapping veya permission vermez; timeout sonrasi gecikmis `1011` basariya donusturulemez.
 - PR-3 evidence'i tek validation-injected timeout-wins interleaving ile sinirlidir; exhaustive race matrisi veya SMP safety iddiasi kurulmaz.
+- Full-freeze low-half tamiri, legacy Phase10 profilinde ilk timer tanigindan once IRQ0 maskelenmesini geri alir; Phase-17 public profilleri maskeyi zaten kapali tuttugundan yeni runtime veya policy yuzeyi acilmaz.
 
 ## Performans ve Determinizm Kararlari
 
@@ -137,6 +139,10 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 | `python3 tools/ci/validate_phase17_performance_acceptance.py --mode local-readiness ...r2...` (stability raporu ile hardened re-evaluation) | EXPECTED FAIL | Median PASS + stability FAIL artik `local_diagnostic_fail` uretir; fail-open readiness iddiasi kapatildi |
 | `make ci-gate-phase17-performance-variance-diagnostic RUN_ID=local-phase17-variance-diagnostic-20260524 ...` | PASS (DIAGNOSTIC ONLY) | Referans PASS / repeat FAIL divergence; ortak `sample-6` outlier; QEMU elapsed `%8.52` artarken observed terminal counts sabit; acceptance `blocked_by_source_stability_failure` olarak korunur |
 | `make ci-gate-phase17-performance-variance-isolation RUN_ID=local-phase17-variance-isolation-20260524-r3 ...` | PASS (DIAGNOSTIC ONLY) | Ayni PR-4 contract altinda image-reuse `%1.300080`, rebuild-per-run `%0.743889`; onceki outlier yeniden uretilmedi, remote acceptance halen zorunlu |
+| `make ci-gate-low-half-kheap-scaffold RUN_ID=local-pr144-low-half-after-fix EVIDENCE_ROOT=evidence` | PASS | Remote full-freeze blocker tamiri sonrasi same-run `create -> syscall_entry -> timer_irq` runtime proof geri geldi |
+| `make ci-gate-execution-public-e2e RUN_ID=local-pr144-public-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT=35` | PASS | Erken IRQ0 mask kapsam daraltmasi sonrasi public submit/wait gerilemedi |
+| `make ci-gate-execution-worker-completion RUN_ID=local-pr144-worker-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT=35` | PASS | Fixture worker public completion gerilemedi |
+| `make ci-gate-execution-timeout-race RUN_ID=local-pr144-timeout-after-low-half-fix EVIDENCE_ROOT=evidence EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT=35` | PASS | IRQ timeout-versus-late-completion fail-closed tanigi gerilemedi |
 | `python3 -m py_compile tools/ci/validate_phase17_performance_acceptance.py tools/ci/analyze_phase17_performance_variance.py tools/ci/analyze_phase17_variance_isolation.py` | PASS | PR-4/PR-4A/PR-4B validator/analyzer syntax denetimi |
 | `make clean` + `make all` (2026-05-24) | PASS | Varsayilan build; Ring0 export map 193 symbol, E2E/worker flags default-off |
 | `make ci-gate-governance` | PASS | Evidence isolation, observation boundary, naming compliance ve normative spec purity |
@@ -146,8 +152,10 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 
 Ilk PR #144 remote kosusunda runtime workflow'lari PASS vermis, `ci-freeze`
 naming terimi nedeniyle ve PR-4 acceptance runner digest drift'i nedeniyle
-fail-closed durmustur. Duzeltilmis SHA ile remote tekrar ve governed baseline
-renewal sonucu alinmadan resmi faz kapanisi veya merge yetkisi kurulmaz.
+fail-closed durmustur. Renewal import sonrasi scoped acceptance PASS vermis,
+ancak final `ci-freeze` run `26370646529` low-half `timer_irq` witness
+gerilemesini bulmustur. Bu blocker yerelde giderildi; yeni SHA ile full remote
+PASS alinmadan resmi faz kapanisi veya merge yetkisi kurulmaz.
 
 ABI baseline lock degisikligi freeze kapsaminda tracked olarak yer alir; normal
 baseline kabul otoritesi de clean-tree PR CI incelemesidir.
@@ -157,15 +165,15 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 1. PR-1, PR-2, PR-2A/S1.E2E, PR-2B fixture worker completion ve PR-3 IRQ timeout-race local QEMU evidence paketlerinin clean-tree remote PR CI/review ile kabul edilmesi.
 2. Genel BCIB interpreter/opcode yuzeyi veya urunlestirilmis Ring3 worker semantic coverage kaniti; PR-2B yalniz bounded literal fixture'i kanitlar.
 3. Gerekiyorsa PR-3'un tek timeout-wins senaryosu disinda broader/exhaustive scheduler-interrupt race ve SMP coverage kaniti.
-4. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; ilk remote PR-4 digest drift'i authorized artifact ile giderildi ve PR #144 locked acceptance PASS gozlemlendi. Duplicate cleanup sonrasi current SHA full remote suite PASS gerekir.
+4. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; ilk remote PR-4 digest drift'i authorized artifact ile giderildi ve PR #144 locked acceptance PASS gozlemlendi. Final `ci-freeze` low-half timer witness blocker'i yerelde duzeltildi; yeni SHA full remote suite PASS gerekir.
 5. Bu kanitlara dayali Phase-17 closure manifesti ve resmi kapanis etiketi.
 6. Canonical ABI/baseline senkronizasyonunun clean-tree PR CI ile kabul edilmesi.
 
 ## Oncelik Sirasi
 
-**En oncelikli adim:** Artifact-only yetkili workflow ile `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a alinmis ve PR #144 baglaminda locked acceptance PASS gozlenmistir. Siradaki authority islemi duplicate PR temizligi sonrasi current SHA icin required remote suite ve `ci-freeze` sonucunu almaktir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+**En oncelikli adim:** Artifact-only yetkili workflow ile `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a alinmis ve PR #144 baglaminda locked acceptance PASS gozlenmistir. Final `ci-freeze` tarafindan bulunan low-half timer witness gerilemesi yerelde duzeltildigi icin siradaki authority islemi bu yeni SHA icin required remote suite ve `ci-freeze` sonucunu almaktir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
 
-**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - ilk remote runtime checks PASS; authorized renewal artifact PR'a import edildi; PR #144 locked acceptance PASS gozlemlendi; duplicate cleanup sonrasi current SHA full remote authority pending.
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - remote runtime checks ve locked acceptance PASS gozlemlendi; full-freeze low-half timer witness blocker'i yerelde giderildi; new-SHA full remote authority pending.
 
 ---
 
