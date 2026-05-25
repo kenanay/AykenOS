@@ -1,0 +1,27 @@
+name: Naming Compliance
+
+on:
+  push:
+    branches: [ main, dev, 'feature/**', 'fix/**', 'refactor/**', 'ci/**' ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  naming:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run naming compliance check
+        run: |
+          chmod +x scripts/check_naming_compliance.sh
+          ./scripts/check_naming_compliance.sh
+      
+      - name: Upload naming report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: naming-report
+          path: out/evidence/**/reports/naming_*.json
+          if-no-files-found: warn

@@ -8,6 +8,69 @@
 #include "execution_output_structured_abi.h"
 #include "execution_result_hash_abi.h"
 
+/*
+ * VCP Validation State Structure (FINAL ABI - LOCKED)
+ * 
+ * CRITICAL: This is the FINAL ABI layout. Do NOT evolve this structure later.
+ * Task 18 will implement verification functions for this exact layout.
+ * 
+ * This structure carries VCP validation state through the execution lifecycle,
+ * enabling runtime enforcement of validation decisions made at CI time.
+ * 
+ * Trust Model: This structure is verified through:
+ *   1. Capability binding (prevents forgery)
+ *   2. Context hash (prevents replay)
+ *   3. Signature verification (ensures authenticity)
+ *   4. Nonce uniqueness (prevents reuse)
+ * 
+ * All fields are 64-bit aligned for deterministic memory layout.
+ * 
+ * ABI CONTRACT:
+ *   - Size: EXACTLY 72 bytes (9 fields × 8 bytes)
+ *   - Alignment: EXACTLY 8 bytes
+ *   - No padding allowed
+ *   - No reordering allowed
+ *   - Binary layout MUST be identical across all builds
+ * 
+ * TIMESTAMP CONTRACT:
+ *   - MUST be logical monotonic counter (execution tick, event sequence)
+ *   - MUST NOT use wall clock time (system time, rdtsc, timer)
+ *   - MUST be deterministic (same execution → same timestamp)
+ *   - Violation = non-deterministic replay = constitutional violation
+ */
+typedef struct vcp_validation_state {
+    uint64_t validation_result;  /* VCP_VALID, VCP_INVALID, VCP_MISSING */
+    uint64_t contract_id;        /* BCIB contract identifier */
+    uint64_t boundary_policy;    /* ABDF boundary contract identifier */
+    uint64_t context_hash;       /* Hash of execution context (includes ABDF snapshot) */
+    uint64_t nonce;              /* Unique nonce for replay protection */
+    uint64_t signature;          /* VCP trust root signature */
+    uint64_t capability_id;      /* Kernel capability binding */
+    uint64_t evidence_id;        /* Evidence trail reference */
+    uint64_t timestamp;          /* Logical monotonic counter (NOT wall clock) */
+} vcp_validation_state_t;
+
+/*
+ * ABI LOCK ENFORCEMENT (CRITICAL - DO NOT REMOVE)
+ * 
+ * These static assertions enforce the FINAL ABI contract.
+ * If these fail, the ABI has drifted and Task 18 verification will break.
+ * 
+ * Failure modes prevented:
+ *   - Compiler padding insertion
+ *   - Field reordering
+ *   - Platform-specific size changes
+ *   - Accidental field additions
+ */
+_Static_assert(sizeof(vcp_validation_state_t) == 72,
+               "VCP ABI BROKEN: size must be exactly 72 bytes (9 × 8)");
+_Static_assert(__alignof__(vcp_validation_state_t) == 8,
+               "VCP ABI BROKEN: alignment must be exactly 8 bytes");
+_Static_assert(sizeof(((vcp_validation_state_t *)0)->validation_result) == 8,
+               "VCP ABI BROKEN: validation_result must be 8 bytes");
+_Static_assert(sizeof(((vcp_validation_state_t *)0)->timestamp) == 8,
+               "VCP ABI BROKEN: timestamp must be 8 bytes");
+
 #ifndef AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
 #define AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE 0
 #endif
@@ -89,6 +152,31 @@ typedef struct exec_slot {
     uint32_t trace_count;
     uint32_t trace_head;
     execution_trace_entry_t trace_entries[AYKEN_EXECUTION_TRACE_CAPACITY];
+    /*
+     * VCP validation state pointer (CRITICAL LIFECYCLE CONTRACT)
+     * 
+     * NULL semantics:
+     *   - NULL = no VCP state available → TRIGGERS FAIL-CLOSED
+     *   - This is the PRIMARY fail-closed detection mechanism
+     * 
+     * Non-NULL semantics:
+     *   - Pointer MUST point to valid vcp_validation_state_t
+     *   - State MUST be verified before trust (Task 18)
+     *   - Verification checks: capability, context, signature, nonce
+     * 
+     * Lifecycle contract:
+     *   - Initialized to NULL in execution_slot_alloc_locked()
+     *   - Attached by VCP runtime hook (Task 2)
+     *   - Verified before use (Task 18)
+     *   - Cleaned up in execution_slot_release_locked()
+     * 
+     * RISK AWARENESS:
+     *   - Pointer = dynamic allocation surface → nondeterminism risk
+     *   - Pointer lifetime → stale state risk
+     *   - Memory reuse → replay risk
+     *   - Future: consider inline struct + has_state flag for determinism
+     */
+    vcp_validation_state_t *validation_state;
 #if AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE
     uint8_t marker_bitmap;
     uint8_t last_marker;

@@ -92,45 +92,58 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 ### 2.1 Mandatory Gate Targets
 
-`make ci-freeze` strict zinciri — Makefile ile birebir eslesen yurutme sirasi (2026-03-28):
+`make ci-freeze` strict zinciri — Makefile ile birebir eslesen yurutme sirasi (2026-05-22):
 
 1. `make ci-gate-abi`
 2. `make ci-gate-boundary`
 3. `make ci-gate-ring0-exports`
 4. `make ci-gate-hygiene`
-5. `make ci-gate-tooling-isolation`
-6. `make ci-gate-constitutional`
-7. `make ci-gate-governance-policy`
-8. `make ci-gate-naming-convention`
-9. `make ci-gate-drift-activation`
-10. `make ci-gate-structural-abi`
-11. `make ci-gate-runtime-marker-contract`
-12. `make ci-gate-user-bin-lock`
-13. `make ci-gate-embedded-elf-hash`
-14. `make ci-gate-performance`
-15. `make ci-gate-ring3-user-leaf-rule`
-16. `make ci-gate-ring3-execution-phase10a2`
-17. `make ci-gate-syscall-semantics-phase10b`
-18. `make ci-gate-low-half-kheap-scaffold`
-19. `make $(PHASE10C_FREEZE_GATE)` _(conditional: `PHASE10C_ENFORCE=1` ise `ci-gate-scheduler-mailbox-phase10c`)_
-20. `make ci-gate-mailbox-capability-negative`
-21. `make ci-gate-workspace`
-22. `make ci-gate-syscall-v2-runtime`
-23. `make ci-gate-sched-bridge-runtime`
-24. `make ci-gate-behavioral-suite`
-25. `make ci-gate-policy-accept`
-26. `make ci-gate-alias-proof`
-27. `make ci-kill-switch-phase13` _(Phase-13 distributed verification kill-switch gates)_
+5. `make ci-gate-execution-slot-integrity`
+6. `make ci-gate-execution-marker-isolation`
+7. `make ci-gate-tooling-isolation`
+8. `make ci-gate-constitutional`
+9. `make ci-gate-governance-policy`
+10. `make ci-gate-naming-convention`
+11. `make ci-gate-drift-activation`
+12. `make ci-gate-structural-abi`
+13. `make ci-gate-runtime-marker-contract`
+14. `make ci-gate-user-bin-lock`
+15. `make ci-gate-embedded-elf-hash`
+16. `make ci-gate-performance`
+17. `make ci-gate-ring3-user-leaf-rule`
+18. `make ci-gate-ring3-execution-phase10a2`
+19. `make ci-gate-syscall-semantics-phase10b`
+20. `make ci-gate-low-half-kheap-scaffold`
+21. `make $(PHASE10C_FREEZE_GATE)` _(conditional freeze gate resolved by Makefile)_
+22. `make ci-gate-mailbox-capability-negative`
+23. `make ci-gate-workspace`
+24. `make ci-gate-syscall-v2-runtime`
+25. `make ci-gate-sched-bridge-runtime`
+26. `make ci-gate-behavioral-suite`
+27. `make ci-gate-policy-accept`
+28. `make ci-gate-alias-proof`
+29. `make ci-kill-switch-phase13` _(Phase-13 distributed verification kill-switch gates)_
+30. `make ci-gate-determinism-replay-consistency`
+31. `make ci-gate-bcib-v3-core`
+32. `make ci-gate-toolchain-opcode-registry`
+33. `make ci-gate-capability-manager`
+34. `make ci-gate-proofd-observability-boundary`
+35. `make ci-gate-dsl-bcib-contract`
+36. `make ci-gate-semantic-cli-contract`
+37. `make ci-gate-data-runtime-bcib`
+38. `make ci-gate-ai-runtime-boundary`
+39. `make ci-gate-bcib-stub-determinism`
 
 #### Execution Order Rationale
 
 Yürütme sırası kasıtlıdır ve fail-fast ilkesini uygular:
 
 - **1-4 (Static checks):** ABI, boundary, export surface, hygiene — en hızlı, en temel kontroller önce çalışır. Bunlar başarısız olursa QEMU tabanlı testler çalıştırılmaz.
-- **5-13 (Structural checks):** Tooling isolation, constitutional, governance, naming, drift, structural ABI, marker contract, binary locks — yapisal butunluk dogrulamasi.
-- **14-15 (Performance + rule authority):** Performance gate runtime lane'lerden once kosar; hemen arkasindan `ci-gate-ring3-user-leaf-rule` executable user-leaf runtime rule'unu fail-closed dogrular.
-- **16-26 (Runtime gates):** Broader Ring3 execution, syscall semantics, low-half scaffold, scheduler mailbox, workspace, syscall v2, sched bridge, behavioral suite, policy accept, alias proof — QEMU tabanli runtime dogrulama.
-- **27 (Kill-switch gates):** Phase-13 distributed verification kill-switch gate seti — authority boundary korumasi.
+- **5-15 (Structural checks):** Execution slot/marker isolation, tooling isolation, constitutional, governance, naming, drift, structural ABI, marker contract, binary locks — yapisal butunluk dogrulamasi.
+- **16-17 (Performance + rule authority):** Performance gate runtime lane'lerden once kosar; hemen arkasindan `ci-gate-ring3-user-leaf-rule` executable user-leaf runtime rule'unu fail-closed dogrular.
+- **18-28 (Runtime gates):** Broader Ring3 execution, syscall semantics, low-half scaffold, scheduler mailbox, workspace, syscall v2, sched bridge, behavioral suite, policy accept, alias proof — QEMU tabanli runtime dogrulama.
+- **29-30 (Distributed verification gates):** Phase-13 kill-switch ve determinism replay consistency — proofd/verifier authority boundary korumasi.
+- **31-39 (Phase-15/17 execution pipeline gates):** BCIB v3 core, opcode registry, capability manager, proofd observability boundary, DSL/CLI/data/AI runtime contracts, BCIB stub determinism — execution pipeline authority and workstream contracts.
 
 #### Gate Order Change Protocol
 

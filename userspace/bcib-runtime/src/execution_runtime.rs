@@ -322,6 +322,21 @@ impl BcibExecutionRuntime {
         budget: CostBudget,
     ) -> Result<SliceResult, BcibError> {
         // ----------------------------------------------------------------
+        // VCP (Verified Contract Protocol) — Trust Layer Hook
+        //
+        // Requirements: Task 7 — Contract validation capability
+        // Guarantees:
+        //   - Execution state verified before slice execution
+        //   - Fail-closed on verification failure
+        //   - No silent trust; explicit verification required
+        // ----------------------------------------------------------------
+        use crate::vcp::verify_execution_state;
+        
+        if let Err(e) = verify_execution_state() {
+            return Err(e);
+        }
+
+        // ----------------------------------------------------------------
         // Phase 1: Execute instructions under the context borrow.
         //
         // We use a local enum to communicate what happened so we can drop

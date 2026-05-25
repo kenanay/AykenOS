@@ -1,0 +1,45 @@
+name: Dev Loop Validation
+
+on:
+  push:
+    branches: [ main, dev, 'feature/**', 'fix/**', 'refactor/**', 'ci/**' ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  devloop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            ripgrep \
+            clang \
+            lld \
+            make \
+            nasm \
+            mtools \
+            jq
+      
+      - name: Run dev loop
+        env:
+          TIMEOUT_SECONDS: 45
+        run: |
+          chmod +x scripts/dev_loop.sh
+          ./scripts/dev_loop.sh
+      
+      - name: Upload dev loop artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-loop-artifacts
+          path: |
+            out/evidence/**/reports/
+            out/logs/
+          if-no-files-found: warn

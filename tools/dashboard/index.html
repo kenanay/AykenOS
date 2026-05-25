@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AykenOS Dev Loop Observability Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #58a6ff;
+        }
+
+        .header .subtitle {
+            font-size: 0.875rem;
+            color: #8b949e;
+            margin-top: 0.25rem;
+        }
+
+        .attribution {
+            font-size: 0.75rem;
+            color: #6e7681;
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pass {
+            background: #238636;
+            color: #fff;
+        }
+
+        .status-fail {
+            background: #da3633;
+            color: #fff;
+        }
+
+        .status-unknown {
+            background: #6e7681;
+            color: #fff;
+        }
+
+        .status-warning {
+            background: #d29922;
+            color: #000;
+        }
+
+        .metric {
+            margin: 0.75rem 0;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: #8b949e;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+
+        .metric-value.large {
+            font-size: 2rem;
+        }
+
+        .marker-list {
+            list-style: none;
+        }
+
+        .marker-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .marker-item:last-child {
+            border-bottom: none;
+        }
+
+        .marker-icon {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .marker-name {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        .run-selector {
+            margin-bottom: 2rem;
+        }
+
+        .run-selector select {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .run-selector select:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+
+        .log-viewer {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-line {
+            padding: 0.125rem 0;
+        }
+
+        .log-line.marker {
+            color: #3fb950;
+            font-weight: 600;
+        }
+
+        .log-line.error {
+            color: #f85149;
+        }
+
+        .log-line.warning {
+            color: #d29922;
+        }
+
+        .perf-chart {
+            margin-top: 1rem;
+        }
+
+        .perf-bar {
+            background: #21262d;
+            height: 30px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .perf-bar-fill {
+            background: linear-gradient(90deg, #238636, #3fb950);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .perf-bar-fill.warning {
+            background: linear-gradient(90deg, #d29922, #f0883e);
+        }
+
+        .perf-bar-fill.danger {
+            background: linear-gradient(90deg, #da3633, #f85149);
+        }
+
+        .perf-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: #0d1117;
+            border-bottom: 2px solid #30363d;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+        }
+
+        .history-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #21262d;
+            font-size: 0.875rem;
+        }
+
+        .history-table tr:hover {
+            background: #0d1117;
+        }
+
+        .timestamp {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6e7681;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .refresh-btn:hover {
+            background: #2ea043;
+        }
+
+        .context-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .context-item {
+            padding: 0.75rem;
+            background: #0d1117;
+            border-radius: 4px;
+        }
+
+        .context-label {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-bottom: 0.25rem;
+        }
+
+        .context-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: #c9d1d9;
+        }
+
+        .disclaimer {
+            background: #1c2128;
+            border-left: 3px solid #d29922;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+        }
+
+        .disclaimer-title {
+            font-weight: 600;
+            color: #d29922;
+            margin-bottom: 0.5rem;
+        }
+
+        .disclaimer-text {
+            font-size: 0.875rem;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 AykenOS Dev Loop Observability Dashboard</h1>
+        <div class="subtitle">Read-Only Validation Observer — No Decision Authority</div>
+        <div class="attribution">Maintainer: Kenan AY — System Architect</div>
+    </div>
+
+    <div class="container">
+        <div class="run-selector">
+            <select id="runSelect">
+                <option value="">Loading runs...</option>
+            </select>
+        </div>
+
+        <div class="grid">
+            <!-- Status Monitoring -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Boot Status</span>
+                    <span id="bootStatus" class="status-badge status-unknown">UNKNOWN</span>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Validation Result</div>
+                    <div id="validationResult" class="metric-value">—</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Run ID</div>
+                    <div id="runId" class="metric-value" style="font-size: 0.875rem; font-family: monospace;">—</div>
+                </div>
+            </div>
+
+            <!-- Marker Status -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Boot Markers</span>
+                    <span id="markerStatus" class="status-badge status-unknown">UNKNOWN</span>
+                </div>
+                <ul id="markerList" class="marker-list">
+                    <li class="marker-item">
+                        <span class="marker-icon">⏳</span>
+                        <span class="marker-name">Loading...</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Performance Observability -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Performance Proxy</span>
+                    <span id="perfStatus" class="status-badge status-unknown">UNKNOWN</span>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Boot Time Proxy</div>
+                    <div id="perfValue" class="metric-value large">—</div>
+                </div>
+                <div class="perf-chart">
+                    <div class="perf-bar">
+                        <div id="perfBar" class="perf-bar-fill" style="width: 0%"></div>
+                        <div id="perfLabel" class="perf-label">—</div>
+                    </div>
+                </div>
+                <div class="disclaimer">
+                    <div class="disclaimer-title">⚠️ Diagnostic Only</div>
+                    <div class="disclaimer-text">Performance metrics are observational and do not affect validation decisions.</div>
+                </div>
+            </div>
+
+            <!-- Execution Context -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Execution Context</span>
+                </div>
+                <div class="context-grid">
+                    <div class="context-item">
+                        <div class="context-label">Timestamp</div>
+                        <div id="contextTimestamp" class="context-value">—</div>
+                    </div>
+                    <div class="context-item">
+                        <div class="context-label">Source</div>
+                        <div id="contextSource" class="context-value">—</div>
+                    </div>
+                    <div class="context-item">
+                        <div class="context-label">Git SHA</div>
+                        <div id="contextGitSha" class="context-value">—</div>
+                    </div>
+                    <div class="context-item">
+                        <div class="context-label">Deterministic</div>
+                        <div id="contextDeterministic" class="context-value">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Aggregation -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Boot Log</span>
+                <button id="refreshBtn" class="refresh-btn">Refresh</button>
+            </div>
+            <div id="logViewer" class="log-viewer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div>Select a run to view boot logs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Run History -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Run History</span>
+            </div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Run ID</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th>Markers</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTable">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #6e7681;">Loading history...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="disclaimer">
+            <div class="disclaimer-title">🔒 Constitutional Compliance</div>
+            <div class="disclaimer-text">
+                This dashboard is a read-only observer with ZERO validation authority. 
+                All validation decisions use only raw boot logs as input. 
+                Evidence artifacts displayed here are generated AFTER validation completes 
+                and cannot influence validation outcomes or kernel execution.
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

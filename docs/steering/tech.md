@@ -101,38 +101,50 @@ make pre-ci                 # 4 gates: ABI, Boundary, Hygiene, Constitutional
 
 **Mandatory Gates (Fail-Closed) — ci-freeze execution order (intentional, matches Makefile exactly):**
 ```bash
-# Execution order matters — fail-fast principle: static checks before runtime checks
-# performance gate runs before runtime gates to catch regressions early
+# Execution order matters: guard targets first, then fail-fast static checks,
+# performance before runtime lanes, and distributed/runtime authority gates last.
 make ci-gate-abi                      # 1.  ABI stability check (MUST pass)
 make ci-gate-boundary                 # 2.  Ring0/Ring3 boundary enforcement (MUST pass)
 make ci-gate-ring0-exports            # 3.  Ring0 export surface check (MUST pass)
 make ci-gate-hygiene                  # 4.  Repository cleanliness (MUST pass)
-make ci-gate-tooling-isolation        # 5.  Tooling isolation guard (MUST pass)
-make ci-gate-constitutional           # 6.  Constitutional compliance (MUST pass)
-make ci-gate-governance-policy        # 7.  Governance policy enforcement (MUST pass)
-make ci-gate-naming-convention        # 8.  Naming convention freeze (MUST pass)
-make ci-gate-drift-activation         # 9.  Drift blocking activation requirement (MUST pass)
-make ci-gate-structural-abi           # 10. Structural ABI check (MUST pass)
-make ci-gate-runtime-marker-contract  # 11. Runtime marker contract (MUST pass)
-make ci-gate-user-bin-lock            # 12. User binary lock (MUST pass)
-make ci-gate-embedded-elf-hash        # 13. Embedded ELF hash integrity (MUST pass)
-make ci-gate-performance              # 14. Performance regression check (MUST pass)
+make ci-gate-execution-slot-integrity # 5.  Execution slot integrity (MUST pass)
+make ci-gate-execution-marker-isolation # 6.  Execution marker isolation (MUST pass)
+make ci-gate-tooling-isolation        # 7.  Tooling isolation guard (MUST pass)
+make ci-gate-constitutional           # 8.  Constitutional compliance (MUST pass)
+make ci-gate-governance-policy        # 9.  Governance policy enforcement (MUST pass)
+make ci-gate-naming-convention        # 10. Naming convention freeze (MUST pass)
+make ci-gate-drift-activation         # 11. Drift blocking activation requirement (MUST pass)
+make ci-gate-structural-abi           # 12. Structural ABI check (MUST pass)
+make ci-gate-runtime-marker-contract  # 13. Runtime marker contract (MUST pass)
+make ci-gate-user-bin-lock            # 14. User binary lock (MUST pass)
+make ci-gate-embedded-elf-hash        # 15. Embedded ELF hash integrity (MUST pass)
+make ci-gate-performance              # 16. Performance regression check (MUST pass)
                                       #     NOTE: performance gate is intentionally placed
                                       #     before runtime gates to catch regressions before
                                       #     expensive QEMU-based validation runs
-make ci-gate-ring3-user-leaf-rule     # 15. Ring3 executable user-leaf rule (local deterministic rule authority)
-make ci-gate-ring3-execution-phase10a2  # 16. Broader Ring3 Phase10-A2 strict/global authority surface
-make ci-gate-syscall-semantics-phase10b # 17. Syscall semantics Phase 10-B (MUST pass)
-make ci-gate-low-half-kheap-scaffold  # 18. Low-half kheap scaffold proof (MUST pass)
-# ci-gate-scheduler-mailbox-phase10c  # 19. Phase 10-C gate (conditional: PHASE10C_ENFORCE=1)
-make ci-gate-mailbox-capability-negative # 20. Mailbox capability negative test (MUST pass)
-make ci-gate-workspace                # 21. Workspace integrity (MUST pass)
-make ci-gate-syscall-v2-runtime       # 22. Syscall v2 runtime validation (MUST pass)
-make ci-gate-sched-bridge-runtime     # 23. Scheduler bridge runtime validation (MUST pass)
-make ci-gate-behavioral-suite         # 24. Behavioral suite (MUST pass)
-make ci-gate-policy-accept            # 25. Policy accept proof (MUST pass)
-make ci-gate-alias-proof              # 26. Alias proof runtime check (MUST pass)
-# ci-kill-switch-phase13              # 27. Phase-13 kill-switch gates (distributed verification)
+make ci-gate-ring3-user-leaf-rule     # 17. Ring3 executable user-leaf rule (local deterministic rule authority)
+make ci-gate-ring3-execution-phase10a2 # 18. Broader Ring3 Phase10-A2 strict/global authority surface
+make ci-gate-syscall-semantics-phase10b # 19. Syscall semantics Phase 10-B (MUST pass)
+make ci-gate-low-half-kheap-scaffold  # 20. Low-half kheap scaffold proof (MUST pass)
+make $(PHASE10C_FREEZE_GATE)          # 21. Phase 10-C gate (conditional freeze gate)
+make ci-gate-mailbox-capability-negative # 22. Mailbox capability negative test (MUST pass)
+make ci-gate-workspace                # 23. Workspace integrity (MUST pass)
+make ci-gate-syscall-v2-runtime       # 24. Syscall v2 runtime validation (MUST pass)
+make ci-gate-sched-bridge-runtime     # 25. Scheduler bridge runtime validation (MUST pass)
+make ci-gate-behavioral-suite         # 26. Behavioral suite (MUST pass)
+make ci-gate-policy-accept            # 27. Policy accept proof (MUST pass)
+make ci-gate-alias-proof              # 28. Alias proof runtime check (MUST pass)
+make ci-kill-switch-phase13           # 29. Phase-13 kill-switch gates (distributed verification)
+make ci-gate-determinism-replay-consistency # 30. Determinism replay consistency (MUST pass)
+make ci-gate-bcib-v3-core             # 31. BCIB v3 core workstream gate (MUST pass)
+make ci-gate-toolchain-opcode-registry # 32. Toolchain opcode registry gate (MUST pass)
+make ci-gate-capability-manager       # 33. Capability manager gate (MUST pass)
+make ci-gate-proofd-observability-boundary # 34. proofd observability boundary gate (MUST pass)
+make ci-gate-dsl-bcib-contract        # 35. DSL to BCIB contract gate (MUST pass)
+make ci-gate-semantic-cli-contract    # 36. Semantic CLI contract gate (MUST pass)
+make ci-gate-data-runtime-bcib        # 37. Data runtime BCIB gate (MUST pass)
+make ci-gate-ai-runtime-boundary      # 38. AI runtime boundary gate (MUST pass)
+make ci-gate-bcib-stub-determinism    # 39. BCIB stub determinism gate (MUST pass)
 
 # Full CI suite
 make ci                     # Standard CI (enforced gates)

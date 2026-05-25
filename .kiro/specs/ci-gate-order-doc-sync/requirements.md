@@ -7,15 +7,12 @@
 
 ## Context
 
-The Makefile was modified to reorder CI gates in the `ci-freeze` target. Specifically, `ci-gate-performance` was moved earlier in the execution sequence (before `ci-gate-ring3-execution-phase10a2`).
+The Makefile was modified to reorder and expand CI gates in the `ci-freeze` target. The earlier `ci-gate-performance` repositioning remains in force, and later execution-slot, marker-isolation, Phase-13, Phase-15, and Phase-17 execution-pipeline gates are now part of the same strict freeze chain.
 
 **Change:**
 ```makefile
-# Before:
-ci-freeze: ... ci-gate-embedded-elf-hash ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-performance
-
-# After:
-ci-freeze: ... ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b $(PHASE10C_FREEZE_GATE) ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept
+# Current documented authority:
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
 ```
 
 This is a **build system change** that requires documentation synchronization per Constitutional Rule 7.
@@ -24,7 +21,7 @@ This is a **build system change** that requires documentation synchronization pe
 
 Documentation is out of sync with the actual CI gate execution order:
 
-1. `.kiro/steering/tech.md` lists gates but doesn't emphasize that execution order matters
+1. `docs/steering/tech.md` lists gates but must stay synchronized with current `Makefile`
 2. `docs/roadmap/freeze-enforcement-workflow.md` Section 2.1 lists gates in a numbered order that doesn't match the Makefile
 
 **Constitutional Violation:** Undocumented architectural changes violate fail-closed governance.
@@ -63,7 +60,7 @@ Documentation is out of sync with the actual CI gate execution order:
 
 ## Affected Documentation Files
 
-1. **`.kiro/steering/tech.md`**
+1. **`docs/steering/tech.md`**
    - Section: "CI Gates (Freeze Enforcement - Constitutional)"
    - Update: Add note that execution order matters for `ci-freeze`
    - Update: Clarify that the listed order reflects execution sequence
@@ -72,7 +69,7 @@ Documentation is out of sync with the actual CI gate execution order:
    - Section: "2.1 Mandatory Gate Targets"
    - Update: Reorder gate list to match Makefile execution order
    - Update: Add note explaining why order matters
-   - Update: Document rationale for performance gate position
+   - Update: Document rationale for performance gate position and later execution-pipeline gate additions
 
 ## Technical Requirements
 
@@ -101,14 +98,15 @@ Documentation MUST establish protocol for future gate order changes:
 ## Success Criteria
 
 1. Documentation accurately reflects Makefile gate execution order
-2. Rationale for performance gate repositioning is documented
+2. Rationale for performance gate repositioning and later gate additions is documented
 3. Future maintainers understand that gate order is intentional
 4. Constitutional Rule 7 compliance is restored
 
 ## Dependencies
 
 - Makefile change (already completed)
-- Understanding of why performance gate was moved earlier (needs clarification)
+- Understanding of why performance gate runs before expensive runtime gates
+- Understanding that later execution-pipeline gates are now part of the strict freeze authority
 
 ## Notes
 

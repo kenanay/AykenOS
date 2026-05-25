@@ -1,0 +1,63 @@
+name: Dev Loop (Optimized)
+
+on:
+  push:
+    branches: [ main, dev, 'feature/**', 'fix/**', 'refactor/**', 'ci/**' ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  devloop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            ripgrep \
+            clang \
+            lld \
+            make \
+            nasm \
+            mtools \
+            jq
+      
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/build
+            out/cache
+          key: ayken-build-${{ runner.os }}-${{ hashFiles('**/Makefile', '**/*.c', '**/*.h', '**/*.rs') }}
+          restore-keys: |
+            ayken-build-${{ runner.os }}-
+      
+      - name: Fast incremental build
+        run: |
+          make kernel.elf \
+            KERNEL_PROFILE=validation \
+            AYKEN_VALIDATION=1 \
+            AYKEN_MB_SELFTEST=0 \
+            AYKEN_GATE4_POLICY_TEST=0
+      
+      - name: Run dev loop (fail-fast)
+        env:
+          TIMEOUT_SECONDS: 45
+        run: |
+          chmod +x scripts/dev_loop.sh
+          ./scripts/dev_loop.sh
+      
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-loop-optimized
+          path: |
+            out/evidence/**/reports/
+            out/logs/
+          if-no-files-found: warn

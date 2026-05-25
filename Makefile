@@ -57,6 +57,10 @@ AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT ?= 2
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST ?= 0
 AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT ?= 2
 AYKEN_ALIAS_PROOF_SELFTEST ?= 0
+AYKEN_VCP_TRUST_VERIFICATION_TEST ?= 0
+AYKEN_VCP_RUNTIME_HOOK_TEST ?= 0
+AYKEN_VCP_FAIL_CLOSED_TEST ?= 0
+AYKEN_VCP_EVIDENCE_TEST ?= 0
 AYKEN_RING3_FETCH_PROBE ?= 0
 AYKEN_RING3_SECOND_CANONICAL_PROBE ?= 0
 AYKEN_RING3_FRESH_FRAME_PROBE ?= 0
@@ -583,6 +587,19 @@ ifneq ($(filter $(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST),0 1),$(AYKEN
 $(error Invalid AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST='$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST)'. Use 0 or 1)
 endif
 
+ifneq ($(filter $(AYKEN_VCP_TRUST_VERIFICATION_TEST),0 1),$(AYKEN_VCP_TRUST_VERIFICATION_TEST))
+$(error Invalid AYKEN_VCP_TRUST_VERIFICATION_TEST='$(AYKEN_VCP_TRUST_VERIFICATION_TEST)'. Use 0 or 1)
+endif
+ifneq ($(filter $(AYKEN_VCP_RUNTIME_HOOK_TEST),0 1),$(AYKEN_VCP_RUNTIME_HOOK_TEST))
+$(error Invalid AYKEN_VCP_RUNTIME_HOOK_TEST='$(AYKEN_VCP_RUNTIME_HOOK_TEST)'. Use 0 or 1)
+endif
+ifneq ($(filter $(AYKEN_VCP_FAIL_CLOSED_TEST),0 1),$(AYKEN_VCP_FAIL_CLOSED_TEST))
+$(error Invalid AYKEN_VCP_FAIL_CLOSED_TEST='$(AYKEN_VCP_FAIL_CLOSED_TEST)'. Use 0 or 1)
+endif
+ifneq ($(filter $(AYKEN_VCP_EVIDENCE_TEST),0 1),$(AYKEN_VCP_EVIDENCE_TEST))
+$(error Invalid AYKEN_VCP_EVIDENCE_TEST='$(AYKEN_VCP_EVIDENCE_TEST)'. Use 0 or 1)
+endif
+
 ifeq ($(AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST),1)
 ifeq ($(AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST),1)
 $(error AYKEN_LOW_HALF_KHEAP_EXIT_PROOF_SELFTEST=1 and AYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_SELFTEST=1 are mutually exclusive)
@@ -658,6 +675,10 @@ KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_MULTI_EXIT_PROOF_COUNT=$(AYKEN_LOW_HALF_
 KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_SELFTEST)
 KERNEL_CFLAGS += -DAYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT=$(AYKEN_LOW_HALF_KHEAP_INTERLEAVING_PROOF_COUNT)
 KERNEL_CFLAGS += -DAYKEN_ALIAS_PROOF_SELFTEST=$(AYKEN_ALIAS_PROOF_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_VCP_TRUST_VERIFICATION_TEST=$(AYKEN_VCP_TRUST_VERIFICATION_TEST)
+KERNEL_CFLAGS += -DAYKEN_VCP_RUNTIME_HOOK_TEST=$(AYKEN_VCP_RUNTIME_HOOK_TEST)
+KERNEL_CFLAGS += -DAYKEN_VCP_FAIL_CLOSED_TEST=$(AYKEN_VCP_FAIL_CLOSED_TEST)
+KERNEL_CFLAGS += -DAYKEN_VCP_EVIDENCE_TEST=$(AYKEN_VCP_EVIDENCE_TEST)
 KERNEL_CFLAGS += -DAYKEN_RING3_FETCH_PROBE=$(AYKEN_RING3_FETCH_PROBE)
 KERNEL_CFLAGS += -DAYKEN_RING3_SECOND_CANONICAL_PROBE=$(AYKEN_RING3_SECOND_CANONICAL_PROBE)
 KERNEL_CFLAGS += -DAYKEN_RING3_FRESH_FRAME_PROBE=$(AYKEN_RING3_FRESH_FRAME_PROBE)
@@ -779,6 +800,26 @@ endif
 # Phase 17: Include marker injection harness in test builds
 ifeq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),1)
 KERNEL_C_SOURCES += kernel/sys/execution_marker_injection.c
+endif
+
+# Phase 18: Include VCP trust verification property tests only when armed.
+ifeq ($(AYKEN_VCP_TRUST_VERIFICATION_TEST),1)
+KERNEL_C_SOURCES += kernel/tests/validation/vcp_trust_verification_test.c
+endif
+
+# Task 2: Include VCP runtime hook property tests only when armed.
+ifeq ($(AYKEN_VCP_RUNTIME_HOOK_TEST),1)
+KERNEL_C_SOURCES += kernel/tests/validation/vcp_runtime_hook_test.c
+endif
+
+# Task 4: Include VCP fail-closed property tests only when armed.
+ifeq ($(AYKEN_VCP_FAIL_CLOSED_TEST),1)
+KERNEL_C_SOURCES += kernel/tests/validation/vcp_fail_closed_test.c
+endif
+
+# Task 5: Include VCP diagnostic evidence property tests only when armed.
+ifeq ($(AYKEN_VCP_EVIDENCE_TEST),1)
+KERNEL_C_SOURCES += kernel/tests/validation/vcp_evidence_test.c
 endif
 KERNEL_ASM_SOURCES = $(call find_files,$(ARCH_DIR),*.asm)
 KERNEL_S_SOURCES   = $(call find_files,$(ARCH_DIR),*.S)
@@ -1200,6 +1241,9 @@ EFI.img: $(EFI_IMG)
 efi-img: $(EFI_IMG) $(LEGACY_KERNEL_ELF) $(LEGACY_BOOT_EFI) $(LEGACY_EFI_IMG)
 
 run: efi-img
+	@$(MAKE) run-qemu
+
+run-qemu:
 	@# CRITICAL: Use clean NVRAM to avoid BootOrder corruption
 	mkdir -p "$(AYKEN_LOG_DIR)" "$(dir $(OVMF_VARS_RUN))"
 	cp -f $(OVMF_VARS_CLEAN) $(OVMF_VARS_RUN)
@@ -1211,7 +1255,9 @@ run: efi-img
 		-boot order=c \
 		-debugcon file:$(AYKEN_LOG_DIR)/debug_run.log \
 		-global isa-debugcon.iobase=0xe9 \
-		-nographic
+		-display none \
+		-serial none \
+		-monitor none
 
 run-preempt:
 	@# Phase 4.5 deterministic preempt validation runner
@@ -1231,7 +1277,7 @@ clean-noimg:
 	rm -f $(KERNEL_OBJS) $(KERNEL_DEPS) $(EFI_OBJS) $(ABI_INC) $(RING0_EXPORT_MAP) $(EMBEDDED_ELF_HEADER) $(USER_MINIMAL_DIR)/.mode.* kernel.elf bootloader/efi/BOOTX64.EFI
 	rm -f $(KERNEL_ELF) $(BOOT_EFI) $(PROFILE_STAMP)
 
-.PHONY: all clean run run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
+.PHONY: all clean run run-qemu run-preempt run-preempt-strict efi-img kernel bootloader guard-context-offsets release validation validation-strict FORCE
 FORCE:
 
 # Enforce context ABI discipline: raw numeric offsets are forbidden in context_switch.asm.
@@ -3019,6 +3065,20 @@ ci-gate-boot-observability:
 		--raw-output "$(AYKEN_EVIDENCE_DIR)/raw_boot_output.json"
 	@echo "Boot integrity validation complete"
 
+# Task 9 Checkpoint - Test Scripts Validated
+# Validates that test scripts produce checkpoint-grade evidence
+ci-gate-task9: ci-evidence-dir
+	@echo "== CI GATE TASK 9 - TEST SCRIPTS VALIDATED =="
+	@echo "run_id: $(RUN_ID)"
+	@EVIDENCE_DIR="$(EVIDENCE_RUN_DIR)/gates/task9" \
+		LOG_PATH="out/logs/debug_run.log" \
+		QEMU_TIMEOUT_SECONDS=60 \
+		./scripts/checkpoint_task9_test_scripts_validated.sh
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/task9/report.json" "$(EVIDENCE_RUN_DIR)/reports/task9.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@echo "OK: Task 9 checkpoint evidence at $(EVIDENCE_RUN_DIR)/gates/task9"
+
 # Ring3 runtime gate - validates userspace execution
 ci-gate-ring3-first-retire:
 	@echo "== CI GATE RING3 FIRST RETIRE =="
@@ -3360,7 +3420,7 @@ help:
 	@echo "  verify-shadow - Run verification layer in shadow mode (failures logged but don't block)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-bcib-determinism ci-gate-bcib-stub-determinism ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi ci-gate-boot-observability ci-gate-ring3-first-retire ci-gate-bcib-determinism-verification ci-gate-determinism-global verify-system verify-fast verify-heavy verify-shadow help ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-phase15-workstreams ci-gate-spec-validation
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-bcib-determinism ci-gate-bcib-stub-determinism ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi ci-gate-boot-observability ci-gate-task9 ci-gate-ring3-first-retire ci-gate-bcib-determinism-verification ci-gate-determinism-global verify-system verify-fast verify-heavy verify-shadow help ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-phase15-workstreams ci-gate-spec-validation
 
 # CI Gate: Spec Validation (Phase-17.5)
 # Enforces Level 3 validation for spec changes

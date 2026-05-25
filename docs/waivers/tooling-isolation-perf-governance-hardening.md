@@ -60,11 +60,12 @@ Etkilenen gate'ler:
 
 ## Extension Note
 
-2026-05-25: Extended within the 90-day waiver limit because the perf
-governance hardening lineage remains blocked behind the repository authority
-realignment tracked by issue #145. This extension does not authorize Ring0
-policy movement or bypass a CI result; it only prevents an already-expired
-waiver from masking validation of the governance correction.
+2026-05-25: Extended within the 90-day waiver limit because PR #142 retains
+the perf governance hardening lineage while it is revalidated on the
+single-maintainer `main` authority accepted through PR #147. This extension
+does not authorize Ring0 policy movement or bypass a CI result; it keeps the
+paired tooling/kernel hardening waiver active only for bounded review of that
+existing lineage.
 
 ## Rollback Plan
 

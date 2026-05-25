@@ -338,7 +338,11 @@ void kmain_real(ayken_boot_info_t *boot)
     // Serial port test
     serial_write("KERNEL_BOOT_START\n");
     
+    // Subtask 5.2: Conditional EARLY_BOOT_OK marker
+    // Enabled in validation builds, compiled out in production
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     debugcon_write("[K][EARLY_BOOT_OK] kmain entry\n");
+#endif
     // Minimal early exception visibility (no STI)
     cpu_init();
     gdt_init();
@@ -355,7 +359,9 @@ void kmain_real(ayken_boot_info_t *boot)
     fb_console_init(boot);
     debugcon_write("[K][AFTER_FB]\n");
     // Validation marker: serial/stdout (COM1) after serial_init()
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][QEMU_BOOT_OK]\n");
+#endif
 
     // 2) Splash ekranı + mini debug terminalini aç
     fb_draw_splash_screen();
@@ -394,8 +400,10 @@ void kmain_real(ayken_boot_info_t *boot)
     // 6) Artık scheduler'a devrediyoruz
     fb_print("[boot] Kernel init tamamlandi -> scheduler baslatiliyor...\n");
     sched_perf_note_core_ready();
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
     debugcon_write("[K][BOOT_OK] Phase 4.4 minimal boot reached\n");
+#endif
 
     outb(0xE9, (uint8_t)'A');
     outb(0xE9, (uint8_t)'A');
@@ -550,6 +558,94 @@ static void kernel_late_init(void)
 #endif
 
 #if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_VCP_TRUST_VERIFICATION_TEST) && (AYKEN_VCP_TRUST_VERIFICATION_TEST == 1)
+    // Phase 18: VCP trust verification property tests (Tasks 18.8-18.12).
+    // These checks must pass before validation state is treated as verified.
+    {
+        extern int execute_vcp_trust_verification_tests(void);
+        debugcon_write("[K][LATE]0.1.1 VCP_TRUST_VERIFICATION_TESTS\n");
+        fb_print("[CRITICAL] Running VCP trust verification tests...\n");
+        int result = execute_vcp_trust_verification_tests();
+        if (result != 0) {
+            fb_print("[CRITICAL FAILURE] VCP trust verification tests FAILED\n");
+            fb_print("[CRITICAL FAILURE] System is vulnerable to fake state injection\n");
+            debugcon_write("[K][LATE]0.1.1 VCP_TRUST_VERIFICATION_TESTS FAILED\n");
+            // Fail-closed: halt system if trust anchor is broken
+            while (1) { __asm__ volatile("hlt"); }
+        } else {
+            fb_print("[PASS] VCP trust verification tests PASSED\n");
+            debugcon_write("[K][LATE]0.1.1 VCP_TRUST_VERIFICATION_TESTS PASSED\n");
+        }
+    }
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_VCP_RUNTIME_HOOK_TEST) && (AYKEN_VCP_RUNTIME_HOOK_TEST == 1)
+    // Task 2: VCP runtime validation hook property tests.
+    // The hook must fail closed for missing/invalid state and permit only
+    // fully trusted VCP_VALID state.
+    {
+        extern int execute_vcp_runtime_hook_tests(void);
+        debugcon_write("[K][LATE]0.1.2 VCP_RUNTIME_HOOK_TESTS\n");
+        fb_print("[CRITICAL] Running VCP runtime hook tests...\n");
+        int result = execute_vcp_runtime_hook_tests();
+        if (result != 0) {
+            fb_print("[CRITICAL FAILURE] VCP runtime hook tests FAILED\n");
+            fb_print("[CRITICAL FAILURE] Runtime validation hook is unsafe\n");
+            debugcon_write("[K][LATE]0.1.2 VCP_RUNTIME_HOOK_TESTS FAILED\n");
+            while (1) { __asm__ volatile("hlt"); }
+        } else {
+            fb_print("[PASS] VCP runtime hook tests PASSED\n");
+            debugcon_write("[K][LATE]0.1.2 VCP_RUNTIME_HOOK_TESTS PASSED\n");
+        }
+    }
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_VCP_FAIL_CLOSED_TEST) && (AYKEN_VCP_FAIL_CLOSED_TEST == 1)
+    // Task 4: VCP fail-closed enforcement property tests.
+    // A failed VCP validation must permanently block the execution slot
+    // without committing partial accepted validation state.
+    {
+        extern int execute_vcp_fail_closed_tests(void);
+        debugcon_write("[K][LATE]0.1.3 VCP_FAIL_CLOSED_TESTS\n");
+        fb_print("[CRITICAL] Running VCP fail-closed tests...\n");
+        int result = execute_vcp_fail_closed_tests();
+        if (result != 0) {
+            fb_print("[CRITICAL FAILURE] VCP fail-closed tests FAILED\n");
+            fb_print("[CRITICAL FAILURE] Fail-closed enforcement is unsafe\n");
+            debugcon_write("[K][LATE]0.1.3 VCP_FAIL_CLOSED_TESTS FAILED\n");
+            while (1) { __asm__ volatile("hlt"); }
+        } else {
+            fb_print("[PASS] VCP fail-closed tests PASSED\n");
+            debugcon_write("[K][LATE]0.1.3 VCP_FAIL_CLOSED_TESTS PASSED\n");
+        }
+    }
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_VCP_EVIDENCE_TEST) && (AYKEN_VCP_EVIDENCE_TEST == 1)
+    // Task 5: VCP diagnostic evidence stub property tests.
+    // These markers are diagnostic telemetry only. Signed and authoritative
+    // evidence is introduced later by Tasks 20-23.
+    {
+        extern int execute_vcp_evidence_tests(void);
+        debugcon_write("[K][LATE]0.1.4 VCP_EVIDENCE_TESTS\n");
+        fb_print("[CRITICAL] Running VCP diagnostic evidence tests...\n");
+        int result = execute_vcp_evidence_tests();
+        if (result != 0) {
+            fb_print("[CRITICAL FAILURE] VCP diagnostic evidence tests FAILED\n");
+            fb_print("[CRITICAL FAILURE] Diagnostic evidence emission is incomplete\n");
+            debugcon_write("[K][LATE]0.1.4 VCP_EVIDENCE_TESTS FAILED\n");
+            while (1) { __asm__ volatile("hlt"); }
+        } else {
+            fb_print("[PASS] VCP diagnostic evidence tests PASSED\n");
+            debugcon_write("[K][LATE]0.1.4 VCP_EVIDENCE_TESTS PASSED\n");
+        }
+    }
+#endif
+
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
     defined(AYKEN_ALIAS_PROOF_SELFTEST) && (AYKEN_ALIAS_PROOF_SELFTEST == 1)
     // Selftest: gate witness source — armed/ok/fail markers emitted here only
     // proc_run_alias_proof_selftest() gerçek proc-context selftest çalıştırır:
@@ -690,11 +786,18 @@ static void kernel_late_init(void)
 
     fb_print("[AykenOS] LATE INIT done.\n");
     debugcon_write("[K][LATE]9 DONE\n");
+    
+    // Subtask 5.3: Conditional LATE_INIT_END marker
+    // Enabled in validation builds, compiled out in production
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1)
     fb_print("[K][LATE_INIT_END]\n");
     debugcon_write("[K][LATE_INIT_END]\n");
+#endif
     
 #ifdef AYKEN_VALIDATION
+    // Subtask 5.4: Conditional AYKEN_BOOT_OK marker
     // Gate-0: Boot validation marker
+    // Enabled in validation builds, compiled out in production
     debugcon_write("[[AYKEN_BOOT_OK]]\n");
 #endif
 

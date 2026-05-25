@@ -1,0 +1,41 @@
+name: Shared Setup (Reusable)
+
+on:
+  workflow_call:
+    outputs:
+      cache-hit:
+        description: "Whether cache was hit"
+        value: ${{ jobs.setup.outputs.cache-hit }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            ripgrep \
+            clang \
+            lld \
+            make \
+            nasm \
+            mtools \
+            jq
+      
+      - name: Cache build artifacts
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/build
+            out/cache
+          key: ayken-build-${{ runner.os }}-${{ hashFiles('**/Makefile', '**/*.c', '**/*.h', '**/*.rs') }}
+          restore-keys: |
+            ayken-build-${{ runner.os }}-

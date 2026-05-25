@@ -1,8 +1,9 @@
 # CI Gate Order Documentation Synchronization - Tasks
 
 **Feature:** ci-gate-order-doc-sync  
-**Status:** COMPLETE ✅  
+**Status:** UPDATED - COMMIT PENDING
 **Completion Date:** 2026-03-16
+**Last Resync:** 2026-05-22
 
 ## Task List
 
@@ -57,7 +58,7 @@
 ---
 
 ### 5. Commit Documentation Updates
-**Status:** Not Started
+**Status:** Pending
 
 **Subtasks:**
 - [ ] 5.1 Stage both documentation files
@@ -74,5 +75,7 @@
 **Remaining:** Task 5 (commit)
 
 **Changes Made:**
-- `.kiro/steering/tech.md`: Mandatory Gates section rewritten with full 23-gate ordered list, performance gate rationale documented
-- `docs/roadmap/freeze-enforcement-workflow.md`: Section 2.1 rewritten with numbered list + Execution Order Rationale + Gate Order Change Protocol; Section 2.3 updated with gate order lock note
+- `docs/steering/tech.md`: Mandatory Gates section rewritten with full 39-gate ordered list, performance gate rationale documented
+- `docs/roadmap/freeze-enforcement-workflow.md`: Section 2.1 rewritten with 39-gate numbered list + Execution Order Rationale + Gate Order Change Protocol; Section 2.3 retains gate order lock note
+- `.kiro/specs/ci-gate-order-doc-sync/design.md`: Current-state Makefile snapshot and affected path corrected
+- `.kiro/specs/ci-gate-order-doc-sync/requirements.md`: Current `ci-freeze` scope and affected documentation path corrected

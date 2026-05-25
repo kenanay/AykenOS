@@ -1,0 +1,37 @@
+name: Naming Compliance
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  naming-compliance:
+    name: Naming Convention Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install ripgrep (optional, for faster search)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep || true
+      
+      - name: Run naming compliance check
+        run: |
+          chmod +x scripts/check_naming_compliance.sh
+          ./scripts/check_naming_compliance.sh
+      
+      - name: Upload check results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: naming-compliance-failure
+          path: |
+            scripts/check_naming_compliance.sh
+          retention-days: 7

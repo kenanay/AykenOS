@@ -1,0 +1,342 @@
+# Implementation Plan: Development Loop & Boot Monitoring System
+
+**Implementation Guide**: For detailed implementation instructions, see `docs/dev-loop/IMPLEMENTATION_GUIDE.md`
+
+---
+
+## Task Purity Rule
+
+**Tasks MUST define WHAT must be built.**
+
+Tasks MUST NOT contain:
+- Implementation details
+- Commands
+- Execution instructions
+- Test procedures
+- Validation logic
+- Decision criteria
+- Verification steps
+
+**Violation = Architectural Failure**
+
+---
+
+## Checkpoint Integrity Rule
+
+**A checkpoint MUST:**
+- Validate completion of preceding tasks
+- Produce a deterministic PASS/FAIL outcome
+
+**A checkpoint MUST NOT:**
+- Define test procedures
+- Include implementation details
+
+**Violation = Architectural Failure**
+
+---
+
+## Naming Neutrality Rule
+
+**Tasks MUST use abstract terminology.**
+
+Tasks MUST NOT reference:
+- Specific tools
+- Specific implementations
+- File types
+- Technologies
+
+**Violation = Architectural Drift**
+
+---
+
+## Capability Abstraction Rule
+
+**Tasks MUST describe system capabilities, not activities.**
+
+Forbidden verbs:
+- test
+- verify
+- run
+- create
+- add
+- document
+
+Allowed nouns:
+- capability
+- guarantee
+- enforcement
+- integration
+- mechanism
+
+**Violation = Architectural Drift**
+
+---
+
+## Capability Consistency Rule
+
+**Tasks MUST use consistent abstraction level.**
+
+Allowed forms:
+- capability
+- guarantee
+- enforcement
+- mechanism
+
+Tasks MUST NOT mix:
+- activities (validation, test, run)
+- capabilities
+
+**Violation = Architectural Inconsistency**
+
+---
+
+## Terminology Precision Rule
+
+**Tasks MUST use precise and consistent terminology.**
+
+Preferred:
+- capability
+- guarantee
+- mechanism
+- enforcement
+
+Avoid:
+- vague nouns (status, summary, config)
+- ambiguous verbs (validate, manage, handle)
+
+**Violation = Semantic Ambiguity**
+
+---
+
+## Implementation Independence Rule
+
+**Tasks MUST NOT reference:**
+- file names
+- file formats
+- storage mechanisms
+- UI details
+
+**Tasks MUST describe abstract system capabilities only.**
+
+**Violation = Implementation Coupling**
+
+---
+
+## Overview
+
+This implementation plan defines **WHAT** must be built. For **HOW** to build it, see the implementation guide.
+
+---
+
+## Tasks
+
+### Group 1: Core Dev Loop
+
+- [x] 1. Dev loop marker guarantee enhancement
+  - [x] 1.1 Marker sequence guarantee
+  - [x] 1.2 Error reporting capability
+  - [x] 1.3 Exit status contract enforcement
+  - [x] 1.4 Log directory management
+  - _Req: R1_
+
+- [x] 2. Checkpoint - Marker guarantee operational
+
+---
+
+### Group 2: Isolation Property
+
+- [x] 3. Isolation property enforcement
+  - [x] 3.1 Baseline comparison capability
+  - [x] 3.2 Marker consistency guarantee
+  - [x] 3.3 Failure scenario coverage
+  - [x] 3.4 Property compliance report
+  - _Req: R5_
+
+- [x] 4. Checkpoint - Isolation property validated
+
+---
+
+### Group 3: Kernel Markers
+
+- [x] 5. Conditional marker emission to kernel
+  - [x] 5.1 Boot phase locations
+  - [x] 5.2 Conditional EARLY_BOOT_OK marker
+  - [x] 5.3 Conditional LATE_INIT_END marker
+  - [x] 5.4 Conditional AYKEN_BOOT_OK marker
+  - _Req: R1_
+
+- [x] 6. Checkpoint - Kernel markers operational
+
+---
+
+### Group 4: Test Scripts
+
+- [x] 7. Contract validation capability
+  - [x] 7.1 VCP runtime hook guarantee
+  - [x] 7.2 VCP trust guarantee
+  - [x] 7.3 VCP fail-closed guarantee
+  - _Req: R8_
+
+- [x] 8. Evidence validation capability
+  - [x] 8.1 VCP evidence consistency guarantee
+  - _Req: R9_
+
+- [x] 9. Checkpoint - Test scripts validated
+
+---
+
+### Group 5: Integration
+
+- [x] 10. Integration completeness
+  - [x] 10.1 Full validation capability
+  - [x] 10.2 Constitutional compliance guarantee
+  - [x] 10.3 Regression detection capability
+  - _Req: R2, R11, R12_
+
+- [x] 11. Final checkpoint - Core system complete
+
+---
+
+### Group 6: Regression Detection
+
+- [x] 12. Automated regression finder
+  - [x] 12.1 Oracle mechanism
+  - [x] 12.2 Regression detection mechanism
+  - [x] 12.3 Known regression coverage
+  - _Req: R21_
+
+- [x] 13. Final checkpoint - Regression detection complete
+
+---
+
+### Group 7: CI Integration
+
+- [x] 14. CI integration
+  - [x] 14.1 CI workflow capability
+  - [x] 14.2 Auto-bisect capability
+  - [x] 14.3 CI workflow assurance capability
+  - [x] 14.4 Branch protection rules
+  - _Req: R2_
+  - _Guide: docs/dev-loop/CI_INTEGRATION.md_
+
+- [x] 15. Final checkpoint - CI integration complete
+
+---
+
+### Group 8: Performance Integration
+
+- [x] 16. Performance regression detection integration
+  - [x] 16.1 Performance monitoring capability in CI
+  - [x] 16.2 Auto-bisect dependencies
+  - [x] 16.3 Performance check capability
+  - _Req: R22_
+  - _Guide: docs/dev-loop/PERFORMANCE_INTEGRATION.md_
+
+- [x] 17. Final checkpoint - Performance integration complete
+
+---
+
+### Group 9: Observability
+
+- [x] 18. Observability status dashboard
+  - [x] 18.1 Status monitoring capability
+  - [x] 18.2 Performance observability capability
+  - [x] 18.3 Log aggregation capability
+  - [x] 18.4 Visual differentiation capability
+  - [x] 18.5 Execution context visibility
+  - _Req: R10_
+
+- [x] 19. Checkpoint - Status dashboard operational
+
+- [x] 20. Final checkpoint - Observability complete
+
+---
+
+### Group 10: Evidence Pipeline
+
+- [x] 21. Evidence generation pipeline
+  - [x] 21.1 Log parser capability
+  - [x] 21.2 Evidence generator capability
+  - [x] 21.3 Artifact reference mechanism
+  - [x] 21.4 Dev loop integration mechanism
+  - [x] 21.5 CI artifact persistence capability
+  - _Req: R10_
+
+- [x] 22. Checkpoint - Evidence pipeline validated
+
+---
+
+### Group 11: Web Dashboard
+
+- [x] 23. Unified web-based observability dashboard
+  - [x] 23.1 Dashboard architecture
+  - [x] 23.2 Dashboard behavior
+  - [x] 23.3 Dashboard rendering
+  - [x] 23.4 Status visualization
+  - [x] 23.5 Run history visualization
+  - _Req: R10_
+
+- [x] 24. Checkpoint - Web dashboard validated
+
+- [x] 25. Final checkpoint - Unified observability validated
+
+---
+
+### Group 12: Governance Enforcement
+
+- [x] 26. Dev loop non-interference boundary enforcement
+  - [x] 26.1 Isolation boundary guarantee
+  - [x] 26.2 Static analysis for evidence-as-input detection
+  - [x] 26.3 Evidence pipeline non-authoritative property
+  - _Req: R23_
+
+---
+
+### Group 13: Developer Signature Integration
+
+- [x] 27. Developer signature metadata integration
+  - [x] 27.1 Developer signature in evidence metadata
+  - [x] 27.2 Developer signature in web dashboard
+  - [x] 27.3 Developer signature in all generated artifacts
+  - _Req: R24_
+  - _Note: All human-readable generated artifacts MUST include "Kenan AY" attribution_
+
+- [x] 28. Naming convention compliance enforcement
+  - [x] 28.1 Naming compliance check capability
+  - [x] 28.2 Naming compliance CI integration
+  - _Req: R25_
+
+- [x] 29. Final checkpoint - Governance validated
+
+---
+
+### Group 14: Evidence Integrity Hardening
+
+- [x] 30. Evidence integrity hardening
+  - [x] 30.1 Performance data format standardization
+  - [x] 30.2 Summary data structure enhancement
+  - [x] 30.3 Evidence misuse guard capability
+  - [x] 30.4 Run history tracking
+  - [x] 30.5 Diff engine enhancement
+  - [x] 30.6 Observability boundary disclosure
+  - _Req: R26, R27_
+
+- [x] 31. Checkpoint - Evidence integrity validated
+
+- [x] 32. Final checkpoint - Hardened observability validated
+
+---
+
+## Notes
+
+- All tasks define **WHAT** must be built, not **HOW**
+- For implementation details, see `docs/dev-loop/IMPLEMENTATION_GUIDE.md`
+- For usage instructions, see `docs/dev-loop/USAGE.md`
+- Checkpoints ensure incremental validation
+- All implementation must comply with constitutional rules
+- **All human-readable generated artifacts MUST include "Kenan AY" attribution** (scripts, configs, documentation, evidence metadata)
+
+---
+
+**Last Updated**: 2026-05-03
+**Maintainer**: Kenan AY — System Architect

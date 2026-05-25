@@ -1,0 +1,40 @@
+name: Performance Gate
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'kernel/**'
+      - 'ayken_core/**'
+      - 'Makefile'
+  workflow_dispatch:
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            ripgrep \
+            clang \
+            lld \
+            make
+      
+      - name: Run performance gate
+        run: |
+          make ci-gate-performance
+      
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-report
+          path: out/evidence/**/reports/perf_*.json
+          if-no-files-found: warn
