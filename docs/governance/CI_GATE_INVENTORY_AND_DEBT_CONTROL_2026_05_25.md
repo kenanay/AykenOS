@@ -7,9 +7,9 @@ promote a diagnostic lane, change runtime behavior, or grant closure.
 **Status:** S2 OPERATIONAL INVENTORY / REVIEW INPUT
 **Effective date:** 2026-05-25
 **Current phase:** Phase-17 active; formal closure pending
-**Last remotely tested documentation head before this inventory:** `605513ba`
-(`ci-gate-phase17-performance-acceptance` run `26377012197` PASS and full
-`ci-freeze` run `26377012232` PASS)
+**Last remotely tested S2 documentation head before CI-mode sync:** `2cb05fe4`
+(`ci-gate-phase17-performance-acceptance` run `26377722677` PASS and full
+`ci-freeze` run `26377722711` PASS)
 **Open authority blocker:** GitHub issue #145; live reviewer ownership and
 protected-branch review enforcement do not yet match declared governance.
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
@@ -149,14 +149,14 @@ These targets produce closure-candidate evidence in separate workflows. They
 must not be presented as strict-chain members merely because their latest
 remote run is green.
 
-| Target | Status at last tested head `605513ba` | Cost | Proves | Does not prove |
+| Target | Status at last tested head `2cb05fe4` | Cost | Proves | Does not prove |
 |---|---|---:|---|---|
 | `ci-gate-execution-marker-lifecycle` | Remote PASS | `Q1` | One marker-enabled kernel lifecycle. | Public ABI, worker completion or closure. |
 | `ci-gate-execution-marker-determinism` | Remote PASS | `QN` | Repeat fingerprint and invalid-order rejection. | General race/performance or closure. |
 | `ci-gate-execution-public-e2e` | Remote PASS | `Q1` | Public `1003 -> 1004` mapped result path with bounded stub. | Real worker completion. |
 | `ci-gate-execution-worker-completion` | Remote PASS | `Q1` | Bounded fixture public `1003 -> 1011 -> 1004`. | General BCIB interpreter coverage. |
 | `ci-gate-execution-timeout-race` | Remote PASS | `Q1` | One timeout-wins/late-completion rejection interleaving. | Exhaustive or SMP race safety. |
-| `ci-gate-phase17-performance-acceptance` | Remote PASS (`26377012197`) | `QN` | Locked timer/preemption hot-path acceptance. | Validation payload latency or closure alone. |
+| `ci-gate-phase17-performance-acceptance` | Remote PASS (`26377722677`) | `QN` | Locked timer/preemption hot-path acceptance. | Validation payload latency or closure alone. |
 | `ci-gate-phase17-performance-readiness-local` | Diagnostic only | `QN` | Local median/stability signal. | Remote baseline authority. |
 | `ci-gate-phase17-performance-variance-diagnostic` | Diagnostic only | `S` | Existing-evidence outlier classification. | Root cause or acceptance. |
 | `ci-gate-phase17-performance-variance-isolation` | Diagnostic only | `QN` | Bounded reproduction attempt. | Root cause or acceptance. |
@@ -172,6 +172,7 @@ remote run is green.
 | `S2-D5` | Phase-17 validation workflows run separately from strict freeze. | Additional CI cost and mistaken authority interpretation. | Preserve separation through closure review; promotion or consolidation requires an explicit post-closure decision. | Intentional. |
 | `S2-D6` | Validation flags and conditional profiles remain manually coordinated in Makefile/workflows. | Invalid-state combinations and validation/production divergence. | Continue `VALIDATION_FLAG_MATRIX.md`; define a machine-checkable matrix only after current closure path and review enforcement are settled. | Queued. |
 | `S2-D7` | Declared CODEOWNERS authority is not live-enforceable. | A generic approval could be mistaken for architectural authority. | Issue #145 is a merge/closure blocker; no bypass or self-review substitution. | Blocking. |
+| `S2-D8` | Operational CI-mode and baseline runbook documentation predated the locked Phase-17 performance and 40-target strict-chain model. | Provisional diagnostics, baseline artifacts or smoke PASS could be confused with constitutional acceptance, merge authority or closure; an obsolete gate list could be reviewed as authority. | Synchronize `CONSTITUTIONAL_CI_MODE.md`, `PROVISIONAL_CI_MODE.md`, `PERF_BASELINE_POLICY.md`, `BASELINE_RENEWAL_PROCEDURE.md` and `POST_MERGE_SMOKE_TEST.md` to canonical Makefile/workflows and reference this inventory instead of duplicating authority claims. | Implemented in current documentation changeset; new-head CI required. |
 
 ## 9. Execution Order for S2 Remediation
 
@@ -185,7 +186,9 @@ remote run is green.
    duplicated execution/evidence within one strict run.
 5. Convert confirmed duplication into a reviewed consolidation proposal; do
    not remove a verdict merely to reduce run time.
-6. After Phase-17 closure authority is established, decide whether candidate
+6. Validate the operational CI-mode synchronization on its new documentation
+   head without treating it as issue #145 remediation.
+7. After Phase-17 closure authority is established, decide whether candidate
    S1 workflows remain regression lanes, are promoted, or are retired.
 
 ## 10. Acceptance for This Inventory
@@ -211,6 +214,11 @@ blocker.
 - `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 - `docs/specs/phase12-trust-layer/GATE_REGISTRY.md`
 - `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md`
+- `docs/operations/CONSTITUTIONAL_CI_MODE.md`
+- `docs/operations/PROVISIONAL_CI_MODE.md`
+- `docs/operations/PERF_BASELINE_POLICY.md`
+- `docs/operations/BASELINE_RENEWAL_PROCEDURE.md`
+- `docs/operations/POST_MERGE_SMOKE_TEST.md`
 - GitHub issue #145: `https://github.com/kenanay/AykenOS/issues/145`
 
 ---

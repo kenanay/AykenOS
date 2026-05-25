@@ -1,5 +1,15 @@
 # Performance Baseline Renewal Procedure
 
+**Effective date:** 2026-05-25
+**Current authority:** `github-hosted-ubuntu-24.04-x64`
+**Current phase:** Phase-17 active; formal closure pending
+**Authority boundary:** A generated lock artifact is not acceptance or merge
+authority. Import requires reviewed authorization and subsequent
+constitutional remote PASS; issue #145 remains a merge/closure blocker.
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+**Attribution boundary:** Documentation metadata only; not runtime, evidence,
+baseline, merge, or closure authority.
+
 ## When Baseline Renewal is Required
 
 The performance baseline must be renewed when any of the following changes occur:
@@ -96,7 +106,8 @@ The workflow should:
    - Old vs new env_hash
    - Old vs new metrics (if performance improvement)
    - Verification that marker count > 0
-4. Merge after CI passes
+4. Merge only after constitutional CI passes and enforceable required review
+   authority is satisfied; issue #145 currently blocks that interpretation.
 
 ## Baseline Lock File Structure
 
@@ -106,7 +117,7 @@ The workflow should:
   "created_at_utc": "ISO8601 timestamp",
   "git_sha": "commit hash at baseline creation",
   "env": {
-    "baseline_authority": "github-hosted-ubuntu-latest-x64",
+    "baseline_authority": "github-hosted-ubuntu-24.04-x64",
     "ci_image_digest": "gha-ubuntu24-YYYYMMDD.X.Y-X64",
     "env_hash": "SHA256 of canonical env",
     "kernel_profile": "validation",
@@ -203,9 +214,14 @@ Before committing a new baseline:
 ## Authority and Digest Pinning
 
 Current configuration:
-- **Authority**: `github-hosted-ubuntu-latest-x64`
+- **Authority**: `github-hosted-ubuntu-24.04-x64`
 - **Runner**: `ubuntu-24.04` (pinned in workflow)
 - **Digest Format**: `gha-ubuntu24-YYYYMMDD.X.Y-X64`
+- **Imported Candidate Digest**: `gha-ubuntu24-20260518.149.1-X64`
+
+The imported candidate digest was generated through governed workflow
+evidence. Its constitutional acceptance and any eventual merge remain
+separate review-controlled decisions.
 
 **Important**: When GitHub updates `ubuntu-latest` to point to `ubuntu-26.04`, you must:
 1. Update workflow `runs-on: ubuntu-26.04`
@@ -215,5 +231,7 @@ Current configuration:
 ## See Also
 
 - [Constitutional CI Mode](CONSTITUTIONAL_CI_MODE.md)
+- [Provisional CI Mode](PROVISIONAL_CI_MODE.md)
 - [Performance Gate Documentation](../development/PERFORMANCE_GATE.md)
-- [Baseline Init Workflow](.github/workflows/perf-baseline-init.yml)
+- [Baseline Init Workflow](../../.github/workflows/perf-baseline-init.yml)
+- [Live Review Enforcement Blocker](https://github.com/kenanay/AykenOS/issues/145)

@@ -24,7 +24,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
 **CURRENT_PHASE:** `17` (`Phase-16 OFFICIALLY CLOSED`; Phase-17 aktif, resmi closure henüz kurulmadı)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
-**Acil Blocker:** PR #144 son test edilmiş head `605513ba`, scoped locked performance run `26377012197` ve full `ci-freeze` run `26377012232` ile PASS verdi; ancak issue #145, CODEOWNERS/protected-branch review otoritesinin canlı GitHub yapılandırmasında uygulanmadığını kaydeder. Bu blokaj giderilmeden PR #142/#144 merge veya Phase-17 resmi kapanış yetkisi kurulamaz
+**Acil Blocker:** PR #144 son test edilmiş S2 head `2cb05fe4`, scoped locked performance run `26377722677` ve full `ci-freeze` run `26377722711` ile PASS verdi; ancak issue #145, CODEOWNERS/protected-branch review otoritesinin canlı GitHub yapılandırmasında uygulanmadığını kaydeder. Bu blokaj giderilmeden PR #142/#144 merge veya Phase-17 resmi kapanış yetkisi kurulamaz
 **Yakın Hedef:** Issue #145 için atanabilir bağımsız reviewer ownership ve intended branch-protection enforcement kurmak/doğrulamak; ardından PR #142 architecture/governance incelemesi ve merge'i, PR #144'ün kabul edilen `main` üzerine bağlanması, gerekli yeni-SHA kontrollerinin alınması ve closure manifest değerlendirmesi
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
@@ -39,13 +39,13 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
-**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | PR #144 son test edilmiş head `605513ba` validation-only QEMU/runtime gates, locked performance acceptance (`26377012197`) ve full `ci-freeze` (`26377012232`) PASS | validation flag matrix ve S2 gate inventory review girdileri eklendi | issue #145 review-enforcement parity blokaji acik | closure etiketi/manifesti henuz yok
+**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | PR #144 son test edilmiş S2 head `2cb05fe4` validation-only QEMU/runtime gates, locked performance acceptance (`26377722677`) ve full `ci-freeze` (`26377722711`) PASS | validation flag matrix, S2 gate inventory ve CI-mode/baseline authority sync review girdileri eklendi | issue #145 review-enforcement parity blokaji acik | closure etiketi/manifesti henuz yok
 **Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure ve runtime acceptance kurulmadan aktif faz sayılmaz
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; son test edilmiş head `605513ba` remote evidence PASS; S2 gate inventory açıldı; issue #145 review-enforcement parity, yeni-head CI, PR #142/#144 review/merge sequencing ve official closure authority pending
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; son test edilmiş S2 head `2cb05fe4` remote evidence PASS; S2 gate inventory ve CI-mode/baseline authority sync açıldı; issue #145 review-enforcement parity, bu yeni-head CI, PR #142/#144 review/merge sequencing ve official closure authority pending
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
-⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
+⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
 
 ---
 
@@ -362,7 +362,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 25 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; PR #144 son test edilmiş head `605513ba` locked performance ve full `ci-freeze` PASS üretmiştir; validation flag matrix ile S2 gate inventory review girdileri kaydedilmiştir; issue #145 canlı review-enforcement uyumsuzluğunu fail-closed blokaj olarak izler; bu yeni dokümantasyon head'i CI gerektirir; PR #142/#144 inceleme-merge sırası ve resmi closure manifest/tag hâlâ beklenmektedir; Phase-18 yalnızca yol haritasıdır.
+**Son Güncelleme:** 25 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; PR #144 son test edilmiş S2 head `2cb05fe4` locked performance ve full `ci-freeze` PASS üretmiştir; validation flag matrix, S2 gate inventory ve CI-mode/baseline authority sync review girdileri kaydedilmiştir; issue #145 canlı review-enforcement uyumsuzluğunu fail-closed blokaj olarak izler; bu yeni dokümantasyon head'i CI gerektirir; PR #142/#144 inceleme-merge sırası ve resmi closure manifest/tag hâlâ beklenmektedir; Phase-18 yalnızca yol haritasıdır.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**
