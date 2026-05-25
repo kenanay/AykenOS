@@ -5,6 +5,8 @@
 - Decision ID:
 - Title:
 - Date:
+- Status: `approved | rejected | deferred`
+- Decision Authority:
 - Related RFC:
 - Related Waiver:
 
@@ -36,6 +38,11 @@ Kapanması gereken iş kalemleri.
 
 ## Sign-off
 
-- Reviewer 1:
-- Reviewer 2:
-- Reviewer 3:
+- Maintainer Decision:
+- Capacity:
+- Boundary:
+
+## Independent Reviewers (Optional)
+
+List reviewers only when they are assignable accounts controlled by genuinely
+independent humans under the active governance model.

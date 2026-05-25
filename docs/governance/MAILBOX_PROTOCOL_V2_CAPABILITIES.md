@@ -1,7 +1,7 @@
 # Mailbox Protocol v2 Capabilities Contract
 
 **Status:** NORMATIVE  
-**Authority:** Architecture Board  
+**Authority:** Kenan AY (single maintainer; governance decision `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`)
 **Date:** 2026-03-06  
 **Created by:** Kenan AY  
 **Maintained by:** Kenan AY  

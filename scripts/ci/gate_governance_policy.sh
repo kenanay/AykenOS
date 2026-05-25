@@ -116,6 +116,7 @@ report = {
     "checks": {
         "source_deny_scan": "SKIP",
         "ahs_thresholds": "SKIP",
+        "maintainer_authority_contract": "SKIP",
         "waiver_policy": "SKIP",
     },
     "violations": [],
@@ -178,6 +179,7 @@ waiver_audit_rows = []
 waiver_violations_count = 0
 ahs_check_lines = []
 knob_violations_count = 0
+maintainer_authority_violations_count = 0
 
 
 def add_violation(kind: str, detail: str) -> None:
@@ -367,7 +369,82 @@ else:
             knob_violations_count += 1
             add_violation("knob_doc_missing_token", token)
 
-# 4) Waiver policy checks.
+# 4) Single-maintainer repository authority contract.
+codeowners_path = ROOT / ".github/CODEOWNERS"
+authority_decision_path = ROOT / "docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md"
+freeze_contract_path = ROOT / "ARCHITECTURE_FREEZE.md"
+steering_contract_path = ROOT / "docs/steering/rules.md"
+
+
+def add_maintainer_authority_violation(detail: str) -> None:
+    global maintainer_authority_violations_count
+    maintainer_authority_violations_count += 1
+    add_violation("maintainer_authority_contract", detail)
+
+
+if not codeowners_path.exists():
+    add_maintainer_authority_violation(f"missing_file:{codeowners_path}")
+else:
+    codeowners_text = codeowners_path.read_text(encoding="utf-8", errors="replace")
+    if "@ayken-" in codeowners_text:
+        add_maintainer_authority_violation("codeowners_contains_unassignable_team_owner")
+    required_owner_paths = [
+        "/ARCHITECTURE_FREEZE.md",
+        "/docs/architecture-board/",
+        "/docs/governance/",
+        "/docs/roadmap/",
+        "/docs/steering/",
+        "/scripts/ci/",
+        "/Makefile",
+        "/.github/CODEOWNERS",
+    ]
+    for required_path in required_owner_paths:
+        if required_path not in codeowners_text:
+            add_maintainer_authority_violation(
+                f"codeowners_missing_owner_path:{required_path}"
+            )
+    for line_number, raw in enumerate(codeowners_text.splitlines(), 1):
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        fields = stripped.split()
+        if len(fields) < 2 or any(owner != "@kenanay" for owner in fields[1:]):
+            add_maintainer_authority_violation(
+                f"codeowners_owner_mismatch:line={line_number}"
+            )
+
+authority_contract_tokens = {
+    authority_decision_path: [
+        "- Status: approved",
+        "- Decision Authority: Kenan AY",
+        "@kenanay",
+        "Remote constitutional CI",
+        "MUST NOT be represented as an independent",
+    ],
+    freeze_contract_path: [
+        "Kenan AY (single maintainer)",
+        "20260525-single-maintainer-authority-model.md",
+        "`CODEOWNERS` identifies accountable ownership",
+    ],
+    steering_contract_path: [
+        "Kenan AY (single maintainer)",
+        "20260525-single-maintainer-authority-model.md",
+        "CODEOWNERS (accountable ownership routing to `@kenanay`)",
+    ],
+}
+
+for contract_path, required_tokens in authority_contract_tokens.items():
+    if not contract_path.exists():
+        add_maintainer_authority_violation(f"missing_file:{contract_path}")
+        continue
+    contract_text = contract_path.read_text(encoding="utf-8", errors="replace")
+    for token in required_tokens:
+        if token not in contract_text:
+            add_maintainer_authority_violation(
+                f"missing_token:{contract_path.relative_to(ROOT)}:{token}"
+            )
+
+# 5) Waiver policy checks.
 waiver_files = []
 if not WAIVER_DIR.exists():
     add_violation("missing_dir", str(WAIVER_DIR))
@@ -467,6 +544,7 @@ meta = {
     "waiver_file_count": len(waiver_files),
     "waiver_violations_count": waiver_violations_count,
     "knob_violations_count": knob_violations_count,
+    "maintainer_authority_violations_count": maintainer_authority_violations_count,
     "violations_count": len(violations),
 }
 
@@ -486,6 +564,7 @@ report = {
         "source_deny_scan": "PASS" if not source_hits else "FAIL",
         "ahs_thresholds": "PASS" if not any(v.startswith("ahs_") for v in violations) else "FAIL",
         "policy_sensitive_knobs": "PASS" if knob_violations_count == 0 else "FAIL",
+        "maintainer_authority_contract": "PASS" if maintainer_authority_violations_count == 0 else "FAIL",
         "waiver_policy": "PASS" if waiver_violations_count == 0 else "FAIL",
     },
     "source_deny_hits": source_hits,

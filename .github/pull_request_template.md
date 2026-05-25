@@ -54,9 +54,10 @@ If this PR claims `Completed/Production-ready`, all must be true:
 1. `summary.json` verdict is `PASS`
 2. test + benchmark evidence linked
 3. related docs updated
-4. architecture review note linked
+4. Kenan AY maintainer decision record linked
 
 ## Notes
 
 - Conditional gate `ci-gate-scheduler-mailbox-phase10c` only runs when `PHASE10C_ENFORCE=1`.
+- Single-maintainer authority: `CODEOWNERS` routes accountability to `@kenanay`; mandatory CI evidence is not replaced by self-review.
 - Do not merge feature work into mainline during active freeze.
