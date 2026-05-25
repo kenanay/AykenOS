@@ -1,8 +1,23 @@
 # Phase-18: Full Kernel Runtime Validation — Roadmap
 
-**Status**: ROADMAP (ready to start)  
+**Status**: ROADMAP ONLY (not an active phase)
 **Created**: 2026-05-02  
-**Authority**: Kenan AY — Architectural Steward
+**Last Authority Sync**: 2026-05-23
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY *(informational metadata only)*
+
+---
+
+## Authority Boundary (2026-05-23)
+
+Parent execution plan: `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`.
+This file is a subordinate candidate-phase plan, not the active execution queue.
+
+PR #134 merged the Phase-17 Step 5 marker-validation slice. It did not produce
+a formal Phase-17 closure tag or manifest. Phase-18 therefore remains planning
+material until Phase-17 runtime/QEMU acceptance and official closure evidence
+are established. Existing deterministic state trace, fail-closed proof, and
+invariant checks in `execution_slot` reduce prerequisite work but do not replace
+that acceptance.
 
 ---
 
@@ -86,7 +101,8 @@ TRACE_STATE(slot_id, old_state, new_state);
 TIMING_START(label);
 TIMING_END(label);
 ```
-- Cycle count (rdtsc)
+- Authoritative execution evidence uses deterministic logical ticks only
+- Performance measurement stays in an isolated non-authoritative performance lane
 - Per-stage timing
 - Validation cost tracking
 
@@ -312,7 +328,7 @@ ASSERT_STATE_INVARIANT(slot, condition);
 
 **Signed**: Kenan AY — Architectural Steward  
 **Date**: 2026-05-02  
-**Status**: ROADMAP (Phase-18 ready to start)
+**Status**: ROADMAP ONLY (Phase-17 formal closure is still required)
 
 ---
 
@@ -552,13 +568,13 @@ make qemu-test-phase18
 
 ---
 
-## 🚀 NEXT ACTIONS (AFTER PHASE-17 MERGE)
+## 🚀 NEXT ACTIONS (AFTER PHASE-17 FORMAL CLOSURE)
 
 ### Immediate (Day 1)
-1. Create `phase18-kernel-runtime-validation` branch
-2. Set up QEMU test infrastructure
-3. Implement minimal kernel test harness
-4. Verify QEMU boots with validation enabled
+1. Establish Phase-17 runtime/QEMU acceptance evidence and closure authority
+2. Open an isolated Phase-18 validation branch after closure
+3. Verify QEMU boots with validation enabled
+4. Capture the initial deterministic runtime acceptance evidence
 
 ### Short-term (Week 1)
 1. Implement lifecycle tests (Step 2)
@@ -593,21 +609,21 @@ make qemu-test-phase18
 ## 📞 CONTACTS
 
 **Architectural Steward**: Kenan AY  
-**Implementation**: Kiro (AI Assistant)  
-**Phase-17 PR**: #134 (pending merge)  
-**Phase-18 Branch**: (to be created after Phase-17 merge)
+**Implementation / Architecture Owner**: Kenan AY
+**Phase-17 Step 5 PR**: #134 (merged as `71d10691`)
+**Phase-18 Branch**: (not active; create only after Phase-17 closure)
 
 ---
 
 ## 🎯 FINAL NOTES
 
-### This is a DRAFT
-- **Status**: Planning only (no implementation)
-- **Authority**: None (awaiting Phase-17 merge)
-- **Purpose**: Prepare for Phase-18 (don't start yet)
+### This is a Roadmap
+- **Status**: Planning only; Phase-18 is not active
+- **Authority**: Architectural planning; not closure or execution authority
+- **Purpose**: Prepare for Phase-18 without overlapping the active Phase-17 closure work
 
 ### When to Start Phase-18
-**Trigger**: Phase-17 PR #134 merged to main
+**Trigger**: Phase-17 official closure evidence and acceptance are established
 
 **NOT before**:
 - ❌ CI passes (not sufficient)
@@ -628,8 +644,7 @@ make qemu-test-phase18
 
 **Prepared by**: Kenan AY — Architectural Steward  
 **Date**: 2026-05-02  
-**Status**: ROADMAP (Phase-18 ready to start)  
+**Status**: ROADMAP ONLY (awaiting Phase-17 formal closure)
 **Authority**: Architectural design + Phase-17 lessons learned
 
-**Next Action**: Start Phase-17.5 (Observability Infrastructure)
-
+**Next Action**: Finish Phase-17 runtime/QEMU acceptance and formal closure review.

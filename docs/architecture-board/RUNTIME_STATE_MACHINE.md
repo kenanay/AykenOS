@@ -33,7 +33,7 @@ This is the **canonical execution path** from userspace intent to kernel proof.
 │  Syscall Preparation                                        │
 └─────────────────────────────────────────────────────────────┘
                          │
-                         │ syscall (1000-1010)
+                         │ syscall (1000-1011)
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ KERNEL (Ring0)                                              │
@@ -665,7 +665,7 @@ if (actual_state_hash != expected_state_hash) {
    - Violation → CI fail
 
 4. **Syscall Boundary**
-   - BCIB → Kernel ONLY via syscall (1000-1010)
+   - BCIB → Kernel ONLY via syscall (1000-1011)
    - Violation → PR auto-reject
 
 5. **Deterministic Replay**
@@ -677,7 +677,7 @@ if (actual_state_hash != expected_state_hash) {
 ## 11. References
 
 - `ABDF_BCIB_PHASE11_CONTRACT_MATRIX.md` - Layer contracts
-- `kernel/include/ayken_abi.h` - Syscall ABI
+- `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h` - canonical syscall ABI
 - `kernel/sys/syscall_v2.c` - Syscall implementation
 - `ayken-core/crates/bcib/` - BCIB implementation
 

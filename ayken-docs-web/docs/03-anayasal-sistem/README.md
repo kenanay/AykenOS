@@ -2,6 +2,13 @@
 
 Bu bölüm AykenOS'un en özgün özelliği olan Anayasal Yönetişim Sistemini açıklar.
 
+## Güncel Authority Sınırı - 2026-05-24
+
+Performans doğrulaması artık fail-closed kabul sınırındadır: median PASS,
+stability FAIL sonucunu geçersiz kılamaz. PR-4A diagnostic PASS yalnız
+mevcut kanıtın ortak `sample-6` sapması olarak sınıflandırıldığını gösterir;
+remote locked-baseline veya Phase-17 closure yetkisi oluşturmaz.
+
 ## İçerik
 
 - **Anayasal Yönetişim** - Temel felsefe ve yaklaşım

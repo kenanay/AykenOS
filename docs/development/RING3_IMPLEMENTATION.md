@@ -78,8 +78,9 @@ Runtime now validates the full preempt chain under timer load:
 
 11. **Single-source ABI freeze pack (C + NASM)**
    - Added shared ABI definitions:
-     - `kernel/include/ayken_abi.h` (C-side constants + ABI version)
-     - `kernel/include/generated/ayken_abi.inc` (NASM-side constants, auto-generated from `ayken_abi.h` by Makefile)
+     - `shared/abi/ayken_abi.h` (canonical C-side constants + ABI version)
+     - `shared/abi/syscall_v2.h` (canonical syscall contract)
+     - `kernel/include/generated/ayken_abi.inc` (NASM-side constants, auto-generated from `shared/abi/ayken_abi.h` by Makefile)
    - `context_switch.asm` now imports `CTX_*` offsets from generated ABI include instead of local `%define` values.
    - All kernel NASM objects now depend on generated ABI include (`$(KERNEL_ASM_SOURCES:.asm=.o): $(ABI_INC)`), preventing stale include drift.
    - NASM include paths are now explicit via `KERNEL_ASMFLAGS` (`-Ikernel/include/generated/ -Ikernel/include/`) and ASM uses `%include "ayken_abi.inc"` (build-root independent).

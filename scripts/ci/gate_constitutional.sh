@@ -15,7 +15,7 @@ Usage:
     [--kernel-whitelist scripts/ci/constitutional-ring0-whitelist.regex]
     [--ring0-symbol-whitelist scripts/ci/constitutional-ring0-symbol-whitelist.regex]
     [--non-overridable _ayken/steering/NON_OVERRIDABLE.md]
-    [--syscall-h kernel/sys/syscall_v2.h]
+    [--syscall-h shared/abi/syscall_v2.h]
     [--makefile Makefile]
     [--sched-h kernel/sched/sched.h]
     [--arch-freeze ARCHITECTURE_FREEZE.md]
@@ -37,7 +37,7 @@ KERNEL_ELF="${ROOT}/kernel.elf"
 KERNEL_WHITELIST="${ROOT}/scripts/ci/constitutional-ring0-whitelist.regex"
 RING0_SYMBOL_WHITELIST="${ROOT}/scripts/ci/constitutional-ring0-symbol-whitelist.regex"
 NON_OVERRIDABLE="${ROOT}/_ayken/steering/NON_OVERRIDABLE.md"
-SYSCALL_H="${ROOT}/kernel/sys/syscall_v2.h"
+SYSCALL_H="${ROOT}/shared/abi/syscall_v2.h"
 MAKEFILE_PATH="${ROOT}/Makefile"
 SCHED_H="${ROOT}/kernel/sched/sched.h"
 ARCH_FREEZE="${ROOT}/ARCHITECTURE_FREEZE.md"

@@ -6,6 +6,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Project:** AykenOS - Advanced AI-Integrated Operating System  
 **Created:** January 9, 2026
 
+**Current ABI correction (2026-05-23):** Phase-2 history is retained, but the
+frozen v2 contract used today is `1000-1011` inclusive (12 syscalls), with
+`sys_v2_complete_execution` at `1011`.
+
 ## Overview
 
 This guide documents the migration path from legacy POSIX-like (v1) syscalls to the new execution-centric (v2) syscalls during AykenOS Phase 2 architectural transformation.
@@ -25,7 +29,7 @@ This guide documents the migration path from legacy POSIX-like (v1) syscalls to 
 | 3 | sys_close | Close file | ✅ Working |
 | 60 | sys_exit | Process termination | ✅ Working |
 
-### Execution-Centric Syscalls (v2) - Range 1000-1010
+### Execution-Centric Syscalls (v2) - Range 1000-1011
 - **Status:** Active development and implementation
 - **Philosophy:** Mechanism-only, capability-based, execution-focused
 - **Usage:** All new applications and Ring3 runtime components
@@ -43,6 +47,7 @@ This guide documents the migration path from legacy POSIX-like (v1) syscalls to 
 | 1008 | sys_v2_capability_revoke | Capability token revocation | ✅ Implemented |
 | 1009 | sys_v2_exit | Process termination | ✅ Implemented |
 | 1010 | sys_v2_debug_putchar | Ring3 debug heartbeat | ✅ Implemented |
+| 1011 | sys_v2_complete_execution | Execution-slot lifecycle completion | ✅ Implemented |
 
 ## Migration Examples
 
@@ -105,12 +110,12 @@ uint64_t result = syscall(1004, execution_id, timeout_ms);  // sys_v2_wait_resul
 
 ### Phase 2.1-2.4: Dual Interface Period
 - **Existing applications:** Continue using v1 syscalls (0-99 range)
-- **New applications:** Use v2 syscalls (1000-1010 range)
+- **New applications:** Use v2 syscalls (1000-1011 range)
 - **Ring3 runtime components:** Must use v2 syscalls exclusively
 
 ### Phase 2.5: Legacy Cleanup
 - **All v1 syscalls removed:** Applications must migrate to v2
-- **Ring0 contains 11 execution-centric syscalls:** No POSIX-like legacy syscall remains
+- **Ring0 contains 12 execution-centric syscalls:** No POSIX-like legacy syscall remains
 - **Capability-based access:** All resource access via capability tokens
 
 ## Key Architectural Differences
@@ -161,7 +166,7 @@ int revoke_result = syscall(1008, token.id);  // sys_v2_capability_revoke
 ## Implementation Status
 
 ### ✅ Completed (Phase 2.1)
-- [x] Execution-centric syscall interface (11 syscalls, 1000-1010)
+- [x] Execution-centric syscall interface (12 syscalls, 1000-1011)
 - [x] Capability token system with full lifecycle management
 - [x] Hybrid syscall dispatcher with clear numbering plan
 - [x] Backward compatibility for existing v1 applications
@@ -181,7 +186,7 @@ int revoke_result = syscall(1008, token.id);  // sys_v2_capability_revoke
 
 ## Critical Success Factors
 
-1. **Strict numbering plan adherence:** Never deviate from 0-99 (v1) and 1000-1010 (v2) ranges
+1. **Strict numbering plan adherence:** Never deviate from 0-99 (v1) and 1000-1011 (v2) ranges
 2. **Capability system integration:** All v2 syscalls must use capability tokens
 3. **Ring0 minimalism:** No policy decisions in Ring0, mechanism only
 4. **Backward compatibility:** v1 syscalls must work until Phase 2.5
@@ -190,7 +195,7 @@ int revoke_result = syscall(1008, token.id);  // sys_v2_capability_revoke
 ## Support and Resources
 
 - **Implementation:** `kernel/sys/syscall_v2.c`
-- **Interface:** `kernel/sys/syscall_v2.h`
+- **Canonical interface:** `shared/abi/syscall_v2.h`
 - **Capabilities:** `kernel/include/capability.h`
 - **Testing:** `kernel/sys/syscall_hybrid_test.c`
 - **Documentation:** This migration guide

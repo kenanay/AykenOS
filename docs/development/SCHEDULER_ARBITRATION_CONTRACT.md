@@ -217,7 +217,7 @@ Scheduler arbitration için reserved syscall range:
 // Total: 16 syscalls reserved
 ```
 
-Bu range, execution-centric `SYS_V2` (1000-1010) aralığından ayrıdır.
+Bu range, execution-centric `SYS_V2` (1000-1011) aralığından ayrıdır.
 
 ### 6.2 Bridge Syscalls
 

@@ -24,8 +24,14 @@ else ifeq ($(MINIMAL_MODE),phase10a2-mailbox-bp)
 MINIMAL_SRC := minimal_phase10a2_mailbox_bp.S
 else ifeq ($(MINIMAL_MODE),syscall-v2-runtime)
 MINIMAL_SRC := minimal_syscall_v2_runtime.S
+else ifeq ($(MINIMAL_MODE),bcib-public-e2e)
+MINIMAL_SRC := minimal_bcib_public_e2e.S
+else ifeq ($(MINIMAL_MODE),bcib-worker-completion)
+MINIMAL_SRC := minimal_bcib_worker_completion.S
+else ifeq ($(MINIMAL_MODE),bcib-timeout-race)
+MINIMAL_SRC := minimal_bcib_timeout_race.S
 else
-$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, or syscall-v2-runtime)
+$(error Invalid MINIMAL_MODE='$(MINIMAL_MODE)'. Use phase10a2, phase10a2-entry-bp, phase10a2-entry-nobp, phase10a2-canary-witness, phase10a2-text-witness, phase10a2-text-witness-bp, phase10a2-mailbox-bp, syscall-v2-runtime, bcib-public-e2e, bcib-worker-completion, or bcib-timeout-race)
 endif
 
 CFLAGS := -target x86_64-elf \

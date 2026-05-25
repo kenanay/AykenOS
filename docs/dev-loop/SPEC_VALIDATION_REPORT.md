@@ -10,6 +10,12 @@
 
 All spec files in `.kiro/specs/dev-loop-boot-monitoring/` are **up-to-date, consistent, and production-ready**.
 
+**Remediation Sync (2026-05-23):** The governance scripts and workflows that
+were pending in this original 2026-05-03 assessment are implemented in the
+active change set, including normative spec-purity enforcement and Makefile
+freeze-chain integration. **Düzenleyen / Geliştiren / Oluşturan / Mimari
+Sorumlu:** Kenan AY *(informational metadata only)*.
+
 ---
 
 ## File Inventory
@@ -286,22 +292,19 @@ tasks.md (implementation breakdown)
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | **Purity rules** | ✅ Defined | 3 rules in place |
-| **Enforcement scripts** | ⚠️ Pending | Need implementation |
-| **CI workflows** | ⚠️ Pending | Need implementation |
-| **Branch protection** | ⚠️ Pending | Need configuration |
+| **Enforcement scripts** | ✅ Implemented | Evidence, observation, naming, and normative spec-purity checks present |
+| **CI workflows** | ✅ Implemented | Dedicated governance workflows plus summary present |
+| **Freeze integration** | ✅ Implemented locally | `ci-gate-spec-purity` is in strict/local chains; remote acceptance follows merge CI |
 
-**Overall**: ⚠️ GOVERNANCE SCRIPTS PENDING
+**Overall**: ✅ GOVERNANCE REMEDIATION IMPLEMENTED (remote acceptance pending)
 
 ---
 
 ## Recommendations
 
-### 1. Implement Governance Scripts (URGENT)
+### 1. Governance Scripts (Completed 2026-05-23)
 
-**Priority**: HIGH  
-**Effort**: 2-4 hours
-
-**Scripts to create**:
+**Implemented scripts**:
 - `scripts/check_evidence_isolation.sh`
 - `scripts/check_observation_boundary.sh`
 - `scripts/check_naming_compliance.sh`
@@ -309,12 +312,9 @@ tasks.md (implementation breakdown)
 
 ---
 
-### 2. Create CI Workflows (HIGH)
+### 2. CI Workflows (Completed 2026-05-23)
 
-**Priority**: HIGH  
-**Effort**: 2-3 hours
-
-**Workflows to create**:
+**Implemented workflows**:
 - `.github/workflows/governance-evidence-isolation.yml`
 - `.github/workflows/governance-observation-boundary.yml`
 - `.github/workflows/governance-naming-compliance.yml`
@@ -322,12 +322,10 @@ tasks.md (implementation breakdown)
 
 ---
 
-### 3. Begin Implementation (READY)
+### 3. Current Acceptance Work
 
-**Priority**: NORMAL  
-**Effort**: Multiple sprints
-
-**Start with**: Group 1 (Core Dev Loop)
+**Priority**: HIGH
+**Next authority step**: Validate the remediation branch and complete Phase-17 runtime/QEMU closure evidence without promoting observer output to runtime authority.
 
 ---
 
@@ -339,11 +337,11 @@ The dev-loop-boot-monitoring specification is:
 ✅ **Consistent**: Cross-references valid  
 ✅ **Clean**: No code in spec  
 ✅ **Complete**: All docs present  
-✅ **Production-ready**: Ready for implementation
+✅ **Implemented**: Governance enforcement remediated in the active change set
 
 **Status**: ✅ VALIDATED
 
-**Next Action**: Implement governance scripts, then begin implementation
+**Next Action**: Obtain CI acceptance for the remediation and complete Phase-17 closure evidence.
 
 ---
 

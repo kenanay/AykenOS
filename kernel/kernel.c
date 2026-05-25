@@ -706,6 +706,10 @@ static void kernel_late_init(void)
     debugcon_write("[K][LATE]4.6 EXEC_SLOT_FAIL_CLOSED_SELFTEST\n");
 #endif
     execution_slot_run_fail_closed_selftest();
+#if defined(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST) && (AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST == 1)
+    debugcon_write("[K][LATE]4.7 EXEC_MARKER_LIFECYCLE_SELFTEST\n");
+    execution_slot_run_marker_lifecycle_selftest();
+#endif
 
     // ---------------------------------------------------------
     // 3) File system mechanism only - no policy in Ring0

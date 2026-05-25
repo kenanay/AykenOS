@@ -4,8 +4,6 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 **Status:** ACTIVE (Freeze-linked)  
 **Scope:** Mainline enforcement during architecture freeze  
 **Purpose:** Enforcement'i kalıcılaştırmak, drift'i sıfıra sabitlemek, exit kriterlerini kanıtla kapatmak
-**Human Authority:** Kenan AY (single maintainer)
-**Decision Record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
 
 ---
 
@@ -18,6 +16,13 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
    - Evidence dizini path'i PR açıklamasında referanslı
    - İlgili doküman güncellemesi yapılmış
 
+### 0.1 Active Stabilization Execution Plan
+
+Aktif is sirasi `CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+tarafindan belirlenir. Bu siraya gore Phase-17 closure kurulana kadar
+feature expansion degil, PR-0 authority/governance/ABI parity repair ve
+ardindan marker-enabled gercek QEMU lifecycle acceptance kaniti onceliklidir.
+
 ---
 
 ## 1) Freeze Entry Blocker Closure Pack
@@ -27,9 +32,9 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 ### 1.1 Syscall ABI Single Source Lock
 
 **Workflow**
-1. `kernel/include/ayken_abi.h` tek kaynak olarak korunur.
+1. `shared/abi/ayken_abi.h` ve `shared/abi/syscall_v2.h` build tarafindan tuketilen canonical kaynaklar olarak korunur.
 2. `make generate-abi` deterministik çıktı üretir.
-3. Kernel dispatcher ve userspace wrapper aynı kaynaktan türetilir.
+3. Kernel mirror/wrapper yuzeyleri canonical `shared/abi` kaynaklariyla ayni kontrati tasir.
 
 **Done Criteria**
 1. ABI gate `PASS`
@@ -92,7 +97,9 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 
 ### 2.1 Mandatory Gate Targets
 
-`make ci-freeze` strict zinciri — Makefile ile birebir eslesen yurutme sirasi (2026-05-22):
+`make ci-freeze` strict zinciri - Makefile ile birebir eslesen yurutme sirasi
+(2026-05-23). Asagidaki 40 gate/cluster hedefinden once iki zorunlu
+onkosul calisir: `ci-freeze-guard` ve `preflight-mode-guard`.
 
 1. `make ci-gate-abi`
 2. `make ci-gate-boundary`
@@ -104,53 +111,54 @@ Bu kalemler kapanmadan freeze "aktif niyet"tir; "tam enforcement" değildir.
 8. `make ci-gate-constitutional`
 9. `make ci-gate-governance-policy`
 10. `make ci-gate-naming-convention`
-11. `make ci-gate-drift-activation`
-12. `make ci-gate-structural-abi`
-13. `make ci-gate-runtime-marker-contract`
-14. `make ci-gate-user-bin-lock`
-15. `make ci-gate-embedded-elf-hash`
-16. `make ci-gate-performance`
-17. `make ci-gate-ring3-user-leaf-rule`
-18. `make ci-gate-ring3-execution-phase10a2`
-19. `make ci-gate-syscall-semantics-phase10b`
-20. `make ci-gate-low-half-kheap-scaffold`
-21. `make $(PHASE10C_FREEZE_GATE)` _(conditional freeze gate resolved by Makefile)_
-22. `make ci-gate-mailbox-capability-negative`
-23. `make ci-gate-workspace`
-24. `make ci-gate-syscall-v2-runtime`
-25. `make ci-gate-sched-bridge-runtime`
-26. `make ci-gate-behavioral-suite`
-27. `make ci-gate-policy-accept`
-28. `make ci-gate-alias-proof`
-29. `make ci-kill-switch-phase13` _(Phase-13 distributed verification kill-switch gates)_
-30. `make ci-gate-determinism-replay-consistency`
-31. `make ci-gate-bcib-v3-core`
-32. `make ci-gate-toolchain-opcode-registry`
-33. `make ci-gate-capability-manager`
-34. `make ci-gate-proofd-observability-boundary`
-35. `make ci-gate-dsl-bcib-contract`
-36. `make ci-gate-semantic-cli-contract`
-37. `make ci-gate-data-runtime-bcib`
-38. `make ci-gate-ai-runtime-boundary`
-39. `make ci-gate-bcib-stub-determinism`
+11. `make ci-gate-spec-purity`
+12. `make ci-gate-drift-activation`
+13. `make ci-gate-structural-abi`
+14. `make ci-gate-runtime-marker-contract`
+15. `make ci-gate-user-bin-lock`
+16. `make ci-gate-embedded-elf-hash`
+17. `make ci-gate-performance`
+18. `make ci-gate-ring3-user-leaf-rule`
+19. `make ci-gate-ring3-execution-phase10a2`
+20. `make ci-gate-syscall-semantics-phase10b`
+21. `make ci-gate-low-half-kheap-scaffold`
+22. `make $(PHASE10C_FREEZE_GATE)` _(conditional freeze gate resolved by Makefile)_
+23. `make ci-gate-mailbox-capability-negative`
+24. `make ci-gate-workspace`
+25. `make ci-gate-syscall-v2-runtime`
+26. `make ci-gate-sched-bridge-runtime`
+27. `make ci-gate-behavioral-suite`
+28. `make ci-gate-policy-accept`
+29. `make ci-gate-alias-proof`
+30. `make ci-kill-switch-phase13` _(Phase-13 distributed verification kill-switch gates)_
+31. `make ci-gate-determinism-replay-consistency`
+32. `make ci-gate-bcib-v3-core`
+33. `make ci-gate-toolchain-opcode-registry`
+34. `make ci-gate-capability-manager`
+35. `make ci-gate-proofd-observability-boundary`
+36. `make ci-gate-dsl-bcib-contract`
+37. `make ci-gate-semantic-cli-contract`
+38. `make ci-gate-data-runtime-bcib`
+39. `make ci-gate-ai-runtime-boundary`
+40. `make ci-gate-bcib-stub-determinism`
 
 #### Execution Order Rationale
 
 Yürütme sırası kasıtlıdır ve fail-fast ilkesini uygular:
 
 - **1-4 (Static checks):** ABI, boundary, export surface, hygiene — en hızlı, en temel kontroller önce çalışır. Bunlar başarısız olursa QEMU tabanlı testler çalıştırılmaz.
-- **5-15 (Structural checks):** Execution slot/marker isolation, tooling isolation, constitutional, governance, naming, drift, structural ABI, marker contract, binary locks — yapisal butunluk dogrulamasi.
-- **16-17 (Performance + rule authority):** Performance gate runtime lane'lerden once kosar; hemen arkasindan `ci-gate-ring3-user-leaf-rule` executable user-leaf runtime rule'unu fail-closed dogrular.
-- **18-28 (Runtime gates):** Broader Ring3 execution, syscall semantics, low-half scaffold, scheduler mailbox, workspace, syscall v2, sched bridge, behavioral suite, policy accept, alias proof — QEMU tabanli runtime dogrulama.
-- **29-30 (Distributed verification gates):** Phase-13 kill-switch ve determinism replay consistency — proofd/verifier authority boundary korumasi.
-- **31-39 (Phase-15/17 execution pipeline gates):** BCIB v3 core, opcode registry, capability manager, proofd observability boundary, DSL/CLI/data/AI runtime contracts, BCIB stub determinism — execution pipeline authority and workstream contracts.
+- **5-16 (Structural checks):** Execution slot/marker isolation, tooling isolation, constitutional, governance, naming, normative spec purity, drift, structural ABI, marker contract, binary locks - yapisal butunluk dogrulamasi.
+- **17-18 (Performance + rule authority):** Performance gate runtime lane'lerden once kosar; hemen arkasindan `ci-gate-ring3-user-leaf-rule` executable user-leaf runtime rule'unu fail-closed dogrular.
+- **19-29 (Runtime gates):** Broader Ring3 execution, syscall semantics, low-half scaffold, scheduler mailbox, workspace, syscall v2, sched bridge, behavioral suite, policy accept, alias proof - QEMU tabanli runtime dogrulama.
+- **30-31 (Distributed verification gates):** Phase-13 kill-switch ve determinism replay consistency - proofd/verifier authority boundary korumasi.
+- **32-40 (Phase-15/17 execution pipeline gates):** BCIB v3 core, opcode registry, capability manager, proofd observability boundary, DSL/CLI/data/AI runtime contracts, BCIB stub determinism - execution pipeline authority and workstream contracts.
 
 #### Gate Order Change Protocol
 
 CI gate sırası mimari güvenliği doğrudan etkiler. Sıra değişikliği için:
 
 1. RFC submission zorunludur
-2. Kenan AY maintainer karar kaydi gerekir
+2. Architecture Board onayı gerekir
 3. Makefile değişikliği ile aynı commit'te dokümantasyon güncellenmeli (Constitutional Rule 7)
 4. Evidence ile doğrulanmalıdır
 
@@ -169,7 +177,7 @@ CI gate sırası mimari güvenliği doğrudan etkiler. Sıra değişikliği içi
 4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-24.04` + fail-closed baseline policy).
 5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
 6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
-7. **Gate order is locked.** Sıra değişikliği RFC + Kenan AY maintainer karar kaydı + aynı commit'te dokümantasyon güncellemesi gerektirir (Constitutional Rule 7).
+7. **Gate order is locked.** Sıra değişikliği RFC + Architecture Board onayı + aynı commit'te dokümantasyon güncellemesi gerektirir (Constitutional Rule 7).
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
@@ -323,7 +331,7 @@ Template path:
 1. `summary.json` = `PASS`
 2. Test/benchmark kanıtı var
 3. Doküman güncellemesi var
-4. Kenan AY maintainer karar kaydi var
+4. Architecture review notu var
 
 ---
 
@@ -350,12 +358,12 @@ A "Completed/Production-ready" claim requires:
 2. Tests committed and referenced
 3. Benchmark results committed and referenced
 4. Documentation updated
-5. Kenan AY maintainer decision record
+5. Architecture review note (decision record)
 
 **Evidence**
 1. `evidence/run-<id>/reports/summary.json`
 2. Links to test/bench outputs in repo
-3. Kenan AY maintainer decision record
+3. Decision record or review approval note
 
 **Done When**
 1. Claim is verifiable by reading evidence and repo refs.
@@ -373,14 +381,14 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 5. AHS trend not declining (≥95 maintained; `non_overridable=0`)
 6. Performance regression = 0 (baseline comparison passes)
 7. All freeze-blocking issues closed (tracked issues list is empty)
-8. Kenan AY maintainer freeze-exit decision recorded
+8. Architecture Board approval recorded (decision record present)
 
 **Evidence**
 1. A freeze-exit bundle run (`evidence/run-<id>` full suite)
 2. Decision record reference
 
 **Done When**
-1. All exit criteria have evidence and a Kenan AY maintainer decision record exists.
+1. All exit criteria have evidence and approval record exists.
 
 ---
 
@@ -396,7 +404,7 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 - [ ] Scheduler/process marker stabilizasyonu (10-C)
 - [x] Constitutional gate + waiver docs wiring
 - [x] RFC + waiver directories ve template seti
-- [ ] Freeze exit bundle run + maintainer decision record
+- [ ] Freeze exit bundle run + board approval record
 
 ---
 

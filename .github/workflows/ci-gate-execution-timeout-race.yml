@@ -1,0 +1,53 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is workflow metadata only and has no runtime authority.
+#
+# Scope: validation-only logical deadline on delivered RUNNING work, with a
+# real timer IRQ winning over delayed Ring3 public complete_execution(1011)
+# and kernel stub completion disabled.
+
+name: ci-gate-execution-timeout-race
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  execution-timeout-race:
+    name: "Phase-17 PR-3 - IRQ Timeout Race Acceptance"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT: "45"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - id: gate
+        name: Run IRQ timeout race evidence gate
+        run: |
+          set -euo pipefail
+          make ci-gate-execution-timeout-race \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}" \
+            EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT="${EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT}"
+
+      - name: Upload IRQ timeout race evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-execution-timeout-race-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/execution-timeout-race/
+            evidence/run-${{ env.RUN_ID }}/reports/execution-timeout-race.json
+          if-no-files-found: warn
+          retention-days: 30

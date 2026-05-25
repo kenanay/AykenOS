@@ -220,6 +220,6 @@ See `DEV_LOOP_CONSTITUTION.md` Section 15 for amendment process.
 
 ---
 
-**Last Updated**: 2026-05-03  
-**Maintainer**: Kenan AY — System Architect  
+**Last Updated**: 2026-05-03
+**Maintainer**: Kenan AY — System Architect
 **Spec ID**: `8228c0db-6aab-4555-8fa6-b395f776ee91`

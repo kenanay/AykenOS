@@ -3,6 +3,22 @@
 **Tarih:** 2026-03-03  
 **Durum:** İlk sayfa tamamlandı, ikinci sayfa içerik hazır
 
+## Güncel Öncelik Notu - 2026-05-24
+
+Bu belgedeki sayfa üretim backlog'u tarihsel docs-web iş planıdır. Güncel
+işletim sistemi ilerleme otoritesi
+[`PROJECT_STATUS_2026_05_24.md`](PROJECT_STATUS_2026_05_24.md) ve ana repo
+roadmap belgesidir.
+
+Bugünkü teknik öncelik yeni web sayfası veya yeni OS feature'ı değildir:
+PR-4A ile ortak `sample-6` olarak sınıflandırılan local performance
+oynaklığının bounded izolasyon ölçümleriyle ayrılması, ardından clean-tree
+remote locked-baseline kabul sonucunun alınmasıdır. Phase-17 kapanmış
+sayılmaz; Phase-18 aktive edilemez.
+
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY
+**Yetki sınırı:** Dokümantasyon metadata'sı; runtime veya closure otoritesi değildir.
+
 ## Tamamlanan İşler
 
 ### ✅ Faz 1: Altyapı (TAMAMLANDI)

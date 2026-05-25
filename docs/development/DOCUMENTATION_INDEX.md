@@ -1,8 +1,10 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-04-24
-**Snapshot Basis:** `local-freeze-p10p11` + `local-phase11-closure` + `run-run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-faz-b-ring3-first-retirement-breakthrough`
+**Last Updated:** 2026-05-23
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+**Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
+**Current Authority Basis:** `phase16-official-closure` + `CURRENT_PHASE=17` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 
 ## Current Status
 - **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
@@ -11,27 +13,30 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Distributed Observability:** `Phase-13` officially closed — `ci-freeze` run `23706742211` (PR #81)
 - **Observability Hardening:** `Phase-14` officially closed — all 5 workstreams merged
 - **BCIB Execution Engine v3:** `Phase-15` officially closed — `ci-freeze` run `24213727039` (PR #104)
-- **Formal Governance Pointer:** `CURRENT_PHASE=15` (formal transition at `48970cd0`)
-- **Active Phase:** Phase-16 Faz B ACTIVE DEVELOPMENT — Ring3 breakthrough achieved (2026-04-24)
-- **Performance Baseline:** `gha-ubuntu24-20260406.80.1-X64` (PR #104)
-- **Latest Breakthrough:** Ring3 first-retirement starvation SOLVED, BCIB worker payload debug in progress
+- **Verification Layer MVP:** `Phase-16` officially closed — `ci-freeze` run `25214669681`, tag `phase16-official-closure`
+- **Formal Governance Pointer:** `CURRENT_PHASE=17`
+- **Active Phase:** Phase-17 ACTIVE / FORMAL CLOSURE PENDING
+- **Active Execution Priority:** Marker-enabled real kernel/QEMU lifecycle, deterministic result, fail-closed negative/race proof and performance overhead evidence
+- **Scope Boundary:** Phase-18 is a roadmap only; it is not activated while Phase-17 closure authority is absent
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
 
-1. `README.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
-3. `docs/roadmap/overview.md`
-4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `AYKENOS_SON_DURUM_RAPORU_2026_04_24.md` — **Latest breakthrough report**
-6. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-7. `reports/phase15_official_closure/closure_index.json`
-8. `reports/phase13_official_closure_candidate/closure_index.json`
-9. `reports/phase12_official_closure_candidate/closure_manifest.json`
-10. `reports/phase10_phase11_official_closure_index.json`
-11. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **Ring3 breakthrough evidence**
-12. `Makefile`
-11. `.github/workflows/ci-freeze.yml`
+1. `ARCHITECTURE_FREEZE.md`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=17`
+3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` — **active execution roadmap**
+4. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md` — **current status report**
+5. `README.md`
+6. `docs/roadmap/freeze-enforcement-workflow.md`
+7. `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h` — **canonical frozen ABI inputs**
+8. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+9. `reports/phase15_official_closure/closure_index.json`
+10. `reports/phase13_official_closure_candidate/closure_index.json`
+11. `reports/phase12_official_closure_candidate/closure_manifest.json`
+12. `reports/phase10_phase11_official_closure_index.json`
+13. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+14. `Makefile`
+15. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -59,16 +64,16 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
-2. `docs/roadmap/overview.md`
-3. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=15`
-4. `docs/development/PROJECT_STATUS_REPORT.md`
-5. `docs/specs/phase16-ayken-orchestration/README.md`
-6. `docs/specs/authority-lineage-v1/README.md`
-7. `docs/specs/phase14-distributed-observability/README.md`
-8. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-9. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
-10. `docs/specs/phase14-distributed-observability/CROSS_NODE_OBSERVABILITY_GRAPH_CONTRACT_v1.md`
-11. `docs/specs/phase14-distributed-observability/OBSERVABILITY_UX_CONTRACT_v1.md`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=17`
+3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+4. `docs/roadmap/freeze-enforcement-workflow.md`
+5. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md`
+6. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+7. `docs/specs/phase16-ayken-orchestration/README.md`
+8. `docs/specs/authority-lineage-v1/README.md`
+9. `docs/specs/phase14-distributed-observability/README.md`
+10. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+11. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces
@@ -171,8 +176,16 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 3. `PHASE_10_FINAL_STATUS.md`
 4. `PHASE_10_COMPLETION_SUMMARY.md`
 5. `AYKENOS_PROJE_GENEL_YAPI_VE_MIMARI_RAPORU.md`
+6. `AYKENOS_SON_DURUM_RAPORU_2026_04_24.md`
+7. `docs/roadmap/overview.md`
+8. `docs/roadmap/ROADMAP_2026_02_23.md`
 
 ## Note
-Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir. Current status yorumlari icin Phase-15 official closure truth (`reports/phase15_official_closure/closure_index.json`) ve yukaridaki primary truth kaynaklari birlikte kullanilmalidir.
+Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir.
+Current status yorumlari icin Phase-16 official closure otoritesi,
+`docs/roadmap/CURRENT_PHASE` ve aktif stabilization roadmap birlikte
+kullanilmalidir. Yeni ozellik veya Phase-18 aktivasyonu, Phase-17 gercek
+kernel/QEMU acceptance evidence ve resmi closure yetkisi kurulmadan current
+execution plani olarak sunulamaz.
 
-**Son Guncelleme:** 2026-04-10
+**Son Guncelleme:** 2026-05-23

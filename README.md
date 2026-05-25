@@ -12,8 +12,9 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 [![Status: Protected](https://img.shields.io/badge/Status-Protected-orange.svg)](#-important-legal-notice)
 
 **Oluşturan:** Kenan AY
+**Düzenleyen / Geliştiren / Mimari Sorumlu:** Kenan AY *(bilgilendirme metadata'sı; runtime yetkisi değildir)*
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 01.05.2026
+**Son Güncelleme:** 25.05.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-verification-layer-mvp-complete`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0` | **Evidence Git SHA (Phase-16):** `489868f8`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -21,15 +22,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
 **Remote CI (Phase-15):** `ci-freeze#24213727039 = success` (PR #104) | tag `phase15-official-closure`
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
-**CURRENT_PHASE:** `16` (`Phase-16 OFFICIALLY CLOSED — CURRENT_PHASE=16 — Phase-17 Execution Pipeline PENDING`)
-**Freeze Zinciri:** `make ci-freeze` = strict freeze suite | `make ci-freeze-local` = local freeze suite with local performance authority
-**Acil Blocker:** `yok` (Verification Layer MVP COMPLETE 2026-04-25)
-**Yakın Hedef:** Phase-17 Execution Pipeline (BCIB worker payload + kernel integration + real workload validation)
+**CURRENT_PHASE:** `17` (`Phase-16 OFFICIALLY CLOSED`; Phase-17 aktif, resmi closure henüz kurulmadı)
+**Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
+**Acil Blocker:** Issue #145, tek-maintainer authority kararı ve canlı `main` protection paritesiyle giderildi; PR #142 `main`e kabul edildi (`0682526d`). PR #144'ün accepted `main` restack SHA'sı için scoped locked performance ve full `ci-freeze` yeniden PASS vermeden merge veya Phase-17 resmi kapanış değerlendirmesi yapılamaz
+**Yakın Hedef:** PR #144'ü kabul edilen `main` üzerine bağlayıp yeni SHA üzerinde required remote doğrulamayı almak; ancak bundan sonra closure manifest/tag değerlendirmesine geçmek
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
-**Performance Baseline:** `gha-ubuntu24-20260413.86.1-X64` (updated 2026-04-26)
-**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE ✅ | Phase-17 Execution Pipeline PENDING 🔄
+**Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
+**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 ACTIVE / CLOSURE PENDING 🔄 | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | Phase-17.5 PR #142 MERGED ✅ | PR #144 RESTACK CI PENDING 🔄 | Phase-18 ROADMAP ONLY
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10 runtime CLOSED (official) ✅ | Phase 11 verification substrate CLOSED (official) ✅ | Phase 12 trust layer OFFICIALLY CLOSED ✅ | Phase 13 distributed observability OFFICIALLY CLOSED ✅ | Phase 14 observability hardening OFFICIALLY CLOSED ✅ | Phase 15 BCIB Execution Engine v3 OFFICIALLY CLOSED ✅ | Phase 16 Verification Layer MVP OFFICIALLY CLOSED ✅ (2026-04-25) | CURRENT_PHASE=16 ✅ | Phase-17 Execution Pipeline PENDING 🔄 | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-16 kapanış kayıtları mevcut ✅ | Phase 16 Verification Layer MVP OFFICIALLY CLOSED ✅ (2026-04-25) | CURRENT_PHASE=17 🔄 | Phase-17 Step 5 marker guard merged (PR #134) ✅ | Phase-17 resmi kapanış kanıtı yok 🔄 | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
@@ -38,22 +39,25 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
-**Phase 17 Status:** PENDING 🔄 | Execution Pipeline preparation | BCIB worker payload integration | Real workload validation | System completion phase
+**Phase 17 Status:** ACTIVE / CLOSURE PENDING 🔄 | Step 5 marker-validation guard mainline'da (`71d10691`, PR #134) | PR #144 önceki S2-D başı `342deab6` üzerinde validation-only QEMU/runtime, locked performance (`26391379459`) ve full `ci-freeze` (`26391379462`) PASS tarihsel kanıtı mevcut | accepted `main` restack SHA'sı için yeni remote kanıt beklenir | issue #145 çözüldü, closure etiketi/manifesti henüz yok
+**Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure ve runtime acceptance kurulmadan aktif faz sayılmaz
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; #145 authority parity çözüldü ve PR #142 birleşti; PR #144 accepted `main` restack/new-SHA CI ile official closure authority halen pending
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
-⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`). Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md).
+⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
 
 ---
 
 ## Phase Status
 
-- **Current Phase:** `16`
-- **Status:** `OFFICIALLY CLOSED`
-- **Next Phase:** `17` (Execution Pipeline)
+- **Current Phase:** `17`
+- **Status:** `ACTIVE / FORMAL CLOSURE PENDING`
+- **Last Official Closure:** `16` (Verification Layer MVP, 2026-04-25)
+- **Candidate Next Phase:** `18` (Full Kernel Runtime Validation; roadmap only)
 - **Verification Layer:** `COMPLETE` (MVP delivered 2026-04-25)
 - **Closure Index:** `reports/phase15_official_closure/closure_index.json`
-- **Next Phase:** `16` (`Faz B ACTIVE DEVELOPMENT` — Ring3 breakthrough achieved, BCIB worker payload debug in progress)
+- **Phase-17 Authority Note:** Step-level merge is not an official phase closure; closure requires tagged, evidence-backed acceptance.
 
 ## 🎯 Latest Breakthrough (2026-04-24)
 
@@ -64,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** BCIB worker payload logic/debug
+**Next Focus:** PR #144 accepted `main` restack SHA'sı için scoped locked performance ve full `ci-freeze` kanıtını yeniden üretmek; PASS halinde merge ve ayrı closure manifest/tag incelemesine geçmek
 
 ## Authority Model
 
@@ -136,6 +140,8 @@ AykenOS, yapay zeka destekli, yenilikçi ve çoklu mimari işletim sistemi proje
 | 1009 | `sys_v2_exit` | Süreç sonlandırma |
 | 1010 | `sys_v2_debug_putchar` | Ring3 debug heartbeat |
 | 1011 | `sys_v2_complete_execution` | Yürütme slot yaşam döngüsü tamamlama |
+
+**ABI authority:** `shared/abi/syscall_v2.h` sabit `1000-1011` / 12 yüzeyini tanımlar; `shared/abi/ayken_abi.h` bu yüzey için `0x00010001` sürümünü taşır.
 
 ### Çoklu Mimari Desteği
 
@@ -240,7 +246,7 @@ cd ayken && cargo build && ./target/debug/ayken check
 |-----|-------|----------|
 | Phase 1 — Core Kernel | ✅ CLOSED | UEFI boot, bellek, GDT/IDT, sürücüler |
 | Phase 1.5 — Stabilization | ✅ CLOSED | Ring3 round-trip, toolchain doğrulama |
-| Phase 2 — Execution-Centric | ✅ CLOSED | 11 syscall, Ring3 VFS/DevFS, BCIB |
+| Phase 2 — Execution-Centric | ✅ CLOSED | 11 syscall at closure; current v2 ABI extends the ratified surface to 12 |
 | Phase 2.5 — Legacy Cleanup | ✅ CLOSED | POSIX kaldırma, Ring0 policy temizliği |
 | Phase 3.4 — Multi-Agent | ✅ CLOSED | Gate A-E tamamlandı |
 | Phase 4.3 — Performance | ✅ CLOSED | HashMap→Indexed (3-5x), 80%+ mem azalma |
@@ -302,6 +308,7 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Authority Sinkhole:** `docs/specs/phase12-trust-layer/AUTHORITY_SINKHOLE_COMPANION_FLOW_SPEC.md`
 - **Constitutional CI Mode:** `docs/operations/CONSTITUTIONAL_CI_MODE.md`
 - **Freeze Workflow:** `docs/roadmap/freeze-enforcement-workflow.md`
+- **Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 - **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
 - **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
@@ -355,6 +362,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 01 Mayıs 2026 — Phase-16 OFFICIALLY CLOSED (Verification Layer MVP complete 2026-04-25); CURRENT_PHASE=16; Phase-17 Execution Pipeline pending.
+**Son Güncelleme:** 25 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; issue #145 tek-maintainer authority kararı ve canlı protection paritesiyle çözüldü; PR #142 `main`e kabul edildi; PR #144 önceki SHA kanıtları tarihsel kalır ve accepted `main` restack SHA'sı yeni remote CI gerektirir; resmi closure manifest/tag hâlâ beklenmektedir; Phase-18 yalnızca yol haritasıdır.
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

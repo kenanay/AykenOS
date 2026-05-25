@@ -1,0 +1,52 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is workflow metadata only and has no runtime authority.
+#
+# Scope: validation-only marker-enabled real-kernel QEMU single-slot lifecycle.
+# This candidate gate does not establish Phase-17 closure authority.
+
+name: ci-gate-execution-marker-lifecycle
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  execution-marker-lifecycle:
+    name: "Phase-17 PR-1 - Marker Lifecycle QEMU Evidence"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT: "45"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - id: gate
+        name: Run marker-enabled lifecycle gate
+        run: |
+          set -euo pipefail
+          make ci-gate-execution-marker-lifecycle \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}" \
+            EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT="${EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT}"
+
+      - name: Upload lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-execution-marker-lifecycle-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/execution-marker-lifecycle/
+            evidence/run-${{ env.RUN_ID }}/reports/execution-marker-lifecycle.json
+          if-no-files-found: warn
+          retention-days: 30

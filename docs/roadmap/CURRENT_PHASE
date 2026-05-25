@@ -1,5 +1,11 @@
-CURRENT_PHASE=16
-# Phase-16 OFFICIALLY CLOSED — 2026-04-25
-# Verification Layer MVP COMPLETE — tools-verification-layer
-# Evidence chain integrity verified, trust anchor established
-# Phase-17 PENDING (Execution Pipeline + System Completion)
+CURRENT_PHASE=17
+# Status authority synchronized: 2026-05-24 (PR-4B bounded local variance isolation update)
+# Phase-16 OFFICIALLY CLOSED - 2026-04-25 - tag: phase16-official-closure
+# Phase-17 ACTIVE: marker-validation Step 5 merged to main in PR #134 (71d10691).
+# Phase-17 is NOT OFFICIALLY CLOSED: no phase17 official-closure tag or closure manifest exists.
+# Phase-17.5 dev-loop/observability hardening is under review on draft PR #142.
+# Phase-18 is ROADMAP ONLY until Phase-17 closure authority and runtime/QEMU acceptance are established.
+# Active execution roadmap: docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md
+# Local evidence: PR-1 lifecycle, PR-2 determinism/negative, PR-2A public submit/wait S1.E2E, PR-2B stub-off bounded fixture completion and PR-3 IRQ timeout-versus-delayed-completion PASS; PR-4 readiness FAIL; PR-4A classified a shared sample-6 outlier; PR-4B bounded campaign did not reproduce it; remote authority pending.
+# Immediate work package: seek clean-tree PR CI acceptance including remote locked-baseline performance authority; if remote stability variance recurs, rerun PR-4B stage-localization within that CI authority environment.
+# Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu: Kenan AY (informational metadata only).

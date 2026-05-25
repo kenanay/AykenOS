@@ -7,16 +7,16 @@
     "sys_v2_nr": 12
   },
   "hashes": {
-    "abi_generated_sha256": "2371e1d8c68fa3d8bfb5787971804f3d0d9c12ca478b9d2a1919028261d69a1e",
-    "abi_header_sha256": "1d118887294b92b50aa34ad9ff464a6e6a9b779e3f425a0fbe18e05ee3bf13e6",
+    "abi_generated_sha256": "030fffb0e7926f6b73f910260d1ed9a6c8b934eb83125e99029e422e4aded7b3",
+    "abi_header_sha256": "524e96262e7342c455640f9a38e9c709e734de2db8d1a6b9845b9aa64e21a3e9",
     "abi_layout_sha256": "9dd847c7eb2c72c40b6620e5b96d5c10d34b62f9b4b2561c6f36a2f4ead55cf9",
-    "syscall_header_sha256": "eeead52e6030bfa89d2d3c1d23239cc1307a60a3b43002d4bdfd4f8d9a5f590e"
+    "syscall_header_sha256": "5f47e1e00b6da19f7542989e47473e69e88dc1d1a3a94bd87a5d27be8e4949fe"
   },
   "schema_version": 1,
   "sources": {
     "abi_generated": "kernel/include/generated/ayken_abi.inc",
-    "abi_header": "kernel/include/ayken_abi.h",
-    "syscall_header": "kernel/sys/syscall_v2.h"
+    "abi_header": "shared/abi/ayken_abi.h",
+    "syscall_header": "shared/abi/syscall_v2.h"
   },
   "syscalls": [
     {

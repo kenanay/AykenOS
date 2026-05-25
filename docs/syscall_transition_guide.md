@@ -4,6 +4,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Historical Note:** This file is a Phase 2 migration-era guide and is not the
 current runtime truth surface.
 
+**Current ABI correction (2026-05-23):** The frozen v2 surface is now
+`1000-1011` inclusive (12 syscalls), including
+`SYS_V2_COMPLETE_EXECUTION` at public number `1011`.
+
 For current truth, use:
 
 - `docs/development/SYSCALL_TRANSITION_GUIDE.md` for ABI and migration intent
@@ -30,7 +34,7 @@ This guide documents the migration path from legacy POSIX-like syscalls (v1) to 
 #define SYS_close      3
 #define SYS_exit       60
 
-// New execution-centric syscalls (v2) - Range: 1000-1010
+// New execution-centric syscalls (v2) - Range: 1000-1011
 #define SYS_V2_MAP_MEMORY        1000  // (internal: 0)
 #define SYS_V2_UNMAP_MEMORY      1001  // (internal: 1)
 #define SYS_V2_SWITCH_CONTEXT    1002  // (internal: 2)
@@ -42,13 +46,14 @@ This guide documents the migration path from legacy POSIX-like syscalls (v1) to 
 #define SYS_V2_CAPABILITY_REVOKE 1008  // (internal: 8)
 #define SYS_V2_EXIT              1009  // (internal: 9)
 #define SYS_V2_DEBUG_PUTCHAR     1010  // (internal: 10)
+#define SYS_V2_COMPLETE_EXECUTION 1011 // (internal: 11)
 ```
 
 ### Future State (Phase 2.5+)
 
 - **Legacy syscalls (0-99):** Completely removed
-- **Execution-centric syscalls (1000-1010):** Only interface available
-- **Total syscalls:** 11 (10 core + debug heartbeat syscall)
+- **Execution-centric syscalls (1000-1011):** Only interface available
+- **Total syscalls:** 12 (including debug heartbeat and execution completion)
 
 ## Migration Examples
 
@@ -144,7 +149,7 @@ uint64_t syscall_handler(uint64_t syscall_num, uint64_t arg1,
                          uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     // Route based on Syscall Numbering Plan
-    if (syscall_num >= 1000 && syscall_num <= 1010) {
+    if (syscall_num >= 1000 && syscall_num <= 1011) {
         // New execution-centric syscalls (v2)
         return syscall_v2_handler(syscall_num - 1000, arg1, arg2, arg3, arg4);
     } else if (syscall_num >= 0 && syscall_num <= 99) {
@@ -293,7 +298,7 @@ void demonstrate_capabilities(void) {
 #### Issue: "Invalid syscall number" errors
 ```bash
 # Check syscall number ranges
-echo "V1 range: 0-99, V2 range: 1000-1010"
+echo "V1 range: 0-99, V2 range: 1000-1011"
 ```
 
 #### Issue: Capability binding failures
@@ -350,7 +355,7 @@ if (bind_result != ESYS_V2_SUCCESS) {
 
 - [AykenOS Phase 2 Documentation](../docs/phase2_specification.md)
 - [Capability System Design](../kernel/include/capability.h)
-- [Syscall V2 Interface](../kernel/sys/syscall_v2.h)
+- [Canonical Syscall V2 Interface](../shared/abi/syscall_v2.h)
 - [Ring3 Runtime Libraries](../userspace/libayken/)
 
 ---

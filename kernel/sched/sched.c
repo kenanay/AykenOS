@@ -2474,6 +2474,7 @@ int sched_try_pickup_execution_work(void)
     execution_slot_guard_t slot_guard = {0};
     execution_slot_trace_scope_t trace_scope = {0};
     exec_slot_t *slot = NULL;
+    paging_kernel_access_scope_t kernel_access = {0};
 
     if (!current_proc || current_proc->pid <= 0) {
         return 0;
@@ -2487,6 +2488,7 @@ int sched_try_pickup_execution_work(void)
 
     execution_slot_enter_critical(&slot_guard);
     execution_slot_trace_scope_enter(&trace_scope, EXEC_TRACE_ACTOR_PICKUP);
+    paging_kernel_access_begin(&kernel_access);
     slot = execution_slot_pickup_locked((uint64_t)current_proc->pid);
     if (slot) {
         int stub_result = 0;
@@ -2506,6 +2508,18 @@ int sched_try_pickup_execution_work(void)
                                                  "sched_try_pickup_execution_work");
             slot = NULL;
         } else {
+#if defined(AYKEN_VALIDATION) && (AYKEN_VALIDATION == 1) && \
+    defined(AYKEN_EXECUTION_RACE_SELFTEST) && (AYKEN_EXECUTION_RACE_SELFTEST == 1)
+            /*
+             * PR-3 witness only: arm a bounded logical deadline once work is
+             * RUNNING and delivered, while Ring3 remains runnable. The timer
+             * IRQ, not this harness, performs terminalization.
+             */
+            if (slot->deadline_tick == 0) {
+                slot->deadline_tick = timer_ticks() + 2u;
+                sched_emit_marker("[[AYKEN_EXEC_RACE_DEADLINE_ARMED]]\n");
+            }
+#endif
             stub_result = sched_complete_bcib_stub_result_locked(current_proc, slot);
             if (stub_result < 0) {
                 sched_reset_execution_delivery_surface(current_proc);
@@ -2518,6 +2532,7 @@ int sched_try_pickup_execution_work(void)
             }
         }
     }
+    paging_kernel_access_end(&kernel_access);
     execution_slot_trace_scope_exit(&trace_scope);
     execution_slot_exit_critical(&slot_guard);
 
@@ -5982,6 +5997,8 @@ void sched_start(void)
     sched_debug_ring3_entry_window(current_proc);
     sched_force_ring3_entry_cr3_to_sterile_root(current_proc);
     sched_force_ring3_entry_cr3_to_kernel_root(current_proc);
+    sched_note_first_user_entry_if_ring3(current_proc);
+    sched_arm_ring3_entry_guard_if_ring3(current_proc);
     sched_emit_pre_dispatch_text_walk_proof(current_proc);
     switch_to_first(&current_proc->context);
     
@@ -6079,6 +6096,13 @@ static void sched_yield_core(int reenable_if)
 
     // If policy returns the currently running Ring3 process, keep running in place.
     if (prev && next == prev) {
+        /*
+         * A worker may submit work to itself and remain the selected Ring3
+         * context. Pickup is execution mechanism, so the no-switch cadence
+         * must service the queue as well as a process-to-process handoff.
+         */
+        sched_try_pickup_execution_work();
+
         // IRQ no-op reschedule still represents a preempt/return cadence event.
         // Emit canonical markers so strict preempt harness can measure cadence
         // even when policy keeps the owner process running in place.
@@ -6106,12 +6130,16 @@ static void sched_yield_core(int reenable_if)
             sched_note_first_user_entry_if_ring3(current_proc);
             sched_arm_ring3_entry_guard_if_ring3(current_proc);
             sched_mask_irq0_before_first_ring3_entry(current_proc);
-            sched_emit_pre_dispatch_text_walk_proof(current_proc);
-            context_switch(&prev->context, &current_proc->context);
+            /*
+             * No process handoff occurred. Return through the original IRQ
+             * frame so timer_isr_asm restores every Ring3 GPR, including
+             * caller-saved syscall return values. Redispatching through
+             * context_switch() here only restores callee-saved state and can
+             * corrupt the public syscall ABI after preemption.
+             */
         }
         if (!reenable_if) {
-            // Kernel IRQ no-op path returns via timer_isr_asm iretq.
-            // Ring3 IRQ no-op path above canonicalizes through context_switch().
+            // A no-switch IRQ return preserves the original timer ISR frame.
             sched_irq_user_ctx_saved = 0;
         }
         if (reenable_if)

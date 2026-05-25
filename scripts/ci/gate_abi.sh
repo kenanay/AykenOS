@@ -22,9 +22,10 @@ BASELINE_FILE="${ROOT}/scripts/ci/abi-baseline.lock.json"
 INIT_BASELINE=0
 DIFF_RANGE="${ABI_DIFF_RANGE:-}"
 
-ABI_H_REL="kernel/include/ayken_abi.h"
+# The build consumes shared/abi directly; lock the same canonical inputs here.
+ABI_H_REL="shared/abi/ayken_abi.h"
 ABI_INC_REL="kernel/include/generated/ayken_abi.inc"
-SYSCALL_H_REL="kernel/sys/syscall_v2.h"
+SYSCALL_H_REL="shared/abi/syscall_v2.h"
 
 ABI_H="${ROOT}/${ABI_H_REL}"
 ABI_INC="${ROOT}/${ABI_INC_REL}"
@@ -219,7 +220,7 @@ if [[ "${INIT_BASELINE}" -eq 0 ]]; then
     if [[ ! -s "${CHANGED_TXT}" && -f "${ROOT}/.git/HEAD" ]]; then
       git -C "${ROOT}" show --pretty="" --name-only HEAD > "${CHANGED_TXT}" 2>/dev/null || true
     fi
-    ABI_TRIGGER_PAT='^(kernel/include/ayken_abi\.h|kernel/include/generated/ayken_abi\.inc|kernel/sys/syscall_v2\.h|scripts/ci/abi-baseline\.lock\.json)$'
+    ABI_TRIGGER_PAT='^(shared/abi/ayken_abi\.h|shared/abi/syscall_v2\.h|kernel/include/ayken_abi\.h|kernel/include/generated/ayken_abi\.inc|kernel/sys/syscall_v2\.h|scripts/ci/abi-baseline\.lock\.json)$'
     while IFS= read -r path; do
       [[ -z "${path}" ]] && continue
       if echo "${path}" | grep -E -q -- "${ABI_TRIGGER_PAT}"; then

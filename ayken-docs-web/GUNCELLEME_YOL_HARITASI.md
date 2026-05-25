@@ -4,6 +4,23 @@
 **Hazırlayan:** Kiro AI  
 **Amaç:** Projenin güncel durumunu (10 Mart 2026 itibarıyla) web sitesine yansıtmak
 
+## Otorite Senkronizasyonu - 24 Mayıs 2026
+
+Bu belge altındaki 10 Mart/6 Nisan içerik güncelleme planı tarihsel web
+içerik kaydıdır. Güncel OS faz ve stabilization durumu için
+[`PROJECT_STATUS_2026_05_24.md`](PROJECT_STATUS_2026_05_24.md) esas alınır.
+
+- Son resmi kapanış: Phase-16.
+- Aktif çalışma: Phase-17; formal closure pending.
+- PR-4 local readiness: fail-closed `FAIL`.
+- PR-4A variance diagnostic: local `PASS`, ortak `sample-6` sapması;
+  performans kabulü veya kök neden kanıtı değildir.
+- Bu senkronizasyonda statik web uygulaması (`.html`, CSS, JS) değiştirilmez;
+  uygulama içindeki eski durum metni authoritative sayılmaz.
+
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY
+**Yetki sınırı:** Dokümantasyon metadata'sı; runtime veya closure otoritesi değildir.
+
 ---
 
 ## Mevcut Durum Tespiti

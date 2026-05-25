@@ -4,6 +4,18 @@
 **Status**: ✅ **COMPLETE & MERGED**  
 **PR**: #134 (merged to main)  
 **Merge Commit**: `71d10691`
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY *(informational metadata only)*
+
+---
+
+## Authority Correction (2026-05-23)
+
+This document is authoritative for **Phase-17 Step 5 marker-validation delivery only**.
+The merge of PR #134 is not, by itself, official closure of the entire phase.
+There is no `phase17-official-closure` tag or closure manifest in the repository.
+The current authority is therefore **Phase-17 ACTIVE / FORMAL CLOSURE PENDING**;
+Phase-18 remains a roadmap until kernel-runtime/QEMU acceptance and closure
+evidence are established.
 
 ---
 
@@ -248,14 +260,13 @@ Total: ~4 hours (start to merge)
 
 **Estimated Duration**: 7-10 days
 
-**Start Trigger**: ✅ **NOW** (Phase-17 merged)
+**Start Trigger**: Phase-17 formal closure with kernel-runtime/QEMU acceptance evidence
 
 ---
 
 ## 📞 CONTACTS
 
-**Architectural Steward**: Kenan AY  
-**Implementation**: Kiro (AI Assistant)  
+**Architectural Steward / Implementation Owner**: Kenan AY
 **PR**: #134 (merged)  
 **Merge Commit**: `71d10691`
 
@@ -263,19 +274,18 @@ Total: ~4 hours (start to merge)
 
 ## 🔥 FINAL VERDICT
 
-**Status**: ✅ **COMPLETE & MERGED**
+**Status**: ✅ **STEP 5 COMPLETE & MERGED** | Phase-17 formal closure pending
 
 **Technical Authority**: 15/15 gates pass  
 **Process Authority**: 13 reports complete  
 **Governance Authority**: Architectural steward approval  
 **Merge Authority**: Exercised (squash merged)
 
-**Recommendation**: **START PHASE-18**
+**Recommendation**: Complete Phase-17 runtime acceptance and closure authority before activating Phase-18.
 
 ---
 
-**Prepared by**: Kiro (AI Assistant)  
+**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY
 **Date**: 2026-05-02 14:57 UTC  
-**Authority**: Phase completion + merge verification  
-**Status**: ✅ PHASE-17 COMPLETE — READY FOR PHASE-18
-
+**Authority**: Step 5 merge verification only
+**Status**: ✅ STEP 5 MERGED - PHASE-17 CLOSURE PENDING

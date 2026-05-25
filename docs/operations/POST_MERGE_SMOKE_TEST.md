@@ -1,6 +1,17 @@
 # Post-Merge Smoke Test Checklist
 
-Bu checklist merge sonrası 5-10 dakikada tamamlanır ve governance değişikliklerinin production'da doğru çalıştığını doğrular.
+**Effective date:** 2026-05-25
+**Scope:** Bu checklist yalniz yetkili bir merge sonrasinda teknik smoke
+evidence toplar. Merge authority, production-ready verdict'i veya Phase-17
+closure kurmaz. Tek-maintainer authority karari ve live protection paritesi
+issue #145 ile tamamlanmistir; bu kayit smoke PASS'i closure'a donusturmez.
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+**Attribution boundary:** Dokumantasyon metadata'si; runtime, evidence,
+merge veya closure otoritesi degildir.
+
+Bu checklist merge sonrasi 5-10 dakikada tamamlanir ve governance
+degisikliklerinin constitutional CI davranisini koruduguna dair teknik kayit
+uretir.
 
 ## 1. CI Freeze Run (İlk Koşu)
 
@@ -135,13 +146,14 @@ ls -la evidence/run-*/gates/performance/
 **Hedef:** Policy dokümanının güncel ve erişilebilir olduğunu doğrula.
 
 ```bash
-# Repo'da policy dokümanını kontrol et
-cat docs/PERF_BASELINE_POLICY.md
+# Repo'da policy dokumanini kontrol et
+cat docs/operations/PERF_BASELINE_POLICY.md
 # Beklenen: Güncel terminoloji, drift SLA, intentional regression kuralları
 ```
 
 **Kontrol noktaları:**
-- [ ] `ci_image_fingerprint` terminolojisi kullanılıyor (digest değil)
+- [ ] `ci_image_digest` terimi runner fingerprint'i olarak aciklanmis
+      (OCI/container digest'i degil)
 - [ ] Drift SLA: "1 iş günü (hedef ≤24h)"
 - [ ] Intentional regression kuralları: compile-time gated, default OFF
 
@@ -157,13 +169,16 @@ Zamanın kısıtlıysa sadece bunları kontrol et:
 4. **Evidence üretildi mi?** → `evidence/run-*/gates/performance/report.json`
 5. **Hook default OFF mu?** → `make kernel` (flag olmadan)
 
-Hepsi ✅ ise merge başarılı ve production-ready.
+Hepsi PASS ise teknik post-merge smoke kaydi tamamlanir. Bu sonuc tek
+basina production-ready verdict'i veya resmi faz kapanisi degildir.
 
 ---
 
 ## Production Signal
 
-**Eğer Freeze PASS + Strict PASS + Authority tek kaynak doğrulandıysa → sistem production-grade kabul edilir.**
+**Freeze PASS + strict PASS + tek authority kaynagi teknik evidence
+uretir. Official Phase-17 closure icin closure manifest/tag ve oncesinde
+uygulanabilir review/merge authority ayrica gereklidir.**
 
 ---
 
@@ -189,4 +204,5 @@ git revert c0164547
 git revert 4e556c8c
 ```
 
-**Not:** Governance ve strict-clean bağımsız olduğu için kısmi rollback güvenli.
+**Not:** Rollback secimi etki analizi ve review gerektirir; bu checklist
+kismi rollback'in otomatik olarak guvenli oldugunu iddia etmez.

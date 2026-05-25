@@ -1,0 +1,98 @@
+# Author: Kenan AY
+# Role: Developer / Architect / Designer / Implementer
+# Attribution is workflow metadata only and has no runtime authority.
+#
+# Scope: PR-4 candidate. Reuses the existing constitutional performance
+# baseline for the timer/preemption hot path; it does not benchmark the
+# validation-only worker or timeout-race payload latency.
+
+name: ci-gate-phase17-performance-acceptance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  phase17-performance-acceptance:
+    name: "Phase-17 PR-4 - Locked Baseline Performance Acceptance"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      PERF_BASELINE_MODE: "constitutional"
+      PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
+      PERF_QEMU_TIMEOUT: "30"
+      PERF_KERNEL_PROFILE: "validation"
+      PERF_ENV_MISMATCH_POLICY: "fail"
+      PERF_REGRESSION_POLICY: "fail"
+      SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
+      SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check governed baseline renewal authorization
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if gh pr view "${PR_NUMBER}" --json labels --jq '.labels[].name' | grep -q '^baseline-update$'; then
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=1" >> "$GITHUB_ENV"
+            echo "Governed baseline-update label detected - permitting reviewed lock import"
+          else
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=0" >> "$GITHUB_ENV"
+            echo "No baseline-update label - baseline lock remains immutable"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Load locked performance authority
+        run: |
+          set -euo pipefail
+          source scripts/ci/perf_authority.env
+          : "${PERF_BASELINE_AUTHORITY:?PERF_BASELINE_AUTHORITY missing}"
+          echo "PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}" >> "$GITHUB_ENV"
+
+      - name: Resolve pinned runner image digest
+        run: |
+          set -euo pipefail
+          DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if echo "${DIGEST}" | grep -q "unknown"; then
+            echo "Unable to resolve CI image digest"
+            exit 1
+          fi
+          echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - name: Run Phase-17 locked-baseline acceptance
+        run: |
+          set -euo pipefail
+          make ci-gate-phase17-performance-acceptance \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}"
+
+      - name: Upload Phase-17 performance acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-phase17-performance-acceptance-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/performance/
+            evidence/run-${{ env.RUN_ID }}/gates/phase17-performance-acceptance/
+            evidence/run-${{ env.RUN_ID }}/reports/performance.json
+            evidence/run-${{ env.RUN_ID }}/reports/phase17-performance-acceptance.json
+          if-no-files-found: warn
+          retention-days: 30

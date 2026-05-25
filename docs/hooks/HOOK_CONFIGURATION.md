@@ -35,7 +35,7 @@ AykenOS hook'ları **pre-CI disiplin katmanlarıdır**, CI'ın yerini almaz. Şu
 ### 2. Documentation Sync Mandatory
 **Dosya:** `docs/hooks/doc-sync-mandatory.kiro.hook`  
 **Olay:** `fileEdited`  
-**Desenler:** `kernel/include/ayken_abi.h`, `kernel/sys/syscall_v2.c`, `kernel/arch/x86_64/context_switch.asm`, `bootloader/efi/efi_main.c`, `ARCHITECTURE_FREEZE.md`, `Makefile`  
+**Desenler:** `shared/abi/ayken_abi.h`, `shared/abi/syscall_v2.h`, `kernel/include/ayken_abi.h`, `kernel/sys/syscall_v2.c`, `kernel/arch/x86_64/context_switch.asm`, `bootloader/efi/efi_main.c`, `ARCHITECTURE_FREEZE.md`, `Makefile`
 **Eylem:** Mimari değişiklikler için dokümantasyon güncellemelerini zorunlu kıl  
 **Uygulama:** Fail-closed, dokümanlar senkronize edilene kadar blokla
 
@@ -56,7 +56,7 @@ AykenOS hook'ları **pre-CI disiplin katmanlarıdır**, CI'ın yerini almaz. Şu
 ### 5. ABI Drift Guard
 **Dosya:** `docs/hooks/abi-drift-guard.kiro.hook`  
 **Olay:** `fileEdited`  
-**Desenler:** `kernel/include/ayken_abi.h`, `kernel/arch/x86_64/context_switch.asm`, `kernel/sys/syscall_v2.c`  
+**Desenler:** `shared/abi/ayken_abi.h`, `shared/abi/syscall_v2.h`, `kernel/include/ayken_abi.h`, `kernel/arch/x86_64/context_switch.asm`, `kernel/sys/syscall_v2.c`
 **Eylem:** ABI yüzey değişikliklerini tespit et, yeniden üretim disiplinini zorunlu kıl  
 **Uygulama:** Fail-closed, ABI değişiklikleri için RFC gerektirir
 

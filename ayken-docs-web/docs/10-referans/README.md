@@ -2,6 +2,16 @@
 
 Bu bölüm AykenOS ile ilgili referans materyalleri ve kaynak dokümanları içerir.
 
+## Güncel Durum Referansı - 2026-05-24
+
+- Docs-web durum senkronizasyonu: [`../../PROJECT_STATUS_2026_05_24.md`](../../PROJECT_STATUS_2026_05_24.md)
+- Ana execution roadmap: `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+- Faz otoritesi: Phase-16 son resmi kapanış; Phase-17 aktif ve kapanış bekliyor.
+- Performans otoritesi: PR-4 local readiness `FAIL`; PR-4A diagnostic
+  `PASS` yalnız ortak `sample-6` variance fingerprint kaydıdır; PR-4B
+  bounded diagnostic `PASS` bu outlier'ı yeniden üretmemiş, fakat acceptance
+  veya closure kurmamıştır.
+
 ## İçerik
 
 - **Terimler Sözlüğü** - Glossary of terms

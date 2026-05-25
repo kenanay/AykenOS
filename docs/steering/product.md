@@ -3,6 +3,8 @@
 **Version:** 1.0 Constitutional Edition  
 **Authority:** ARCHITECTURE_FREEZE.md  
 **Enforcement:** CI Gates + Branch Protection
+**Current Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+**Last Authority Sync:** 2026-05-23
 
 AykenOS is an AI-native, execution-centric operating system that reimagines traditional OS architecture with a data-driven, deterministic approach.
 
@@ -11,7 +13,7 @@ AykenOS is an AI-native, execution-centric operating system that reimagines trad
 - **Execution-Centric**: 12 mechanism syscalls (1000-1011) instead of traditional POSIX interface
 - **Ring3 Empowerment**: All policy decisions (VFS, DevFS, scheduler, AI) MUST run in userspace
 - **Ring0 Minimalism**: Kernel SHALL provide only mechanisms (memory, context, interrupts)
-- **AI-Native Design**: AI is integrated at the core, not as an add-on
+- **AI-Native Design**: AI is a Ring3 policy/runtime concern; it is not kernel authority
 - **Capability-Based Security**: Token-based access control with granular permissions
 - **Deterministic Execution**: Evidence-based, reproducible behavior enforced by CI
 
@@ -24,6 +26,7 @@ AykenOS enforces deterministic behavior at all levels:
 - **CI Reproducibility**: All builds MUST be reproducible on authority environment
 - **Evidence Immutability**: `evidence/` directory is append-only, never modified
 - **Baseline Lock**: Performance and ABI baselines are immutable without RFC approval
+- **Diagnostics Non-Authority**: Dashboards, AI output and observability cannot become runtime decision input
 
 ## Key Features
 
@@ -55,7 +58,7 @@ These rules are enforced by CI gates and MUST NOT be violated:
 ### 2. ABI Stability
 - Syscall range 1000-1011 is FROZEN
 - ABI changes require version bump + RFC approval
-- `ayken_abi.h` is single source of truth
+- `shared/abi/ayken_abi.h` and `shared/abi/syscall_v2.h` are canonical sources
 - Violation detection: `make ci-gate-abi`
 
 ### 3. Ring0 Export Surface
@@ -91,7 +94,10 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - **Worktree-Local Ring3 Rule**: executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
 - **CI Enforcement**: strict freeze chain includes dedicated `Ring3 User Leaf Rule` before broader `Ring3 Execution Phase10a2`, followed by low-half scaffold, mailbox/runtime gates, alias proof, Phase-13 kill-switch enforcement, and Phase-16 verification layer gates
 - **Pre-CI Discipline**: Local advisory (5 core gates, ~60-90s, fail-closed) + verification layer integration
-- **CURRENT_PHASE**: `16` (formal transition completed, Phase-17 execution pipeline pending)
+- **CURRENT_PHASE**: `17` (Phase-17 active; formal closure pending)
+- **Current Execution Priority**: marker-enabled real kernel/QEMU execution-slot lifecycle, deterministic result, fail-closed/race and performance acceptance evidence
+- **Phase-18**: ROADMAP ONLY until Phase-17 official closure authority is established
+- **Scope Decision**: multi-architecture expansion, new AI orchestration and authority-surface growth remain deferred while stabilization evidence is incomplete
 
 ## License
 

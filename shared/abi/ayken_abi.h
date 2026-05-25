@@ -3,7 +3,11 @@
 
 #include <stdint.h>
 
-#define AYKEN_ABI_VERSION 0x00010000u
+/*
+ * Version 0x00010001 includes the ratified SYS_V2_COMPLETE_EXECUTION
+ * endpoint (index 11, public syscall 1011) in the 12-syscall v2 surface.
+ */
+#define AYKEN_ABI_VERSION 0x00010001u
 
 #define CTX_R15      0u
 #define CTX_R14      8u

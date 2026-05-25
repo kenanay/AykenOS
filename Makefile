@@ -43,7 +43,14 @@ AYKEN_GATE45_PROOF ?= 0
 AYKEN_DETERMINISTIC_EXIT ?= 0
 AYKEN_BCIB_STUB_RESULT_ENABLE ?= 0
 AYKEN_BCIB_STUB_RESULT_VALUE_U64 ?= 0xDEADBEEFCAFEBABE
+AYKEN_BCIB_PUBLIC_E2E_SELFTEST ?= 0
+AYKEN_BCIB_WORKER_COMPLETION_SELFTEST ?= 0
+AYKEN_EXECUTION_RACE_SELFTEST ?= 0
 AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE ?= 0
+AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST ?= 0
+AYKEN_PHASE17_MARKER_INJECTION_TEST ?= 0
+AYKEN_MARKER_INJECT_INVALID_ORDER ?= 0
+AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT ?= 0
 KERNEL_EXPORT_POLICY ?= 1
 AYKEN_CR3_PCID ?= 0
 AYKEN_C2_STRICT_MARKERS ?= 0
@@ -125,8 +132,150 @@ ifneq ($(filter $(AYKEN_BCIB_STUB_RESULT_ENABLE),0 1),$(AYKEN_BCIB_STUB_RESULT_E
 $(error Invalid AYKEN_BCIB_STUB_RESULT_ENABLE='$(AYKEN_BCIB_STUB_RESULT_ENABLE)'. Use 0 or 1)
 endif
 
+ifneq ($(filter $(AYKEN_BCIB_PUBLIC_E2E_SELFTEST),0 1),$(AYKEN_BCIB_PUBLIC_E2E_SELFTEST))
+$(error Invalid AYKEN_BCIB_PUBLIC_E2E_SELFTEST='$(AYKEN_BCIB_PUBLIC_E2E_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST),0 1),$(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST))
+$(error Invalid AYKEN_BCIB_WORKER_COMPLETION_SELFTEST='$(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_EXECUTION_RACE_SELFTEST),0 1),$(AYKEN_EXECUTION_RACE_SELFTEST))
+$(error Invalid AYKEN_EXECUTION_RACE_SELFTEST='$(AYKEN_EXECUTION_RACE_SELFTEST)'. Use 0 or 1)
+endif
+
 ifneq ($(filter $(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),0 1),$(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE))
 $(error Invalid AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE='$(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),0 1),$(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST))
+$(error Invalid AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST='$(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST)'. Use 0 or 1)
+endif
+
+ifeq ($(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),1)
+$(error AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1)
+endif
+endif
+
+ifeq ($(AYKEN_BCIB_PUBLIC_E2E_SELFTEST),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+ifneq ($(AYKEN_BCIB_STUB_RESULT_ENABLE),1)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_BCIB_STUB_RESULT_ENABLE=1)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),1)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),0)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=0)
+endif
+ifneq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),0)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_PHASE17_MARKER_INJECTION_TEST=0)
+endif
+ifneq ($(AYKEN_RING3_ENTRY_GUARD),1)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_RING3_ENTRY_GUARD=1)
+endif
+ifneq ($(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY),0)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=0)
+endif
+endif
+
+ifeq ($(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+ifneq ($(AYKEN_BCIB_STUB_RESULT_ENABLE),0)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_BCIB_STUB_RESULT_ENABLE=0)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),1)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),0)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=0)
+endif
+ifneq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),0)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_PHASE17_MARKER_INJECTION_TEST=0)
+endif
+ifneq ($(AYKEN_BCIB_PUBLIC_E2E_SELFTEST),0)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_BCIB_PUBLIC_E2E_SELFTEST=0)
+endif
+ifneq ($(AYKEN_RING3_ENTRY_GUARD),1)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_RING3_ENTRY_GUARD=1)
+endif
+ifneq ($(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY),0)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=0)
+endif
+endif
+
+ifeq ($(AYKEN_EXECUTION_RACE_SELFTEST),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+ifneq ($(AYKEN_BCIB_STUB_RESULT_ENABLE),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_BCIB_STUB_RESULT_ENABLE=0)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),1)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=0)
+endif
+ifneq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_PHASE17_MARKER_INJECTION_TEST=0)
+endif
+ifneq ($(AYKEN_BCIB_PUBLIC_E2E_SELFTEST),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_BCIB_PUBLIC_E2E_SELFTEST=0)
+endif
+ifneq ($(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=0)
+endif
+ifneq ($(AYKEN_RING3_ENTRY_GUARD),1)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_RING3_ENTRY_GUARD=1)
+endif
+ifneq ($(AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY),0)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires AYKEN_RING3_MASK_IRQ0_FIRST_ENTRY=0)
+endif
+endif
+
+ifneq ($(filter $(AYKEN_PHASE17_MARKER_INJECTION_TEST),0 1),$(AYKEN_PHASE17_MARKER_INJECTION_TEST))
+$(error Invalid AYKEN_PHASE17_MARKER_INJECTION_TEST='$(AYKEN_PHASE17_MARKER_INJECTION_TEST)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_MARKER_INJECT_INVALID_ORDER),0 1),$(AYKEN_MARKER_INJECT_INVALID_ORDER))
+$(error Invalid AYKEN_MARKER_INJECT_INVALID_ORDER='$(AYKEN_MARKER_INJECT_INVALID_ORDER)'. Use 0 or 1)
+endif
+
+ifneq ($(filter $(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT),0 1),$(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT))
+$(error Invalid AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT='$(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT)'. Use 0 or 1)
+endif
+
+ifeq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),1)
+ifneq ($(KERNEL_PROFILE),validation)
+$(error AYKEN_PHASE17_MARKER_INJECTION_TEST=1 is only allowed with KERNEL_PROFILE=validation)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE),1)
+$(error AYKEN_PHASE17_MARKER_INJECTION_TEST=1 requires AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1)
+endif
+ifneq ($(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST),1)
+$(error AYKEN_PHASE17_MARKER_INJECTION_TEST=1 requires AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=1)
+endif
+endif
+
+ifeq ($(AYKEN_MARKER_INJECT_INVALID_ORDER),1)
+ifneq ($(AYKEN_PHASE17_MARKER_INJECTION_TEST),1)
+$(error AYKEN_MARKER_INJECT_INVALID_ORDER=1 requires AYKEN_PHASE17_MARKER_INJECTION_TEST=1)
+endif
+endif
+
+ifeq ($(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT),1)
+ifneq ($(AYKEN_MARKER_INJECT_INVALID_ORDER),1)
+$(error AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT=1 requires AYKEN_MARKER_INJECT_INVALID_ORDER=1)
+endif
 endif
 
 ifneq ($(filter $(KERNEL_EXPORT_POLICY),0 1),$(KERNEL_EXPORT_POLICY))
@@ -663,7 +812,14 @@ KERNEL_CFLAGS += -DAYKEN_GATE45_PROOF=$(AYKEN_GATE45_PROOF)
 KERNEL_CFLAGS += -DAYKEN_DETERMINISTIC_EXIT=$(AYKEN_DETERMINISTIC_EXIT)
 KERNEL_CFLAGS += -DAYKEN_BCIB_STUB_RESULT_ENABLE=$(AYKEN_BCIB_STUB_RESULT_ENABLE)
 KERNEL_CFLAGS += -DAYKEN_BCIB_STUB_RESULT_VALUE_U64=$(AYKEN_BCIB_STUB_RESULT_VALUE_U64)
+KERNEL_CFLAGS += -DAYKEN_BCIB_PUBLIC_E2E_SELFTEST=$(AYKEN_BCIB_PUBLIC_E2E_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_BCIB_WORKER_COMPLETION_SELFTEST=$(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_EXECUTION_RACE_SELFTEST=$(AYKEN_EXECUTION_RACE_SELFTEST)
 KERNEL_CFLAGS += -DAYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=$(AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE)
+KERNEL_CFLAGS += -DAYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=$(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST)
+KERNEL_CFLAGS += -DAYKEN_PHASE17_MARKER_INJECTION_TEST=$(AYKEN_PHASE17_MARKER_INJECTION_TEST)
+KERNEL_CFLAGS += -DAYKEN_MARKER_INJECT_INVALID_ORDER=$(AYKEN_MARKER_INJECT_INVALID_ORDER)
+KERNEL_CFLAGS += -DAYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT=$(AYKEN_EXECUTION_MARKER_NEGATIVE_EXPECT_REJECT)
 KERNEL_CFLAGS += -DAYKEN_CR3_PCID=$(AYKEN_CR3_PCID)
 KERNEL_CFLAGS += -DAYKEN_C2_STRICT_MARKERS=$(AYKEN_C2_STRICT_MARKERS)
 KERNEL_CFLAGS += -DAYKEN_SCHED_BOOTSTRAP_POLICY=$(AYKEN_SCHED_BOOTSTRAP_POLICY)
@@ -833,6 +989,21 @@ USER_MINIMAL_DEFAULT_MODE := phase10a2
 USER_MINIMAL_EFFECTIVE_MODE := $(if $(strip $(USER_MINIMAL_MODE)),$(strip $(USER_MINIMAL_MODE)),$(USER_MINIMAL_DEFAULT_MODE))
 USER_MINIMAL_MODE_STAMP = $(USER_MINIMAL_DIR)/.mode.$(USER_MINIMAL_EFFECTIVE_MODE)
 KERNEL_CFLAGS += -DAYKEN_USER_MINIMAL_MODE_STRING=\"$(USER_MINIMAL_EFFECTIVE_MODE)\"
+ifeq ($(AYKEN_BCIB_PUBLIC_E2E_SELFTEST),1)
+ifneq ($(USER_MINIMAL_EFFECTIVE_MODE),bcib-public-e2e)
+$(error AYKEN_BCIB_PUBLIC_E2E_SELFTEST=1 requires USER_MINIMAL_MODE=bcib-public-e2e)
+endif
+endif
+ifeq ($(AYKEN_BCIB_WORKER_COMPLETION_SELFTEST),1)
+ifneq ($(USER_MINIMAL_EFFECTIVE_MODE),bcib-worker-completion)
+$(error AYKEN_BCIB_WORKER_COMPLETION_SELFTEST=1 requires USER_MINIMAL_MODE=bcib-worker-completion)
+endif
+endif
+ifeq ($(AYKEN_EXECUTION_RACE_SELFTEST),1)
+ifneq ($(USER_MINIMAL_EFFECTIVE_MODE),bcib-timeout-race)
+$(error AYKEN_EXECUTION_RACE_SELFTEST=1 requires USER_MINIMAL_MODE=bcib-timeout-race)
+endif
+endif
 USER_MINIMAL_SOURCES = $(wildcard $(USER_MINIMAL_DIR)/*.c) \
                        $(wildcard $(USER_MINIMAL_DIR)/*.S) \
                        $(USER_MINIMAL_DIR)/user.ld \
@@ -912,6 +1083,12 @@ PERF_PREEMPT_BUILD_DEBUG_IRQ ?=
 PERF_STABILITY_CONTRACT_FILE ?= scripts/ci/perf-stability.contract.json
 PERF_STABILITY_PROFILE ?= local-default
 PERF_LEARNING_SOURCE_GLOB ?=
+PHASE17_VARIANCE_SOURCE_ROOT ?= evidence
+PHASE17_VARIANCE_SOURCE_RUN_ID ?=
+PHASE17_VARIANCE_REFERENCE_RUN_ID ?=
+PHASE17_VARIANCE_ISOLATION_RUNS ?= 3
+PHASE17_VARIANCE_ISOLATION_WARMUP ?= 1
+PHASE17_VARIANCE_ISOLATION_QEMU_TIMEOUT ?= 20
 SYSCALL_V2_RUNTIME_KERNEL_PROFILE ?= validation
 SYSCALL_V2_RUNTIME_WARMUP ?= 1
 ifeq ($(PERF_BASELINE_MODE),provisional)
@@ -934,6 +1111,11 @@ PHASE10B_MODE ?= negative
 PHASE10B_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
 PHASE10B_PROOF_QEMU_TIMEOUT ?= 20
 PHASE10B_REQUIRE_COLOCATED_A2 ?= 1
+EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT ?= 30
+EXECUTION_MARKER_DETERMINISM_QEMU_TIMEOUT ?= 30
+EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT ?= 35
+EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT ?= 35
+EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT ?= 35
 LOW_HALF_KHEAP_A2_EVIDENCE_DIR ?= $(EVIDENCE_RUN_DIR)/gates/ring3-execution-phase10a2
 LOW_HALF_KHEAP_EXIT_PROOF_QEMU_TIMEOUT ?= 35
 LOW_HALF_KHEAP_MULTI_EXIT_PROOF_QEMU_TIMEOUT ?= 35
@@ -1543,13 +1725,13 @@ phase13-official-closure-prep:
 	@echo "OK: closure candidate at $(PHASE13_CLOSURE_OUTPUT_DIR)"
 
 ci-freeze: PHASE10C_C2_STRICT=1
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-spec-purity ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-spec-purity ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
 	@echo "Freeze CI suite completed successfully!"
 
 # Local freeze (local performance authority; skip tooling-isolation/alias-proof/kill-switch)
 ci-freeze-local: PHASE10C_C2_STRICT=0
-ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency ci-gate-bcib-stub-determinism
+ci-freeze-local: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-spec-purity ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance-local ci-gate-performance-stability ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-scheduler-mailbox-phase10c ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-determinism-replay-consistency ci-gate-bcib-stub-determinism
 	@echo "Local freeze suite completed successfully (local performance authority active; tooling-isolation/alias-proof/kill-switch skipped)!"
 
 # CI boundary gate with evidence collection
@@ -1563,6 +1745,13 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/symbol-scan"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/ring0-exports"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/hygiene"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-slot-integrity"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-marker-isolation"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-marker-lifecycle"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-marker-determinism"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-public-e2e"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-worker-completion"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/execution-timeout-race"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/tooling-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/constitutional"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/governance-policy"
@@ -1600,6 +1789,9 @@ ci-evidence-dir:
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/policy-accept"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/decision-switch-phase45"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/performance"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic"
+	@mkdir -p "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/logs"
 	@mkdir -p "$(EVIDENCE_RUN_DIR)/reports"
 	@printf '{\n  "run_id": "%s",\n  "time_utc": "%s"\n}\n' \
@@ -1707,16 +1899,78 @@ ci-gate-hygiene: ci-evidence-dir
 ci-gate-execution-slot-integrity: ci-evidence-dir
 	@echo "== CI GATE EXECUTION SLOT INTEGRITY =="
 	@echo "run_id: $(RUN_ID)"
-	@./scripts/ci/ci-gate-execution-slot-integrity.sh
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@RUN_ID="$(RUN_ID)" EVIDENCE_DIR="$(EVIDENCE_RUN_DIR)/gates/execution-slot-integrity" ./scripts/ci/ci-gate-execution-slot-integrity.sh
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-slot-integrity/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-slot-integrity.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-slot-integrity
 	@echo "OK: execution-slot-integrity gate passed"
 
 ci-gate-execution-marker-isolation: ci-evidence-dir
 	@echo "== CI GATE EXECUTION MARKER ISOLATION =="
 	@echo "run_id: $(RUN_ID)"
-	@./scripts/ci/ci-gate-execution-marker-isolation.sh
-	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
+	@RUN_ID="$(RUN_ID)" EVIDENCE_DIR="$(EVIDENCE_RUN_DIR)/gates/execution-marker-isolation" ./scripts/ci/ci-gate-execution-marker-isolation.sh
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-marker-isolation/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-marker-isolation.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-marker-isolation
 	@echo "OK: execution-marker-isolation gate passed"
+
+.PHONY: ci-gate-execution-marker-lifecycle
+ci-gate-execution-marker-lifecycle: ci-evidence-dir
+	@echo "== CI GATE EXECUTION MARKER LIFECYCLE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout_seconds: $(EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT)"
+	@bash scripts/ci/gate_execution_marker_lifecycle.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/execution-marker-lifecycle" \
+		--qemu-timeout "$(EXECUTION_MARKER_LIFECYCLE_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-marker-lifecycle/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-marker-lifecycle.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-marker-lifecycle
+	@echo "OK: marker-enabled real kernel/QEMU lifecycle evidence at $(EVIDENCE_RUN_DIR)"
+
+.PHONY: ci-gate-execution-marker-determinism
+ci-gate-execution-marker-determinism: ci-evidence-dir
+	@echo "== CI GATE EXECUTION MARKER DETERMINISM =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout_seconds: $(EXECUTION_MARKER_DETERMINISM_QEMU_TIMEOUT)"
+	@bash scripts/ci/gate_execution_marker_determinism.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/execution-marker-determinism" \
+		--qemu-timeout "$(EXECUTION_MARKER_DETERMINISM_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-marker-determinism/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-marker-determinism.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-marker-determinism
+	@echo "OK: marker deterministic-result and invalid-sequence evidence at $(EVIDENCE_RUN_DIR)"
+
+.PHONY: ci-gate-execution-public-e2e
+ci-gate-execution-public-e2e: ci-evidence-dir
+	@echo "== CI GATE EXECUTION PUBLIC RING3 E2E =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout_seconds: $(EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT)"
+	@bash scripts/ci/gate_execution_public_e2e.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/execution-public-e2e" \
+		--qemu-timeout "$(EXECUTION_PUBLIC_E2E_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-public-e2e/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-public-e2e.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-public-e2e
+	@echo "OK: public Ring3 submit/wait validation evidence at $(EVIDENCE_RUN_DIR)"
+
+.PHONY: ci-gate-execution-worker-completion
+ci-gate-execution-worker-completion: ci-evidence-dir
+	@echo "== CI GATE EXECUTION RING3 WORKER COMPLETION =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout_seconds: $(EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT)"
+	@bash scripts/ci/gate_execution_worker_completion.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/execution-worker-completion" \
+		--qemu-timeout "$(EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-worker-completion/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-worker-completion.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-worker-completion
+	@echo "OK: Ring3 fixture worker public completion evidence at $(EVIDENCE_RUN_DIR)"
+
+.PHONY: ci-gate-execution-timeout-race
+ci-gate-execution-timeout-race: ci-evidence-dir
+	@echo "== CI GATE EXECUTION TIMEOUT RACE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "qemu_timeout_seconds: $(EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT)"
+	@bash scripts/ci/gate_execution_timeout_race.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/execution-timeout-race" \
+		--qemu-timeout "$(EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT)"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/execution-timeout-race/report.json" "$(EVIDENCE_RUN_DIR)/reports/execution-timeout-race.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=execution-timeout-race
+	@echo "OK: IRQ-timeout versus late-completion evidence at $(EVIDENCE_RUN_DIR)"
 
 ci-gate-tooling-isolation: ci-evidence-dir
 	@echo "== CI GATE TOOLING ISOLATION =="
@@ -1759,6 +2013,21 @@ ci-gate-naming-convention: ci-evidence-dir
 	@cp -f "$(EVIDENCE_RUN_DIR)/gates/naming-convention/report.json" "$(EVIDENCE_RUN_DIR)/reports/naming-convention.json"
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: naming-convention evidence at $(EVIDENCE_RUN_DIR)"
+
+ci-gate-evidence-isolation:
+	@./scripts/check_evidence_isolation.sh
+
+ci-gate-observation-boundary:
+	@./scripts/check_observation_boundary.sh
+
+ci-gate-naming-compliance:
+	@./scripts/check_naming_compliance.sh
+
+ci-gate-spec-purity:
+	@./scripts/check_spec_purity.sh
+
+ci-gate-governance: ci-gate-evidence-isolation ci-gate-observation-boundary ci-gate-naming-compliance ci-gate-spec-purity
+	@echo "Dev-loop governance gates: ALL PASS"
 
 ci-gate-test-naming: ci-evidence-dir
 	@echo "== CI GATE TEST NAMING =="
@@ -2887,6 +3156,90 @@ ci-gate-performance-stability: ci-evidence-dir
 	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT)
 	@echo "OK: performance-stability evidence at $(EVIDENCE_RUN_DIR)"
 
+.PHONY: ci-gate-phase17-performance-acceptance
+ci-gate-phase17-performance-acceptance: ci-gate-performance
+	@echo "== CI GATE PHASE17 PERFORMANCE ACCEPTANCE =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: locked-authority"
+	@python3 tools/ci/validate_phase17_performance_acceptance.py \
+		--mode locked-authority \
+		--performance-report "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" \
+		--baseline-file "$(PERF_BASELINE_FILE)" \
+		--build-log "$(EVIDENCE_RUN_DIR)/gates/performance/build.log" \
+		--expected-authority "$(PERF_BASELINE_AUTHORITY)" \
+		--out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/report.json" \
+		--violations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/violations.txt" \
+		--meta-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/meta.txt"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/report.json" "$(EVIDENCE_RUN_DIR)/reports/phase17-performance-acceptance.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=phase17-performance-acceptance
+	@echo "OK: Phase-17 locked-baseline performance acceptance evidence at $(EVIDENCE_RUN_DIR)"
+
+.PHONY: ci-gate-phase17-performance-readiness-local
+ci-gate-phase17-performance-readiness-local: ci-gate-performance-local
+	@echo "== CI GATE PHASE17 PERFORMANCE READINESS LOCAL =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: local-readiness (diagnostic only; no closure authority)"
+	@$(MAKE) ci-gate-performance-stability RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) || test -f "$(EVIDENCE_RUN_DIR)/gates/performance-stability/report.json"
+	@python3 tools/ci/validate_phase17_performance_acceptance.py \
+		--mode local-readiness \
+		--performance-report "$(EVIDENCE_RUN_DIR)/gates/performance/report.json" \
+		--stability-report "$(EVIDENCE_RUN_DIR)/gates/performance-stability/report.json" \
+		--baseline-file "$(PERF_LOCAL_BASELINE_FILE)" \
+		--expected-authority "$(PERF_LOCAL_BASELINE_AUTHORITY)" \
+		--out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/report.json" \
+		--violations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/violations.txt" \
+		--meta-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/meta.txt"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-acceptance/report.json" "$(EVIDENCE_RUN_DIR)/reports/phase17-performance-acceptance.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=phase17-performance-acceptance
+	@echo "OK: Phase-17 local performance readiness evidence at $(EVIDENCE_RUN_DIR) (remote authority pending)"
+
+.PHONY: ci-gate-phase17-performance-variance-diagnostic
+ci-gate-phase17-performance-variance-diagnostic: ci-evidence-dir
+	@echo "== CI GATE PHASE17 PERFORMANCE VARIANCE DIAGNOSTIC =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: diagnostic-only existing-evidence analysis (no acceptance authority)"
+	@test -n "$(PHASE17_VARIANCE_SOURCE_RUN_ID)" || { echo "ERROR: PHASE17_VARIANCE_SOURCE_RUN_ID is required" >&2; exit 2; }
+	@set --; \
+	if test -n "$(PHASE17_VARIANCE_REFERENCE_RUN_ID)"; then \
+		set -- "$$@" \
+			--reference-performance-report "$(PHASE17_VARIANCE_SOURCE_ROOT)/run-$(PHASE17_VARIANCE_REFERENCE_RUN_ID)/gates/performance/report.json" \
+			--reference-stability-report "$(PHASE17_VARIANCE_SOURCE_ROOT)/run-$(PHASE17_VARIANCE_REFERENCE_RUN_ID)/gates/performance-stability/report.json"; \
+	fi; \
+	python3 tools/ci/analyze_phase17_performance_variance.py \
+		--performance-report "$(PHASE17_VARIANCE_SOURCE_ROOT)/run-$(PHASE17_VARIANCE_SOURCE_RUN_ID)/gates/performance/report.json" \
+		--stability-report "$(PHASE17_VARIANCE_SOURCE_ROOT)/run-$(PHASE17_VARIANCE_SOURCE_RUN_ID)/gates/performance-stability/report.json" \
+		"$$@" \
+		--out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic/report.json" \
+		--violations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic/violations.txt" \
+		--observations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic/observations.txt" \
+		--meta-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic/meta.txt"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-diagnostic/report.json" "$(EVIDENCE_RUN_DIR)/reports/phase17-performance-variance-diagnostic.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=phase17-performance-variance-diagnostic
+	@echo "OK: Phase-17 variance diagnostic evidence at $(EVIDENCE_RUN_DIR) (upstream acceptance unchanged)"
+
+.PHONY: ci-gate-phase17-performance-variance-isolation
+ci-gate-phase17-performance-variance-isolation: ci-evidence-dir
+	@echo "== CI GATE PHASE17 PERFORMANCE VARIANCE ISOLATION =="
+	@echo "run_id: $(RUN_ID)"
+	@echo "mode: bounded local measurement diagnosis (no acceptance authority)"
+	@echo "conditions: image-reuse, rebuild-per-run"
+	@./scripts/ci/gate_performance_variance_isolation.sh \
+		--evidence-dir "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation" \
+		--runs "$(PHASE17_VARIANCE_ISOLATION_RUNS)" \
+		--warmup "$(PHASE17_VARIANCE_ISOLATION_WARMUP)" \
+		--qemu-timeout "$(PHASE17_VARIANCE_ISOLATION_QEMU_TIMEOUT)" \
+		--kernel-profile "$(PERF_KERNEL_PROFILE)"
+	@python3 tools/ci/analyze_phase17_variance_isolation.py \
+		--group "image-reuse=$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/image-reuse" \
+		--group "rebuild-per-run=$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/rebuild-per-run" \
+		--out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/report.json" \
+		--violations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/violations.txt" \
+		--observations-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/observations.txt" \
+		--meta-out "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/meta.txt"
+	@cp -f "$(EVIDENCE_RUN_DIR)/gates/phase17-performance-variance-isolation/report.json" "$(EVIDENCE_RUN_DIR)/reports/phase17-performance-variance-isolation.json"
+	@$(MAKE) ci-summarize RUN_ID=$(RUN_ID) EVIDENCE_ROOT=$(EVIDENCE_ROOT) SUMMARY_GATE=phase17-performance-variance-isolation
+	@echo "OK: Phase-17 bounded variance isolation evidence at $(EVIDENCE_RUN_DIR) (remote acceptance unchanged)"
+
 ci-gate-performance-learning-review: ci-evidence-dir
 	@echo "== CI GATE PERFORMANCE LEARNING REVIEW =="
 	@echo "run_id: $(RUN_ID)"
@@ -3217,7 +3570,7 @@ help:
 	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
 	@echo "  ci-gate-tooling-isolation - Fail-closed guard: perf/preempt tooling PRs cannot touch kernel/"
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (ABI/boundary/export/contracts hard-lock)"
-	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + maintainer authority + waiver audit)"
+	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + waiver audit)"
 	@echo "    (profile selector: GOVERNANCE_POLICY_KERNEL_PROFILE=validation)"
 	@echo "  ci-gate-naming-convention - Diff-scoped naming freeze gate for new execution-path additions"
 	@echo "    (diff selector: NAMING_DIFF_RANGE=<git-range>, skips when no scoped changes exist)"
@@ -3225,6 +3578,24 @@ help:
 	@echo "  ci-gate-structural-abi - Gate-5A permanent ABI constitution lock (layout + semver policy)"
 	@echo "  ci-gate-runtime-marker-contract - Gate-5B phase-scoped marker contract lock (format + anchors + semver)"
 	@echo "    (toggle: RUNTIME_MARKER_CONTRACT_ENFORCE=0 to disable phase-scoped marker lock)"
+	@echo "  ci-gate-execution-marker-lifecycle - Validation-only real kernel/QEMU single-slot marker lifecycle evidence"
+	@echo "    (candidate PR-1 evidence; not Phase-17 closure or strict freeze authority)"
+	@echo "  ci-gate-execution-marker-determinism - Validation-only two-boot result hash parity + invalid-order rejection evidence"
+	@echo "    (candidate PR-2 evidence; not Ring3 E2E, race/performance, Phase-17 closure, or strict freeze authority)"
+	@echo "  ci-gate-execution-public-e2e - Validation-only Ring3 public submit/wait result-publication evidence"
+	@echo "    (candidate S1.E2E evidence using stub completion; not real worker/race/performance/closure authority)"
+	@echo "  ci-gate-execution-worker-completion - Validation-only Ring3 fixture worker public complete_execution evidence"
+	@echo "    (candidate PR-2B evidence with stub disabled; not general interpreter/race/performance/closure authority)"
+	@echo "  ci-gate-execution-timeout-race - Validation-only IRQ timeout versus late Ring3 completion rejection evidence"
+	@echo "    (candidate PR-3 evidence; not exhaustive race/performance/closure authority)"
+	@echo "  ci-gate-phase17-performance-acceptance - Remote locked-baseline timer/preemption hot-path acceptance evidence"
+	@echo "    (candidate PR-4 evidence; not validation payload latency or Phase-17 closure authority alone)"
+	@echo "  ci-gate-phase17-performance-readiness-local - Local diagnostic median + stability readiness evidence"
+	@echo "    (fail-closed on local instability; never establishes remote performance or closure authority)"
+	@echo "  ci-gate-phase17-performance-variance-diagnostic - Existing-evidence variance fingerprint and shared-outlier classification"
+	@echo "    (diagnostic PASS preserves upstream stability FAIL; never establishes performance or closure authority)"
+	@echo "  ci-gate-phase17-performance-variance-isolation - Bounded image-reuse/rebuild-per-run stage-localization measurements"
+	@echo "    (diagnostic-only PR-4B evidence; no baseline, threshold, runtime, performance acceptance, or closure authority)"
 	@echo "  ci-gate-user-bin-lock - Generated userspace binary hash-lock gate (user.bin drift detection)"
 	@echo "  ci-gate-embedded-elf-hash - Embedded ELF SHA256 consistency gate (header hash == built ELF hash)"
 	@echo "  ci-gate-structural-constitution - Composite alias: structural-abi + runtime-marker-contract"
@@ -3420,7 +3791,7 @@ help:
 	@echo "  verify-shadow - Run verification layer in shadow mode (failures logged but don't block)"
 	@echo "  help         - Show this help message"
 
-.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-bcib-determinism ci-gate-bcib-stub-determinism ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi ci-gate-boot-observability ci-gate-task9 ci-gate-ring3-first-retire ci-gate-bcib-determinism-verification ci-gate-determinism-global verify-system verify-fast verify-heavy verify-shadow help ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-phase15-workstreams ci-gate-spec-validation
+.PHONY: check-deps install-deps validate validate-toolchain validate-build validate-qemu validate-qemu-env validate-qemu-integration validate-full setup dev ci ci-freeze ci-freeze-local ci-freeze-guard preflight-mode-guard ci-evidence-dir ci-gate-boundary ci-gate-ring0-exports ci-summarize ci-kill-switch-summary ci-gate-abi ci-gate-workspace ci-gate-hygiene ci-gate-execution-marker-lifecycle ci-gate-execution-marker-determinism ci-gate-execution-public-e2e ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-evidence-isolation ci-gate-observation-boundary ci-gate-naming-compliance ci-gate-spec-purity ci-gate-governance ci-gate-test-naming ci-gate-error-codes ci-gate-kernel-test-pipeline ci-kernel-tests ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-structural-constitution ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold ci-gate-low-half-kheap-exit-proof ci-gate-low-half-kheap-multi-exit-proof ci-gate-low-half-kheap-interleaving-proof ci-gate-scheduler-mailbox-phase10c ci-gate-no-low-half-kernel-dependency ci-gate-mailbox-capability-negative ci-gate-ledger-completeness ci-gate-ledger-integrity ci-gate-hash-chain-validity ci-gate-deol-sequence ci-gate-eti-sequence ci-gate-ledger-eti-binding ci-gate-transcript-integrity ci-gate-dlt-monotonicity ci-gate-eti-dlt-binding ci-gate-dlt-determinism ci-gate-gcp-finalization ci-gate-gcp-atomicity ci-gate-gcp-ordering ci-gate-abdf-snapshot-identity ci-gate-bcib-trace-identity ci-gate-execution-identity ci-gate-replay-determinism ci-gate-replay-v1 ci-gate-bcib-determinism ci-gate-bcib-stub-determinism ci-gate-kpl-proof-verify ci-gate-proof-manifest ci-gate-proof-bundle ci-gate-proof-portability ci-gate-proof-producer-schema ci-gate-proof-signature-envelope ci-gate-proof-bundle-v2-schema ci-gate-proof-bundle-v2-compat ci-gate-proof-signature-verify ci-gate-proof-registry-resolution ci-gate-proof-key-rotation ci-gate-proof-verifier-core ci-gate-proof-trust-policy ci-gate-proof-verdict-binding ci-gate-proof-verifier-cli ci-gate-proof-receipt ci-gate-proof-audit-ledger ci-gate-proof-exchange ci-gate-verifier-authority-resolution ci-gate-cross-node-parity ci-gate-proofd-service ci-gate-proofd-schema-coverage ci-gate-proofd-observability-boundary ci-gate-graph-non-authoritative-contract ci-gate-convergence-non-election-boundary ci-gate-diagnostics-consumer-non-authoritative-contract ci-gate-diagnostics-callsite-correlation ci-gate-observability-routing-separation ci-gate-verification-diversity-floor ci-gate-verifier-cartel-correlation ci-gate-authority-sinkhole-absorption ci-produce-verification-diversity-ledger ci-produce-authority-sinkhole-companion-flows ci-gate-verification-determinism-contract ci-gate-determinism-replay-consistency ci-gate-verifier-reputation-prohibition ci-gate-proof-multisig-quorum ci-gate-proof-replay-admission-boundary ci-gate-proof-replicated-verification-boundary phase12-official-closure-prep phase12-official-closure-preflight phase12-official-closure-execute phase12-closure ci-gate-policy-accept ci-gate-decision-switch-phase45 ci-gate-policy-proof-regression ci-gate-performance ci-gate-performance-local ci-gate-performance-stability ci-gate-performance-learning-review perf-preempt-variance-local generate-abi ci-gate-boot-observability ci-gate-task9 ci-gate-ring3-first-retire ci-gate-bcib-determinism-verification ci-gate-determinism-global verify-system verify-fast verify-heavy verify-shadow help ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-phase15-workstreams ci-gate-spec-validation
 
 # CI Gate: Spec Validation (Phase-17.5)
 # Enforces Level 3 validation for spec changes

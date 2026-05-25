@@ -7,12 +7,12 @@
 
 ## Context
 
-The Makefile was modified to reorder and expand CI gates in the `ci-freeze` target. The earlier `ci-gate-performance` repositioning remains in force, and later execution-slot, marker-isolation, Phase-13, Phase-15, and Phase-17 execution-pipeline gates are now part of the same strict freeze chain.
+The Makefile was modified to reorder and expand CI gates in the `ci-freeze` target. The earlier `ci-gate-performance` repositioning remains in force, later execution-pipeline gates are part of the strict freeze chain, and the 2026-05-23 amendment adds normative specification purity enforcement before drift/runtime lanes.
 
 **Change:**
 ```makefile
 # Current documented authority:
-ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
+ci-freeze: ci-freeze-guard preflight-mode-guard ci-gate-abi ci-gate-boundary ci-gate-ring0-exports ci-gate-hygiene ci-gate-execution-slot-integrity ci-gate-execution-marker-isolation ci-gate-tooling-isolation ci-gate-constitutional ci-gate-governance-policy ci-gate-naming-convention ci-gate-spec-purity ci-gate-drift-activation ci-gate-structural-abi ci-gate-runtime-marker-contract ci-gate-user-bin-lock ci-gate-embedded-elf-hash ci-gate-performance ci-gate-ring3-user-leaf-rule ci-gate-ring3-execution-phase10a2 ci-gate-syscall-semantics-phase10b ci-gate-low-half-kheap-scaffold $(PHASE10C_FREEZE_GATE) ci-gate-mailbox-capability-negative ci-gate-workspace ci-gate-syscall-v2-runtime ci-gate-sched-bridge-runtime ci-gate-behavioral-suite ci-gate-policy-accept ci-gate-alias-proof ci-kill-switch-phase13 ci-gate-determinism-replay-consistency ci-gate-bcib-v3-core ci-gate-toolchain-opcode-registry ci-gate-capability-manager ci-gate-proofd-observability-boundary ci-gate-dsl-bcib-contract ci-gate-semantic-cli-contract ci-gate-data-runtime-bcib ci-gate-ai-runtime-boundary ci-gate-bcib-stub-determinism
 ```
 
 This is a **build system change** that requires documentation synchronization per Constitutional Rule 7.
@@ -90,9 +90,7 @@ Documentation MUST establish protocol for future gate order changes:
 
 ## Out of Scope
 
-- Changing the actual gate execution order (already done in Makefile)
-- Adding or removing gates
-- Modifying gate implementation
+- Reordering existing gate semantics beyond placing the approved spec-purity gate before drift/runtime lanes
 - Changing gate pass/fail criteria
 
 ## Success Criteria
@@ -110,7 +108,7 @@ Documentation MUST establish protocol for future gate order changes:
 
 ## Notes
 
-- This is a **documentation-only** change
-- No code changes required
+- The initial resynchronization was documentation-only; the 2026-05-23 amendment includes one governance gate and its synchronized documentation
+- The new gate is static and has no runtime execution authority
 - High priority due to constitutional compliance requirement
 - Should be completed before next PR merge

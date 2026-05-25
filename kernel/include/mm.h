@@ -98,6 +98,60 @@ void     paging_load_cr3(uint64_t phys_addr);
 /** Kernel PML4 fiziksel kök adresi. */
 uint64_t paging_get_kernel_pml4_phys(void);
 
+/*
+ * Kernel-owned physical backing may only be dereferenced while the kernel
+ * direct-map root is active. The scope does not map user leaves or widen
+ * permissions; it temporarily selects the kernel root and restores the
+ * caller's root and interrupt state on exit.
+ */
+typedef struct paging_kernel_access_scope {
+    uint64_t previous_cr3;
+    uint64_t previous_rflags;
+    uint8_t switched;
+    uint8_t reserved[7];
+} paging_kernel_access_scope_t;
+
+static inline void paging_kernel_access_begin(paging_kernel_access_scope_t *scope)
+{
+    uint64_t active_cr3 = 0;
+    uint64_t kernel_cr3 = paging_get_kernel_pml4_phys() & AYKEN_PTE_ADDR_MASK;
+
+    if (!scope) {
+        return;
+    }
+
+    scope->previous_cr3 = 0;
+    scope->previous_rflags = 0;
+    scope->switched = 0;
+    if (kernel_cr3 == 0) {
+        return;
+    }
+
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_cr3));
+    scope->previous_cr3 = active_cr3;
+    if ((active_cr3 & AYKEN_PTE_ADDR_MASK) == kernel_cr3) {
+        return;
+    }
+
+    __asm__ volatile("pushfq; popq %0" : "=r"(scope->previous_rflags));
+    __asm__ volatile("cli");
+    paging_load_cr3(kernel_cr3);
+    scope->switched = 1;
+}
+
+static inline void paging_kernel_access_end(paging_kernel_access_scope_t *scope)
+{
+    if (!scope || !scope->switched) {
+        return;
+    }
+
+    paging_load_cr3(scope->previous_cr3);
+    if (scope->previous_rflags & (1ULL << 9)) {
+        __asm__ volatile("sti");
+    }
+    scope->switched = 0;
+}
+
 /** Yeni bir kullanıcı alanı PML4'ü oluşturur ve kernel yarım alanını kopyalar. */
 uint64_t paging_create_user_pml4(void);
 

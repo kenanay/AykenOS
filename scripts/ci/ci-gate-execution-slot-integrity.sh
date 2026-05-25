@@ -8,8 +8,8 @@
 
 set -e
 
-RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)-$$
-EVIDENCE_DIR="out/evidence/run-$RUN_ID/gates/execution-slot-integrity"
+RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)-$$}"
+EVIDENCE_DIR="${EVIDENCE_DIR:-out/evidence/run-$RUN_ID/gates/execution-slot-integrity}"
 
 mkdir -p "$EVIDENCE_DIR"
 
@@ -85,9 +85,16 @@ fi
 
 # Check for prototype indicators (should NOT be present)
 PROTOTYPE_INDICATORS=(
-    "malloc"
-    "printf"
-    "fprintf"
+    "malloc[[:space:]]*\\("
+    "printf[[:space:]]*\\("
+    "fprintf[[:space:]]*\\("
+    "(^|[^_[:alnum:]])exit[[:space:]]*\\("
+    "HELLO_BCIB_EXECUTION"
+)
+PROTOTYPE_INDICATOR_NAMES=(
+    "malloc("
+    "printf("
+    "fprintf("
     "exit("
     "HELLO_BCIB_EXECUTION"
 )
@@ -96,22 +103,36 @@ echo ""
 echo "Checking for prototype code indicators (should NOT be present):"
 
 FOUND_INDICATORS=()
-for indicator in "${PROTOTYPE_INDICATORS[@]}"; do
-    if grep -q "$indicator" "$EXECUTION_SLOT_C"; then
-        echo "  ⚠️  FOUND: $indicator"
-        FOUND_INDICATORS+=("$indicator")
+for index in "${!PROTOTYPE_INDICATORS[@]}"; do
+    indicator="${PROTOTYPE_INDICATORS[$index]}"
+    indicator_name="${PROTOTYPE_INDICATOR_NAMES[$index]}"
+    if grep -Eq "$indicator" "$EXECUTION_SLOT_C"; then
+        echo "  ⚠️  FOUND: $indicator_name"
+        FOUND_INDICATORS+=("$indicator_name")
     else
-        echo "  ✅ NOT FOUND: $indicator"
+        echo "  ✅ NOT FOUND: $indicator_name"
     fi
 done
 
 if [ ${#FOUND_INDICATORS[@]} -gt 0 ]; then
     echo ""
-    echo "WARNING: Prototype code indicators found in $EXECUTION_SLOT_C"
+    echo "ERROR: Prototype code indicators found in $EXECUTION_SLOT_C"
     echo "Found indicators: ${FOUND_INDICATORS[*]}"
     echo "This may indicate prototype code was merged into production"
-    # Don't fail yet, but warn
+    exit 1
 fi
+
+MISSING_MARKERS_JSON=""
+for marker in "${MISSING_MARKERS[@]}"; do
+    [ -z "$MISSING_MARKERS_JSON" ] || MISSING_MARKERS_JSON="${MISSING_MARKERS_JSON}, "
+    MISSING_MARKERS_JSON="${MISSING_MARKERS_JSON}\"${marker}\""
+done
+
+FOUND_INDICATORS_JSON=""
+for indicator in "${FOUND_INDICATORS[@]}"; do
+    [ -z "$FOUND_INDICATORS_JSON" ] || FOUND_INDICATORS_JSON="${FOUND_INDICATORS_JSON}, "
+    FOUND_INDICATORS_JSON="${FOUND_INDICATORS_JSON}\"${indicator}\""
+done
 
 # Generate evidence report
 cat > "$EVIDENCE_DIR/report.json" <<EOF
@@ -137,10 +158,10 @@ cat > "$EVIDENCE_DIR/report.json" <<EOF
     "critical_markers": {
       "expected": ${#CRITICAL_MARKERS[@]},
       "found": $((${#CRITICAL_MARKERS[@]} - ${#MISSING_MARKERS[@]})),
-      "missing": [$(printf '"%s",' "${MISSING_MARKERS[@]}" | sed 's/,$//')]
+      "missing": [$MISSING_MARKERS_JSON]
     },
     "prototype_indicators": {
-      "found": [$(printf '"%s",' "${FOUND_INDICATORS[@]}" | sed 's/,$//')]
+      "found": [$FOUND_INDICATORS_JSON]
     }
   },
   "meta": {

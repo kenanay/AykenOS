@@ -217,6 +217,9 @@ uint32_t execution_slot_queue_capacity(void);
 void execution_slot_enter_critical(execution_slot_guard_t *guard);
 void execution_slot_exit_critical(execution_slot_guard_t *guard);
 void execution_slot_run_fail_closed_selftest(void);
+#if defined(AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST) && (AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST == 1)
+void execution_slot_run_marker_lifecycle_selftest(void);
+#endif
 void execution_slot_trace_scope_enter(execution_slot_trace_scope_t *scope,
                                       execution_trace_actor_t actor);
 void execution_slot_trace_scope_exit(execution_slot_trace_scope_t *scope);

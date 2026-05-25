@@ -3,10 +3,7 @@
 
 #include "../../shared/abi/ayken_abi.h"
 
-/*
- * Keep the legacy macro surface visible in this wrapper so CI gates that
- * parse kernel/include/ayken_abi.h directly do not need to resolve includes.
- */
+/* Compatibility wrapper. shared/abi/ayken_abi.h is the canonical ABI source. */
 /* ABI version bump: 0x00010000 → 0x00010001
  * Reason: SYS_V2_COMPLETE_EXECUTION (index=11, public=1011) added.
  * Syscall range extended: 1000-1010 → 1000-1011 (12 syscalls).

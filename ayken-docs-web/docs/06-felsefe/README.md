@@ -2,6 +2,13 @@
 
 Bu bölüm AykenOS'un altında yatan felsefe ve tasarım ilkelerini açıklar.
 
+## Güncel Uygulama İlkesi - 2026-05-24
+
+AykenOS için evidence bir karar girdisi değil, doğrulanabilir çıktıdır.
+Bu nedenle PR-4 local median sonucu PASS olsa da stability FAIL kapanışı
+engeller; PR-4A diagnostic analizi başarısızlığı gizlemeden inceleme
+girdisine dönüştürür. Stabilite sağlanmadan kapsam genişletilmez.
+
 ## İçerik
 
 - **Tasarım Felsefesi** - AykenOS'un temel tasarım yaklaşımı

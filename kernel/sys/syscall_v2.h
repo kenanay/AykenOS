@@ -3,11 +3,7 @@
 
 #include "../../shared/abi/syscall_v2.h"
 
-/*
- * Keep the legacy syscall-v2 contract macros visible in this wrapper so CI
- * gates that parse kernel/sys/syscall_v2.h directly do not need include
- * expansion to validate the frozen ABI contract.
- */
+/* Compatibility mirror. shared/abi/syscall_v2.h is the canonical contract. */
 #ifndef SYS_V2_BASE
 #define SYS_V2_BASE        1000
 #define SYS_V2_MAX_INDEX   11
