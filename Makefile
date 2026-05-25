@@ -3217,7 +3217,7 @@ help:
 	@echo "  ci-gate-hygiene - Repo hygiene gate with evidence output"
 	@echo "  ci-gate-tooling-isolation - Fail-closed guard: perf/preempt tooling PRs cannot touch kernel/"
 	@echo "  ci-gate-constitutional - Constitutional freeze gate (ABI/boundary/export/contracts hard-lock)"
-	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + waiver audit)"
+	@echo "  ci-gate-governance-policy - Policy gate (source deny + AHS thresholds + maintainer authority + waiver audit)"
 	@echo "    (profile selector: GOVERNANCE_POLICY_KERNEL_PROFILE=validation)"
 	@echo "  ci-gate-naming-convention - Diff-scoped naming freeze gate for new execution-path additions"
 	@echo "    (diff selector: NAMING_DIFF_RANGE=<git-range>, skips when no scoped changes exist)"

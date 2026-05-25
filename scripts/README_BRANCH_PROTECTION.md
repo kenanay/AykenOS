@@ -1,137 +1,86 @@
 # Branch Protection Scripts
 
-**Author**: Kenan AY — System Architect
+**Authority:** `ARCHITECTURE_FREEZE.md`
+**Decision record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+**Maintainer:** Kenan AY
 
-## Quick Reference
+## Current Contract
 
-### Setup Branch Protection
+These scripts implement the single-maintainer repository authority model:
 
-Configure branch protection rules for `main` and `develop` branches:
+| Setting | Required value |
+|---|---|
+| Protected branch | `main` |
+| Required status | `freeze` with strict base synchronization |
+| Required approvals | `0` |
+| Required code-owner reviews | `false` |
+| Administrator enforcement | enabled |
+| Force push / branch deletion | disabled |
+
+`.github/CODEOWNERS` maps protected paths to `@kenanay` as accountability
+metadata. It is not an independent approval mechanism for a change authored
+by the same maintainer.
+
+## Configure
 
 ```bash
 ./scripts/setup_branch_protection.sh
 ```
 
-**Prerequisites**:
-- GitHub CLI (`gh`) installed
-- Authenticated with GitHub (`gh auth login`)
-- Repository admin permissions
+Prerequisites:
 
-**What it does**:
-- Configures protection for `main` and `develop`
-- Sets required status checks: `smoke`, `contract`, `full`, `isolation`, `performance`
-- Requires PR reviews (1 approval)
-- Enforces for administrators
-- Disables force pushes and branch deletion
+- GitHub CLI (`gh`) installed and authenticated.
+- Repository administrator permission.
+- A recorded decision when changing the current authority contract.
 
-### Validate Branch Protection
+The setup script configures `main` for the mandatory remote `freeze` verdict.
+It does not grant closure or replace runtime evidence.
 
-Check if branch protection is correctly configured:
+## Validate
 
 ```bash
 ./scripts/validate_branch_protection.sh
 ```
 
-**Exit codes**:
-- `0` = All checks pass
-- `1` = Configuration issues found
+The validator reads the live GitHub configuration and fails if:
 
-**What it checks**:
-- ✅ Required status checks enabled
-- ✅ Branches must be up to date
-- ✅ All 5 required checks present
-- ✅ PR reviews configured
-- ✅ Stale reviews dismissed
-- ✅ Enforced for administrators
-- ✅ Force pushes disabled
-- ✅ Branch deletion disabled
+- strict `freeze` is not required on `main`;
+- an unavailable self-review requirement is configured;
+- administrator enforcement is absent; or
+- force push or deletion is allowed.
 
-### API Configuration Template
+Exit codes:
 
-For infrastructure-as-code or API-based setup:
+- `0`: configured contract matches the active authority decision.
+- `1`: live configuration diverges and merge authority must remain blocked.
 
-```bash
-# Using curl with GitHub API
-curl -X PUT \
-  -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://api.github.com/repos/OWNER/REPO/branches/main/protection \
-  -d @scripts/branch-protection-config.json
+## API Template
+
+The equivalent request payload is kept in:
+
+```text
+scripts/branch-protection-config.json
 ```
 
-Configuration template: `scripts/branch-protection-config.json`
+The template is for controlled administrative application only; edits to it
+require the same review and CI discipline as the scripts.
 
-## Files
+## Diagnostics Boundary
 
-| File | Purpose |
-|------|---------|
-| `setup_branch_protection.sh` | Configure branch protection via GitHub CLI |
-| `validate_branch_protection.sh` | Verify branch protection configuration |
-| `branch-protection-config.json` | API configuration template |
+Dev-loop jobs such as `smoke`, `contract`, `full`, `isolation`,
+`performance`, or auto-bisect may generate useful evidence. The required
+protected-branch authority is the `freeze` check. Diagnostic PASS is not
+merge approval, baseline acceptance or phase closure.
 
-## Documentation
+## Migration
 
-For detailed documentation, see: `docs/dev-loop/BRANCH_PROTECTION.md`
-
-## Troubleshooting
-
-### "Not authenticated with GitHub CLI"
-
-```bash
-gh auth login
-```
-
-Follow the prompts to authenticate.
-
-### "Not in a GitHub repository"
-
-Ensure you're in the repository root directory:
-
-```bash
-cd /path/to/AykenOS
-./scripts/setup_branch_protection.sh
-```
-
-### "Failed to configure protection"
-
-Verify you have admin permissions:
-
-```bash
-gh api /repos/OWNER/REPO --jq .permissions
-```
-
-Should show `"admin": true`.
-
-### Status check not appearing in PR
-
-1. Verify workflow file exists on target branch
-2. Check workflow triggers include target branch
-3. Ensure job names match exactly (case-sensitive)
-4. Re-run workflow manually if needed
-
-## Integration with CI
-
-Branch protection enforces that all CI validation jobs pass before merge:
-
-```
-PR Opened → CI Runs → All Checks Pass → Merge Enabled
-                   ↓
-              Any Check Fails → Merge Blocked
-                   ↓
-              Auto-Bisect Runs → Identifies Bad Commit
-```
-
-See: `docs/dev-loop/CI_INTEGRATION.md`
-
-## Constitutional Compliance
-
-Branch protection enforces:
-- **R2**: Multi-level validation modes
-- **R11**: Regression detection
-- **R12**: Constitutional compliance
-- **R22**: Performance regression detection
+If the project later gains an independent maintainer, change this model only
+through a new decision record, updated live GitHub settings and matching
+validation evidence.
 
 ---
 
-**Last Updated**: 2026-05-03  
-**Maintainer**: Kenan AY — System Architect
+**Dijital imza / attribution:** Kenan AY - Duzenleyen, Gelistiren,
+Olusturan ve Mimari Sorumlu
+**Yetki notu:** Repository-governance metadata'si; runtime karari veya
+closure verdict'i degildir.

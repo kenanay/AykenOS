@@ -4,6 +4,8 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 **Status:** ACTIVE (Freeze-linked)  
 **Scope:** Mainline enforcement during architecture freeze  
 **Purpose:** Enforcement'i kalıcılaştırmak, drift'i sıfıra sabitlemek, exit kriterlerini kanıtla kapatmak
+**Human Authority:** Kenan AY (single maintainer)
+**Decision Record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
 
 ---
 
@@ -148,7 +150,7 @@ Yürütme sırası kasıtlıdır ve fail-fast ilkesini uygular:
 CI gate sırası mimari güvenliği doğrudan etkiler. Sıra değişikliği için:
 
 1. RFC submission zorunludur
-2. Architecture Board onayı gerekir
+2. Kenan AY maintainer karar kaydi gerekir
 3. Makefile değişikliği ile aynı commit'te dokümantasyon güncellenmeli (Constitutional Rule 7)
 4. Evidence ile doğrulanmalıdır
 
@@ -167,7 +169,7 @@ CI gate sırası mimari güvenliği doğrudan etkiler. Sıra değişikliği içi
 4. CI orchestration workflow: `.github/workflows/ci-freeze.yml` (GitHub-hosted `ubuntu-24.04` + fail-closed baseline policy).
 5. Runner hardening/runbook: `docs/operations/SELF_HOSTED_RUNNER_HARDENING.md`.
 6. Tooling isolation guard: perf/preempt tooling PR'larında `kernel/**` dokunuşu fail-closed (`make ci-gate-tooling-isolation`).
-7. **Gate order is locked.** Sıra değişikliği RFC + Architecture Board onayı + aynı commit'te dokümantasyon güncellemesi gerektirir (Constitutional Rule 7).
+7. **Gate order is locked.** Sıra değişikliği RFC + Kenan AY maintainer karar kaydı + aynı commit'te dokümantasyon güncellemesi gerektirir (Constitutional Rule 7).
 
 ### 2.4 Evidence Standard (Canonical Layout)
 
@@ -321,7 +323,7 @@ Template path:
 1. `summary.json` = `PASS`
 2. Test/benchmark kanıtı var
 3. Doküman güncellemesi var
-4. Architecture review notu var
+4. Kenan AY maintainer karar kaydi var
 
 ---
 
@@ -348,12 +350,12 @@ A "Completed/Production-ready" claim requires:
 2. Tests committed and referenced
 3. Benchmark results committed and referenced
 4. Documentation updated
-5. Architecture review note (decision record)
+5. Kenan AY maintainer decision record
 
 **Evidence**
 1. `evidence/run-<id>/reports/summary.json`
 2. Links to test/bench outputs in repo
-3. Decision record or review approval note
+3. Kenan AY maintainer decision record
 
 **Done When**
 1. Claim is verifiable by reading evidence and repo refs.
@@ -371,14 +373,14 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 5. AHS trend not declining (≥95 maintained; `non_overridable=0`)
 6. Performance regression = 0 (baseline comparison passes)
 7. All freeze-blocking issues closed (tracked issues list is empty)
-8. Architecture Board approval recorded (decision record present)
+8. Kenan AY maintainer freeze-exit decision recorded
 
 **Evidence**
 1. A freeze-exit bundle run (`evidence/run-<id>` full suite)
 2. Decision record reference
 
 **Done When**
-1. All exit criteria have evidence and approval record exists.
+1. All exit criteria have evidence and a Kenan AY maintainer decision record exists.
 
 ---
 
@@ -394,7 +396,7 @@ Freeze lift is blocked until **all** of these are closed with evidence:
 - [ ] Scheduler/process marker stabilizasyonu (10-C)
 - [x] Constitutional gate + waiver docs wiring
 - [x] RFC + waiver directories ve template seti
-- [ ] Freeze exit bundle run + board approval record
+- [ ] Freeze exit bundle run + maintainer decision record
 
 ---
 

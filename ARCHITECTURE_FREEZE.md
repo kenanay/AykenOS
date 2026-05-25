@@ -1,12 +1,13 @@
 # ARCHITECTURE_FREEZE.md
 
 **Project:** AykenOS  
-**Version:** 1.5  
+**Version:** 1.6
 **Status:** ACTIVE FREEZE (Phase-17 Execution Pipeline)  
 **Effective Date:** 2026-02-13  
-**Last Update:** 2026-05-01 (Phase-16 Official Closure + Phase-17 Preparation)  
-**Owner:** AykenOS Core Architecture Team  
-**Authority:** Kenan AY
+**Last Update:** 2026-05-25 (Single-Maintainer Authority Alignment)
+**Owner:** Kenan AY
+**Authority:** Kenan AY (single maintainer)
+**Governance Decision:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
 
 ---
 
@@ -403,7 +404,7 @@ make ci-gate-performance
 - Drift authority hash: `clang + qemu + PERF_AUTHORITY_SALT` (git SHA excluded)
 - Proxy model disclosure: metrics are wall-time proxies, not cycle-accurate guest counters
 
-**Failure → Manual architecture review**
+**Failure → Maintainer architecture assessment**
 
 ### 4.6 Constitutional Gate
 
@@ -493,7 +494,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 2. ✅ Test evidence committed
 3. ✅ Benchmark results committed
 4. ✅ Documentation updated
-5. ✅ Architecture review approval
+5. ✅ Documented maintainer architecture decision (Kenan AY)
 
 **No evidence = No claim.**
 
@@ -512,9 +513,19 @@ This gate enforces activation requirement only. Drift detection and N-run persis
    - Security impact
 3. Include regression plan
 4. Include rollback plan
-5. Obtain Architecture Board approval
+5. Obtain a documented maintainer decision from Kenan AY
 
 **No approval = No merge.**
+
+### 6.1.1 Single-Maintainer Authority Model
+
+As of 2026-05-25, Kenan AY is the sole human maintainer and decision
+authority for this repository. `CODEOWNERS` identifies accountable ownership
+through `@kenanay`; it does not claim independent self-review. Required
+remote constitutional CI/evidence checks remain mandatory and fail-closed.
+No second account controlled by the same person and no automation script may
+be recorded as independent human approval. A future multi-maintainer model
+requires a new decision record and matching live GitHub protection changes.
 
 **Operational Artifacts (repo):**
 - `docs/roadmap/freeze-enforcement-workflow.md`
@@ -578,7 +589,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 
 **Requirements:**
 - Full RFC process
-- Architecture Board review
+- Documented maintainer architecture decision (Kenan AY)
 - Documented rollback plan
 - Timeline commitment
 
@@ -631,7 +642,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 
 - **Target Duration:** 4-8 weeks
 - **Maximum Duration:** 12 weeks
-- **Review Cadence:** Bi-weekly architecture board meeting
+- **Review Cadence:** Bi-weekly maintainer architecture assessment
 
 ### 9.2 Milestones
 
@@ -654,7 +665,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - Constitutional compliance review
 
 **Week 7-8: Exit Preparation**
-- Architecture review
+- Maintainer architecture assessment
 - Freeze exit decision
 - Phase 4.5 kickoff planning
 - Post-freeze roadmap finalization
@@ -676,7 +687,7 @@ This gate enforces activation requirement only. Drift detection and N-run persis
 - Timeline adjustment (if needed)
 
 **Bi-weekly:**
-- Architecture board review
+- Maintainer architecture assessment
 - Exit criteria evaluation
 - Risk assessment update
 
@@ -725,11 +736,11 @@ After freeze exit:
 5. ✅ AHS trend not declining (≥ 95 maintained)
 6. ✅ Performance regression = 0 (all baselines met)
 7. ✅ All freeze-blocking issues resolved
-8. ✅ Architecture Board approval
+8. ✅ Documented maintainer freeze-exit decision (Kenan AY)
 
 **Exit decision requires:**
-- Unanimous Architecture Board vote
-- Post-freeze roadmap approval
+- Signed maintainer decision record (Kenan AY)
+- Post-freeze roadmap maintainer approval
 - Phase 4.5 readiness confirmation
 - Decision record in `docs/architecture-board/decisions/`
 
@@ -759,10 +770,10 @@ make ci-gate-boundary
 cat evidence/run-<RUN_ID>/reports/summary.json
 ```
 
-**Manual Review:**
-- Every PR touching `kernel/` requires architecture review
+**Maintainer Review:**
+- Every PR touching `kernel/` requires a recorded maintainer architecture assessment
 - Ring0/Ring3 boundary changes require RFC
-- `tools/ci/deny.symbols` and `tools/ci/allow.symbols` changes require architecture sign-off
+- `tools/ci/deny.symbols` and `tools/ci/allow.symbols` changes require maintainer sign-off
 
 ---
 
@@ -879,18 +890,19 @@ Phase-16 (Verification Layer MVP) resmi olarak KAPALI. Aşağıdaki sözleşme d
 
 ## 16. Document Control
 
-**Version:** 1.5  
+**Version:** 1.6
 **Status:** ACTIVE  
 **Effective Date:** 2026-02-13  
 **Review Date:** Bi-weekly  
-**Last Review:** 2026-05-01  
-**Next Review:** 2026-05-15  
-**Approval Authority:** AykenOS Architecture Board  
+**Last Review:** 2026-05-25
+**Next Review:** After S2-B repository-protection alignment
+**Approval Authority:** Kenan AY (single maintainer)
 **Document Owner:** Kenan AY
 
 **Revision History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.6 | 2026-05-25 | Kenan AY | Align governance with the real single-maintainer authority model; retain mandatory remote CI/evidence checks and allow future multi-maintainer migration by decision record |
 | 1.5 | 2026-05-01 | Kenan AY | Phase-16 OFFICIALLY CLOSED (CI run #25214669681, commit a56ec7c0, tag phase16-official-closure); Phase-17 ready to start |
 | 1.4 | 2026-05-01 | Kenan AY | Phase-16 Verification Layer MVP: COMPLETE (closure pending); Phase-17 preparation |
 | 1.3 | 2026-04-25 | Kenan AY | Phase-15 OFFICIALLY CLOSED (CI run #24213727039, PR #104); Phase-16 Verification Layer Integration |

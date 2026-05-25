@@ -49,5 +49,5 @@ Sorun büyürse geri dönüş planı.
 
 ## Approval
 
-- Architecture Board decision:
+- Kenan AY maintainer decision record:
 - Status: `approved | rejected | expired | closed`

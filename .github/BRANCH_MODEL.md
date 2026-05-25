@@ -17,7 +17,7 @@ ci/*          → CI/tooling değişiklikleri
 - ✅ **Korumalı**: Direkt push YOK
 - ✅ **PR zorunlu**: Tüm değişiklikler PR ile
 - ✅ **CI geçmeli**: naming + evidence + dev-loop + perf
-- ✅ **Review gerekli**: En az 1 onay
+- ✅ **Maintainer karari**: Kenan AY karar kaydi + zorunlu remote `freeze`; self-approval iddiasi yok
 
 ### 2. PR Disiplini
 - **Küçük PR'lar**: 1 PR = 1 sorumluluk
@@ -66,9 +66,9 @@ git revert <commit-hash>
 Settings → Branches → main:
 ✅ Require pull request
 ✅ Require status checks:
-   - naming
-   - evidence
-   - devloop
+   - freeze
 ✅ Require up-to-date branch
 ✅ Dismiss stale approvals
+✅ Required approval count: 0 (single-maintainer model)
+✅ CODEOWNERS: `@kenanay` accountability metadata only
 ```

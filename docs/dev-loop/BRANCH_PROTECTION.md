@@ -1,290 +1,114 @@
-# Branch Protection Rules for Dev Loop CI
+# Branch Protection Rules for Constitutional CI
 
-**Author**: Kenan AY — System Architect
+**Authority:** `ARCHITECTURE_FREEZE.md`
+**Decision record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+**Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
+**Effective update:** 2026-05-25
 
-## Overview
+## Purpose
 
-Branch protection rules enforce that all dev loop validation checks pass before code can be merged to protected branches. This ensures that broken code never enters `main` or `develop` branches.
+Branch protection is a repository authority boundary. It prevents a change
+from entering `main` unless the required constitutional CI verdict exists for
+the submitted SHA.
 
-## Required Status Checks
+AykenOS currently has one human maintainer. Therefore protection MUST NOT
+require an impossible self-approval or present another account controlled by
+the same person as independent review.
 
-The following CI jobs MUST pass before merge:
+## Enforced Main Configuration
 
-| Check | Purpose | Typical Duration | Timeout |
-|-------|---------|------------------|---------|
-| `smoke` | Quick boot validation | 5-10s | 10 min |
-| `contract` | Runtime contract validation | 1-2 min | 15 min |
-| `full` | Comprehensive validation | 2-3 min | 20 min |
-| `isolation` | Constitutional compliance | Quick | 10 min |
-| `performance` | Performance regression check | Quick | 15 min |
+| Control | Required value | Rationale |
+|---|---|---|
+| Protected branch | `main` | Accepted source of repository authority |
+| Required status check | `freeze` | Full constitutional CI chain |
+| Require branch up to date | `true` | Verdict covers the current base |
+| Required approval count | `0` | One maintainer cannot independently approve own change |
+| Code-owner review requirement | `false` | `CODEOWNERS` is ownership metadata, not self-review authority |
+| Administrator enforcement | `true` | Maintainer cannot bypass failed CI |
+| Force push / deletion | disabled | Accepted history remains controlled |
+| Review thread resolution | enabled by active ruleset | Unresolved findings remain visible blockers |
 
-**Note**: `auto-bisect` is NOT a required check. It only runs when validation fails and helps identify the problematic commit.
+The active ownership map in `.github/CODEOWNERS` routes protected surfaces to
+`@kenanay`. It records accountability and review routing only.
 
-## Protected Branches
+## CI Boundary
 
-The following branches MUST be protected:
+The required merge authority is the remote `freeze` check emitted by the
+constitutional workflow. Jobs such as `smoke`, `contract`, `full`,
+`isolation`, `performance` and auto-bisect may still provide dev-loop evidence
+or diagnostics, but they are not independently configured live merge
+requirements under the single-maintainer decision.
 
-- `main` - Production-ready code
-- `develop` - Integration branch for features
+A green diagnostic result is not a waiver for a failed or missing `freeze`
+verdict. A green `freeze` verdict is not a phase closure tag or manifest.
 
-## Branch Protection Configuration
+## Protected Branch Scope
 
-### Required Settings
+`main` is the protected authoritative branch in this decision. A `develop`
+branch or any future integration branch does not gain protected-authority
+status until it is expressly adopted through a reviewed decision and is
+configured with the required constitutional verdict.
 
-1. **Require status checks to pass before merging**
-   - ✅ Enabled
-   - Required checks: `smoke`, `contract`, `full`, `isolation`, `performance`
+## Configuration and Validation
 
-2. **Require branches to be up to date before merging**
-   - ✅ Enabled
-   - Ensures PR is tested against latest target branch
-
-3. **Require pull request reviews before merging** (Recommended)
-   - ✅ Enabled
-   - Required approvals: 1 (minimum)
-   - Dismiss stale reviews: Enabled
-
-4. **Do not allow bypassing the above settings**
-   - ✅ Enabled
-   - Applies to administrators
-
-5. **Require linear history** (Optional)
-   - ⚠️ Optional
-   - Enforces rebase or squash merge
-
-### Optional Settings
-
-- **Require signed commits**: Recommended for security
-- **Require deployments to succeed**: Not applicable
-- **Lock branch**: Not recommended (prevents all pushes)
-
-## Configuration Methods
-
-### Method 1: GitHub Web Interface (Recommended for Initial Setup)
-
-1. Navigate to repository **Settings**
-2. Click **Branches** in left sidebar
-3. Click **Add branch protection rule**
-4. Configure as follows:
-
-   **Branch name pattern**: `main`
-   
-   - ✅ Require a pull request before merging
-     - Required approvals: 1
-     - ✅ Dismiss stale pull request approvals when new commits are pushed
-   
-   - ✅ Require status checks to pass before merging
-     - ✅ Require branches to be up to date before merging
-     - Search and select required checks:
-       - `smoke`
-       - `contract`
-       - `full`
-       - `isolation`
-       - `performance`
-   
-   - ✅ Do not allow bypassing the above settings
-     - ✅ Apply to administrators
-
-5. Click **Create** or **Save changes**
-6. Repeat for `develop` branch
-
-### Method 2: GitHub CLI (Recommended for Automation)
-
-Use the provided script:
+Configure the current contract:
 
 ```bash
 ./scripts/setup_branch_protection.sh
 ```
 
-This script uses GitHub CLI (`gh`) to configure branch protection rules programmatically.
-
-**Prerequisites**:
-- GitHub CLI installed (`gh`)
-- Authenticated with repository access (`gh auth login`)
-- Repository admin permissions
-
-**What it does**:
-- Configures protection for `main` and `develop` branches
-- Sets required status checks
-- Enforces PR reviews
-- Applies settings to administrators
-
-### Method 3: GitHub API (Advanced)
-
-For integration into infrastructure-as-code:
-
-```bash
-curl -X PUT \
-  -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://api.github.com/repos/OWNER/REPO/branches/main/protection \
-  -d @branch-protection-config.json
-```
-
-See `scripts/branch-protection-config.json` for the configuration template.
-
-## Validation
-
-To verify branch protection is correctly configured:
+Validate the live repository configuration:
 
 ```bash
 ./scripts/validate_branch_protection.sh
 ```
 
-This script checks:
-- ✅ Protected branches exist (`main`, `develop`)
-- ✅ Required status checks are configured
-- ✅ All 5 required checks are present
-- ✅ PR reviews are required
-- ✅ Branches must be up to date
-- ✅ Settings apply to administrators
+Both scripts target `main`, require strict `freeze`, preserve administrator
+enforcement, and verify that the repository does not claim independent
+self-review.
 
-**Exit codes**:
-- `0` = All checks pass
-- `1` = Configuration issues found
+The API template is `scripts/branch-protection-config.json`.
 
-## Enforcement Behavior
+## Merge Procedure
 
-### When PR is Opened
+1. Open a pull request against the intended accepted base.
+2. Obtain remote `freeze` PASS on the exact candidate SHA and current base.
+3. For architecture, governance, baseline or closure-affecting changes,
+   record Kenan AY's maintainer decision with the related evidence.
+4. Resolve outstanding review discussions or tracked blockers.
+5. Merge only after GitHub reports the protected checks and configuration as
+   satisfied.
 
-1. CI workflow triggers automatically
-2. All required jobs run sequentially (smoke → contract → full → isolation → performance)
-3. GitHub shows status checks in PR interface
-4. Merge button is disabled until all checks pass
+## Failure and Emergency Handling
 
-### When Validation Fails
+- A missing or failed `freeze` check blocks merge.
+- A local PASS is diagnostic evidence only and cannot substitute for remote
+  required CI.
+- A second account or an automation script controlled by the same maintainer
+  cannot be recorded as an independent reviewer.
+- Protection MUST NOT be relaxed for an emergency change without a tracked
+  maintainer decision and follow-up restoration evidence.
 
-1. Merge button remains disabled
-2. Auto-bisect job runs (if applicable)
-3. Bisect results posted as PR comment
-4. Developer must fix issues and push new commits
-5. CI re-runs automatically on new push
+## Future Multi-Maintainer Transition
 
-### When All Checks Pass
+The single-maintainer model is reversible. When a genuinely separate,
+assignable reviewer joins the project, the change requires:
 
-1. Merge button becomes enabled
-2. PR can be merged (subject to review requirements)
-3. Protected branch receives only validated code
+1. A new architecture/governance decision record.
+2. Updated `CODEOWNERS` assignments and live branch-protection settings.
+3. Validation evidence showing the independent review requirement is
+   enforceable.
+4. Updated operating documentation before relying on the new authority.
 
-## Bypass Scenarios
+## Constitutional Boundary
 
-### Emergency Hotfixes
-
-If branch protection must be temporarily bypassed:
-
-1. **DO NOT** disable branch protection
-2. Instead, create a temporary branch protection rule with relaxed settings
-3. Apply hotfix
-4. Immediately restore strict protection
-5. Document bypass in audit log
-
-**Constitutional requirement**: All bypasses MUST be documented and reviewed.
-
-### Administrator Override
-
-Even administrators are subject to branch protection (recommended setting).
-
-**Rationale**: Prevents accidental merges of broken code, even by maintainers.
-
-## Troubleshooting
-
-### Status Check Not Appearing
-
-**Problem**: Required check not showing in PR
-
-**Solutions**:
-1. Verify workflow file (`.github/workflows/devloop-ci.yml`) is on target branch
-2. Check workflow triggers include target branch
-3. Ensure job names match exactly (case-sensitive)
-4. Re-run workflow manually if needed
-
-### Merge Button Disabled Despite Passing Checks
-
-**Problem**: All checks pass but merge still blocked
-
-**Possible causes**:
-1. Branch not up to date with target
-   - Solution: Merge or rebase target branch into PR
-2. Required review not approved
-   - Solution: Request and obtain review approval
-3. Stale review after new commits
-   - Solution: Re-request review
-
-### Check Stuck in Pending State
-
-**Problem**: Status check never completes
-
-**Solutions**:
-1. Check GitHub Actions for workflow errors
-2. Verify runner availability
-3. Check for timeout issues
-4. Re-run workflow
-
-## Integration with Auto-Bisect
-
-Auto-bisect is NOT a required status check because:
-
-1. It only runs when validation fails
-2. It's a diagnostic tool, not a validation gate
-3. Its purpose is to identify the problematic commit, not block merge
-
-**Workflow**:
-1. Required checks fail → Merge blocked
-2. Auto-bisect runs → Identifies first bad commit
-3. Developer fixes issue → Pushes new commits
-4. Required checks re-run → Must pass to unblock merge
-
-## Constitutional Compliance
-
-Branch protection enforces constitutional requirements:
-
-- **R2**: Multi-level validation modes (smoke, contract, full)
-- **R11**: Regression detection (auto-bisect on failure)
-- **R12**: Constitutional compliance (isolation property test)
-- **R22**: Performance regression detection
-
-**Audit trail**: All merge attempts and status check results are logged by GitHub.
-
-## Maintenance
-
-### Adding New Required Checks
-
-1. Add new job to `.github/workflows/devloop-ci.yml`
-2. Update branch protection rules to include new check
-3. Update this documentation
-4. Run validation script to verify
-
-### Removing Required Checks
-
-1. Remove job from workflow (or make optional)
-2. Update branch protection rules
-3. Update documentation
-4. Verify with validation script
-
-### Changing Protected Branches
-
-1. Add new branch to protection rules
-2. Update workflow triggers if needed
-3. Update documentation
-4. Communicate to team
-
-## References
-
-- CI Workflow: `.github/workflows/devloop-ci.yml`
-- Setup Script: `scripts/setup_branch_protection.sh`
-- Validation Script: `scripts/validate_branch_protection.sh`
-- CI Integration Guide: `docs/dev-loop/CI_INTEGRATION.md`
-- GitHub Docs: [About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
-
-## Future Enhancements
-
-1. **CODEOWNERS integration**: Require specific reviewers for certain paths
-2. **Required deployments**: Require staging deployment before production merge
-3. **Commit signature verification**: Require GPG-signed commits
-4. **Status check timeout**: Fail checks that exceed expected duration
-5. **Flaky test detection**: Automatically retry flaky checks
+Branch protection enforces merge conditions. It does not itself establish
+runtime correctness, a performance baseline renewal, or Phase-17 official
+closure.
 
 ---
 
-**Last Updated**: 2026-05-03  
-**Maintainer**: Kenan AY — System Architect
+**Dijital imza / attribution:** Kenan AY - Duzenleyen, Gelistiren,
+Olusturan ve Mimari Sorumlu
+**Yetki notu:** Belgesel ve repository-governance metadata'si; runtime
+karari veya evidence verdict'i degildir.
