@@ -87,7 +87,8 @@ Phase-17 kapanis kapisini asamaz.
 | Aktif calisma | Phase-17 execution pipeline | Runtime kabul kaniti eksik |
 | Marker guard | Step 5 merge edilmis; PR #144 candidate SHA `f129d4aa` evidence uygulanmis | Validation-only lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race remote candidate PASS; review/merge bekler |
 | ABI | 12 syscall lock ratified; canonical version drift giderildi | Clean-tree PR CI kabulü gerekir |
-| Governance | Spec-purity, fail-closed marker isolation ve declarative validation matrix bu dilimde eklendi/duzeltildi | Candidate CI PASS; CODEOWNERS review/merge bekler |
+| Governance | Spec-purity, fail-closed marker isolation ve declarative validation matrix bu dilimde eklendi/duzeltildi | Candidate CI PASS; issue #145 giderilmeden review authority/merge kurulamaz |
+| Review enforcement | Canli GitHub denetiminde CODEOWNERS sahipleri atanabilir degil ve `main` icin `require_code_owner_reviews=false` | Issue #145 fail-closed blokajdir; genel approval mimari otorite sayilamaz |
 | Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | SHA `f129d4aa` scoped run `26370895287` locked acceptance PASS ve full `ci-freeze` run `26370895297` PASS; closure sayilmaz |
 | Phase-18 | Roadmap only | Baslatilmaz |
 
@@ -127,12 +128,15 @@ Her is paketi asagidaki borc-onleme kurallarina uymak zorundadir:
 9. Yeni validation flag'i veya test-only runtime yolu acilmadan once
    production default'u, olculen yuzey, owner ve kaldirma/kapanis kosulu
    declarative validation matrix icinde kaydedilir.
+10. CODEOWNERS veya protected-branch review iddiasi, canli platformda
+    atanabilir owner ve enforcement ile dogrulanmadikca merge/closure
+    otoritesi sayilmaz; uyumsuzluk fail-closed blokajdir.
 
 ## 6. Execution Workstreams
 
 ### S0 - PR Readiness and Authority Repair
 
-**Status:** CANDIDATE REMOTE PASS / REVIEW AND MERGE PENDING
+**Status:** CANDIDATE REMOTE PASS / REVIEW ENFORCEMENT BLOCKED (ISSUE #145)
 **Purpose:** Phase-17 runtime ispatina gecmeden once dokuman, ABI ve governance
 otoritesindeki drift'i kapatmak.
 
@@ -146,13 +150,14 @@ otoritesindeki drift'i kapatmak.
 | Normative spec-purity gate | Uygulandi | Strict/local freeze zincirinde fail-closed |
 | Roadmap authority sync | Uygulandi (local changeset) | Index/steering/current docs bu belgeye baglanir |
 | Clean-tree PR CI | Candidate PASS | SHA `f129d4aa` full `ci-freeze` run `26370895297`; review/merge ayri otoritedir |
+| Live CODEOWNERS/protection parity | BLOCKED (`#145`) | Atanabilir bagimsiz reviewer ownership ve intended protected-branch enforcement gerekir |
 
 **Merge scope:** Bu paket yeni runtime davranisi veya yeni feature ilan etmez;
 var olan ratified yuzeyleri ve guard'lari tutarli hale getirir.
 
 ### S1 - Phase-17 Runtime Acceptance
 
-**Status:** PR #144 SHA `f129d4aa` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / REVIEW-MERGE AND FORMAL CLOSURE PENDING
+**Status:** PR #144 SHA `f129d4aa` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / ISSUE #145 REVIEW-ENFORCEMENT BLOCKED / FORMAL CLOSURE PENDING
 **Purpose:** Marker validation'in gercek kernel execution-slot yasam
 dongusunde calistigini kanitlamak.
 
@@ -249,12 +254,13 @@ Terminal counter ve runtime-contract paritesi fail-closed zorunludur.
 olmasi onceki stability FAIL'i kaldirmaz, cold/warm nedenselligi kurmaz ve
 remote locked-baseline performance acceptance yerine gecmez.
 
-**Exit:** Tum S1 evidence'i clean-tree PR CI'da PASS olmadan Phase-17 closure
+**Exit:** Tum S1 evidence'i clean-tree PR CI'da PASS olmadan ve issue #145
+atanabilir owner/enforced review otoritesiyle giderilmeden Phase-17 closure
 manifest/tag hazirlanamaz.
 
 ### S2 - CI and Architecture Debt Containment
 
-**Status:** STARTED - VALIDATION MATRIX DOCUMENTED / FULL GATE INVENTORY PENDING
+**Status:** STARTED - VALIDATION MATRIX DOCUMENTED / REVIEW ENFORCEMENT BLOCKER OPEN (`#145`) / FULL GATE INVENTORY PENDING
 
 - Gate inventory cikartilir: invariant, runtime maliyet, evidence output,
   owner ve duplication alani.
@@ -262,13 +268,16 @@ manifest/tag hazirlanamaz.
   `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md` olarak
   kaydedildi: production default, measured/unmeasured surface, owner ve
   kapanis/removal kosulu.
+- Canli GitHub authority paritesi issue #145 altinda fail-closed izlenir:
+  CODEOWNERS tarafindan ilan edilen review sahipleri atanabilir olmali ve
+  protected-branch enforcement belgelenen authority modelini uygulamalidir.
 - Tekrar eden veya yalnizca dokumanda kalan gate iddialari konsolide edilir.
 - Onboarding icin minimum "build -> targeted gate -> strict CI" akisi
   dokumante edilir.
 - AHS veya governance metriği runtime basari iddiasinin yerine gecemez.
 
-**Exit:** Gate envanteri, maliyet raporu ve kaldirilacak/birlestirilecek
-tekrarlar icin mimari karar kaydi.
+**Exit:** Issue #145 review-enforcement parity kaydi, gate envanteri, maliyet
+raporu ve kaldirilacak/birlestirilecek tekrarlar icin mimari karar kaydi.
 
 ### S3 - BCIB Product Maturity
 
@@ -301,7 +310,8 @@ nondeterministic verification verdict'i uretmez.
 1. Phase-17 official closure tag ve manifest mevcut.
 2. S1 runtime, race/fail-closed ve performance kaniti PASS.
 3. Remote strict CI temiz tree uzerinde PASS.
-4. Architecture review yeni kapsam ihtiyacini onaylamis.
+4. Issue #145 kapatilmis ve review enforcement otoritesi kanitlanmis.
+5. Architecture review yeni kapsam ihtiyacini onaylamis.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -319,9 +329,12 @@ nondeterministic verification verdict'i uretmez.
 | PR-4C (governed renewal safety repair) | AUTHORIZED ARTIFACT PASS / IMPORTED / REMOTE CANDIDATE PASS | Baseline init artifact-only akisini policy ile hizalamak ve runner digest renewal yolunu acmak | Init/scoped workflows, generated lock, policy/procedure docs; runtime ve threshold mutasyonu yok | Direct protected-branch push yok; explicit `baseline-update` label; review gerekir |
 | PR-4D (freeze integration repair) | REMOTE CANDIDATE PASS (`26370895297`, `f129d4aa`) | Legacy Phase10 low-half timer runtime witness'ini Phase-17 first-dispatch guard entegrasyonundan ayirmak | Scheduler first-dispatch IRQ mask kapsam daraltmasi ve durum belgeleri | `ci-gate-low-half-kheap-scaffold` + Phase-17 public/race gates + clean remote `ci-freeze` |
 | S2-A (review-readiness documentation) | IMPLEMENTED / NEW HEAD CI REQUIRED | Validation-only path matrisini ve remote candidate truth'u kaydetmek | Matrix, roadmap, current status ve README; runtime/baseline mutasyonu yok | Governance/spec checks ve new-head PR CI |
+| S2-B (review enforcement parity) | BLOCKED / ISSUE #145 OPEN | Belgelenen CODEOWNERS otoritesini atanabilir reviewer/protection gercegiyle eslemek | GitHub governance configuration ve gerekirse reviewed CODEOWNERS karari; runtime/baseline mutasyonu yok | Valid independent owner assignment + enforced review proof before merge |
 
 PR koordinasyon kurallari:
 
+- Issue #145 giderilmeden genel bir approval, PR-0/PR-1 veya PR #142/#144
+  icin belgelenen architecture/governance otoritesinin yerini alamaz.
 - PR-0 merge edilmeden PR-1 closure authority iddiasi tasimaz.
 - PR-1 uygulamasi bu calisma agacinda PR-0 uzerine stacked durumdadir;
   remote inceleme ve merge sirasi bu bagimliligi korur.
@@ -815,6 +828,32 @@ uretmistir, official Phase-17 closure degildir. Bu dokumantasyon degisikligi
 yeni head SHA olusturacagindan, push sonrasi gerekli PR checks yeniden PASS
 olmadan merge degerlendirmesi yapilmaz.
 
+### 2026-05-25 - S2-B Live Review Enforcement Gap
+
+**Observed from live GitHub configuration:**
+
+- PR #142 remote checks PASS olsa da `mergeStateStatus=BLOCKED` ve atanmis
+  reviewer bulunmamaktadir.
+- `.github/CODEOWNERS`, constitutional CI/dokuman yuzeyleri icin
+  `@ayken-architecture-board` ve `@ayken-devops` sahipligini zorunlu ilan
+  eder; canli depoda bu kimlikler atanabilir team veya user olarak
+  cozumlenememistir.
+- `main` branch protection, `required_approving_review_count=1` kaydetmekte
+  ancak `require_code_owner_reviews=false` bildirmektedir.
+
+**Started now:**
+
+- Governance uyumsuzlugu, merge/closure oncesi fail-closed blokaj olarak
+  GitHub issue #145 altinda kaydedildi.
+- PR #142 ve stacked PR #144 aciklamalari, #145 giderilmeden yesil CI'nin
+  merge veya Phase-17 closure authority sayilmayacagini gosterecek bicimde
+  senkronize edildi.
+
+**Authority boundary:** Bu kayit gecmis remote PASS evidence'ini gecersiz
+kilmaz; ancak atanabilir bagimsiz review owner ve intended protection
+dogrulanana kadar #142/#144 merge sirasini ve closure manifest/tag
+degerlendirmesini bloke eder.
+
 ## 10. Review Triggers
 
 Bu roadmap su olaylarda guncellenir:
@@ -830,9 +869,10 @@ Bu roadmap su olaylarda guncellenir:
 9. PR-4 remote locked-baseline performance acceptance sonucu veya baseline renewal/regression.
 10. PR-4D low-half timer witness tamiri sonrasi full remote `ci-freeze` sonucu.
 11. S2-A validation matrix/durum senkronu sonrasi new-head PR CI sonucu.
-12. PR #142 merge ve PR #144 restack/retarget karari.
-13. Phase-17 closure candidate olusmasi.
-14. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+12. Issue #145 review-enforcement parity giderimi veya governed ownership karari.
+13. PR #142 merge ve PR #144 restack/retarget karari.
+14. Phase-17 closure candidate olusmasi.
+15. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -844,6 +884,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
+- GitHub issue #145: `https://github.com/kenanay/AykenOS/issues/145`
 
 ---
 
