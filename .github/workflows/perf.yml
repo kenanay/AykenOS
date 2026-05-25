@@ -5,36 +5,103 @@ on:
     branches: [ main ]
     paths:
       - 'kernel/**'
-      - 'ayken_core/**'
+      - 'ayken-core/**'
       - 'Makefile'
+      - 'scripts/ci/gate_performance.sh'
+      - 'scripts/ci/perf*'
+      - 'scripts/ci/lib-drift-*.sh'
+      - 'constitution/drift_blocking_allowlist.json'
+      - '.github/workflows/perf.yml'
+  pull_request:
+    paths:
+      - 'kernel/**'
+      - 'ayken-core/**'
+      - 'Makefile'
+      - 'scripts/ci/gate_performance.sh'
+      - 'scripts/ci/perf*'
+      - 'scripts/ci/lib-drift-*.sh'
+      - 'constitution/drift_blocking_allowlist.json'
+      - '.github/workflows/perf.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   perf:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      RUN_ID: "gh-${{ github.run_id }}-${{ github.run_attempt }}"
+      EVIDENCE_ROOT: "evidence"
+      PERF_BASELINE_MODE: "constitutional"
+      PERF_REQUIRE_CI_FOR_BASELINE_INIT: "1"
+      PERF_QEMU_TIMEOUT: "30"
+      PERF_KERNEL_PROFILE: "validation"
+      PERF_ENV_MISMATCH_POLICY: "fail"
+      PERF_REGRESSION_POLICY: "fail"
+      SYSCALL_OVMF_CODE: "/usr/share/OVMF/OVMF_CODE_4M.fd"
+      SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install dependencies
+        with:
+          fetch-depth: 0
+
+      - name: Check governed baseline renewal authorization
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
+          set -euo pipefail
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if gh pr view "${PR_NUMBER}" --json labels --jq '.labels[].name' | grep -q '^baseline-update$'; then
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=1" >> "$GITHUB_ENV"
+            echo "Governed baseline-update label detected - permitting reviewed lock import"
+          else
+            echo "PERF_ALLOW_BASELINE_LOCK_MUTATION=0" >> "$GITHUB_ENV"
+            echo "No baseline-update label - baseline lock remains immutable"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Load locked performance authority
+        run: |
+          set -euo pipefail
+          source scripts/ci/perf_authority.env
+          : "${PERF_BASELINE_AUTHORITY:?PERF_BASELINE_AUTHORITY missing}"
+          echo "PERF_BASELINE_AUTHORITY=${PERF_BASELINE_AUTHORITY}" >> "$GITHUB_ENV"
+
+      - name: Resolve pinned runner image digest
+        run: |
+          set -euo pipefail
+          DIGEST="gha-${ImageOS:-unknown}-${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}"
+          if echo "${DIGEST}" | grep -q "unknown"; then
+            echo "Unable to resolve CI image digest"
+            exit 1
+          fi
+          echo "PERF_CI_IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+
+      - name: Install QEMU and kernel toolchain
+        run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y \
-            qemu-system-x86 \
-            ripgrep \
-            clang \
-            lld \
-            make
-      
-      - name: Run performance gate
+          sudo apt-get install -y qemu-system-x86 clang lld nasm jq mtools
+
+      - name: Run constitutional performance gate
         run: |
-          make ci-gate-performance
-      
-      - name: Upload performance report
+          set -euo pipefail
+          make ci-gate-performance \
+            RUN_ID="${RUN_ID}" \
+            EVIDENCE_ROOT="${EVIDENCE_ROOT}"
+
+      - name: Upload performance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: perf-report
-          path: out/evidence/**/reports/perf_*.json
+          name: performance-gate-${{ github.run_id }}
+          path: |
+            evidence/run-${{ env.RUN_ID }}/gates/performance/
+            evidence/run-${{ env.RUN_ID }}/reports/performance.json
           if-no-files-found: warn
+          retention-days: 30
