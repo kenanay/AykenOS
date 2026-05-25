@@ -278,7 +278,7 @@ Ring0 exports are constitutional surface. Changes require ADR.
 Changes to `shared/abi/ayken_abi.h` or `shared/abi/syscall_v2.h` require:
 
 1. **Version Bump**: `AYKEN_ABI_VERSION` MUST increment
-2. **RFC Approval**: Architecture Board review required
+2. **RFC Approval**: Kenan AY maintainer decision record required
 3. **Evidence**: `make ci-gate-abi` MUST pass
 4. **Regeneration**: `make generate-abi` MUST be run
 5. **Documentation**: Update syscall transition guide

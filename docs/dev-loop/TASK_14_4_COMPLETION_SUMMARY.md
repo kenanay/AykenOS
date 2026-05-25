@@ -1,13 +1,27 @@
 # Task 14.4 Completion Summary: Branch Protection Rules
 
-**Author**: Kenan AY — System Architect  
-**Date**: 2026-05-03  
-**Task**: 14.4 Branch protection rules  
+**Author**: Kenan AY — System Architect
+**Date**: 2026-05-03
+**Task**: 14.4 Branch protection rules
 **Spec**: `.kiro/specs/dev-loop-boot-monitoring/`
 
 ## Overview
 
 Task 14.4 has been successfully completed. Branch protection rules capability has been implemented to ensure CI validation passes before code can be merged to protected branches.
+
+## 2026-05-25 Authority Supersession Note
+
+This completion report records the original Task 14.4 implementation state.
+Its references to five live required checks, `develop` protection and one
+required approval are historical and MUST NOT be read as current repository
+authority.
+
+The active contract is now governed by
+`docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`:
+`main` requires strict remote `freeze`, the approval count is `0`, and
+`.github/CODEOWNERS` maps accountability to `@kenanay` without claiming
+independent self-review. This update changes repository governance only; it
+does not assert Phase-17 closure.
 
 ## What Was Built
 
@@ -334,19 +348,19 @@ Documented in `docs/dev-loop/BRANCH_PROTECTION.md`:
 
 Task 14.4 is complete. Branch protection rules capability has been successfully implemented with:
 
-✅ Comprehensive documentation  
-✅ Automated setup script  
-✅ Validation script  
-✅ API configuration template  
-✅ Quick reference guide  
-✅ CI integration documentation updated  
-✅ All scripts tested and validated  
-✅ Constitutional compliance enforced  
+✅ Comprehensive documentation
+✅ Automated setup script
+✅ Validation script
+✅ API configuration template
+✅ Quick reference guide
+✅ CI integration documentation updated
+✅ All scripts tested and validated
+✅ Constitutional compliance enforced
 
 The system now ensures that all CI validation checks pass before code can be merged to protected branches, maintaining code quality and constitutional compliance.
 
 ---
 
-**Task Status**: ✅ COMPLETE  
-**Next Task**: 15. Final checkpoint - CI integration complete  
+**Task Status**: ✅ COMPLETE
+**Next Task**: 15. Final checkpoint - CI integration complete
 **Maintainer**: Kenan AY — System Architect

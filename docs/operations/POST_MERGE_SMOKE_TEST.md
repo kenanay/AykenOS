@@ -3,8 +3,8 @@
 **Effective date:** 2026-05-25
 **Scope:** Bu checklist yalniz yetkili bir merge sonrasinda teknik smoke
 evidence toplar. Merge authority, production-ready verdict'i veya Phase-17
-closure kurmaz. Issue #145 cozulmeden mevcut Phase-17 adayi icin merge
-authority kurulmus sayilmaz.
+closure kurmaz. Tek-maintainer authority karari ve live protection paritesi
+issue #145 ile tamamlanmistir; bu kayit smoke PASS'i closure'a donusturmez.
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Dokumantasyon metadata'si; runtime, evidence,
 merge veya closure otoritesi degildir.

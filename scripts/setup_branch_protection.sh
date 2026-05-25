@@ -2,7 +2,7 @@
 # Setup Branch Protection Rules
 # Author: Kenan AY — System Architect
 #
-# Purpose: Configure GitHub branch protection rules for dev loop CI
+# Purpose: Configure GitHub branch protection rules for constitutional CI
 # Requires: GitHub CLI (gh) with repository admin access
 
 set -euo pipefail
@@ -15,8 +15,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROTECTED_BRANCHES=("main" "develop")
-REQUIRED_CHECKS=("smoke" "contract" "full" "isolation" "performance")
+PROTECTED_BRANCHES=("main")
+REQUIRED_CHECKS=("freeze")
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Branch Protection Setup${NC}"
@@ -56,18 +56,18 @@ echo ""
 # Function to setup branch protection for a branch
 setup_protection() {
     local branch=$1
-    
+
     echo -e "${YELLOW}Configuring protection for branch: $branch${NC}"
-    
+
     # Build required checks argument
     local checks_arg=""
     for check in "${REQUIRED_CHECKS[@]}"; do
         checks_arg="$checks_arg --required-status-check \"$check\""
     done
-    
+
     # Note: GitHub CLI doesn't support all branch protection settings
     # We'll use the API directly for full control
-    
+
     # Create JSON payload
     local payload=$(cat <<EOF
 {
@@ -79,7 +79,8 @@ setup_protection() {
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false,
-    "required_approving_review_count": 1
+    "require_last_push_approval": false,
+    "required_approving_review_count": 0
   },
   "restrictions": null,
   "allow_force_pushes": false,
@@ -89,7 +90,7 @@ setup_protection() {
 }
 EOF
 )
-    
+
     # Apply branch protection using GitHub API
     if gh api \
         --method PUT \
@@ -102,7 +103,7 @@ EOF
         echo -e "  ${YELLOW}Note: You may need admin permissions${NC}"
         return 1
     fi
-    
+
     echo ""
 }
 
@@ -110,7 +111,7 @@ EOF
 success_count=0
 for branch in "${PROTECTED_BRANCHES[@]}"; do
     if setup_protection "$branch"; then
-        ((success_count++))
+        ((success_count+=1))
     fi
 done
 
@@ -134,8 +135,8 @@ if [ $success_count -eq ${#PROTECTED_BRANCHES[@]} ]; then
     echo "Settings applied:"
     echo "  ✅ Require status checks to pass"
     echo "  ✅ Require branches to be up to date"
-    echo "  ✅ Require pull request reviews (1 approval)"
-    echo "  ✅ Dismiss stale reviews"
+    echo "  ✅ Single-maintainer review policy (no impossible self-approval)"
+    echo "  ✅ CODEOWNERS remains accountability metadata"
     echo "  ✅ Enforce for administrators"
     echo "  ✅ Prevent force pushes"
     echo "  ✅ Prevent branch deletion"

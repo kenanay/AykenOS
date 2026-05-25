@@ -64,15 +64,18 @@ ve sonraki `constitutional` scoped/full PASS ile degerlendirilir.
 
 ## Phase-17 Guncel Sinir
 
-PR #144 son uzaktan dogrulanmis S2 basinda (`2cb05fe4`):
+PR #144 accepted-main restack oncesindeki son uzaktan dogrulanmis S2-D
+basinda (`342deab6`):
 
-- scoped locked-baseline performance run `26377722677` PASS;
-- full strict `ci-freeze` run `26377722711` PASS.
+- scoped locked-baseline performance run `26391379459` PASS;
+- full strict `ci-freeze` run `26391379462` PASS.
 
 Bu PASS sonuclari `constitutional` modda uretilmistir; provisional sonuca
-donusturulmez. GitHub issue #145 kapsamindaki atanabilir bagimsiz review
-ownership/protection uyumsuzlugu giderilmeden merge veya Phase-17 closure
-otoritesi yine kurulamaz.
+donusturulmez. Issue #145 tek-maintainer authority karari ve eslesen canli
+protection ile giderilmis, PR #142 `main`e kabul edilmistir. PR #144
+accepted `main` uzerine restack edildiginde yeni SHA icin remote acceptance
+yeniden gereklidir; hicbir provisional veya remote PASS tek basina
+Phase-17 closure otoritesi kurmaz.
 
 ## Referanslar
 
@@ -84,7 +87,8 @@ otoritesi yine kurulamaz.
 - `scripts/ci/gate_performance_local.sh`
 - `docs/operations/CONSTITUTIONAL_CI_MODE.md`
 - `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`
-- GitHub issue #145: `https://github.com/kenanay/AykenOS/issues/145`
+- `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+- GitHub issue #145 resolution record: `https://github.com/kenanay/AykenOS/issues/145`
 
 ---
 

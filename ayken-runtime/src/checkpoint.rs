@@ -8,7 +8,7 @@ pub struct Checkpoint {
     pub checkpoint_id: u64,
     pub pc: usize,
     pub state_hash: Hash32,
-    pub state_snapshot: RuntimeState,  // Full state snapshot
+    pub state_snapshot: RuntimeState, // Full state snapshot
 }
 
 impl RuntimeState {
@@ -19,8 +19,8 @@ impl RuntimeState {
 
         // Clone current state (without journal for compaction)
         let mut state_snapshot = self.clone();
-        state_snapshot.journal.clear();  // Don't include journal in checkpoint
-        state_snapshot.trace.clear();  // Don't include trace in checkpoint
+        state_snapshot.journal.clear(); // Don't include journal in checkpoint
+        state_snapshot.trace.clear(); // Don't include trace in checkpoint
 
         let checkpoint = Checkpoint {
             checkpoint_id,
@@ -57,6 +57,61 @@ pub fn replay_from_checkpoint(
         state.pc = entry.pc + 1;
     }
 
+    state.reconcile_replay_allocators()?;
     Ok(state)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::replay_from_checkpoint;
+    use crate::commit::commit;
+    use crate::runtime::RuntimeState;
+    use crate::types::PendingOp;
+
+    #[test]
+    fn checkpoint_tail_replay_advances_allocators_before_new_commit() {
+        let mut original = RuntimeState::new();
+
+        commit(
+            PendingOp::CreateCollection {
+                context_id: 0,
+                name: "users".to_string(),
+            },
+            &mut original,
+        )
+        .unwrap();
+        commit(
+            PendingOp::QueryCollection {
+                context_id: 0,
+                collection: "users".to_string(),
+            },
+            &mut original,
+        )
+        .unwrap();
+
+        let checkpoint = original.checkpoint();
+        commit(
+            PendingOp::QueryCollection {
+                context_id: 0,
+                collection: "users".to_string(),
+            },
+            &mut original,
+        )
+        .unwrap();
+
+        let mut replayed = replay_from_checkpoint(&checkpoint, &original.journal).unwrap();
+        commit(
+            PendingOp::QueryCollection {
+                context_id: 0,
+                collection: "users".to_string(),
+            },
+            &mut replayed,
+        )
+        .unwrap();
+
+        assert!(replayed.result_buffers.contains_key(&1));
+        assert!(replayed.result_buffers.contains_key(&2));
+        assert!(replayed.result_buffers.contains_key(&3));
+        assert_eq!(replayed.journal.last().unwrap().journal_id, 4);
+    }
+}

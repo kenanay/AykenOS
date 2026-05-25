@@ -4,9 +4,9 @@
 
 **Effective date:** 2026-05-25
 **Current phase:** Phase-17 active; formal closure pending
-**Last remotely tested S2 documentation head before this sync:** `2cb05fe4`
-(`ci-gate-phase17-performance-acceptance` run `26377722677` PASS and full
-`ci-freeze` run `26377722711` PASS)
+**Previous remotely tested S2-D head before accepted-main restack:** `342deab6`
+(`ci-gate-phase17-performance-acceptance` run `26391379459` PASS and full
+`ci-freeze` run `26391379462` PASS)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime, evidence,
 baseline, merge or closure authority.
@@ -62,8 +62,9 @@ Bu lane:
 - uyumlu runner digest ve locked baseline PASS gerektirir;
 - tek basina Phase-17 closure, merge veya review authority uretmez.
 
-Son test edilmis S2 dokumantasyon basi `2cb05fe4` icin scoped run
-`26377722677` ve full strict run `26377722711` PASS'tir.
+Accepted-main restack oncesindeki S2-D basi `342deab6` icin scoped run
+`26391379459` ve full strict run `26391379462` PASS'tir. Restack SHA'si
+ayni kontrolleri yeniden gerektirir.
 
 ## Baseline Renewal Siniri
 
@@ -81,11 +82,13 @@ tanimlanir. `ci-freeze.yml` icindeki provisional manual-init varyanti icin
 
 ## Merge ve Closure Siniri
 
-Green CI, canli repository review enforcement'in yerine gecmez. GitHub issue
-#145 acikken declared CODEOWNERS sahipligi atanabilir/enforced authority ile
-eslesmemektedir. Bu nedenle PR #142/#144 merge'i ve Phase-17 closure
-manifest/tag degerlendirmesi, issue #145 giderilene kadar fail-closed bloke
-kalir.
+Issue #145, `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+ve eslesen canli repository protection konfigurasyonu ile giderilmistir.
+`CODEOWNERS`, Kenan AY icin accountability metadata'sidir; bagimsiz
+self-review iddiasi uretmez. PR #142 `main`e kabul edilmistir. PR #144 yeni
+`main` tabaninda yeni SHA icin required remote CI almadan merge adayi
+sayilamaz. Green CI ve merge sonucu da Phase-17 closure manifest/tag yerine
+gecmez.
 
 ## Referanslar
 
@@ -98,7 +101,8 @@ kalir.
 - `docs/operations/PROVISIONAL_CI_MODE.md`
 - `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`
 - `docs/roadmap/freeze-enforcement-workflow.md`
-- GitHub issue #145: `https://github.com/kenanay/AykenOS/issues/145`
+- `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+- GitHub issue #145 resolution record: `https://github.com/kenanay/AykenOS/issues/145`
 
 ---
 

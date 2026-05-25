@@ -4,8 +4,8 @@
 **Current authority:** `github-hosted-ubuntu-24.04-x64`
 **Current phase:** Phase-17 active; formal closure pending
 **Authority boundary:** A generated lock artifact is not acceptance or merge
-authority. Import requires reviewed authorization and subsequent
-constitutional remote PASS; issue #145 remains a merge/closure blocker.
+authority. Import requires Kenan AY's recorded maintainer decision and
+subsequent constitutional remote PASS; it is not Phase-17 closure.
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime, evidence,
 baseline, merge, or closure authority.
@@ -106,8 +106,8 @@ The workflow should:
    - Old vs new env_hash
    - Old vs new metrics (if performance improvement)
    - Verification that marker count > 0
-4. Merge only after constitutional CI passes and enforceable required review
-   authority is satisfied; issue #145 currently blocks that interpretation.
+4. Merge only after constitutional CI passes and Kenan AY's maintainer
+   decision is recorded under the accepted single-maintainer authority model.
 
 ## Baseline Lock File Structure
 

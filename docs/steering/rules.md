@@ -1,9 +1,11 @@
 # AykenOS Constitutional Rules
 
-**Version:** 1.0  
+**Version:** 1.1
 **Authority:** ARCHITECTURE_FREEZE.md  
 **Enforcement:** CI Gates + Branch Protection  
 **Status:** ACTIVE
+**Decision Record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
+**Human Authority:** Kenan AY (single maintainer)
 
 This document defines non-negotiable rules that MUST be followed by all contributors.
 
@@ -142,7 +144,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 
 **Enforcement:**
 - Hook: `doc-sync-mandatory.kiro.hook`
-- Manual review required
+- Maintainer decision record required for architectural documentation changes
 
 **Requirements:**
 - ABI change → update syscall guide
@@ -209,7 +211,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 - Baseline change requires evidence
 - Unauthorized baseline change → **CI FAIL**
 
-**Exceptions:** Authorized maintainers only (with ADR)
+**Exceptions:** Kenan AY only (with ADR and required CI evidence)
 
 ---
 
@@ -229,7 +231,7 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 - Dirty git state
 - Performance regression without evidence
 
-**Medium (Manual Review):**
+**Medium (Maintainer Assessment):**
 - Documentation out of sync
 - Test coverage below threshold
 - Waiver expiry approaching
@@ -239,12 +241,12 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 **For Critical Violations:**
 1. PR automatically rejected
 2. Violation logged in audit trail
-3. Architecture Board notification
+3. Kenan AY maintainer notification
 4. Remediation plan required
 
 **For High Violations:**
 1. CI fails with evidence
-2. Manual review required
+2. Maintainer assessment required
 3. Fix required before merge
 4. No bypass allowed
 
@@ -261,8 +263,8 @@ This document defines non-negotiable rules that MUST be followed by all contribu
 Constitutional rules can only be amended via:
 
 1. RFC submission
-2. Architecture Board review
-3. Unanimous approval
+2. Kenan AY maintainer assessment
+3. Signed maintainer decision
 4. ADR documentation
 5. Version bump
 
@@ -278,16 +280,18 @@ Constitutional rules can only be amended via:
 ```
 1. CI Gates (automated, fail-closed)
 2. Branch Protection (GitHub, mandatory)
-3. CODEOWNERS (manual review, required)
-4. Architecture Board (final authority)
+3. CODEOWNERS (accountable ownership routing to `@kenanay`)
+4. Single-maintainer decision record (Kenan AY)
 ```
 
-All levels MUST pass for merge.
+Mandatory CI/protection checks and a documented maintainer decision MUST
+pass for protected governance changes. `CODEOWNERS` does not assert
+independent self-review while the repository has one human maintainer.
 
 ---
 
-**Maintained by:** AykenOS Architecture Board  
-**Last Updated:** 2026-02-22  
+**Maintained by:** Kenan AY
+**Last Updated:** 2026-05-25
 **Next Review:** Bi-weekly during freeze
 
 **This document is binding. Violations result in PR rejection.**

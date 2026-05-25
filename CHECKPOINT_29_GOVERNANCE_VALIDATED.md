@@ -7,27 +7,6 @@
 
 ---
 
-## Post-Checkpoint Remediation (2026-05-23)
-
-**Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY *(informational metadata only)*
-
-The limitations recorded on 2026-05-09 have now been addressed in the active
-change set:
-
-- `scripts/check_spec_purity.sh` implements deterministic scanning of normative
-  `requirements.md` and `tasks.md` contracts.
-- `.github/workflows/governance-spec-purity.yml` adds independent PR/push
-  enforcement, and the governance summary verifies its script is present.
-- The documented Makefile entry points now exist; `ci-gate-spec-purity` is in
-  both freeze chains before drift/runtime lanes.
-- Naming compliance now preserves the constitutional distinction between
-  permitted project-documentation `AykenOS` and forbidden lowercase code usage.
-
-Remote merge authority is not asserted by this remediation record; it requires
-the resulting branch checks and merge review.
-
----
-
 ## Executive Summary
 
 This checkpoint validates that governance enforcement mechanisms are operational and integrated into the CI pipeline. The governance system ensures architectural boundaries are preserved through automated enforcement, preventing drift toward "tool-driven runtime."
@@ -222,22 +201,28 @@ Exit Code: 1 (expected for modified files with violations)
 
 ---
 
-### 4. ✅ Spec Purity Check (Resolved 2026-05-23)
+### 4. ⚠️ Spec Purity Check
 
 **Script**: `scripts/check_spec_purity.sh`
 **CI Workflow**: `.github/workflows/governance-spec-purity.yml`
-**Status**: ✅ Implemented in the governance remediation change set
+**Status**: ⚠️ Documented but not yet implemented
 
 **Purpose**: Ensures specification documents contain only normative content, not implementation details.
 
-**Enforced Scope**:
-- Normative `requirements.md` and `tasks.md` contracts
-- Executable code fences, command invocations, and inline schema bodies are forbidden
-- Architecture/design and implementation guides remain explanatory documents outside this normative scanner scope
+**What it should check**:
+- Spec files do not contain code snippets (bash, python, javascript)
+- Spec files do not contain command examples (grep, make, git)
+- Spec files do not contain tool-specific instructions
+- Spec files do not contain JSON/YAML schemas
 
-**Contract Reference**:
-- `requirements.md` Requirement Purity Rule
-- `tasks.md` Task Purity Rule
+**Note**: This check is fully documented in GOVERNANCE.md but the script has not been implemented yet. This is acceptable for this checkpoint as:
+1. The governance framework is in place
+2. The other 3 checks are operational
+3. The spec purity check can be implemented later without blocking progress
+4. The constitutional framework already defines the rules
+
+**Constitutional Reference**:
+- Section 11: Spec Purity Rule (referenced in documentation)
 
 ---
 
@@ -556,21 +541,26 @@ make ci-gate-naming-compliance
 
 ## Known Limitations
 
-### 1. Spec Purity Check Remediated
+### 1. Spec Purity Check Not Implemented
 
-**Status**: Resolved in the 2026-05-23 change set
-**Impact**: Normative requirement/task drift is now fail-closed
-**Blocking**: Yes for the updated freeze chain
+**Status**: Documented but not yet implemented
+**Impact**: Low - other checks provide sufficient governance
+**Mitigation**: Can be implemented in future work
+**Blocking**: No - checkpoint can pass without this check
 
-### 2. Tasks 26 and 27 Completion Status Corrected
+### 2. Tasks 26 and 27 Not Yet Complete
 
-**Status**: Already marked complete in the current tasks authority
-**Impact**: Historical limitation superseded by the synchronized task record
+**Status**: Prerequisites not yet implemented
+**Impact**: Low - checkpoint validates what exists
+**Mitigation**: Checkpoint focuses on operational mechanisms
+**Blocking**: No - checkpoint validates implemented governance
 
-### 3. Makefile Integration Remediated
+### 3. Makefile Integration Not Yet Implemented
 
-**Status**: Resolved in the 2026-05-23 change set
-**Impact**: Individual and aggregate governance targets are available; spec purity is mandatory in freeze entry points
+**Status**: Documented but not yet implemented
+**Impact**: Low - scripts can be run directly
+**Mitigation**: Scripts are executable and well-documented
+**Blocking**: No - CI integration is the primary enforcement
 
 ---
 
@@ -578,9 +568,25 @@ make ci-gate-naming-compliance
 
 ### Immediate Actions
 
-1. Execute the new governance target and Makefile parsing checks in the working branch.
-2. Require remote CI acceptance before treating the added freeze gate as merged authority.
-3. Preserve metadata-only attribution and evidence non-authority during Phase-17 closure work.
+None required - checkpoint passes with current implementation.
+
+### Future Enhancements
+
+1. **Implement Spec Purity Check**
+   - Create `scripts/check_spec_purity.sh`
+   - Implement pattern detection for code snippets
+   - Test against spec files
+   - Integrate into CI
+
+2. **Add Makefile Integration**
+   - Create `make ci-gate-governance` target
+   - Add individual check targets
+   - Document in developer workflow
+
+3. **Enhance Error Messages**
+   - Add more specific fix instructions
+   - Include code examples in error output
+   - Link to relevant documentation sections
 
 ---
 
@@ -596,10 +602,10 @@ The governance enforcement system is operational and effective:
    - Naming compliance: Fully functional
    - Dev loop non-interference: Validated through Task 26 artifacts
    - Developer signature integration: Validated through Task 27 artifacts
-   - Spec purity: Implemented remediation (2026-05-23)
+   - Spec purity: Future enhancement
 
 2. ✅ **CI integration complete**
-   - 5 GitHub Actions workflows configured, including normative spec purity
+   - 4 GitHub Actions workflows configured
    - Parallel execution for fast feedback
    - Proper error handling and artifact upload
 
@@ -616,8 +622,9 @@ The governance enforcement system is operational and effective:
 The governance system successfully prevents architectural drift and maintains strict separation between observation, validation, and derived data. All critical boundaries are enforced through automated checks that run on every commit and PR.
 
 **Next Steps**:
-- Validate and merge the remediation under CI authority
-- Use the resulting governance boundary while completing Phase-17 runtime acceptance
+- Continue with remaining tasks in Group 13 (Tasks 26-27)
+- Implement spec purity check when needed
+- Monitor governance check effectiveness in CI
 
 ---
 

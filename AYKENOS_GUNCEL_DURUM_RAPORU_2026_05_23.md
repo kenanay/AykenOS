@@ -1,7 +1,7 @@
 # AykenOS Guncel Durum ve Uygulama Raporu - 2026-05-23
 
 **Durum tarihi:** 2026-05-23
-**Uygulama ek kaydi:** 2026-05-24/25 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, remote closure-candidate PASS, validation flag matrix, issue #145 review-enforcement blokaji, S2 strict gate inventory ve CI-mode authority doc sync)
+**Uygulama ek kaydi:** 2026-05-24/25 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, remote closure-candidate PASS, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142 merge, PR #144 accepted-main restack, S2 strict gate inventory ve CI-mode authority doc sync)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
 
@@ -13,11 +13,11 @@
 | Aktif faz | `CURRENT_PHASE=17` | Phase-17 ACTIVE / CLOSURE PENDING |
 | Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
 | Phase-17 kapanisi | `phase17-official-closure` etiketi/manifesti yok | Tum faz icin closure iddiasi kurulamaz |
-| Phase-17.5 | PR #142 `ready for review`; PR #144 bu tabana stacked durumdadir | Issue #145 review-enforcement blokaji giderilmeden zorunlu review/merge otoritesi kurulamaz |
+| Phase-17.5 | PR #142 `main`e kabul edildi (`0682526d`); PR #144 accepted `main` restack durumundadir | Restack SHA'sı yeni remote kontroller olmadan merge/closure otoritesi taşımaz |
 | Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 son test edilmis S2 head `2cb05fe4`: scoped performance run `26377722677` ve full `ci-freeze` run `26377722711` PASS; CI-mode doc sync changeset'i yeni-head CI, closure manifest/tag ve review/merge sirasi bekler |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 onceki S2-D head `342deab6`: scoped performance run `26391379459` ve full `ci-freeze` run `26391379462` PASS; accepted-main restack changeset'i yeni-head CI ve closure manifest/tag bekler |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Authorized run `26370359958` kaynakli `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak resmi closure otoritesi degildir |
-| Review enforcement | CODEOWNERS zorunlu sahiplik ilan eder; canli `main` protection `require_code_owner_reviews=false` ve ilan edilen owner kimlikleri atanabilir degildir | Issue #145 fail-closed blokajdir; genel approval architecture/governance authority sayilamaz |
+| Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
 ## Bu Degisiklikte Uygulanan Eksikler
 
@@ -69,7 +69,7 @@
 46. Final PR #144 `ci-freeze` run `26370646529`, performance gate PASS sonrasinda low-half scaffold kapisinda `missing_runtime_phase:timer_irq` ile fail-closed durdu; ilk scheduler dispatch'indeki erken IRQ0 mask cagrisi legacy Phase10 timer witness'ini kesiyordu. Cagri kaldirildi ve low-half/public/worker/timeout hedefleri yerelde PASS verdi; bu ara durumda remote full-freeze recheck bekleniyordu.
 47. PR #144 candidate SHA `f129d4aa`, scoped locked-baseline performance run `26370895287` ve full strict `ci-freeze` run `26370895297` ile PASS verdi; low-half timer witness tamiri remote entegrasyon zincirinde dogrulandi.
 48. `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md`, validation-only flag/lane, production default, olculen veya olculmeyen yuzey, ownership ve closure sonrasi inceleme kosulunu declarative review girdisi olarak kaydeder; runtime veya baseline davranisini degistirmez.
-49. Canli GitHub authority denetimi, `.github/CODEOWNERS` icinde zorunlu ilan edilen architecture/devops reviewer kimliklerinin atanabilir olmadigini ve `main` protection'in `require_code_owner_reviews=false` oldugunu gostermistir; issue #145 acildi ve bu uyumsuzluk giderilene kadar #142/#144 merge ile Phase-17 closure fail-closed bloke edildi.
+49. Canli GitHub authority uyumsuzlugu issue #145 ile kaydedildi; ardindan tek-maintainer authority ADR'i, `@kenanay` ownership metadata'si ve canli `main` required `freeze` protection paritesi uygulanarak blokaj giderildi. Bu giderim Phase-17 closure sayilmaz.
 50. `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`, strict zincirdeki iki precondition ve 40 gate/cluster hedefini cost/evidence/overlap siniflariyla kaydetti; Phase-13 composite fan-out'u ve strict disi Phase-17 lanes ayristirildi. Bu belge gate sirasi, runtime veya baseline davranisini degistirmez.
 51. `docs/operations/CONSTITUTIONAL_CI_MODE.md`, `docs/operations/PROVISIONAL_CI_MODE.md`, `docs/operations/PERF_BASELINE_POLICY.md`, `docs/operations/BASELINE_RENEWAL_PROCEDURE.md` ve `docs/operations/POST_MERGE_SMOKE_TEST.md`, current locked-baseline acceptance modeline gore senkronize edildi: provisional yol diagnosis/baseline artifact adayi olarak sinirlanir; artifact import ve smoke PASS merge/closure otoritesi sayilmaz; yalniz reviewed constitutional remote PASS acceptance bileseni olabilir. Bu dokuman senkronu runtime, baseline veya gate target'i degistirmez.
 
@@ -97,7 +97,7 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 - PR-3 evidence'i tek validation-injected timeout-wins interleaving ile sinirlidir; exhaustive race matrisi veya SMP safety iddiasi kurulmaz.
 - Full-freeze low-half tamiri, legacy Phase10 profilinde ilk timer tanigindan once IRQ0 maskelenmesini geri alir; Phase-17 public profilleri maskeyi zaten kapali tuttugundan yeni runtime veya policy yuzeyi acilmaz.
 - Validation flag matrix, test-only yollarin production contract olarak yorumlanmasini engelleyen review kaydidir; yeni runtime yetkisi veya execution karari uretmez.
-- Issue #145, belgelenen CODEOWNERS authority ile canli GitHub protection gercegi arasindaki uyumsuzlugu fail-closed blokaj olarak kaydeder; atanabilir owner ve enforced review kurulmadan genel approval merge/closure yetkisi sayilmaz.
+- Issue #145, tek-maintainer authority karari ve canli protection paritesiyle giderilmistir; `CODEOWNERS` accountability metadata'sidir ve ayni kisinin bagimsiz self-review yetkisi olarak yorumlanmaz.
 - S2 gate inventory, governance'in execution'a hizmet etmesi kuralini uygular: duplicate/cost riski gorunur hale getirilir fakat olculup reviewed karar verilmeden hicbir fail-closed gate kaldirilmaz.
 - CI-mode runbook senkronu, provisional `WARN`/`SKIP` veya local diagnostic PASS sonucunun constitutional acceptance, merge ya da closure gibi sunulmasini yasaklayan operasyon sinirini belgeler.
 
@@ -119,7 +119,7 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 - Authorized renewal artifact PR'a alinmistir ve SHA `f129d4aa` remote locked-baseline PASS vermistir; bu lock kabul adayi olsa da merge ve closure manifest/tag olmadan resmi faz otoritesi tasimaz.
 - PR #144 SHA `f129d4aa` locked acceptance ve full `ci-freeze` PASS vermistir; bu sonuc tek basina merge veya Phase-17 closure otoritesi degildir.
 - Validation-only yollar icin production default, olculen yuzey, owner ve kapanis kosulu `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md` icinde declarative review girdisi olarak kaydedildi.
-- S2 head `2cb05fe4`, scoped locked performance run `26377722677` ve full `ci-freeze` run `26377722711` ile remote PASS vermistir; provisional CI-mode dokumani bu PASS'i yeniden siniflandirmaz ve issue #145 kapanmadan merge/closure authority kurulmaz.
+- Onceki S2-D head `342deab6`, scoped locked performance run `26391379459` ve full `ci-freeze` run `26391379462` ile remote PASS vermistir; accepted-main restack SHA'si yeni remote kabul gerektirir ve bu PASS'ler closure authority kurmaz.
 
 ## Bu Degisiklik Icin Yerel Dogrulama
 
@@ -160,7 +160,9 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 | PR #144 run `26377012232` (`605513ba`) | PASS (REMOTE TESTED PARENT) | Review-enforcement blokajini belgeleyen head uzerinde full strict `ci-freeze`; S2 inventory sonrasi yeni head CI yeniden gerekir |
 | PR #144 run `26377722677` (`2cb05fe4`) | PASS (REMOTE TESTED S2 HEAD) | Strict gate inventory/debt-control head'i uzerinde scoped locked-baseline acceptance |
 | PR #144 run `26377722711` (`2cb05fe4`) | PASS (REMOTE TESTED S2 HEAD) | Strict gate inventory/debt-control head'i uzerinde full strict `ci-freeze`; CI-mode doc sync yeni head CI gerektirir |
-| Live GitHub review-enforcement inspection (2026-05-25) | BLOCKED (ISSUE #145) | CODEOWNERS owner kimlikleri atanabilir degil; `main` `require_code_owner_reviews=false`; merge/closure yetkisi kurulamaz |
+| PR #144 run `26391379459` (`342deab6`) | PASS (REMOTE TESTED S2-D HEAD) | CI-mode/baseline authority document sync head'i uzerinde scoped locked-baseline acceptance; restack sonrasi yeniden gerekir |
+| PR #144 run `26391379462` (`342deab6`) | PASS (REMOTE TESTED S2-D HEAD) | CI-mode/baseline authority document sync head'i uzerinde full strict `ci-freeze`; accepted-main restack yeni SHA dogurur |
+| Live GitHub authority alignment (2026-05-25) | RESOLVED (#145) | Tek-maintainer ADR, `@kenanay` accountability metadata'si ve required remote `freeze` protection paritesi kuruldu; closure kurulmaz |
 | `python3 -m py_compile tools/ci/validate_phase17_performance_acceptance.py tools/ci/analyze_phase17_performance_variance.py tools/ci/analyze_phase17_variance_isolation.py` | PASS | PR-4/PR-4A/PR-4B validator/analyzer syntax denetimi |
 | `make clean` + `make all` (2026-05-24) | PASS | Varsayilan build; Ring0 export map 193 symbol, E2E/worker flags default-off |
 | `make ci-gate-governance` | PASS | Evidence isolation, observation boundary, naming compliance ve normative spec purity |
@@ -182,8 +184,8 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 
 ## Kapanis Icin Kalan Teknik Kabul
 
-1. Issue #145'in giderilmesi: atanabilir bagimsiz architecture/devops review ownership ve intended protected-branch enforcement kaniti.
-2. PR #142'nin dogrulanmis architecture/governance review ile `main`e kabul edilmesi ve stacked PR #144'un accepted tabana gore incelenmesi.
+1. PR #144 accepted `main` restack SHA'si icin scoped locked performance ve full `ci-freeze` remote PASS sonucu.
+2. PR #144'un kayitli tek-maintainer karari ve remote evidence ile `main`e kabul degerlendirmesi.
 3. Genel BCIB interpreter/opcode yuzeyi veya urunlestirilmis Ring3 worker semantic coverage kaniti; PR-2B yalniz bounded literal fixture'i kanitlar.
 4. Gerekiyorsa PR-3'un tek timeout-wins senaryosu disinda broader/exhaustive scheduler-interrupt race ve SMP coverage kaniti.
 5. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; authorized artifact ile giderilen digest drift'i sonrasinda SHA `f129d4aa` locked acceptance ve full `ci-freeze` PASS vermistir. Base veya candidate SHA degisirse ilgili remote kontroller yeniden gerekir.
@@ -192,9 +194,9 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 
 ## Oncelik Sirasi
 
-**En oncelikli adim:** PR #144 son test edilmis S2 head `2cb05fe4`, locked performance ve full `ci-freeze` PASS vermistir. Ancak issue #145, belgelenen CODEOWNERS/protected-branch review otoritesinin canli GitHub yapisinda uygulanmadigini gosteren fail-closed blokajdir. Once atanabilir bagimsiz reviewer ownership ve intended protection kurulup dogrulanmali; bu beklerken S2 inventory ve CI-mode doc sync yalniz teknik borc/authority siniri gorunurlugu saglar. Ardindan PR #142 review/merge'i, PR #144'un accepted `main` tabanina baglanmasi ve base/SHA degisimi varsa gerekli remote kanitin yeniden alinmasi gerceklesmelidir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+**En oncelikli adim:** Issue #145 tek-maintainer authority karariyla giderilmis ve PR #142 `main`e kabul edilmistir. PR #144 onceki S2-D SHA'si uzak PASS uretmis olsa da accepted `main` restack yeni SHA dogurur; bu SHA icin scoped locked performance ve full `ci-freeze` yeniden alinmadan merge veya closure manifest/tag degerlendirmesi yapilamaz. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
 
-**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - son test edilmis S2 head `2cb05fe4` remote runtime, locked acceptance ve full-freeze PASS; validation matrix, S2 gate inventory ve CI-mode authority sync kayitli; issue #145 review-enforcement blokaji, bu yeni-head CI, review/merge ve resmi closure authority pending.
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - #145 authority parity giderildi ve PR #142 merged; PR #144 accepted-main restack SHA'si icin remote runtime/locked acceptance/full-freeze, merge ve resmi closure authority pending.
 
 ---
 

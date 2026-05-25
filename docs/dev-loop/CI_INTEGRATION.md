@@ -92,9 +92,9 @@ The AykenOS dev loop is integrated into GitHub Actions CI pipeline to provide au
 ## CI Jobs
 
 ### 1. Smoke Test
-**Purpose**: Quick boot validation  
-**Timeout**: 10 minutes  
-**Command**: `./scripts/dev_loop.sh smoke`  
+**Purpose**: Quick boot validation
+**Timeout**: 10 minutes
+**Command**: `./scripts/dev_loop.sh smoke`
 **Checks**:
 - Build succeeds
 - Kernel boots
@@ -103,10 +103,10 @@ The AykenOS dev loop is integrated into GitHub Actions CI pipeline to provide au
 **Artifacts**: `smoke-logs`
 
 ### 2. Contract Test
-**Purpose**: Runtime contract validation  
-**Timeout**: 15 minutes  
-**Depends on**: smoke  
-**Command**: `./scripts/dev_loop.sh contract`  
+**Purpose**: Runtime contract validation
+**Timeout**: 15 minutes
+**Depends on**: smoke
+**Command**: `./scripts/dev_loop.sh contract`
 **Checks**:
 - All smoke validations
 - VCP runtime hook behavior
@@ -116,10 +116,10 @@ The AykenOS dev loop is integrated into GitHub Actions CI pipeline to provide au
 **Artifacts**: `contract-logs`
 
 ### 3. Full Test
-**Purpose**: Comprehensive validation  
-**Timeout**: 20 minutes  
-**Depends on**: contract  
-**Command**: `./scripts/dev_loop.sh full`  
+**Purpose**: Comprehensive validation
+**Timeout**: 20 minutes
+**Depends on**: contract
+**Command**: `./scripts/dev_loop.sh full`
 **Checks**:
 - All contract validations
 - VCP evidence layer
@@ -128,10 +128,10 @@ The AykenOS dev loop is integrated into GitHub Actions CI pipeline to provide au
 **Artifacts**: `full-logs`
 
 ### 4. Isolation Property Test
-**Purpose**: Constitutional compliance validation  
-**Timeout**: 10 minutes  
-**Depends on**: full  
-**Command**: `./scripts/test_devloop_isolation.sh`  
+**Purpose**: Constitutional compliance validation
+**Timeout**: 10 minutes
+**Depends on**: full
+**Command**: `./scripts/test_devloop_isolation.sh`
 **Checks**:
 - Dev loop does not affect kernel behavior
 - Baseline vs dev loop runs produce identical results
@@ -141,11 +141,11 @@ The AykenOS dev loop is integrated into GitHub Actions CI pipeline to provide au
 **Artifacts**: `isolation-logs`
 
 ### 5. Auto-Bisect (Conditional)
-**Purpose**: Automatic regression detection  
-**Timeout**: 30 minutes  
-**Trigger**: Only when PR validation fails  
-**Depends on**: [smoke, contract, full]  
-**Command**: `git bisect run` with oracle  
+**Purpose**: Automatic regression detection
+**Timeout**: 30 minutes
+**Trigger**: Only when PR validation fails
+**Depends on**: [smoke, contract, full]
+**Command**: `git bisect run` with oracle
 
 **Process**:
 1. Determine good commit (merge base with target branch)
@@ -204,10 +204,10 @@ git bisect start "$BAD" "$GOOD"
 git bisect run bash -c '
   commit=$(git rev-parse --short HEAD)
   log="out/logs/bisect/${commit}.log"
-  
+
   ./scripts/dev_loop.sh smoke >"$log" 2>&1
   rc=$?
-  
+
   if [ "$rc" -eq 0 ]; then
     exit 0  # Good commit
   else
@@ -261,16 +261,19 @@ All CI jobs upload logs as artifacts for debugging:
 
 ## Branch Protection
 
-Branch protection rules ensure that all dev loop validation checks pass before code can be merged to protected branches (`main`, `develop`).
+Branch protection is controlled by `ARCHITECTURE_FREEZE.md` and
+`docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`.
+The authoritative protected branch is `main`.
 
-### Required Status Checks
-- ✅ `smoke` - Quick boot validation
-- ✅ `contract` - Runtime contract validation
-- ✅ `full` - Comprehensive validation
-- ✅ `isolation` - Constitutional compliance
-- ✅ `performance` - Performance regression check
+### Required Merge Status
 
-**Note**: `auto-bisect` is NOT required (it only runs on failure)
+- `freeze` - complete constitutional CI chain on the submitted SHA and
+  current protected base.
+
+The `smoke`, `contract`, `full`, `isolation`, `performance` and `auto-bisect`
+jobs described in this document are supplemental dev-loop evidence or
+diagnostics. They do not independently replace or override the protected
+`freeze` verdict.
 
 ### Configuration
 
@@ -287,13 +290,13 @@ Branch protection rules ensure that all dev loop validation checks pass before c
 **Manual Setup**: See `docs/dev-loop/BRANCH_PROTECTION.md` for detailed instructions.
 
 ### What Gets Enforced
-- ✅ All required status checks must pass
-- ✅ Branches must be up to date before merging
-- ✅ Pull request reviews required (1 approval)
-- ✅ Stale reviews dismissed on new commits
-- ✅ Settings apply to administrators
-- ✅ Force pushes disabled
-- ✅ Branch deletion disabled
+- Required remote `freeze` PASS with strict base synchronization.
+- Required approval count `0` under the single-maintainer authority model.
+- Required code-owner review `false`; `.github/CODEOWNERS` maps
+  accountability to `@kenanay` and is not independent self-review.
+- Settings apply to administrators.
+- Force pushes and branch deletion remain disabled.
+- A CI PASS does not establish a phase closure tag or manifest.
 
 For complete documentation, see: `docs/dev-loop/BRANCH_PROTECTION.md`
 
@@ -309,7 +312,7 @@ on:
     branches: [ main, develop ]
 ```
 
-**PR events**: Triggers on PR open, update, synchronize  
+**PR events**: Triggers on PR open, update, synchronize
 **Push events**: Triggers on direct push to main/develop (not recommended)
 
 ## Environment Variables
