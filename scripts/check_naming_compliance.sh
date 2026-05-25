@@ -25,6 +25,16 @@ cd "$ROOT_DIR"
 FAIL=0
 DEPRECATED_COUNT=0
 FORBIDDEN_PATTERN="ayken""os"
+CANONICAL_EVIDENCE_DIR="${NAMING_COMPLIANCE_EVIDENCE_DIR:-${ROOT_DIR}/out/evidence/naming-compliance-standalone}"
+
+# The canonical gate resolves PR/push base-vs-head ranges in clean CI
+# checkouts and applies the reviewed scope/allowlist contract. Keep this
+# legacy entry point for local staged/untracked feedback only.
+echo "Running canonical diff-aware naming gate..."
+if ! ./scripts/ci/check_naming_convention.sh --evidence-dir "$CANONICAL_EVIDENCE_DIR"; then
+  echo "CRITICAL FAILURE: canonical naming convention gate rejected this change"
+  exit 1
+fi
 
 TRACKED_FILES=$(
   {

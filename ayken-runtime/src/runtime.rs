@@ -97,6 +97,33 @@ impl RuntimeState {
         id
     }
 
+    /// Reconcile allocation cursors after materializing state from journal data.
+    ///
+    /// Replay rebuilds objects with already-issued identifiers rather than
+    /// calling the normal allocation path. A resumed runtime must therefore
+    /// advance each cursor beyond all replayed IDs before accepting new work.
+    pub fn reconcile_replay_allocators(&mut self) -> RuntimeResult<()> {
+        let next_result_buffer_id = self
+            .result_buffers
+            .keys()
+            .next_back()
+            .map(|id| id.checked_add(1).ok_or(RuntimeError::CommitError))
+            .transpose()?
+            .unwrap_or(1);
+        let next_journal_id = self
+            .journal
+            .iter()
+            .map(|entry| entry.journal_id)
+            .max()
+            .map(|id| id.checked_add(1).ok_or(RuntimeError::CommitError))
+            .transpose()?
+            .unwrap_or(1);
+
+        self.next_result_buffer_id = self.next_result_buffer_id.max(next_result_buffer_id);
+        self.next_journal_id = self.next_journal_id.max(next_journal_id);
+        Ok(())
+    }
+
     pub fn fail_closed(&mut self, err: RuntimeError) -> RuntimeError {
         self.running = false;
 
@@ -132,8 +159,8 @@ impl RuntimeState {
 
         self.trace.push(format!(
             "[{}] {:?} | ctx={} | collections={} | rows={} | results={} | journal={} | state={} | result={}",
-            self.pc, inst.opcode, self.current_ctx, collection_count, row_count, 
-            self.result_buffers.len(), self.journal.len(), 
+            self.pc, inst.opcode, self.current_ctx, collection_count, row_count,
+            self.result_buffers.len(), self.journal.len(),
             hash_hex(&state_hash), hash_hex(&result_hash)
         ));
     }
