@@ -4,10 +4,10 @@
 
 - Waiver ID: tooling-isolation-perf-governance-hardening
 - Title: Perf governance hardening requires kernel observability updates
-- Author: Codex
+- Author: Kenan AY
 - Date: 2026-04-04
-- Expiry Date: 2026-05-15
-- Related Issue: https://github.com/kenanay/AykenOS/pull/88
+- Expiry Date: 2026-06-30
+- Related Issue: https://github.com/kenanay/AykenOS/pull/88, https://github.com/kenanay/AykenOS/pull/142, https://github.com/kenanay/AykenOS/issues/145
 - Related RFC: N/A
 
 ## Exception Type
@@ -58,6 +58,14 @@ Etkilenen gate'ler:
 4. Close this waiver once baseline renewal lands and no further kernel touches
    are needed for the perf governance hardening slice.
 
+## Extension Note
+
+2026-05-25: Extended within the 90-day waiver limit because the perf
+governance hardening lineage remains blocked behind the repository authority
+realignment tracked by issue #145. This extension does not authorize Ring0
+policy movement or bypass a CI result; it only prevents an already-expired
+waiver from masking validation of the governance correction.
+
 ## Rollback Plan
 
 If this series causes unexpected CI or runtime regressions:
@@ -68,5 +76,5 @@ If this series causes unexpected CI or runtime regressions:
 
 ## Approval
 
-- Architecture Board decision: Pending via PR #88 review
+- Kenan AY maintainer decision record: `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
 - Status: `approved`

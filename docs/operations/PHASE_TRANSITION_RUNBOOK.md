@@ -1,8 +1,10 @@
 # Phase Transition Runbook
 
 **Authority:** ARCHITECTURE_FREEZE.md  
-**Last Updated:** 2026-02-26  
+**Last Updated:** 2026-05-25
 **Status:** ACTIVE
+**Human Authority:** Kenan AY (single maintainer)
+**Decision Record:** `docs/architecture-board/decisions/20260525-single-maintainer-authority-model.md`
 
 ## Overview
 
@@ -38,6 +40,8 @@ Only after those are satisfied should the formal `CURRENT_PHASE` transition be e
 - Required status check: `freeze`
 - Strict mode: enabled
 - Review thread resolution: required (via ruleset)
+- No impossible self-approval requirement while Kenan AY is sole maintainer
+- `CODEOWNERS` is accountable ownership metadata for `@kenanay`, not independent approval
 
 ## Merge Blockers (Two Authorities)
 
@@ -46,7 +50,7 @@ AykenOS uses **two separate enforcement layers**:
 ### Layer 1: Branch Protection (`branches/main/protection`)
 - Classic GitHub branch protection
 - Required status checks
-- Admin bypass available
+- Review configuration aligned with the single-maintainer decision record
 
 ### Layer 2: Repository Rulesets (`rulesets/{id}`)
 - Modern GitHub rules engine
@@ -54,6 +58,8 @@ AykenOS uses **two separate enforcement layers**:
 - **No admin bypass** (by design)
 
 **Critical:** Both layers must be satisfied for merge. Ruleset violations cannot be bypassed.
+Neither layer may represent a secondary account controlled by the maintainer
+or an automation script as independent human review.
 
 ## Pre-Merge Checklist
 
@@ -402,5 +408,5 @@ gh pr merge <PR> --admin --squash
 
 ---
 
-**Maintained by:** AykenOS Architecture Board  
+**Maintained by:** Kenan AY
 **Next Review:** After each phase transition

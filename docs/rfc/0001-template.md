@@ -57,5 +57,5 @@ Nasıl geri alınacak?
 
 ## Approval
 
-- Architecture Board decision link:
+- Kenan AY maintainer decision record link:
 - Final status: `approved | rejected | deferred`
