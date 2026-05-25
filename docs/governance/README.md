@@ -34,6 +34,10 @@ Authoritative references:
 - `TEST_PIPELINE_CONTRACT.md`: external test pipeline contract
   (scenario -> normalize -> validator -> error code -> CI verdict).
 - `error_codes.json`: single authority registry for external test error codes.
+- `CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`: S2 operational
+  inventory of the strict freeze chain, composite expansion, separate
+  Phase-17 evidence lanes, and bounded consolidation backlog
+  (`review input only; no runtime or closure authority`).
 
 Current authority transition note:
 

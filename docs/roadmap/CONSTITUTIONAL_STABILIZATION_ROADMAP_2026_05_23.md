@@ -85,11 +85,11 @@ Phase-17 kapanis kapisini asamaz.
 |---|---|---|
 | Resmi kapanis otoritesi | Phase-16 son resmi kapanis | Phase-17 closure iddiasi yok |
 | Aktif calisma | Phase-17 execution pipeline | Runtime kabul kaniti eksik |
-| Marker guard | Step 5 merge edilmis; PR #144 candidate SHA `f129d4aa` evidence uygulanmis | Validation-only lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race remote candidate PASS; review/merge bekler |
+| Marker guard | Step 5 merge edilmis; PR #144 son test edilmis dokuman head'i `605513ba` | Validation-only lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race remote PASS; bu S2 envanter senkronu yeni-head CI gerektirir |
 | ABI | 12 syscall lock ratified; canonical version drift giderildi | Clean-tree PR CI kabulü gerekir |
 | Governance | Spec-purity, fail-closed marker isolation ve declarative validation matrix bu dilimde eklendi/duzeltildi | Candidate CI PASS; issue #145 giderilmeden review authority/merge kurulamaz |
 | Review enforcement | Canli GitHub denetiminde CODEOWNERS sahipleri atanabilir degil ve `main` icin `require_code_owner_reviews=false` | Issue #145 fail-closed blokajdir; genel approval mimari otorite sayilamaz |
-| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | SHA `f129d4aa` scoped run `26370895287` locked acceptance PASS ve full `ci-freeze` run `26370895297` PASS; closure sayilmaz |
+| Performance stability | PR-4 local readiness FAIL; PR-4A/PR-4B diagnostic local PASS; initial remote digest drift; authorized renewal imported | Son test edilmis head `605513ba`: scoped run `26377012197` locked acceptance PASS ve full `ci-freeze` run `26377012232` PASS; closure sayilmaz |
 | Phase-18 | Roadmap only | Baslatilmaz |
 
 ## 4. Stratejik Karar: Stabilization-First
@@ -157,23 +157,23 @@ var olan ratified yuzeyleri ve guard'lari tutarli hale getirir.
 
 ### S1 - Phase-17 Runtime Acceptance
 
-**Status:** PR #144 SHA `f129d4aa` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / ISSUE #145 REVIEW-ENFORCEMENT BLOCKED / FORMAL CLOSURE PENDING
+**Status:** PR #144 TESTED PARENT SHA `605513ba` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / CURRENT S2 INVENTORY HEAD CI PENDING / ISSUE #145 REVIEW-ENFORCEMENT BLOCKED / FORMAL CLOSURE PENDING
 **Purpose:** Marker validation'in gercek kernel execution-slot yasam
 dongusunde calistigini kanitlamak.
 
 | Sira | Is paketi | Durum | Required evidence | Degismeyecek sinir |
 |---|---|---|---|---|
-| S1.1 | Marker-enabled minimal QEMU boot | REMOTE CANDIDATE PASS (`f129d4aa`) | Debugcon boot log + gate report | Feature flag production default-off |
-| S1.2 | Tek slot kernel golden lifecycle | REMOTE CANDIDATE PASS (`f129d4aa`) | Queue/pickup/write/verify/result-map ordered trace | Public Ring3 syscall E2E kaniti sayilmaz |
-| S1.E2E | Public Ring3 submit/wait acceptance | REMOTE CANDIDATE PASS (`f129d4aa`) | Ring3 `1003` submit -> scheduler pickup -> `1004` frozen-result read QEMU trace | Validation-only stub; gercek BCIB worker completion sayilmaz |
-| S1.WORKER | Ring3 fixture worker completion acceptance | REMOTE CANDIDATE PASS (`f129d4aa`) | Ring3 delivery -> v1 output -> public `1011` -> `1004` frozen-result QEMU trace | Stub disabled; bounded literal fixture, genel interpreter sayilmaz |
-| S1.3 | Deterministic result repeat | REMOTE CANDIDATE PASS (`f129d4aa`) | Ayni validation input icin iki QEMU boot result fingerprint match | Mechanism-only; logical evidence |
-| S1.4 | Invalid sequence fail-closed | REMOTE CANDIDATE PASS (`f129d4aa`) | Negative trace + hash/mapping oncesi red | Resource rollback veya public syscall kaniti sayilmaz |
-| S1.5 | Interrupt/race isolation | REMOTE CANDIDATE PASS (`f129d4aa`) | Delivered `RUNNING` logical-deadline -> real timer IRQ `TIMEOUT` -> delayed public `1011` reject QEMU trace | Validation-only tek interleaving; exhaustive/SMP race sayilmaz |
-| S1.6 | Performance acceptance | REMOTE CANDIDATE PASS (`26370895287`, `f129d4aa`) | Existing locked-baseline timer/preemption hot-path report + scoped PR-4 acceptance report + workflow-generated renewal artifact | Validation payload latency, manual baseline edit veya closure sayilmaz |
+| S1.1 | Marker-enabled minimal QEMU boot | REMOTE PASS (tested parent `605513ba`) | Debugcon boot log + gate report | Feature flag production default-off |
+| S1.2 | Tek slot kernel golden lifecycle | REMOTE PASS (tested parent `605513ba`) | Queue/pickup/write/verify/result-map ordered trace | Public Ring3 syscall E2E kaniti sayilmaz |
+| S1.E2E | Public Ring3 submit/wait acceptance | REMOTE PASS (tested parent `605513ba`) | Ring3 `1003` submit -> scheduler pickup -> `1004` frozen-result read QEMU trace | Validation-only stub; gercek BCIB worker completion sayilmaz |
+| S1.WORKER | Ring3 fixture worker completion acceptance | REMOTE PASS (tested parent `605513ba`) | Ring3 delivery -> v1 output -> public `1011` -> `1004` frozen-result QEMU trace | Stub disabled; bounded literal fixture, genel interpreter sayilmaz |
+| S1.3 | Deterministic result repeat | REMOTE PASS (tested parent `605513ba`) | Ayni validation input icin iki QEMU boot result fingerprint match | Mechanism-only; logical evidence |
+| S1.4 | Invalid sequence fail-closed | REMOTE PASS (tested parent `605513ba`) | Negative trace + hash/mapping oncesi red | Resource rollback veya public syscall kaniti sayilmaz |
+| S1.5 | Interrupt/race isolation | REMOTE PASS (tested parent `605513ba`) | Delivered `RUNNING` logical-deadline -> real timer IRQ `TIMEOUT` -> delayed public `1011` reject QEMU trace | Validation-only tek interleaving; exhaustive/SMP race sayilmaz |
+| S1.6 | Performance acceptance | REMOTE PASS (`26377012197`, tested parent `605513ba`) | Existing locked-baseline timer/preemption hot-path report + scoped PR-4 acceptance report + workflow-generated renewal artifact | Validation payload latency, manual baseline edit veya closure sayilmaz |
 | S1.7 | Variance source isolation | DIAGNOSTIC LOCAL PASS / ROOT CAUSE PENDING | PASS-reference ile FAIL-repeat raporlarindan variance fingerprint ve ortak outlier siniflandirmasi | Diagnostic PASS acceptance, baseline renewal veya closure sayilmaz |
 | S1.8 | Bounded variance reproduction | DIAGNOSTIC LOCAL PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | Ayni PR-4 contract ile image-reuse ve rebuild-per-run stage-localization raporu | Non-reproduction acceptance, kok neden veya closure sayilmaz |
-| S1.9 | Freeze integration timer witness | REMOTE CANDIDATE PASS (`26370895297`, `f129d4aa`) | Same-run Phase10-A2 `create -> syscall_entry -> timer_irq` low-half runtime proof | Legacy witness tamiri Phase-17 closure veya yeni runtime feature sayilmaz |
+| S1.9 | Freeze integration timer witness | REMOTE PASS (`26377012232`, tested parent `605513ba`) | Same-run Phase10-A2 `create -> syscall_entry -> timer_irq` low-half runtime proof | Legacy witness tamiri Phase-17 closure veya yeni runtime feature sayilmaz |
 
 `ci-gate-execution-marker-lifecycle`, `AYKEN_EXECUTION_MARKER_VALIDATION_ENABLE=1`
 ve `AYKEN_EXECUTION_MARKER_LIFECYCLE_SELFTEST=1` ile yalniz validation
@@ -238,6 +238,10 @@ saglamistir: scoped locked performance run `26370895287` PASS ve full
 PR #142/#144 review-merge sirasi, closure manifesti ve resmi tag yerine
 gecmez. Bu dokumantasyon senkronu yeni commit uretecegi icin merge oncesi
 gerekli kontroller yeni head SHA uzerinde yeniden degerlendirilir.
+Son test edilmis dokumantasyon head'i `605513ba` uzerinde ayni sinir
+korunmustur: scoped locked performance run `26377012197` PASS ve full
+`ci-freeze` run `26377012232` PASS. Bu S2 envanter degisikligi yeni SHA
+ureteceginden, onun PASS sonucu da push sonrasi ayri kaydedilir.
 `ci-gate-phase17-performance-variance-diagnostic`, mevcut local evidence'i
 yeniden olcum yapmadan okur. Ilk PASS stability run'i ile repeat FAIL run'ini
 karsilastirir, ortak outlier/fingerprint kaydi uretir ve upstream FAIL
@@ -260,7 +264,7 @@ manifest/tag hazirlanamaz.
 
 ### S2 - CI and Architecture Debt Containment
 
-**Status:** STARTED - VALIDATION MATRIX DOCUMENTED / REVIEW ENFORCEMENT BLOCKER OPEN (`#145`) / FULL GATE INVENTORY PENDING
+**Status:** STARTED - VALIDATION MATRIX DOCUMENTED / STRICT GATE INVENTORY DOCUMENTED IN CURRENT CHANGESET / REVIEW ENFORCEMENT BLOCKER OPEN (`#145`) / DEBT REMEDIATION PENDING
 
 - Gate inventory cikartilir: invariant, runtime maliyet, evidence output,
   owner ve duplication alani.
@@ -271,13 +275,18 @@ manifest/tag hazirlanamaz.
 - Canli GitHub authority paritesi issue #145 altinda fail-closed izlenir:
   CODEOWNERS tarafindan ilan edilen review sahipleri atanabilir olmali ve
   protected-branch enforcement belgelenen authority modelini uygulamalidir.
+- Strict gate/envanter ve borc kontrol kaydi
+  `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`
+  olarak acildi: 40 ust-hedef, iki precondition, Phase-13 composite
+  expansion, Phase-17 ayrik lanes ve konsolidasyon kararlari gorunur kilinir.
 - Tekrar eden veya yalnizca dokumanda kalan gate iddialari konsolide edilir.
 - Onboarding icin minimum "build -> targeted gate -> strict CI" akisi
   dokumante edilir.
 - AHS veya governance metriği runtime basari iddiasinin yerine gecemez.
 
-**Exit:** Issue #145 review-enforcement parity kaydi, gate envanteri, maliyet
-raporu ve kaldirilacak/birlestirilecek tekrarlar icin mimari karar kaydi.
+**Exit:** Issue #145 review-enforcement parity kaydi, envanter icindeki acik
+tekrar olcumleri ve kaldirilacak/birlestirilecek hedefler icin reviewed
+mimari karar/uygulama kaydi.
 
 ### S3 - BCIB Product Maturity
 
@@ -318,18 +327,19 @@ nondeterministic verification verdict'i uretmez.
 | PR paketi | Durum | Tek amac | Kod/dokuman yuzeyi | Zorunlu kontrol |
 |---|---|---|---|---|
 | PR-0 (bu changeset) | REMOTE CANDIDATE PASS / REVIEW-MERGE PENDING | Authority/governance/ABI parity repair | ABI sources, CI guards, current docs, roadmap | Build, ABI payload, governance, constitutional, PR CI |
-| PR-1 (stacked implementation) | REMOTE CANDIDATE PASS (`f129d4aa`) | Marker-enabled QEMU golden boot/lifecycle | Existing validation flag + external harness/evidence | Minimal real lifecycle PASS |
-| PR-2 (stacked implementation) | REMOTE CANDIDATE PASS (`f129d4aa`) | Deterministic result and negative sequence | Validation-only test/harness + additive evidence markers | Repeat fingerprint + invalid-order FAIL |
-| PR-2A (stacked implementation) | REMOTE CANDIDATE PASS (`f129d4aa`) | Public Ring3 submit/wait result-publication acceptance | Public ABI payload, execution backing/IRQ correctness fix, external evidence | `1003`/`1004` mapped result witness |
-| PR-2B (stacked implementation) | REMOTE CANDIDATE PASS (`f129d4aa`) | Ring3 fixture worker public completion acceptance | Worker payload, direct-output marker acknowledgement, completion cleanup CR3 fix, external evidence | Stub-off `1003`/`1011`/`1004` literal-result witness |
-| PR-3 (stacked implementation) | REMOTE CANDIDATE PASS (`f129d4aa`) | IRQ timeout-versus-late-completion fail-closed acceptance | Validation-only running-deadline injection, timer cleanup CR3 fix, Ring3 poll/late completion witness, external evidence | IRQ `TIMEOUT` wins; delayed `1011` rejected; no completed-result publish |
-| PR-4 (renewal acceptance candidate) | REMOTE CANDIDATE PASS (`26370895287`, `f129d4aa`) | Locked-baseline timer/preemption hot-path performance acceptance | Scoped validator, remote workflow, local-readiness target, evidence docs | Clean remote constitutional PASS + same-SHA runtime evidence; closure ayridir |
+| PR-1 (stacked implementation) | REMOTE PASS (tested parent `605513ba`) | Marker-enabled QEMU golden boot/lifecycle | Existing validation flag + external harness/evidence | Minimal real lifecycle PASS |
+| PR-2 (stacked implementation) | REMOTE PASS (tested parent `605513ba`) | Deterministic result and negative sequence | Validation-only test/harness + additive evidence markers | Repeat fingerprint + invalid-order FAIL |
+| PR-2A (stacked implementation) | REMOTE PASS (tested parent `605513ba`) | Public Ring3 submit/wait result-publication acceptance | Public ABI payload, execution backing/IRQ correctness fix, external evidence | `1003`/`1004` mapped result witness |
+| PR-2B (stacked implementation) | REMOTE PASS (tested parent `605513ba`) | Ring3 fixture worker public completion acceptance | Worker payload, direct-output marker acknowledgement, completion cleanup CR3 fix, external evidence | Stub-off `1003`/`1011`/`1004` literal-result witness |
+| PR-3 (stacked implementation) | REMOTE PASS (tested parent `605513ba`) | IRQ timeout-versus-late-completion fail-closed acceptance | Validation-only running-deadline injection, timer cleanup CR3 fix, Ring3 poll/late completion witness, external evidence | IRQ `TIMEOUT` wins; delayed `1011` rejected; no completed-result publish |
+| PR-4 (renewal acceptance candidate) | REMOTE PASS (`26377012197`, tested parent `605513ba`) | Locked-baseline timer/preemption hot-path performance acceptance | Scoped validator, remote workflow, local-readiness target, evidence docs | Clean remote constitutional PASS + same-SHA runtime evidence; closure ayridir |
 | PR-4A (local diagnostic implementation) | LOCAL DIAGNOSTIC PASS / ROOT CAUSE PENDING | PR-4 local stability variance fingerprinting ve kaynak ayrimi | Existing evidence analyzer, Make target ve docs; runtime/baseline mutasyonu yok | Ortak sample siniflandirmasi; acceptance verdict'i degismez |
 | PR-4B (local bounded measurement implementation) | LOCAL DIAGNOSTIC PASS / OUTLIER NOT REPRODUCED / ROOT CAUSE PENDING | PR-4A sapmasini controlled image-reuse/rebuild-per-run kosullarinda yeniden uretme ve stage-localize etme | Existing harness collector/analyzer, Make target ve docs; runtime/baseline/threshold mutasyonu yok | Runtime/counter parity; remote acceptance verdict'i degismez |
 | PR-4C (governed renewal safety repair) | AUTHORIZED ARTIFACT PASS / IMPORTED / REMOTE CANDIDATE PASS | Baseline init artifact-only akisini policy ile hizalamak ve runner digest renewal yolunu acmak | Init/scoped workflows, generated lock, policy/procedure docs; runtime ve threshold mutasyonu yok | Direct protected-branch push yok; explicit `baseline-update` label; review gerekir |
-| PR-4D (freeze integration repair) | REMOTE CANDIDATE PASS (`26370895297`, `f129d4aa`) | Legacy Phase10 low-half timer runtime witness'ini Phase-17 first-dispatch guard entegrasyonundan ayirmak | Scheduler first-dispatch IRQ mask kapsam daraltmasi ve durum belgeleri | `ci-gate-low-half-kheap-scaffold` + Phase-17 public/race gates + clean remote `ci-freeze` |
-| S2-A (review-readiness documentation) | IMPLEMENTED / NEW HEAD CI REQUIRED | Validation-only path matrisini ve remote candidate truth'u kaydetmek | Matrix, roadmap, current status ve README; runtime/baseline mutasyonu yok | Governance/spec checks ve new-head PR CI |
+| PR-4D (freeze integration repair) | REMOTE PASS (`26377012232`, tested parent `605513ba`) | Legacy Phase10 low-half timer runtime witness'ini Phase-17 first-dispatch guard entegrasyonundan ayirmak | Scheduler first-dispatch IRQ mask kapsam daraltmasi ve durum belgeleri | `ci-gate-low-half-kheap-scaffold` + Phase-17 public/race gates + clean remote `ci-freeze` |
+| S2-A (review-readiness documentation) | REMOTE PASS (`605513ba`) | Validation-only path matrisini ve remote candidate truth'u kaydetmek | Matrix, roadmap, current status ve README; runtime/baseline mutasyonu yok | Governance/spec checks ve new-head PR CI |
 | S2-B (review enforcement parity) | BLOCKED / ISSUE #145 OPEN | Belgelenen CODEOWNERS otoritesini atanabilir reviewer/protection gercegiyle eslemek | GitHub governance configuration ve gerekirse reviewed CODEOWNERS karari; runtime/baseline mutasyonu yok | Valid independent owner assignment + enforced review proof before merge |
+| S2-C (gate inventory and debt control) | IMPLEMENTED IN CURRENT CHANGESET / NEW HEAD CI REQUIRED | Strict zincir maliyet/tekrar/owner yuzeyini gorunur kilmak | Governance inventory, roadmap ve current docs; runtime/baseline mutasyonu yok | Governance/spec checks ve new-head PR CI |
 
 PR koordinasyon kurallari:
 
@@ -854,6 +864,28 @@ kilmaz; ancak atanabilir bagimsiz review owner ve intended protection
 dogrulanana kadar #142/#144 merge sirasini ve closure manifest/tag
 degerlendirmesini bloke eder.
 
+### 2026-05-25 - S2-C Strict Gate Inventory and Debt Control Start
+
+**Implemented in this documentation changeset:**
+
+- `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`,
+  strict `ci-freeze` zincirindeki iki precondition ve 40 gate/cluster
+  hedefini invariant, maliyet sinifi, evidence yuzeyi ve overlap karariyla
+  kaydeder.
+- Composite `ci-kill-switch-phase13` arkasindaki on uc child gate gorunur
+  hale getirildi; composite verdict kaldirilmadi veya authority daraltilmadi.
+- Strict disi Phase-17 evidence/diagnostic lanes, strict closure authority ile
+  karismayacak bicimde ayri sinifta kaydedildi.
+- Borc maddeleri arasinda duplicate `ci-freeze` prerequisite bildirimi,
+  proofd-observability olasi yinelenen kosusu, manuel validation flag matrisi
+  ve issue #145 live review-enforcement boslugu yer alir.
+
+**Authority boundary:** Bu envanter runtime, baseline, gate sirasi veya
+GitHub protection ayari degistirmez. Son test edilmis parent head `605513ba`
+uzerinde remote performance run `26377012197` ve full `ci-freeze` run
+`26377012232` PASS'tir; bu yeni dokuman changeset'i push edilirse kendi
+head SHA'si icin remote CI yeniden gerekir.
+
 ## 10. Review Triggers
 
 Bu roadmap su olaylarda guncellenir:
@@ -870,9 +902,10 @@ Bu roadmap su olaylarda guncellenir:
 10. PR-4D low-half timer witness tamiri sonrasi full remote `ci-freeze` sonucu.
 11. S2-A validation matrix/durum senkronu sonrasi new-head PR CI sonucu.
 12. Issue #145 review-enforcement parity giderimi veya governed ownership karari.
-13. PR #142 merge ve PR #144 restack/retarget karari.
-14. Phase-17 closure candidate olusmasi.
-15. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+13. S2-C inventory icindeki duplicate/cost olcumleri veya konsolidasyon karari.
+14. PR #142 merge ve PR #144 restack/retarget karari.
+15. Phase-17 closure candidate olusmasi.
+16. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -881,6 +914,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/roadmap/CURRENT_PHASE`
 - `docs/roadmap/freeze-enforcement-workflow.md`
 - `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md`
+- `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
