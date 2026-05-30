@@ -1,7 +1,7 @@
 # AykenOS Guncel Durum ve Uygulama Raporu - 2026-05-23
 
 **Durum tarihi:** 2026-05-23
-**Uygulama ek kaydi:** 2026-05-24/25 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, remote closure-candidate PASS, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142 merge, PR #144 accepted-main restack, S2 strict gate inventory ve CI-mode authority doc sync)
+**Uygulama ek kaydi:** 2026-05-24/26 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142/#144 merge, PR #148 performance authority onarimi, accepted-main exact-SHA remote evidence PASS ve Phase-17 closure-candidate kaydi)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
 
@@ -12,11 +12,11 @@
 | Son resmi kapanis | `phase16-official-closure` etiketi mevcut | Phase-16 OFFICIALLY CLOSED |
 | Aktif faz | `CURRENT_PHASE=17` | Phase-17 ACTIVE / CLOSURE PENDING |
 | Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
-| Phase-17 kapanisi | `phase17-official-closure` etiketi/manifesti yok | Tum faz icin closure iddiasi kurulamaz |
-| Phase-17.5 | PR #142 `main`e kabul edildi (`0682526d`); PR #144 accepted `main` restack durumundadir | Restack SHA'sı yeni remote kontroller olmadan merge/closure otoritesi taşımaz |
+| Phase-17 kapanisi | `phase17-official-closure` etiketi yok; `reports/phase17_official_closure_candidate/` bu changeset'te aday kayittir | Aday manifest resmi closure iddiasi kurmaz |
+| Phase-17.5 | PR #142 (`0682526d`) ve PR #144 (`156d721e`) `main`e kabul edildi; PR #148 workflow authority onarimi SHA `e0286c7b` ile kabul edildi | Kabul edilen subject SHA icin closure-candidate evidence baglanabilir; resmi tag ayri karardir |
 | Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | PR #144 onceki S2-D head `342deab6`: scoped performance run `26391379459` ve full `ci-freeze` run `26391379462` PASS; accepted-main restack changeset'i yeni-head CI ve closure manifest/tag bekler |
-| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Authorized run `26370359958` kaynakli `gha-ubuntu24-20260518.149.1-X64` renewal adayi PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak resmi closure otoritesi degildir |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | Accepted `main` SHA `e0286c7b`: full `ci-freeze` `26421295459` ve Phase-17 exact-SHA evidence kontrolleri PASS; closure candidate review/tag bekler |
+| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `e0286c7b` uzerinde standalone Performance Gate `26421295487` ve scoped Phase-17 acceptance `26421686338` PASS; bu sonuc resmi closure degildir |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
 ## Bu Degisiklikte Uygulanan Eksikler
@@ -72,6 +72,9 @@
 49. Canli GitHub authority uyumsuzlugu issue #145 ile kaydedildi; ardindan tek-maintainer authority ADR'i, `@kenanay` ownership metadata'si ve canli `main` required `freeze` protection paritesi uygulanarak blokaj giderildi. Bu giderim Phase-17 closure sayilmaz.
 50. `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`, strict zincirdeki iki precondition ve 40 gate/cluster hedefini cost/evidence/overlap siniflariyla kaydetti; Phase-13 composite fan-out'u ve strict disi Phase-17 lanes ayristirildi. Bu belge gate sirasi, runtime veya baseline davranisini degistirmez.
 51. `docs/operations/CONSTITUTIONAL_CI_MODE.md`, `docs/operations/PROVISIONAL_CI_MODE.md`, `docs/operations/PERF_BASELINE_POLICY.md`, `docs/operations/BASELINE_RENEWAL_PROCEDURE.md` ve `docs/operations/POST_MERGE_SMOKE_TEST.md`, current locked-baseline acceptance modeline gore senkronize edildi: provisional yol diagnosis/baseline artifact adayi olarak sinirlanir; artifact import ve smoke PASS merge/closure otoritesi sayilmaz; yalniz reviewed constitutional remote PASS acceptance bileseni olabilir. Bu dokuman senkronu runtime, baseline veya gate target'i degistirmez.
+52. PR #144 `main`e `156d721e` merge commit'iyle kabul edildi; merge sonrasi legacy performance workflow authority uyumsuzlugu fail-closed gorunur oldu ve PR #148 ile workflow locked authority modele hizalanarak kabul edilen `main` SHA `e0286c7b` olustu.
+53. SHA `e0286c7b64c15e27f810e634713a07652def169c` uzerinde full strict `ci-freeze` run `26421295459`, standalone Performance Gate run `26421295487` ve Phase-17 scoped runtime/performance run'lari `26421686302`, `26421686320`, `26421686322`, `26421686303`, `26421686331`, `26421686338` PASS verdi.
+54. `reports/phase17_official_closure_candidate/`, bu exact-SHA uzak kanitlarini bounded claims ve acik limitations ile baglayan inceleme adayidir; `phase17-official-closure` tag'i uretmez, Phase-18'i aktive etmez ve resmi kapanis karari sayilmaz.
 
 Tarihli eski faz snapshot belgelerinde, ratification oncesi `1000-1010` /
 11-syscall anlatimi tarihsel kayit olarak kalabilir; guncel ve normatif
@@ -119,7 +122,7 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 - Authorized renewal artifact PR'a alinmistir ve SHA `f129d4aa` remote locked-baseline PASS vermistir; bu lock kabul adayi olsa da merge ve closure manifest/tag olmadan resmi faz otoritesi tasimaz.
 - PR #144 SHA `f129d4aa` locked acceptance ve full `ci-freeze` PASS vermistir; bu sonuc tek basina merge veya Phase-17 closure otoritesi degildir.
 - Validation-only yollar icin production default, olculen yuzey, owner ve kapanis kosulu `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md` icinde declarative review girdisi olarak kaydedildi.
-- Onceki S2-D head `342deab6`, scoped locked performance run `26391379459` ve full `ci-freeze` run `26391379462` ile remote PASS vermistir; accepted-main restack SHA'si yeni remote kabul gerektirir ve bu PASS'ler closure authority kurmaz.
+- Onceki S2-D head `342deab6` tarihsel remote kanit olarak korunur; kabul edilen `main` SHA `e0286c7b` icin standalone performance `26421295487`, scoped acceptance `26421686338` ve full `ci-freeze` `26421295459` PASS vermistir. Bu PASS'ler closure-candidate girdisidir; resmi tag/closure karari degildir.
 
 ## Bu Degisiklik Icin Yerel Dogrulama
 
@@ -163,6 +166,14 @@ otorite `shared/abi/syscall_v2.h`, `ARCHITECTURE_FREEZE.md` ve bu rapordur.
 | PR #144 run `26391379459` (`342deab6`) | PASS (REMOTE TESTED S2-D HEAD) | CI-mode/baseline authority document sync head'i uzerinde scoped locked-baseline acceptance; restack sonrasi yeniden gerekir |
 | PR #144 run `26391379462` (`342deab6`) | PASS (REMOTE TESTED S2-D HEAD) | CI-mode/baseline authority document sync head'i uzerinde full strict `ci-freeze`; accepted-main restack yeni SHA dogurur |
 | Live GitHub authority alignment (2026-05-25) | RESOLVED (#145) | Tek-maintainer ADR, `@kenanay` accountability metadata'si ve required remote `freeze` protection paritesi kuruldu; closure kurulmaz |
+| Accepted `main` run `26421295459` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Full strict `ci-freeze`; closure-candidate subject ile ayni SHA |
+| Accepted `main` run `26421295487` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Onarilmis standalone Performance Gate locked authority yolu |
+| Accepted `main` run `26421686302` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Marker-enabled QEMU lifecycle evidence |
+| Accepted `main` run `26421686320` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Repeat fingerprint ve invalid-order rejection evidence |
+| Accepted `main` run `26421686322` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Bounded public Ring3 submit/wait evidence |
+| Accepted `main` run `26421686303` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Stub-off bounded fixture completion evidence |
+| Accepted `main` run `26421686331` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Bounded timer IRQ timeout-wins evidence |
+| Accepted `main` run `26421686338` (`e0286c7b`) | PASS (REMOTE SUBJECT) | Scoped locked timer/preemption performance acceptance |
 | `python3 -m py_compile tools/ci/validate_phase17_performance_acceptance.py tools/ci/analyze_phase17_performance_variance.py tools/ci/analyze_phase17_variance_isolation.py` | PASS | PR-4/PR-4A/PR-4B validator/analyzer syntax denetimi |
 | `make clean` + `make all` (2026-05-24) | PASS | Varsayilan build; Ring0 export map 193 symbol, E2E/worker flags default-off |
 | `make ci-gate-governance` | PASS | Evidence isolation, observation boundary, naming compliance ve normative spec purity |
@@ -176,27 +187,29 @@ fail-closed durmustur. Renewal import sonrasi scoped acceptance PASS vermis,
 final `ci-freeze` run `26370646529` low-half `timer_irq` witness gerilemesini
 bulmustur. Bu blocker giderildikten sonra candidate SHA `f129d4aa` icin
 scoped performance run `26370895287` ve full `ci-freeze` run `26370895297`
-PASS vermistir. Bu remote candidate kaniti review/merge veya resmi faz
-kapanisi yerine gecmez.
+PASS vermistir. PR #144 ve ardindan performance authority onarimi PR #148
+birlesmistir; kabul edilen `main` SHA `e0286c7b` uzerinde full freeze,
+standalone performance ve alti Phase-17 scoped evidence run'i tekrar PASS
+vermistir. Bu exact-SHA kanit closure-candidate kaydini destekler; resmi faz
+kapanisi veya tag yerine gecmez.
 
 ABI baseline lock degisikligi freeze kapsaminda tracked olarak yer alir; normal
 baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 
 ## Kapanis Icin Kalan Teknik Kabul
 
-1. PR #144 accepted `main` restack SHA'si icin scoped locked performance ve full `ci-freeze` remote PASS sonucu.
-2. PR #144'un kayitli tek-maintainer karari ve remote evidence ile `main`e kabul degerlendirmesi.
+1. `reports/phase17_official_closure_candidate/` kaydinin bounded claims ve limitations ile reviewed kabulü.
+2. Resmi tag'in aday kayittan farkli bir SHA'ya isaret etmesi halinde ilgili exact-SHA remote evidence kontrollerinin yeniden uretimi.
 3. Genel BCIB interpreter/opcode yuzeyi veya urunlestirilmis Ring3 worker semantic coverage kaniti; PR-2B yalniz bounded literal fixture'i kanitlar.
 4. Gerekiyorsa PR-3'un tek timeout-wins senaryosu disinda broader/exhaustive scheduler-interrupt race ve SMP coverage kaniti.
-5. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; authorized artifact ile giderilen digest drift'i sonrasinda SHA `f129d4aa` locked acceptance ve full `ci-freeze` PASS vermistir. Base veya candidate SHA degisirse ilgili remote kontroller yeniden gerekir.
-6. Bu kanitlara dayali Phase-17 closure manifesti ve resmi kapanis etiketi.
-7. Canonical ABI/baseline senkronizasyonunun clean-tree PR CI ile kabul edilmesi.
+5. PR-4A'nin ortak `sample-6` varyans siniflandirmasi PR-4B bounded local kampanyada yeniden uretilmedi; accepted `main` SHA `e0286c7b` locked performance ve full `ci-freeze` PASS vermistir. Official tag subject degisirse ilgili remote kontroller yeniden gerekir.
+6. Bu kanitlara dayali reviewed resmi Phase-17 closure karar kaydi ve kapanis etiketi.
 
 ## Oncelik Sirasi
 
-**En oncelikli adim:** Issue #145 tek-maintainer authority karariyla giderilmis ve PR #142 `main`e kabul edilmistir. PR #144 onceki S2-D SHA'si uzak PASS uretmis olsa da accepted `main` restack yeni SHA dogurur; bu SHA icin scoped locked performance ve full `ci-freeze` yeniden alinmadan merge veya closure manifest/tag degerlendirmesi yapilamaz. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+**En oncelikli adim:** PR #142/#144/#148 kabul edilmis ve `main` SHA `e0286c7b` icin bounded exact-SHA uzak evidence PASS uretilmistir. Siradaki authority adimi, `reports/phase17_official_closure_candidate/` kaydinin reviewed kabulü ve ancak bundan sonra resmi closure karar/tag degerlendirmesidir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
 
-**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - #145 authority parity giderildi ve PR #142 merged; PR #144 accepted-main restack SHA'si icin remote runtime/locked acceptance/full-freeze, merge ve resmi closure authority pending.
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - #145 authority parity giderildi; PR #142/#144/#148 merged; accepted-main exact-SHA remote evidence PASS; closure-candidate review ve resmi closure/tag authority pending.
 
 ---
 

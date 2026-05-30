@@ -7,12 +7,13 @@ promote a diagnostic lane, change runtime behavior, or grant closure.
 **Status:** S2 OPERATIONAL INVENTORY / REVIEW INPUT
 **Effective date:** 2026-05-25
 **Current phase:** Phase-17 active; formal closure pending
-**Previous remotely tested S2-D head before accepted-main restack:** `342deab6`
-(`ci-gate-phase17-performance-acceptance` run `26391379459` PASS and full
-`ci-freeze` run `26391379462` PASS)
+**Accepted-main evidence subject:** `e0286c7b64c15e27f810e634713a07652def169c`
+(`ci-gate-phase17-performance-acceptance` run `26421686338` PASS and full
+`ci-freeze` run `26421295459` PASS)
 **Authority alignment:** GitHub issue #145 is resolved through the accepted
-single-maintainer decision and matching live `main` protection; PR #144
-restack/new-SHA remote validation remains pending.
+single-maintainer decision and matching live `main` protection; PR #144 and
+workflow authority repair PR #148 are merged. Exact-SHA PASS supports
+closure-candidate review only, not official closure.
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime, evidence,
 merge, baseline, or closure authority.
@@ -150,14 +151,14 @@ These targets produce closure-candidate evidence in separate workflows. They
 must not be presented as strict-chain members merely because their latest
 remote run is green.
 
-| Target | Status at previous tested head `342deab6` | Cost | Proves | Does not prove |
+| Target | Status at accepted subject `e0286c7b` | Cost | Proves | Does not prove |
 |---|---|---:|---|---|
-| `ci-gate-execution-marker-lifecycle` | Remote PASS | `Q1` | One marker-enabled kernel lifecycle. | Public ABI, worker completion or closure. |
-| `ci-gate-execution-marker-determinism` | Remote PASS | `QN` | Repeat fingerprint and invalid-order rejection. | General race/performance or closure. |
-| `ci-gate-execution-public-e2e` | Remote PASS | `Q1` | Public `1003 -> 1004` mapped result path with bounded stub. | Real worker completion. |
-| `ci-gate-execution-worker-completion` | Remote PASS | `Q1` | Bounded fixture public `1003 -> 1011 -> 1004`. | General BCIB interpreter coverage. |
-| `ci-gate-execution-timeout-race` | Remote PASS | `Q1` | One timeout-wins/late-completion rejection interleaving. | Exhaustive or SMP race safety. |
-| `ci-gate-phase17-performance-acceptance` | Remote PASS (`26391379459`) | `QN` | Locked timer/preemption hot-path acceptance. | Validation payload latency or closure alone. |
+| `ci-gate-execution-marker-lifecycle` | Remote PASS (`26421686302`) | `Q1` | One marker-enabled kernel lifecycle. | Public ABI, worker completion or closure. |
+| `ci-gate-execution-marker-determinism` | Remote PASS (`26421686320`) | `QN` | Repeat fingerprint and invalid-order rejection. | General race/performance or closure. |
+| `ci-gate-execution-public-e2e` | Remote PASS (`26421686322`) | `Q1` | Public `1003 -> 1004` mapped result path with bounded stub. | Real worker completion. |
+| `ci-gate-execution-worker-completion` | Remote PASS (`26421686303`) | `Q1` | Bounded fixture public `1003 -> 1011 -> 1004`. | General BCIB interpreter coverage. |
+| `ci-gate-execution-timeout-race` | Remote PASS (`26421686331`) | `Q1` | One timeout-wins/late-completion rejection interleaving. | Exhaustive or SMP race safety. |
+| `ci-gate-phase17-performance-acceptance` | Remote PASS (`26421686338`) | `QN` | Locked timer/preemption hot-path acceptance. | Validation payload latency or closure alone. |
 | `ci-gate-phase17-performance-readiness-local` | Diagnostic only | `QN` | Local median/stability signal. | Remote baseline authority. |
 | `ci-gate-phase17-performance-variance-diagnostic` | Diagnostic only | `S` | Existing-evidence outlier classification. | Root cause or acceptance. |
 | `ci-gate-phase17-performance-variance-isolation` | Diagnostic only | `QN` | Bounded reproduction attempt. | Root cause or acceptance. |
@@ -179,16 +180,17 @@ remote run is green.
 
 1. Preserve issue #145 resolution through the single-maintainer decision,
    `@kenanay` ownership metadata and enforced remote `freeze`.
-2. Preserve the current Phase-17 candidate evidence while PR #144 is
-   restacked onto accepted `main` and revalidated on its new SHA.
+2. Preserve accepted-main exact-SHA Phase-17 evidence through
+   `reports/phase17_official_closure_candidate/`; do not treat it as an
+   official closure record.
 3. In a separate CI-maintenance PR, remove only the duplicated `ci-freeze`
    declaration and demonstrate identical expanded target order.
 4. Measure whether the repeated proofd observability boundary target produces
    duplicated execution/evidence within one strict run.
 5. Convert confirmed duplication into a reviewed consolidation proposal; do
    not remove a verdict merely to reduce run time.
-6. Validate the operational CI-mode synchronization on its restacked
-   documentation head without treating it as Phase-17 closure.
+6. Treat the accepted operational CI-mode synchronization and workflow
+   authority repair as evidence inputs only; neither is Phase-17 closure.
 7. After Phase-17 closure authority is established, decide whether candidate
    S1 workflows remain regression lanes, are promoted, or are retired.
 
@@ -205,8 +207,9 @@ This S2 inventory is complete as a review input when:
    changeset.
 
 It is not a Phase-17 closure manifest. Issue #145 resolution removes the
-former review-configuration blocker only; PR #144 revalidation and closure
-authority remain separate.
+former review-configuration blocker only; PR #144/#148 acceptance and
+exact-SHA evidence now support a closure-candidate record, while official
+closure authority remains separate.
 
 ## References
 
