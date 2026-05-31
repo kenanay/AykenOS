@@ -1,0 +1,57 @@
+{
+  "schema": "ayken-closure-index/1.0",
+  "closure_type": "official_closure_decision_record",
+  "phase": 17,
+  "tag": "phase17-official-closure",
+  "tag_subject_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+  "current_phase_after_closure_record": 17,
+  "next_phase_candidate": 18,
+  "authority": "ARCHITECTURE_FREEZE.md",
+  "closure_state": "OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING",
+  "closure_date_utc": "2026-05-31T14:30:30Z",
+  "remote_ci_confirmation": {
+    "workflow": "ci-freeze",
+    "run_id": "26712333892",
+    "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "result": "PASS",
+    "completed_utc": "2026-05-31T12:23:28Z",
+    "authority": "github-actions ci-freeze"
+  },
+  "required_remote_evidence": {
+    "all_required_runs_passed": true,
+    "evidence_subject_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "runs": [
+      "26712333892",
+      "26715068398",
+      "26712374742",
+      "26712374736",
+      "26712374727",
+      "26712374744",
+      "26712374728",
+      "26712374737"
+    ]
+  },
+  "tag_verification": {
+    "state": "PENDING_REMOTE_TAG_MINT",
+    "required_tag_target": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "verification_rule": "phase17-official-closure must resolve to required_tag_target; otherwise this closure index remains invalid"
+  },
+  "artifacts": {
+    "closure_manifest": {
+      "path": "reports/phase17_official_closure_candidate/closure_manifest.json",
+      "sha256": "1177aaf741444b7dd6f1b69621a1bde89de1bb0d00a03858e9506cd68d50d149"
+    },
+    "evidence_index": {
+      "path": "reports/phase17_official_closure_candidate/evidence_index.json",
+      "sha256": "155198d3b862b0dd6152ee18b4029ff7752d55c4ac78a330ede37f75bcd7978f"
+    },
+    "closure_decision_record": {
+      "path": "reports/phase17_official_closure_candidate/closure_decision_record.json",
+      "sha256": "623600bd4708cf61b76cdf2275b02e573b9d32a5dd0aa3e607ce8d6878d68be9"
+    }
+  },
+  "phase18_activation": "NOT_ACTIVATED_BY_THIS_CLOSURE_INDEX",
+  "integrity_verified": true,
+  "integrity_note": "All required remote evidence passed on the exact intended official tag subject SHA. The tag is still pending; if the tag target changes or is missing, this closure index remains invalid.",
+  "closure_authority_note": "Official closure authority requires the confirmed exact-SHA remote evidence set plus the phase17-official-closure tag resolving to tag_subject_sha. This index does not activate Phase-18 or widen runtime authority."
+}

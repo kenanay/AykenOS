@@ -1,0 +1,111 @@
+{
+  "schema": "ayken-phase17-closure-decision-record/1.0",
+  "phase": 17,
+  "decision_state": "APPROVED_FOR_EXACT_SHA_TAG_MINTING",
+  "closure_state_after_tag": "OFFICIAL_CLOSURE_CONFIRMED",
+  "decision_timestamp_utc": "2026-05-31T14:30:30Z",
+  "decision_authority": {
+    "model": "single_maintainer_authority",
+    "maintainer": "Kenan AY",
+    "authority_boundary": "Maintainer closure decision only; evidence remains remote CI authority and runtime control input is unchanged."
+  },
+  "official_tag": {
+    "name": "phase17-official-closure",
+    "subject_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "minting_rule": "Tag this exact SHA only. If the subject changes, rerun all required exact-SHA remote controls and create a replacement decision record."
+  },
+  "evidence_subject": {
+    "branch": "main",
+    "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "source_pr": "#152",
+    "source_pr_merged_at_utc": "2026-05-31T12:15:07Z"
+  },
+  "remote_evidence": {
+    "verdict": "PASS",
+    "all_required_runs_passed": true,
+    "runs": [
+      {
+        "workflow": "ci-freeze",
+        "run_id": "26712333892",
+        "event": "push",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:23:28Z"
+      },
+      {
+        "workflow": "Performance Gate",
+        "run_id": "26715068398",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T14:19:46Z"
+      },
+      {
+        "workflow": "ci-gate-execution-marker-lifecycle",
+        "run_id": "26712374742",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:16Z"
+      },
+      {
+        "workflow": "ci-gate-execution-marker-determinism",
+        "run_id": "26712374736",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:30Z"
+      },
+      {
+        "workflow": "ci-gate-execution-public-e2e",
+        "run_id": "26712374727",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:03Z"
+      },
+      {
+        "workflow": "ci-gate-execution-worker-completion",
+        "run_id": "26712374744",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:44Z"
+      },
+      {
+        "workflow": "ci-gate-execution-timeout-race",
+        "run_id": "26712374728",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:05Z"
+      },
+      {
+        "workflow": "ci-gate-phase17-performance-acceptance",
+        "run_id": "26712374737",
+        "event": "workflow_dispatch",
+        "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+        "result": "PASS",
+        "completed_at_utc": "2026-05-31T12:18:13Z"
+      }
+    ]
+  },
+  "claims_closed": [
+    "Marker-enabled validation kernel lifecycle executes under QEMU on the official tag subject SHA.",
+    "Repeat result fingerprint and invalid marker-order rejection pass on the official tag subject SHA.",
+    "Public Ring3 submit/wait mapped-result acceptance passes with the bounded validation stub.",
+    "Stub-disabled bounded literal fixture completion passes through public submit, complete, and wait syscalls.",
+    "One bounded timer IRQ timeout-wins interleaving rejects late public completion.",
+    "Locked-baseline timer/preemption performance acceptance and strict ci-freeze pass on the official tag subject SHA."
+  ],
+  "limitations_preserved": [
+    "No Phase-18 activation is granted by this decision record.",
+    "No new syscall, ABI expansion, or runtime control input is introduced.",
+    "General BCIB interpreter/opcode completeness is not established.",
+    "Exhaustive scheduler/interrupt interleaving coverage and SMP safety are not established.",
+    "Validation-only marker instrumentation remains production default-off.",
+    "AI semantic determinism and wider inline-verification authority are not established."
+  ],
+  "next_required_action": "mint_and_verify_phase17_official_closure_tag_at_exact_subject_sha",
+  "phase18_activation": "NOT_ACTIVATED_BY_THIS_RECORD"
+}
