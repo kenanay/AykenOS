@@ -67,6 +67,38 @@ def validate_index_artifact(
         fail(f"closure-index artifact digest mismatch: {artifact_key}")
 
 
+def validate_decision_evidence(
+    decision: dict, index_workflows: dict[str, dict], subject_sha: str
+) -> None:
+    evidence_subject = decision.get("evidence_subject", {})
+    if evidence_subject.get("head_sha") != subject_sha:
+        fail("decision evidence subject SHA mismatch")
+    remote_evidence = decision.get("remote_evidence", {})
+    if remote_evidence.get("verdict") != "PASS":
+        fail("decision remote evidence verdict is not PASS")
+    if remote_evidence.get("all_required_runs_passed") is not True:
+        fail("decision remote evidence is not all-pass")
+
+    decision_workflows = {}
+    for run in remote_evidence.get("runs", []):
+        name = run.get("workflow")
+        if name in decision_workflows:
+            fail(f"duplicate decision evidence workflow: {name}")
+        decision_workflows[name] = run
+
+    if set(decision_workflows) != set(index_workflows):
+        missing = sorted(set(index_workflows) - set(decision_workflows))
+        extra = sorted(set(decision_workflows) - set(index_workflows))
+        fail(f"decision evidence workflow mismatch; missing={missing} extra={extra}")
+
+    comparable_fields = ("run_id", "event", "head_sha", "result", "completed_at_utc")
+    for name, decision_run in decision_workflows.items():
+        index_run = index_workflows[name]
+        for field in comparable_fields:
+            if decision_run.get(field) != index_run.get(field):
+                fail(f"decision evidence mismatch for {name}.{field}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -140,6 +172,7 @@ def main() -> int:
             fail("decision record state does not match closure state")
         if tag.get("subject_sha") != subject_sha:
             fail("decision tag subject does not match candidate subject")
+        validate_decision_evidence(decision, workflows, subject_sha)
         if closure_index.get("closure_state") != state:
             fail("closure index state does not match manifest")
         if closure_index.get("tag_subject_sha") != subject_sha:
