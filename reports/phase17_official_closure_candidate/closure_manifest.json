@@ -3,20 +3,30 @@
   "phase": 17,
   "closure_class": "official_closure_candidate",
   "closure_state": "REMOTE_EVIDENCE_READY_REVIEW_PENDING",
-  "generated_at_utc": "2026-05-25T22:12:18Z",
+  "generated_at_utc": "2026-05-31T11:56:26Z",
   "current_phase_pointer": "17",
   "recommended_tag": "phase17-official-closure",
   "authority_boundary": "Candidate record only; not official closure, merge authority, or runtime control input.",
   "candidate_subject": {
     "branch": "main",
-    "commit_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+    "commit_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
     "accepted_history": [
       "PR #144 merge commit 156d721e02e89041b93bfb8738b0e30ec72b3454",
-      "PR #148 performance authority workflow repair accepted at e0286c7b64c15e27f810e634713a07652def169c"
+      "PR #148 performance authority workflow repair accepted at e0286c7b64c15e27f810e634713a07652def169c",
+      "PR #149 closure-candidate evidence record accepted at ee1aa4afe55eeec4a4b662802a26f1ef26e79463",
+      "PR #151 locked performance baseline renewal accepted at 8cc772a4474407262a81c5b3678926d51f9099f9",
+      "PR #150 ci-freeze prerequisite dedup accepted at 7a42d312581b7eacf3a9fbb79b11704e4c5914a3"
     ]
   },
+  "exact_sha_refresh": {
+    "previous_candidate_subject_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+    "refreshed_candidate_subject_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
+    "reason": "Accepted main advanced after the initial closure-candidate package; all required remote controls were rerun or confirmed on the refreshed subject before closure review.",
+    "remote_evidence_state": "ALL_REQUIRED_REMOTE_RUNS_PASS",
+    "authority_boundary": "Exact-SHA evidence refresh only; not official closure, tag authority, phase transition, or runtime control input."
+  },
   "evidence_index_path": "reports/phase17_official_closure_candidate/evidence_index.json",
-  "evidence_index_sha256": "2979c01d6bff38357e17d5cc1abc8ae617bbdecc256d26f53b78283be72c2a59",
+  "evidence_index_sha256": "2d80384d99552ed1b0be5bc400d624d16b4eff97f186d34996501a93469d62f8",
   "required_remote_evidence": {
     "all_required_runs_passed": true,
     "required_workflows": [

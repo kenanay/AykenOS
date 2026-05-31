@@ -1,101 +1,101 @@
 {
   "schema": "ayken-phase17-remote-evidence-index/1.0",
   "phase": 17,
-  "generated_at_utc": "2026-05-25T22:12:18Z",
+  "generated_at_utc": "2026-05-31T11:56:26Z",
   "evidence_subject": {
     "branch": "main",
-    "head_sha": "e0286c7b64c15e27f810e634713a07652def169c"
+    "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3"
   },
   "authority_status": "REMOTE_EVIDENCE_READY_REVIEW_PENDING",
   "all_required_remote_runs_passed": true,
   "runs": [
     {
       "workflow": "ci-freeze",
-      "run_id": "26421295459",
+      "run_id": "26697843452",
       "event": "push",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:02:20Z",
+      "completed_at_utc": "2026-05-30T23:39:56Z",
       "artifacts": [
-        "performance-evidence-26421295459-1",
-        "spec-validation-evidence-26421295459"
+        "performance-evidence-26697843452-1",
+        "spec-validation-evidence-26697843452"
       ]
     },
     {
       "workflow": "Performance Gate",
-      "run_id": "26421295487",
+      "run_id": "26697843425",
       "event": "push",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T21:56:03Z",
+      "completed_at_utc": "2026-05-30T23:33:11Z",
       "artifacts": [
-        "performance-gate-26421295487"
+        "performance-gate-26697843425"
       ]
     },
     {
       "workflow": "ci-gate-execution-marker-lifecycle",
-      "run_id": "26421686302",
+      "run_id": "26711867223",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:17Z",
+      "completed_at_utc": "2026-05-31T11:54:11Z",
       "artifacts": [
-        "ci-gate-execution-marker-lifecycle-26421686302"
+        "ci-gate-execution-marker-lifecycle-26711867223"
       ]
     },
     {
       "workflow": "ci-gate-execution-marker-determinism",
-      "run_id": "26421686320",
+      "run_id": "26711867206",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:40Z",
+      "completed_at_utc": "2026-05-31T11:54:35Z",
       "artifacts": [
-        "ci-gate-execution-marker-determinism-26421686320"
+        "ci-gate-execution-marker-determinism-26711867206"
       ]
     },
     {
       "workflow": "ci-gate-execution-public-e2e",
-      "run_id": "26421686322",
+      "run_id": "26711867207",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:26Z",
+      "completed_at_utc": "2026-05-31T11:54:35Z",
       "artifacts": [
-        "ci-gate-execution-public-e2e-26421686322"
+        "ci-gate-execution-public-e2e-26711867207"
       ]
     },
     {
       "workflow": "ci-gate-execution-worker-completion",
-      "run_id": "26421686303",
+      "run_id": "26711867217",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:16Z",
+      "completed_at_utc": "2026-05-31T11:54:22Z",
       "artifacts": [
-        "ci-gate-execution-worker-completion-26421686303"
+        "ci-gate-execution-worker-completion-26711867217"
       ]
     },
     {
       "workflow": "ci-gate-execution-timeout-race",
-      "run_id": "26421686331",
+      "run_id": "26711867212",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:24Z",
+      "completed_at_utc": "2026-05-31T11:54:10Z",
       "artifacts": [
-        "ci-gate-execution-timeout-race-26421686331"
+        "ci-gate-execution-timeout-race-26711867212"
       ]
     },
     {
       "workflow": "ci-gate-phase17-performance-acceptance",
-      "run_id": "26421686338",
+      "run_id": "26711867203",
       "event": "workflow_dispatch",
-      "head_sha": "e0286c7b64c15e27f810e634713a07652def169c",
+      "head_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
       "result": "PASS",
-      "completed_at_utc": "2026-05-25T22:09:37Z",
+      "completed_at_utc": "2026-05-31T11:54:27Z",
       "artifacts": [
-        "ci-gate-phase17-performance-acceptance-26421686338"
+        "ci-gate-phase17-performance-acceptance-26711867203"
       ]
     }
   ]
