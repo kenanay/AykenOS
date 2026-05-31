@@ -22,15 +22,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
 **Remote CI (Phase-15):** `ci-freeze#24213727039 = success` (PR #104) | tag `phase15-official-closure`
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
-**CURRENT_PHASE:** `17` (`Phase-16 OFFICIALLY CLOSED`; Phase-17 resmi closure decision/tag adımı yürütülüyor)
+**CURRENT_PHASE:** `17` (`Phase-17 OFFICIALLY CLOSED`; Phase-18 ayrı transition olmadan aktif değildir)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
-**Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150 ve PR #152 birleşti. Closure decision exact-SHA kanıtı güncel `main` SHA `416a5392` üzerinde yenilendi ve gerekli uzak acceptance kontrolleri PASS verdi
-**Yakın Hedef:** `reports/phase17_official_closure_candidate/` karar kaydını inceleyip, `phase17-official-closure` tag'ini yalnız `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` hedefinde mint/verify etmek
+**Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150 ve PR #152 birleşti. Closure exact-SHA kanıtı `main` SHA `416a5392` üzerinde yenilendi, gerekli uzak acceptance kontrolleri PASS verdi ve `phase17-official-closure` tag'i aynı SHA'ya doğrulandı
+**Yakın Hedef:** `reports/phase17_official_closure_candidate/` official closure kaydını merge etmek; Phase-18'i yalnız ayrı transition kararıyla değerlendirmek
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
-**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 ACTIVE / OFFICIAL CLOSURE DECISION READY, TAG PENDING 🔄 | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 ROADMAP ONLY
+**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 ROADMAP ONLY
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-16 kapanış kayıtları mevcut ✅ | Phase 16 Verification Layer MVP OFFICIALLY CLOSED ✅ (2026-04-25) | CURRENT_PHASE=17 🔄 | Phase-17 Step 5 marker guard merged (PR #134) ✅ | Phase-17 resmi kapanış kararı tag-pending 🔄 | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-17 kapanış kayıtları mevcut ✅ | Phase 17 Execution Pipeline OFFICIALLY CLOSED ✅ (2026-05-31) | CURRENT_PHASE=17 🔄 | Phase-18 ayrı transition olmadan aktif değil 🔒 | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
@@ -39,10 +39,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 14 Status:** OFFICIALLY CLOSED ✅ | all 5 workstreams merged | `obs-cli` consumer crate complete | Phase-14 observability invariants preserved
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
-**Phase 17 Status:** ACTIVE / OFFICIAL CLOSURE DECISION READY, TAG PENDING 🔄 | Güncel accepted `main` SHA `416a5392` üzerinde full `ci-freeze` (`26712333892`), locked performance (`26715068398`, `26712374737`) ve Phase-17 QEMU evidence lanes (`26712374742`, `26712374736`, `26712374727`, `26712374744`, `26712374728`) PASS | `reports/phase17_official_closure_candidate/` decision package'tır; resmi tag henüz doğrulanmamıştır
-**Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure ve runtime acceptance kurulmadan aktif faz sayılmaz
+**Phase 17 Status:** OFFICIALLY CLOSED ✅ | tag `phase17-official-closure` at `416a5392` | full `ci-freeze` (`26712333892`), locked performance (`26715068398`, `26712374737`) ve Phase-17 QEMU evidence lanes (`26712374742`, `26712374736`, `26712374727`, `26712374744`, `26712374728`) PASS | `reports/phase17_official_closure_candidate/`
+**Phase 18 Status:** ROADMAP ONLY | Phase-17 resmi closure kurulmuştur; Phase-18 yine ayrı transition olmadan aktif faz sayılmaz
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; closure decision kaydı hazırdır ve resmi tag doğrulaması ayrıdır
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | stabilization-first; accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 ayrı transition gerektirir
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
@@ -52,12 +52,12 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 ## Phase Status
 
 - **Current Phase:** `17`
-- **Status:** `ACTIVE / OFFICIAL CLOSURE DECISION READY, TAG PENDING`
-- **Last Official Closure:** `16` (Verification Layer MVP, 2026-04-25)
+- **Status:** `OFFICIALLY CLOSED / PHASE-18 TRANSITION NOT ACTIVATED`
+- **Last Official Closure:** `17` (Execution Pipeline, 2026-05-31)
 - **Candidate Next Phase:** `18` (Full Kernel Runtime Validation; roadmap only)
 - **Verification Layer:** `COMPLETE` (MVP delivered 2026-04-25)
-- **Closure Index:** `reports/phase15_official_closure/closure_index.json`
-- **Phase-17 Authority Note:** Step-level merge is not an official phase closure; official closure requires `phase17-official-closure` to resolve to the reviewed exact-SHA evidence subject.
+- **Closure Index:** `reports/phase17_official_closure_candidate/closure_index.json`
+- **Phase-17 Authority Note:** `phase17-official-closure` resolves to the reviewed exact-SHA evidence subject; Phase-18 activation still requires a separate transition decision.
 
 ## 🎯 Latest Breakthrough (2026-04-24)
 
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** `reports/phase17_official_closure_candidate/` decision package'ını review etmek; `phase17-official-closure` tag'i yalnız exact subject SHA `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` üzerinde değerlendirilebilir
+**Next Focus:** `reports/phase17_official_closure_candidate/` official closure package'ını merge etmek; Phase-18 transition ayrı ve fail-closed değerlendirilecektir
 
 ## Authority Model
 
@@ -362,7 +362,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 31 Mayıs 2026 - Phase-16 resmi kapanış otoritesi korunur; CURRENT_PHASE=17; issue #145 çözüldü; PR #142/#144/#148/#149/#151/#150/#152 kabul edildi; `main` SHA `416a5392` üzerinde bounded Phase-17 uzak evidence ve strict freeze PASS verdi; closure decision exact-SHA kaydı hazırdır fakat resmi closure tag doğrulaması halen beklenmektedir; Phase-18 yalnızca yol haritasıdır.
+**Son Güncelleme:** 31 Mayıs 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=17; issue #145 çözüldü; PR #142/#144/#148/#149/#151/#150/#152 kabul edildi; bounded Phase-17 uzak evidence ve strict freeze PASS verdi; Phase-18 yalnızca yol haritasıdır ve ayrı transition olmadan aktif değildir.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

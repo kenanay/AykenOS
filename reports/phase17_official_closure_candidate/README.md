@@ -1,16 +1,17 @@
-# Phase-17 Official Closure Decision Candidate
+# Phase-17 Official Closure
 
-**State:** `OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING`
-**Generated at UTC:** `2026-05-31T14:30:30Z`
+**State:** `OFFICIAL_CLOSURE_CONFIRMED`
+**Generated at UTC:** `2026-05-31T14:53:53Z`
 **Evidence subject:** accepted `main` SHA
 `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`
-**Required tag target:** `phase17-official-closure` ->
+**Verified tag target:** `phase17-official-closure` ->
 `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`
 
-This directory is now the decision candidate for Phase-17 official closure
-tag minting. It binds bounded Phase-17 claims to remote PASS evidence
-produced on one accepted `main` SHA. It does not grant merge authority,
-activate Phase-18, or widen runtime authority.
+This directory records the Phase-17 official closure decision. It binds
+bounded Phase-17 claims to remote PASS evidence produced on one accepted
+`main` SHA and to the verified `phase17-official-closure` tag at that same
+SHA. It does not grant merge authority, activate Phase-18, or widen runtime
+authority.
 
 The initial candidate subject was
 `e0286c7b64c15e27f810e634713a07652def169c`. After later accepted `main`
@@ -19,8 +20,8 @@ changes, the intended review subject advanced to
 candidate package and merged on `main`, advancing the accepted closure-decision
 subject to `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`. The required
 exact-SHA remote controls were rerun or confirmed on that subject before tag
-review. This package remains tag-pending until `phase17-official-closure`
-is minted and verified at exactly that SHA.
+review. `phase17-official-closure` was then minted and verified at exactly
+that SHA.
 
 ## Bound Evidence
 
@@ -58,11 +59,8 @@ are recorded in `evidence_index.json`.
 
 ## Remaining Authority Steps
 
-1. Review and merge this decision package without widening its claims.
-2. Mint `phase17-official-closure` only at
-   `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`.
-3. Verify the remote tag target exactly matches that SHA.
-4. Keep Phase-18 blocked until a separate transition decision.
+1. Merge this official closure package without widening its claims.
+2. Keep Phase-18 blocked until a separate transition decision.
 
 ---
 

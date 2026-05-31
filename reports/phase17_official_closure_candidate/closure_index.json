@@ -1,14 +1,14 @@
 {
   "schema": "ayken-closure-index/1.0",
-  "closure_type": "official_closure_decision_record",
+  "closure_type": "official_closure",
   "phase": 17,
   "tag": "phase17-official-closure",
   "tag_subject_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
   "current_phase_after_closure_record": 17,
   "next_phase_candidate": 18,
   "authority": "ARCHITECTURE_FREEZE.md",
-  "closure_state": "OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING",
-  "closure_date_utc": "2026-05-31T14:30:30Z",
+  "closure_state": "OFFICIAL_CLOSURE_CONFIRMED",
+  "closure_date_utc": "2026-05-31T14:53:53Z",
   "remote_ci_confirmation": {
     "workflow": "ci-freeze",
     "run_id": "26712333892",
@@ -32,26 +32,29 @@
     ]
   },
   "tag_verification": {
-    "state": "PENDING_REMOTE_TAG_MINT",
+    "state": "VERIFIED_REMOTE_TAG_TARGET",
     "required_tag_target": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
-    "verification_rule": "phase17-official-closure must resolve to required_tag_target; otherwise this closure index remains invalid"
+    "verified_tag_object_sha": "ab6af0a99d90e84ffced82f084ff0b7a8503e0c7",
+    "verified_target_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "verified_at_utc": "2026-05-31T14:53:53Z",
+    "verification_rule": "phase17-official-closure must resolve to required_tag_target; otherwise this closure index is invalid"
   },
   "artifacts": {
     "closure_manifest": {
       "path": "reports/phase17_official_closure_candidate/closure_manifest.json",
-      "sha256": "1177aaf741444b7dd6f1b69621a1bde89de1bb0d00a03858e9506cd68d50d149"
+      "sha256": "9640cf6b72869b7dcdd4cfe77a222a6a1aafa05847ea6f2b36a3a7504aafb1a9"
     },
     "evidence_index": {
       "path": "reports/phase17_official_closure_candidate/evidence_index.json",
-      "sha256": "155198d3b862b0dd6152ee18b4029ff7752d55c4ac78a330ede37f75bcd7978f"
+      "sha256": "dbc8f1856a36ec3423b60f63611cf761e2dd056f92bfcd3a21f301df485b0548"
     },
     "closure_decision_record": {
       "path": "reports/phase17_official_closure_candidate/closure_decision_record.json",
-      "sha256": "623600bd4708cf61b76cdf2275b02e573b9d32a5dd0aa3e607ce8d6878d68be9"
+      "sha256": "8bf360315ce8459395964d807a018b2e722f70d838addf62b61497294b705cf8"
     }
   },
   "phase18_activation": "NOT_ACTIVATED_BY_THIS_CLOSURE_INDEX",
   "integrity_verified": true,
-  "integrity_note": "All required remote evidence passed on the exact intended official tag subject SHA. The tag is still pending; if the tag target changes or is missing, this closure index remains invalid.",
-  "closure_authority_note": "Official closure authority requires the confirmed exact-SHA remote evidence set plus the phase17-official-closure tag resolving to tag_subject_sha. This index does not activate Phase-18 or widen runtime authority."
+  "integrity_note": "All required remote evidence passed on the exact official tag subject SHA, and the remote phase17-official-closure tag resolves to tag_subject_sha.",
+  "closure_authority_note": "Official closure authority is the confirmed exact-SHA remote evidence set plus the phase17-official-closure tag resolving to tag_subject_sha. This index does not activate Phase-18 or widen runtime authority."
 }

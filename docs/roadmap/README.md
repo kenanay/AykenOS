@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-05-31 (Phase-17 closure decision exact-SHA evidence refresh)
+**Last authority sync:** 2026-05-31 (Phase-17 official closure tag verification)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -24,22 +24,21 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 
 | Konu | Durum |
 |---|---|
-| Son resmi kapanis | Phase-16 OFFICIALLY CLOSED (`phase16-official-closure`) |
-| Aktif faz | Phase-17 ACTIVE / OFFICIAL CLOSURE DECISION READY, TAG PENDING |
-| Aktif odak | Stabilization-first Phase-17 acceptance evidence accepted on `main`; closure decision exact-SHA evidence refreshed on `416a5392`; official closure tag verification still pending |
+| Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
+| Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
+| Aktif odak | Stabilization-first Phase-17 acceptance evidence accepted on `main`; official closure tag verified on `416a5392`; Phase-18 remains roadmap only |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ROADMAP ONLY; Phase-17 closure olmadan aktivasyon yok |
 
 ## Active Execution Rule
 
-Phase-17 resmi kapanis tag'i uretilip dogrulanana kadar production roadmap'e
+Phase-17 resmi kapanis tag'i `416a5392` uzerinde uretilip dogrulanmistir.
+Phase-18 icin ayri transition karari uretilene kadar production roadmap'e
 yeni syscall, yeni platform feature'i, authority-genisleten observability veya
 AI orchestration isi alinmaz. Bounded runtime/QEMU lanes, strict `ci-freeze`,
 standalone locked Performance Gate ve scoped Phase-17 performance acceptance
-accepted `main` SHA `416a5392` uzerinde PASS vermistir. Bu evidence seti
-`reports/phase17_official_closure_candidate/` altinda decision package
-girdisidir; tag dogrulanana kadar Phase-18 activation veya genis BCIB
-semantic/race/SMP kapsami kurmaz.
+accepted `main` SHA `416a5392` uzerinde PASS vermistir. Bu closure, Phase-18
+activation veya genis BCIB semantic/race/SMP kapsami kurmaz.
 
 ## Historical References
 
@@ -54,8 +53,6 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** `reports/phase17_official_closure_candidate/` exact-SHA
-decision package'ini review etmek; `phase17-official-closure` tag'i yalniz
-`416a5392afbe217e16d26a59e2e1716fdfa9c8f6` subject SHA uzerinde mint/verify
-edilir. Subject SHA degisirse required remote controls yeniden ayni exact-SHA
-uzerinde calistirilir.
+**Next action:** `reports/phase17_official_closure_candidate/` official
+closure package'ini merge etmek; Phase-18 transition ayrica ve fail-closed
+degerlendirilir.

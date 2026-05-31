@@ -6,7 +6,7 @@
     "branch": "main",
     "head_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6"
   },
-  "authority_status": "OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING",
+  "authority_status": "OFFICIAL_CLOSURE_CONFIRMED",
   "all_required_remote_runs_passed": true,
   "runs": [
     {

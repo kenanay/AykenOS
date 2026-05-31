@@ -5,8 +5,8 @@ the freeze contract prevails.
 
 **Status:** ACTIVE EXECUTION ROADMAP
 **Effective date:** 2026-05-23
-**Current phase authority:** `CURRENT_PHASE=17` (active; formal closure pending)
-**Last official closure:** Phase-16 (`phase16-official-closure`)
+**Current phase authority:** `CURRENT_PHASE=17` (Phase-17 officially closed; Phase-18 transition not activated)
+**Last official closure:** Phase-17 (`phase17-official-closure` at `416a5392`)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif dokumantasyon metadata'sidir; runtime
 karari, evidence verdict'i veya merge yetkisi degildir.
@@ -83,13 +83,13 @@ Phase-17 kapanis kapisini asamaz.
 
 | Konu | Durum | Sonuc |
 |---|---|---|
-| Resmi kapanis otoritesi | Phase-16 son resmi kapanis | Phase-17 closure iddiasi yok |
-| Aktif calisma | Phase-17 execution pipeline | Accepted-main bounded acceptance kaniti mevcut; official closure decision hazir, tag dogrulamasi eksik |
-| Marker guard | Step 5 ve stacked runtime paketi PR #144 ile merge; closure decision exact-SHA refresh PR #152 sonrasi accepted `main` SHA `416a5392` uzerinde yapildi | Lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race exact-SHA remote PASS |
+| Resmi kapanis otoritesi | Phase-17 son resmi kapanis | `phase17-official-closure` tag'i `416a5392` uzerinde dogrulandi |
+| Aktif calisma | Phase-17 execution pipeline | Accepted-main bounded acceptance kaniti mevcut; official closure confirmed, Phase-18 transition ayridir |
+| Marker guard | Step 5 ve stacked runtime paketi PR #144 ile merge; official closure exact-SHA refresh PR #152 sonrasi accepted `main` SHA `416a5392` uzerinde yapildi | Lifecycle, determinism/negative, public S1.E2E, stub-off fixture completion ve IRQ timeout-race exact-SHA remote PASS |
 | ABI | 12 syscall lock ratified; canonical version drift giderildi | Accepted main strict `ci-freeze` run `26712333892` PASS; ABI genisleme yok |
 | Governance | Spec-purity, fail-closed marker isolation, validation matrix ve S2 inventory kabul edildi | #145 tek-maintainer authority paritesiyle giderildi; closure yine ayrik reviewed karardir |
 | Review enforcement | `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` required `freeze` protection'i tek-maintainer ADR'iyle hizalandi | Issue #145 RESOLVED; bagimsiz self-review iddiasi veya closure yetkisi kurulmaz |
-| Performance stability | PR-4 local readiness FAIL tarihsel kayit; PR-4A/PR-4B diagnostic; governed renewal ve workflow authority repair accepted | Accepted `main` SHA `416a5392`: Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; tag dogrulamasi beklenir |
+| Performance stability | PR-4 local readiness FAIL tarihsel kayit; PR-4A/PR-4B diagnostic; governed renewal ve workflow authority repair accepted | Accepted `main` SHA `416a5392`: Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; official tag dogrulandi |
 | Phase-18 | Roadmap only | Baslatilmaz |
 
 ## 4. Stratejik Karar: Stabilization-First
@@ -142,7 +142,7 @@ otoritesindeki drift'i kapatmak.
 
 | Is | Durum | Kabul |
 |---|---|---|
-| Current phase/closure truth sync | Uygulandi | Phase-16 last closure, Phase-17 active/pending |
+| Current phase/closure truth sync | Uygulandi | Phase-17 official closure confirmed; Phase-18 transition pending |
 | Canonical ABI source/version sync | Uygulandi | `1000-1011` / 12 ve `0x00010001` generated parity |
 | ABI gate canonical input hardening | Uygulandi | Gate `shared/abi` build inputs'u parse/hash eder |
 | Marker isolation fail-closed fix | Uygulandi | Default-off, test-only injection, logical tick PASS |
@@ -157,7 +157,7 @@ var olan ratified yuzeyleri ve guard'lari tutarli hale getirir.
 
 ### S1 - Phase-17 Runtime Acceptance
 
-**Status:** ACCEPTED-MAIN SHA `416a5392` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / CLOSURE DECISION READY / TAG PENDING
+**Status:** ACCEPTED-MAIN SHA `416a5392` REMOTE RUNTIME/LOCKED PERFORMANCE/FULL FREEZE PASS / OFFICIAL CLOSURE CONFIRMED / PHASE-18 TRANSITION NOT ACTIVATED
 **Purpose:** Marker validation'in gercek kernel execution-slot yasam
 dongusunde calistigini kanitlamak.
 
@@ -247,8 +247,8 @@ uzerinde full `ci-freeze` `26712333892`, standalone Performance Gate
 `26715068398` ve Phase-17 scoped locked acceptance `26712374737` PASS
 vermistir. Runtime-specific exact-SHA QEMU runs `26712374742`, `26712374736`,
 `26712374727`, `26712374744` ve `26712374728` de PASS'tir. Bu bagli evidence
-resmi closure tag'i degil, `reports/phase17_official_closure_candidate/`
-decision package girdisidir.
+resmi closure tag'iyle bagli `reports/phase17_official_closure_candidate/`
+official closure girdisidir. Phase-18 transition ayridir.
 `ci-gate-phase17-performance-variance-diagnostic`, mevcut local evidence'i
 yeniden olcum yapmadan okur. Ilk PASS stability run'i ile repeat FAIL run'ini
 karsilastirir, ortak outlier/fingerprint kaydi uretir ve upstream FAIL
@@ -359,7 +359,7 @@ nondeterministic verification verdict'i uretmez.
 | PR #148 | MERGED (`e0286c7b`) / POST-MERGE PASS | Standalone Performance Gate workflow'unu locked authority modeliyle hizalamak | Workflow only; runtime/threshold degisikligi yok | Performance `26421295487`, freeze `26421295459` PASS |
 | PR #149/#151/#150 | MERGED (`7a42d312`) / EXACT-SHA REFRESHED | Closure-candidate record, governed baseline renewal ve ci-freeze prerequisite dedup | Candidate package, performance authority and CI prerequisite wiring | Historical refresh subject `7a42d312`; official tag ayridir |
 | PR #152 | MERGED (`416a5392`) / EXACT-SHA REFRESHED | Closure-candidate record'u accepted main subject'e yenilemek | Candidate manifest/index ve status docs | Refresh subject `416a5392`; official tag ayridir |
-| Closure decision package (bu changeset) | DECISION READY / TAG PENDING | Exact-SHA PASS kanitlarini official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + tag target verification; Phase-18 ayridir |
+| Closure decision package (bu changeset) | OFFICIAL CLOSURE CONFIRMED / PHASE-18 NOT ACTIVATED | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 ayridir |
 
 PR koordinasyon kurallari:
 
@@ -369,9 +369,10 @@ PR koordinasyon kurallari:
 - PR #144 icindeki stacked uygulama sirasi tamamlanmis, PR #148 workflow
   authority onarimi da `main`e kabul edilmistir. Bu merge'ler resmi
   Phase-17 closure veya tag yerine gecmez.
-- Closure decision package, accepted subject SHA `416a5392` evidence'ini
-  baglar; official tag farkli bir commit'e hedeflenirse ilgili remote checks
-  ayni subject icin yeniden calistirilir.
+- Closure decision package, accepted subject SHA `416a5392` evidence'ini ve
+  `phase17-official-closure` tag target'ini baglar; tag farkli bir commit'e
+  hedeflenirse closure index invalid olur ve ilgili remote checks ayni subject
+  icin yeniden calistirilir.
 - PR-4A, PR-4 local readiness FAIL'i inceleyen diagnostics-only pakettir;
   PR-4 remote acceptance oncesi kok neden ayrimini ilerletir, ancak remote
   merge sirasina yeni authority veya baseline kabul adimi eklemez.
@@ -410,8 +411,9 @@ PR koordinasyon kurallari:
 
 **Started work:**
 
-- Authority truth `CURRENT_PHASE=17` ve Phase-17 closure-pending olarak
-  duzeltildi.
+- Authority truth `CURRENT_PHASE=17` icin once Phase-17 pending durumu
+  duzeltildi; 2026-05-31'de Phase-17 official closure confirmed oldu,
+  Phase-18 transition ayrik tutuldu.
 - Canonical syscall/ABI parity `1000-1011` / 12 ve `0x00010001` olarak
   senkronize edildi.
 - ABI ve constitutional gate'ler canonical `shared/abi` girdilerine baglandi.
@@ -992,7 +994,7 @@ decision record ve `phase17-official-closure` tag'i, subject degismedigi
 dogrulanarak ayrica reviewed karar sonrasinda uretilir; subject degisirse
 exact-SHA remote controls yeniden calistirilir.
 
-### 2026-05-31 - Official Closure Decision Ready, Tag Pending
+### 2026-05-31 - Official Closure Confirmed
 
 **Completed decision preparation actions:**
 
@@ -1004,14 +1006,15 @@ exact-SHA remote controls yeniden calistirilir.
   determinism/negative `26712374736`, public E2E `26712374727`, bounded
   worker completion `26712374744`, timeout-race `26712374728` ve scoped
   locked performance acceptance `26712374737` PASS verdi.
+- `phase17-official-closure` annotated tag'i
+  `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` subject SHA uzerinde mint
+  edilip remote GitHub API ile ayni target'a dogrulandi.
 - `reports/phase17_official_closure_candidate/` decision record ve closure
-  index girdileriyle tag-pending official closure karar paketine yukseltildi.
+  index girdileriyle official closure paketine yukseltildi.
 
-**Authority boundary:** Bu decision package Phase-18'i aktif etmez.
-`phase17-official-closure` tag'i yalniz
-`416a5392afbe217e16d26a59e2e1716fdfa9c8f6` uzerinde mint/verify edilirse
-official closure kurulabilir; subject degisirse exact-SHA remote controls
-yeniden calistirilir.
+**Authority boundary:** Bu official closure Phase-18'i aktif etmez.
+Phase-18 transition, yeni syscall/runtime authority veya genis BCIB
+semantic/race/SMP kapsami icin ayri reviewed karar gerekir.
 
 ## 10. Review Triggers
 

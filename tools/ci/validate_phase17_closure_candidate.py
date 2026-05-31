@@ -12,7 +12,8 @@ import sys
 
 REVIEW_PENDING_STATE = "REMOTE_EVIDENCE_READY_REVIEW_PENDING"
 DECISION_READY_STATE = "OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING"
-ALLOWED_STATES = {REVIEW_PENDING_STATE, DECISION_READY_STATE}
+CONFIRMED_STATE = "OFFICIAL_CLOSURE_CONFIRMED"
+ALLOWED_STATES = {REVIEW_PENDING_STATE, DECISION_READY_STATE, CONFIRMED_STATE}
 REQUIRED_WORKFLOWS = {
     "ci-freeze",
     "Performance Gate",
@@ -82,12 +83,18 @@ def main() -> int:
     manifest = read_json(manifest_path)
     index = read_json(index_path)
 
-    if manifest.get("closure_class") != "official_closure_candidate":
-        fail("manifest is not candidate-class")
+    closure_class = manifest.get("closure_class")
     state = manifest.get("closure_state")
     if state not in ALLOWED_STATES:
         fail("candidate state is not supported")
-    if manifest.get("phase18_activation") != "BLOCKED_UNTIL_OFFICIAL_CLOSURE":
+    if state == CONFIRMED_STATE:
+        if closure_class != "official_closure":
+            fail("confirmed manifest is not official-closure class")
+        if manifest.get("phase18_activation") != "BLOCKED_UNTIL_SEPARATE_TRANSITION_DECISION":
+            fail("Phase-18 boundary is not transition-blocked")
+    elif closure_class != "official_closure_candidate":
+        fail("manifest is not candidate-class")
+    elif manifest.get("phase18_activation") != "BLOCKED_UNTIL_OFFICIAL_CLOSURE":
         fail("Phase-18 boundary is not fail-closed")
 
     subject_sha = manifest.get("candidate_subject", {}).get("commit_sha")
@@ -118,25 +125,40 @@ def main() -> int:
     validate_sidecar(candidate_dir, "closure_manifest.json", "closure_manifest.sha256")
     validate_sidecar(candidate_dir, "evidence_index.json", "evidence_index.sha256")
 
-    if state == DECISION_READY_STATE:
+    if state in {DECISION_READY_STATE, CONFIRMED_STATE}:
         decision_path = candidate_dir / "closure_decision_record.json"
         closure_index_path = candidate_dir / "closure_index.json"
         decision = read_json(decision_path)
         closure_index = read_json(closure_index_path)
         tag = decision.get("official_tag", {})
-        if decision.get("decision_state") != "APPROVED_FOR_EXACT_SHA_TAG_MINTING":
-            fail("decision record is not approved for exact-SHA tag minting")
+        expected_decision_state = (
+            "TAG_MINTED_AND_VERIFIED"
+            if state == CONFIRMED_STATE
+            else "APPROVED_FOR_EXACT_SHA_TAG_MINTING"
+        )
+        if decision.get("decision_state") != expected_decision_state:
+            fail("decision record state does not match closure state")
         if tag.get("subject_sha") != subject_sha:
             fail("decision tag subject does not match candidate subject")
-        if closure_index.get("closure_state") != DECISION_READY_STATE:
-            fail("closure index is not tag-pending")
+        if closure_index.get("closure_state") != state:
+            fail("closure index state does not match manifest")
         if closure_index.get("tag_subject_sha") != subject_sha:
             fail("closure index tag subject does not match candidate subject")
         tag_verification = closure_index.get("tag_verification", {})
-        if tag_verification.get("state") != "PENDING_REMOTE_TAG_MINT":
-            fail("closure index tag verification is not pending mint")
+        expected_tag_state = (
+            "VERIFIED_REMOTE_TAG_TARGET"
+            if state == CONFIRMED_STATE
+            else "PENDING_REMOTE_TAG_MINT"
+        )
+        if tag_verification.get("state") != expected_tag_state:
+            fail("closure index tag verification state mismatch")
         if tag_verification.get("required_tag_target") != subject_sha:
             fail("closure index tag verification target mismatch")
+        if state == CONFIRMED_STATE:
+            if tag_verification.get("verified_target_sha") != subject_sha:
+                fail("verified tag target mismatch")
+            if tag.get("verified_target_sha") != subject_sha:
+                fail("decision verified tag target mismatch")
         if closure_index.get("phase18_activation") != "NOT_ACTIVATED_BY_THIS_CLOSURE_INDEX":
             fail("closure index incorrectly activates Phase-18")
         validate_index_artifact(
@@ -160,7 +182,7 @@ def main() -> int:
 
     print(
         "phase17-closure-candidate: PASS "
-        "(integrity only; official closure and tag remain pending)"
+        "(integrity only; Phase-18 activation remains separate)"
     )
     return 0
 
