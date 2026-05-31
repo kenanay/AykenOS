@@ -25,7 +25,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **CURRENT_PHASE:** `17` (`Phase-17 OFFICIALLY CLOSED`; Phase-18 ayrı transition olmadan aktif değildir)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
 **Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150, PR #152 ve Phase-17 closure decision package birleşti. Closure exact-SHA kanıtı `main` SHA `416a5392` üzerinde yenilendi, gerekli uzak acceptance kontrolleri PASS verdi ve `phase17-official-closure` tag'i aynı SHA'ya doğrulandı
-**Yakın Hedef:** `PHASE18_TRANSITION_DECISION.md` karar paketini review etmek; Phase-18'i Platform Constitution olarak, explicit pointer transition olmadan aktive etmemek
+**Yakın Hedef:** Phase-18 Platform Constitution RFC setini yazmak; ilk somut çıktı `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, explicit pointer transition olmadan Phase-18 aktive edilmez
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
 **Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 TRANSITION DECISION PACKAGE ONLY
@@ -42,7 +42,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 17 Status:** OFFICIALLY CLOSED ✅ | tag `phase17-official-closure` at `416a5392` | full `ci-freeze` (`26712333892`), locked performance (`26715068398`, `26712374737`) ve Phase-17 QEMU evidence lanes (`26712374742`, `26712374736`, `26712374727`, `26712374744`, `26712374728`) PASS | `reports/phase17_official_closure_candidate/`
 **Phase 18 Status:** TRANSITION DECISION PACKAGE ONLY | Proposed direction: Platform Constitution; kernel expansion/new syscalls/AI authority forbidden unless a separate phase RFC and closure authority exists
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + `PHASE18_TRANSITION_DECISION.md` review | accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 explicit transition gerektirir
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution RFC set | accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 explicit transition gerektirir
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** `PHASE18_TRANSITION_DECISION.md` karar paketini review etmek; `CURRENT_PHASE` explicit pointer transition olmadan `18` yapılmayacaktır.
+**Next Focus:** Phase-18 Platform Constitution RFC setini yazmak; ilk çıktı `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `CURRENT_PHASE` explicit pointer transition olmadan `18` yapılmayacaktır.
 
 ## Authority Model
 
@@ -310,6 +310,7 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Freeze Workflow:** `docs/roadmap/freeze-enforcement-workflow.md`
 - **Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 - **Phase-18 Transition Decision:** `PHASE18_TRANSITION_DECISION.md`
+- **Phase-18 Module Manifest Schema:** `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 - **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
 - **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
@@ -336,10 +337,10 @@ AykenOS iki lisans modeli ile dağıtılır:
 ## 🎯 Sonraki Hedefler
 
 **Kısa Vadeli (Phase-18 Transition):**
-- `PHASE18_TRANSITION_DECISION.md` review.
+- `PHASE18_TRANSITION_DECISION.md` merged; this is not Phase-18 activation.
 - `CURRENT_PHASE` transition decision; explicit pointer update olmadan Phase-18 aktive edilmez.
 - Platform ABI schema draft.
-- Module manifest schema draft.
+- Module manifest schema RFC draft: `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`.
 - Package metadata schema draft.
 - Workspace lifecycle contract draft.
 - Capability contract draft.

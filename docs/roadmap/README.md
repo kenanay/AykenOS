@@ -20,7 +20,9 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 5. `freeze-enforcement-workflow.md`: strict CI/gate order kontrati.
 6. `../../PHASE18_TRANSITION_DECISION.md`: Phase-18 Platform Constitution
    transition package; aktif faz pointer'i degildir.
-7. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+7. `../specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`:
+   ilk Phase-18 Platform Constitution RFC draft'i; authority grant degildir.
+8. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -29,7 +31,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
-| Aktif odak | Phase-18 Platform Constitution transition package review; no activation without explicit pointer transition |
+| Aktif odak | Phase-18 Platform Constitution RFC set; first draft is Module Manifest Schema; no activation without explicit pointer transition |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | TRANSITION DECISION PACKAGE ONLY; kernel expansion and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -58,6 +60,6 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** `../../PHASE18_TRANSITION_DECISION.md` review edilip
-fail-closed Phase-18 transition karari ayrica verilir; `CURRENT_PHASE` explicit
-pointer transition olmadan `18` yapilmaz.
+**Next action:** `../specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
+RFC draft'i review edilir; Capability Contract ve Workspace Lifecycle spec'leri
+gelmeden `CURRENT_PHASE` explicit pointer transition ile `18` yapilmaz.
