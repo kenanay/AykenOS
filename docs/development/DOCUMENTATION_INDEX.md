@@ -17,7 +17,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=17`
 - **Active Phase:** Phase-17 OFFICIALLY CLOSED / Phase-18 TRANSITION NOT ACTIVATED
-- **Active Execution Priority:** Review `PHASE18_TRANSITION_DECISION.md` as a docs-only Platform Constitution transition package
+- **Active Execution Priority:** Draft the Phase-18 Platform Constitution RFC set, starting with `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - **Scope Boundary:** Phase-18 is not active until an explicit `CURRENT_PHASE` pointer transition; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
@@ -34,14 +34,15 @@ Current repo truth icin once su dosyalari referans alin:
 9. `reports/phase17_official_closure_candidate/closure_manifest.json`
 10. `reports/phase17_official_closure_candidate/closure_index.json`
 11. `PHASE18_TRANSITION_DECISION.md` — **Phase-18 Platform Constitution transition package; not active pointer**
-12. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-13. `reports/phase15_official_closure/closure_index.json`
-14. `reports/phase13_official_closure_candidate/closure_index.json`
-15. `reports/phase12_official_closure_candidate/closure_manifest.json`
-16. `reports/phase10_phase11_official_closure_index.json`
-17. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-18. `Makefile`
-19. `.github/workflows/ci-freeze.yml`
+12. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` — **first pre-activation Platform Constitution RFC draft**
+13. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+14. `reports/phase15_official_closure/closure_index.json`
+15. `reports/phase13_official_closure_candidate/closure_index.json`
+16. `reports/phase12_official_closure_candidate/closure_manifest.json`
+17. `reports/phase10_phase11_official_closure_index.json`
+18. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+19. `Makefile`
+20. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -74,13 +75,20 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 4. `docs/roadmap/freeze-enforcement-workflow.md`
 5. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md`
 6. `PHASE18_TRANSITION_DECISION.md` — transition package only
-7. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-8. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-9. `docs/specs/phase16-ayken-orchestration/README.md`
-10. `docs/specs/authority-lineage-v1/README.md`
-11. `docs/specs/phase14-distributed-observability/README.md`
-12. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-13. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+7. `docs/specs/phase18-platform-constitution/README.md` — Phase-18 spec set index
+8. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
+9. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+10. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+11. `docs/specs/phase16-ayken-orchestration/README.md`
+12. `docs/specs/authority-lineage-v1/README.md`
+13. `docs/specs/phase14-distributed-observability/README.md`
+14. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+15. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+
+## Phase-18 Reference Set
+1. `PHASE18_TRANSITION_DECISION.md`
+2. `docs/specs/phase18-platform-constitution/README.md`
+3. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

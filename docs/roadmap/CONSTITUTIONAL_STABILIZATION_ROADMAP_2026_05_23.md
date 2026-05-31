@@ -349,6 +349,8 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 6. Kernel ABI ile Platform ABI ayrimi acik.
 7. Trust level capability grant degildir.
 8. `CURRENT_PHASE` ancak explicit transition ile `18` yapilir.
+9. Module Manifest, Capability Contract ve Workspace Lifecycle spec'leri
+   fail-closed olarak review edilmeden implementation phase baslamaz.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -371,6 +373,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | PR #152 | MERGED (`416a5392`) / EXACT-SHA REFRESHED | Closure-candidate record'u accepted main subject'e yenilemek | Candidate manifest/index ve status docs | Refresh subject `416a5392`; official tag ayridir |
 | Phase-17 closure decision package | OFFICIAL CLOSURE CONFIRMED / PHASE-18 NOT ACTIVATED | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 ayridir |
 | Phase-18 transition decision package | DOCS-ONLY / PHASE-18 NOT ACTIVATED | Phase-18'i Platform Constitution olarak sinirlamak | `PHASE18_TRANSITION_DECISION.md`, roadmap/index/current status sync | Kernel expansion/new syscall/AI authority forbidden; explicit pointer transition gerekir |
+| Phase-18 Module Manifest Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Modülün kimlik, entrypoint, artifact ve capability request beyanini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` | Capability/trust/workspace authority grant yok; unknown fields fail-closed |
 
 PR koordinasyon kurallari:
 
@@ -1048,7 +1051,8 @@ Bu roadmap su olaylarda guncellenir:
 15. PR #142/#144/#148/#149/#151/#150 merge ve accepted-main exact-SHA evidence sonucu.
 16. Phase-17 closure candidate exact-SHA refresh review/merge sonucu ve official tag-subject karari.
 17. Phase-18 Platform Constitution transition decision review/merge sonucu.
-18. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+18. Phase-18 Module Manifest Schema review/merge sonucu.
+19. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1057,6 +1061,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/roadmap/CURRENT_PHASE`
 - `docs/roadmap/freeze-enforcement-workflow.md`
 - `docs/specs/phase17-execution-pipeline/VALIDATION_FLAG_MATRIX.md`
+- `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - `docs/governance/CI_GATE_INVENTORY_AND_DEBT_CONTROL_2026_05_25.md`
 - `docs/operations/CONSTITUTIONAL_CI_MODE.md`
 - `docs/operations/PROVISIONAL_CI_MODE.md`

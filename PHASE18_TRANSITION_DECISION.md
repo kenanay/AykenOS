@@ -79,7 +79,7 @@ fail-closed, and kernel-preserving way?
 
 Required Platform Constitution outputs:
 
-1. Module manifest schema.
+1. Module manifest schema (`docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`).
 2. Package metadata schema.
 3. Workspace lifecycle contract.
 4. Capability contract for platform resources.
@@ -87,6 +87,10 @@ Required Platform Constitution outputs:
 6. Plugin boundary contract.
 7. Platform ABI validation gate.
 8. Minimal reference examples that do not create new runtime authority.
+
+Initial pre-activation spec work starts with the Module Manifest Schema. This
+does not activate Phase-18 and does not grant package, capability, workspace,
+trust, plugin, semantic, or AI Runtime authority.
 
 ## Non-Goals
 
