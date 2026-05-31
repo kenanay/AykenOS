@@ -1,32 +1,33 @@
 {
   "schema": "ayken-closure-manifest/1.0",
   "phase": 17,
-  "closure_class": "official_closure_candidate",
-  "closure_state": "REMOTE_EVIDENCE_READY_REVIEW_PENDING",
-  "generated_at_utc": "2026-05-31T11:56:26Z",
+  "closure_class": "official_closure",
+  "closure_state": "OFFICIAL_CLOSURE_CONFIRMED",
+  "generated_at_utc": "2026-05-31T14:30:30Z",
   "current_phase_pointer": "17",
   "recommended_tag": "phase17-official-closure",
-  "authority_boundary": "Candidate record only; not official closure, merge authority, or runtime control input.",
+  "authority_boundary": "Reviewed decision record and exact-SHA remote tag verified; not Phase-18 activation, merge authority, or runtime control input.",
   "candidate_subject": {
     "branch": "main",
-    "commit_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
+    "commit_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
     "accepted_history": [
       "PR #144 merge commit 156d721e02e89041b93bfb8738b0e30ec72b3454",
       "PR #148 performance authority workflow repair accepted at e0286c7b64c15e27f810e634713a07652def169c",
       "PR #149 closure-candidate evidence record accepted at ee1aa4afe55eeec4a4b662802a26f1ef26e79463",
       "PR #151 locked performance baseline renewal accepted at 8cc772a4474407262a81c5b3678926d51f9099f9",
-      "PR #150 ci-freeze prerequisite dedup accepted at 7a42d312581b7eacf3a9fbb79b11704e4c5914a3"
+      "PR #150 ci-freeze prerequisite dedup accepted at 7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
+      "PR #152 closure-candidate exact-SHA evidence refresh accepted at 416a5392afbe217e16d26a59e2e1716fdfa9c8f6"
     ]
   },
   "exact_sha_refresh": {
-    "previous_candidate_subject_sha": "e0286c7b64c15e27f810e634713a07652def169c",
-    "refreshed_candidate_subject_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
-    "reason": "Accepted main advanced after the initial closure-candidate package; all required remote controls were rerun or confirmed on the refreshed subject before closure review.",
+    "previous_candidate_subject_sha": "7a42d312581b7eacf3a9fbb79b11704e4c5914a3",
+    "refreshed_candidate_subject_sha": "416a5392afbe217e16d26a59e2e1716fdfa9c8f6",
+    "reason": "Accepted main advanced when PR #152 merged the refreshed closure-candidate package; all required remote controls were rerun or confirmed on the new subject before official tag minting.",
     "remote_evidence_state": "ALL_REQUIRED_REMOTE_RUNS_PASS",
-    "authority_boundary": "Exact-SHA evidence refresh only; not official closure, tag authority, phase transition, or runtime control input."
+    "authority_boundary": "Exact-SHA evidence and verified tag authority only; not Phase-18 transition or runtime control input."
   },
   "evidence_index_path": "reports/phase17_official_closure_candidate/evidence_index.json",
-  "evidence_index_sha256": "2d80384d99552ed1b0be5bc400d624d16b4eff97f186d34996501a93469d62f8",
+  "evidence_index_sha256": "dbc8f1856a36ec3423b60f63611cf761e2dd056f92bfcd3a21f301df485b0548",
   "required_remote_evidence": {
     "all_required_runs_passed": true,
     "required_workflows": [
@@ -56,7 +57,7 @@
     "Locked-baseline timer/preemption performance acceptance and strict ci-freeze pass on the accepted subject SHA."
   ],
   "limitations": [
-    "This candidate does not establish official Phase-17 closure or activate Phase-18.",
+    "This official closure does not activate Phase-18.",
     "It does not establish general BCIB interpreter or opcode completeness.",
     "It does not establish exhaustive scheduler/interrupt interleaving coverage or SMP safety.",
     "It does not enable validation-only marker instrumentation in production.",
@@ -64,13 +65,10 @@
     "It does not establish AI semantic determinism or a wider inline-verification authority claim."
   ],
   "official_closure_prerequisites_remaining": [
-    "review_and_merge_candidate_record_without_widening_claims",
-    "rerun_required_exact_sha_remote_checks_if_the_official_tag_subject_changes",
-    "create_reviewed_official_closure_decision_record",
-    "mint_and_verify_phase17_official_closure_tag_only_after_authority_review"
+    "keep_phase18_activation_blocked_until_a_separate_transition_decision"
   ],
   "next_phase": 18,
-  "phase18_activation": "BLOCKED_UNTIL_OFFICIAL_CLOSURE",
+  "phase18_activation": "BLOCKED_UNTIL_SEPARATE_TRANSITION_DECISION",
   "attribution": {
     "duzenleyen": "Kenan AY",
     "gelistiren": "Kenan AY",

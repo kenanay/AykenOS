@@ -10,7 +10,10 @@ from pathlib import Path
 import sys
 
 
-EXPECTED_STATE = "REMOTE_EVIDENCE_READY_REVIEW_PENDING"
+REVIEW_PENDING_STATE = "REMOTE_EVIDENCE_READY_REVIEW_PENDING"
+DECISION_READY_STATE = "OFFICIAL_CLOSURE_DECISION_READY_TAG_PENDING"
+CONFIRMED_STATE = "OFFICIAL_CLOSURE_CONFIRMED"
+ALLOWED_STATES = {REVIEW_PENDING_STATE, DECISION_READY_STATE, CONFIRMED_STATE}
 REQUIRED_WORKFLOWS = {
     "ci-freeze",
     "Performance Gate",
@@ -52,6 +55,50 @@ def validate_sidecar(candidate_dir: Path, filename: str, sidecar_name: str) -> N
         fail(f"digest mismatch for {filename}")
 
 
+def validate_index_artifact(
+    closure_index: dict, artifact_key: str, expected_filename: str, expected_digest: str
+) -> None:
+    artifact = closure_index.get("artifacts", {}).get(artifact_key, {})
+    if not artifact:
+        fail(f"missing closure-index artifact entry: {artifact_key}")
+    if Path(artifact.get("path", "")).name != expected_filename:
+        fail(f"unexpected closure-index artifact path: {artifact_key}")
+    if artifact.get("sha256") != expected_digest:
+        fail(f"closure-index artifact digest mismatch: {artifact_key}")
+
+
+def validate_decision_evidence(
+    decision: dict, index_workflows: dict[str, dict], subject_sha: str
+) -> None:
+    evidence_subject = decision.get("evidence_subject", {})
+    if evidence_subject.get("head_sha") != subject_sha:
+        fail("decision evidence subject SHA mismatch")
+    remote_evidence = decision.get("remote_evidence", {})
+    if remote_evidence.get("verdict") != "PASS":
+        fail("decision remote evidence verdict is not PASS")
+    if remote_evidence.get("all_required_runs_passed") is not True:
+        fail("decision remote evidence is not all-pass")
+
+    decision_workflows = {}
+    for run in remote_evidence.get("runs", []):
+        name = run.get("workflow")
+        if name in decision_workflows:
+            fail(f"duplicate decision evidence workflow: {name}")
+        decision_workflows[name] = run
+
+    if set(decision_workflows) != set(index_workflows):
+        missing = sorted(set(index_workflows) - set(decision_workflows))
+        extra = sorted(set(decision_workflows) - set(index_workflows))
+        fail(f"decision evidence workflow mismatch; missing={missing} extra={extra}")
+
+    comparable_fields = ("run_id", "event", "head_sha", "result", "completed_at_utc")
+    for name, decision_run in decision_workflows.items():
+        index_run = index_workflows[name]
+        for field in comparable_fields:
+            if decision_run.get(field) != index_run.get(field):
+                fail(f"decision evidence mismatch for {name}.{field}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -68,11 +115,18 @@ def main() -> int:
     manifest = read_json(manifest_path)
     index = read_json(index_path)
 
-    if manifest.get("closure_class") != "official_closure_candidate":
+    closure_class = manifest.get("closure_class")
+    state = manifest.get("closure_state")
+    if state not in ALLOWED_STATES:
+        fail("candidate state is not supported")
+    if state == CONFIRMED_STATE:
+        if closure_class != "official_closure":
+            fail("confirmed manifest is not official-closure class")
+        if manifest.get("phase18_activation") != "BLOCKED_UNTIL_SEPARATE_TRANSITION_DECISION":
+            fail("Phase-18 boundary is not transition-blocked")
+    elif closure_class != "official_closure_candidate":
         fail("manifest is not candidate-class")
-    if manifest.get("closure_state") != EXPECTED_STATE:
-        fail("candidate state is not review-pending")
-    if manifest.get("phase18_activation") != "BLOCKED_UNTIL_OFFICIAL_CLOSURE":
+    elif manifest.get("phase18_activation") != "BLOCKED_UNTIL_OFFICIAL_CLOSURE":
         fail("Phase-18 boundary is not fail-closed")
 
     subject_sha = manifest.get("candidate_subject", {}).get("commit_sha")
@@ -82,6 +136,8 @@ def main() -> int:
         fail("unexpected candidate subject SHA")
     if manifest.get("evidence_index_sha256") != digest(index_path):
         fail("manifest evidence index digest mismatch")
+    if index.get("authority_status") and index.get("authority_status") != state:
+        fail("manifest/evidence authority state mismatch")
 
     workflows = {}
     for run in index.get("runs", []):
@@ -101,9 +157,65 @@ def main() -> int:
     validate_sidecar(candidate_dir, "closure_manifest.json", "closure_manifest.sha256")
     validate_sidecar(candidate_dir, "evidence_index.json", "evidence_index.sha256")
 
+    if state in {DECISION_READY_STATE, CONFIRMED_STATE}:
+        decision_path = candidate_dir / "closure_decision_record.json"
+        closure_index_path = candidate_dir / "closure_index.json"
+        decision = read_json(decision_path)
+        closure_index = read_json(closure_index_path)
+        tag = decision.get("official_tag", {})
+        expected_decision_state = (
+            "TAG_MINTED_AND_VERIFIED"
+            if state == CONFIRMED_STATE
+            else "APPROVED_FOR_EXACT_SHA_TAG_MINTING"
+        )
+        if decision.get("decision_state") != expected_decision_state:
+            fail("decision record state does not match closure state")
+        if tag.get("subject_sha") != subject_sha:
+            fail("decision tag subject does not match candidate subject")
+        validate_decision_evidence(decision, workflows, subject_sha)
+        if closure_index.get("closure_state") != state:
+            fail("closure index state does not match manifest")
+        if closure_index.get("tag_subject_sha") != subject_sha:
+            fail("closure index tag subject does not match candidate subject")
+        tag_verification = closure_index.get("tag_verification", {})
+        expected_tag_state = (
+            "VERIFIED_REMOTE_TAG_TARGET"
+            if state == CONFIRMED_STATE
+            else "PENDING_REMOTE_TAG_MINT"
+        )
+        if tag_verification.get("state") != expected_tag_state:
+            fail("closure index tag verification state mismatch")
+        if tag_verification.get("required_tag_target") != subject_sha:
+            fail("closure index tag verification target mismatch")
+        if state == CONFIRMED_STATE:
+            if tag_verification.get("verified_target_sha") != subject_sha:
+                fail("verified tag target mismatch")
+            if tag.get("verified_target_sha") != subject_sha:
+                fail("decision verified tag target mismatch")
+        if closure_index.get("phase18_activation") != "NOT_ACTIVATED_BY_THIS_CLOSURE_INDEX":
+            fail("closure index incorrectly activates Phase-18")
+        validate_index_artifact(
+            closure_index,
+            "closure_manifest",
+            "closure_manifest.json",
+            digest(manifest_path),
+        )
+        validate_index_artifact(
+            closure_index,
+            "evidence_index",
+            "evidence_index.json",
+            digest(index_path),
+        )
+        validate_index_artifact(
+            closure_index,
+            "closure_decision_record",
+            "closure_decision_record.json",
+            digest(decision_path),
+        )
+
     print(
         "phase17-closure-candidate: PASS "
-        "(integrity only; official closure and tag remain pending)"
+        "(integrity only; Phase-18 activation remains separate)"
     )
     return 0
 

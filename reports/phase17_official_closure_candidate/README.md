@@ -1,37 +1,43 @@
-# Phase-17 Official Closure Candidate
+# Phase-17 Official Closure
 
-**State:** `REMOTE_EVIDENCE_READY_REVIEW_PENDING`
-**Generated at UTC:** `2026-05-31T11:56:26Z`
+**State:** `OFFICIAL_CLOSURE_CONFIRMED`
+**Generated at UTC:** `2026-05-31T14:53:53Z`
 **Evidence subject:** accepted `main` SHA
-`7a42d312581b7eacf3a9fbb79b11704e4c5914a3`
-**Recommended tag after reviewed closure decision:** `phase17-official-closure`
+`416a5392afbe217e16d26a59e2e1716fdfa9c8f6`
+**Verified tag target:** `phase17-official-closure` ->
+`416a5392afbe217e16d26a59e2e1716fdfa9c8f6`
 
-This directory is a closure-candidate record. It binds bounded Phase-17
-claims to remote PASS evidence produced on one accepted `main` SHA. It does
-not mark Phase-17 closed, grant merge authority, or activate Phase-18.
+This directory records the Phase-17 official closure decision. It binds
+bounded Phase-17 claims to remote PASS evidence produced on one accepted
+`main` SHA and to the verified `phase17-official-closure` tag at that same
+SHA. It does not grant merge authority, activate Phase-18, or widen runtime
+authority.
 
 The initial candidate subject was
 `e0286c7b64c15e27f810e634713a07652def169c`. After later accepted `main`
 changes, the intended review subject advanced to
-`7a42d312581b7eacf3a9fbb79b11704e4c5914a3`; the required exact-SHA remote
-controls were rerun or confirmed on that refreshed subject before review.
-This refresh is still evidence binding only, not official closure.
+`7a42d312581b7eacf3a9fbb79b11704e4c5914a3`. PR #152 then refreshed the
+candidate package and merged on `main`, advancing the accepted closure-decision
+subject to `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`. The required
+exact-SHA remote controls were rerun or confirmed on that subject before tag
+review. `phase17-official-closure` was then minted and verified at exactly
+that SHA.
 
 ## Bound Evidence
 
 | Workflow | Run | Result | Scope |
 |---|---:|---|---|
-| `ci-freeze` | `26697843452` | PASS | Full strict constitutional chain on accepted `main` |
-| `Performance Gate` | `26697843425` | PASS | Mainline locked performance workflow authority |
-| `ci-gate-execution-marker-lifecycle` | `26711867223` | PASS | Validation-only QEMU lifecycle |
-| `ci-gate-execution-marker-determinism` | `26711867206` | PASS | Repeat fingerprint and invalid-order rejection |
-| `ci-gate-execution-public-e2e` | `26711867207` | PASS | Bounded public `1003 -> 1004` path |
-| `ci-gate-execution-worker-completion` | `26711867217` | PASS | Bounded stub-off `1003 -> 1011 -> 1004` fixture path |
-| `ci-gate-execution-timeout-race` | `26711867212` | PASS | One timer IRQ timeout-wins interleaving |
-| `ci-gate-phase17-performance-acceptance` | `26711867203` | PASS | Scoped locked timer/preemption acceptance |
+| `ci-freeze` | `26712333892` | PASS | Full strict constitutional chain on accepted `main` |
+| `Performance Gate` | `26715068398` | PASS | Mainline locked performance workflow authority |
+| `ci-gate-execution-marker-lifecycle` | `26712374742` | PASS | Validation-only QEMU lifecycle |
+| `ci-gate-execution-marker-determinism` | `26712374736` | PASS | Repeat fingerprint and invalid-order rejection |
+| `ci-gate-execution-public-e2e` | `26712374727` | PASS | Bounded public `1003 -> 1004` path |
+| `ci-gate-execution-worker-completion` | `26712374744` | PASS | Bounded stub-off `1003 -> 1011 -> 1004` fixture path |
+| `ci-gate-execution-timeout-race` | `26712374728` | PASS | One timer IRQ timeout-wins interleaving |
+| `ci-gate-phase17-performance-acceptance` | `26712374737` | PASS | Scoped locked timer/preemption acceptance |
 
 Every run above reports head SHA
-`7a42d312581b7eacf3a9fbb79b11704e4c5914a3`. Details and artifact names
+`416a5392afbe217e16d26a59e2e1716fdfa9c8f6`. Details and artifact names
 are recorded in `evidence_index.json`.
 
 ## Established Boundary
@@ -45,7 +51,7 @@ are recorded in `evidence_index.json`.
 
 ## Not Established
 
-- Official Phase-17 closure or Phase-18 activation.
+- Phase-18 activation.
 - General BCIB interpreter/opcode coverage.
 - Exhaustive interrupt/scheduler race coverage or SMP safety.
 - Production enabling of validation-only paths.
@@ -53,13 +59,8 @@ are recorded in `evidence_index.json`.
 
 ## Remaining Authority Steps
 
-1. Review and merge this candidate record without widening its claims.
-2. If the intended official tag subject differs from
-   `7a42d312581b7eacf3a9fbb79b11704e4c5914a3`,
-   rerun the required exact-SHA remote controls and update the decision
-   record.
-3. Create the reviewed official closure decision record.
-4. Mint and verify `phase17-official-closure` only after those steps.
+1. Merge this official closure package without widening its claims.
+2. Keep Phase-18 blocked until a separate transition decision.
 
 ---
 
