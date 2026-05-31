@@ -19,9 +19,10 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 ### 0.1 Active Stabilization Execution Plan
 
 Aktif is sirasi `CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
-tarafindan belirlenir. Bu siraya gore Phase-17 closure kurulana kadar
-feature expansion degil, PR-0 authority/governance/ABI parity repair ve
-ardindan marker-enabled gercek QEMU lifecycle acceptance kaniti onceliklidir.
+tarafindan belirlenir. Phase-17 resmi closure artik `phase17-official-closure`
+tag'iyle kurulmustur. Phase-18 explicit pointer transition yapilana kadar
+feature expansion degil, `PHASE18_TRANSITION_DECISION.md` icindeki Platform
+Constitution sinirinin review edilmesi onceliklidir.
 
 ---
 

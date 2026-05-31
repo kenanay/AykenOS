@@ -3,7 +3,7 @@
 ## Status: DEFAULT FREEZE / LOCKED PERFORMANCE AUTHORITY
 
 **Effective date:** 2026-05-25
-**Current phase:** Phase-17 active; formal closure pending
+**Current phase:** Phase-17 officially closed; Phase-18 transition not activated
 **Previous remotely tested S2-D head before accepted-main restack:** `342deab6`
 (`ci-gate-phase17-performance-acceptance` run `26391379459` PASS and full
 `ci-freeze` run `26391379462` PASS)

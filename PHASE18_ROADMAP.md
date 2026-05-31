@@ -1,23 +1,36 @@
-# Phase-18: Full Kernel Runtime Validation — Roadmap
+# Phase-18: Historical Full Kernel Runtime Validation Roadmap
 
-**Status**: ROADMAP ONLY (not an active phase)
+**Status**: HISTORICAL / SUPERSEDED BY `PHASE18_TRANSITION_DECISION.md`
 **Created**: 2026-05-02  
-**Last Authority Sync**: 2026-05-23
+**Last Authority Sync**: 2026-05-31
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu**: Kenan AY *(informational metadata only)*
 
 ---
 
-## Authority Boundary (2026-05-23)
+## Authority Sync Notice (2026-05-31)
+
+This file is a pre-closure Phase-18 planning snapshot. It is retained for
+historical context and deferred validation backlog only.
+
+Current Phase-18 direction is defined by `PHASE18_TRANSITION_DECISION.md`:
+Phase-18 is the Platform Constitution phase, not a kernel expansion phase and
+not a new syscall phase.
+
+The runtime/QEMU/SMP/race items below may remain useful validation backlog, but
+they are not the active Phase-18 objective unless a separate reviewed phase
+decision reactivates them.
+
+## Historical Authority Boundary
 
 Parent execution plan: `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`.
-This file is a subordinate candidate-phase plan, not the active execution queue.
+This file is a subordinate historical planning snapshot, not the active
+execution queue.
 
-PR #134 merged the Phase-17 Step 5 marker-validation slice. It did not produce
-a formal Phase-17 closure tag or manifest. Phase-18 therefore remains planning
-material until Phase-17 runtime/QEMU acceptance and official closure evidence
-are established. Existing deterministic state trace, fail-closed proof, and
-invariant checks in `execution_slot` reduce prerequisite work but do not replace
-that acceptance.
+Phase-17 is now officially closed by `phase17-official-closure` at
+`416a5392afbe217e16d26a59e2e1716fdfa9c8f6`. That closure does not make this
+older runtime-validation roadmap the active Phase-18 authority. The active
+transition decision must preserve the frozen kernel ABI and define platform
+contracts above the execution substrate.
 
 ---
 
@@ -328,7 +341,7 @@ ASSERT_STATE_INVARIANT(slot, condition);
 
 **Signed**: Kenan AY — Architectural Steward  
 **Date**: 2026-05-02  
-**Status**: ROADMAP ONLY (Phase-17 formal closure is still required)
+**Status**: HISTORICAL / SUPERSEDED (Phase-17 formal closure is complete)
 
 ---
 
@@ -611,29 +624,32 @@ make qemu-test-phase18
 **Architectural Steward**: Kenan AY  
 **Implementation / Architecture Owner**: Kenan AY
 **Phase-17 Step 5 PR**: #134 (merged as `71d10691`)
-**Phase-18 Branch**: (not active; create only after Phase-17 closure)
+**Phase-18 Branch**: (not active; create only after explicit transition)
 
 ---
 
 ## 🎯 FINAL NOTES
 
 ### This is a Roadmap
-- **Status**: Planning only; Phase-18 is not active
-- **Authority**: Architectural planning; not closure or execution authority
-- **Purpose**: Prepare for Phase-18 without overlapping the active Phase-17 closure work
+- **Status**: Historical planning; superseded as active direction
+- **Authority**: Deferred validation context; not closure or execution authority
+- **Purpose**: Preserve older runtime-validation scope as backlog without
+  overriding the Platform Constitution transition decision
 
 ### When to Start Phase-18
-**Trigger**: Phase-17 official closure evidence and acceptance are established
+**Trigger**: Explicit `CURRENT_PHASE` transition after
+`PHASE18_TRANSITION_DECISION.md` review
 
 **NOT before**:
-- ❌ CI passes (not sufficient)
-- ❌ Review complete (not sufficient)
-- ❌ "Looks good" (not sufficient)
+- CI passes (not sufficient)
+- Review complete (not sufficient)
+- Historical roadmap exists (not sufficient)
 
 **ONLY after**:
-- ✅ Steward sign-off obtained
-- ✅ PR merged to main
-- ✅ Phase-17 officially closed
+- Phase-17 official closure remains verified.
+- The Platform Constitution transition is accepted.
+- `CURRENT_PHASE` is explicitly updated.
+- Kernel ABI expansion remains forbidden or is handled by a separate phase RFC.
 
 ### Why This Matters
 **Discipline**: Phases don't overlap  
@@ -644,7 +660,9 @@ make qemu-test-phase18
 
 **Prepared by**: Kenan AY — Architectural Steward  
 **Date**: 2026-05-02  
-**Status**: ROADMAP ONLY (awaiting Phase-17 formal closure)
-**Authority**: Architectural design + Phase-17 lessons learned
+**Status**: HISTORICAL / SUPERSEDED BY `PHASE18_TRANSITION_DECISION.md`
+**Authority**: Historical design + deferred validation backlog
 
-**Next Action**: Finish Phase-17 runtime/QEMU acceptance and formal closure review.
+**Next Action**: Use `PHASE18_TRANSITION_DECISION.md` as the Phase-18
+transition authority candidate; do not activate Phase-18 from this historical
+roadmap.

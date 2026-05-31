@@ -2,7 +2,7 @@
 
 **Effective date:** 2026-05-25
 **Current authority:** `github-hosted-ubuntu-24.04-x64`
-**Current phase:** Phase-17 active; formal closure pending
+**Current phase:** Phase-17 officially closed; Phase-18 transition not activated
 **Authority boundary:** A baseline renewal is an artifact-import procedure
 recorded by Kenan AY and followed by constitutional remote checks. It does
 not by itself grant merge authority or establish Phase-17 closure.
