@@ -6,7 +6,7 @@ promote a diagnostic lane, change runtime behavior, or grant closure.
 
 **Status:** S2 OPERATIONAL INVENTORY / REVIEW INPUT
 **Effective date:** 2026-05-25
-**Current phase:** Phase-17 active; formal closure pending
+**Current phase:** Phase-17 officially closed; Phase-18 transition not activated
 **Accepted-main evidence subject:** `e0286c7b64c15e27f810e634713a07652def169c`
 (`ci-gate-phase17-performance-acceptance` run `26421686338` PASS and full
 `ci-freeze` run `26421295459` PASS)

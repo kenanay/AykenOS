@@ -2,21 +2,27 @@
 
 **Durum tarihi:** 2026-05-23
 **Uygulama ek kaydi:** 2026-05-24/26 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142/#144 merge, PR #148 performance authority onarimi, accepted-main exact-SHA remote evidence PASS ve Phase-17 closure-candidate kaydi)
+**Authority sync:** 2026-05-31 (`phase17-official-closure` verified at `416a5392`; Phase-18 transition not activated)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
+
+> Authority note: This report preserves the 2026-05-23 stabilization narrative.
+> Current phase authority is `docs/roadmap/CURRENT_PHASE`, the Phase-17
+> official closure package, and `PHASE18_TRANSITION_DECISION.md` as a
+> docs-only Platform Constitution transition package.
 
 ## Yetkili Durum
 
 | Konu | Repo gercegi | Sonuc |
 |---|---|---|
-| Son resmi kapanis | `phase16-official-closure` etiketi mevcut | Phase-16 OFFICIALLY CLOSED |
-| Aktif faz | `CURRENT_PHASE=17` | Phase-17 ACTIVE / CLOSURE PENDING |
+| Son resmi kapanis | `phase17-official-closure` etiketi `416a5392` uzerinde dogrulandi | Phase-17 OFFICIALLY CLOSED |
+| Aktif faz | `CURRENT_PHASE=17` | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
 | Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
-| Phase-17 kapanisi | `phase17-official-closure` etiketi yok; `reports/phase17_official_closure_candidate/` bu changeset'te aday kayittir | Aday manifest resmi closure iddiasi kurmaz |
-| Phase-17.5 | PR #142 (`0682526d`) ve PR #144 (`156d721e`) `main`e kabul edildi; PR #148 workflow authority onarimi SHA `e0286c7b` ile kabul edildi | Kabul edilen subject SHA icin closure-candidate evidence baglanabilir; resmi tag ayri karardir |
-| Phase-18 | Yol haritasi dokumani | Aktif faz degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` | Accepted `main` SHA `e0286c7b`: full `ci-freeze` `26421295459` ve Phase-17 exact-SHA evidence kontrolleri PASS; closure candidate review/tag bekler |
-| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `e0286c7b` uzerinde standalone Performance Gate `26421295487` ve scoped Phase-17 acceptance `26421686338` PASS; bu sonuc resmi closure degildir |
+| Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
+| Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
+| Phase-18 | `PHASE18_TRANSITION_DECISION.md` | Platform Constitution transition package; aktif faz degildir |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + `PHASE18_TRANSITION_DECISION.md` review | Explicit `CURRENT_PHASE` transition olmadan Phase-18 baslatilmaz |
+| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
 ## Bu Degisiklikte Uygulanan Eksikler

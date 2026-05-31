@@ -65,8 +65,8 @@ Aktif urun cekirdegi su dort parcadir:
 
 ### 2.3 Urun Olmayan veya Ertelenen Alanlar
 
-Phase-17 closure kurulana kadar asagidakiler aktif implementation backlog'u
-degildir:
+Phase-18 explicit transition karari aktif pointer'a baglanana kadar
+asagidakiler aktif implementation backlog'u degildir:
 
 - Yeni syscall veya ABI surface genisletmesi.
 - ARM64/RISC-V/real-hardware feature genisletmesi.
@@ -75,9 +75,10 @@ degildir:
 - Yeni AI orchestration ozellikleri veya model sonucunun authoritative
   execution verdict'i olarak kullanilmasi.
 - Phase-18'in aktif faz olarak ilan edilmesi.
+- Trust classification'in capability grant gibi kullanilmasi.
 
 Bu alanlarda belge veya izole arastirma tutulabilir; production merge icin
-Phase-17 kapanis kapisini asamaz.
+Phase-18 Platform Constitution transition kapisini asamaz.
 
 ## 3. Bugunku Repo Gercegi
 
@@ -90,7 +91,7 @@ Phase-17 kapanis kapisini asamaz.
 | Governance | Spec-purity, fail-closed marker isolation, validation matrix ve S2 inventory kabul edildi | #145 tek-maintainer authority paritesiyle giderildi; closure yine ayrik reviewed karardir |
 | Review enforcement | `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` required `freeze` protection'i tek-maintainer ADR'iyle hizalandi | Issue #145 RESOLVED; bagimsiz self-review iddiasi veya closure yetkisi kurulmaz |
 | Performance stability | PR-4 local readiness FAIL tarihsel kayit; PR-4A/PR-4B diagnostic; governed renewal ve workflow authority repair accepted | Accepted `main` SHA `416a5392`: Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; official tag dogrulandi |
-| Phase-18 | Roadmap only | Baslatilmaz |
+| Phase-18 | Transition decision package only | Platform Constitution review edilir; `CURRENT_PHASE` explicit transition olmadan baslatilmaz |
 
 ## 4. Stratejik Karar: Stabilization-First
 
@@ -99,12 +100,13 @@ AykenOS bundan sonraki gelistirmeyi "daha fazla yuzey" uzerinden degil,
 
 Oncelik sirasi:
 
-1. Phase-17 icin gercek kernel/QEMU runtime acceptance kaniti.
-2. Deterministic result, failure/race ve performance overhead kabulü.
-3. Closure manifest/tag ve clean-tree remote `ci-freeze` authority.
-4. BCIB tooling olgunlastirma; yalnız Ring3 ve mevcut ABI siniri icinde.
-5. Governance sadeleştirme ve gate maliyeti/tekrari denetimi.
-6. Ancak bunlardan sonra Phase-18 activation karari.
+1. Phase-17 official closure otoritesini exact-SHA tag ve manifest ile korumak.
+2. Phase-18'i kernel genisletme degil Platform Constitution olarak sinirlamak.
+3. Kernel ABI ile Platform ABI ayrimini dokuman otoritesine baglamak.
+4. Module/package/workspace/capability/trust/plugin kontratlarini fail-closed
+   tanimlamak.
+5. BCIB/SMP/race validation backlog'unu gorunur tutmak ama ana yon yapmamak.
+6. Ancak bunlardan sonra explicit Phase-18 activation pointer'i.
 
 ## 5. Technical Debt Control Rules
 
@@ -330,15 +332,23 @@ nondeterministic verification verdict'i uretmez.
 
 ### S5 - Phase-18 Activation Decision
 
-**Status:** NOT ACTIVE
+**Status:** TRANSITION DECISION PACKAGE PENDING / NOT ACTIVE
 
-`PHASE18_ROADMAP.md` ancak su kosullarla aktif uygulama planina donusebilir:
+Phase-17 closure precondition'lari artik saglanmistir, ancak Phase-18 yine de
+aktif degildir. Phase-18 icin authority adayi `PHASE18_TRANSITION_DECISION.md`
+olmalidir; eski `PHASE18_ROADMAP.md` tarihsel runtime-validation backlog'u
+olarak tutulur.
 
-1. Phase-17 official closure tag ve manifest mevcut.
-2. S1 runtime, race/fail-closed ve performance kaniti PASS.
-3. Remote strict CI temiz tree uzerinde PASS.
-4. Issue #145 tek-maintainer authority karari ve canli protection paritesiyle kapatilmis.
-5. Architecture review yeni kapsam ihtiyacini onaylamis.
+Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
+
+1. Phase-18 = Platform Constitution.
+2. Kernel ABI expansion forbidden.
+3. New syscalls forbidden.
+4. Ring0 policy forbidden.
+5. AI Runtime authority forbidden.
+6. Kernel ABI ile Platform ABI ayrimi acik.
+7. Trust level capability grant degildir.
+8. `CURRENT_PHASE` ancak explicit transition ile `18` yapilir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -359,7 +369,8 @@ nondeterministic verification verdict'i uretmez.
 | PR #148 | MERGED (`e0286c7b`) / POST-MERGE PASS | Standalone Performance Gate workflow'unu locked authority modeliyle hizalamak | Workflow only; runtime/threshold degisikligi yok | Performance `26421295487`, freeze `26421295459` PASS |
 | PR #149/#151/#150 | MERGED (`7a42d312`) / EXACT-SHA REFRESHED | Closure-candidate record, governed baseline renewal ve ci-freeze prerequisite dedup | Candidate package, performance authority and CI prerequisite wiring | Historical refresh subject `7a42d312`; official tag ayridir |
 | PR #152 | MERGED (`416a5392`) / EXACT-SHA REFRESHED | Closure-candidate record'u accepted main subject'e yenilemek | Candidate manifest/index ve status docs | Refresh subject `416a5392`; official tag ayridir |
-| Closure decision package (bu changeset) | OFFICIAL CLOSURE CONFIRMED / PHASE-18 NOT ACTIVATED | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 ayridir |
+| Phase-17 closure decision package | OFFICIAL CLOSURE CONFIRMED / PHASE-18 NOT ACTIVATED | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 ayridir |
+| Phase-18 transition decision package | DOCS-ONLY / PHASE-18 NOT ACTIVATED | Phase-18'i Platform Constitution olarak sinirlamak | `PHASE18_TRANSITION_DECISION.md`, roadmap/index/current status sync | Kernel expansion/new syscall/AI authority forbidden; explicit pointer transition gerekir |
 
 PR koordinasyon kurallari:
 
@@ -411,7 +422,7 @@ PR koordinasyon kurallari:
 
 **Started work:**
 
-- Authority truth `CURRENT_PHASE=17` icin once Phase-17 pending durumu
+- Authority truth `CURRENT_PHASE=17` icin onceki Phase-17 pending status drift'i
   duzeltildi; 2026-05-31'de Phase-17 official closure confirmed oldu,
   Phase-18 transition ayrik tutuldu.
 - Canonical syscall/ABI parity `1000-1011` / 12 ve `0x00010001` olarak
@@ -1036,7 +1047,8 @@ Bu roadmap su olaylarda guncellenir:
 14. S2-D CI-mode authority dokuman senkronu sonrasi new-head PR CI sonucu.
 15. PR #142/#144/#148/#149/#151/#150 merge ve accepted-main exact-SHA evidence sonucu.
 16. Phase-17 closure candidate exact-SHA refresh review/merge sonucu ve official tag-subject karari.
-17. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+17. Phase-18 Platform Constitution transition decision review/merge sonucu.
+18. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1053,6 +1065,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/operations/POST_MERGE_SMOKE_TEST.md`
 - `reports/phase17_official_closure_candidate/closure_manifest.json`
 - `reports/phase17_official_closure_candidate/evidence_index.json`
+- `PHASE18_TRANSITION_DECISION.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

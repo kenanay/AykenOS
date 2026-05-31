@@ -2,7 +2,7 @@
 
 **Effective date:** 2026-05-25
 **Current authority:** `github-hosted-ubuntu-24.04-x64`
-**Current phase:** Phase-17 active; formal closure pending
+**Current phase:** Phase-17 officially closed; Phase-18 transition not activated
 **Authority boundary:** A generated lock artifact is not acceptance or merge
 authority. Import requires Kenan AY's recorded maintainer decision and
 subsequent constitutional remote PASS; it is not Phase-17 closure.
