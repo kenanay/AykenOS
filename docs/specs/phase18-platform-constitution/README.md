@@ -21,15 +21,16 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
 ## Current Specs
 
 1. `MODULE_MANIFEST_SCHEMA.md` - first RFC for the declarative module manifest.
+2. `CAPABILITY_CONTRACT_SPECIFICATION.md` - RFC for request, decision,
+   receipt, and revocation boundaries.
 
 ## Planned Specs
 
 1. Package Metadata Schema.
-2. Capability Contract Specification.
-3. Workspace Lifecycle Specification.
-4. Trust Classification Model.
-5. Plugin Boundary Contract.
-6. Platform ABI Validation Gate.
+2. Workspace Lifecycle Specification.
+3. Trust Classification Model.
+4. Plugin Boundary Contract.
+5. Platform ABI Validation Gate.
 
 ## Non-Authority Rule
 

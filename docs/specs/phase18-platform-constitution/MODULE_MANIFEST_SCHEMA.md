@@ -322,10 +322,15 @@ declare:
   },
   "capability_requests": [
     {
-      "id": "workspace.read",
+      "id": "ayken.platform.workspace.read",
       "access": ["read"],
       "scope": {
-        "workspace": "current"
+        "kind": "workspace",
+        "selector": "current.project.input",
+        "constraints": {
+          "recursive": false,
+          "write": false
+        }
       },
       "required": false,
       "reason": "Read user-selected workspace input files."
@@ -359,7 +364,7 @@ declare:
 {
   "capability_requests": [
     {
-      "id": "workspace.write",
+      "id": "ayken.platform.workspace.write",
       "grant": true
     }
   ]
@@ -408,7 +413,7 @@ Reason: Phase-18 does not add syscalls.
 | Future spec | Relationship |
 |---|---|
 | Package Metadata Schema | Owns publisher, signature, package digest, distribution channel |
-| Capability Contract Specification | Defines capability ids, grants, tokens, receipts, revocation |
+| `CAPABILITY_CONTRACT_SPECIFICATION.md` | Defines request, decision, receipt, and revocation boundaries |
 | Workspace Lifecycle Specification | Defines workspace states, mounts, enable/disable/remove behavior |
 | Trust Classification Model | Defines trusted/verified/signed/local/revoked classification |
 | Plugin Boundary Contract | Defines host admission, plugin loading, interface binding |
