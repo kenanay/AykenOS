@@ -25,13 +25,15 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
    receipt, and revocation boundaries.
 3. `WORKSPACE_LIFECYCLE_SPECIFICATION.md` - RFC for workspace admission,
    logical mount, disable, quarantine, revocation, and removal boundaries.
+4. `PACKAGE_METADATA_SCHEMA.md` - RFC for package identity, version,
+   publisher, hash, signature, dependency, and Platform ABI compatibility
+   metadata.
 
 ## Planned Specs
 
-1. Package Metadata Schema.
-2. Trust Classification Model.
-3. Plugin Boundary Contract.
-4. Platform ABI Validation Gate.
+1. Trust Classification Model.
+2. Plugin Boundary Contract.
+3. Platform ABI Validation Gate.
 
 ## Non-Authority Rule
 
@@ -44,3 +46,4 @@ No file in this directory may grant:
 5. Trust classification.
 6. AI Runtime authority.
 7. Semantic CLI execution verdict authority.
+8. Package install, execution, workspace admission, or loader authority.

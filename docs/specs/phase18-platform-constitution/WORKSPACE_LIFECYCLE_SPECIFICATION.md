@@ -63,7 +63,7 @@ The following invariants are mandatory:
 |---|---|
 | `MODULE_MANIFEST_SCHEMA.md` | Declares `workspace.mode` and `workspace.declared_mounts` |
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Authorizes or denies requested workspace capability access |
-| Package Metadata Schema | Will bind package, manifest, artifact, and workspace policy digests |
+| `PACKAGE_METADATA_SCHEMA.md` | Declares package identity, content hashes, signatures, dependencies, and compatibility only; no workspace admission or mount fields |
 | Trust Classification Model | May influence review path, not workspace authority |
 | Platform ABI Validation Gate | Must reject stale, ambiguous, or authority-expanding workspace states |
 
@@ -451,7 +451,8 @@ authority.
 1. `MODULE_MANIFEST_SCHEMA.md` defines workspace declaration placement.
 2. `CAPABILITY_CONTRACT_SPECIFICATION.md` defines required authorization
    decisions for workspace access.
-3. Package Metadata Schema will bind package and manifest digests to admission.
+3. `PACKAGE_METADATA_SCHEMA.md` may provide package evidence inputs, but it
+   must not contain workspace admission, lifecycle state, or mount fields.
 4. Trust Classification Model will define review inputs, not authority.
 5. Plugin Boundary Contract will define plugin workspace surfaces.
 6. Platform ABI Validation Gate will enforce workspace lifecycle invariants.

@@ -28,7 +28,11 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 9. `../specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`:
    workspace admission, logical mount, disable, quarantine, revocation ve
    removal RFC draft'i; mount veya capability grant degildir.
-10. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+10. `../specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`:
+   package identity, version, publisher, hash, signature, dependency ve
+   Platform ABI compatibility RFC draft'i; trust/capability/workspace/execution
+   grant degildir.
+11. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -37,7 +41,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
-| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract and Workspace Lifecycle drafts; no activation without explicit pointer transition |
+| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract, Workspace Lifecycle and Package Metadata drafts; no activation without explicit pointer transition |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | TRANSITION DECISION PACKAGE ONLY; kernel expansion and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -66,6 +70,6 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** `../specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
-RFC draft'i review edilir; Package Metadata ve Trust Classification spec'leri
-gelmeden `CURRENT_PHASE` explicit pointer transition ile `18` yapilmaz.
+**Next action:** Trust Classification Model RFC draft'i acilir; Plugin Boundary
+ve Platform ABI Validation Gate spec'leri gelmeden `CURRENT_PHASE` explicit
+pointer transition ile `18` yapilmaz.

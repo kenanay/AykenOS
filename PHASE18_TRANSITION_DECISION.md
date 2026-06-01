@@ -80,7 +80,7 @@ fail-closed, and kernel-preserving way?
 Required Platform Constitution outputs:
 
 1. Module manifest schema (`docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`).
-2. Package metadata schema.
+2. Package metadata schema (`docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`).
 3. Workspace lifecycle contract (`docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`).
 4. Capability contract for platform resources (`docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`).
 5. Trust classification model.
@@ -89,9 +89,10 @@ Required Platform Constitution outputs:
 8. Minimal reference examples that do not create new runtime authority.
 
 Initial pre-activation spec work starts with the Module Manifest Schema,
-Capability Contract Specification, and Workspace Lifecycle Specification. This
-does not activate Phase-18 and does not grant capability, package, workspace,
-trust, plugin, semantic, or AI Runtime authority.
+Capability Contract Specification, Workspace Lifecycle Specification, and
+Package Metadata Schema. This does not activate Phase-18 and does not grant
+capability, package install, package execution, workspace, trust, plugin,
+semantic, or AI Runtime authority.
 
 ## Non-Goals
 
