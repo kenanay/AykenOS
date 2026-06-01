@@ -25,7 +25,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **CURRENT_PHASE:** `17` (`Phase-17 OFFICIALLY CLOSED`; Phase-18 ayrı transition olmadan aktif değildir)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
 **Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150, PR #152 ve Phase-17 closure decision package birleşti. Closure exact-SHA kanıtı `main` SHA `416a5392` üzerinde yenilendi, gerekli uzak acceptance kontrolleri PASS verdi ve `phase17-official-closure` tag'i aynı SHA'ya doğrulandı
-**Yakın Hedef:** Phase-18 Platform Constitution RFC setini yazmak; mevcut somut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` ve `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, explicit pointer transition olmadan Phase-18 aktive edilmez
+**Yakın Hedef:** Phase-18 Platform Constitution RFC setini yazmak; mevcut somut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` ve `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, explicit pointer transition olmadan Phase-18 aktive edilmez
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
 **Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 TRANSITION DECISION PACKAGE ONLY
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** Phase-18 Platform Constitution RFC setini yazmak; mevcut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` ve `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `CURRENT_PHASE` explicit pointer transition olmadan `18` yapılmayacaktır.
+**Next Focus:** Phase-18 Platform Constitution RFC setini yazmak; mevcut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` ve `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `CURRENT_PHASE` explicit pointer transition olmadan `18` yapılmayacaktır.
 
 ## Authority Model
 
@@ -312,6 +312,7 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Phase-18 Transition Decision:** `PHASE18_TRANSITION_DECISION.md`
 - **Phase-18 Module Manifest Schema:** `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - **Phase-18 Capability Contract Specification:** `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
+- **Phase-18 Workspace Lifecycle Specification:** `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 - **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
 - **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
@@ -343,8 +344,8 @@ AykenOS iki lisans modeli ile dağıtılır:
 - Platform ABI schema draft.
 - Module manifest schema RFC draft: `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`.
 - Capability contract RFC draft: `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`.
+- Workspace lifecycle contract RFC draft: `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`.
 - Package metadata schema draft.
-- Workspace lifecycle contract draft.
 - Trust classification validation gate; trust level capability grant degildir.
 - Plugin boundary contract draft.
 
@@ -361,7 +362,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 01 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=17; Module Manifest ve Capability Contract RFC draft'lari Phase-18 Platform Constitution pre-activation setine eklendi; explicit transition olmadan Phase-18 aktif değildir.
+**Son Güncelleme:** 01 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=17; Module Manifest, Capability Contract ve Workspace Lifecycle RFC draft'lari Phase-18 Platform Constitution pre-activation setine eklendi; explicit transition olmadan Phase-18 aktif değildir.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

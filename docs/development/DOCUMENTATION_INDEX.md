@@ -17,7 +17,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=17`
 - **Active Phase:** Phase-17 OFFICIALLY CLOSED / Phase-18 TRANSITION NOT ACTIVATED
-- **Active Execution Priority:** Draft the Phase-18 Platform Constitution RFC set, currently `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` and `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
+- **Active Execution Priority:** Draft the Phase-18 Platform Constitution RFC set, currently `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, and `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 - **Scope Boundary:** Phase-18 is not active until an explicit `CURRENT_PHASE` pointer transition; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
@@ -36,14 +36,15 @@ Current repo truth icin once su dosyalari referans alin:
 11. `PHASE18_TRANSITION_DECISION.md` — **Phase-18 Platform Constitution transition package; not active pointer**
 12. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` — **first pre-activation Platform Constitution RFC draft**
 13. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` — **capability request/decision/receipt/revocation RFC draft**
-14. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-15. `reports/phase15_official_closure/closure_index.json`
-16. `reports/phase13_official_closure_candidate/closure_index.json`
-17. `reports/phase12_official_closure_candidate/closure_manifest.json`
-18. `reports/phase10_phase11_official_closure_index.json`
-19. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-20. `Makefile`
-21. `.github/workflows/ci-freeze.yml`
+14. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` — **workspace admission/logical-mount lifecycle RFC draft**
+15. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+16. `reports/phase15_official_closure/closure_index.json`
+17. `reports/phase13_official_closure_candidate/closure_index.json`
+18. `reports/phase12_official_closure_candidate/closure_manifest.json`
+19. `reports/phase10_phase11_official_closure_index.json`
+20. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+21. `Makefile`
+22. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -79,19 +80,21 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 7. `docs/specs/phase18-platform-constitution/README.md` — Phase-18 spec set index
 8. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 9. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
-10. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-11. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-12. `docs/specs/phase16-ayken-orchestration/README.md`
-13. `docs/specs/authority-lineage-v1/README.md`
-14. `docs/specs/phase14-distributed-observability/README.md`
-15. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-16. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+10. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
+11. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+12. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+13. `docs/specs/phase16-ayken-orchestration/README.md`
+14. `docs/specs/authority-lineage-v1/README.md`
+15. `docs/specs/phase14-distributed-observability/README.md`
+16. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+17. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
 2. `docs/specs/phase18-platform-constitution/README.md`
 3. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 4. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
+5. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

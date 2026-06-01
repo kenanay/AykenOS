@@ -375,6 +375,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | Phase-18 transition decision package | DOCS-ONLY / PHASE-18 NOT ACTIVATED | Phase-18'i Platform Constitution olarak sinirlamak | `PHASE18_TRANSITION_DECISION.md`, roadmap/index/current status sync | Kernel expansion/new syscall/AI authority forbidden; explicit pointer transition gerekir |
 | Phase-18 Module Manifest Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Modülün kimlik, entrypoint, artifact ve capability request beyanini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` | Capability/trust/workspace authority grant yok; unknown fields fail-closed |
 | Phase-18 Capability Contract Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Capability request, authorization decision, receipt ve revocation sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` | Manifest self-grant yok; trust capability grant degil; token/receipt ayrimi korunur |
+| Phase-18 Workspace Lifecycle Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Workspace admission, logical mount, disable, quarantine, revocation ve removal sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Workspace declaration mount grant degil; mount capability grant degil; runtime loader yok |
 
 PR koordinasyon kurallari:
 
@@ -1054,7 +1055,8 @@ Bu roadmap su olaylarda guncellenir:
 17. Phase-18 Platform Constitution transition decision review/merge sonucu.
 18. Phase-18 Module Manifest Schema review/merge sonucu.
 19. Phase-18 Capability Contract Specification review/merge sonucu.
-20. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+20. Phase-18 Workspace Lifecycle Specification review/merge sonucu.
+21. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1076,6 +1078,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase18-platform-constitution/README.md`
 - `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
+- `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
