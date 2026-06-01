@@ -496,7 +496,9 @@ Invalid because wildcard scope is forbidden.
 ## Relationship To Other Phase-18 Specs
 
 1. `MODULE_MANIFEST_SCHEMA.md` defines where requests are declared.
-2. Package Metadata Schema will bind request and artifact digests to a package.
+2. `PACKAGE_METADATA_SCHEMA.md` remains external to capability decisions and
+   must not contain capability requests, decisions, receipts, tokens, or
+   grants.
 3. `WORKSPACE_LIFECYCLE_SPECIFICATION.md` defines workspace selectors,
    admission, logical mounts, and lifecycle.
 4. Trust Classification Model will define review inputs, not authority.

@@ -412,7 +412,7 @@ Reason: Phase-18 does not add syscalls.
 
 | Future spec | Relationship |
 |---|---|
-| Package Metadata Schema | Owns publisher, signature, package digest, distribution channel |
+| `PACKAGE_METADATA_SCHEMA.md` | Owns package identity, publisher declaration, content hashes, signature evidence, dependencies, and compatibility metadata |
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Defines request, decision, receipt, and revocation boundaries |
 | `WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Defines workspace states, logical mounts, enable/disable/remove behavior |
 | Trust Classification Model | Defines trusted/verified/signed/local/revoked classification |

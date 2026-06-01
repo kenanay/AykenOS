@@ -349,8 +349,9 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 6. Kernel ABI ile Platform ABI ayrimi acik.
 7. Trust level capability grant degildir.
 8. `CURRENT_PHASE` ancak explicit transition ile `18` yapilir.
-9. Module Manifest, Capability Contract ve Workspace Lifecycle spec'leri
-   fail-closed olarak review edilmeden implementation phase baslamaz.
+9. Module Manifest, Capability Contract, Workspace Lifecycle ve Package
+   Metadata spec'leri fail-closed olarak review edilmeden implementation phase
+   baslamaz.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -376,6 +377,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | Phase-18 Module Manifest Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Modülün kimlik, entrypoint, artifact ve capability request beyanini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` | Capability/trust/workspace authority grant yok; unknown fields fail-closed |
 | Phase-18 Capability Contract Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Capability request, authorization decision, receipt ve revocation sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` | Manifest self-grant yok; trust capability grant degil; token/receipt ayrimi korunur |
 | Phase-18 Workspace Lifecycle Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Workspace admission, logical mount, disable, quarantine, revocation ve removal sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Workspace declaration mount grant degil; mount capability grant degil; runtime loader yok |
+| Phase-18 Package Metadata Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Package identity, version, publisher, hash, signature, dependency ve Platform ABI compatibility metadata'sini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` | Trust/capability/workspace/execution/mount/loader grant yok; package digest metadata icinde self-declare edilmez |
 
 PR koordinasyon kurallari:
 
@@ -1056,7 +1058,8 @@ Bu roadmap su olaylarda guncellenir:
 18. Phase-18 Module Manifest Schema review/merge sonucu.
 19. Phase-18 Capability Contract Specification review/merge sonucu.
 20. Phase-18 Workspace Lifecycle Specification review/merge sonucu.
-21. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+21. Phase-18 Package Metadata Schema review/merge sonucu.
+22. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
