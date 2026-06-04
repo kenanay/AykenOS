@@ -183,7 +183,9 @@ Allowed values:
 Forbidden values include `kernel`, `driver`, `syscall`, `ring0`,
 `scheduler`, `interrupt`, `plugin`, `semantic-verdict`, and `ai-runtime`.
 
-Plugin package semantics are deferred until the Plugin Boundary Contract exists.
+`PLUGIN_BOUNDARY_CONTRACT.md` defines plugin boundary semantics separately.
+Package metadata still does not create plugin package, loader, or execution
+authority.
 
 ### `publisher`
 
@@ -533,8 +535,9 @@ Invalid because absolute host paths are forbidden.
    must not contain workspace admission, lifecycle state, or mount fields.
 4. `TRUST_CLASSIFICATION_MODEL.md` defines how publisher and signature evidence
    influence review without granting capability.
-5. Plugin Boundary Contract will define plugin package semantics later;
-   `plugin` package kinds are deferred in this RFC.
+5. `PLUGIN_BOUNDARY_CONTRACT.md` defines plugin boundary compatibility
+   semantics; package metadata still does not grant plugin package, loader, or
+   execution authority.
 6. Platform ABI Validation Gate will enforce package metadata, manifest,
    capability, workspace, trust, and plugin invariants.
 

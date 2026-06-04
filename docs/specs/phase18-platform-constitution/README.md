@@ -30,11 +30,12 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
    metadata.
 5. `TRUST_CLASSIFICATION_MODEL.md` - RFC for trust vocabulary, evidence
    inputs, classification records, lifecycle, and fail-closed policy effects.
+6. `PLUGIN_BOUNDARY_CONTRACT.md` - RFC for host interfaces, extension points,
+   plugin compatibility records, lifecycle, and fail-closed boundary effects.
 
 ## Planned Specs
 
-1. Plugin Boundary Contract.
-2. Platform ABI Validation Gate.
+1. Platform ABI Validation Gate.
 
 ## Non-Authority Rule
 
@@ -48,3 +49,4 @@ No file in this directory may grant:
 6. AI Runtime authority.
 7. Semantic CLI execution verdict authority.
 8. Package install, execution, workspace admission, or loader authority.
+9. Plugin loading, autoload, or execution authority.
