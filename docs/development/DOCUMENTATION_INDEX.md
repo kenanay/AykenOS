@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-01
+**Last Updated:** 2026-06-04
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=17` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
@@ -17,7 +17,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=17`
 - **Active Phase:** Phase-17 OFFICIALLY CLOSED / Phase-18 TRANSITION NOT ACTIVATED
-- **Active Execution Priority:** Draft the Phase-18 Platform Constitution RFC set, currently `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, and `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`
+- **Active Execution Priority:** Draft the Phase-18 Platform Constitution RFC set, currently `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, and `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`
 - **Scope Boundary:** Phase-18 is not active until an explicit `CURRENT_PHASE` pointer transition; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
@@ -38,14 +38,15 @@ Current repo truth icin once su dosyalari referans alin:
 13. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` — **capability request/decision/receipt/revocation RFC draft**
 14. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` — **workspace admission/logical-mount lifecycle RFC draft**
 15. `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` — **package metadata evidence-only RFC draft**
-16. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-17. `reports/phase15_official_closure/closure_index.json`
-18. `reports/phase13_official_closure_candidate/closure_index.json`
-19. `reports/phase12_official_closure_candidate/closure_manifest.json`
-20. `reports/phase10_phase11_official_closure_index.json`
-21. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-22. `Makefile`
-23. `.github/workflows/ci-freeze.yml`
+16. `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` — **trust classification policy-input RFC draft**
+17. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+18. `reports/phase15_official_closure/closure_index.json`
+19. `reports/phase13_official_closure_candidate/closure_index.json`
+20. `reports/phase12_official_closure_candidate/closure_manifest.json`
+21. `reports/phase10_phase11_official_closure_index.json`
+22. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+23. `Makefile`
+24. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -83,13 +84,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 9. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
 10. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 11. `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`
-12. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-13. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-14. `docs/specs/phase16-ayken-orchestration/README.md`
-15. `docs/specs/authority-lineage-v1/README.md`
-16. `docs/specs/phase14-distributed-observability/README.md`
-17. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-18. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+12. `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`
+13. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+14. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+15. `docs/specs/phase16-ayken-orchestration/README.md`
+16. `docs/specs/authority-lineage-v1/README.md`
+17. `docs/specs/phase14-distributed-observability/README.md`
+18. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+19. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -98,6 +100,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 4. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
 5. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
 6. `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`
+7. `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces
@@ -212,4 +215,4 @@ kullanilmalidir. Yeni ozellik veya Phase-18 aktivasyonu,
 `PHASE18_TRANSITION_DECISION.md` review edilip explicit `CURRENT_PHASE`
 transition yapilmadan current execution plani olarak sunulamaz.
 
-**Son Guncelleme:** 2026-05-31
+**Son Guncelleme:** 2026-06-04

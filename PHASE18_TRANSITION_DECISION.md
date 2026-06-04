@@ -83,16 +83,17 @@ Required Platform Constitution outputs:
 2. Package metadata schema (`docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`).
 3. Workspace lifecycle contract (`docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`).
 4. Capability contract for platform resources (`docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`).
-5. Trust classification model.
+5. Trust classification model (`docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`).
 6. Plugin boundary contract.
 7. Platform ABI validation gate.
 8. Minimal reference examples that do not create new runtime authority.
 
 Initial pre-activation spec work starts with the Module Manifest Schema,
 Capability Contract Specification, Workspace Lifecycle Specification, and
-Package Metadata Schema. This does not activate Phase-18 and does not grant
-capability, package install, package execution, workspace, trust, plugin,
-semantic, or AI Runtime authority.
+Package Metadata Schema, and Trust Classification Model. This does not
+activate Phase-18 and does not grant capability, package install, package
+execution, workspace, trust assignment, plugin, semantic, or AI Runtime
+authority.
 
 ## Non-Goals
 

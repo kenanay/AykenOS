@@ -501,7 +501,7 @@ Invalid because wildcard scope is forbidden.
    grants.
 3. `WORKSPACE_LIFECYCLE_SPECIFICATION.md` defines workspace selectors,
    admission, logical mounts, and lifecycle.
-4. Trust Classification Model will define review inputs, not authority.
+4. `TRUST_CLASSIFICATION_MODEL.md` defines review inputs, not authority.
 5. Plugin Boundary Contract will define plugin host interface capability ids.
 6. Platform ABI Validation Gate will enforce registry, request, decision, and
    receipt invariants.

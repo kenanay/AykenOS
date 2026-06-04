@@ -32,7 +32,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
    package identity, version, publisher, hash, signature, dependency ve
    Platform ABI compatibility RFC draft'i; trust/capability/workspace/execution
    grant degildir.
-11. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+11. `../specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`:
+   trust vocabulary, evidence inputs, classification lifecycle ve fail-closed
+   policy effects RFC draft'i; capability veya runtime authority grant degildir.
+12. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -41,7 +44,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
-| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract, Workspace Lifecycle and Package Metadata drafts; no activation without explicit pointer transition |
+| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata and Trust Classification drafts; no activation without explicit pointer transition |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | TRANSITION DECISION PACKAGE ONLY; kernel expansion and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -70,6 +73,6 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Trust Classification Model RFC draft'i acilir; Plugin Boundary
-ve Platform ABI Validation Gate spec'leri gelmeden `CURRENT_PHASE` explicit
-pointer transition ile `18` yapilmaz.
+**Next action:** Plugin Boundary Contract RFC draft'i acilir; Platform ABI
+Validation Gate spec'i gelmeden `CURRENT_PHASE` explicit pointer transition ile
+`18` yapilmaz.
