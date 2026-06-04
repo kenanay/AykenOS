@@ -538,8 +538,9 @@ Invalid because absolute host paths are forbidden.
 5. `PLUGIN_BOUNDARY_CONTRACT.md` defines plugin boundary compatibility
    semantics; package metadata still does not grant plugin package, loader, or
    execution authority.
-6. Platform ABI Validation Gate will enforce package metadata, manifest,
-   capability, workspace, trust, and plugin invariants.
+6. `PLATFORM_ABI_VALIDATION_GATE.md` defines validation order and enforces
+   package metadata, manifest, capability, workspace, trust, and plugin
+   invariants without installing packages.
 
 ## Activation Boundary
 

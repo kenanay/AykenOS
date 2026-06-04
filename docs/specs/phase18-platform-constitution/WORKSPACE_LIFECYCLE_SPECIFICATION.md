@@ -457,7 +457,8 @@ authority.
 4. `TRUST_CLASSIFICATION_MODEL.md` defines review inputs, not authority.
 5. `PLUGIN_BOUNDARY_CONTRACT.md` defines plugin boundary review inputs, not
    workspace authority or mount creation.
-6. Platform ABI Validation Gate will enforce workspace lifecycle invariants.
+6. `PLATFORM_ABI_VALIDATION_GATE.md` defines validation order and enforces
+   workspace lifecycle invariants without creating mounts.
 
 ## Activation Boundary
 
