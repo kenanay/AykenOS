@@ -65,6 +65,7 @@ The following invariants are mandatory:
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Authorizes or denies requested workspace capability access |
 | `PACKAGE_METADATA_SCHEMA.md` | Declares package identity, content hashes, signatures, dependencies, and compatibility only; no workspace admission or mount fields |
 | `TRUST_CLASSIFICATION_MODEL.md` | May influence review path, not workspace authority |
+| `PLUGIN_BOUNDARY_CONTRACT.md` | May reference workspace-derived host surfaces later; cannot create mounts or workspace authority |
 | Platform ABI Validation Gate | Must reject stale, ambiguous, or authority-expanding workspace states |
 
 Workspace lifecycle is the admission state machine around a module in a
@@ -454,7 +455,8 @@ authority.
 3. `PACKAGE_METADATA_SCHEMA.md` may provide package evidence inputs, but it
    must not contain workspace admission, lifecycle state, or mount fields.
 4. `TRUST_CLASSIFICATION_MODEL.md` defines review inputs, not authority.
-5. Plugin Boundary Contract will define plugin workspace surfaces.
+5. `PLUGIN_BOUNDARY_CONTRACT.md` defines plugin boundary review inputs, not
+   workspace authority or mount creation.
 6. Platform ABI Validation Gate will enforce workspace lifecycle invariants.
 
 ## Activation Boundary

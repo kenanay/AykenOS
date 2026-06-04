@@ -240,8 +240,9 @@ Artifact hashes are package evidence inputs. They are not trust classification.
 | `host_interfaces` | array | Host interfaces requested by the plugin |
 | `exports` | array | Interfaces exported by the module |
 
-This field does not load a plugin. The future Plugin Boundary Contract defines
-host admission and runtime behavior.
+This field does not load a plugin. `PLUGIN_BOUNDARY_CONTRACT.md` defines
+host interface, extension point, compatibility, and binding decision boundaries
+without granting runtime loading authority.
 
 ### `semantic_surface`
 
@@ -416,7 +417,7 @@ Reason: Phase-18 does not add syscalls.
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Defines request, decision, receipt, and revocation boundaries |
 | `WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Defines workspace states, logical mounts, enable/disable/remove behavior |
 | `TRUST_CLASSIFICATION_MODEL.md` | Defines trusted/verified/signed/local/revoked classification without granting authority |
-| Plugin Boundary Contract | Defines host admission, plugin loading, interface binding |
+| `PLUGIN_BOUNDARY_CONTRACT.md` | Defines host interfaces, extension points, compatibility, and binding decisions without loading authority |
 | Platform ABI Validation Gate | Implements fail-closed schema and authority checks |
 
 ## Activation Boundary

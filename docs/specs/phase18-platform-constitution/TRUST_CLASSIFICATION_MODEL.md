@@ -320,8 +320,8 @@ not itself a capability decision.
    for capability request, decision, receipt, and revocation boundaries.
 4. `WORKSPACE_LIFECYCLE_SPECIFICATION.md` may use trust classification as an
    admission input, but trust must not create mounts or workspace access.
-5. Plugin Boundary Contract will define how plugin hosts consume trust as a
-   review input without loading plugins automatically.
+5. `PLUGIN_BOUNDARY_CONTRACT.md` defines how plugin hosts consume trust as a
+   review input without inheriting trust or loading plugins automatically.
 6. Platform ABI Validation Gate will enforce that trust records, manifests,
    packages, capabilities, workspaces, and plugin boundaries remain separated.
 

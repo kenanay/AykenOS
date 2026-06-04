@@ -84,16 +84,16 @@ Required Platform Constitution outputs:
 3. Workspace lifecycle contract (`docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`).
 4. Capability contract for platform resources (`docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`).
 5. Trust classification model (`docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`).
-6. Plugin boundary contract.
+6. Plugin boundary contract (`docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`).
 7. Platform ABI validation gate.
 8. Minimal reference examples that do not create new runtime authority.
 
 Initial pre-activation spec work starts with the Module Manifest Schema,
-Capability Contract Specification, Workspace Lifecycle Specification, and
-Package Metadata Schema, and Trust Classification Model. This does not
-activate Phase-18 and does not grant capability, package install, package
-execution, workspace, trust assignment, plugin, semantic, or AI Runtime
-authority.
+Capability Contract Specification, Workspace Lifecycle Specification, Package
+Metadata Schema, Trust Classification Model, and Plugin Boundary Contract. This
+does not activate Phase-18 and does not grant capability, package install,
+package execution, workspace, trust assignment, plugin loading, semantic, or AI
+Runtime authority.
 
 ## Non-Goals
 
@@ -138,6 +138,33 @@ Initial trust classifications may include:
 | `revoked` | Must not install, enable, update, or execute |
 
 These classifications are policy inputs. They are not authority tokens.
+
+## Plugin Boundary Contract
+
+Plugin boundary is required, but it must not be confused with execution.
+
+**Plugin boundary is not authority.**
+
+Plugin boundary may define:
+
+1. Host interface declarations.
+2. Extension point declarations.
+3. Plugin compatibility inputs.
+4. External binding decision records.
+5. Binding lifecycle states.
+6. Review, quarantine, and revocation policy inputs.
+
+Plugin boundary must not define:
+
+1. Plugin autoload.
+2. Plugin execution authority.
+3. Plugin capability requests or grants.
+4. Trust inheritance.
+5. Workspace or mount creation.
+6. Kernel, Ring0, syscall, Semantic CLI, or AI Runtime authority.
+
+Plugin compatibility is a policy input only. It is not a loader token, runtime
+handle, capability grant, trust grant, workspace grant, or execution verdict.
 
 ## Validation Backlog
 

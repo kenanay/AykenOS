@@ -349,9 +349,9 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 6. Kernel ABI ile Platform ABI ayrimi acik.
 7. Trust level capability grant degildir.
 8. `CURRENT_PHASE` ancak explicit transition ile `18` yapilir.
-9. Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata
-   ve Trust Classification spec'leri fail-closed olarak review edilmeden
-   implementation phase baslamaz.
+9. Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata,
+   Trust Classification ve Plugin Boundary spec'leri fail-closed olarak review
+   edilmeden implementation phase baslamaz.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -379,6 +379,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | Phase-18 Workspace Lifecycle Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Workspace admission, logical mount, disable, quarantine, revocation ve removal sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Workspace declaration mount grant degil; mount capability grant degil; runtime loader yok |
 | Phase-18 Package Metadata Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Package identity, version, publisher, hash, signature, dependency ve Platform ABI compatibility metadata'sini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` | Trust/capability/workspace/execution/mount/loader grant yok; package digest metadata icinde self-declare edilmez |
 | Phase-18 Trust Classification Model | DOCS-ONLY / PRE-ACTIVATION RFC | Trust vocabulary, evidence input, classification lifecycle ve policy-effect sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` | Trust level capability grant degil; install/enable/execute/load/mount authority yok |
+| Phase-18 Plugin Boundary Contract | DOCS-ONLY / PRE-ACTIVATION RFC | Host interface, extension point, compatibility, binding lifecycle ve fail-closed plugin boundary sinirlarini tanimlamak | `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` | Plugin loading/autoload/execution yok; capability/trust/workspace inheritance yok |
 
 PR koordinasyon kurallari:
 
@@ -1061,7 +1062,8 @@ Bu roadmap su olaylarda guncellenir:
 20. Phase-18 Workspace Lifecycle Specification review/merge sonucu.
 21. Phase-18 Package Metadata Schema review/merge sonucu.
 22. Phase-18 Trust Classification Model review/merge sonucu.
-23. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+23. Phase-18 Plugin Boundary Contract review/merge sonucu.
+24. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
