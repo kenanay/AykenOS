@@ -96,6 +96,12 @@ grant capability, package install, package execution, workspace, trust
 assignment, plugin loading, validation authority, semantic, or AI Runtime
 authority.
 
+Before an activation decision package can be considered, the current RFC set
+must pass a cross-consistency review that confirms terminology, dependency
+order, validation order, and authority separation remain fail-closed. The
+current review record is
+`docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`.
+
 ## Non-Goals
 
 Phase-18 must not include:

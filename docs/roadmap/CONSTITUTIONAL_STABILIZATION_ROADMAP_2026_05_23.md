@@ -352,6 +352,8 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 9. Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata,
    Trust Classification, Plugin Boundary ve Platform ABI Validation Gate
    spec'leri fail-closed olarak review edilmeden implementation phase baslamaz.
+10. Cross-consistency review kabul edilmeden activation decision package
+    hazirlanmis sayilmaz.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -381,6 +383,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | Phase-18 Trust Classification Model | DOCS-ONLY / PRE-ACTIVATION RFC | Trust vocabulary, evidence input, classification lifecycle ve policy-effect sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` | Trust level capability grant degil; install/enable/execute/load/mount authority yok |
 | Phase-18 Plugin Boundary Contract | DOCS-ONLY / PRE-ACTIVATION RFC | Host interface, extension point, compatibility, binding lifecycle ve fail-closed plugin boundary sinirlarini tanimlamak | `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` | Plugin loading/autoload/execution yok; capability/trust/workspace inheritance yok |
 | Phase-18 Platform ABI Validation Gate | DOCS-ONLY / PRE-ACTIVATION RFC | Manifest, package, trust, capability, workspace ve plugin boundary input'larini deterministik fail-closed validation order ile baglamak | `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` | Validation PASS authority grant degil; install/enable/execute/load/mount/capability/trust grant yok |
+| Phase-18 Cross-Consistency Review | DOCS-ONLY / PRE-ACTIVATION REVIEW | Yedi Phase-18 RFC'nin terminology, dependency order, validation order ve authority separation acisindan celismedigini kaydetmek | `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` | Review PASS activation degil; activation package ve explicit pointer transition gerekir |
 
 PR koordinasyon kurallari:
 
@@ -1065,7 +1068,8 @@ Bu roadmap su olaylarda guncellenir:
 22. Phase-18 Trust Classification Model review/merge sonucu.
 23. Phase-18 Plugin Boundary Contract review/merge sonucu.
 24. Phase-18 Platform ABI Validation Gate review/merge sonucu.
-24. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+25. Phase-18 Cross-Consistency Review sonucu.
+26. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1088,6 +1092,11 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`
 - `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`
 - `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`
+- `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`
+- `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`
+- `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`
+- `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
+- `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
