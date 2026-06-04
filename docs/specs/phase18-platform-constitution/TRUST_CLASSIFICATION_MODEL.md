@@ -105,11 +105,11 @@ A trust classification record may reference external evidence inputs:
 
 | Input | Source | Boundary |
 |---|---|---|
-| Package metadata digest | `PACKAGE_METADATA_SCHEMA.md` or future validation gate | Evidence only |
+| Package metadata digest | `PACKAGE_METADATA_SCHEMA.md` or `PLATFORM_ABI_VALIDATION_GATE.md` | Evidence only |
 | Publisher declaration | `PACKAGE_METADATA_SCHEMA.md` | Identity claim only |
 | Signature reference | `PACKAGE_METADATA_SCHEMA.md` or external signature evidence | Evidence only |
 | Manifest digest | `MODULE_MANIFEST_SCHEMA.md` canonical digest | Evidence only |
-| Platform validation receipt | Future Platform ABI Validation Gate | Evidence only |
+| Platform validation receipt | `PLATFORM_ABI_VALIDATION_GATE.md` | Evidence only |
 | Review decision digest | Future review workflow | Evidence only |
 | Registry policy digest | Future registry policy | Evidence only |
 | Workspace policy digest | Future workspace policy | Admission input only |
@@ -322,8 +322,9 @@ not itself a capability decision.
    admission input, but trust must not create mounts or workspace access.
 5. `PLUGIN_BOUNDARY_CONTRACT.md` defines how plugin hosts consume trust as a
    review input without inheriting trust or loading plugins automatically.
-6. Platform ABI Validation Gate will enforce that trust records, manifests,
-   packages, capabilities, workspaces, and plugin boundaries remain separated.
+6. `PLATFORM_ABI_VALIDATION_GATE.md` defines validation order and enforces that
+   trust records, manifests, packages, capabilities, workspaces, and plugin
+   boundaries remain separated without assigning trust.
 
 ## Valid Classification Example
 

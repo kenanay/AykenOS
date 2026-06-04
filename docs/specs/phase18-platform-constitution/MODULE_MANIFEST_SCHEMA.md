@@ -409,16 +409,16 @@ Reason: Phase-18 does not add syscalls.
 | Semantic verdict authority present | FAIL |
 | AI Runtime authority present | FAIL |
 
-## Relationship To Future Specs
+## Relationship To Other Phase-18 Specs
 
-| Future spec | Relationship |
+| Spec | Relationship |
 |---|---|
 | `PACKAGE_METADATA_SCHEMA.md` | Owns package identity, publisher declaration, content hashes, signature evidence, dependencies, and compatibility metadata |
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Defines request, decision, receipt, and revocation boundaries |
 | `WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Defines workspace states, logical mounts, enable/disable/remove behavior |
 | `TRUST_CLASSIFICATION_MODEL.md` | Defines trusted/verified/signed/local/revoked classification without granting authority |
 | `PLUGIN_BOUNDARY_CONTRACT.md` | Defines host interfaces, extension points, compatibility, and binding decisions without loading authority |
-| Platform ABI Validation Gate | Implements fail-closed schema and authority checks |
+| `PLATFORM_ABI_VALIDATION_GATE.md` | Defines fail-closed validation order, stage results, receipts, and authority separation checks |
 
 ## Activation Boundary
 

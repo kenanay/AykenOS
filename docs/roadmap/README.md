@@ -39,7 +39,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
    host interface, extension point, compatibility ve binding lifecycle RFC
    draft'i; plugin loading veya capability/trust/workspace authority grant
    degildir.
-13. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+13. `../specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`:
+   Platform ABI validation order, input bundle, stage result ve validation
+   receipt RFC draft'i; validation PASS authority grant degildir.
+14. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -48,7 +51,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
-| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification and Plugin Boundary drafts; no activation without explicit pointer transition |
+| Aktif odak | Phase-18 Platform Constitution RFC set; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary and Platform ABI Validation Gate drafts; no activation without explicit pointer transition |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | TRANSITION DECISION PACKAGE ONLY; kernel expansion and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -77,6 +80,6 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Platform ABI Validation Gate RFC draft'i acilir;
+**Next action:** Phase-18 Platform Constitution RFC set'i cross-review edilir;
 `CURRENT_PHASE` explicit pointer transition ile `18` yapilmadan once Platform
-ABI validation order'i fail-closed olarak review edilir.
+ABI validation order'i ve authority separation fail-closed olarak kabul edilir.

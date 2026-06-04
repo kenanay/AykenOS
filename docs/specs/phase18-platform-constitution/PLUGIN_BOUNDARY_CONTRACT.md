@@ -98,7 +98,7 @@ This contract does not define:
 | `TRUST_CLASSIFICATION_MODEL.md` | May influence review path; trust does not inherit across plugin boundaries |
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Remains the only capability request, decision, receipt, and revocation boundary |
 | `WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Remains the only workspace admission and logical mount lifecycle boundary |
-| Platform ABI Validation Gate | Must enforce ordering and separation across manifest, package, trust, capability, workspace, and plugin inputs |
+| `PLATFORM_ABI_VALIDATION_GATE.md` | Must enforce ordering and separation across manifest, package, trust, capability, workspace, and plugin inputs |
 
 Plugin boundary compatibility may consume evidence from these contracts. It
 must not replace any of them.
@@ -167,9 +167,9 @@ ids:
 ^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*){2,}$
 ```
 
-The value `any` is allowed only for `extension_point_id`, and it means that the
-future validation gate must select a concrete host extension point before a
-binding candidate can become compatible.
+The value `any` is allowed only for `extension_point_id`, and it means that
+`PLATFORM_ABI_VALIDATION_GATE.md` must select a concrete host extension point
+before a binding candidate can become compatible.
 
 `interface_version` must use:
 

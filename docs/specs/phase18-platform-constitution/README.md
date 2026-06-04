@@ -32,10 +32,9 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
    inputs, classification records, lifecycle, and fail-closed policy effects.
 6. `PLUGIN_BOUNDARY_CONTRACT.md` - RFC for host interfaces, extension points,
    plugin compatibility records, lifecycle, and fail-closed boundary effects.
-
-## Planned Specs
-
-1. Platform ABI Validation Gate.
+7. `PLATFORM_ABI_VALIDATION_GATE.md` - RFC for deterministic validation order,
+   input bundles, stage results, validation receipts, and fail-closed
+   cross-contract separation.
 
 ## Non-Authority Rule
 
