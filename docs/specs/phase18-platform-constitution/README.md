@@ -35,6 +35,15 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
 7. `PLATFORM_ABI_VALIDATION_GATE.md` - RFC for deterministic validation order,
    input bundles, stage results, validation receipts, and fail-closed
    cross-contract separation.
+8. `CROSS_CONSISTENCY_REVIEW.md` - pre-activation review record for
+   cross-document terminology, dependency order, and authority separation.
+
+## Current Review Result
+
+`CROSS_CONSISTENCY_REVIEW.md` records `PASS WITH ACTIVATION BLOCKERS` for the
+current seven-RFC Platform Constitution set. This result is a documentation
+review only. It does not activate Phase-18 and does not authorize
+implementation.
 
 ## Non-Authority Rule
 
