@@ -197,7 +197,7 @@ The `publisher` object is a declaration, not trust classification.
 
 Unknown fields in `publisher` fail validation.
 
-Publisher declarations may be inputs to a future Trust Classification Model.
+Publisher declarations may be inputs to `TRUST_CLASSIFICATION_MODEL.md`.
 They do not create trust by themselves.
 
 ### `hashes`
@@ -531,7 +531,7 @@ Invalid because absolute host paths are forbidden.
    grants.
 3. `WORKSPACE_LIFECYCLE_SPECIFICATION.md` remains external; package metadata
    must not contain workspace admission, lifecycle state, or mount fields.
-4. Trust Classification Model will define how publisher and signature evidence
+4. `TRUST_CLASSIFICATION_MODEL.md` defines how publisher and signature evidence
    influence review without granting capability.
 5. Plugin Boundary Contract will define plugin package semantics later;
    `plugin` package kinds are deferred in this RFC.

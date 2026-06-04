@@ -415,7 +415,7 @@ Reason: Phase-18 does not add syscalls.
 | `PACKAGE_METADATA_SCHEMA.md` | Owns package identity, publisher declaration, content hashes, signature evidence, dependencies, and compatibility metadata |
 | `CAPABILITY_CONTRACT_SPECIFICATION.md` | Defines request, decision, receipt, and revocation boundaries |
 | `WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Defines workspace states, logical mounts, enable/disable/remove behavior |
-| Trust Classification Model | Defines trusted/verified/signed/local/revoked classification |
+| `TRUST_CLASSIFICATION_MODEL.md` | Defines trusted/verified/signed/local/revoked classification without granting authority |
 | Plugin Boundary Contract | Defines host admission, plugin loading, interface binding |
 | Platform ABI Validation Gate | Implements fail-closed schema and authority checks |
 

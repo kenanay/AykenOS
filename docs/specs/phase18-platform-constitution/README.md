@@ -28,12 +28,13 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
 4. `PACKAGE_METADATA_SCHEMA.md` - RFC for package identity, version,
    publisher, hash, signature, dependency, and Platform ABI compatibility
    metadata.
+5. `TRUST_CLASSIFICATION_MODEL.md` - RFC for trust vocabulary, evidence
+   inputs, classification records, lifecycle, and fail-closed policy effects.
 
 ## Planned Specs
 
-1. Trust Classification Model.
-2. Plugin Boundary Contract.
-3. Platform ABI Validation Gate.
+1. Plugin Boundary Contract.
+2. Platform ABI Validation Gate.
 
 ## Non-Authority Rule
 
