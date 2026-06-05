@@ -4,7 +4,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, `PHASE18_TRANSITION_DECISION.md`, and the Phase-18
 Platform Constitution RFC set. In case of conflict, those documents prevail.
 
-**Status:** REVIEW-DRAFT / PRE-ACTIVATION REVIEW
+**Status:** ACCEPTED REVIEW / PHASE-18 ACTIVATION INPUT
 **Review date:** 2026-06-05
 **Review id:** `ayken.platform.phase18.cross_consistency.review.v1`
 **Authority boundary:** Documentation/review record only; not Phase-18
@@ -17,17 +17,17 @@ Runtime authority, and not kernel ABI expansion.
 
 This review answers the activation-preparation question:
 
-Do the Phase-18 Platform Constitution RFC drafts define a coherent
+Do the Phase-18 Platform Constitution RFCs define a coherent
 fail-closed Platform ABI boundary without contradicting each other or widening
 the frozen kernel execution substrate?
 
-This document does not activate Phase-18 and does not change
-`CURRENT_PHASE=17`. It records cross-document consistency findings and the
-remaining blockers before an activation decision package can be considered.
+This document did not by itself activate Phase-18. It records cross-document
+consistency findings used by `PHASE18_ACTIVATION_DECISION.md` and the later
+`CURRENT_PHASE=18` pointer transition.
 
 ## Reviewed Inputs
 
-The reviewed Phase-18 pre-activation set is:
+The reviewed Phase-18 Platform Constitution set is:
 
 1. `PHASE18_TRANSITION_DECISION.md`
 2. `docs/specs/phase18-platform-constitution/README.md`
@@ -41,7 +41,7 @@ The reviewed Phase-18 pre-activation set is:
 
 ## Review Verdict
 
-**Verdict:** PASS WITH ACTIVATION BLOCKERS
+**Verdict:** PASS
 
 No activation-blocking contradiction is identified across the reviewed RFC set.
 The documents consistently preserve the frozen kernel ABI, keep Phase-18 as a
@@ -49,8 +49,7 @@ Platform Constitution phase, and separate declarations, classifications,
 decisions, receipts, compatibility records, and validation receipts from
 runtime authority.
 
-This PASS is a review finding only. It does not activate Phase-18 and does not
-authorize implementation.
+This PASS is a review finding only. It does not authorize implementation.
 
 ## Core Consistency Finding
 
@@ -216,12 +215,12 @@ activation documents and examples:
 5. `validated` can sound like acceptance or execution.
    Current RFC text states validation is a denial boundary only.
 
-These are not contradictions. They are activation-package vocabulary risks.
+These are not contradictions. They are ongoing Phase-18 vocabulary risks.
 
-## Required Activation Blockers
+## Activation Preconditions Checked
 
-Before `CURRENT_PHASE=18` can be considered, the activation decision package
-must explicitly confirm:
+The accepted activation decision package and pointer transition explicitly
+confirm:
 
 1. This cross-consistency review is accepted or superseded by a newer reviewed
    cross-consistency record.
@@ -233,17 +232,16 @@ must explicitly confirm:
    issuer, Semantic CLI authority, or AI Runtime authority.
 6. Platform ABI Validation Gate remains a validation-order spec and not a
    runtime authority implementation.
-7. Required local and remote governance/freeze checks pass on the exact
+7. Required local and remote governance/freeze checks must pass on the exact
    activation candidate SHA.
-8. Activation is recorded through an explicit `CURRENT_PHASE` pointer
+8. Activation is recorded through an explicit `CURRENT_PHASE=18` pointer
    transition. CI PASS alone is not activation.
 
 ## Review Conclusion
 
-The Phase-18 pre-activation RFC set is internally coherent enough to proceed
-to an activation decision package draft.
+The Phase-18 RFC set is internally coherent enough to serve as the active
+Platform Constitution reference set.
 
-The safe next step is not implementation and not automatic `CURRENT_PHASE=18`.
-The safe next step is a separate Phase-18 activation decision package that
-references this review, preserves the frozen kernel ABI, and keeps Platform
-Runtime work out of Phase-18 unless a later phase decision authorizes it.
+The safe next step after activation is still not implementation. Platform
+Runtime work remains outside Phase-18 unless a later phase decision authorizes
+it.

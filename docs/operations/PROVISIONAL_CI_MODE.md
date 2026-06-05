@@ -3,7 +3,7 @@
 ## Status: DIAGNOSTIC / BASELINE-CANDIDATE ONLY
 
 **Effective date:** 2026-05-25
-**Current phase:** Phase-17 officially closed; Phase-18 transition not activated
+**Current phase:** Phase-18 active as Platform Constitution only; runtime implementation not authorized
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime, evidence,
 baseline, merge or closure authority.

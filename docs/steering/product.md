@@ -91,13 +91,13 @@ These rules are enforced by CI gates and MUST NOT be violated:
 - **Phase 16 Verification Layer**: OFFICIALLY CLOSED (MVP complete, evidence chain verified, trust anchor established)
 - **Phase 17 Execution Pipeline**: OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`)
 - **Constitutional System**: Phases 1-17 COMPLETE (governance framework active)
-- **Architecture Freeze**: ACTIVE (Phase-18 transition requires explicit pointer decision)
+- **Architecture Freeze**: ACTIVE (Phase-18 active as Platform Constitution only)
 - **Worktree-Local Ring3 Rule**: executable user-leaf rule is live under `ci-gate-ring3-user-leaf-rule`; broader Phase10-A2 strict/global authority remains separate
 - **CI Enforcement**: strict freeze chain includes dedicated `Ring3 User Leaf Rule` before broader `Ring3 Execution Phase10a2`, followed by low-half scaffold, mailbox/runtime gates, alias proof, Phase-13 kill-switch enforcement, and Phase-16 verification layer gates
 - **Pre-CI Discipline**: Local advisory (5 core gates, ~60-90s, fail-closed) + verification layer integration
-- **CURRENT_PHASE**: `17` (Phase-17 officially closed; Phase-18 transition not activated)
-- **Current Execution Priority**: review `PHASE18_TRANSITION_DECISION.md` as a docs-only Platform Constitution transition package
-- **Phase-18**: TRANSITION DECISION PACKAGE ONLY until explicit `CURRENT_PHASE` pointer transition
+- **CURRENT_PHASE**: `18` (Phase-18 active as Platform Constitution only)
+- **Current Execution Priority**: maintain Phase-18 Platform Constitution authority without runtime implementation
+- **Phase-18**: ACTIVE PLATFORM CONSTITUTION; runtime implementation requires a separate decision
 - **Scope Decision**: kernel expansion, new syscalls, Ring0 policy, AI Runtime authority and authority-surface growth remain deferred outside Phase-18 Platform Constitution scope
 
 ## License

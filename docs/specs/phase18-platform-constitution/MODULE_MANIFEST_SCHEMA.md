@@ -4,7 +4,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, and `PHASE18_TRANSITION_DECISION.md`. In case of
 conflict, those documents prevail.
 
-**Status:** RFC-DRAFT / PRE-ACTIVATION SPEC
+**Status:** ACTIVE CONSTITUTION SPEC / RUNTIME NOT AUTHORIZED
 **Schema id:** `ayken.platform.module.manifest.v1`
 **Canonical file name:** `ayken.module.json`
 **Authority boundary:** Documentation/specification only; not an installer,
@@ -422,7 +422,7 @@ Reason: Phase-18 does not add syscalls.
 
 ## Activation Boundary
 
-This RFC draft is not sufficient to activate Phase-18. Phase-18 activation still
-requires an explicit `CURRENT_PHASE` pointer transition and acceptance of the
-remaining Platform Constitution contracts required by
-`PHASE18_TRANSITION_DECISION.md`.
+This RFC is part of the active Phase-18 Platform Constitution set. It does not
+authorize runtime implementation, package installation, workspace creation,
+plugin loading, capability issuance, trust assignment, Semantic CLI authority,
+AI Runtime authority, new syscalls, or kernel ABI expansion.

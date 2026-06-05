@@ -4,7 +4,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, `PHASE18_TRANSITION_DECISION.md`, and the Phase-18
 Platform Constitution RFC set. In case of conflict, those documents prevail.
 
-**Status:** ACTIVATION DECISION PACKAGE CANDIDATE / PHASE-18 NOT ACTIVATED
+**Status:** ACCEPTED ACTIVATION DECISION / PHASE-18 ACTIVE AS PLATFORM CONSTITUTION
 **Decision package date:** 2026-06-05
 **Authority basis:** `phase17-official-closure` at
 `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`, the reviewed Phase-18 Platform
@@ -14,17 +14,17 @@ Constitution RFC set, and
 runtime, merge, execution, install, trust, capability, workspace, plugin,
 Semantic CLI, AI Runtime, syscall, kernel ABI, or phase pointer authority.
 
-## Decision Candidate
+## Decision
 
-Phase-18 may be activated only as **Platform Constitution**.
+Phase-18 is activated only as **Platform Constitution**.
 
-Activation, if later accepted through a separate exact-SHA pointer transition,
-means the Phase-18 Platform Constitution contracts become the active roadmap
-authority for module, package, capability, workspace, trust classification,
-plugin boundary, and Platform ABI validation design.
+Activation means the Phase-18 Platform Constitution contracts are the active
+roadmap authority for module, package, capability, workspace, trust
+classification, plugin boundary, and Platform ABI validation design.
 
-This document does not activate Phase-18 and does not change
-`docs/roadmap/CURRENT_PHASE`.
+The separate pointer transition sets `docs/roadmap/CURRENT_PHASE` to `18`.
+That pointer activates only the constitutional specification surface. It does
+not authorize runtime implementation.
 
 ## Core Rule
 
@@ -43,7 +43,7 @@ install, enable, execute, mount, issue, trust, or run anything.
 
 ## Activation Scope
 
-If Phase-18 is later activated, activation grants only:
+Phase-18 activation grants only:
 
 1. Active roadmap ownership for Phase-18 as Platform Constitution.
 2. Authority to maintain the accepted Platform Constitution reference set.
@@ -81,8 +81,8 @@ evidence plan, and acceptance boundary.
 
 ## Activation Preconditions
 
-The following preconditions are mandatory before any `CURRENT_PHASE=18`
-pointer transition may be considered:
+The following preconditions were mandatory before the `CURRENT_PHASE=18`
+pointer transition could be considered:
 
 | ID | Precondition | Required result |
 |---|---|---|
@@ -101,9 +101,9 @@ pointer transition may be considered:
 
 Missing, stale, ambiguous, or partially satisfied preconditions fail closed.
 
-## Required Pointer Transition Shape
+## Pointer Transition Shape
 
-The later pointer-transition change, if proposed, must be narrow:
+The pointer-transition change must remain narrow:
 
 1. Update `docs/roadmap/CURRENT_PHASE` from `17` to `18`.
 2. Update status surfaces to say Phase-18 is active only as Platform
@@ -143,20 +143,20 @@ The safe default is no activation.
 
 ## Activation Evidence Package
 
-The accepted activation evidence package must include:
+The accepted activation evidence package includes or requires:
 
 1. Exact activation candidate SHA.
 2. Local validation summary.
 3. Remote `ci-freeze` run id and conclusion.
 4. Remote Dev Loop run id and conclusion.
 5. Governance/spec/naming/evidence boundary run conclusions.
-6. Confirmation that `CURRENT_PHASE` remained `17` until the later pointer
-   transition change.
+6. Confirmation that `CURRENT_PHASE` remained `17` until this separate
+   pointer-transition change.
 7. Confirmation that no runtime implementation or kernel ABI change was
    included.
 
 CI PASS is not activation by itself. It is only an input to the reviewed
-activation decision.
+activation decision and pointer transition.
 
 ## Relationship To Phase-19
 
@@ -170,9 +170,7 @@ separate reviewed decision changes the roadmap.
 
 ## Decision Package Conclusion
 
-This package is ready for review as an activation decision candidate.
+This package is accepted as the Phase-18 activation decision.
 
-It does not activate Phase-18. The next safe action after accepting this
-package is a separate, narrow `CURRENT_PHASE=18` pointer-transition proposal
-that preserves Platform Constitution scope and excludes runtime
-implementation.
+The resulting `CURRENT_PHASE=18` pointer transition preserves Platform
+Constitution scope and excludes runtime implementation.

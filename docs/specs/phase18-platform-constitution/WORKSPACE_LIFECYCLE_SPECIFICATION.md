@@ -5,7 +5,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `MODULE_MANIFEST_SCHEMA.md`, and `CAPABILITY_CONTRACT_SPECIFICATION.md`. In
 case of conflict, those documents prevail.
 
-**Status:** RFC-DRAFT / PRE-ACTIVATION SPEC
+**Status:** ACTIVE CONSTITUTION SPEC / RUNTIME NOT AUTHORIZED
 **Contract id:** `ayken.platform.workspace.lifecycle.v1`
 **Authority boundary:** Documentation/specification only; not an installer,
 runtime mount implementation, capability grant, trust grant, kernel mapping
@@ -462,9 +462,7 @@ authority.
 
 ## Activation Boundary
 
-This RFC is not sufficient to activate Phase-18. Phase-18 activation still
-requires an explicit `CURRENT_PHASE` pointer transition and reviewed acceptance
-of the required Platform Constitution set.
+This RFC is part of the active Phase-18 Platform Constitution set.
 
 This RFC does not authorize implementation work that widens the kernel ABI,
 adds syscalls, places policy in Ring0, creates runtime mounts, or makes

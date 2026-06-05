@@ -4,19 +4,22 @@ This directory is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, and `PHASE18_TRANSITION_DECISION.md`. In case of
 conflict, those documents prevail.
 
-**Status:** PRE-ACTIVATION SPEC SET / PHASE-18 NOT ACTIVATED
+**Status:** ACTIVE PLATFORM CONSTITUTION SPEC SET / RUNTIME NOT AUTHORIZED
 **Authority basis:** `phase17-official-closure` at `416a5392`
 **Attribution:** Documentation metadata only; not runtime, merge, or execution
 authority.
 
 ## Purpose
 
-This directory defines the Platform Constitution contracts that must exist
-before the ayken platform can safely accept modules, packages, workspaces,
+This directory defines the active Phase-18 Platform Constitution contracts for
+how the ayken platform can safely describe modules, packages, workspaces,
 plugins, and later semantic systems above the frozen kernel execution
 substrate.
 
-These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
+These specs do not authorize runtime implementation, package installation,
+workspace creation, plugin loading, capability issuance, trust assignment,
+Semantic CLI authority, AI Runtime authority, new syscalls, or kernel ABI
+expansion.
 
 ## Current Specs
 
@@ -35,21 +38,21 @@ These specs do not activate Phase-18 and do not change `CURRENT_PHASE=17`.
 7. `PLATFORM_ABI_VALIDATION_GATE.md` - RFC for deterministic validation order,
    input bundles, stage results, validation receipts, and fail-closed
    cross-contract separation.
-8. `CROSS_CONSISTENCY_REVIEW.md` - pre-activation review record for
-   cross-document terminology, dependency order, and authority separation.
+8. `CROSS_CONSISTENCY_REVIEW.md` - accepted review record for cross-document
+   terminology, dependency order, and authority separation.
 
 ## Current Review Result
 
-`CROSS_CONSISTENCY_REVIEW.md` records `PASS WITH ACTIVATION BLOCKERS` for the
-current seven-RFC Platform Constitution set. This result is a documentation
-review only. It does not activate Phase-18 and does not authorize
-implementation.
+`CROSS_CONSISTENCY_REVIEW.md` records the accepted cross-document review for
+the current seven-RFC Platform Constitution set. This result is a documentation
+review only. It does not authorize implementation.
 
 ## Activation Boundary
 
-`../../../PHASE18_ACTIVATION_DECISION.md` is the separate activation decision
-package candidate. It does not activate Phase-18, does not change
-`CURRENT_PHASE=17`, and does not authorize runtime implementation.
+`../../../PHASE18_ACTIVATION_DECISION.md` is the accepted activation decision
+package. `../../../docs/roadmap/CURRENT_PHASE` is now `18`. This activates
+only Platform Constitution authority and does not authorize runtime
+implementation.
 
 The mandatory activation rule is:
 

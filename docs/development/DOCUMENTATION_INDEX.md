@@ -4,7 +4,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 **Last Updated:** 2026-06-05
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
-**Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=17` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+**Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=18` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 
 ## Current Status
 - **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
@@ -15,16 +15,16 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **BCIB Execution Engine v3:** `Phase-15` officially closed — `ci-freeze` run `24213727039` (PR #104)
 - **Verification Layer MVP:** `Phase-16` officially closed — `ci-freeze` run `25214669681`, tag `phase16-official-closure`
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
-- **Formal Governance Pointer:** `CURRENT_PHASE=17`
-- **Active Phase:** Phase-17 OFFICIALLY CLOSED / Phase-18 TRANSITION NOT ACTIVATED
-- **Active Execution Priority:** Review `PHASE18_ACTIVATION_DECISION.md` without changing `CURRENT_PHASE=17`
-- **Scope Boundary:** Phase-18 is not active until an explicit `CURRENT_PHASE` pointer transition; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
+- **Formal Governance Pointer:** `CURRENT_PHASE=18`
+- **Active Phase:** Phase-18 ACTIVE / Platform Constitution only
+- **Active Execution Priority:** Maintain Phase-18 Platform Constitution authority without runtime implementation
+- **Scope Boundary:** Phase-18 activation does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
 
 1. `ARCHITECTURE_FREEZE.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=17`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=18`
 3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` — **active execution roadmap**
 4. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md` — **current status report**
 5. `README.md`
@@ -33,16 +33,16 @@ Current repo truth icin once su dosyalari referans alin:
 8. `reports/phase17_official_closure_candidate/closure_decision_record.json`
 9. `reports/phase17_official_closure_candidate/closure_manifest.json`
 10. `reports/phase17_official_closure_candidate/closure_index.json`
-11. `PHASE18_TRANSITION_DECISION.md` — **Phase-18 Platform Constitution transition package; not active pointer**
-12. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` — **first pre-activation Platform Constitution RFC draft**
-13. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` — **capability request/decision/receipt/revocation RFC draft**
-14. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` — **workspace admission/logical-mount lifecycle RFC draft**
-15. `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` — **package metadata evidence-only RFC draft**
-16. `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` — **trust classification policy-input RFC draft**
-17. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` — **plugin boundary compatibility RFC draft**
-18. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` — **Platform ABI validation order/receipt RFC draft**
+11. `PHASE18_TRANSITION_DECISION.md` — **accepted Phase-18 Platform Constitution transition package**
+12. `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` — **active Platform Constitution module manifest RFC**
+13. `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` — **active capability request/decision/receipt/revocation RFC**
+14. `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` — **active workspace admission/logical-mount lifecycle RFC**
+15. `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` — **active package metadata evidence-only RFC**
+16. `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` — **active trust classification policy-input RFC**
+17. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` — **active plugin boundary compatibility RFC**
+18. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` — **active Platform ABI validation order/receipt RFC**
 19. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` — **Phase-18 RFC set cross-consistency review; not activation**
-20. `PHASE18_ACTIVATION_DECISION.md` — **Phase-18 activation decision package candidate; not pointer transition**
+20. `PHASE18_ACTIVATION_DECISION.md` — **accepted Phase-18 activation decision package; runtime not authorized**
 21. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
 22. `reports/phase15_official_closure/closure_index.json`
 23. `reports/phase13_official_closure_candidate/closure_index.json`
@@ -78,7 +78,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=17`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=18`
 3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 4. `docs/roadmap/freeze-enforcement-workflow.md`
 5. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md`
@@ -92,7 +92,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 13. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`
 14. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
 15. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
-16. `PHASE18_ACTIVATION_DECISION.md` — activation decision package candidate
+16. `PHASE18_ACTIVATION_DECISION.md` — accepted activation decision package
 17. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
 18. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
 19. `docs/specs/phase16-ayken-orchestration/README.md`
