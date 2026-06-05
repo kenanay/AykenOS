@@ -173,6 +173,8 @@ separate reviewed decision changes the roadmap.
 After the `CURRENT_PHASE=18` pointer transition, Phase-18 maintenance is
 reviewed against
 `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`.
+High-risk vocabulary is also reviewed against
+`docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`.
 
 That guard protects `Constitution != Runtime` after activation. It does not
 authorize runtime implementation, package installation, workspace creation,

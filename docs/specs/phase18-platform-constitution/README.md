@@ -42,6 +42,8 @@ expansion.
    terminology, dependency order, and authority separation.
 9. `AUTHORITY_DRIFT_GUARD.md` - active review guard for preventing
    constitutional text from drifting into runtime authority.
+10. `TERMINOLOGY_AUDIT.md` - accepted audit record for high-risk Phase-18
+   vocabulary and required non-authority qualifiers.
 
 ## Current Review Result
 
@@ -52,6 +54,11 @@ review only. It does not authorize implementation.
 `AUTHORITY_DRIFT_GUARD.md` defines the ongoing Phase-18 review guard for
 future edits. It is not a runtime validator, CI gate, loader, issuer, or
 implementation authority.
+
+`TERMINOLOGY_AUDIT.md` records the accepted vocabulary audit for high-risk
+terms such as `validated`, `trusted`, `approved`, `admitted`, `enabled`,
+`compatible`, `binding`, `receipt`, `loader`, and `runtime`. The audit PASS is
+not implementation authority.
 
 ## Activation Boundary
 
