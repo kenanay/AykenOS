@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-06-05 (Phase-18 Platform Constitution pointer transition)
+**Last authority sync:** 2026-06-05 (Phase-19 Runtime Decision Package)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -53,7 +53,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 17. `../specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`:
    accepted Phase-18 terminology audit; high-risk vocabulary icin runtime
    authority kurmaz.
-18. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+18. `../../PHASE19_RUNTIME_DECISION.md`: Phase-19 Platform Runtime MVP
+   decision package; phase pointer transition veya implementation authority
+   degildir.
+19. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -63,6 +66,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-18 ACTIVE / Platform Constitution only |
 | Aktif odak | Phase-18 Platform Constitution authority maintenance; runtime implementation remains out of scope |
+| Aday sonraki karar | Phase-19 Platform Runtime MVP decision package; `CURRENT_PHASE=19` veya implementation authority degildir |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACTIVE AS PLATFORM CONSTITUTION; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -93,8 +97,8 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Phase-18 Platform Constitution kapsaminda
-`AUTHORITY_DRIFT_GUARD.md` review guard'i korunur; Phase-19 Platform Runtime
-MVP icin ayri decision package, implementation RFC, evidence plan ve closure
-boundary hazirlanmadan runtime isi baslatilmaz. High-risk vocabulary
-`TERMINOLOGY_AUDIT.md` kaydina gore denetlenir.
+**Next action:** `PHASE19_RUNTIME_DECISION.md` Phase-19 Runtime MVP sinirini
+belgeler; `CURRENT_PHASE=19` veya runtime implementation yetkisi vermez.
+Siradaki is ancak ayri Phase-19 runtime RFC seti, evidence plan ve pointer
+transition karari olabilir. High-risk vocabulary `TERMINOLOGY_AUDIT.md`
+kaydina gore denetlenir.
