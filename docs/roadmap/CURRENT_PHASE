@@ -7,5 +7,5 @@ CURRENT_PHASE=18
 # Phase-18 direction: Platform Constitution, not kernel expansion.
 # Active execution roadmap: docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md
 # Remote evidence: ci-freeze 26712333892, Performance Gate 26715068398, Phase-17 lifecycle/determinism/public-e2e/worker/timeout/performance lanes all PASS on 416a5392.
-# Immediate work package: maintain Phase-18 Platform Constitution authority; Phase-19 runtime work requires a separate decision.
+# Immediate work package: maintain Phase-18 Platform Constitution authority; Phase-19 pointer transition remains a separate exact-SHA decision.
 # Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu: Kenan AY (informational metadata only).
