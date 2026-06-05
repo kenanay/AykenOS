@@ -76,6 +76,7 @@ Phase-17 official closure verified
   -> Phase-19 Runtime RFC set accepted
   -> Phase-19 Runtime Cross-Consistency Review accepted
   -> Phase-19 Pointer Transition Candidate accepted
+  -> Phase-19 Activation Preconditions Review accepted
   -> later exact-SHA pointer transition PR
   -> CURRENT_PHASE=19 only after separate review and remote PASS
 ```
@@ -104,6 +105,7 @@ the following are true on the exact candidate SHA for that future transition:
 | P19-P12 | Inert artifact invariant is preserved | input bundle, validation receipt, admission record, and runtime receipt remain records only |
 | P19-P13 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the future pointer transition SHA |
 | P19-P14 | Implementation remains separated | runtime implementation still requires a later implementation decision and evidence package |
+| P19-P15 | Activation Preconditions Review is accepted | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews preconditions without changing `CURRENT_PHASE` |
 
 Missing, stale, ambiguous, or partially satisfied preconditions fail closed.
 

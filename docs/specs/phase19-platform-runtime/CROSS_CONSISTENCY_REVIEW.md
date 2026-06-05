@@ -33,6 +33,11 @@ A later `PHASE19_POINTER_TRANSITION_CANDIDATE.md` may use this review as a
 precondition input. That candidate remains separate from a real
 `CURRENT_PHASE=19` pointer transition.
 
+A later `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` may use this review and
+the pointer transition candidate as inputs to check whether activation
+preconditions are documented. That review remains separate from activation,
+pointer transition, and implementation authority.
+
 ## Reviewed Inputs
 
 The reviewed Phase-19 planning set is:
@@ -256,14 +261,15 @@ That finding is not enough to transition phases. A future pointer-transition
 candidate still needs:
 
 1. Separate pointer-transition candidate record.
-2. Separate exact-SHA `CURRENT_PHASE=19` pointer transition PR after that
+2. Separate activation preconditions review.
+3. Separate exact-SHA `CURRENT_PHASE=19` pointer transition PR after that
    candidate.
-3. No runtime source code bundled with the pointer transition.
-4. Strict `ci-freeze` PASS on the candidate SHA.
-5. Dev Loop PASS on the candidate SHA.
-6. Kernel ABI still frozen at `1000-1011` / 12 syscall / `0x00010001`.
-7. Phase-18 authority drift guard and terminology audit still effective.
-8. Explicit confirmation that implementation remains separate.
+4. No runtime source code bundled with the pointer transition.
+5. Strict `ci-freeze` PASS on the candidate SHA.
+6. Dev Loop PASS on the candidate SHA.
+7. Kernel ABI still frozen at `1000-1011` / 12 syscall / `0x00010001`.
+8. Phase-18 authority drift guard and terminology audit still effective.
+9. Explicit confirmation that implementation remains separate.
 
 ## Review Conclusion
 

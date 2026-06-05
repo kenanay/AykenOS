@@ -54,6 +54,11 @@ implementation.
 transition preconditions. It is a candidate record only; it does not activate
 Phase-19, update `CURRENT_PHASE`, or authorize runtime implementation.
 
+`../../../PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` records the review of
+documented activation preconditions. It is not an activation decision; it does
+not activate Phase-19, update `CURRENT_PHASE`, or authorize runtime
+implementation.
+
 ## Core Rule
 
 ```text

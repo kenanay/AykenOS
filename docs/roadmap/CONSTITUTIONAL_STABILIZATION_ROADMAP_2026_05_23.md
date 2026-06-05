@@ -75,7 +75,9 @@ activation yetkisi vermez. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENC
 bu RFC setini review eder; PASS sonucu yine activation veya implementation
 authority degildir. `PHASE19_POINTER_TRANSITION_CANDIDATE.md`, daha sonraki
 exact-SHA pointer transition kosullarini tanimlar; `CURRENT_PHASE=19` veya
-implementation authority kurmaz:
+implementation authority kurmaz. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`,
+activation precondition setini review eder; `CURRENT_PHASE=19`, activation
+decision veya implementation authority kurmaz:
 
 - Yeni syscall veya ABI surface genisletmesi.
 - ARM64/RISC-V/real-hardware feature genisletmesi.
@@ -101,7 +103,7 @@ Phase-18 Platform Constitution sinirini asamaz.
 | Review enforcement | `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` required `freeze` protection'i tek-maintainer ADR'iyle hizalandi | Issue #145 RESOLVED; bagimsiz self-review iddiasi veya closure yetkisi kurulmaz |
 | Performance stability | PR-4 local readiness FAIL tarihsel kayit; PR-4A/PR-4B diagnostic; governed renewal ve workflow authority repair accepted | Accepted `main` SHA `416a5392`: Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; official tag dogrulandi |
 | Phase-18 | Active as Platform Constitution only | Runtime implementation, loader, installer, workspace runtime, plugin loading, capability issuance ve trust assignment yetkisi yoktur |
-| Phase-19 | Decision/RFC/review/candidate package only | `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/`, Phase-19 cross-review ve `PHASE19_POINTER_TRANSITION_CANDIDATE.md` Runtime MVP sinirini tanimlar/review eder; `CURRENT_PHASE=19` veya implementation authority degildir |
+| Phase-19 | Decision/RFC/review/candidate/precondition package only | `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/`, Phase-19 cross-review, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` Runtime MVP sinirini tanimlar/review eder; `CURRENT_PHASE=19` veya implementation authority degildir |
 
 ## 4. Stratejik Karar: Stabilization-First
 
@@ -384,9 +386,9 @@ donusemez:
     `compatible`, `binding`, `receipt`, `loader` ve `runtime` terimleri
     runtime authority olarak okunamaz.
 
-### S6 - Phase-19 Runtime Decision, RFC and Pointer Candidate Package
+### S6 - Phase-19 Runtime Decision, RFC, Pointer Candidate and Preconditions Package
 
-**Status:** DECISION + PRE-IMPLEMENTATION RFC SET + CROSS-REVIEW + POINTER CANDIDATE / PHASE-19 NOT ACTIVE / IMPLEMENTATION NOT AUTHORIZED
+**Status:** DECISION + PRE-IMPLEMENTATION RFC SET + CROSS-REVIEW + POINTER CANDIDATE + PRECONDITION REVIEW / PHASE-19 NOT ACTIVE / IMPLEMENTATION NOT AUTHORIZED
 
 Phase-19 icin authority adayi `PHASE19_RUNTIME_DECISION.md` olarak
 kaydedilir. Bu belge Platform Runtime MVP'nin ne oldugunu ve ne olmadigini
@@ -411,6 +413,11 @@ implementation veya closure authority kurmaz.
 `CURRENT_PHASE=19` pointer transition PR'i icin kosullari tanimlar. Bu aday
 belge pointer'i degistirmez ve runtime implementation yetkisi vermez.
 
+`PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`, karar, RFC seti, cross-review ve
+pointer candidate zincirinin activation oncesi precondition setini review
+eder. Bu review PASS sonucu activation decision, pointer transition,
+`CURRENT_PHASE=19` veya runtime implementation authority kurmaz.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -433,6 +440,8 @@ Phase-19 karar siniri su kurallari korur:
    mount, execution, token, trust veya capability uretmez.
 10. Pointer transition candidate, pointer transition degildir; `CURRENT_PHASE`
     yalniz ayri exact-SHA PR ile degistirilebilir.
+11. Activation preconditions review, activation decision degildir; pointer
+    transition ve implementation halen ayri exact-SHA karar gerektirir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -470,6 +479,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime RFC Set | PRE-IMPLEMENTATION RFC SET / PHASE-19 NOT ACTIVE | Runtime lifecycle, input bundle, validation integration, workspace admission record, receipt, evidence plan ve denial sinirlarini docs-only tanimlamak | `docs/specs/phase19-platform-runtime/README.md` | RFC set parser, runtime implementation, loader, installer, workspace runtime, capability issuer, trust issuer, Semantic CLI authority, AI Runtime authority veya `CURRENT_PHASE=19` grant degildir |
 | Phase-19 Runtime Cross-Consistency Review | ACCEPTED REVIEW / PHASE-19 NOT ACTIVE | Runtime RFC setinin lifecycle, input bundle, validation integration, workspace admission, receipt, evidence ve denial sinirlarinin celismedigini kaydetmek | `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` | Review PASS `CURRENT_PHASE=19`, runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Pointer Transition Candidate | CANDIDATE / PHASE-19 NOT ACTIVE | Daha sonraki exact-SHA `CURRENT_PHASE=19` pointer transition kosullarini ve inert runtime artifact invariant'ini kaydetmek | `PHASE19_POINTER_TRANSITION_CANDIDATE.md` | Candidate `CURRENT_PHASE=19`, activation, runtime implementation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Activation Preconditions Review | PRECONDITION REVIEW / PHASE-19 NOT ACTIVE | Decision/RFC/cross-review/pointer-candidate zincirinin activation oncesi precondition setini review etmek | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` | Review PASS `CURRENT_PHASE=19`, activation decision, pointer transition, runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1164,7 +1174,8 @@ Bu roadmap su olaylarda guncellenir:
 31. Phase-19 Runtime RFC Set review/merge sonucu.
 32. Phase-19 Runtime Cross-Consistency Review sonucu.
 33. Phase-19 Pointer Transition Candidate review/merge sonucu.
-34. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+34. Phase-19 Activation Preconditions Review sonucu.
+35. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1206,6 +1217,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
 - `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`
 - `PHASE19_POINTER_TRANSITION_CANDIDATE.md`
+- `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
