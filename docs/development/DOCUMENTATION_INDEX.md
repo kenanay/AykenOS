@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-05
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=18` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`

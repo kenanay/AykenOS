@@ -14,7 +14,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Oluşturan:** Kenan AY
 **Düzenleyen / Geliştiren / Mimari Sorumlu:** Kenan AY *(bilgilendirme metadata'sı; runtime yetkisi değildir)*
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 06.06.2026
+**Son Güncelleme:** 05.06.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-verification-layer-mvp-complete`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0` | **Evidence Git SHA (Phase-16):** `489868f8`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -387,7 +387,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 06 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=18; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary, Platform ABI Validation Gate, Cross-Consistency Review, `PHASE18_ACTIVATION_DECISION.md`, `AUTHORITY_DRIFT_GUARD.md` ve `TERMINOLOGY_AUDIT.md` Phase-18 Platform Constitution authority seti olarak aktiftir; `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` Runtime MVP karar/RFC/review/candidate/precondition sinirini tanimlar, ancak Phase-19 aktif degildir ve runtime implementation yetkisi yoktur.
+**Son Güncelleme:** 05 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=18; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary, Platform ABI Validation Gate, Cross-Consistency Review, `PHASE18_ACTIVATION_DECISION.md`, `AUTHORITY_DRIFT_GUARD.md` ve `TERMINOLOGY_AUDIT.md` Phase-18 Platform Constitution authority seti olarak aktiftir; `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` Runtime MVP karar/RFC/review/candidate/precondition sinirini tanimlar, ancak Phase-19 aktif degildir ve runtime implementation yetkisi yoktur.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**
