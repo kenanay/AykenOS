@@ -7,5 +7,5 @@ CURRENT_PHASE=17
 # Proposed Phase-18 direction: Platform Constitution, not kernel expansion.
 # Active execution roadmap: docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md
 # Remote evidence: ci-freeze 26712333892, Performance Gate 26715068398, Phase-17 lifecycle/determinism/public-e2e/worker/timeout/performance lanes all PASS on 416a5392.
-# Immediate work package: review the Phase-18 Platform Constitution set through docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md and then prepare a separate activation decision package; do not activate Phase-18 without an explicit pointer transition.
+# Immediate work package: review PHASE18_ACTIVATION_DECISION.md; do not activate Phase-18 without a later explicit pointer transition.
 # Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu: Kenan AY (informational metadata only).

@@ -101,6 +101,9 @@ must pass a cross-consistency review that confirms terminology, dependency
 order, validation order, and authority separation remain fail-closed. The
 current review record is
 `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`.
+The activation decision package candidate is `PHASE18_ACTIVATION_DECISION.md`;
+it does not change `CURRENT_PHASE` and it preserves the rule
+`Constitution != Runtime`.
 
 ## Non-Goals
 

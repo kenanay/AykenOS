@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-05-31 (Phase-17 official closure tag verification)
+**Last authority sync:** 2026-06-05 (Phase-18 activation decision package candidate)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -45,7 +45,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 14. `../specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`:
    Phase-18 RFC set capraz tutarlilik review kaydi; activation veya runtime
    implementation yetkisi degildir.
-15. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+15. `../../PHASE18_ACTIVATION_DECISION.md`: Phase-18 activation decision
+   package candidate; `CURRENT_PHASE` pointer transition'i veya runtime
+   implementation yetkisi degildir.
+16. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -54,7 +57,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-17 OFFICIALLY CLOSED / Phase-18 transition not activated |
-| Aktif odak | Phase-18 Platform Constitution RFC set cross-review and activation decision package preparation; no activation without explicit pointer transition |
+| Aktif odak | Phase-18 Platform Constitution activation decision package review; no activation without separate explicit pointer transition |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | TRANSITION DECISION PACKAGE ONLY; kernel expansion and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -83,7 +86,7 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Phase-18 activation decision package ayri dokuman olarak
-hazirlanir; `CURRENT_PHASE` explicit pointer transition ile `18` yapilmadan
-once `CROSS_CONSISTENCY_REVIEW.md` kabul edilir ve required freeze/governance
-checks exact-SHA uzerinde PASS verir.
+**Next action:** `../../PHASE18_ACTIVATION_DECISION.md` review edilir;
+`CURRENT_PHASE` explicit pointer transition ile `18` yapilmadan once
+activation package kabul edilir ve required freeze/governance checks exact-SHA
+uzerinde PASS verir.
