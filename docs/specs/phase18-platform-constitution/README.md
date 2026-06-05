@@ -60,6 +60,10 @@ terms such as `validated`, `trusted`, `approved`, `admitted`, `enabled`,
 `compatible`, `binding`, `receipt`, `loader`, and `runtime`. The audit PASS is
 not implementation authority.
 
+`../../../PHASE19_RUNTIME_DECISION.md` may define the future Platform Runtime
+MVP decision boundary. It is outside the Phase-18 Constitution spec set and
+does not authorize runtime implementation.
+
 ## Activation Boundary
 
 `../../../PHASE18_ACTIVATION_DECISION.md` is the accepted activation decision
