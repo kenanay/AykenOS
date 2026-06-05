@@ -122,6 +122,11 @@ The initial RFC set lives under
 `docs/specs/phase19-platform-runtime/`. The existence of that directory does
 not activate Phase-19 and does not authorize implementation.
 
+After the RFC set is accepted, a Phase-19 runtime cross-consistency review
+must be accepted before a pointer-transition discussion can use the RFC set as
+planning input. That review is still not activation and still not
+implementation authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
@@ -175,6 +180,7 @@ are true:
 | P19-A8 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the candidate SHA |
 | P19-A9 | Implementation is separated | pointer transition does not include runtime source code |
 | P19-A10 | Evidence plan is accepted | runtime evidence paths, receipts, negative cases, and fail-closed behavior are defined |
+| P19-A11 | Runtime RFC cross-review is accepted | Phase-19 runtime RFC set has a reviewed cross-consistency record |
 
 Missing, stale, ambiguous, or partially satisfied preconditions fail closed.
 

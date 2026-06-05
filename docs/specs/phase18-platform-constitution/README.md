@@ -68,6 +68,10 @@ does not authorize runtime implementation.
 Phase-19 Runtime RFC set. It is also outside the Phase-18 Constitution spec set
 and does not authorize runtime implementation.
 
+`../phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` may review that RFC
+set for cross-document coherence. It is outside the Phase-18 Constitution spec
+set and does not authorize Phase-19 activation or runtime implementation.
+
 ## Activation Boundary
 
 `../../../PHASE18_ACTIVATION_DECISION.md` is the accepted activation decision
