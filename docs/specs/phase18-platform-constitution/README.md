@@ -21,7 +21,7 @@ workspace creation, plugin loading, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, new syscalls, or kernel ABI
 expansion.
 
-## Current Specs
+## Current Specs And Guards
 
 1. `MODULE_MANIFEST_SCHEMA.md` - first RFC for the declarative module manifest.
 2. `CAPABILITY_CONTRACT_SPECIFICATION.md` - RFC for request, decision,
@@ -40,12 +40,18 @@ expansion.
    cross-contract separation.
 8. `CROSS_CONSISTENCY_REVIEW.md` - accepted review record for cross-document
    terminology, dependency order, and authority separation.
+9. `AUTHORITY_DRIFT_GUARD.md` - active review guard for preventing
+   constitutional text from drifting into runtime authority.
 
 ## Current Review Result
 
 `CROSS_CONSISTENCY_REVIEW.md` records the accepted cross-document review for
 the current seven-RFC Platform Constitution set. This result is a documentation
 review only. It does not authorize implementation.
+
+`AUTHORITY_DRIFT_GUARD.md` defines the ongoing Phase-18 review guard for
+future edits. It is not a runtime validator, CI gate, loader, issuer, or
+implementation authority.
 
 ## Activation Boundary
 

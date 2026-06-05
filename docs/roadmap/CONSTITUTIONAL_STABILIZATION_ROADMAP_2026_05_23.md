@@ -340,8 +340,10 @@ Phase-17 closure precondition'lari saglanmistir ve Phase-18 yalniz Platform
 Constitution olarak aktiftir. Phase-18 authority zinciri
 `PHASE18_TRANSITION_DECISION.md`, Phase-18 RFC seti,
 `CROSS_CONSISTENCY_REVIEW.md`, `PHASE18_ACTIVATION_DECISION.md` ve
-`CURRENT_PHASE=18` pointer'i ile sinirlidir. Eski `PHASE18_ROADMAP.md`
-tarihsel runtime-validation backlog'u olarak tutulur.
+`CURRENT_PHASE=18` pointer'i ile sinirlidir. Post-activation maintenance
+`docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` ile
+review edilir. Eski `PHASE18_ROADMAP.md` tarihsel runtime-validation
+backlog'u olarak tutulur.
 
 Phase-18 active scope su kararlari korumadan implementation planina
 donusemez:
@@ -364,6 +366,9 @@ donusemez:
 12. Constitution Runtime degildir; activation runtime implementation,
     package install, workspace creation, plugin loading, capability issuance
     veya trust assignment yetkisi vermez.
+13. `AUTHORITY_DRIFT_GUARD.md` Phase-18 review guard'idir; runtime, loader,
+    issuer, workspace runtime, plugin host, Semantic CLI, AI Runtime veya
+    Phase-19 authority grant degildir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -395,6 +400,7 @@ donusemez:
 | Phase-18 Platform ABI Validation Gate | ACTIVE CONSTITUTION SPEC | Manifest, package, trust, capability, workspace ve plugin boundary input'larini deterministik fail-closed validation order ile baglamak | `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` | Validation PASS authority grant degil; install/enable/execute/load/mount/capability/trust grant yok |
 | Phase-18 Cross-Consistency Review | ACCEPTED REVIEW | Yedi Phase-18 RFC'nin terminology, dependency order, validation order ve authority separation acisindan celismedigini kaydetmek | `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` | Review PASS runtime implementation degil |
 | Phase-18 Activation Decision Package | ACCEPTED / PLATFORM CONSTITUTION ACTIVE | Phase-18 aktivasyonu icin precondition, exact-SHA, fail-closed denial ve Constitution != Runtime sinirlarini kaydetmek | `PHASE18_ACTIVATION_DECISION.md` | Activation runtime implementation, capability issuance, trust assignment, workspace creation veya plugin loading yetkisi vermez |
+| Phase-18 Authority Drift Guard | ACTIVE REVIEW GUARD / DOCS-ONLY | Phase-18 aktifken constitutional text'in runtime, loader, issuer, workspace, plugin, trust, capability veya AI/Semantic authority'ye kaymasini fail-closed review etmek | `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` | Guard runtime implementation, CI gate, merge authority, Phase-19 activation veya authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1083,7 +1089,8 @@ Bu roadmap su olaylarda guncellenir:
 25. Phase-18 Cross-Consistency Review sonucu.
 26. Phase-18 Activation Decision Package review/merge sonucu.
 27. Phase-18 `CURRENT_PHASE=18` pointer transition sonucu.
-28. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+28. Phase-18 Authority Drift Guard review/merge sonucu.
+29. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1112,6 +1119,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
 - `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
 - `PHASE18_ACTIVATION_DECISION.md`
+- `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

@@ -47,7 +47,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
    implementation yetkisi degildir.
 15. `../../PHASE18_ACTIVATION_DECISION.md`: accepted Phase-18 activation
    decision package; runtime implementation yetkisi degildir.
-16. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+16. `../specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`:
+   active Phase-18 review guard; runtime implementation, loader, issuer veya
+   Phase-19 authority grant degildir.
+17. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -87,6 +90,7 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Phase-18 Platform Constitution kapsaminda authority drift
-kontrolu surdurulur; Phase-19 Platform Runtime MVP icin ayri implementation
-RFC, evidence plan ve closure boundary hazirlanmadan runtime isi baslatilmaz.
+**Next action:** Phase-18 Platform Constitution kapsaminda
+`AUTHORITY_DRIFT_GUARD.md` review guard'i korunur; Phase-19 Platform Runtime
+MVP icin ayri decision package, implementation RFC, evidence plan ve closure
+boundary hazirlanmadan runtime isi baslatilmaz.

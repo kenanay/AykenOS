@@ -168,6 +168,18 @@ token issuance, trust issuer implementation, registry services, Semantic CLI
 integration, and AI Runtime foundations remain outside Phase-18 unless a
 separate reviewed decision changes the roadmap.
 
+## Post-Activation Authority Drift Guard
+
+After the `CURRENT_PHASE=18` pointer transition, Phase-18 maintenance is
+reviewed against
+`docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`.
+
+That guard protects `Constitution != Runtime` after activation. It does not
+authorize runtime implementation, package installation, workspace creation,
+plugin loading, capability issuance, trust assignment, Semantic CLI execution
+authority, AI Runtime authority, new syscalls, kernel ABI expansion, or Ring0
+policy.
+
 ## Decision Package Conclusion
 
 This package is accepted as the Phase-18 activation decision.

@@ -9,8 +9,11 @@
 > Authority note: This report preserves the 2026-05-23 stabilization narrative.
 > Current phase authority is `docs/roadmap/CURRENT_PHASE`, the Phase-17
 > official closure package, `PHASE18_TRANSITION_DECISION.md`, and
-> `PHASE18_ACTIVATION_DECISION.md`. Phase-18 is active only as Platform
-> Constitution and does not authorize runtime implementation.
+> `PHASE18_ACTIVATION_DECISION.md`. Post-activation Phase-18 maintenance is
+> reviewed against
+> `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`.
+> Phase-18 is active only as Platform Constitution and does not authorize
+> runtime implementation.
 
 ## Yetkili Durum
 
@@ -21,8 +24,8 @@
 | Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
-| Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` | Platform Constitution active; runtime implementation yetkisi degildir |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set | Phase-19 veya ayri implementation karari olmadan runtime baslatilmaz |
+| Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` | Platform Constitution active; runtime implementation yetkisi degildir |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set | Phase-19 veya ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard korunur |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
