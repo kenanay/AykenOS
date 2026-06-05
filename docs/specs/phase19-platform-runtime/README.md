@@ -43,6 +43,13 @@ expansion.
 7. `RUNTIME_NON_GOALS_AND_DENIALS.md` - explicit denial list for installer,
    loader, issuer, trust, Semantic CLI, AI Runtime, registry, and agent drift.
 
+## Current Review Record
+
+`CROSS_CONSISTENCY_REVIEW.md` records the accepted cross-document review for
+the Phase-19 Runtime RFC set. The review PASS is documentation evidence only.
+It does not activate Phase-19, update `CURRENT_PHASE`, or authorize runtime
+implementation.
+
 ## Core Rule
 
 ```text
