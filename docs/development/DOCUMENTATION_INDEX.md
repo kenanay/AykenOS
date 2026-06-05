@@ -17,7 +17,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=17`
 - **Active Phase:** Phase-17 OFFICIALLY CLOSED / Phase-18 TRANSITION NOT ACTIVATED
-- **Active Execution Priority:** Cross-review the Phase-18 Platform Constitution RFC set through `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`, then prepare a separate activation decision package without changing `CURRENT_PHASE=17`
+- **Active Execution Priority:** Review `PHASE18_ACTIVATION_DECISION.md` without changing `CURRENT_PHASE=17`
 - **Scope Boundary:** Phase-18 is not active until an explicit `CURRENT_PHASE` pointer transition; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
@@ -42,14 +42,15 @@ Current repo truth icin once su dosyalari referans alin:
 17. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` — **plugin boundary compatibility RFC draft**
 18. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` — **Platform ABI validation order/receipt RFC draft**
 19. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` — **Phase-18 RFC set cross-consistency review; not activation**
-20. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-21. `reports/phase15_official_closure/closure_index.json`
-22. `reports/phase13_official_closure_candidate/closure_index.json`
-23. `reports/phase12_official_closure_candidate/closure_manifest.json`
-24. `reports/phase10_phase11_official_closure_index.json`
-25. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-26. `Makefile`
-27. `.github/workflows/ci-freeze.yml`
+20. `PHASE18_ACTIVATION_DECISION.md` — **Phase-18 activation decision package candidate; not pointer transition**
+21. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+22. `reports/phase15_official_closure/closure_index.json`
+23. `reports/phase13_official_closure_candidate/closure_index.json`
+24. `reports/phase12_official_closure_candidate/closure_manifest.json`
+25. `reports/phase10_phase11_official_closure_index.json`
+26. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+27. `Makefile`
+28. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -91,13 +92,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 13. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`
 14. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
 15. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
-16. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-17. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-18. `docs/specs/phase16-ayken-orchestration/README.md`
-19. `docs/specs/authority-lineage-v1/README.md`
-20. `docs/specs/phase14-distributed-observability/README.md`
-21. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-22. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+16. `PHASE18_ACTIVATION_DECISION.md` — activation decision package candidate
+17. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+18. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+19. `docs/specs/phase16-ayken-orchestration/README.md`
+20. `docs/specs/authority-lineage-v1/README.md`
+21. `docs/specs/phase14-distributed-observability/README.md`
+22. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+23. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -110,6 +112,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 8. `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`
 9. `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
 10. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
+11. `PHASE18_ACTIVATION_DECISION.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces
@@ -221,7 +224,8 @@ Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir.
 Current status yorumlari icin Phase-17 official closure otoritesi,
 `docs/roadmap/CURRENT_PHASE` ve aktif stabilization roadmap birlikte
 kullanilmalidir. Yeni ozellik veya Phase-18 aktivasyonu,
-`PHASE18_TRANSITION_DECISION.md` review edilip explicit `CURRENT_PHASE`
-transition yapilmadan current execution plani olarak sunulamaz.
+`PHASE18_TRANSITION_DECISION.md` ve `PHASE18_ACTIVATION_DECISION.md` review
+edilip explicit `CURRENT_PHASE` transition yapilmadan current execution plani
+olarak sunulamaz.
 
-**Son Guncelleme:** 2026-06-04
+**Son Guncelleme:** 2026-06-05

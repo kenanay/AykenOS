@@ -354,6 +354,11 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
    spec'leri fail-closed olarak review edilmeden implementation phase baslamaz.
 10. Cross-consistency review kabul edilmeden activation decision package
     hazirlanmis sayilmaz.
+11. `PHASE18_ACTIVATION_DECISION.md` kabul edilmeden `CURRENT_PHASE=18`
+    pointer transition'i degerlendirilemez.
+12. Constitution Runtime degildir; activation runtime implementation,
+    package install, workspace creation, plugin loading, capability issuance
+    veya trust assignment yetkisi vermez.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -384,6 +389,7 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | Phase-18 Plugin Boundary Contract | DOCS-ONLY / PRE-ACTIVATION RFC | Host interface, extension point, compatibility, binding lifecycle ve fail-closed plugin boundary sinirlarini tanimlamak | `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` | Plugin loading/autoload/execution yok; capability/trust/workspace inheritance yok |
 | Phase-18 Platform ABI Validation Gate | DOCS-ONLY / PRE-ACTIVATION RFC | Manifest, package, trust, capability, workspace ve plugin boundary input'larini deterministik fail-closed validation order ile baglamak | `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` | Validation PASS authority grant degil; install/enable/execute/load/mount/capability/trust grant yok |
 | Phase-18 Cross-Consistency Review | DOCS-ONLY / PRE-ACTIVATION REVIEW | Yedi Phase-18 RFC'nin terminology, dependency order, validation order ve authority separation acisindan celismedigini kaydetmek | `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` | Review PASS activation degil; activation package ve explicit pointer transition gerekir |
+| Phase-18 Activation Decision Package | DOCS-ONLY / ACTIVATION CANDIDATE / PHASE-18 NOT ACTIVATED | Phase-18 aktivasyonu icin precondition, exact-SHA, fail-closed denial ve Constitution != Runtime sinirlarini kaydetmek | `PHASE18_ACTIVATION_DECISION.md` | Package kabulü `CURRENT_PHASE=18` yapmaz; runtime implementation, capability issuance, trust assignment, workspace creation veya plugin loading yetkisi yok |
 
 PR koordinasyon kurallari:
 
@@ -1069,7 +1075,8 @@ Bu roadmap su olaylarda guncellenir:
 23. Phase-18 Plugin Boundary Contract review/merge sonucu.
 24. Phase-18 Platform ABI Validation Gate review/merge sonucu.
 25. Phase-18 Cross-Consistency Review sonucu.
-26. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+26. Phase-18 Activation Decision Package review/merge sonucu.
+27. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1097,6 +1104,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`
 - `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`
 - `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
+- `PHASE18_ACTIVATION_DECISION.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

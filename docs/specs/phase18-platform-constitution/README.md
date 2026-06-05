@@ -45,6 +45,18 @@ current seven-RFC Platform Constitution set. This result is a documentation
 review only. It does not activate Phase-18 and does not authorize
 implementation.
 
+## Activation Boundary
+
+`../../../PHASE18_ACTIVATION_DECISION.md` is the separate activation decision
+package candidate. It does not activate Phase-18, does not change
+`CURRENT_PHASE=17`, and does not authorize runtime implementation.
+
+The mandatory activation rule is:
+
+```text
+Constitution != Runtime
+```
+
 ## Non-Authority Rule
 
 No file in this directory may grant:
