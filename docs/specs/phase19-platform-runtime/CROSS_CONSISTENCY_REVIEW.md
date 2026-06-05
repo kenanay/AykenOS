@@ -29,6 +29,10 @@ This document does not activate Phase-19. It records cross-document
 consistency findings that may be used by a later pointer-transition or
 implementation decision package.
 
+A later `PHASE19_POINTER_TRANSITION_CANDIDATE.md` may use this review as a
+precondition input. That candidate remains separate from a real
+`CURRENT_PHASE=19` pointer transition.
+
 ## Reviewed Inputs
 
 The reviewed Phase-19 planning set is:
@@ -251,13 +255,15 @@ cross-consistency precondition for a later pointer-transition discussion.
 That finding is not enough to transition phases. A future pointer-transition
 candidate still needs:
 
-1. Separate exact-SHA `CURRENT_PHASE=19` decision package.
-2. No runtime source code bundled with the pointer transition.
-3. Strict `ci-freeze` PASS on the candidate SHA.
-4. Dev Loop PASS on the candidate SHA.
-5. Kernel ABI still frozen at `1000-1011` / 12 syscall / `0x00010001`.
-6. Phase-18 authority drift guard and terminology audit still effective.
-7. Explicit confirmation that implementation remains separate.
+1. Separate pointer-transition candidate record.
+2. Separate exact-SHA `CURRENT_PHASE=19` pointer transition PR after that
+   candidate.
+3. No runtime source code bundled with the pointer transition.
+4. Strict `ci-freeze` PASS on the candidate SHA.
+5. Dev Loop PASS on the candidate SHA.
+6. Kernel ABI still frozen at `1000-1011` / 12 syscall / `0x00010001`.
+7. Phase-18 authority drift guard and terminology audit still effective.
+8. Explicit confirmation that implementation remains separate.
 
 ## Review Conclusion
 

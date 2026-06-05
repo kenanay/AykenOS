@@ -50,6 +50,10 @@ the Phase-19 Runtime RFC set. The review PASS is documentation evidence only.
 It does not activate Phase-19, update `CURRENT_PHASE`, or authorize runtime
 implementation.
 
+`../../../PHASE19_POINTER_TRANSITION_CANDIDATE.md` records the later pointer
+transition preconditions. It is a candidate record only; it does not activate
+Phase-19, update `CURRENT_PHASE`, or authorize runtime implementation.
+
 ## Core Rule
 
 ```text
