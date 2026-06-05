@@ -118,6 +118,10 @@ prepared and accepted:
 6. `RUNTIME_EVIDENCE_PLAN.md`
 7. `RUNTIME_NON_GOALS_AND_DENIALS.md`
 
+The initial RFC set lives under
+`docs/specs/phase19-platform-runtime/`. The existence of that directory does
+not activate Phase-19 and does not authorize implementation.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

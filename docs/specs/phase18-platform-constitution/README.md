@@ -64,6 +64,10 @@ not implementation authority.
 MVP decision boundary. It is outside the Phase-18 Constitution spec set and
 does not authorize runtime implementation.
 
+`../phase19-platform-runtime/README.md` may define the pre-implementation
+Phase-19 Runtime RFC set. It is also outside the Phase-18 Constitution spec set
+and does not authorize runtime implementation.
+
 ## Activation Boundary
 
 `../../../PHASE18_ACTIVATION_DECISION.md` is the accepted activation decision
