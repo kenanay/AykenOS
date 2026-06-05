@@ -44,14 +44,15 @@ Current repo truth icin once su dosyalari referans alin:
 19. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` — **Phase-18 RFC set cross-consistency review; not activation**
 20. `PHASE18_ACTIVATION_DECISION.md` — **accepted Phase-18 activation decision package; runtime not authorized**
 21. `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` — **active Phase-18 authority drift review guard; runtime not authorized**
-22. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-23. `reports/phase15_official_closure/closure_index.json`
-24. `reports/phase13_official_closure_candidate/closure_index.json`
-25. `reports/phase12_official_closure_candidate/closure_manifest.json`
-26. `reports/phase10_phase11_official_closure_index.json`
-27. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-28. `Makefile`
-29. `.github/workflows/ci-freeze.yml`
+22. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — **accepted Phase-18 terminology audit; runtime not authorized**
+23. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+24. `reports/phase15_official_closure/closure_index.json`
+25. `reports/phase13_official_closure_candidate/closure_index.json`
+26. `reports/phase12_official_closure_candidate/closure_manifest.json`
+27. `reports/phase10_phase11_official_closure_index.json`
+28. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+29. `Makefile`
+30. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -95,13 +96,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 15. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
 16. `PHASE18_ACTIVATION_DECISION.md` — accepted activation decision package
 17. `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` — active authority drift review guard
-18. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-19. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-20. `docs/specs/phase16-ayken-orchestration/README.md`
-21. `docs/specs/authority-lineage-v1/README.md`
-22. `docs/specs/phase14-distributed-observability/README.md`
-23. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-24. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+18. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — accepted terminology audit
+19. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+20. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+21. `docs/specs/phase16-ayken-orchestration/README.md`
+22. `docs/specs/authority-lineage-v1/README.md`
+23. `docs/specs/phase14-distributed-observability/README.md`
+24. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+25. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -116,6 +118,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 10. `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`
 11. `PHASE18_ACTIVATION_DECISION.md`
 12. `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`
+13. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

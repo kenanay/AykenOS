@@ -141,6 +141,10 @@ Phase-18 documents:
 Use of these terms is not automatically invalid. It is valid only when the
 surrounding text keeps the term non-authoritative.
 
+`TERMINOLOGY_AUDIT.md` records the accepted audit result and required
+qualifiers for these terms. That audit is a documentation record only; it does
+not authorize runtime implementation.
+
 ## Review Checklist
 
 Every Phase-18 documentation PR should answer:

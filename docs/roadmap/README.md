@@ -50,7 +50,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 16. `../specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`:
    active Phase-18 review guard; runtime implementation, loader, issuer veya
    Phase-19 authority grant degildir.
-17. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+17. `../specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`:
+   accepted Phase-18 terminology audit; high-risk vocabulary icin runtime
+   authority kurmaz.
+18. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -93,4 +96,5 @@ current execution priority otoritesi degildir:
 **Next action:** Phase-18 Platform Constitution kapsaminda
 `AUTHORITY_DRIFT_GUARD.md` review guard'i korunur; Phase-19 Platform Runtime
 MVP icin ayri decision package, implementation RFC, evidence plan ve closure
-boundary hazirlanmadan runtime isi baslatilmaz.
+boundary hazirlanmadan runtime isi baslatilmaz. High-risk vocabulary
+`TERMINOLOGY_AUDIT.md` kaydina gore denetlenir.
