@@ -20,9 +20,10 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 
 Aktif is sirasi `CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 tarafindan belirlenir. Phase-17 resmi closure artik `phase17-official-closure`
-tag'iyle kurulmustur. Phase-18 explicit pointer transition yapilana kadar
-feature expansion degil, `PHASE18_TRANSITION_DECISION.md` icindeki Platform
-Constitution sinirinin review edilmesi onceliklidir.
+tag'iyle kurulmustur. Phase-18 `CURRENT_PHASE=18` pointer'iyle yalniz
+Platform Constitution olarak aktiftir; feature/runtime expansion degil,
+`PHASE18_TRANSITION_DECISION.md` ve `PHASE18_ACTIVATION_DECISION.md`
+sinirlarinin korunmasi onceliklidir.
 
 ---
 

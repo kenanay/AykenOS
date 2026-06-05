@@ -4,7 +4,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH and
 `ARCHITECTURE_FREEZE.md`. In case of conflict, the foundational oath and the
 freeze contract prevail.
 
-**Status:** TRANSITION DECISION PACKAGE / PHASE-18 NOT ACTIVATED
+**Status:** ACCEPTED TRANSITION DECISION / PHASE-18 ACTIVE AS PLATFORM CONSTITUTION
 **Decision date:** 2026-05-31
 **Authority basis:** `phase17-official-closure` at
 `416a5392afbe217e16d26a59e2e1716fdfa9c8f6`
@@ -20,10 +20,9 @@ classification, and plugin boundaries on top of the frozen execution substrate.
 Phase-18 is therefore the **Platform Constitution** phase, not a continuation
 of kernel runtime bring-up and not a new syscall phase.
 
-This package records the intended Phase-18 direction. It does not by itself
-change `docs/roadmap/CURRENT_PHASE` to `18`. Activation requires an explicit
-transition update that points `CURRENT_PHASE` and the active roadmap surfaces to
-this decision.
+This package records the Phase-18 direction. It did not by itself change
+`docs/roadmap/CURRENT_PHASE` to `18`; the separate activation decision and
+pointer transition now bind Phase-18 to Platform Constitution scope.
 
 ## Closure Preconditions Already Satisfied
 
@@ -88,22 +87,20 @@ Required Platform Constitution outputs:
 7. Platform ABI validation gate (`docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`).
 8. Minimal reference examples that do not create new runtime authority.
 
-Initial pre-activation spec work starts with the Module Manifest Schema,
-Capability Contract Specification, Workspace Lifecycle Specification, Package
-Metadata Schema, Trust Classification Model, Plugin Boundary Contract, and
-Platform ABI Validation Gate. This does not activate Phase-18 and does not
-grant capability, package install, package execution, workspace, trust
-assignment, plugin loading, validation authority, semantic, or AI Runtime
+The accepted Platform Constitution spec set consists of the Module Manifest
+Schema, Capability Contract Specification, Workspace Lifecycle Specification,
+Package Metadata Schema, Trust Classification Model, Plugin Boundary Contract,
+and Platform ABI Validation Gate. This activation does not grant capability,
+package install, package execution, workspace runtime, trust assignment,
+plugin loading, validation authority, semantic authority, or AI Runtime
 authority.
 
-Before an activation decision package can be considered, the current RFC set
-must pass a cross-consistency review that confirms terminology, dependency
-order, validation order, and authority separation remain fail-closed. The
-current review record is
+Before activation, the RFC set passed a cross-consistency review that confirms
+terminology, dependency order, validation order, and authority separation
+remain fail-closed. The current review record is
 `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`.
-The activation decision package candidate is `PHASE18_ACTIVATION_DECISION.md`;
-it does not change `CURRENT_PHASE` and it preserves the rule
-`Constitution != Runtime`.
+The accepted activation decision package is `PHASE18_ACTIVATION_DECISION.md`;
+it preserves the rule `Constitution != Runtime`.
 
 ## Non-Goals
 
@@ -205,18 +202,19 @@ AI Runtime is intentionally outside Phase-18. Its non-determinism, authority
 ambiguity, hallucination risk, and verification difficulty require a later
 foundation after the platform contracts are explicit.
 
-## Fail-Closed Activation Rule
+## Fail-Closed Scope Rule
 
-Phase-18 must remain inactive if any of the following are true:
+Phase-18 Platform Constitution authority must fail closed if any of the
+following are true:
 
-1. `CURRENT_PHASE` has not been explicitly transitioned.
-2. Platform Constitution scope is ambiguous.
-3. Kernel ABI expansion is bundled into the transition.
-4. Trust classification is treated as capability grant.
-5. AI Runtime or Semantic CLI is made an execution authority.
+1. Platform Constitution scope is ambiguous.
+2. Kernel ABI expansion is bundled into the phase.
+3. Trust classification is treated as capability grant.
+4. AI Runtime or Semantic CLI is made an execution authority.
+5. Runtime implementation is treated as authorized by activation.
 6. Required closure references cannot be verified.
 
-The safe default is no activation.
+The safe default is no runtime authority.
 
 ## Supersession Notice
 

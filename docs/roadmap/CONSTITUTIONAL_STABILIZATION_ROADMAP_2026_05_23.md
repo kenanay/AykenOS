@@ -5,7 +5,7 @@ the freeze contract prevails.
 
 **Status:** ACTIVE EXECUTION ROADMAP
 **Effective date:** 2026-05-23
-**Current phase authority:** `CURRENT_PHASE=17` (Phase-17 officially closed; Phase-18 transition not activated)
+**Current phase authority:** `CURRENT_PHASE=18` (Phase-18 active as Platform Constitution only)
 **Last official closure:** Phase-17 (`phase17-official-closure` at `416a5392`)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif dokumantasyon metadata'sidir; runtime
@@ -65,8 +65,9 @@ Aktif urun cekirdegi su dort parcadir:
 
 ### 2.3 Urun Olmayan veya Ertelenen Alanlar
 
-Phase-18 explicit transition karari aktif pointer'a baglanana kadar
-asagidakiler aktif implementation backlog'u degildir:
+Phase-18 aktif pointer'i Platform Constitution ile sinirlidir. Ayri Phase-19
+veya implementation karari olmadan asagidakiler aktif implementation
+backlog'u degildir:
 
 - Yeni syscall veya ABI surface genisletmesi.
 - ARM64/RISC-V/real-hardware feature genisletmesi.
@@ -74,11 +75,11 @@ asagidakiler aktif implementation backlog'u degildir:
   donusturulmesi.
 - Yeni AI orchestration ozellikleri veya model sonucunun authoritative
   execution verdict'i olarak kullanilmasi.
-- Phase-18'in aktif faz olarak ilan edilmesi.
+- Phase-18'in runtime implementation fazi olarak yorumlanmasi.
 - Trust classification'in capability grant gibi kullanilmasi.
 
 Bu alanlarda belge veya izole arastirma tutulabilir; production merge icin
-Phase-18 Platform Constitution transition kapisini asamaz.
+Phase-18 Platform Constitution sinirini asamaz.
 
 ## 3. Bugunku Repo Gercegi
 
@@ -91,7 +92,7 @@ Phase-18 Platform Constitution transition kapisini asamaz.
 | Governance | Spec-purity, fail-closed marker isolation, validation matrix ve S2 inventory kabul edildi | #145 tek-maintainer authority paritesiyle giderildi; closure yine ayrik reviewed karardir |
 | Review enforcement | `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` required `freeze` protection'i tek-maintainer ADR'iyle hizalandi | Issue #145 RESOLVED; bagimsiz self-review iddiasi veya closure yetkisi kurulmaz |
 | Performance stability | PR-4 local readiness FAIL tarihsel kayit; PR-4A/PR-4B diagnostic; governed renewal ve workflow authority repair accepted | Accepted `main` SHA `416a5392`: Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; official tag dogrulandi |
-| Phase-18 | Transition decision package only | Platform Constitution review edilir; `CURRENT_PHASE` explicit transition olmadan baslatilmaz |
+| Phase-18 | Active as Platform Constitution only | Runtime implementation, loader, installer, workspace runtime, plugin loading, capability issuance ve trust assignment yetkisi yoktur |
 
 ## 4. Stratejik Karar: Stabilization-First
 
@@ -106,7 +107,8 @@ Oncelik sirasi:
 4. Module/package/workspace/capability/trust/plugin kontratlarini fail-closed
    tanimlamak.
 5. BCIB/SMP/race validation backlog'unu gorunur tutmak ama ana yon yapmamak.
-6. Ancak bunlardan sonra explicit Phase-18 activation pointer'i.
+6. Phase-18 active pointer'i sonrasi da runtime implementation icin ayri
+   Phase-19 veya reviewed implementation karari.
 
 ## 5. Technical Debt Control Rules
 
@@ -330,16 +332,19 @@ nondeterministic verification verdict'i uretmez.
   gostergeleri olarak izlenir.
 - Constitutional rules yalniz gercek mimari invariant'lari korur.
 
-### S5 - Phase-18 Activation Decision
+### S5 - Phase-18 Platform Constitution Activation
 
-**Status:** TRANSITION DECISION PACKAGE PENDING / NOT ACTIVE
+**Status:** ACTIVE AS PLATFORM CONSTITUTION / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 
-Phase-17 closure precondition'lari artik saglanmistir, ancak Phase-18 yine de
-aktif degildir. Phase-18 icin authority adayi `PHASE18_TRANSITION_DECISION.md`
-olmalidir; eski `PHASE18_ROADMAP.md` tarihsel runtime-validation backlog'u
-olarak tutulur.
+Phase-17 closure precondition'lari saglanmistir ve Phase-18 yalniz Platform
+Constitution olarak aktiftir. Phase-18 authority zinciri
+`PHASE18_TRANSITION_DECISION.md`, Phase-18 RFC seti,
+`CROSS_CONSISTENCY_REVIEW.md`, `PHASE18_ACTIVATION_DECISION.md` ve
+`CURRENT_PHASE=18` pointer'i ile sinirlidir. Eski `PHASE18_ROADMAP.md`
+tarihsel runtime-validation backlog'u olarak tutulur.
 
-Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
+Phase-18 active scope su kararlari korumadan implementation planina
+donusemez:
 
 1. Phase-18 = Platform Constitution.
 2. Kernel ABI expansion forbidden.
@@ -348,14 +353,14 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 5. AI Runtime authority forbidden.
 6. Kernel ABI ile Platform ABI ayrimi acik.
 7. Trust level capability grant degildir.
-8. `CURRENT_PHASE` ancak explicit transition ile `18` yapilir.
+8. `CURRENT_PHASE=18` yalniz Platform Constitution authority kurar.
 9. Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata,
    Trust Classification, Plugin Boundary ve Platform ABI Validation Gate
    spec'leri fail-closed olarak review edilmeden implementation phase baslamaz.
 10. Cross-consistency review kabul edilmeden activation decision package
     hazirlanmis sayilmaz.
-11. `PHASE18_ACTIVATION_DECISION.md` kabul edilmeden `CURRENT_PHASE=18`
-    pointer transition'i degerlendirilemez.
+11. `PHASE18_ACTIVATION_DECISION.md` accepted activation basis olarak
+    korunur.
 12. Constitution Runtime degildir; activation runtime implementation,
     package install, workspace creation, plugin loading, capability issuance
     veya trust assignment yetkisi vermez.
@@ -379,17 +384,17 @@ Phase-18 transition su kararlari korumadan aktif uygulama planina donusemez:
 | PR #148 | MERGED (`e0286c7b`) / POST-MERGE PASS | Standalone Performance Gate workflow'unu locked authority modeliyle hizalamak | Workflow only; runtime/threshold degisikligi yok | Performance `26421295487`, freeze `26421295459` PASS |
 | PR #149/#151/#150 | MERGED (`7a42d312`) / EXACT-SHA REFRESHED | Closure-candidate record, governed baseline renewal ve ci-freeze prerequisite dedup | Candidate package, performance authority and CI prerequisite wiring | Historical refresh subject `7a42d312`; official tag ayridir |
 | PR #152 | MERGED (`416a5392`) / EXACT-SHA REFRESHED | Closure-candidate record'u accepted main subject'e yenilemek | Candidate manifest/index ve status docs | Refresh subject `416a5392`; official tag ayridir |
-| Phase-17 closure decision package | OFFICIAL CLOSURE CONFIRMED / PHASE-18 NOT ACTIVATED | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 ayridir |
-| Phase-18 transition decision package | DOCS-ONLY / PHASE-18 NOT ACTIVATED | Phase-18'i Platform Constitution olarak sinirlamak | `PHASE18_TRANSITION_DECISION.md`, roadmap/index/current status sync | Kernel expansion/new syscall/AI authority forbidden; explicit pointer transition gerekir |
-| Phase-18 Module Manifest Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Modülün kimlik, entrypoint, artifact ve capability request beyanini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` | Capability/trust/workspace authority grant yok; unknown fields fail-closed |
-| Phase-18 Capability Contract Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Capability request, authorization decision, receipt ve revocation sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` | Manifest self-grant yok; trust capability grant degil; token/receipt ayrimi korunur |
-| Phase-18 Workspace Lifecycle Specification | DOCS-ONLY / PRE-ACTIVATION RFC | Workspace admission, logical mount, disable, quarantine, revocation ve removal sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Workspace declaration mount grant degil; mount capability grant degil; runtime loader yok |
-| Phase-18 Package Metadata Schema | DOCS-ONLY / PRE-ACTIVATION RFC | Package identity, version, publisher, hash, signature, dependency ve Platform ABI compatibility metadata'sini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` | Trust/capability/workspace/execution/mount/loader grant yok; package digest metadata icinde self-declare edilmez |
-| Phase-18 Trust Classification Model | DOCS-ONLY / PRE-ACTIVATION RFC | Trust vocabulary, evidence input, classification lifecycle ve policy-effect sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` | Trust level capability grant degil; install/enable/execute/load/mount authority yok |
-| Phase-18 Plugin Boundary Contract | DOCS-ONLY / PRE-ACTIVATION RFC | Host interface, extension point, compatibility, binding lifecycle ve fail-closed plugin boundary sinirlarini tanimlamak | `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` | Plugin loading/autoload/execution yok; capability/trust/workspace inheritance yok |
-| Phase-18 Platform ABI Validation Gate | DOCS-ONLY / PRE-ACTIVATION RFC | Manifest, package, trust, capability, workspace ve plugin boundary input'larini deterministik fail-closed validation order ile baglamak | `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` | Validation PASS authority grant degil; install/enable/execute/load/mount/capability/trust grant yok |
-| Phase-18 Cross-Consistency Review | DOCS-ONLY / PRE-ACTIVATION REVIEW | Yedi Phase-18 RFC'nin terminology, dependency order, validation order ve authority separation acisindan celismedigini kaydetmek | `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` | Review PASS activation degil; activation package ve explicit pointer transition gerekir |
-| Phase-18 Activation Decision Package | DOCS-ONLY / ACTIVATION CANDIDATE / PHASE-18 NOT ACTIVATED | Phase-18 aktivasyonu icin precondition, exact-SHA, fail-closed denial ve Constitution != Runtime sinirlarini kaydetmek | `PHASE18_ACTIVATION_DECISION.md` | Package kabulü `CURRENT_PHASE=18` yapmaz; runtime implementation, capability issuance, trust assignment, workspace creation veya plugin loading yetkisi yok |
+| Phase-17 closure decision package | OFFICIAL CLOSURE CONFIRMED / PHASE-18 SEPARATE | Exact-SHA PASS kanitlarini verified official tag subject karar kaydina baglamak | Candidate manifest/index, decision record ve status docs | Candidate integrity + verified tag target; Phase-18 runtime authority kurmaz |
+| Phase-18 transition decision package | ACCEPTED / PLATFORM CONSTITUTION ACTIVE | Phase-18'i Platform Constitution olarak sinirlamak | `PHASE18_TRANSITION_DECISION.md`, roadmap/index/current status sync | Kernel expansion/new syscall/AI authority forbidden |
+| Phase-18 Module Manifest Schema | ACTIVE CONSTITUTION SPEC | Modülün kimlik, entrypoint, artifact ve capability request beyanini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md` | Capability/trust/workspace authority grant yok; unknown fields fail-closed |
+| Phase-18 Capability Contract Specification | ACTIVE CONSTITUTION SPEC | Capability request, authorization decision, receipt ve revocation sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md` | Manifest self-grant yok; trust capability grant degil; token/receipt ayrimi korunur |
+| Phase-18 Workspace Lifecycle Specification | ACTIVE CONSTITUTION SPEC | Workspace admission, logical mount, disable, quarantine, revocation ve removal sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md` | Workspace declaration mount grant degil; mount capability grant degil; runtime loader yok |
+| Phase-18 Package Metadata Schema | ACTIVE CONSTITUTION SPEC | Package identity, version, publisher, hash, signature, dependency ve Platform ABI compatibility metadata'sini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md` | Trust/capability/workspace/execution/mount/loader grant yok; package digest metadata icinde self-declare edilmez |
+| Phase-18 Trust Classification Model | ACTIVE CONSTITUTION SPEC | Trust vocabulary, evidence input, classification lifecycle ve policy-effect sinirlarini fail-closed tanimlamak | `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md` | Trust level capability grant degil; install/enable/execute/load/mount authority yok |
+| Phase-18 Plugin Boundary Contract | ACTIVE CONSTITUTION SPEC | Host interface, extension point, compatibility, binding lifecycle ve fail-closed plugin boundary sinirlarini tanimlamak | `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md` | Plugin loading/autoload/execution yok; capability/trust/workspace inheritance yok |
+| Phase-18 Platform ABI Validation Gate | ACTIVE CONSTITUTION SPEC | Manifest, package, trust, capability, workspace ve plugin boundary input'larini deterministik fail-closed validation order ile baglamak | `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md` | Validation PASS authority grant degil; install/enable/execute/load/mount/capability/trust grant yok |
+| Phase-18 Cross-Consistency Review | ACCEPTED REVIEW | Yedi Phase-18 RFC'nin terminology, dependency order, validation order ve authority separation acisindan celismedigini kaydetmek | `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` | Review PASS runtime implementation degil |
+| Phase-18 Activation Decision Package | ACCEPTED / PLATFORM CONSTITUTION ACTIVE | Phase-18 aktivasyonu icin precondition, exact-SHA, fail-closed denial ve Constitution != Runtime sinirlarini kaydetmek | `PHASE18_ACTIVATION_DECISION.md` | Activation runtime implementation, capability issuance, trust assignment, workspace creation veya plugin loading yetkisi vermez |
 
 PR koordinasyon kurallari:
 
@@ -1002,7 +1007,8 @@ closure manifest/tag'i yerine gecmez.
 **Authority boundary:** Exact-SHA remote PASS closure-candidate hazirlamaya
 yeterli kanittir; official closure degildir. `phase17-official-closure`
 yalniz reviewed karar kaydi ve uygun tag-subject dogrulamasi sonrasinda
-uretilebilir. Phase-18 aktif degildir.
+uretilebilir. Phase-18 yalniz Platform Constitution olarak aktiftir; runtime
+implementation yetkisi yoktur.
 
 ### 2026-05-31 - Current Main Exact-SHA Refresh
 
@@ -1076,7 +1082,8 @@ Bu roadmap su olaylarda guncellenir:
 24. Phase-18 Platform ABI Validation Gate review/merge sonucu.
 25. Phase-18 Cross-Consistency Review sonucu.
 26. Phase-18 Activation Decision Package review/merge sonucu.
-27. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+27. Phase-18 `CURRENT_PHASE=18` pointer transition sonucu.
+28. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 

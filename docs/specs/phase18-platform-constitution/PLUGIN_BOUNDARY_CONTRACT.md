@@ -6,7 +6,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `PACKAGE_METADATA_SCHEMA.md`, and
 `TRUST_CLASSIFICATION_MODEL.md`. In case of conflict, those documents prevail.
 
-**Status:** RFC-DRAFT / PRE-ACTIVATION SPEC
+**Status:** ACTIVE CONSTITUTION SPEC / RUNTIME NOT AUTHORIZED
 **Contract id:** `ayken.platform.plugin.boundary.v1`
 **Authority boundary:** Documentation/specification only; not a plugin loader,
 installer, runtime host, capability grant, trust grant, workspace admission,
@@ -618,9 +618,7 @@ Invalid because AI Runtime is not a Phase-18 authority source.
 
 ## Activation Boundary
 
-This RFC is not sufficient to activate Phase-18. Phase-18 activation still
-requires an explicit `CURRENT_PHASE` pointer transition and reviewed acceptance
-of the required Platform Constitution set.
+This RFC is part of the active Phase-18 Platform Constitution set.
 
 This RFC does not authorize implementation work that widens the kernel ABI,
 adds syscalls, places policy in Ring0, creates runtime loaders, installs or

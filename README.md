@@ -22,15 +22,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
 **Remote CI (Phase-15):** `ci-freeze#24213727039 = success` (PR #104) | tag `phase15-official-closure`
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
-**CURRENT_PHASE:** `17` (`Phase-17 OFFICIALLY CLOSED`; Phase-18 ayrı transition olmadan aktif değildir)
+**CURRENT_PHASE:** `18` (`Phase-18 ACTIVE: Platform Constitution`; runtime implementation yetkisi değildir)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
 **Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150, PR #152 ve Phase-17 closure decision package birleşti. Closure exact-SHA kanıtı `main` SHA `416a5392` üzerinde yenilendi, gerekli uzak acceptance kontrolleri PASS verdi ve `phase17-official-closure` tag'i aynı SHA'ya doğrulandı
-**Yakın Hedef:** `PHASE18_ACTIVATION_DECISION.md` paketini review etmek; mevcut somut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`, `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`, `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`, `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` ve `PHASE18_ACTIVATION_DECISION.md`, explicit pointer transition olmadan Phase-18 aktive edilmez
+**Yakın Hedef:** Phase-18 Platform Constitution kapsamını korumak; mevcut somut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`, `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`, `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`, `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` ve `PHASE18_ACTIVATION_DECISION.md`; Phase-18 runtime, loader, installer, workspace runtime, plugin loading, capability issuance veya trust assignment yetkisi vermez
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
-**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 TRANSITION DECISION PACKAGE ONLY
+**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 PLATFORM CONSTITUTION ACTIVE ✅
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-17 kapanış kayıtları mevcut ✅ | Phase 17 Execution Pipeline OFFICIALLY CLOSED ✅ (2026-05-31) | CURRENT_PHASE=17 🔄 | Phase-18 ayrı transition olmadan aktif değil 🔒 | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-17 kapanış kayıtları mevcut ✅ | Phase 17 Execution Pipeline OFFICIALLY CLOSED ✅ (2026-05-31) | CURRENT_PHASE=18 ✅ | Phase-18 Platform Constitution aktif 🔒 | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
@@ -40,9 +40,9 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
 **Phase 17 Status:** OFFICIALLY CLOSED ✅ | tag `phase17-official-closure` at `416a5392` | full `ci-freeze` (`26712333892`), locked performance (`26715068398`, `26712374737`) ve Phase-17 QEMU evidence lanes (`26712374742`, `26712374736`, `26712374727`, `26712374744`, `26712374728`) PASS | `reports/phase17_official_closure_candidate/`
-**Phase 18 Status:** TRANSITION DECISION PACKAGE ONLY | Proposed direction: Platform Constitution; kernel expansion/new syscalls/AI authority forbidden unless a separate phase RFC and closure authority exists
+**Phase 18 Status:** ACTIVE AS PLATFORM CONSTITUTION | Runtime implementation, kernel expansion, new syscalls, Ring0 policy and AI authority remain forbidden unless a separate phase RFC and closure authority exists
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution RFC set | accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 explicit transition gerektirir
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution RFC set | accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 Platform Constitution pointer'i aktiftir
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
@@ -51,13 +51,13 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 ## Phase Status
 
-- **Current Phase:** `17`
-- **Status:** `OFFICIALLY CLOSED / PHASE-18 TRANSITION NOT ACTIVATED`
+- **Current Phase:** `18`
+- **Status:** `ACTIVE / PLATFORM CONSTITUTION ONLY`
 - **Last Official Closure:** `17` (Execution Pipeline, 2026-05-31)
-- **Candidate Next Phase:** `18` (Platform Constitution; transition decision package only)
+- **Candidate Next Phase:** `19` (Platform Runtime MVP; separate decision required)
 - **Verification Layer:** `COMPLETE` (MVP delivered 2026-04-25)
 - **Closure Index:** `reports/phase17_official_closure_candidate/closure_index.json`
-- **Phase-17 Authority Note:** `phase17-official-closure` resolves to the reviewed exact-SHA evidence subject; Phase-18 activation still requires a separate transition decision.
+- **Phase-18 Authority Note:** `CURRENT_PHASE=18` activates Platform Constitution only; runtime implementation still requires a separate decision.
 
 ## 🎯 Latest Breakthrough (2026-04-24)
 
@@ -68,7 +68,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** `PHASE18_ACTIVATION_DECISION.md` paketini review etmek; mevcut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`, `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`, `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`, `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` ve `PHASE18_ACTIVATION_DECISION.md`, `CURRENT_PHASE` explicit pointer transition olmadan `18` yapılmayacaktır.
+**Next Focus:** Phase-18 Platform Constitution kapsamını korumak; mevcut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`, `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`, `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`, `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md` ve `PHASE18_ACTIVATION_DECISION.md`; Phase-19 runtime MVP icin ayri karar gerekir.
 
 ## Authority Model
 
@@ -344,20 +344,20 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ## 🎯 Sonraki Hedefler
 
-**Kısa Vadeli (Phase-18 Transition):**
-- `PHASE18_TRANSITION_DECISION.md` merged; this is not Phase-18 activation.
-- `CURRENT_PHASE` transition decision; explicit pointer update olmadan Phase-18 aktive edilmez.
-- Platform ABI schema draft.
-- Module manifest schema RFC draft: `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`.
-- Capability contract RFC draft: `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`.
-- Workspace lifecycle contract RFC draft: `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`.
-- Package metadata schema RFC draft: `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`; identity/version/publisher/hash/signature/dependency/compatibility only.
-- Trust classification model RFC draft: `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`; trust level capability grant degildir.
-- Plugin boundary contract RFC draft: `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`; plugin loading/autoload/execution ve capability/trust/workspace inheritance yok.
-- Platform ABI validation gate RFC draft: `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`; validation PASS authority grant degildir.
+**Kısa Vadeli (Phase-18 Platform Constitution):**
+- `CURRENT_PHASE=18`; Phase-18 yalniz Platform Constitution olarak aktiftir.
+- `PHASE18_TRANSITION_DECISION.md` ve `PHASE18_ACTIVATION_DECISION.md` accepted authority inputs olarak korunur.
+- Platform ABI schema authority maintained; runtime implementation yetkisi yoktur.
+- Module manifest schema active spec: `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`.
+- Capability contract active spec: `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`.
+- Workspace lifecycle contract active spec: `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`.
+- Package metadata schema active spec: `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`; identity/version/publisher/hash/signature/dependency/compatibility only.
+- Trust classification model active spec: `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`; trust level capability grant degildir.
+- Plugin boundary contract active spec: `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`; plugin loading/autoload/execution ve capability/trust/workspace inheritance yok.
+- Platform ABI validation gate active spec: `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`; validation PASS authority grant degildir.
 - Phase-18 cross-consistency review: `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`; review PASS activation degildir.
-- Phase-18 activation decision package: `PHASE18_ACTIVATION_DECISION.md`; `Constitution != Runtime`, package kabulü `CURRENT_PHASE=18` yapmaz.
-- Separate `CURRENT_PHASE=18` pointer-transition proposal; ancak activation package kabul edildikten ve exact-SHA checks PASS verdikten sonra degerlendirilir.
+- Phase-18 activation decision package: `PHASE18_ACTIVATION_DECISION.md`; `Constitution != Runtime`, activation runtime implementation yetkisi vermez.
+- Phase-19 runtime MVP icin ayri implementation RFC/evidence plan/closure boundary hazirlanmadikca package installer, workspace runtime, plugin loader, capability issuer veya trust issuer yazilmaz.
 
 **Orta Vadeli:**
 - Phase-19 Platform Runtime MVP.
@@ -372,7 +372,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 05 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=17; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary ve Platform ABI Validation Gate RFC draft'lari Phase-18 Platform Constitution pre-activation setine eklendi; Cross-Consistency Review ve `PHASE18_ACTIVATION_DECISION.md` activation blocker olarak kaydedildi; explicit transition olmadan Phase-18 aktif değildir.
+**Son Güncelleme:** 05 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=18; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary, Platform ABI Validation Gate, Cross-Consistency Review ve `PHASE18_ACTIVATION_DECISION.md` Phase-18 Platform Constitution authority seti olarak aktiftir; runtime implementation Phase-19 veya ayrı karar olmadan yetkili değildir.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

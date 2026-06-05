@@ -6,7 +6,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `WORKSPACE_LIFECYCLE_SPECIFICATION.md`. In case of conflict, those documents
 prevail.
 
-**Status:** RFC-DRAFT / PRE-ACTIVATION SPEC
+**Status:** ACTIVE CONSTITUTION SPEC / RUNTIME NOT AUTHORIZED
 **Schema id:** `ayken.platform.package.metadata.v1`
 **Canonical file name:** `ayken.package.json`
 **Authority boundary:** Documentation/specification only; not an installer,
@@ -544,9 +544,7 @@ Invalid because absolute host paths are forbidden.
 
 ## Activation Boundary
 
-This RFC is not sufficient to activate Phase-18. Phase-18 activation still
-requires an explicit `CURRENT_PHASE` pointer transition and reviewed acceptance
-of the required Platform Constitution set.
+This RFC is part of the active Phase-18 Platform Constitution set.
 
 This RFC does not authorize implementation work that widens the kernel ABI,
 adds syscalls, places policy in Ring0, creates runtime loaders, admits
