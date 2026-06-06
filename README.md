@@ -14,7 +14,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Oluşturan:** Kenan AY
 **Düzenleyen / Geliştiren / Mimari Sorumlu:** Kenan AY *(bilgilendirme metadata'sı; runtime yetkisi değildir)*
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 05.06.2026
+**Son Güncelleme:** 06.06.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-verification-layer-mvp-complete`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0` | **Evidence Git SHA (Phase-16):** `489868f8`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -22,15 +22,15 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Remote CI (Phase-13):** `ci-freeze#23706742211 = success` (PR #81)
 **Remote CI (Phase-15):** `ci-freeze#24213727039 = success` (PR #104) | tag `phase15-official-closure`
 **Remote CI (Phase-16):** Verification Layer MVP complete (2026-04-25)
-**CURRENT_PHASE:** `18` (`Phase-18 ACTIVE: Platform Constitution`; runtime implementation yetkisi değildir)
+**CURRENT_PHASE:** `19` (`Phase-19 ACTIVE: Platform Runtime MVP planning/admission/receipt boundary`; runtime implementation yetkisi değildir)
 **Freeze Zinciri:** `make ci-freeze` = 40 kapılı strict suite (normative spec-purity dahil) | `make ci-freeze-local` = local performance authority
 **Authority Durumu:** Issue #145 tek-maintainer authority kararıyla giderildi; PR #142, PR #144, PR #148, PR #149, PR #151, PR #150, PR #152 ve Phase-17 closure decision package birleşti. Closure exact-SHA kanıtı `main` SHA `416a5392` üzerinde yenilendi, gerekli uzak acceptance kontrolleri PASS verdi ve `phase17-official-closure` tag'i aynı SHA'ya doğrulandı
-**Yakın Hedef:** Phase-18 Platform Constitution kapsamını korumak; mevcut somut çıktılar `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`, `docs/specs/phase18-platform-constitution/CAPABILITY_CONTRACT_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`, `docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md`, `docs/specs/phase18-platform-constitution/TRUST_CLASSIFICATION_MODEL.md`, `docs/specs/phase18-platform-constitution/PLUGIN_BOUNDARY_CONTRACT.md`, `docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`, `docs/specs/phase18-platform-constitution/CROSS_CONSISTENCY_REVIEW.md`, `PHASE18_ACTIVATION_DECISION.md`, `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`, `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`, `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`; Phase-19 decision/RFC/review/candidate/precondition set `CURRENT_PHASE=19` veya runtime implementation yetkisi vermez
+**Yakın Hedef:** Phase-19 Platform Runtime MVP planning/admission/receipt sınırını korumak; mevcut somut girdiler `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md`, `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` ve `PHASE19_POINTER_TRANSITION_DECISION.md`; `CURRENT_PHASE=19` runtime implementation, loader, installer, workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI authority veya AI Runtime authority vermez
 **Ring0 Export Ceiling:** `193 symbols` (current enforced ceiling)
 **Performance Baseline Candidate:** `gha-ubuntu24-20260518.149.1-X64` (authorized run `26370359958` artifact'i PR'a import edildi; SHA `f129d4aa` locked acceptance PASS verdi, ancak tek basina closure authority değildir)
-**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 PLATFORM CONSTITUTION ACTIVE ✅
+**Development Status:** Phase-16 OFFICIALLY CLOSED ✅ | Phase-17 OFFICIALLY CLOSED ✅ | SINGLE-MAINTAINER AUTHORITY ALIGNED (#145 RESOLVED) ✅ | PR #142/#144/#148/#149/#151/#150/#152 + closure decision package MERGED ✅ | EXACT-SHA REMOTE EVIDENCE PASS ✅ | Phase-18 PLATFORM CONSTITUTION ACCEPTED ✅ | Phase-19 POINTER TRANSITION ACTIVE AS PLANNING BOUNDARY ✅
 
-**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-17 kapanış kayıtları mevcut ✅ | Phase 17 Execution Pipeline OFFICIALLY CLOSED ✅ (2026-05-31) | CURRENT_PHASE=18 ✅ | Phase-18 Platform Constitution aktif 🔒 | Architecture Freeze ACTIVE ✅
+**Proje Durumu:** Core OS Phase 4.5 TAMAMLANDI ✅ | Phase 10-17 kapanış kayıtları mevcut ✅ | Phase 17 Execution Pipeline OFFICIALLY CLOSED ✅ (2026-05-31) | CURRENT_PHASE=19 ✅ | Phase-19 Platform Runtime MVP planning/admission/receipt boundary aktif 🔒 | Runtime implementation kapalı 🔒 | Architecture Freeze ACTIVE ✅
 **Boot/Kernel Bring-up:** UEFI→kernel handoff doğrulandı ✅ | Ring3 process preparation operasyonel ✅ | ELF64 loader çalışıyor ✅ | User address space creation aktif ✅ | Syscall roundtrip doğrulandı ✅ | IRQ-tail preempt doğrulama hattı mevcut ✅
 **Phase 10 Status:** Runtime determinism officially closed ✅ | remote `ci-freeze` run `22797401328`
 **Phase 11 Status:** Replay + KPL + proof bundle officially closed ✅
@@ -40,10 +40,10 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 15 Status:** OFFICIALLY CLOSED ✅ | tag `phase15-official-closure` at `48970cd0` | remote `ci-freeze` run `24213727039` (PR #104) | BCIB Execution Engine v3: three-layer architecture, 293 tests PASS, 12 property tests PASS | `ayken-cli` v0.1 (Faz A wrapper) shipped | `tools/ayken-cli/`
 **Phase 16 Status:** OFFICIALLY CLOSED ✅ | Verification Layer MVP COMPLETE | Evidence chain integrity verified | Trust anchor established | `make verify-system` → 3 gates → PASS | Constitutional rule enforcement active | Fail-closed behavior confirmed
 **Phase 17 Status:** OFFICIALLY CLOSED ✅ | tag `phase17-official-closure` at `416a5392` | full `ci-freeze` (`26712333892`), locked performance (`26715068398`, `26712374737`) ve Phase-17 QEMU evidence lanes (`26712374742`, `26712374736`, `26712374727`, `26712374744`, `26712374728`) PASS | `reports/phase17_official_closure_candidate/`
-**Phase 18 Status:** ACTIVE AS PLATFORM CONSTITUTION | Authority drift guard and terminology audit active | Runtime implementation, kernel expansion, new syscalls, Ring0 policy and AI authority remain forbidden unless a separate phase RFC and closure authority exists
-**Phase 19 Status:** DECISION PACKAGE + PRE-IMPLEMENTATION RFC SET + CROSS-REVIEW + POINTER CANDIDATE + PRECONDITION REVIEW ONLY | `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md`, and `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` define, review, and precondition Platform Runtime MVP boundaries; `CURRENT_PHASE=19` and runtime implementation are not authorized
+**Phase 18 Status:** ACCEPTED PLATFORM CONSTITUTION REFERENCE SET | Authority drift guard and terminology audit active | Runtime implementation, kernel expansion, new syscalls, Ring0 policy and AI authority remain forbidden unless a separate phase RFC and closure authority exists
+**Phase 19 Status:** ACTIVE AS PLATFORM RUNTIME MVP PLANNING / ADMISSION / RECEIPT BOUNDARY | `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md`, `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`, and `PHASE19_POINTER_TRANSITION_DECISION.md` define and activate the planning boundary only; runtime implementation is not authorized
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
-**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution RFC set | accepted `main` SHA `416a5392` uzerinde bounded uzak evidence PASS; official closure tag doğrulandı; Phase-18 Platform Constitution pointer'i aktiftir
+**Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | accepted `main` SHA `416a5392` uzerinde bounded Phase-17 uzak evidence PASS; official closure tag doğrulandı; `CURRENT_PHASE=19` runtime implementation yetkisi vermez
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
 
 ⚠️ **CI Mode:** `ci-freeze` workflow varsayılan olarak **CONSTITUTIONAL** modda çalışır (`PERF_BASELINE_MODE=constitutional`); provisional yol yalnız diagnosis/baseline artifact adayıdır ve acceptance/closure otoritesi değildir. Ayrıntı: [Constitutional CI Mode](docs/operations/CONSTITUTIONAL_CI_MODE.md), [Provisional CI Mode](docs/operations/PROVISIONAL_CI_MODE.md) ve [Performance Baseline Policy](docs/operations/PERF_BASELINE_POLICY.md).
@@ -52,13 +52,13 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 
 ## Phase Status
 
-- **Current Phase:** `18`
-- **Status:** `ACTIVE / PLATFORM CONSTITUTION ONLY`
+- **Current Phase:** `19`
+- **Status:** `ACTIVE / PLATFORM RUNTIME MVP PLANNING, ADMISSION, AND RECEIPT BOUNDARY ONLY`
 - **Last Official Closure:** `17` (Execution Pipeline, 2026-05-31)
-- **Candidate Next Phase:** `19` (Platform Runtime MVP; `PHASE19_RUNTIME_DECISION.md` defines the decision boundary, but Phase-19 is not active)
+- **Candidate Next Authority Action:** Phase-19 runtime implementation decision package; runtime source code remains unauthorized until then
 - **Verification Layer:** `COMPLETE` (MVP delivered 2026-04-25)
 - **Closure Index:** `reports/phase17_official_closure_candidate/closure_index.json`
-- **Phase-18 Authority Note:** `CURRENT_PHASE=18` activates Platform Constitution only; runtime implementation still requires a separate decision.
+- **Phase-19 Authority Note:** `CURRENT_PHASE=19` activates only Runtime MVP planning, validation-integration, admission-record, and receipt-boundary authority; runtime implementation still requires a separate decision.
 
 ## 🎯 Latest Breakthrough (2026-04-24)
 
@@ -69,7 +69,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Evidence:** A, B, C karakterleri başarıyla syscall üzerinden basıldı
 - **Result:** Ring3 infrastructure PROVEN, syscall path WORKING, instruction retirement VALIDATED
 
-**Next Focus:** Phase-18 Platform Constitution kapsamını korumak ve `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` altinda tanimlanan Runtime MVP sinirini runtime koduna donusturmeden pointer-transition hazirligina ayirmak. Phase-19 active pointer, implementation karari ve closure boundary ayri karar gerektirir.
+**Next Focus:** `CURRENT_PHASE=19` altında Runtime MVP planning/admission/receipt sınırını korumak ve runtime implementasyonunu ayrı karar/evidence paketine ayırmak. Runtime source code, loader, installer, workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI authority ve AI Runtime authority hâlâ kapalıdır.
 
 ## Authority Model
 
@@ -327,6 +327,7 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Phase-19 Runtime Cross-Consistency Review:** `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`
 - **Phase-19 Pointer Transition Candidate:** `PHASE19_POINTER_TRANSITION_CANDIDATE.md`
 - **Phase-19 Activation Preconditions Review:** `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`
+- **Phase-19 Pointer Transition Decision:** `PHASE19_POINTER_TRANSITION_DECISION.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 - **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
 - **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
@@ -352,8 +353,9 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ## 🎯 Sonraki Hedefler
 
-**Kısa Vadeli (Phase-18 Platform Constitution):**
-- `CURRENT_PHASE=18`; Phase-18 yalniz Platform Constitution olarak aktiftir.
+**Kısa Vadeli (Phase-19 Platform Runtime MVP Planning):**
+- `CURRENT_PHASE=19`; Phase-19 yalniz Runtime MVP planning, validation-integration, admission-record ve receipt-boundary olarak aktiftir.
+- Runtime implementation, loader, installer, workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI authority ve AI Runtime authority yetkisi yoktur.
 - `PHASE18_TRANSITION_DECISION.md` ve `PHASE18_ACTIVATION_DECISION.md` accepted authority inputs olarak korunur.
 - Platform ABI schema authority maintained; runtime implementation yetkisi yoktur.
 - Module manifest schema active spec: `docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md`.
@@ -367,11 +369,12 @@ AykenOS iki lisans modeli ile dağıtılır:
 - Phase-18 activation decision package: `PHASE18_ACTIVATION_DECISION.md`; `Constitution != Runtime`, activation runtime implementation yetkisi vermez.
 - Phase-18 authority drift guard: `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`; active review guard'dir, runtime veya Phase-19 authority grant degildir.
 - Phase-18 terminology audit: `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`; high-risk vocabulary icin accepted audit kaydidir, runtime authority degildir.
-- Phase-19 runtime decision package: `PHASE19_RUNTIME_DECISION.md`; Platform Runtime MVP sinirini tanimlar, `CURRENT_PHASE=19` veya runtime implementation yetkisi vermez.
-- Phase-19 runtime RFC set: `docs/specs/phase19-platform-runtime/README.md`; lifecycle, input bundle, validation integration, workspace admission record, receipt, evidence plan ve denial sinirlarini tanimlar; implementation yetkisi vermez.
-- Phase-19 runtime cross-consistency review: `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`; RFC set PASS review kaydidir, `CURRENT_PHASE=19` veya implementation yetkisi vermez.
-- Phase-19 pointer transition candidate: `PHASE19_POINTER_TRANSITION_CANDIDATE.md`; later exact-SHA pointer transition kosullarini tanimlar, `CURRENT_PHASE=19` veya implementation yetkisi vermez.
-- Phase-19 activation preconditions review: `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`; precondition review PASS kaydidir, `CURRENT_PHASE=19`, activation decision veya runtime implementation yetkisi vermez.
+- Phase-19 runtime decision package: `PHASE19_RUNTIME_DECISION.md`; Platform Runtime MVP sinirini tanimlar, runtime implementation yetkisi vermez.
+- Phase-19 runtime RFC set: `docs/specs/phase19-platform-runtime/README.md`; lifecycle, input bundle, validation integration, workspace admission record, receipt, evidence plan ve denial sinirlarini aktif planning boundary olarak tanimlar; implementation yetkisi vermez.
+- Phase-19 runtime cross-consistency review: `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`; RFC set PASS review kaydidir, implementation yetkisi vermez.
+- Phase-19 pointer transition candidate: `PHASE19_POINTER_TRANSITION_CANDIDATE.md`; exact-SHA pointer transition kosullarini tanimlayan accepted candidate kaydidir, implementation yetkisi vermez.
+- Phase-19 activation preconditions review: `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`; precondition review PASS kaydidir, runtime implementation yetkisi vermez.
+- Phase-19 pointer transition decision: `PHASE19_POINTER_TRANSITION_DECISION.md`; `CURRENT_PHASE=19` pointer'ini planning/admission/receipt sinirinda aktive eder, runtime implementation yetkisi vermez.
 - Phase-19 runtime MVP icin ayri implementation RFC/evidence plan/closure boundary hazirlanmadikca package installer, workspace runtime, plugin loader, capability issuer veya trust issuer yazilmaz.
 
 **Orta Vadeli:**
@@ -387,7 +390,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 05 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=18; Module Manifest, Capability Contract, Workspace Lifecycle, Package Metadata, Trust Classification, Plugin Boundary, Platform ABI Validation Gate, Cross-Consistency Review, `PHASE18_ACTIVATION_DECISION.md`, `AUTHORITY_DRIFT_GUARD.md` ve `TERMINOLOGY_AUDIT.md` Phase-18 Platform Constitution authority seti olarak aktiftir; `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md` ve `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` Runtime MVP karar/RFC/review/candidate/precondition sinirini tanimlar, ancak Phase-19 aktif degildir ve runtime implementation yetkisi yoktur.
+**Son Güncelleme:** 06 Haziran 2026 - Phase-17 resmi kapanış otoritesi `phase17-official-closure` tag'iyle `416a5392` üzerinde doğrulandı; CURRENT_PHASE=19; Phase-18 Platform Constitution reference set korunur; `PHASE19_RUNTIME_DECISION.md`, `docs/specs/phase19-platform-runtime/README.md`, `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, `PHASE19_POINTER_TRANSITION_CANDIDATE.md`, `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` ve `PHASE19_POINTER_TRANSITION_DECISION.md` Runtime MVP planning/admission/receipt sinirini aktive eder, ancak runtime implementation yetkisi yoktur.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

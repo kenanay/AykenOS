@@ -1,9 +1,10 @@
 # Phase-19 Runtime Evidence Plan
 
-This document is subordinate to `PHASE19_RUNTIME_DECISION.md` and the Phase-19
-Runtime RFC set. In case of conflict, those documents prevail.
+This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`, and the Phase-19 Runtime
+RFC set. In case of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.runtime.evidence_plan.v1`
 **Authority boundary:** Documentation/specification only; not a CI gate
 implementation, runtime implementation, loader, installer, workspace runtime,
@@ -13,7 +14,8 @@ syscall, kernel ABI expansion, or closure authority.
 ## Purpose
 
 This plan defines the evidence that a later Phase-19 Runtime MVP
-implementation must produce before activation or acceptance can be considered.
+implementation must produce before implementation acceptance can be
+considered.
 
 It does not implement any evidence gate.
 

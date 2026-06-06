@@ -3,28 +3,31 @@
 This directory is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, `PHASE18_TRANSITION_DECISION.md`,
 `PHASE18_ACTIVATION_DECISION.md`, the Phase-18 Platform Constitution
-reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`, and
-`PHASE19_RUNTIME_DECISION.md`. In case of conflict, those documents prevail.
+reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
+`PHASE19_RUNTIME_DECISION.md`, and
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`. In case of conflict, those
+documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC SET / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
-**Authority basis:** `PHASE19_RUNTIME_DECISION.md`
+**Status:** ACTIVE PHASE-19 RFC SET / RUNTIME IMPLEMENTATION NOT AUTHORIZED
+**Authority basis:** `PHASE19_RUNTIME_DECISION.md` and
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`
 **Attribution:** Documentation metadata only; not runtime, merge, or execution
 authority.
 
 ## Purpose
 
-This directory defines the first Phase-19 Platform Runtime MVP RFC set.
+This directory defines the active Phase-19 Platform Runtime MVP RFC set.
 
 The set narrows the future runtime implementation question before any runtime
 source code exists. It defines lifecycle, static input bundle, validation
 integration, workspace admission record, runtime receipt, evidence plan, and
 non-goal boundaries.
 
-It does not activate Phase-19. It does not update `CURRENT_PHASE`. It does not
-authorize package installation, module loading, workspace creation, real
-filesystem mounts, plugin loading, capability issuance, trust assignment,
-Semantic CLI authority, AI Runtime authority, new syscalls, or kernel ABI
-expansion.
+`CURRENT_PHASE=19` activates this planning/admission/receipt boundary only.
+It does not authorize package installation, module loading, workspace
+creation, real filesystem mounts, plugin loading, capability issuance, trust
+assignment, Semantic CLI authority, AI Runtime authority, new syscalls, kernel
+ABI expansion, or runtime implementation.
 
 ## Current RFCs
 
@@ -47,28 +50,33 @@ expansion.
 
 `CROSS_CONSISTENCY_REVIEW.md` records the accepted cross-document review for
 the Phase-19 Runtime RFC set. The review PASS is documentation evidence only.
-It does not activate Phase-19, update `CURRENT_PHASE`, or authorize runtime
-implementation.
+It does not authorize runtime implementation.
 
 `../../../PHASE19_POINTER_TRANSITION_CANDIDATE.md` records the later pointer
-transition preconditions. It is a candidate record only; it does not activate
-Phase-19, update `CURRENT_PHASE`, or authorize runtime implementation.
+transition preconditions. It is a candidate record only; it does not authorize
+runtime implementation.
 
 `../../../PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` records the review of
 documented activation preconditions. It is not an activation decision; it does
-not activate Phase-19, update `CURRENT_PHASE`, or authorize runtime
-implementation.
+not authorize runtime implementation.
+
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md` records the phase pointer
+transition to `CURRENT_PHASE=19`. That transition activates only this
+documented Runtime MVP planning, validation-integration, admission-record, and
+receipt-boundary phase. It does not authorize runtime implementation.
 
 ## Core Rule
 
 ```text
 Runtime RFC set != runtime implementation
+CURRENT_PHASE=19 != runtime implementation
 ```
 
-The existence of these RFCs means only that the Phase-19 Runtime MVP boundary
-is documented for later review. A separate exact-SHA pointer transition,
-implementation RFC acceptance, runtime evidence implementation, and remote CI
-authority remain required before any runtime code can be accepted.
+The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
+the Phase-19 Runtime MVP boundary is active as planning authority. A separate
+implementation decision, implementation RFC acceptance, runtime evidence
+implementation, and remote CI authority remain required before any runtime
+code can be accepted.
 
 ## MVP Boundary
 
@@ -88,20 +96,19 @@ schedule anything.
 
 No file in this directory may grant:
 
-1. `CURRENT_PHASE=19`.
-2. Runtime source code authority.
-3. Package installation or execution.
-4. Module loading.
-5. Plugin loading or instantiation.
-6. Workspace creation or real mounts.
-7. Capability token minting or issuance.
-8. Trust assignment.
-9. Registry publication.
-10. Semantic CLI execution authority.
-11. AI Runtime authority.
-12. Agent authority.
-13. New syscalls.
-14. Kernel ABI expansion.
-15. Ring0 policy.
+1. Runtime source code authority.
+2. Package installation or execution.
+3. Module loading.
+4. Plugin loading or instantiation.
+5. Workspace creation or real mounts.
+6. Capability token minting or issuance.
+7. Trust assignment.
+8. Registry publication.
+9. Semantic CLI execution authority.
+10. AI Runtime authority.
+11. Agent authority.
+12. New syscalls.
+13. Kernel ABI expansion.
+14. Ring0 policy.
 
 Unknown authority readings fail closed.

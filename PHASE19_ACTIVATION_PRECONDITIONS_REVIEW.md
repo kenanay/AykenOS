@@ -5,20 +5,21 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `PHASE18_ACTIVATION_DECISION.md`, the Phase-18 Platform Constitution
 reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
 `PHASE19_RUNTIME_DECISION.md`, the Phase-19 Runtime RFC set,
-`docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, and
-`PHASE19_POINTER_TRANSITION_CANDIDATE.md`. In case of conflict, those
+`docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`,
+`PHASE19_POINTER_TRANSITION_CANDIDATE.md`, and
+`PHASE19_POINTER_TRANSITION_DECISION.md`. In case of conflict, those
 documents prevail.
 
-**Status:** PRECONDITION REVIEW / PHASE-19 NOT ACTIVE / POINTER NOT EXECUTED / IMPLEMENTATION NOT AUTHORIZED
+**Status:** ACCEPTED PRECONDITION REVIEW / SUPERSEDED BY POINTER TRANSITION DECISION / IMPLEMENTATION NOT AUTHORIZED
 **Review date:** 2026-06-05
 **Review id:** `ayken.phase19.activation_preconditions.review.v1`
 **Authority boundary:** Documentation review only; not
-`PHASE19_ACTIVATION_DECISION.md`, not `CURRENT_PHASE=19`, not a phase pointer
-transition, not runtime implementation, not a parser, not a package installer,
-not a module loader, not workspace runtime, not real mount authority, not
-plugin loading, not capability issuance, not trust assignment, not Semantic
-CLI authority, not AI Runtime authority, not a syscall, not kernel ABI
-expansion, not merge authority, and not closure authority.
+`PHASE19_ACTIVATION_DECISION.md`, not runtime implementation, not a parser,
+not a package installer, not a module loader, not workspace runtime, not real
+mount authority, not plugin loading, not capability issuance, not trust
+assignment, not Semantic CLI authority, not AI Runtime authority, not a
+syscall, not kernel ABI expansion, not merge authority, and not closure
+authority.
 
 ## Purpose
 
@@ -29,12 +30,13 @@ Are the documented preconditions for a later Phase-19 pointer transition
 complete enough to be reviewed without starting implementation?
 ```
 
-The answer is a documentation review finding only. This file does not update
-`docs/roadmap/CURRENT_PHASE`; the current pointer remains `CURRENT_PHASE=18`.
+The answer is a documentation review finding only. This file did not update
+`docs/roadmap/CURRENT_PHASE`; the later pointer transition is recorded in
+`PHASE19_POINTER_TRANSITION_DECISION.md`.
 
 This file is intentionally not named `PHASE19_ACTIVATION_DECISION.md`. A
-future activation or pointer transition must be a separate exact-SHA PR that
-changes the phase pointer and records fresh remote evidence on that subject.
+separate exact-SHA pointer transition changes the phase pointer and must
+record fresh remote evidence on that subject.
 
 ## Core Rule
 
@@ -45,7 +47,7 @@ runtime RFC set != runtime implementation
 runtime artifact != behavior source
 ```
 
-The safe default remains no Phase-19 activation.
+The safe default remains no runtime implementation.
 
 ## Reviewed Inputs
 
@@ -69,33 +71,32 @@ The reviewed precondition set is:
 
 **Verdict:** PASS FOR PRECONDITION DOCUMENTATION
 
-The reviewed set is sufficient to define the preconditions for a later
-Phase-19 pointer transition discussion. No reviewed input activates Phase-19,
-updates `CURRENT_PHASE`, or authorizes runtime implementation.
+The reviewed set is sufficient to define the preconditions for the Phase-19
+pointer transition discussion. No reviewed input by itself activated Phase-19,
+updated `CURRENT_PHASE`, or authorized runtime implementation.
 
-This PASS is not activation. Actual Phase-19 activation remains blocked until
-a later exact-SHA pointer transition PR updates `docs/roadmap/CURRENT_PHASE`
-and passes the required remote authority checks.
+This PASS is not runtime implementation authority. The exact-SHA pointer
+transition is separate and must pass the required remote authority checks.
 
 ## Current Pointer Confirmation
 
 | Check | Finding | Result |
 |---|---|---|
-| Current phase value | `docs/roadmap/CURRENT_PHASE` remains `CURRENT_PHASE=18` | PASS |
-| Phase-19 active status | Phase-19 remains not active | PASS |
+| Current phase value | `docs/roadmap/CURRENT_PHASE` remained `CURRENT_PHASE=18` during this review | PASS |
+| Phase-19 active status | Phase-19 remained not active during this review | PASS |
 | Pointer update in this review | No pointer update is present | PASS |
 | Runtime code in this review | No runtime implementation is present | PASS |
 | Kernel ABI status | `1000-1011` / 12 syscall / `0x00010001` remains the frozen boundary | PASS |
 
-## Preconditions For A Later Pointer Transition
+## Preconditions For Pointer Transition
 
-A future `CURRENT_PHASE=19` pointer transition PR must fail closed unless all
-of the following are true on that future exact subject SHA:
+A `CURRENT_PHASE=19` pointer transition PR must fail closed unless all of the
+following are true on that exact subject SHA:
 
 | ID | Precondition | Required result |
 |---|---|---|
 | P19-R1 | Phase-17 official closure remains verified | `phase17-official-closure` resolves to `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` |
-| P19-R2 | Phase-18 remains Platform Constitution only before transition | `CURRENT_PHASE=18` remains true before the future pointer PR changes it |
+| P19-R2 | Phase-18 remains Platform Constitution only before transition | `CURRENT_PHASE=18` remains true before the pointer PR changes it |
 | P19-R3 | Authority Drift Guard remains active | Runtime, loader, issuer, workspace, plugin, trust, capability, Semantic CLI, AI, and agent authority drift is rejected |
 | P19-R4 | Terminology Audit remains active | High-risk vocabulary remains non-authoritative |
 | P19-R5 | Runtime Decision Package is accepted | `PHASE19_RUNTIME_DECISION.md` remains decision boundary only |
@@ -104,9 +105,9 @@ of the following are true on that future exact subject SHA:
 | P19-R8 | Pointer Transition Candidate is accepted | Candidate remains a pre-transition record only |
 | P19-R9 | This Preconditions Review is accepted | Preconditions are reviewed before any pointer update |
 | P19-R10 | Kernel ABI remains frozen | Syscall IDs remain `1000-1011`, count remains `12`, ABI version remains `0x00010001` |
-| P19-R11 | Future pointer PR is docs-only | No runtime source, parser, loader, installer, workspace runtime, issuer, plugin, registry, Semantic CLI, AI Runtime, or agent code is included |
+| P19-R11 | Pointer PR is docs-only | No runtime source, parser, loader, installer, workspace runtime, issuer, plugin, registry, Semantic CLI, AI Runtime, or agent code is included |
 | P19-R12 | Inert artifact invariant remains explicit | Bundle, validation receipt, admission record, and runtime receipt remain records only |
-| P19-R13 | Exact-SHA remote authority is fresh | Strict `ci-freeze` and Dev Loop PASS on the future pointer transition subject SHA |
+| P19-R13 | Exact-SHA remote authority is fresh | Strict `ci-freeze` and Dev Loop PASS on the pointer transition subject SHA |
 | P19-R14 | Implementation remains separate | Runtime MVP implementation still requires a later implementation decision and evidence package |
 
 Missing, stale, ambiguous, inherited, or partially satisfied preconditions
@@ -155,29 +156,27 @@ a later reviewed phase.
 
 This review must not be read to permit:
 
-1. `CURRENT_PHASE=19`.
-2. Runtime source code.
-3. Manifest parser implementation.
-4. Package installation or execution.
-5. Module loading.
-6. Workspace creation, workspace runtime, or real mounts.
-7. Plugin host, plugin loading, or plugin instantiation.
-8. Capability token minting or capability issuance.
-9. Trust assignment or trust issuer behavior.
-10. Registry publication or marketplace behavior.
-11. Semantic CLI execution authority.
-12. AI Runtime authority.
-13. Agent systems.
-14. New syscalls.
-15. Kernel ABI expansion.
-16. Ring0 policy.
+1. Runtime source code.
+2. Manifest parser implementation.
+3. Package installation or execution.
+4. Module loading.
+5. Workspace creation, workspace runtime, or real mounts.
+6. Plugin host, plugin loading, or plugin instantiation.
+7. Capability token minting or capability issuance.
+8. Trust assignment or trust issuer behavior.
+9. Registry publication or marketplace behavior.
+10. Semantic CLI execution authority.
+11. AI Runtime authority.
+12. Agent systems.
+13. New syscalls.
+14. Kernel ABI expansion.
+15. Ring0 policy.
 
 Unknown authority readings fail closed.
 
-## Required Evidence Before Pointer Transition
+## Required Evidence For Pointer Transition
 
-Before any future pointer transition can be accepted, the future pointer PR
-must record fresh exact-SHA evidence for:
+A pointer PR must record fresh exact-SHA evidence for:
 
 1. Strict `ci-freeze` PASS.
 2. Dev Loop PASS.
@@ -190,16 +189,14 @@ must record fresh exact-SHA evidence for:
 Historical PASS results may be cited as context only. They cannot be inherited
 as authority for a new subject SHA.
 
-## Open Blockers For Actual Activation
+## Open Blockers For Runtime Implementation
 
-The following blockers remain for actual Phase-19 activation:
+The following blockers remain for runtime implementation:
 
-1. No exact-SHA `CURRENT_PHASE=19` pointer transition PR exists.
-2. No activation decision package exists.
-3. No runtime implementation authority exists.
-4. No runtime MVP implementation evidence exists.
-5. No runtime-specific CI gate exists.
-6. No loader, installer, workspace runtime, capability issuer, trust issuer,
+1. No runtime implementation authority exists.
+2. No runtime MVP implementation evidence exists.
+3. No runtime-specific CI gate exists.
+4. No loader, installer, workspace runtime, capability issuer, trust issuer,
    Semantic CLI authority, AI Runtime, registry, or agent authority exists.
 
 These are intentional blockers. They preserve the separation between
@@ -208,9 +205,8 @@ precondition review, pointer transition, and implementation.
 ## Final Review Conclusion
 
 Phase-19 activation preconditions are documented, bounded, and internally
-consistent enough for a later pointer transition PR to be reviewed.
+consistent enough for the pointer transition PR to be reviewed.
 
-Phase-19 is still not active. `CURRENT_PHASE` remains `18`. Runtime
-implementation is still not authorized. The next authority-changing action
-would have to be a separate exact-SHA pointer transition PR; until then, the
-safe default remains no Phase-19 activation and no runtime implementation.
+Runtime implementation is still not authorized. The next authority-changing
+action after pointer transition would have to be a separate implementation
+decision; until then, the safe default remains no runtime implementation.
