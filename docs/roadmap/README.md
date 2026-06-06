@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-06-05 (Phase-19 Pointer Transition Candidate)
+**Last authority sync:** 2026-06-05 (Phase-19 Activation Preconditions Review)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -64,7 +64,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 21. `../../PHASE19_POINTER_TRANSITION_CANDIDATE.md`: Phase-19 pointer
    transition kosullarini tanimlayan candidate kaydi; `CURRENT_PHASE=19`
    veya implementation authority degildir.
-22. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+22. `../../PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`: Phase-19 activation
+   precondition review kaydi; activation, pointer transition veya
+   implementation authority degildir.
+23. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -74,7 +77,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-18 ACTIVE / Platform Constitution only |
 | Aktif odak | Phase-18 Platform Constitution authority maintenance; runtime implementation remains out of scope |
-| Aday sonraki karar | Phase-19 Platform Runtime MVP decision/RFC/review/candidate set; `CURRENT_PHASE=19` veya implementation authority degildir |
+| Aday sonraki karar | Phase-19 Platform Runtime MVP decision/RFC/review/candidate/precondition set; `CURRENT_PHASE=19` veya implementation authority degildir |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACTIVE AS PLATFORM CONSTITUTION; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 
@@ -105,8 +108,9 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** `PHASE19_POINTER_TRANSITION_CANDIDATE.md` Phase-19 pointer
-transition kosullarini tanimlar; `CURRENT_PHASE=19` veya runtime
-implementation yetkisi vermez. Siradaki is ancak ayri exact-SHA Phase-19
-pointer transition PR'i olabilir. High-risk vocabulary `TERMINOLOGY_AUDIT.md`
-kaydina gore denetlenir.
+**Next action:** `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` Phase-19
+activation precondition setini review eder; `CURRENT_PHASE=19`, activation
+decision veya runtime implementation yetkisi vermez. Siradaki
+authority-changing is ancak ayri exact-SHA Phase-19 pointer transition PR'i
+olabilir. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina gore
+denetlenir.

@@ -18,7 +18,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Formal Governance Pointer:** `CURRENT_PHASE=18`
 - **Active Phase:** Phase-18 ACTIVE / Platform Constitution only
 - **Active Execution Priority:** Maintain Phase-18 Platform Constitution authority without runtime implementation
-- **Candidate Next Decision:** Phase-19 Runtime MVP decision/RFC/review/candidate set; not active phase or implementation authority
+- **Candidate Next Decision:** Phase-19 Runtime MVP decision/RFC/review/candidate/precondition set; not active phase or implementation authority
 - **Scope Boundary:** Phase-18 activation does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
 
 ## Primary Truth Sources
@@ -50,14 +50,15 @@ Current repo truth icin once su dosyalari referans alin:
 24. `docs/specs/phase19-platform-runtime/README.md` — **Phase-19 Runtime MVP pre-implementation RFC set; runtime not authorized**
 25. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — **Phase-19 Runtime RFC set cross-consistency review; runtime not authorized**
 26. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — **Phase-19 pointer transition candidate; phase pointer not updated**
-27. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-28. `reports/phase15_official_closure/closure_index.json`
-29. `reports/phase13_official_closure_candidate/closure_index.json`
-30. `reports/phase12_official_closure_candidate/closure_manifest.json`
-31. `reports/phase10_phase11_official_closure_index.json`
-32. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-33. `Makefile`
-34. `.github/workflows/ci-freeze.yml`
+27. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — **Phase-19 activation preconditions review; Phase-19 not active**
+28. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+29. `reports/phase15_official_closure/closure_index.json`
+30. `reports/phase13_official_closure_candidate/closure_index.json`
+31. `reports/phase12_official_closure_candidate/closure_manifest.json`
+32. `reports/phase10_phase11_official_closure_index.json`
+33. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+34. `Makefile`
+35. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -106,13 +107,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 20. `docs/specs/phase19-platform-runtime/README.md` — Phase-19 Runtime MVP pre-implementation RFC set; not active implementation authority
 21. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — Phase-19 Runtime RFC set cross-consistency review; not active implementation authority
 22. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — Phase-19 pointer transition candidate; not active implementation authority
-23. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-24. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-25. `docs/specs/phase16-ayken-orchestration/README.md`
-26. `docs/specs/authority-lineage-v1/README.md`
-27. `docs/specs/phase14-distributed-observability/README.md`
-28. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-29. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+23. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — Phase-19 activation preconditions review; not active implementation authority
+24. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+25. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+26. `docs/specs/phase16-ayken-orchestration/README.md`
+27. `docs/specs/authority-lineage-v1/README.md`
+28. `docs/specs/phase14-distributed-observability/README.md`
+29. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+30. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -148,6 +150,9 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 11. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — pointer transition
     precondition candidate; does not update `CURRENT_PHASE` and does not
     authorize implementation.
+12. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — activation
+    preconditions review; does not activate Phase-19, update
+    `CURRENT_PHASE`, or authorize implementation.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

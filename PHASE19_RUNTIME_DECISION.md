@@ -132,6 +132,11 @@ may define the conditions for a later exact-SHA pointer transition. That
 candidate still does not update `CURRENT_PHASE` and still does not authorize
 runtime implementation.
 
+After the pointer transition candidate,
+`PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` may review whether the documented
+preconditions are complete enough for a later pointer transition discussion.
+That review is still not activation and still not implementation authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
@@ -187,6 +192,7 @@ are true:
 | P19-A10 | Evidence plan is accepted | runtime evidence paths, receipts, negative cases, and fail-closed behavior are defined |
 | P19-A11 | Runtime RFC cross-review is accepted | Phase-19 runtime RFC set has a reviewed cross-consistency record |
 | P19-A12 | Pointer transition candidate is accepted | `PHASE19_POINTER_TRANSITION_CANDIDATE.md` defines exact-SHA transition conditions without changing `CURRENT_PHASE` |
+| P19-A13 | Activation preconditions review is accepted | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews preconditions without activating Phase-19 |
 
 Missing, stale, ambiguous, or partially satisfied preconditions fail closed.
 

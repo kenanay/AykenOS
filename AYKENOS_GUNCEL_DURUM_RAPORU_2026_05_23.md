@@ -24,6 +24,9 @@
 > `PHASE19_POINTER_TRANSITION_CANDIDATE.md` records the later exact-SHA
 > pointer transition preconditions; it does not update `CURRENT_PHASE` and
 > does not authorize runtime implementation.
+> `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews activation
+> preconditions; it is not activation, pointer transition, or implementation
+> authority.
 > Phase-18 is active only as Platform Constitution and does not authorize
 > runtime implementation.
 
@@ -37,7 +40,7 @@
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
 | Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Platform Constitution active; runtime implementation yetkisi degildir |
-| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` | Runtime MVP decision/RFC/review/candidate boundary only; `CURRENT_PHASE=19` veya implementation yetkisi yoktur |
+| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` | Runtime MVP decision/RFC/review/candidate/precondition boundary only; `CURRENT_PHASE=19` veya implementation yetkisi yoktur |
 | Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 pre-implementation RFC set | Phase-19 pointer transition ve ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard ve terminology audit korunur |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
