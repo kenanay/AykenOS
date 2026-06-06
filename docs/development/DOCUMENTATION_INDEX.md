@@ -1,10 +1,10 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-05
+**Last Updated:** 2026-06-06
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
-**Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=18` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+**Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=19` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 
 ## Current Status
 - **Runtime:** `Phase-10` officially closed — `ci-freeze` run `22797401328`
@@ -15,17 +15,17 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **BCIB Execution Engine v3:** `Phase-15` officially closed — `ci-freeze` run `24213727039` (PR #104)
 - **Verification Layer MVP:** `Phase-16` officially closed — `ci-freeze` run `25214669681`, tag `phase16-official-closure`
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
-- **Formal Governance Pointer:** `CURRENT_PHASE=18`
-- **Active Phase:** Phase-18 ACTIVE / Platform Constitution only
-- **Active Execution Priority:** Maintain Phase-18 Platform Constitution authority without runtime implementation
-- **Candidate Next Decision:** Phase-19 Runtime MVP decision/RFC/review/candidate/precondition set; not active phase or implementation authority
-- **Scope Boundary:** Phase-18 activation does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden for Phase-18
+- **Formal Governance Pointer:** `CURRENT_PHASE=19`
+- **Active Phase:** Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only
+- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority without runtime implementation
+- **Candidate Next Decision:** Phase-19 runtime implementation decision package; source code remains unauthorized until a separate exact-SHA decision
+- **Scope Boundary:** `CURRENT_PHASE=19` does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
 
 1. `ARCHITECTURE_FREEZE.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=18`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=19`
 3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` — **active execution roadmap**
 4. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md` — **current status report**
 5. `README.md`
@@ -46,19 +46,20 @@ Current repo truth icin once su dosyalari referans alin:
 20. `PHASE18_ACTIVATION_DECISION.md` — **accepted Phase-18 activation decision package; runtime not authorized**
 21. `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` — **active Phase-18 authority drift review guard; runtime not authorized**
 22. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — **accepted Phase-18 terminology audit; runtime not authorized**
-23. `PHASE19_RUNTIME_DECISION.md` — **Phase-19 Runtime MVP decision package; Phase-19 not active**
-24. `docs/specs/phase19-platform-runtime/README.md` — **Phase-19 Runtime MVP pre-implementation RFC set; runtime not authorized**
+23. `PHASE19_RUNTIME_DECISION.md` — **Phase-19 Runtime MVP decision package; implementation not authorized**
+24. `docs/specs/phase19-platform-runtime/README.md` — **Phase-19 Runtime MVP active planning/admission/receipt RFC set; runtime not authorized**
 25. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — **Phase-19 Runtime RFC set cross-consistency review; runtime not authorized**
-26. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — **Phase-19 pointer transition candidate; phase pointer not updated**
-27. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — **Phase-19 activation preconditions review; Phase-19 not active**
-28. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-29. `reports/phase15_official_closure/closure_index.json`
-30. `reports/phase13_official_closure_candidate/closure_index.json`
-31. `reports/phase12_official_closure_candidate/closure_manifest.json`
-32. `reports/phase10_phase11_official_closure_index.json`
-33. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-34. `Makefile`
-35. `.github/workflows/ci-freeze.yml`
+26. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — **Phase-19 pointer transition candidate; implementation not authorized**
+27. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — **Phase-19 activation preconditions review; implementation not authorized**
+28. `PHASE19_POINTER_TRANSITION_DECISION.md` — **Phase-19 pointer transition decision; `CURRENT_PHASE=19`, runtime implementation not authorized**
+29. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+30. `reports/phase15_official_closure/closure_index.json`
+31. `reports/phase13_official_closure_candidate/closure_index.json`
+32. `reports/phase12_official_closure_candidate/closure_manifest.json`
+33. `reports/phase10_phase11_official_closure_index.json`
+34. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+35. `Makefile`
+36. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -86,7 +87,7 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 
 ## Roadmap and Status Surfaces
 1. `docs/roadmap/README.md`
-2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=18`
+2. `docs/roadmap/CURRENT_PHASE` — `CURRENT_PHASE=19`
 3. `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 4. `docs/roadmap/freeze-enforcement-workflow.md`
 5. `AYKENOS_GUNCEL_DURUM_RAPORU_2026_05_23.md`
@@ -103,18 +104,19 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 16. `PHASE18_ACTIVATION_DECISION.md` — accepted activation decision package
 17. `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` — active authority drift review guard
 18. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — accepted terminology audit
-19. `PHASE19_RUNTIME_DECISION.md` — Phase-19 Runtime MVP decision package; not active implementation authority
-20. `docs/specs/phase19-platform-runtime/README.md` — Phase-19 Runtime MVP pre-implementation RFC set; not active implementation authority
+19. `PHASE19_RUNTIME_DECISION.md` — Phase-19 Runtime MVP decision package; not implementation authority
+20. `docs/specs/phase19-platform-runtime/README.md` — Phase-19 Runtime MVP active planning/admission/receipt RFC set; not implementation authority
 21. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — Phase-19 Runtime RFC set cross-consistency review; not active implementation authority
-22. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — Phase-19 pointer transition candidate; not active implementation authority
-23. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — Phase-19 activation preconditions review; not active implementation authority
-24. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-25. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-26. `docs/specs/phase16-ayken-orchestration/README.md`
-27. `docs/specs/authority-lineage-v1/README.md`
-28. `docs/specs/phase14-distributed-observability/README.md`
-29. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-30. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+22. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — Phase-19 pointer transition candidate; not implementation authority
+23. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — Phase-19 activation preconditions review; not implementation authority
+24. `PHASE19_POINTER_TRANSITION_DECISION.md` — Phase-19 pointer transition decision; not implementation authority
+25. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+26. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+27. `docs/specs/phase16-ayken-orchestration/README.md`
+28. `docs/specs/authority-lineage-v1/README.md`
+29. `docs/specs/phase14-distributed-observability/README.md`
+30. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+31. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -133,10 +135,10 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 
 ## Phase-19 Decision And RFC Set
 1. `PHASE19_RUNTIME_DECISION.md` — Platform Runtime MVP decision boundary;
-   does not activate `CURRENT_PHASE=19` and does not authorize
-   implementation.
+   does not authorize implementation.
 2. `docs/specs/phase19-platform-runtime/README.md` — Phase-19 Runtime MVP
-   pre-implementation RFC set index; does not authorize implementation.
+   active planning/admission/receipt RFC set index; does not authorize
+   implementation.
 3. `docs/specs/phase19-platform-runtime/RUNTIME_LIFECYCLE_SPECIFICATION.md`
 4. `docs/specs/phase19-platform-runtime/RUNTIME_INPUT_BUNDLE_SPECIFICATION.md`
 5. `docs/specs/phase19-platform-runtime/PLATFORM_VALIDATION_INTEGRATION_SPECIFICATION.md`
@@ -145,14 +147,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 8. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_PLAN.md`
 9. `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
 10. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` —
-    accepted cross-consistency review; does not activate Phase-19 and does
-    not authorize implementation.
+    accepted cross-consistency review; does not authorize implementation.
 11. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — pointer transition
-    precondition candidate; does not update `CURRENT_PHASE` and does not
-    authorize implementation.
+    precondition candidate; does not authorize implementation.
 12. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — activation
-    preconditions review; does not activate Phase-19, update
-    `CURRENT_PHASE`, or authorize implementation.
+    preconditions review; does not authorize implementation.
+13. `PHASE19_POINTER_TRANSITION_DECISION.md` — pointer transition decision;
+    activates `CURRENT_PHASE=19` only as planning/admission/receipt boundary
+    and does not authorize implementation.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces
@@ -262,10 +264,11 @@ Asagidaki dosyalar tarihsel snapshot niteligindedir; current truth yerine dogrud
 ## Note
 Eski raporlarda gecen blocker veya progress ifadeleri tarihsel baglam icindir.
 Current status yorumlari icin Phase-17 official closure otoritesi,
-`docs/roadmap/CURRENT_PHASE` ve aktif stabilization roadmap birlikte
-kullanilmalidir. Yeni ozellik veya Phase-18 aktivasyonu,
-`PHASE18_TRANSITION_DECISION.md` ve `PHASE18_ACTIVATION_DECISION.md` review
-edilip explicit `CURRENT_PHASE` transition yapilmadan current execution plani
+`docs/roadmap/CURRENT_PHASE`, `PHASE19_POINTER_TRANSITION_DECISION.md` ve
+aktif stabilization roadmap birlikte kullanilmalidir. Yeni runtime
+implementation, loader, installer, workspace runtime, plugin host, capability
+issuer, trust issuer, Semantic CLI authority veya AI Runtime authority ayri
+implementation decision ve evidence package olmadan current execution plani
 olarak sunulamaz.
 
-**Son Guncelleme:** 2026-06-05
+**Son Guncelleme:** 2026-06-06

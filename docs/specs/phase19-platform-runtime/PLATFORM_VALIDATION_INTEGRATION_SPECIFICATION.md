@@ -1,11 +1,12 @@
 # Phase-19 Platform Validation Integration Specification
 
 This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`,
 `RUNTIME_INPUT_BUNDLE_SPECIFICATION.md`, and
 `../phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md`. In case
 of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.platform_validation.integration.v1`
 **Authority boundary:** Documentation/specification only; not a validator
 implementation, runtime implementation, installer, loader, issuer, trust

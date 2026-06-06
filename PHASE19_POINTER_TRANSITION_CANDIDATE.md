@@ -4,14 +4,15 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, `PHASE18_TRANSITION_DECISION.md`,
 `PHASE18_ACTIVATION_DECISION.md`, the Phase-18 Platform Constitution
 reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
-`PHASE19_RUNTIME_DECISION.md`, and the Phase-19 Runtime RFC set. In case of
-conflict, those documents prevail.
+`PHASE19_RUNTIME_DECISION.md`, the Phase-19 Runtime RFC set, and
+`PHASE19_POINTER_TRANSITION_DECISION.md`. In case of conflict, those documents
+prevail.
 
-**Status:** POINTER TRANSITION CANDIDATE / PHASE-19 NOT ACTIVE / POINTER NOT EXECUTED / IMPLEMENTATION NOT AUTHORIZED
+**Status:** ACCEPTED POINTER TRANSITION CANDIDATE / SUPERSEDED BY POINTER TRANSITION DECISION / IMPLEMENTATION NOT AUTHORIZED
 **Candidate date:** 2026-06-05
 **Candidate id:** `ayken.phase19.pointer_transition.candidate.v1`
 **Authority boundary:** Documentation candidate only; not `CURRENT_PHASE=19`,
-not a phase activation decision, not runtime implementation, not a package
+not the pointer transition decision, not runtime implementation, not a package
 installer, not a module loader, not workspace runtime, not real mount
 authority, not plugin loading, not capability issuance, not trust assignment,
 not Semantic CLI authority, not AI Runtime authority, not a syscall, not
@@ -25,12 +26,12 @@ This candidate answers only one question:
 If Phase-19 is later transitioned, which authority conditions must be true?
 ```
 
-It does not perform that transition. `docs/roadmap/CURRENT_PHASE` remains
-`CURRENT_PHASE=18`.
+It did not perform that transition. The later transition is recorded in
+`PHASE19_POINTER_TRANSITION_DECISION.md`.
 
 This document is intentionally not named `PHASE19_ACTIVATION_DECISION.md`.
-It is a pre-transition candidate record. A later exact-SHA pointer transition
-must be reviewed separately before Phase-19 can become active.
+It is a pre-transition candidate record. The later exact-SHA pointer
+transition remains separate from runtime implementation authority.
 
 ## Core Rule
 
@@ -77,22 +78,22 @@ Phase-17 official closure verified
   -> Phase-19 Runtime Cross-Consistency Review accepted
   -> Phase-19 Pointer Transition Candidate accepted
   -> Phase-19 Activation Preconditions Review accepted
-  -> later exact-SHA pointer transition PR
+  -> exact-SHA pointer transition PR
   -> CURRENT_PHASE=19 only after separate review and remote PASS
 ```
 
-This candidate occupies only the candidate step. It does not update the
+This candidate occupies only the candidate step. It did not update the
 pointer.
 
-## Required Preconditions For Later Pointer Transition
+## Required Preconditions For Pointer Transition
 
-A later `CURRENT_PHASE=19` pointer transition must fail closed unless all of
-the following are true on the exact candidate SHA for that future transition:
+The `CURRENT_PHASE=19` pointer transition must fail closed unless all of the
+following are true on the exact candidate SHA for that transition:
 
 | ID | Requirement | Required result |
 |---|---|---|
 | P19-P1 | Phase-17 closure remains verified | `phase17-official-closure` resolves to `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` |
-| P19-P2 | Current phase remains 18 before transition | `docs/roadmap/CURRENT_PHASE` still contains `CURRENT_PHASE=18` before the future pointer PR changes it |
+| P19-P2 | Current phase remains 18 before transition | `docs/roadmap/CURRENT_PHASE` contained `CURRENT_PHASE=18` before the pointer PR changed it |
 | P19-P3 | Phase-18 remains Platform Constitution only | no runtime interpretation of Phase-18 activation exists |
 | P19-P4 | Authority Drift Guard remains active | runtime, loader, issuer, workspace, plugin, trust, capability, AI, and Semantic authority drift is rejected |
 | P19-P5 | Terminology Audit remains active | high-risk vocabulary remains non-authoritative |
@@ -101,17 +102,17 @@ the following are true on the exact candidate SHA for that future transition:
 | P19-P8 | Phase-19 Runtime Cross-Consistency Review is accepted | `CROSS_CONSISTENCY_REVIEW.md` remains PASS and non-authoritative |
 | P19-P9 | This pointer transition candidate is accepted | this file remains docs-only and does not update `CURRENT_PHASE` |
 | P19-P10 | Kernel ABI remains frozen | syscall IDs remain `1000-1011`, count remains `12`, ABI version remains `0x00010001` |
-| P19-P11 | Future pointer PR is docs-only | no kernel, userspace runtime, parser, loader, installer, issuer, plugin, Semantic CLI, AI Runtime, or registry code is included |
+| P19-P11 | Pointer PR is docs-only | no kernel, userspace runtime, parser, loader, installer, issuer, plugin, Semantic CLI, AI Runtime, or registry code is included |
 | P19-P12 | Inert artifact invariant is preserved | input bundle, validation receipt, admission record, and runtime receipt remain records only |
-| P19-P13 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the future pointer transition SHA |
+| P19-P13 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the pointer transition SHA |
 | P19-P14 | Implementation remains separated | runtime implementation still requires a later implementation decision and evidence package |
 | P19-P15 | Activation Preconditions Review is accepted | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews preconditions without changing `CURRENT_PHASE` |
 
 Missing, stale, ambiguous, or partially satisfied preconditions fail closed.
 
-## Future Pointer PR Scope
+## Pointer PR Scope
 
-A later pointer transition PR may only propose:
+A pointer transition PR may only propose:
 
 1. Updating `docs/roadmap/CURRENT_PHASE` from `CURRENT_PHASE=18` to
    `CURRENT_PHASE=19`.
@@ -142,11 +143,11 @@ It must not include:
 
 ## Exact-SHA Rule
 
-This candidate does not contain a final transition SHA because it does not
+This candidate does not contain the final transition SHA because it did not
 execute the transition.
 
-The exact-SHA authority for a future pointer transition can only be the
-reviewed subject SHA of the future PR that actually changes
+The exact-SHA authority for the pointer transition can only be the reviewed
+subject SHA of the PR that actually changes
 `docs/roadmap/CURRENT_PHASE`. If that subject changes after evidence is
 recorded, the pointer transition evidence must be regenerated on the new
 subject SHA.
@@ -173,9 +174,8 @@ Pointer transition planning must be denied if any of the following are true:
 
 ## Candidate Conclusion
 
-This candidate makes Phase-19 pointer transition reviewable later.
+This candidate made Phase-19 pointer transition reviewable.
 
-It does not activate Phase-19. It does not authorize implementation. It does
-not change `CURRENT_PHASE`. It preserves the Phase-18 rule that Constitution
-is not Runtime and adds the Phase-19 rule that Runtime MVP artifacts must
-remain inert until a separate implementation authority exists.
+It did not authorize implementation. It preserves the Phase-18 rule that
+Constitution is not Runtime and adds the Phase-19 rule that Runtime MVP
+artifacts must remain inert until a separate implementation authority exists.

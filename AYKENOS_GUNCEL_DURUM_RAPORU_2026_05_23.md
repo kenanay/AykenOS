@@ -2,7 +2,7 @@
 
 **Durum tarihi:** 2026-05-23
 **Uygulama ek kaydi:** 2026-05-24/26 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142/#144 merge, PR #148 performance authority onarimi, accepted-main exact-SHA remote evidence PASS ve Phase-17 closure-candidate kaydi)
-**Authority sync:** 2026-06-05 (`CURRENT_PHASE=18`; Phase-18 active as Platform Constitution only)
+**Authority sync:** 2026-06-06 (`CURRENT_PHASE=19`; Phase-19 active as Platform Runtime MVP planning/admission/receipt boundary only)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
 
@@ -15,8 +15,7 @@
 > High-risk wording is audited in
 > `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md`.
 > Phase-19 runtime planning is bounded by `PHASE19_RUNTIME_DECISION.md` and
-> the pre-implementation RFC set under
-> `docs/specs/phase19-platform-runtime/`, which do not activate Phase-19 or
+> the RFC set under `docs/specs/phase19-platform-runtime/`, which do not
 > authorize implementation.
 > The Phase-19 RFC set cross-review is recorded in
 > `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`; review
@@ -27,21 +26,24 @@
 > `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews activation
 > preconditions; it is not activation, pointer transition, or implementation
 > authority.
-> Phase-18 is active only as Platform Constitution and does not authorize
-> runtime implementation.
+> `PHASE19_POINTER_TRANSITION_DECISION.md` records the exact phase pointer
+> transition to `CURRENT_PHASE=19`; it activates only Runtime MVP planning,
+> validation-integration, admission-record and receipt-boundary authority.
+> Phase-18 remains the accepted Platform Constitution reference set.
+> Runtime implementation remains unauthorized.
 
 ## Yetkili Durum
 
 | Konu | Repo gercegi | Sonuc |
 |---|---|---|
 | Son resmi kapanis | `phase17-official-closure` etiketi `416a5392` uzerinde dogrulandi | Phase-17 OFFICIALLY CLOSED |
-| Aktif faz | `CURRENT_PHASE=18` | Phase-18 ACTIVE / Platform Constitution only |
+| Aktif faz | `CURRENT_PHASE=19` | Phase-19 ACTIVE / Platform Runtime MVP planning, admission and receipt boundary only |
 | Step 5 | PR #134, merge `71d10691` | Marker-validation dilimi mainline'a birlesti |
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
-| Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Platform Constitution active; runtime implementation yetkisi degildir |
-| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` | Runtime MVP decision/RFC/review/candidate/precondition boundary only; `CURRENT_PHASE=19` veya implementation yetkisi yoktur |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 pre-implementation RFC set | Phase-19 pointer transition ve ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard ve terminology audit korunur |
+| Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Accepted Platform Constitution reference set; runtime implementation yetkisi degildir |
+| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` | Runtime MVP planning/admission/receipt boundary active; implementation yetkisi yoktur |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard ve terminology audit korunur |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
@@ -233,9 +235,17 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 
 ## Oncelik Sirasi
 
-**En oncelikli adim:** PR #142/#144/#148 kabul edilmis ve `main` SHA `e0286c7b` icin bounded exact-SHA uzak evidence PASS uretilmistir. Siradaki authority adimi, `reports/phase17_official_closure_candidate/` kaydinin reviewed kabulü ve ancak bundan sonra resmi closure karar/tag degerlendirmesidir. Yeni ozellik veya Phase-18 aktivasyonu closure otoritesi kurulmadan baslatilmamalidir.
+**En oncelikli adim:** `CURRENT_PHASE=19` pointer transition sonrasi
+Platform Runtime MVP planning/admission/receipt sinirini korumak ve runtime
+implementation'i ayri karar/evidence paketine kadar kapali tutmaktir.
+Runtime source code, loader, installer, workspace runtime, plugin host,
+capability issuer, trust issuer, Semantic CLI authority ve AI Runtime
+authority bu pointer ile baslatilmaz.
 
-**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` - #145 authority parity giderildi; PR #142/#144/#148 merged; accepted-main exact-SHA remote evidence PASS; closure-candidate review ve resmi closure/tag authority pending.
+**Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
+- Phase-17 official closure dogrulandi; Phase-18 Platform Constitution
+reference set olarak korunur; Phase-19 pointer transition yalnız
+planning/admission/receipt boundary kurar; implementation authority pending.
 
 ---
 

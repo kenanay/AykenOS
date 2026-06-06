@@ -1,10 +1,10 @@
 # Phase-19 Runtime Lifecycle Specification
 
-This document is subordinate to `PHASE19_RUNTIME_DECISION.md` and the
-Phase-18 Platform Constitution reference set. In case of conflict, those
-documents prevail.
+This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`, and the Phase-18 Platform
+Constitution reference set. In case of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.runtime.lifecycle.v1`
 **Authority boundary:** Documentation/specification only; not runtime source
 code, scheduler policy, package installer, module loader, workspace runtime,
@@ -17,7 +17,7 @@ This RFC defines the deterministic lifecycle for the first possible
 Phase-19 Platform Runtime MVP.
 
 The lifecycle exists to bound future implementation. It does not implement a
-runtime and does not activate Phase-19.
+runtime and does not authorize runtime implementation.
 
 ## Core Rule
 

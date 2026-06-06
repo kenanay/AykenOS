@@ -3,29 +3,30 @@
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 `ARCHITECTURE_FREEZE.md`, `PHASE18_TRANSITION_DECISION.md`,
 `PHASE18_ACTIVATION_DECISION.md`, the Phase-18 Platform Constitution
-reference set, `AUTHORITY_DRIFT_GUARD.md`, and `TERMINOLOGY_AUDIT.md`. In
-case of conflict, those documents prevail until a separate reviewed Phase-19
-activation and closure authority exists.
+reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`, and
+`PHASE19_POINTER_TRANSITION_DECISION.md`. In case of conflict, those
+documents prevail.
 
-**Status:** DECISION PACKAGE / PHASE-19 NOT ACTIVE / IMPLEMENTATION NOT AUTHORIZED
+**Status:** DECISION PACKAGE / PHASE-19 ACTIVE AS PLANNING BOUNDARY / IMPLEMENTATION NOT AUTHORIZED
 **Decision package date:** 2026-06-05
 **Decision id:** `ayken.phase19.platform_runtime_decision.v1`
-**Authority boundary:** Documentation decision only; not a phase pointer
-transition, runtime implementation, package installer, module loader,
-workspace runtime, real mount authority, plugin host, capability issuer,
-trust issuer, Semantic CLI authority, AI Runtime authority, syscall, kernel
-ABI expansion, merge authority, or closure authority.
+**Authority boundary:** Runtime MVP decision boundary only; not runtime
+implementation, package installer, module loader, workspace runtime, real
+mount authority, plugin host, capability issuer, trust issuer, Semantic CLI
+authority, AI Runtime authority, syscall, kernel ABI expansion, merge
+authority, or closure authority.
 
 ## Decision
 
 Phase-19 may be proposed only as **Platform Runtime MVP**.
 
-This package does not activate Phase-19. `CURRENT_PHASE` remains `18` until a
-separate exact-SHA pointer transition is reviewed and accepted.
+This package did not activate Phase-19 by itself. Phase-19 is now active only
+through the separate exact-SHA `PHASE19_POINTER_TRANSITION_DECISION.md`
+pointer decision.
 
 This package does not authorize runtime source code. It authorizes only the
-preparation of a future Phase-19 runtime RFC set that preserves the Phase-18
-Platform Constitution boundaries.
+Runtime MVP planning boundary that preserves the Phase-18 Platform
+Constitution boundaries.
 
 ## Core Rule
 
@@ -105,10 +106,10 @@ That harness may only prove the following bounded behavior:
 
 It must not execute the described package or module.
 
-## Future Runtime RFC Set
+## Runtime RFC Set
 
-Before any Phase-19 implementation PR, the following runtime RFC set must be
-prepared and accepted:
+Before any Phase-19 implementation PR, the following runtime RFC set must
+remain accepted:
 
 1. `RUNTIME_LIFECYCLE_SPECIFICATION.md`
 2. `RUNTIME_INPUT_BUNDLE_SPECIFICATION.md`
@@ -118,24 +119,26 @@ prepared and accepted:
 6. `RUNTIME_EVIDENCE_PLAN.md`
 7. `RUNTIME_NON_GOALS_AND_DENIALS.md`
 
-The initial RFC set lives under
-`docs/specs/phase19-platform-runtime/`. The existence of that directory does
-not activate Phase-19 and does not authorize implementation.
+The accepted RFC set lives under `docs/specs/phase19-platform-runtime/`. The
+existence of that directory does not authorize implementation.
 
-After the RFC set is accepted, a Phase-19 runtime cross-consistency review
-must be accepted before a pointer-transition discussion can use the RFC set as
-planning input. That review is still not activation and still not
-implementation authority.
+After the RFC set was accepted, a Phase-19 runtime cross-consistency review
+was accepted before a pointer-transition discussion could use the RFC set as
+planning input. That review is still not implementation authority.
 
 After the cross-consistency review, `PHASE19_POINTER_TRANSITION_CANDIDATE.md`
-may define the conditions for a later exact-SHA pointer transition. That
-candidate still does not update `CURRENT_PHASE` and still does not authorize
-runtime implementation.
+defined the conditions for a later exact-SHA pointer transition. That
+candidate did not update `CURRENT_PHASE` and did not authorize runtime
+implementation.
 
 After the pointer transition candidate,
-`PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` may review whether the documented
-preconditions are complete enough for a later pointer transition discussion.
-That review is still not activation and still not implementation authority.
+`PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviewed whether the documented
+preconditions were complete enough for a later pointer transition discussion.
+That review is still not implementation authority.
+
+After that review, `PHASE19_POINTER_TRANSITION_DECISION.md` transitions
+`docs/roadmap/CURRENT_PHASE` to `19` as planning/admission/receipt authority
+only. That pointer transition is still not runtime implementation authority.
 
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
@@ -149,26 +152,25 @@ non-loader admission model or move to a later phase decision.
 
 This decision package must not authorize:
 
-1. `CURRENT_PHASE=19`.
-2. Runtime implementation.
-3. Package installation.
-4. Package execution.
-5. Module loading.
-6. Plugin loading or plugin instantiation.
-7. Workspace creation.
-8. Real filesystem mounts.
-9. Capability token minting.
-10. Capability issuance.
-11. Trust assignment.
-12. Registry publication.
-13. Semantic CLI execution authority.
-14. AI Runtime authority.
-15. Agent systems.
-16. New syscalls.
-17. Kernel ABI expansion.
-18. Ring0 policy.
-19. Kernel loader behavior.
-20. Observability-as-authority.
+1. Runtime implementation.
+2. Package installation.
+3. Package execution.
+4. Module loading.
+5. Plugin loading or plugin instantiation.
+6. Workspace creation.
+7. Real filesystem mounts.
+8. Capability token minting.
+9. Capability issuance.
+10. Trust assignment.
+11. Registry publication.
+12. Semantic CLI execution authority.
+13. AI Runtime authority.
+14. Agent systems.
+15. New syscalls.
+16. Kernel ABI expansion.
+17. Ring0 policy.
+18. Kernel loader behavior.
+19. Observability-as-authority.
 
 Any such work requires a separate reviewed decision, RFC set, evidence plan,
 and acceptance boundary.
@@ -181,13 +183,13 @@ are true:
 | ID | Precondition | Required result |
 |---|---|---|
 | P19-A1 | Phase-17 closure remains verified | `phase17-official-closure` resolves to `416a5392afbe217e16d26a59e2e1716fdfa9c8f6` |
-| P19-A2 | Phase-18 remains active as Platform Constitution only | `CURRENT_PHASE=18` remains true before the separate pointer transition |
+| P19-A2 | Phase-18 remains accepted as Platform Constitution only | Phase-18 activation is not interpreted as runtime implementation |
 | P19-A3 | Phase-18 Authority Drift Guard remains active | `AUTHORITY_DRIFT_GUARD.md` rejects runtime drift |
 | P19-A4 | Phase-18 Terminology Audit remains active | high-risk words remain non-authoritative |
 | P19-A5 | Runtime RFC set exists | all required Phase-19 runtime RFCs are accepted |
 | P19-A6 | Runtime non-goals are explicit | installer, loader, execution, issuer, trust, AI, Semantic CLI, and agent authority are denied |
 | P19-A7 | Kernel ABI remains frozen | syscall IDs remain `1000-1011`, count remains `12`, ABI version remains `0x00010001` |
-| P19-A8 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the candidate SHA |
+| P19-A8 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the pointer transition candidate SHA |
 | P19-A9 | Implementation is separated | pointer transition does not include runtime source code |
 | P19-A10 | Evidence plan is accepted | runtime evidence paths, receipts, negative cases, and fail-closed behavior are defined |
 | P19-A11 | Runtime RFC cross-review is accepted | Phase-19 runtime RFC set has a reviewed cross-consistency record |
@@ -233,12 +235,12 @@ Phase-19 planning must be denied if any of the following are true:
 13. Required local or remote checks fail.
 14. Exact-SHA evidence is missing.
 
-The safe default is no Phase-19 activation.
+The safe default is no runtime implementation.
 
 ## Relationship To Later Phases
 
-Phase-19 is limited to Platform Runtime MVP planning and, after a separate
-accepted activation, a bounded runtime MVP.
+Phase-19 is limited to Platform Runtime MVP planning, validation integration,
+admission records, and deterministic receipts.
 
 The following remain later-phase work:
 
@@ -254,6 +256,6 @@ or convenience.
 
 This package defines the safe Phase-19 Runtime MVP decision boundary.
 
-It does not activate Phase-19. It does not authorize implementation. It
-preserves the rule that Phase-18 remains the active Platform Constitution
-until a separate reviewed pointer transition changes `CURRENT_PHASE`.
+It does not authorize implementation. It preserves the rule that Phase-18
+remains the accepted Platform Constitution reference set and that
+`CURRENT_PHASE=19` is only a planning/admission/receipt pointer.

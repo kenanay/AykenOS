@@ -1,12 +1,13 @@
 # Phase-19 Runtime Receipt Specification
 
 This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`,
 `RUNTIME_LIFECYCLE_SPECIFICATION.md`,
 `WORKSPACE_ADMISSION_RUNTIME_SPECIFICATION.md`, and
 `../phase18-platform-constitution/TERMINOLOGY_AUDIT.md`. In case of conflict,
 those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.runtime.receipt.v1`
 **Authority boundary:** Documentation/specification only; not a token,
 capability, runtime handle, loader handle, workspace handle, plugin instance,

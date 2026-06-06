@@ -1,10 +1,11 @@
 # Phase-19 Runtime Input Bundle Specification
 
 This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`,
 `RUNTIME_LIFECYCLE_SPECIFICATION.md`, and the Phase-18 Platform Constitution
 reference set. In case of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.runtime.input_bundle.v1`
 **Authority boundary:** Documentation/specification only; not a parser,
 installer, loader, workspace creator, mount engine, plugin host, issuer,

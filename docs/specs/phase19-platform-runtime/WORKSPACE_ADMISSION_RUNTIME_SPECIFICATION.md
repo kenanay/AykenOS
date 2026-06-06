@@ -1,11 +1,12 @@
 # Phase-19 Workspace Admission Runtime Specification
 
 This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`,
 `PLATFORM_VALIDATION_INTEGRATION_SPECIFICATION.md`, and
 `../phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md`. In
 case of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.workspace_admission.runtime.v1`
 **Authority boundary:** Documentation/specification only; not workspace
 creation, real mount authority, filesystem implementation, package

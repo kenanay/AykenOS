@@ -1,11 +1,12 @@
 # Phase-19 Runtime Non-Goals And Denials
 
 This document is subordinate to `PHASE19_RUNTIME_DECISION.md`,
+`../../../PHASE19_POINTER_TRANSITION_DECISION.md`,
 `../phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`,
 `../phase18-platform-constitution/TERMINOLOGY_AUDIT.md`, and the Phase-19
 Runtime RFC set. In case of conflict, those documents prevail.
 
-**Status:** PRE-IMPLEMENTATION RFC / PHASE-19 NOT ACTIVE / RUNTIME NOT AUTHORIZED
+**Status:** ACTIVE RFC / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Contract id:** `ayken.phase19.runtime.non_goals.denials.v1`
 **Authority boundary:** Documentation/specification only; not runtime source
 code, installer, loader, workspace runtime, plugin host, capability issuer,
