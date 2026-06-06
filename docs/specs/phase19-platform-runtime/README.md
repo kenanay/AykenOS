@@ -65,6 +65,10 @@ transition to `CURRENT_PHASE=19`. That transition activates only this
 documented Runtime MVP planning, validation-integration, admission-record, and
 receipt-boundary phase. It does not authorize runtime implementation.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` records the
+later implementation decision candidate boundary. It does not authorize
+runtime source code or implementation.
+
 ## Core Rule
 
 ```text
@@ -76,7 +80,8 @@ The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
 the Phase-19 Runtime MVP boundary is active as planning authority. A separate
 implementation decision, implementation RFC acceptance, runtime evidence
 implementation, and remote CI authority remain required before any runtime
-code can be accepted.
+code can be accepted. The implementation decision candidate narrows that
+future decision, but is not itself implementation authority.
 
 ## MVP Boundary
 

@@ -47,6 +47,10 @@ The safe default remains no runtime behavior unless a later reviewed
 implementation decision grants a specific bounded behavior and supplies its
 own evidence package.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` may narrow the shape of
+that later implementation decision, but it is not the implementation decision
+and does not authorize runtime source code.
+
 ## Transition Basis
 
 The pointer transition is based on the accepted pre-transition chain:

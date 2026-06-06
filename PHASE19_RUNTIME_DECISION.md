@@ -140,6 +140,12 @@ After that review, `PHASE19_POINTER_TRANSITION_DECISION.md` transitions
 `docs/roadmap/CURRENT_PHASE` to `19` as planning/admission/receipt authority
 only. That pointer transition is still not runtime implementation authority.
 
+After the pointer transition,
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` records the candidate
+boundary for a later implementation decision. That candidate does not
+authorize runtime source code and does not replace a future exact-SHA
+implementation decision.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

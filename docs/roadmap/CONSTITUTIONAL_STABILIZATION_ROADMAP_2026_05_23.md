@@ -415,6 +415,12 @@ Bu aday belge runtime implementation yetkisi vermez.
 pointer candidate zincirinin activation oncesi precondition setini review
 eder. Bu review PASS sonucu runtime implementation authority kurmaz.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`, sonraki
+implementation decision icin en dar admission/receipt harness sinirini
+candidate olarak kaydeder. Bu candidate runtime source code, implementation
+decision, parser, loader, installer, workspace runtime, issuer, Semantic CLI
+authority veya AI Runtime authority kurmaz.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -440,6 +446,9 @@ Phase-19 karar siniri su kurallari korur:
     authority `PHASE19_POINTER_TRANSITION_DECISION.md` ile sinirlidir.
 11. Activation preconditions review, implementation decision degildir;
     implementation halen ayri exact-SHA karar gerektirir.
+12. Implementation decision candidate, implementation decision degildir;
+    runtime source code halen ayri exact-SHA decision ve evidence package
+    gerektirir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -479,6 +488,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Pointer Transition Candidate | ACCEPTED CANDIDATE / SUPERSEDED BY DECISION | Exact-SHA `CURRENT_PHASE=19` pointer transition kosullarini ve inert runtime artifact invariant'ini kaydetmek | `PHASE19_POINTER_TRANSITION_CANDIDATE.md` | Candidate runtime implementation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Activation Preconditions Review | ACCEPTED PRECONDITION REVIEW / SUPERSEDED BY DECISION | Decision/RFC/cross-review/pointer-candidate zincirinin activation oncesi precondition setini review etmek | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` | Review PASS runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Pointer Transition Decision | CURRENT_PHASE=19 / IMPLEMENTATION NOT AUTHORIZED | Phase-19'i yalniz Runtime MVP planning, validation-integration, admission-record ve receipt-boundary olarak aktive etmek | `PHASE19_POINTER_TRANSITION_DECISION.md`, `docs/roadmap/CURRENT_PHASE` | Pointer transition runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Decision Candidate | CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Sonraki exact-SHA implementation decision icin minimal userspace admission/receipt harness sinirini ve evidence precondition'larini docs-only kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` | Candidate runtime source code, implementation decision, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1175,7 +1185,8 @@ Bu roadmap su olaylarda guncellenir:
 33. Phase-19 Pointer Transition Candidate review/merge sonucu.
 34. Phase-19 Activation Preconditions Review sonucu.
 35. Phase-19 Pointer Transition Decision sonucu.
-36. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+36. Phase-19 Runtime Implementation Decision Candidate sonucu.
+37. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1219,6 +1230,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_POINTER_TRANSITION_CANDIDATE.md`
 - `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`
 - `PHASE19_POINTER_TRANSITION_DECISION.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
