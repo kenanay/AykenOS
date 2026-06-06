@@ -171,6 +171,26 @@ as authority for this pointer transition subject SHA.
 If the subject SHA changes after evidence is recorded, the evidence must be
 regenerated for the new subject SHA.
 
+## Post-Merge Exact-SHA Evidence
+
+PR #172 merged this pointer transition to `main` at subject SHA
+`37d0bf46898d2c01b75863d72f68910524e596a7` on 2026-06-06.
+
+Post-merge remote evidence for that subject:
+
+1. Strict `ci-freeze` run `27062096603` - PASS.
+2. Dev Loop CI run `27062096584` - PASS.
+3. PR #172 changed documentation/status/pointer files only.
+4. No runtime source code, kernel code, syscall declaration, ABI layout,
+   baseline, CI workflow, loader, installer, workspace runtime, plugin host,
+   capability issuer, trust issuer, Semantic CLI authority, AI Runtime
+   authority or Ring0 policy change was included.
+
+This evidence records the accepted pointer transition subject only. It does
+not authorize runtime implementation. If a later evidence-sync commit changes
+this file or any other authority document, that later commit requires its own
+remote checks before it can be treated as an accepted documentation record.
+
 ## Relationship To Later Phases
 
 Phase-19 must not pull later phases forward:
