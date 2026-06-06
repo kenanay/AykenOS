@@ -29,6 +29,10 @@
 > `PHASE19_POINTER_TRANSITION_DECISION.md` records the exact phase pointer
 > transition to `CURRENT_PHASE=19`; it activates only Runtime MVP planning,
 > validation-integration, admission-record and receipt-boundary authority.
+> PR #172 merged the pointer transition to `main` at
+> `37d0bf46898d2c01b75863d72f68910524e596a7`; post-merge `ci-freeze`
+> run `27062096603` and Dev Loop CI run `27062096584` passed for that
+> subject.
 > Phase-18 remains the accepted Platform Constitution reference set.
 > Runtime implementation remains unauthorized.
 
