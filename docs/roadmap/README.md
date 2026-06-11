@@ -69,7 +69,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 23. `../../PHASE19_POINTER_TRANSITION_DECISION.md`: `CURRENT_PHASE=19`
    pointer transition decision; yalniz planning/admission/receipt boundary
    kurar, runtime implementation authority degildir.
-24. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+24. `../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`:
+   implementation decision candidate; sonraki exact-SHA decision sinirini
+   daraltir, runtime source code veya implementation authority kurmaz.
+25. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -79,7 +82,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
 | Aktif odak | Phase-19 planning/admission/receipt authority maintenance; runtime implementation remains out of scope |
-| Aday sonraki karar | Phase-19 runtime implementation decision package; source code remains unauthorized until a separate exact-SHA decision |
+| Aday sonraki karar | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`; source code remains unauthorized until a separate exact-SHA implementation decision |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 | Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; implementation forbidden until a separate decision |
@@ -116,9 +119,10 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** Phase-19 runtime implementation karar paketi ancak ayri
-exact-SHA PR ve evidence plan ile degerlendirilebilir. `CURRENT_PHASE=19`
-runtime source code, loader, installer, workspace runtime, plugin host,
-capability issuer, trust issuer, Semantic CLI authority veya AI Runtime
-authority vermez. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina gore
-denetlenir.
+**Next action:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`
+sonraki implementation decision sinirini docs-only olarak daraltir. Gercek
+Phase-19 runtime implementation karar paketi ancak ayri exact-SHA PR ve
+evidence plan ile degerlendirilebilir. `CURRENT_PHASE=19` runtime source code,
+loader, installer, workspace runtime, plugin host, capability issuer, trust
+issuer, Semantic CLI authority veya AI Runtime authority vermez. High-risk
+vocabulary `TERMINOLOGY_AUDIT.md` kaydina gore denetlenir.
