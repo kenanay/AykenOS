@@ -20,8 +20,8 @@ This directory defines the active Phase-19 Platform Runtime MVP RFC set.
 
 The set narrows the future runtime implementation question before any runtime
 source code exists. It defines lifecycle, static input bundle, validation
-integration, workspace admission record, runtime receipt, evidence plan, and
-non-goal boundaries.
+integration, workspace admission record, runtime receipt, evidence plan,
+evidence matrix, and non-goal boundaries.
 
 `CURRENT_PHASE=19` activates this planning/admission/receipt boundary only.
 It does not authorize package installation, module loading, workspace
@@ -43,7 +43,9 @@ ABI expansion, or runtime implementation.
    and digest binding.
 6. `RUNTIME_EVIDENCE_PLAN.md` - required local/remote evidence surfaces for a
    later implementation.
-7. `RUNTIME_NON_GOALS_AND_DENIALS.md` - explicit denial list for installer,
+7. `RUNTIME_EVIDENCE_MATRIX.md` - artifact-to-evidence mapping for positive,
+   negative, deterministic, remote, and production-default proof obligations.
+8. `RUNTIME_NON_GOALS_AND_DENIALS.md` - explicit denial list for installer,
    loader, issuer, trust, Semantic CLI, AI Runtime, registry, and agent drift.
 
 ## Current Review Record
@@ -69,11 +71,16 @@ receipt-boundary phase. It does not authorize runtime implementation.
 later implementation decision candidate boundary. It does not authorize
 runtime source code or implementation.
 
+`RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
+proof rows. It is not a CI gate, evidence PASS, implementation decision, or
+runtime authority.
+
 ## Core Rule
 
 ```text
 Runtime RFC set != runtime implementation
 CURRENT_PHASE=19 != runtime implementation
+evidence matrix != evidence PASS
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that

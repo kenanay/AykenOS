@@ -397,10 +397,10 @@ kurmaz.
 
 Runtime RFC seti `docs/specs/phase19-platform-runtime/` altinda aktiftir. Bu
 set runtime lifecycle, static input bundle, Platform ABI validation
-integration, workspace admission record, runtime receipt, evidence plan ve
-non-goal/denial sinirlarini tanimlar; parser, loader, installer, workspace
-runtime, plugin host, issuer, trust assignment veya execution authority
-kurmaz.
+integration, workspace admission record, runtime receipt, evidence plan,
+evidence matrix ve non-goal/denial sinirlarini tanimlar; parser, loader,
+installer, workspace runtime, plugin host, issuer, trust assignment veya
+execution authority kurmaz.
 
 `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`, RFC setinin
 state, validation, admission, receipt, evidence ve denial sinirlarini capraz
@@ -420,6 +420,12 @@ implementation decision icin en dar admission/receipt harness sinirini
 candidate olarak kaydeder. Bu candidate runtime source code, implementation
 decision, parser, loader, installer, workspace runtime, issuer, Semantic CLI
 authority veya AI Runtime authority kurmaz.
+
+`docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md`, sonraki
+implementation decision icin artifact, positive, negative, determinism,
+remote, production-default ve performance-boundary evidence satirlarini
+map eder. Bu matrix CI gate, evidence PASS, implementation decision veya
+runtime authority kurmaz.
 
 Phase-19 karar siniri su kurallari korur:
 
@@ -449,6 +455,8 @@ Phase-19 karar siniri su kurallari korur:
 12. Implementation decision candidate, implementation decision degildir;
     runtime source code halen ayri exact-SHA decision ve evidence package
     gerektirir.
+13. Evidence matrix, evidence PASS degildir; matrix satirlari yalniz sonraki
+    implementation decision icin zorunlu kanit yuzeylerini tanimlar.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -483,12 +491,13 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-18 Authority Drift Guard | ACTIVE REVIEW GUARD / DOCS-ONLY | Phase-18 aktifken constitutional text'in runtime, loader, issuer, workspace, plugin, trust, capability veya AI/Semantic authority'ye kaymasini fail-closed review etmek | `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md` | Guard runtime implementation, CI gate, merge authority, Phase-19 activation veya authority grant degildir |
 | Phase-18 Terminology Audit | ACCEPTED AUDIT / DOCS-ONLY | High-risk Phase-18 vocabulary'nin safe meaning, required qualifier ve forbidden reading sinirlarini kaydetmek | `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` | Audit PASS runtime implementation, loader, issuer, token, mount, execution veya Phase-19 authority grant degildir |
 | Phase-19 Runtime Decision Package | DECISION PACKAGE / PLANNING BOUNDARY ACTIVE | Platform Runtime MVP'nin decision boundary, non-goal, RFC precondition ve fail-closed denial kosullarini kaydetmek | `PHASE19_RUNTIME_DECISION.md` | Package runtime implementation, loader, installer, workspace runtime, capability issuer, trust issuer, Semantic CLI authority veya AI Runtime authority grant degildir |
-| Phase-19 Runtime RFC Set | ACTIVE RFC SET / IMPLEMENTATION NOT AUTHORIZED | Runtime lifecycle, input bundle, validation integration, workspace admission record, receipt, evidence plan ve denial sinirlarini docs-only tanimlamak | `docs/specs/phase19-platform-runtime/README.md` | RFC set parser, runtime implementation, loader, installer, workspace runtime, capability issuer, trust issuer, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime RFC Set | ACTIVE RFC SET / IMPLEMENTATION NOT AUTHORIZED | Runtime lifecycle, input bundle, validation integration, workspace admission record, receipt, evidence plan, evidence matrix ve denial sinirlarini docs-only tanimlamak | `docs/specs/phase19-platform-runtime/README.md` | RFC set parser, runtime implementation, loader, installer, workspace runtime, capability issuer, trust issuer, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Cross-Consistency Review | ACCEPTED REVIEW / IMPLEMENTATION NOT AUTHORIZED | Runtime RFC setinin lifecycle, input bundle, validation integration, workspace admission, receipt, evidence ve denial sinirlarinin celismedigini kaydetmek | `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` | Review PASS runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Pointer Transition Candidate | ACCEPTED CANDIDATE / SUPERSEDED BY DECISION | Exact-SHA `CURRENT_PHASE=19` pointer transition kosullarini ve inert runtime artifact invariant'ini kaydetmek | `PHASE19_POINTER_TRANSITION_CANDIDATE.md` | Candidate runtime implementation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Activation Preconditions Review | ACCEPTED PRECONDITION REVIEW / SUPERSEDED BY DECISION | Decision/RFC/cross-review/pointer-candidate zincirinin activation oncesi precondition setini review etmek | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` | Review PASS runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Pointer Transition Decision | CURRENT_PHASE=19 / IMPLEMENTATION NOT AUTHORIZED | Phase-19'i yalniz Runtime MVP planning, validation-integration, admission-record ve receipt-boundary olarak aktive etmek | `PHASE19_POINTER_TRANSITION_DECISION.md`, `docs/roadmap/CURRENT_PHASE` | Pointer transition runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Decision Candidate | CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Sonraki exact-SHA implementation decision icin minimal userspace admission/receipt harness sinirini ve evidence precondition'larini docs-only kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` | Candidate runtime source code, implementation decision, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Evidence Matrix | ACTIVE RFC / IMPLEMENTATION NOT AUTHORIZED | Sonraki implementation decision icin artifact, positive, negative, determinism, remote, production-default ve performance-boundary evidence satirlarini map etmek | `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` | Matrix CI gate, evidence PASS, implementation decision, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1225,6 +1234,7 @@ Bu roadmap su olaylarda guncellenir:
 - `docs/specs/phase19-platform-runtime/WORKSPACE_ADMISSION_RUNTIME_SPECIFICATION.md`
 - `docs/specs/phase19-platform-runtime/RUNTIME_RECEIPT_SPECIFICATION.md`
 - `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_PLAN.md`
+- `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md`
 - `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
 - `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md`
 - `PHASE19_POINTER_TRANSITION_CANDIDATE.md`

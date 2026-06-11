@@ -93,7 +93,7 @@ following are true:
 |---|---|---|
 | P19-I1 | Phase pointer stable | `CURRENT_PHASE=19` remains active only as planning/admission/receipt boundary |
 | P19-I2 | RFC set accepted | all Phase-19 Runtime RFCs remain accepted and unchanged or are reviewed in the same decision chain |
-| P19-I3 | Evidence plan mapped | `RUNTIME_EVIDENCE_PLAN.md` positive, negative, determinism, remote, and performance requirements are mapped to concrete checks |
+| P19-I3 | Evidence plan and matrix mapped | `RUNTIME_EVIDENCE_PLAN.md` and `RUNTIME_EVIDENCE_MATRIX.md` positive, negative, determinism, remote, production-default, and performance requirements are mapped to concrete checks |
 | P19-I4 | Inert artifact invariant preserved | input bundle, validation receipt, workspace admission record, and runtime receipt remain non-authority records |
 | P19-I5 | Kernel ABI unchanged | syscall IDs `1000-1011`, syscall count `12`, and ABI version `0x00010001` remain frozen |
 | P19-I6 | Runtime source separated | implementation code is reviewed in a later PR after this candidate; this candidate stays docs-only |

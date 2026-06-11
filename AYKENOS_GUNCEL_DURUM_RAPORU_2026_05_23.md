@@ -32,6 +32,9 @@
 > `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` records the later
 > implementation decision candidate boundary; it does not authorize runtime
 > source code or implementation.
+> `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` maps
+> future artifact/evidence rows for a later implementation decision; it is
+> not evidence PASS, a CI gate, or implementation authority.
 > PR #172 merged the pointer transition to `main` at
 > `37d0bf46898d2c01b75863d72f68910524e596a7`; post-merge `ci-freeze`
 > run `27062096603` and Dev Loop CI run `27062096584` passed for that
@@ -49,7 +52,7 @@
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
 | Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Accepted Platform Constitution reference set; runtime implementation yetkisi degildir |
-| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` | Runtime MVP planning/admission/receipt boundary active; implementation candidate docs-only; implementation yetkisi yoktur |
+| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` | Runtime MVP planning/admission/receipt boundary active; evidence matrix and implementation candidate docs-only; implementation yetkisi yoktur |
 | Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard ve terminology audit korunur |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
