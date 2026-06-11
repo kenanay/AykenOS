@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-11
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=19` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
@@ -48,19 +48,20 @@ Current repo truth icin once su dosyalari referans alin:
 22. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — **accepted Phase-18 terminology audit; runtime not authorized**
 23. `PHASE19_RUNTIME_DECISION.md` — **Phase-19 Runtime MVP decision package; implementation not authorized**
 24. `docs/specs/phase19-platform-runtime/README.md` — **Phase-19 Runtime MVP active planning/admission/receipt RFC set; runtime not authorized**
-25. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — **Phase-19 Runtime RFC set cross-consistency review; runtime not authorized**
-26. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — **Phase-19 pointer transition candidate; implementation not authorized**
-27. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — **Phase-19 activation preconditions review; implementation not authorized**
-28. `PHASE19_POINTER_TRANSITION_DECISION.md` — **Phase-19 pointer transition decision; `CURRENT_PHASE=19`, runtime implementation not authorized**
-29. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — **Phase-19 implementation decision candidate; runtime source code not authorized**
-30. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-31. `reports/phase15_official_closure/closure_index.json`
-32. `reports/phase13_official_closure_candidate/closure_index.json`
-33. `reports/phase12_official_closure_candidate/closure_manifest.json`
-34. `reports/phase10_phase11_official_closure_index.json`
-35. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-36. `Makefile`
-37. `.github/workflows/ci-freeze.yml`
+25. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` — **Phase-19 Runtime evidence matrix; evidence PASS and runtime not authorized**
+26. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — **Phase-19 Runtime RFC set cross-consistency review; runtime not authorized**
+27. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — **Phase-19 pointer transition candidate; implementation not authorized**
+28. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — **Phase-19 activation preconditions review; implementation not authorized**
+29. `PHASE19_POINTER_TRANSITION_DECISION.md` — **Phase-19 pointer transition decision; `CURRENT_PHASE=19`, runtime implementation not authorized**
+30. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — **Phase-19 implementation decision candidate; runtime source code not authorized**
+31. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+32. `reports/phase15_official_closure/closure_index.json`
+33. `reports/phase13_official_closure_candidate/closure_index.json`
+34. `reports/phase12_official_closure_candidate/closure_manifest.json`
+35. `reports/phase10_phase11_official_closure_index.json`
+36. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+37. `Makefile`
+38. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -107,18 +108,19 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 18. `docs/specs/phase18-platform-constitution/TERMINOLOGY_AUDIT.md` — accepted terminology audit
 19. `PHASE19_RUNTIME_DECISION.md` — Phase-19 Runtime MVP decision package; not implementation authority
 20. `docs/specs/phase19-platform-runtime/README.md` — Phase-19 Runtime MVP active planning/admission/receipt RFC set; not implementation authority
-21. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — Phase-19 Runtime RFC set cross-consistency review; not active implementation authority
-22. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — Phase-19 pointer transition candidate; not implementation authority
-23. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — Phase-19 activation preconditions review; not implementation authority
-24. `PHASE19_POINTER_TRANSITION_DECISION.md` — Phase-19 pointer transition decision; not implementation authority
-25. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — Phase-19 implementation decision candidate; not implementation authority
-26. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-27. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-28. `docs/specs/phase16-ayken-orchestration/README.md`
-29. `docs/specs/authority-lineage-v1/README.md`
-30. `docs/specs/phase14-distributed-observability/README.md`
-31. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-32. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+21. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` — Phase-19 Runtime evidence matrix; not evidence PASS or implementation authority
+22. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` — Phase-19 Runtime RFC set cross-consistency review; not active implementation authority
+23. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — Phase-19 pointer transition candidate; not implementation authority
+24. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — Phase-19 activation preconditions review; not implementation authority
+25. `PHASE19_POINTER_TRANSITION_DECISION.md` — Phase-19 pointer transition decision; not implementation authority
+26. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — Phase-19 implementation decision candidate; not implementation authority
+27. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+28. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+29. `docs/specs/phase16-ayken-orchestration/README.md`
+30. `docs/specs/authority-lineage-v1/README.md`
+31. `docs/specs/phase14-distributed-observability/README.md`
+32. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+33. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -147,17 +149,18 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 6. `docs/specs/phase19-platform-runtime/WORKSPACE_ADMISSION_RUNTIME_SPECIFICATION.md`
 7. `docs/specs/phase19-platform-runtime/RUNTIME_RECEIPT_SPECIFICATION.md`
 8. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_PLAN.md`
-9. `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
-10. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` —
+9. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md`
+10. `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
+11. `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` —
     accepted cross-consistency review; does not authorize implementation.
-11. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — pointer transition
+12. `PHASE19_POINTER_TRANSITION_CANDIDATE.md` — pointer transition
     precondition candidate; does not authorize implementation.
-12. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — activation
+13. `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` — activation
     preconditions review; does not authorize implementation.
-13. `PHASE19_POINTER_TRANSITION_DECISION.md` — pointer transition decision;
+14. `PHASE19_POINTER_TRANSITION_DECISION.md` — pointer transition decision;
     activates `CURRENT_PHASE=19` only as planning/admission/receipt boundary
     and does not authorize implementation.
-14. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` —
+15. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` —
     implementation decision candidate; narrows a later exact-SHA decision and
     does not authorize runtime source code.
 

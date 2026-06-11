@@ -99,7 +99,9 @@ running artifact must be a minimal userspace admission harness.
 That harness may only prove the following bounded behavior:
 
 1. It consumes a static, test-owned input bundle.
-2. It checks the bundle against accepted Phase-18 declarative contracts.
+2. It checks only the bounded static test-owned bundle shape and referenced
+   Phase-18 declarative contract metadata required for admission/receipt
+   evidence.
 3. It emits a deterministic receipt.
 4. It fails closed on unknown fields, missing links, stale hashes, invalid
    dependency declarations, authority drift, or ambiguous terms.
@@ -117,7 +119,8 @@ remain accepted:
 4. `WORKSPACE_ADMISSION_RUNTIME_SPECIFICATION.md`
 5. `RUNTIME_RECEIPT_SPECIFICATION.md`
 6. `RUNTIME_EVIDENCE_PLAN.md`
-7. `RUNTIME_NON_GOALS_AND_DENIALS.md`
+7. `RUNTIME_EVIDENCE_MATRIX.md`
+8. `RUNTIME_NON_GOALS_AND_DENIALS.md`
 
 The accepted RFC set lives under `docs/specs/phase19-platform-runtime/`. The
 existence of that directory does not authorize implementation.
@@ -179,7 +182,7 @@ This decision package must not authorize:
 19. Observability-as-authority.
 
 Any such work requires a separate reviewed decision, RFC set, evidence plan,
-and acceptance boundary.
+evidence matrix, and acceptance boundary.
 
 ## Preconditions For Phase-19 Activation Consideration
 
@@ -197,7 +200,7 @@ are true:
 | P19-A7 | Kernel ABI remains frozen | syscall IDs remain `1000-1011`, count remains `12`, ABI version remains `0x00010001` |
 | P19-A8 | Exact-SHA CI passes | strict `ci-freeze` and Dev Loop pass on the pointer transition candidate SHA |
 | P19-A9 | Implementation is separated | pointer transition does not include runtime source code |
-| P19-A10 | Evidence plan is accepted | runtime evidence paths, receipts, negative cases, and fail-closed behavior are defined |
+| P19-A10 | Evidence plan and matrix are accepted | runtime evidence paths, artifact evidence rows, receipts, negative cases, and fail-closed behavior are defined |
 | P19-A11 | Runtime RFC cross-review is accepted | Phase-19 runtime RFC set has a reviewed cross-consistency record |
 | P19-A12 | Pointer transition candidate is accepted | `PHASE19_POINTER_TRANSITION_CANDIDATE.md` defines exact-SHA transition conditions without changing `CURRENT_PHASE` |
 | P19-A13 | Activation preconditions review is accepted | `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` reviews preconditions without activating Phase-19 |

@@ -10,6 +10,7 @@ documents prevail.
 
 **Status:** ACCEPTED REVIEW / PHASE-19 ACTIVE AS PLANNING BOUNDARY / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Review date:** 2026-06-05
+**Evidence matrix sync:** 2026-06-11
 **Review id:** `ayken.phase19.runtime.cross_consistency.review.v1`
 **Authority boundary:** Documentation/review record only; not
 `CURRENT_PHASE=19`, not runtime implementation, not a parser, not a package
@@ -52,7 +53,8 @@ The reviewed Phase-19 planning set is:
 6. `docs/specs/phase19-platform-runtime/WORKSPACE_ADMISSION_RUNTIME_SPECIFICATION.md`
 7. `docs/specs/phase19-platform-runtime/RUNTIME_RECEIPT_SPECIFICATION.md`
 8. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_PLAN.md`
-9. `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
+9. `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md`
+10. `docs/specs/phase19-platform-runtime/RUNTIME_NON_GOALS_AND_DENIALS.md`
 
 ## Review Verdict
 
@@ -77,6 +79,7 @@ validation integration != authority grant
 workspace admission record != workspace creation
 receipt != token
 evidence plan != evidence PASS
+evidence matrix != evidence PASS
 MVP boundary denial is mandatory
 ```
 
@@ -118,7 +121,9 @@ This chain is internally coherent:
    `RUNNING`, `LOADED`, `ACTIVE`, `EXECUTING`, or `MOUNTED`.
 6. `RUNTIME_EVIDENCE_PLAN.md` requires positive, negative, deterministic, and
    remote evidence for any later implementation.
-7. `RUNTIME_NON_GOALS_AND_DENIALS.md` rejects any expansion beyond this
+7. `RUNTIME_EVIDENCE_MATRIX.md` maps inert artifacts to positive, negative,
+   deterministic, remote, production-default, and performance evidence rows.
+8. `RUNTIME_NON_GOALS_AND_DENIALS.md` rejects any expansion beyond this
    bounded chain.
 
 **Result:** PASS
@@ -135,6 +140,7 @@ This chain is internally coherent:
 | Workspace Admission Runtime | Defines an inert workspace admission record | Admission record does not create a workspace, mount, handle, context, or permission | PASS |
 | Runtime Receipt | Defines deterministic digest-bound receipt output | Receipt is not a bearer token, capability token, handle, workspace handle, plugin binding, or execution right | PASS |
 | Runtime Evidence Plan | Defines future proof surfaces and negative cases | Evidence plan is not a CI gate implementation or evidence PASS | PASS |
+| Runtime Evidence Matrix | Maps artifacts and denial cases to future evidence rows | Evidence matrix is not a CI gate implementation, evidence PASS, or runtime authority | PASS |
 | Runtime Non-Goals And Denials | Defines mandatory denial boundaries | Denial list grants no runtime behavior and blocks later-phase work from entering Phase-19 | PASS |
 
 ## Lifecycle And Record Dependency Review
@@ -216,13 +222,18 @@ The reviewed RFCs consistently require fail-closed rejection for these leaks:
 | New syscall or kernel ABI expansion requested | Reject | PASS |
 | Later-phase registry, Semantic CLI, AI Runtime, or agents pulled into Phase-19 | Reject | PASS |
 
-## Evidence Plan Review
+## Evidence Plan And Matrix Review
 
 `RUNTIME_EVIDENCE_PLAN.md` is consistent with the RFC set because it requires
 future evidence for both the positive inert pipeline and negative authority
 drift cases before any implementation can be considered.
 
-The evidence plan correctly preserves:
+`RUNTIME_EVIDENCE_MATRIX.md` is consistent with the evidence plan because it
+maps those required proof surfaces to explicit artifact, positive, negative,
+deterministic, remote, production-default, and performance-boundary rows
+without granting implementation authority.
+
+The evidence plan and matrix correctly preserve:
 
 1. Exact-SHA local and remote evidence requirement.
 2. Strict `ci-freeze` and Dev Loop requirement on a candidate SHA.
@@ -231,6 +242,8 @@ The evidence plan correctly preserves:
 5. Negative cases for trust-to-capability, plugin-to-loading, Semantic CLI,
    AI, receipt-to-token, and kernel ABI drift.
 6. Performance measurement only if runtime hot paths are touched.
+7. Matrix rows as future proof obligations, not evidence PASS or CI gate
+   implementation.
 
 **Result:** PASS
 
