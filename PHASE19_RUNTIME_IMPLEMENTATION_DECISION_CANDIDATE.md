@@ -70,16 +70,19 @@ If a later exact-SHA implementation decision is accepted, the first behavior
 that may be proposed is a bounded userspace harness that:
 
 1. Reads a static, test-owned input bundle.
-2. Checks the bundle against accepted Phase-18 declarative contracts.
+2. Checks only the bounded static test-owned bundle shape and referenced
+   Phase-18 declarative contract metadata required for admission/receipt
+   evidence.
 3. Emits a validation-integration record.
 4. Emits a workspace admission record.
 5. Emits a deterministic runtime receipt.
 6. Fails closed before receipt success on unknown, stale, contradictory, or
    authority-bearing input.
 
-This behavior candidate is not a general manifest parser. It is not a package
-installer. It is not a module loader. It is not a workspace runtime. It is not
-a plugin host. It is not an issuer. It is not an executor.
+This behavior candidate is not a general parser. It is not a general manifest
+parser. It is not a package installer. It is not a module loader. It is not a
+workspace runtime. It is not a plugin host. It is not an issuer. It is not an
+executor.
 
 ## Required Preconditions For A Later Decision
 
