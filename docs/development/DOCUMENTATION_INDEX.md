@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-12
+**Last Updated:** 2026-06-13
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=19` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
@@ -18,7 +18,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Formal Governance Pointer:** `CURRENT_PHASE=19`
 - **Active Phase:** Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only
 - **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority without runtime implementation
-- **Candidate Next Decision:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`; source code remains unauthorized until a separate exact-SHA implementation decision
+- **Candidate Next Decision:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md`; source code remains unauthorized until a separate exact-SHA implementation decision
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -55,14 +55,15 @@ Current repo truth icin once su dosyalari referans alin:
 29. `PHASE19_POINTER_TRANSITION_DECISION.md` — **Phase-19 pointer transition decision; `CURRENT_PHASE=19`, runtime implementation not authorized**
 30. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — **Phase-19 implementation decision candidate; runtime source code not authorized**
 31. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` — **Phase-19 implementation decision package candidate; runtime source code not authorized**
-32. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-33. `reports/phase15_official_closure/closure_index.json`
-34. `reports/phase13_official_closure_candidate/closure_index.json`
-35. `reports/phase12_official_closure_candidate/closure_manifest.json`
-36. `reports/phase10_phase11_official_closure_index.json`
-37. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-38. `Makefile`
-39. `.github/workflows/ci-freeze.yml`
+32. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` — **Phase-19 implementation decision package draft; runtime source code not authorized**
+33. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+34. `reports/phase15_official_closure/closure_index.json`
+35. `reports/phase13_official_closure_candidate/closure_index.json`
+36. `reports/phase12_official_closure_candidate/closure_manifest.json`
+37. `reports/phase10_phase11_official_closure_index.json`
+38. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+39. `Makefile`
+40. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -116,13 +117,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 25. `PHASE19_POINTER_TRANSITION_DECISION.md` — Phase-19 pointer transition decision; not implementation authority
 26. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` — Phase-19 implementation decision candidate; not implementation authority
 27. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` — Phase-19 implementation decision package candidate; not implementation authority
-28. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-29. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-30. `docs/specs/phase16-ayken-orchestration/README.md`
-31. `docs/specs/authority-lineage-v1/README.md`
-32. `docs/specs/phase14-distributed-observability/README.md`
-33. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-34. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+28. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` — Phase-19 implementation decision package draft; not implementation authority
+29. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+30. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+31. `docs/specs/phase16-ayken-orchestration/README.md`
+32. `docs/specs/authority-lineage-v1/README.md`
+33. `docs/specs/phase14-distributed-observability/README.md`
+34. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+35. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -167,6 +169,9 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
     does not authorize runtime source code.
 16. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` —
     implementation decision package candidate; narrows the package contents
+    for a later exact-SHA decision and does not authorize runtime source code.
+17. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` —
+    implementation decision package draft; narrows the package draft contents
     for a later exact-SHA decision and does not authorize runtime source code.
 
 ## Phase-14 Reference Set
