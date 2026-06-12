@@ -427,6 +427,13 @@ remote, production-default ve performance-boundary evidence satirlarini
 map eder. Bu matrix CI gate, evidence PASS, implementation decision veya
 runtime authority kurmaz.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`, sonraki
+exact-SHA implementation decision package icin minimum behavior, matrix-row
+evidence closure, exact-SHA precondition ve fail-closed kosullarini candidate
+olarak kaydeder. Bu candidate implementation decision, runtime source code,
+parser, loader, installer, workspace runtime, issuer, Semantic CLI authority
+veya AI Runtime authority kurmaz.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -457,6 +464,9 @@ Phase-19 karar siniri su kurallari korur:
     gerektirir.
 13. Evidence matrix, evidence PASS degildir; matrix satirlari yalniz sonraki
     implementation decision icin zorunlu kanit yuzeylerini tanimlar.
+14. Implementation decision package candidate, implementation decision package
+    degildir; minimum behavior, evidence-row closure ve fail-closed kosullari
+    yalniz sonraki exact-SHA karar paketini daraltir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -498,6 +508,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Pointer Transition Decision | CURRENT_PHASE=19 / IMPLEMENTATION NOT AUTHORIZED | Phase-19'i yalniz Runtime MVP planning, validation-integration, admission-record ve receipt-boundary olarak aktive etmek | `PHASE19_POINTER_TRANSITION_DECISION.md`, `docs/roadmap/CURRENT_PHASE` | Pointer transition runtime implementation, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Decision Candidate | CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Sonraki exact-SHA implementation decision icin minimal userspace admission/receipt harness sinirini ve evidence precondition'larini docs-only kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` | Candidate runtime source code, implementation decision, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Evidence Matrix | ACTIVE RFC / IMPLEMENTATION NOT AUTHORIZED | Sonraki implementation decision icin artifact, positive, negative, determinism, remote, production-default ve performance-boundary evidence satirlarini map etmek | `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` | Matrix CI gate, evidence PASS, implementation decision, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Decision Package Candidate | CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Sonraki exact-SHA implementation decision package icin minimum behavior, evidence-row closure, exact-SHA precondition ve fail-closed kosullarini docs-only kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` | Candidate implementation decision package, runtime source code, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1195,7 +1206,9 @@ Bu roadmap su olaylarda guncellenir:
 34. Phase-19 Activation Preconditions Review sonucu.
 35. Phase-19 Pointer Transition Decision sonucu.
 36. Phase-19 Runtime Implementation Decision Candidate sonucu.
-37. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+37. Phase-19 Runtime Evidence Matrix sonucu.
+38. Phase-19 Runtime Implementation Decision Package Candidate sonucu.
+39. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1241,6 +1254,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md`
 - `PHASE19_POINTER_TRANSITION_DECISION.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

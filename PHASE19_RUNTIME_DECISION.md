@@ -149,6 +149,12 @@ boundary for a later implementation decision. That candidate does not
 authorize runtime source code and does not replace a future exact-SHA
 implementation decision.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` records the
+candidate shape for that later decision package. It maps the minimum behavior,
+evidence-row closure, exact-SHA acceptance preconditions, and fail-closed
+conditions that a separate implementation decision package must satisfy. It
+does not authorize runtime source code or implementation.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

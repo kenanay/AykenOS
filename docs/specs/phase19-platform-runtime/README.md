@@ -71,6 +71,10 @@ receipt-boundary phase. It does not authorize runtime implementation.
 later implementation decision candidate boundary. It does not authorize
 runtime source code or implementation.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`
+records the later implementation decision package candidate boundary. It is
+not an implementation decision and does not authorize runtime source code.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -81,6 +85,7 @@ runtime authority.
 Runtime RFC set != runtime implementation
 CURRENT_PHASE=19 != runtime implementation
 evidence matrix != evidence PASS
+decision package candidate != implementation decision
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
