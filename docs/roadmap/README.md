@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-06-06 (Phase-19 Pointer Transition Decision)
+**Last authority sync:** 2026-06-12 (Phase-19 Runtime Implementation Decision Package Candidate)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -75,7 +75,11 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 25. `../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md`:
    implementation decision candidate; sonraki exact-SHA decision sinirini
    daraltir, runtime source code veya implementation authority kurmaz.
-26. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+26. `../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`:
+   implementation decision package candidate; sonraki exact-SHA decision
+   package sinirini daraltir, runtime source code veya implementation
+   authority kurmaz.
+27. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -85,7 +89,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
 | Aktif odak | Phase-19 planning/admission/receipt authority maintenance; runtime implementation remains out of scope |
-| Siradaki docs-only odak | `RUNTIME_EVIDENCE_MATRIX.md` sonraki implementation decision icin kanit satirlarini map eder; source code remains unauthorized until a separate exact-SHA implementation decision |
+| Siradaki docs-only odak | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` sonraki implementation decision package icin minimum behavior, evidence-row closure, exact-SHA precondition ve fail-closed kosullarini daraltir; source code remains unauthorized until a separate exact-SHA implementation decision |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 | Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; implementation forbidden until a separate decision |
@@ -122,12 +126,12 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Next action:** `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md`
-sonraki implementation decision icin artifact, positive, negative,
-determinism, remote ve production-default kanit satirlarini docs-only olarak
-map eder. Gercek Phase-19 runtime implementation karar paketi ancak ayri
-exact-SHA PR ve evidence package ile degerlendirilebilir. `CURRENT_PHASE=19`
-runtime source code, loader, installer, workspace runtime, plugin host,
-capability issuer, trust issuer, Semantic CLI authority veya AI Runtime
-authority vermez. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina gore
-denetlenir.
+**Next action:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md`
+sonraki implementation decision package icin minimum behavior, matrix-row
+evidence closure, exact-SHA precondition ve fail-closed kosullarini docs-only
+olarak daraltir. Gercek Phase-19 runtime implementation karar paketi ancak
+ayri exact-SHA PR ve evidence package ile degerlendirilebilir.
+`CURRENT_PHASE=19` runtime source code, loader, installer, workspace runtime,
+plugin host, capability issuer, trust issuer, Semantic CLI authority veya AI
+Runtime authority vermez. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina
+gore denetlenir.

@@ -36,6 +36,10 @@ It exists to prevent the next step from expanding from an admission/receipt
 MVP into loader, installer, workspace runtime, issuer, Semantic CLI, AI, or
 agent behavior.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` may narrow the
+shape of a later implementation decision package, but it is not the
+implementation decision package and does not authorize runtime source code.
+
 ## Core Rule
 
 ```text

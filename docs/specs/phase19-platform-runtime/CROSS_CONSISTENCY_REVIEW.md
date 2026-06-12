@@ -11,13 +11,15 @@ documents prevail.
 **Status:** ACCEPTED REVIEW / PHASE-19 ACTIVE AS PLANNING BOUNDARY / RUNTIME IMPLEMENTATION NOT AUTHORIZED
 **Review date:** 2026-06-05
 **Evidence matrix sync:** 2026-06-11
+**Decision package candidate sync:** 2026-06-12
 **Review id:** `ayken.phase19.runtime.cross_consistency.review.v1`
 **Authority boundary:** Documentation/review record only; not
 `CURRENT_PHASE=19`, not runtime implementation, not a parser, not a package
 installer, not a module loader, not workspace runtime, not real mount
 authority, not plugin loading, not capability issuance, not trust assignment,
 not Semantic CLI authority, not AI Runtime authority, not a syscall, not
-kernel ABI expansion, not merge authority, and not closure authority.
+kernel ABI expansion, not an implementation decision package, not merge
+authority, and not closure authority.
 
 ## Purpose
 
@@ -40,6 +42,11 @@ from runtime implementation.
 transition candidate as inputs to check whether activation preconditions were
 documented. That review remains separate from runtime implementation
 authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` may use this
+review as background consistency evidence for a later decision package
+candidate. That candidate remains separate from an implementation decision
+and from runtime source code.
 
 ## Reviewed Inputs
 
@@ -80,6 +87,7 @@ workspace admission record != workspace creation
 receipt != token
 evidence plan != evidence PASS
 evidence matrix != evidence PASS
+decision package candidate != implementation decision
 MVP boundary denial is mandatory
 ```
 
@@ -247,6 +255,30 @@ The evidence plan and matrix correctly preserve:
 
 **Result:** PASS
 
+## Implementation Decision Package Candidate Boundary
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` is outside the
+reviewed Runtime RFC set. It is consistent with this review only if it remains
+a candidate package boundary and does not become an implementation decision.
+
+The acceptable package-candidate reading is:
+
+1. Minimum inert behavior boundary only.
+2. Matrix-row evidence closure only.
+3. Exact-SHA preconditions only.
+4. Fail-closed conditions only.
+
+The unacceptable reading is:
+
+1. Runtime source code.
+2. Parser design.
+3. Harness implementation details.
+4. CI workflow or test script implementation.
+5. Loader, installer, workspace runtime, issuer, Semantic CLI, AI Runtime, or
+   agent authority.
+
+**Result:** PASS
+
 ## Non-Blocking Wording Risks
 
 The following terms remain acceptable, but future pointer-transition or
@@ -291,6 +323,7 @@ pre-implementation planning reference for a later pointer-transition
 decision.
 
 The safe next step after this review is still not runtime implementation.
-Phase-19 remains inactive until a separate pointer transition is reviewed and
-accepted, and runtime code remains unauthorized until a later implementation
-decision and evidence package exists.
+Phase-19 is now active only as planning, validation-integration,
+admission-record, and receipt-boundary authority. Runtime code remains
+unauthorized until a later implementation decision and evidence package
+exists.
