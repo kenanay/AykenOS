@@ -185,6 +185,7 @@ The order remains:
 
 ```text
 decision package candidate
+  -> implementation decision package draft
   -> separate exact-SHA implementation decision package
   -> separate implementation PR
   -> evidence package
@@ -194,6 +195,10 @@ decision package candidate
 
 No step in that chain can inherit implementation authority from this
 candidate.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` may narrow the
+draft shape of that later package, but it is not the implementation decision
+package and does not authorize runtime source code.
 
 ## Candidate Conclusion
 

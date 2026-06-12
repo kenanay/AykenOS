@@ -155,6 +155,12 @@ evidence-row closure, exact-SHA acceptance preconditions, and fail-closed
 conditions that a separate implementation decision package must satisfy. It
 does not authorize runtime source code or implementation.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` records the draft
+shape for that later decision package. It narrows the minimum behavior,
+evidence binding, exact-SHA preconditions, and fail-closed denials further,
+but it is still not the implementation decision package and does not authorize
+runtime source code or implementation.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

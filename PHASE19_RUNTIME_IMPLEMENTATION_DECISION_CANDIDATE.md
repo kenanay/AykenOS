@@ -40,6 +40,10 @@ agent behavior.
 shape of a later implementation decision package, but it is not the
 implementation decision package and does not authorize runtime source code.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` may narrow the
+draft shape of a later implementation decision package, but it is not the
+implementation decision package and does not authorize runtime source code.
+
 ## Core Rule
 
 ```text
