@@ -84,6 +84,11 @@ exact-SHA implementation decision package boundary. It is not an
 implementation PR, evidence package, acceptance review, or runtime source code
 authority.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` records evidence
+for the draft PR #181 bounded admission/receipt implementation subject. It is
+not acceptance review, merge authority, general runtime authority, or runtime
+activation.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -99,6 +104,7 @@ decision package draft != implementation decision package
 implementation decision package != implementation PR
 implementation PR != evidence package
 evidence package != acceptance review
+evidence package != runtime acceptance
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that

@@ -166,6 +166,11 @@ implementation decision package boundary. It is not an implementation PR,
 evidence package, remote PASS result, acceptance review, or runtime source
 code authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` records evidence for the
+draft PR #181 bounded admission/receipt implementation subject. It is not
+acceptance review, merge authority, runtime activation, or general runtime
+authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
