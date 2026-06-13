@@ -27,7 +27,7 @@ jobs:
       EVIDENCE_ROOT: "evidence"
       WORKSPACE_STRICT: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install toolchain dependencies
         run: |
@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload gate evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-gate-workspace-${{ github.run_id }}
           path: evidence/run-${{ env.RUN_ID }}/gates/workspace/

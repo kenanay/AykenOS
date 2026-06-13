@@ -23,7 +23,7 @@ jobs:
       EXECUTION_MARKER_DETERMINISM_QEMU_TIMEOUT: "45"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install QEMU and kernel toolchain
         run: |
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload determinism evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-gate-execution-marker-determinism-${{ github.run_id }}
           path: |

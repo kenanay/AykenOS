@@ -90,7 +90,7 @@ jobs:
       SYSCALL_OVMF_VARS: "/usr/share/OVMF/OVMF_VARS_4M.fd"
       SYSCALL_V2_RUNTIME_TIMEOUT: "60"  # Hosted runner needs more time for userspace boot
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Load performance baseline authority
@@ -169,7 +169,7 @@ jobs:
           echo "authority_hash=${AUTHORITY_HASH}" >> "$GITHUB_OUTPUT"
           echo "Drift authority hash: ${AUTHORITY_HASH}"
       - name: Restore drift state cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .ci-state
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
@@ -183,7 +183,7 @@ jobs:
           python3 tools/ci/phase17_spec_validation_gate.py
       - name: Upload Spec Validation Evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: spec-validation-evidence-${{ github.run_id }}
           path: |
@@ -193,7 +193,7 @@ jobs:
           if-no-files-found: warn
       - name: Save drift state cache
         if: ${{ always() && hashFiles('.ci-state/**') != '' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .ci-state
           key: drift-state-${{ steps.drift_auth.outputs.authority_hash }}
@@ -278,7 +278,7 @@ jobs:
         if: ${{ always() && github.event_name == 'pull_request' }}
         id: ayken_comment
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -352,7 +352,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload performance evidence on success
         if: ${{ success() && github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: error
@@ -396,7 +396,7 @@ jobs:
           done || true
       - name: Upload freeze evidence on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: freeze-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
@@ -418,7 +418,7 @@ jobs:
       PERF_ENV_MISMATCH_POLICY: "fail"
       GOVERNANCE_POLICY_KERNEL_PROFILE: "validation"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Load performance baseline authority
@@ -501,7 +501,7 @@ jobs:
           find evidence -maxdepth 4 -type f 2>/dev/null | head -20 || echo "MISSING: evidence directory"
       - name: Upload performance evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: perf-baseline-evidence
           if-no-files-found: error
