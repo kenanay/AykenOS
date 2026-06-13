@@ -13,15 +13,16 @@ documents prevail.
 **Evidence matrix sync:** 2026-06-11
 **Decision package candidate sync:** 2026-06-12
 **Decision package draft sync:** 2026-06-13
+**Decision package sync:** 2026-06-13
 **Review id:** `ayken.phase19.runtime.cross_consistency.review.v1`
 **Authority boundary:** Documentation/review record only; not
 `CURRENT_PHASE=19`, not runtime implementation, not a parser, not a package
 installer, not a module loader, not workspace runtime, not real mount
 authority, not plugin loading, not capability issuance, not trust assignment,
 not Semantic CLI authority, not AI Runtime authority, not a syscall, not
-kernel ABI expansion, not an implementation decision package, not an
-implementation decision package draft authority, not merge authority, and not
-closure authority.
+kernel ABI expansion, not an implementation PR, not an evidence package, not
+an acceptance review, not runtime source code authority, not merge authority,
+and not closure authority.
 
 ## Purpose
 
@@ -54,6 +55,12 @@ and from runtime source code.
 as background consistency evidence for a later decision package draft. That
 draft remains separate from an implementation decision package, an
 implementation decision, and runtime source code.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` may use this review as
+background consistency evidence for the exact-SHA implementation decision
+package boundary. That package remains separate from an implementation PR,
+evidence package, remote PASS result, acceptance review, and runtime source
+code.
 
 ## Reviewed Inputs
 
@@ -96,6 +103,9 @@ evidence plan != evidence PASS
 evidence matrix != evidence PASS
 decision package candidate != implementation decision
 decision package draft != implementation decision package
+implementation decision package != implementation PR
+implementation PR != evidence package
+evidence package != acceptance review
 MVP boundary denial is mandatory
 ```
 
@@ -299,6 +309,33 @@ The acceptable draft reading is:
 2. Evidence binding only.
 3. Exact-SHA preconditions only.
 4. Fail-closed denials only.
+
+The unacceptable reading is:
+
+1. Runtime source code.
+2. Parser or harness design.
+3. CI workflow or test script implementation.
+4. Performance threshold definition.
+5. Loader, installer, workspace runtime, issuer, Semantic CLI, AI Runtime, or
+   agent authority.
+
+**Result:** PASS
+
+## Implementation Decision Package Boundary
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` is outside the reviewed
+Runtime RFC set. It is consistent with this review only if it remains a
+decision package boundary and does not become an implementation PR, evidence
+package, remote PASS result, acceptance review, or runtime source code
+authority.
+
+The acceptable package reading is:
+
+1. Minimum inert behavior boundary only.
+2. Evidence binding only.
+3. Exact-SHA preconditions only.
+4. Separation rules only.
+5. Fail-closed denials only.
 
 The unacceptable reading is:
 
