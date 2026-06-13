@@ -474,6 +474,15 @@ activation, parser, loader, installer, workspace runtime, issuer, Semantic CLI
 authority veya AI Runtime authority kurmaz; PR #181 draft kalir ve yeni
 implementation subject gerekir.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`, PR #181 icinde
+bounded admission/receipt harness icin yeni implementation subject
+`64fa4762` kaydidir. Bu update validation stale digest ve unknown validation
+stage failure yuzeylerini ayri stable reason class'lara indirir. Bu kayit
+evidence package, acceptance review, acceptance, merge authority, runtime
+activation, parser, loader, installer, workspace runtime, issuer, Semantic CLI
+authority veya AI Runtime authority kurmaz; updated subject icin evidence
+regeneration veya reviewed re-bind halen gerekir.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -572,6 +581,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Acceptance Review | ACCEPTANCE REVIEW / ACCEPTANCE NOT GRANTED | PR #181 evidence package satirlarini review etmek, yeterli ve eksik transcript evidence yuzeylerini ayirmak ve acceptance'i fail-closed reddetmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` | Review acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Additional Transcript Evidence | ADDITIONAL TRANSCRIPT EVIDENCE / ACCEPTANCE NOT GRANTED | PR #181 acceptance review'unun istedigi eksik denial transcript ve denial-repeat evidence yuzeylerini docs-only baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` | Evidence acceptance review update, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Acceptance Review Update | ACCEPTANCE REVIEW UPDATE / ACCEPTANCE NOT GRANTED / NEW IMPLEMENTATION SUBJECT REQUIRED | Additional transcript evidence'i review etmek, transcript gap'leri evidence input olarak yeterli saymak ve validation stale/unknown-stage reason granularity'sini yetersiz bularak yeni implementation subject gerektirmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` | Review update acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Reason-Class Update | IMPLEMENTATION SUBJECT UPDATE / EVIDENCE REGENERATION PENDING / ACCEPTANCE NOT GRANTED | Validation stale digest ve unknown validation stage reason class'larini ayiran bounded implementation subject `64fa4762` kaydini tutmak | `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` | Update evidence package, acceptance review, acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1330,6 +1340,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

@@ -105,6 +105,13 @@ grant acceptance because validation stale digest and validation unknown stage
 remain collapsed into `subject_mismatch`. It requires a new implementation
 subject before PR #181 can leave draft status.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` records the
+bounded implementation subject update that separates validation stale digest
+from unknown validation stage as distinct denial reason classes. It is not an
+evidence package, acceptance review, acceptance, merge authority, or general
+runtime authority. Evidence regeneration or reviewed re-binding remains
+required for the updated subject.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -122,6 +129,7 @@ implementation PR != evidence package
 evidence package != acceptance review
 acceptance review != acceptance
 additional transcript evidence != acceptance
+reason-class update != evidence package
 evidence package != runtime acceptance
 ```
 

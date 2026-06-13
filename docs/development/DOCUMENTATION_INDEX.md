@@ -17,12 +17,13 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=19`
 - **Active Phase:** Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only
-- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority without runtime implementation
-- **Accepted Decision Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`; source code remains unauthorized until a separate implementation PR, evidence package, remote PASS, and acceptance review
-- **Current Evidence Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`; records draft PR #181 subject `22d5e86a` evidence
+- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority without runtime implementation acceptance or authority expansion
+- **Accepted Decision Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`; implementation acceptance remains unauthorized until a separate implementation PR, evidence package, remote PASS, and acceptance review close
+- **Current Evidence Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`; records historical draft PR #181 subject `22d5e86a` evidence
 - **Current Acceptance Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`; acceptance is not granted and PR #181 remains draft
 - **Current Additional Transcript Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`; binds missing denial transcript evidence without granting acceptance
 - **Current Acceptance Review Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`; accepts additional transcript evidence as input but requires a new implementation subject before acceptance
+- **Current Reason-Class Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`; records updated implementation subject `64fa4762` and requires evidence regeneration before acceptance
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -65,14 +66,15 @@ Current repo truth icin once su dosyalari referans alin:
 35. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` — **Phase-19 implementation acceptance review; acceptance not granted**
 36. `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` — **Phase-19 additional transcript evidence; acceptance not granted**
 37. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` — **Phase-19 acceptance review update; new implementation subject required**
-38. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-39. `reports/phase15_official_closure/closure_index.json`
-40. `reports/phase13_official_closure_candidate/closure_index.json`
-41. `reports/phase12_official_closure_candidate/closure_manifest.json`
-42. `reports/phase10_phase11_official_closure_index.json`
-43. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-44. `Makefile`
-45. `.github/workflows/ci-freeze.yml`
+38. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — **Phase-19 reason-class implementation update; evidence regeneration pending**
+39. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+40. `reports/phase15_official_closure/closure_index.json`
+41. `reports/phase13_official_closure_candidate/closure_index.json`
+42. `reports/phase12_official_closure_candidate/closure_manifest.json`
+43. `reports/phase10_phase11_official_closure_index.json`
+44. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+45. `Makefile`
+46. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -132,13 +134,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 31. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` — Phase-19 implementation acceptance review; acceptance not granted and PR #181 remains draft
 32. `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` — Phase-19 implementation additional transcript evidence; not acceptance review update or merge authority
 33. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` — Phase-19 acceptance review update; acceptance not granted and new implementation subject required
-34. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-35. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-36. `docs/specs/phase16-ayken-orchestration/README.md`
-37. `docs/specs/authority-lineage-v1/README.md`
-38. `docs/specs/phase14-distributed-observability/README.md`
-39. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-40. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+34. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — Phase-19 reason-class implementation update; not evidence package, acceptance review, or merge authority
+35. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+36. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+37. `docs/specs/phase16-ayken-orchestration/README.md`
+38. `docs/specs/authority-lineage-v1/README.md`
+39. `docs/specs/phase14-distributed-observability/README.md`
+40. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+41. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -206,6 +209,9 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
     rejects current reason-class granularity for final acceptance, and
     requires a new implementation subject without granting merge or runtime
     authority.
+23. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` —
+    reason-class implementation update; records subject `64fa4762` and
+    requires regenerated or re-bound evidence before acceptance.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

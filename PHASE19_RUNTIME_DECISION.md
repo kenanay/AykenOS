@@ -189,6 +189,13 @@ acceptance because validation stale digest and validation unknown stage still
 collapse to the existing `subject_mismatch` reason class. It requires a new
 implementation subject before PR #181 can leave draft status.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` records the bounded
+implementation subject update that separates validation stale digest from
+unknown validation stage as distinct denial reason classes. It is not an
+evidence package, acceptance review, acceptance, merge authority, or general
+runtime authority. Evidence regeneration or reviewed re-binding remains
+required for the updated subject.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
