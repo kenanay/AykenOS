@@ -221,6 +221,8 @@ pub enum DenialReason {
     MissingPlatformValidation,
     PlatformValidationFailed,
     ValidationAuthorityDenied,
+    ValidationStaleDigest,
+    UnknownValidationStage,
     RealMountDenied,
     WorkspaceHandleDenied,
     CapabilityIssuanceDenied,
@@ -329,13 +331,27 @@ pub fn run_harness(
 
     if validation.contract_id != PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID
         || validation.subject != bundle.subject
-        || validation.stale_digest
-        || validation.unknown_stage_observed
     {
         return denied_after_input(
             input_bound_transcript,
             Some(input_bundle_digest),
             DenialReason::SubjectMismatch,
+        );
+    }
+
+    if validation.stale_digest {
+        return denied_after_input(
+            input_bound_transcript,
+            Some(input_bundle_digest),
+            DenialReason::ValidationStaleDigest,
+        );
+    }
+
+    if validation.unknown_stage_observed {
+        return denied_after_input(
+            input_bound_transcript,
+            Some(input_bundle_digest),
+            DenialReason::UnknownValidationStage,
         );
     }
 
@@ -822,6 +838,24 @@ mod tests {
             &bundle,
             Some(&mismatched),
             DenialReason::SubjectMismatch,
+            Some(true),
+        );
+
+        let mut stale_validation = valid_validation(&bundle.subject);
+        stale_validation.stale_digest = true;
+        assert_denied(
+            &bundle,
+            Some(&stale_validation),
+            DenialReason::ValidationStaleDigest,
+            Some(true),
+        );
+
+        let mut unknown_stage = valid_validation(&bundle.subject);
+        unknown_stage.unknown_stage_observed = true;
+        assert_denied(
+            &bundle,
+            Some(&unknown_stage),
+            DenialReason::UnknownValidationStage,
             Some(true),
         );
     }
