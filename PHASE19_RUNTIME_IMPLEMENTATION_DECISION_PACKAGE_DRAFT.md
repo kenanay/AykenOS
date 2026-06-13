@@ -189,9 +189,9 @@ The order remains:
 implementation decision candidate
   -> implementation decision package candidate
   -> implementation decision package draft
-  -> separate exact-SHA implementation decision package
+  -> exact-SHA implementation decision package
   -> separate implementation PR
-  -> evidence package
+  -> separate evidence package
   -> remote PASS
   -> acceptance review
 ```

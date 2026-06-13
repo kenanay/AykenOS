@@ -161,6 +161,11 @@ evidence binding, exact-SHA preconditions, and fail-closed denials further,
 but it is still not the implementation decision package and does not authorize
 runtime source code or implementation.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` records the exact-SHA
+implementation decision package boundary. It is not an implementation PR,
+evidence package, remote PASS result, acceptance review, or runtime source
+code authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

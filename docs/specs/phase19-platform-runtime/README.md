@@ -79,6 +79,11 @@ not an implementation decision and does not authorize runtime source code.
 the later implementation decision package draft boundary. It is not the
 implementation decision package and does not authorize runtime source code.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` records the
+exact-SHA implementation decision package boundary. It is not an
+implementation PR, evidence package, acceptance review, or runtime source code
+authority.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -91,6 +96,9 @@ CURRENT_PHASE=19 != runtime implementation
 evidence matrix != evidence PASS
 decision package candidate != implementation decision
 decision package draft != implementation decision package
+implementation decision package != implementation PR
+implementation PR != evidence package
+evidence package != acceptance review
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
@@ -98,8 +106,8 @@ the Phase-19 Runtime MVP boundary is active as planning authority. A separate
 implementation decision, implementation RFC acceptance, runtime evidence
 implementation, and remote CI authority remain required before any runtime
 code can be accepted. The implementation decision candidate, package
-candidate, and package draft narrow that future decision path, but none is
-itself implementation authority.
+candidate, package draft, and implementation decision package narrow that
+future decision path, but none is itself runtime source code authority.
 
 ## MVP Boundary
 

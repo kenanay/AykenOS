@@ -186,9 +186,9 @@ The order remains:
 ```text
 decision package candidate
   -> implementation decision package draft
-  -> separate exact-SHA implementation decision package
+  -> exact-SHA implementation decision package
   -> separate implementation PR
-  -> evidence package
+  -> separate evidence package
   -> remote PASS
   -> acceptance review
 ```
@@ -199,6 +199,10 @@ candidate.
 `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` may narrow the
 draft shape of that later package, but it is not the implementation decision
 package and does not authorize runtime source code.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` may accept the narrow
+exact-SHA package boundary, but it is not an implementation PR, evidence
+package, acceptance review, or runtime source code authority.
 
 ## Candidate Conclusion
 

@@ -44,6 +44,11 @@ implementation decision package and does not authorize runtime source code.
 draft shape of a later implementation decision package, but it is not the
 implementation decision package and does not authorize runtime source code.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` may accept the narrow
+exact-SHA implementation decision package boundary, but it is not an
+implementation PR, evidence package, acceptance review, or runtime source code
+authority.
+
 ## Core Rule
 
 ```text
