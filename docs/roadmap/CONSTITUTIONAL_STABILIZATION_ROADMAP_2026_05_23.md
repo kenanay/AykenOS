@@ -455,7 +455,15 @@ authority veya AI Runtime authority kurmaz.
 
 `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`, PR #181 evidence
 package icin ilk acceptance review kaydidir. Acceptance grant etmez, PR #181'i
-ready veya merge-ready yapmaz ve ek transcript evidence gerektirir.
+ready veya merge-ready yapmaz.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`, PR #181
+acceptance review'unun istedigi missing-reference, stale-digest,
+subject-mismatch, validation-authority, validation-stale, validation-unknown
+ve denial-repeat transcript evidence'i kaydeder. Bu evidence acceptance review
+update, acceptance, merge authority, runtime activation, parser, loader,
+installer, workspace runtime, issuer, Semantic CLI authority veya AI Runtime
+authority kurmaz.
 
 Phase-19 karar siniri su kurallari korur:
 
@@ -501,6 +509,9 @@ Phase-19 karar siniri su kurallari korur:
 18. Acceptance review, acceptance veya merge authority degildir.
 19. Acceptance review not granted ise PR draft kalir ve eksik transcript
     evidence kapatilana kadar merge degerlendirmesine gecilmez.
+20. Additional transcript evidence, acceptance review update degildir;
+    acceptance ve merge degerlendirmesi icin ayri review update ve final
+    acceptance karari gerekir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -546,7 +557,8 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Decision Package Draft | DRAFT / IMPLEMENTATION NOT AUTHORIZED | Sonraki exact-SHA implementation decision package icin minimum behavior, evidence binding, exact-SHA precondition ve fail-closed denial kosullarini docs-only daraltmak | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` | Draft implementation decision package, implementation decision, runtime source code, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Decision Package | DECISION PACKAGE / IMPLEMENTATION NOT AUTHORIZED | Exact-SHA implementation decision package boundary icin minimum behavior, evidence binding, exact-SHA precondition, separation rules ve fail-closed denial kosullarini docs-only kabul etmek | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` | Package implementation PR, evidence package, acceptance review, runtime source code, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Evidence Package | EVIDENCE PACKAGE / REVIEWED / ACCEPTANCE NOT GRANTED | Draft PR #181 bounded admission/receipt implementation subject `22d5e86a` icin positive, negative, determinism, production-default, ABI freeze ve remote exact-SHA evidence record'u kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` | Evidence package acceptance review, merge authority, general runtime authority, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
-| Phase-19 Runtime Implementation Acceptance Review | ACCEPTANCE REVIEW / ACCEPTANCE NOT GRANTED | PR #181 evidence package satirlarini review etmek, yeterli ve eksik transcript evidence yuzeylerini ayirmak ve ek transcript evidence gerektigini fail-closed kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` | Review acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Acceptance Review | ACCEPTANCE REVIEW / ACCEPTANCE NOT GRANTED | PR #181 evidence package satirlarini review etmek, yeterli ve eksik transcript evidence yuzeylerini ayirmak ve acceptance'i fail-closed reddetmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` | Review acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Additional Transcript Evidence | ADDITIONAL TRANSCRIPT EVIDENCE / ACCEPTANCE NOT GRANTED | PR #181 acceptance review'unun istedigi eksik denial transcript ve denial-repeat evidence yuzeylerini docs-only baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` | Evidence acceptance review update, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1301,6 +1313,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

@@ -172,9 +172,18 @@ acceptance review, merge authority, runtime activation, or general runtime
 authority.
 
 `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the first
-acceptance review for that evidence package. Acceptance is not granted, PR
-#181 remains draft, and additional transcript evidence is required before
-acceptance can be reconsidered.
+acceptance review for that evidence package. Acceptance is not granted and PR
+#181 remains draft.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` records
+additional denial transcript evidence for the missing-reference, stale-digest,
+subject-mismatch, validation-authority, validation-stale, validation-unknown,
+and denial-repeat surfaces identified by the first acceptance review. It is
+not an acceptance review update, acceptance, merge authority, runtime
+activation, or general runtime authority.
+
+A later acceptance review update must decide whether that additional
+transcript evidence is sufficient before PR #181 can leave draft status.
 
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,

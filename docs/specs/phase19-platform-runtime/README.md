@@ -91,7 +91,14 @@ activation.
 
 `../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the
 first acceptance review for that evidence package. It does not grant
-acceptance; additional transcript evidence remains required.
+acceptance and PR #181 remains draft.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
+records additional denial transcript evidence requested by the first
+acceptance review. It is evidence only; it is not an acceptance review update,
+acceptance, merge authority, general runtime authority, or runtime activation.
+A later acceptance review update must decide whether that evidence is
+sufficient.
 
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
@@ -109,6 +116,7 @@ implementation decision package != implementation PR
 implementation PR != evidence package
 evidence package != acceptance review
 acceptance review != acceptance
+additional transcript evidence != acceptance
 evidence package != runtime acceptance
 ```
 
