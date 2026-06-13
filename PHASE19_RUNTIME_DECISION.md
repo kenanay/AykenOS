@@ -182,8 +182,12 @@ and denial-repeat surfaces identified by the first acceptance review. It is
 not an acceptance review update, acceptance, merge authority, runtime
 activation, or general runtime authority.
 
-A later acceptance review update must decide whether that additional
-transcript evidence is sufficient before PR #181 can leave draft status.
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` records the
+second-layer review of that additional transcript evidence. It accepts the
+additional transcript evidence as sufficient review input, but does not grant
+acceptance because validation stale digest and validation unknown stage still
+collapse to the existing `subject_mismatch` reason class. It requires a new
+implementation subject before PR #181 can leave draft status.
 
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,

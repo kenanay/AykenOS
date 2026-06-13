@@ -97,8 +97,13 @@ acceptance and PR #181 remains draft.
 records additional denial transcript evidence requested by the first
 acceptance review. It is evidence only; it is not an acceptance review update,
 acceptance, merge authority, general runtime authority, or runtime activation.
-A later acceptance review update must decide whether that evidence is
-sufficient.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` records
+the acceptance review update for that additional evidence. It treats the
+additional transcript evidence as sufficient review input, but it does not
+grant acceptance because validation stale digest and validation unknown stage
+remain collapsed into `subject_mismatch`. It requires a new implementation
+subject before PR #181 can leave draft status.
 
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or

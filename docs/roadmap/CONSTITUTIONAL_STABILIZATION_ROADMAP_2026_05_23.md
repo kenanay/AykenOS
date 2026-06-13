@@ -465,6 +465,15 @@ update, acceptance, merge authority, runtime activation, parser, loader,
 installer, workspace runtime, issuer, Semantic CLI authority veya AI Runtime
 authority kurmaz.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`, additional
+transcript evidence'i review eder. Transcript gap'leri evidence input olarak
+yeterli sayar, fakat validation stale digest ve validation unknown stage
+failure yuzeylerinin `subject_mismatch` altinda toplanmasini final acceptance
+icin yetersiz bulur. Bu review update acceptance, merge authority, runtime
+activation, parser, loader, installer, workspace runtime, issuer, Semantic CLI
+authority veya AI Runtime authority kurmaz; PR #181 draft kalir ve yeni
+implementation subject gerekir.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -512,6 +521,9 @@ Phase-19 karar siniri su kurallari korur:
 20. Additional transcript evidence, acceptance review update degildir;
     acceptance ve merge degerlendirmesi icin ayri review update ve final
     acceptance karari gerekir.
+21. Acceptance review update, acceptance veya merge authority degildir;
+    validation stale/unknown-stage reason granularity yetersizse PR draft
+    kalir ve yeni implementation subject gerekir.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -559,6 +571,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Evidence Package | EVIDENCE PACKAGE / REVIEWED / ACCEPTANCE NOT GRANTED | Draft PR #181 bounded admission/receipt implementation subject `22d5e86a` icin positive, negative, determinism, production-default, ABI freeze ve remote exact-SHA evidence record'u kaydetmek | `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` | Evidence package acceptance review, merge authority, general runtime authority, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Acceptance Review | ACCEPTANCE REVIEW / ACCEPTANCE NOT GRANTED | PR #181 evidence package satirlarini review etmek, yeterli ve eksik transcript evidence yuzeylerini ayirmak ve acceptance'i fail-closed reddetmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` | Review acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Additional Transcript Evidence | ADDITIONAL TRANSCRIPT EVIDENCE / ACCEPTANCE NOT GRANTED | PR #181 acceptance review'unun istedigi eksik denial transcript ve denial-repeat evidence yuzeylerini docs-only baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` | Evidence acceptance review update, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Acceptance Review Update | ACCEPTANCE REVIEW UPDATE / ACCEPTANCE NOT GRANTED / NEW IMPLEMENTATION SUBJECT REQUIRED | Additional transcript evidence'i review etmek, transcript gap'leri evidence input olarak yeterli saymak ve validation stale/unknown-stage reason granularity'sini yetersiz bularak yeni implementation subject gerektirmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` | Review update acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1262,7 +1275,9 @@ Bu roadmap su olaylarda guncellenir:
 40. Phase-19 Runtime Implementation Decision Package sonucu.
 41. Phase-19 Runtime Implementation Evidence Package sonucu.
 42. Phase-19 Runtime Implementation Acceptance Review sonucu.
-43. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+43. Phase-19 Runtime Implementation Additional Transcript Evidence sonucu.
+44. Phase-19 Runtime Implementation Acceptance Review Update sonucu.
+45. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1314,6 +1329,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

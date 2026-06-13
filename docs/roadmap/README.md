@@ -97,7 +97,11 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 31. `../../PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`:
    additional transcript evidence; missing denial transcript evidence'i
    baglar, acceptance review update veya merge/runtime authority kurmaz.
-32. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+32. `../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`:
+   acceptance review update; additional transcript evidence'i yeterli input
+   sayar, ancak validation stale/unknown-stage reason granularity icin yeni
+   implementation subject gerektirir ve merge/runtime authority kurmaz.
+33. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -107,7 +111,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
 | Aktif odak | Phase-19 planning/admission/receipt authority maintenance; runtime implementation remains out of scope |
-| Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar ama acceptance veya merge authority vermez |
+| Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 | Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; implementation forbidden until a separate decision |
@@ -144,10 +148,11 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
-eksik denial transcript evidence'i baglar, ancak acceptance veya merge
-authority vermez. Gercek Phase-19 bounded implementation kabulü icin bu
-evidence subject remote PASS, acceptance review update ve ayri final
+**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`
+additional transcript evidence'i yeterli review input sayar, ancak validation
+stale/unknown-stage `subject_mismatch` granularity'sini final acceptance icin
+yetersiz bulur. PR #181 draft kalir ve gercek Phase-19 bounded implementation
+kabulü icin yeni implementation subject, yeniden bagli evidence ve ayri final
 acceptance karari gerekir.
 `CURRENT_PHASE=19` runtime source code, loader, installer, workspace runtime,
 plugin host, capability issuer, trust issuer, Semantic CLI authority veya AI
