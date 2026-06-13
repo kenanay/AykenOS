@@ -24,7 +24,7 @@ jobs:
       EXECUTION_TIMEOUT_RACE_QEMU_TIMEOUT: "45"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install QEMU and kernel toolchain
         run: |
@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload IRQ timeout race evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-gate-execution-timeout-race-${{ github.run_id }}
           path: |

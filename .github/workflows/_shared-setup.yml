@@ -14,7 +14,7 @@ jobs:
       cache-hit: ${{ steps.cache.outputs.cache-hit }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -31,7 +31,7 @@ jobs:
       
       - name: Cache build artifacts
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             out/build

@@ -23,7 +23,7 @@ jobs:
       EXECUTION_WORKER_COMPLETION_QEMU_TIMEOUT: "45"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install QEMU and kernel toolchain
         run: |
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload Ring3 worker completion evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-gate-execution-worker-completion-${{ github.run_id }}
           path: |

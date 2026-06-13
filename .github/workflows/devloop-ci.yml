@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -34,7 +34,7 @@ jobs:
       
       - name: Upload smoke logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-logs
           path: out/logs/
@@ -45,7 +45,7 @@ jobs:
     needs: smoke
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -59,7 +59,7 @@ jobs:
       
       - name: Upload contract logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contract-logs
           path: out/logs/
@@ -70,7 +70,7 @@ jobs:
     needs: contract
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -84,7 +84,7 @@ jobs:
       
       - name: Upload full logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: full-logs
           path: out/logs/
@@ -99,7 +99,7 @@ jobs:
     timeout-minutes: 30
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Full history required for bisect
       
@@ -188,7 +188,7 @@ jobs:
       
       - name: Upload bisect logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bisect-logs
           path: out/logs/bisect/
@@ -196,7 +196,7 @@ jobs:
       
       - name: Comment on PR with bisect result
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -241,7 +241,7 @@ jobs:
     needs: full
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -255,7 +255,7 @@ jobs:
       
       - name: Upload isolation logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: isolation-logs
           path: out/logs/
@@ -267,7 +267,7 @@ jobs:
     needs: isolation
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -287,7 +287,7 @@ jobs:
       
       - name: Upload performance logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: performance-logs
           path: out/logs/
