@@ -89,6 +89,10 @@ for the draft PR #181 bounded admission/receipt implementation subject. It is
 not acceptance review, merge authority, general runtime authority, or runtime
 activation.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the
+first acceptance review for that evidence package. It does not grant
+acceptance; additional transcript evidence remains required.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -104,6 +108,7 @@ decision package draft != implementation decision package
 implementation decision package != implementation PR
 implementation PR != evidence package
 evidence package != acceptance review
+acceptance review != acceptance
 evidence package != runtime acceptance
 ```
 

@@ -171,6 +171,11 @@ draft PR #181 bounded admission/receipt implementation subject. It is not
 acceptance review, merge authority, runtime activation, or general runtime
 authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the first
+acceptance review for that evidence package. Acceptance is not granted, PR
+#181 remains draft, and additional transcript evidence is required before
+acceptance can be reconsidered.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
