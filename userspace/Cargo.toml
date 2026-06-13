@@ -5,6 +5,7 @@ members = [
     "dsl-parser",
     "obs-cli",
     "orchestration",
+    "phase19-admission-receipt",
     "proofd",
     "semantic-cli",
 ]
