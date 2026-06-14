@@ -385,15 +385,15 @@ donusemez:
 
 ### S6 - Phase-19 Platform Runtime MVP Planning Boundary
 
-**Status:** ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY / IMPLEMENTATION NOT AUTHORIZED
+**Status:** ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY / IMPLEMENTATION ACCEPTANCE NOT GRANTED
 
 Phase-19 pointer transition `PHASE19_POINTER_TRANSITION_DECISION.md` ile
 kaydedilir. Bu karar `docs/roadmap/CURRENT_PHASE` pointer'ini `19` yapar,
 ancak yalniz Platform Runtime MVP planning, validation-integration,
-admission-record ve receipt-boundary authority kurar. Runtime source code,
-package installer, module loader, workspace runtime, plugin host, capability
-issuer, trust issuer, Semantic CLI authority veya AI Runtime authority
-kurmaz.
+admission-record ve receipt-boundary authority kurar. General runtime source
+code authority, package installer, module loader, workspace runtime, plugin
+host, capability issuer, trust issuer, Semantic CLI authority veya AI Runtime
+authority kurmaz.
 
 Runtime RFC seti `docs/specs/phase19-platform-runtime/` altinda aktiftir. Bu
 set runtime lifecycle, static input bundle, Platform ABI validation
@@ -480,8 +480,17 @@ bounded admission/receipt harness icin yeni implementation subject
 stage failure yuzeylerini ayri stable reason class'lara indirir. Bu kayit
 evidence package, acceptance review, acceptance, merge authority, runtime
 activation, parser, loader, installer, workspace runtime, issuer, Semantic CLI
-authority veya AI Runtime authority kurmaz; updated subject icin evidence
-regeneration veya reviewed re-bind halen gerekir.
+authority veya AI Runtime authority kurmaz; updated subject evidence'i ayri
+re-bind kaydinda tutulur ve acceptance halen ayridir.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`, updated
+implementation subject `64fa4762` icin evidence re-bind kaydidir. Bu re-bind
+positive, negative, determinism, production-default, ABI freeze ve remote
+exact-SHA evidence girdilerini yeni subject'e baglar. Bu kayit acceptance
+review, acceptance, merge authority, runtime activation, parser, loader,
+installer, workspace runtime, issuer, Semantic CLI authority veya AI Runtime
+authority kurmaz; PR #181 draft kalir ve ayri acceptance review/final karar
+gerekir.
 
 Phase-19 karar siniri su kurallari korur:
 
@@ -533,6 +542,12 @@ Phase-19 karar siniri su kurallari korur:
 21. Acceptance review update, acceptance veya merge authority degildir;
     validation stale/unknown-stage reason granularity yetersizse PR draft
     kalir ve yeni implementation subject gerekir.
+22. Reason-class update, evidence package veya acceptance degildir; updated
+    subject ancak ayri evidence regeneration/re-bind ve acceptance review ile
+    degerlendirilebilir.
+23. Evidence package re-bind, acceptance review veya acceptance degildir;
+    remote PASS dahil tum evidence girdileri ayri acceptance decision olmadan
+    PR'i ready veya merge-ready yapmaz.
 
 ## 7. PR Sequence and Coordination Matrix
 
@@ -582,6 +597,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Additional Transcript Evidence | ADDITIONAL TRANSCRIPT EVIDENCE / ACCEPTANCE NOT GRANTED | PR #181 acceptance review'unun istedigi eksik denial transcript ve denial-repeat evidence yuzeylerini docs-only baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` | Evidence acceptance review update, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Acceptance Review Update | ACCEPTANCE REVIEW UPDATE / ACCEPTANCE NOT GRANTED / NEW IMPLEMENTATION SUBJECT REQUIRED | Additional transcript evidence'i review etmek, transcript gap'leri evidence input olarak yeterli saymak ve validation stale/unknown-stage reason granularity'sini yetersiz bularak yeni implementation subject gerektirmek | `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` | Review update acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 | Phase-19 Runtime Implementation Reason-Class Update | IMPLEMENTATION SUBJECT UPDATE / EVIDENCE REGENERATION PENDING / ACCEPTANCE NOT GRANTED | Validation stale digest ve unknown validation stage reason class'larini ayiran bounded implementation subject `64fa4762` kaydini tutmak | `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` | Update evidence package, acceptance review, acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
+| Phase-19 Runtime Implementation Evidence Package Re-Bind | EVIDENCE PACKAGE RE-BIND / ACCEPTANCE NOT GRANTED / PR #181 DRAFT | Updated bounded subject `64fa4762` icin positive, negative, determinism, production-default, ABI freeze ve remote exact-SHA evidence girdilerini re-bind etmek | `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` | Re-bind acceptance review, acceptance, merge authority, runtime activation, parser, loader, installer, workspace runtime, issuer, trust, Semantic CLI veya AI Runtime authority grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1287,7 +1303,9 @@ Bu roadmap su olaylarda guncellenir:
 42. Phase-19 Runtime Implementation Acceptance Review sonucu.
 43. Phase-19 Runtime Implementation Additional Transcript Evidence sonucu.
 44. Phase-19 Runtime Implementation Acceptance Review Update sonucu.
-45. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+45. Phase-19 Runtime Implementation Reason-Class Update sonucu.
+46. Phase-19 Runtime Implementation Evidence Package Re-Bind sonucu.
+47. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1341,6 +1359,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`
+- `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

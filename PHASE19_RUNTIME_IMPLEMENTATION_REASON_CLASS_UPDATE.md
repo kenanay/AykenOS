@@ -16,7 +16,7 @@ reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
 conflict, those documents prevail unless this record is the narrower
 implementation-update record for the subject identified below.
 
-**Status:** IMPLEMENTATION SUBJECT UPDATE / EVIDENCE REGENERATION PENDING / ACCEPTANCE NOT GRANTED / PR #181 REMAINS DRAFT
+**Status:** IMPLEMENTATION SUBJECT UPDATE / EVIDENCE RE-BIND RECORDED SEPARATELY / ACCEPTANCE NOT GRANTED / PR #181 REMAINS DRAFT
 **Update date:** 2026-06-14
 **Update id:** `ayken.phase19.runtime_implementation_reason_class_update.v1`
 **Previous implementation subject SHA:** `22d5e86a1306f1d0cccc2cdf9772eac93003b372`
@@ -119,8 +119,10 @@ implementation subject:
 64fa476256e5572f91661f717f1312abcc6daf0d
 ```
 
-A later evidence package or reviewed re-bind record must bind the updated
-subject to:
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` later records
+review input for the updated subject. Acceptance remains separate.
+
+The updated subject must remain bound to:
 
 1. Positive transcript evidence.
 2. Negative denial transcript evidence.
@@ -155,8 +157,8 @@ This update does not approve:
 4. Acceptance of the bounded implementation.
 5. Closure of Phase-19.
 
-The next layer must regenerate or explicitly re-bind exact-SHA evidence for
-the updated implementation subject before acceptance can be reconsidered.
+The next acceptance layer must review the re-bound exact-SHA evidence before
+acceptance can be reconsidered.
 
 ## Non-Authority Rule
 
@@ -189,4 +191,5 @@ update is addressed in a bounded implementation subject.
 
 Acceptance is still not granted.
 
-Evidence regeneration or reviewed re-binding is required next.
+Evidence re-binding is recorded separately. Acceptance review remains
+required next.

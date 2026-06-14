@@ -193,8 +193,15 @@ implementation subject before PR #181 can leave draft status.
 implementation subject update that separates validation stale digest from
 unknown validation stage as distinct denial reason classes. It is not an
 evidence package, acceptance review, acceptance, merge authority, or general
-runtime authority. Evidence regeneration or reviewed re-binding remains
-required for the updated subject.
+runtime authority. Evidence re-binding is recorded separately and acceptance
+review remains required for the updated subject.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` records
+evidence re-binding for the updated bounded implementation subject
+`64fa4762`. It is not an acceptance review, acceptance, merge authority,
+runtime activation, or general runtime authority. PR #181 remains draft until
+a later acceptance review or final acceptance decision grants a narrower
+result.
 
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,

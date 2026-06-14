@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-06-14 (Phase-19 Runtime Implementation Additional Transcript Evidence)
+**Last authority sync:** 2026-06-14 (Phase-19 Runtime Implementation Evidence Re-Bind)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -106,7 +106,11 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
    validation stale digest ve unknown validation stage reason class'larini
    ayirir, ancak evidence package, acceptance review, acceptance veya
    merge/runtime authority kurmaz.
-34. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+34. `../../PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`:
+   evidence package re-bind; updated subject `64fa4762` icin evidence
+   girdilerini yeniden baglar, ancak acceptance review, acceptance veya
+   merge/runtime authority kurmaz.
+35. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -115,8 +119,8 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
-| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; runtime implementation remains out of scope |
-| Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin historical evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir; `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` bounded subject `64fa4762` kaydidir ve evidence regeneration pending tutar |
+| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; implementation acceptance and general runtime remain out of scope |
+| Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin historical evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir; `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` bounded subject `64fa4762` kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` updated subject evidence girdilerini re-bind eder ama acceptance grant etmez |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 | Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; implementation forbidden until a separate decision |
@@ -153,13 +157,12 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`
-validation stale digest ve unknown validation stage reason class'larini
-bounded implementation subject `64fa4762` ile ayirir. PR #181 draft kalir ve
-gercek Phase-19 bounded implementation kabulü icin updated subject'e yeniden
-bagli evidence package, remote exact-SHA PASS ve ayri acceptance karari
-gerekir.
-`CURRENT_PHASE=19` runtime source code, loader, installer, workspace runtime,
-plugin host, capability issuer, trust issuer, Semantic CLI authority veya AI
-Runtime authority vermez. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina
-gore denetlenir.
+**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`
+updated bounded subject `64fa4762` icin positive, negative, determinism,
+production-default, ABI freeze ve remote exact-SHA evidence girdilerini
+yeniden baglar. PR #181 draft kalir ve gercek Phase-19 bounded
+implementation kabulü icin ayri acceptance review/final karar gerekir.
+`CURRENT_PHASE=19` general runtime source code authority, loader, installer,
+workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI
+authority veya AI Runtime authority vermez. High-risk vocabulary
+`TERMINOLOGY_AUDIT.md` kaydina gore denetlenir.

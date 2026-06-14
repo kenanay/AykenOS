@@ -65,6 +65,10 @@
 > and unknown validation stage denial reason classes; it is not evidence
 > package, acceptance review, acceptance, merge authority, runtime activation,
 > or general runtime authority.
+> `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` records
+> evidence re-binding for updated subject `64fa4762`; it is not acceptance
+> review, acceptance, merge authority, runtime activation, or general runtime
+> authority.
 > `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` maps
 > future artifact/evidence rows for a later implementation decision; it is
 > not evidence PASS, a CI gate, or implementation authority.
@@ -85,7 +89,7 @@
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
 | Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Accepted Platform Constitution reference set; runtime implementation yetkisi degildir |
-| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` | Runtime MVP planning/admission/receipt boundary active; evidence matrix, implementation candidate, decision package candidate, draft, package, evidence package, acceptance review, additional transcript evidence, review update and reason-class update are bounded records; acceptance not granted; updated subject evidence regeneration required; implementation yetkisi yoktur |
+| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` | Runtime MVP planning/admission/receipt boundary active; evidence matrix, implementation candidate, decision package candidate, draft, package, evidence package, acceptance review, additional transcript evidence, review update, reason-class update and evidence re-bind are bounded records; acceptance not granted; acceptance review/final decision required; implementation yetkisi yoktur |
 | Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Ayri implementation karari olmadan runtime baslatilmaz; authority drift review guard ve terminology audit korunur |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
@@ -281,9 +285,9 @@ baseline kabul otoritesi de clean-tree PR CI incelemesidir.
 **En oncelikli adim:** `CURRENT_PHASE=19` pointer transition sonrasi
 Platform Runtime MVP planning/admission/receipt sinirini korumak ve runtime
 implementation'i ayri karar/evidence paketine kadar kapali tutmaktir.
-Runtime source code, loader, installer, workspace runtime, plugin host,
-capability issuer, trust issuer, Semantic CLI authority ve AI Runtime
-authority bu pointer ile baslatilmaz.
+General runtime source code authority, loader, installer, workspace runtime,
+plugin host, capability issuer, trust issuer, Semantic CLI authority ve AI
+Runtime authority bu pointer ile baslatilmaz.
 
 **Aktif plan:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
 - Phase-17 official closure dogrulandi; Phase-18 Platform Constitution
