@@ -12,11 +12,12 @@ reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`, and
-`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`. In case of
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`, and
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`. In case of
 conflict, those documents prevail unless this record is the narrower
 implementation-update record for the subject identified below.
 
-**Status:** IMPLEMENTATION SUBJECT UPDATE / EVIDENCE RE-BIND RECORDED SEPARATELY / ACCEPTANCE NOT GRANTED / PR #181 REMAINS DRAFT
+**Status:** IMPLEMENTATION SUBJECT UPDATE / EVIDENCE RE-BIND RECORDED SEPARATELY / FINAL ACCEPTANCE REVIEW RECORDED SEPARATELY / MERGE NOT AUTHORIZED
 **Update date:** 2026-06-14
 **Update id:** `ayken.phase19.runtime_implementation_reason_class_update.v1`
 **Previous implementation subject SHA:** `22d5e86a1306f1d0cccc2cdf9772eac93003b372`
@@ -120,7 +121,11 @@ implementation subject:
 ```
 
 `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` later records
-review input for the updated subject. Acceptance remains separate.
+review input for the updated subject.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` records the later
+final bounded acceptance review for the updated subject. This update itself
+does not grant acceptance or merge authority.
 
 The updated subject must remain bound to:
 
@@ -158,7 +163,8 @@ This update does not approve:
 5. Closure of Phase-19.
 
 The next acceptance layer must review the re-bound exact-SHA evidence before
-acceptance can be reconsidered.
+acceptance can be reconsidered. The later final acceptance review records
+that decision separately.
 
 ## Non-Authority Rule
 
@@ -189,7 +195,7 @@ Unknown authority readings fail closed.
 The reason-class granularity blocker identified by the acceptance review
 update is addressed in a bounded implementation subject.
 
-Acceptance is still not granted.
+This update itself does not grant acceptance.
 
-Evidence re-binding is recorded separately. Acceptance review remains
-required next.
+Evidence re-binding and final acceptance review are recorded separately.
+Merge authority remains separate.

@@ -199,9 +199,17 @@ review remains required for the updated subject.
 `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` records
 evidence re-binding for the updated bounded implementation subject
 `64fa4762`. It is not an acceptance review, acceptance, merge authority,
-runtime activation, or general runtime authority. PR #181 remains draft until
-a later acceptance review or final acceptance decision grants a narrower
-result.
+runtime activation, or general runtime authority. Final bounded acceptance is
+recorded separately and does not convert the re-bind record into merge
+authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` records final
+bounded implementation acceptance for updated subject `64fa4762`. It is
+exact-SHA scoped to the admission/receipt harness and is not merge authority,
+runtime activation, parser authority, loader authority, installer authority,
+workspace runtime authority, issuer authority, Semantic CLI authority, AI
+Runtime authority, syscall authority, kernel ABI expansion, or Phase-19
+closure authority.
 
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,

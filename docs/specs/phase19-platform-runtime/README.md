@@ -90,8 +90,9 @@ not acceptance review, merge authority, general runtime authority, or runtime
 activation.
 
 `../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the
-first acceptance review for that evidence package. It does not grant
-acceptance and PR #181 remains draft.
+first acceptance review for that evidence package. It did not grant
+acceptance for the original subject and required additional transcript
+evidence.
 
 `../../../PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`
 records additional denial transcript evidence requested by the first
@@ -110,13 +111,20 @@ bounded implementation subject update that separates validation stale digest
 from unknown validation stage as distinct denial reason classes. It is not an
 evidence package, acceptance review, acceptance, merge authority, or general
 runtime authority. Evidence re-binding is recorded separately and acceptance
-review remains required for the updated subject.
+review is recorded separately for the updated subject.
 
 `../../../PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` records
 evidence re-binding for updated implementation subject `64fa4762`. It is not
 an acceptance review, acceptance, merge authority, runtime activation, or
-general runtime authority. PR #181 remains draft pending a later acceptance
-review or final acceptance decision.
+general runtime authority. Final bounded acceptance review is recorded
+separately.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` records
+final bounded implementation acceptance for updated subject `64fa4762`. It is
+not merge authority, runtime activation, parser authority, loader authority,
+installer authority, workspace runtime authority, issuer authority, Semantic
+CLI authority, AI Runtime authority, syscall authority, kernel ABI expansion,
+or Phase-19 closure authority.
 
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
@@ -137,16 +145,16 @@ acceptance review != acceptance
 additional transcript evidence != acceptance
 reason-class update != evidence package
 evidence re-bind != acceptance review
-evidence package != runtime acceptance
+final acceptance review != merge authority
+bounded acceptance != runtime activation
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
-the Phase-19 Runtime MVP boundary is active as planning authority. A separate
-implementation decision, implementation RFC acceptance, runtime evidence
-implementation, and remote CI authority remain required before any runtime
-code can be accepted. The implementation decision candidate, package
-candidate, package draft, and implementation decision package narrow that
-future decision path, but none is itself runtime source code authority.
+the Phase-19 Runtime MVP boundary is active as planning authority. The final
+acceptance review grants only exact-SHA bounded admission/receipt
+implementation acceptance; merge, runtime activation, general runtime source
+code authority, loader, installer, workspace runtime, issuer, Semantic CLI
+authority and AI Runtime authority remain separate and closed.
 
 ## MVP Boundary
 

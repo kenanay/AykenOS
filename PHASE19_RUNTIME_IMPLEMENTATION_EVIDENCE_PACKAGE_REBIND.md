@@ -12,12 +12,13 @@ reference set, `AUTHORITY_DRIFT_GUARD.md`, `TERMINOLOGY_AUDIT.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`,
 `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`,
-`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`, and
-`PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`. In case of
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`,
+`PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`, and
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`. In case of
 conflict, those documents prevail unless this re-bind record is the narrower
 evidence record for the updated implementation subject identified below.
 
-**Status:** EVIDENCE PACKAGE RE-BIND / UPDATED SUBJECT RECORDED / ACCEPTANCE NOT GRANTED / PR #181 REMAINS DRAFT
+**Status:** EVIDENCE PACKAGE RE-BIND / UPDATED SUBJECT RECORDED / FINAL ACCEPTANCE REVIEW RECORDED SEPARATELY / MERGE NOT AUTHORIZED
 **Evidence re-bind date:** 2026-06-14
 **Evidence re-bind id:** `ayken.phase19.runtime_implementation_evidence_package_rebind.v1`
 **Previous implementation subject SHA:** `22d5e86a1306f1d0cccc2cdf9772eac93003b372`
@@ -266,9 +267,9 @@ implementation subject `64fa476256e5572f91661f717f1312abcc6daf0d`:
 Remote PASS is necessary evidence. It is not acceptance review, acceptance,
 or merge authority.
 
-## Acceptance Review Still Pending
+## Acceptance Review Relationship
 
-This re-bind does not complete acceptance review.
+This re-bind did not complete acceptance review by itself.
 
 Acceptance review must still decide whether:
 
@@ -284,6 +285,10 @@ If implementation source changes after this re-bind, all exact-SHA evidence
 must be regenerated or re-bound again. If only this evidence re-bind file
 changes, the documentation subject requires its own remote checks before it
 can be treated as an accepted documentation record.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` records the later
+final bounded acceptance review for updated subject `64fa4762`. This re-bind
+record itself remains evidence only and does not grant merge authority.
 
 ## PR State
 
@@ -331,6 +336,7 @@ re-bound as review input.
 
 The reason-class granularity blocker is addressed as evidence input.
 
-Acceptance is still not granted.
+This re-bind itself does not grant acceptance.
 
-PR #181 remains draft.
+Final bounded acceptance review is recorded separately. Merge authority
+remains separate.
