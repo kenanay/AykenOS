@@ -35,6 +35,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Current Main Exact-SHA Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`; records PR #181 merged at main SHA `ed7e2798` with post-merge strict freeze and full Dev Loop PASS, without runtime activation or Phase-19 closure
 - **Current Post-Merge Consistency Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`; records bounded consistency and authority-drift PASS while denying general RFC conformance and new implementation authority
 - **Current Reference Integrity Candidate Boundary:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`; records a candidate plus candidate evidence-matrix delta without implementation authority
+- **Current Reference Integrity Implementation Decision Boundary:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`; authorizes one later separate draft source PR within the one-file typed test-owned boundary, without source acceptance or merge authority
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize general runtime behavior; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -89,14 +90,15 @@ Current repo truth icin once su dosyalari referans alin:
 47. `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` — **Phase-19 PR #181 merged main exact-SHA evidence sync; runtime not activated**
 48. `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` — **Phase-19 bounded post-merge consistency review; general RFC conformance not granted**
 49. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` — **Phase-19 typed reference-integrity validation decision candidate; implementation not authorized**
-50. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-51. `reports/phase15_official_closure/closure_index.json`
-52. `reports/phase13_official_closure_candidate/closure_index.json`
-53. `reports/phase12_official_closure_candidate/closure_manifest.json`
-54. `reports/phase10_phase11_official_closure_index.json`
-55. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-56. `Makefile`
-57. `.github/workflows/ci-freeze.yml`
+50. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` — **Phase-19 bounded reference-integrity implementation decision; separate source PR only**
+51. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+52. `reports/phase15_official_closure/closure_index.json`
+53. `reports/phase13_official_closure_candidate/closure_index.json`
+54. `reports/phase12_official_closure_candidate/closure_manifest.json`
+55. `reports/phase10_phase11_official_closure_index.json`
+56. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+57. `Makefile`
+58. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -271,6 +273,9 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 34. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` —
     records the typed test-owned reference-integrity decision candidate and
     its candidate evidence-matrix delta without implementation authority.
+35. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` —
+    accepts one later separate draft source PR within the frozen one-file
+    boundary without source acceptance, merge, or runtime activation.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

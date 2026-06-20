@@ -14,7 +14,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Oluşturan:** Kenan AY
 **Düzenleyen / Geliştiren / Mimari Sorumlu:** Kenan AY *(bilgilendirme metadata'sı; runtime yetkisi değildir)*
 **Oluşturma Tarihi:** 01.01.2026
-**Son Güncelleme:** 20.06.2026
+**Son Güncelleme:** 21.06.2026
 **Closure Evidence:** `local-freeze-p10p11` + `local-phase11-closure` + `run-local-phase12c-closure-2026-03-11` + `run-local-p13-kill-switch-20260315T000051Z` + `phase15-official-closure` + `phase16-verification-layer-mvp-complete`
 **Evidence Git SHA (Phase-10/11):** `9cb2171b` | **Evidence Git SHA (Phase-12C):** `01d1cb5c` | **Evidence Git SHA (Phase-13):** `40158350` | **Evidence Git SHA (Phase-15):** `48970cd0` | **Evidence Git SHA (Phase-16):** `489868f8`
 **Closure Sync / Remote CI (Phase-10/11):** `fe9031d7` (`ci-freeze#22797401328 = success`)
@@ -46,6 +46,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 **Phase 19 Review-Fix Status:** Review findings produced bounded implementation subject `0a067dba`; `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md`, `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`, `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`, and `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` superseded inherited merge authority for the changed subject. PR #181 merged at main SHA `ed7e2798`; `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` records post-merge strict freeze `27869414821` and full Dev Loop `27869414805` PASS. Runtime activation, general runtime authority, and Phase-19 closure remain unauthorized.
 **Phase 19 Post-Merge Consistency:** `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` records bounded contract and authority-drift PASS. General parsing, independent reference-content digest verification, complete reference contract/schema binding, validation-stage-order verification, general RFC conformance, and new implementation authority remain ungranted.
 **Phase 19 Next Decision Candidate:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` records a docs-only candidate and candidate evidence-matrix delta for typed test-owned reference integrity. Implementation, parser, loader, installer, execution, runtime activation, general RFC conformance, and Phase-19 closure remain unauthorized.
+**Phase 19 Reference Integrity Implementation Decision:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` authorizes only one later separate draft source PR within a one-file typed test-owned boundary. Source is not included; evidence, acceptance, merge, parser, loader, execution, runtime activation, and closure remain separate.
 **Architecture Quick Map:** `docs/specs/phase12-trust-layer/AYKENOS_GATE_ARCHITECTURE.md`
 **Active Execution Roadmap:** `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | accepted `main` SHA `416a5392` uzerinde bounded Phase-17 uzak evidence PASS; official closure tag doğrulandı; `CURRENT_PHASE=19` runtime implementation yetkisi vermez
 **Canonical Technical Definition:** AykenOS is a deterministic verification architecture that separates kernel execution, verification semantics, evidence artifacts, and distributed diagnostics into explicit layers. The kernel provides mechanism, userspace verification services produce artifact-bound verdicts and receipts, and parity/topology surfaces expose cross-node observability without elevating diagnostics into authority or consensus.
@@ -63,6 +64,7 @@ This document is subordinate to PHASE 0 – FOUNDATIONAL OATH. In case of confli
 - **Current Main Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` records PR #181 merged at main SHA `ed7e2798` and post-merge strict freeze/full Dev Loop PASS; it does not activate runtime behavior, grant general runtime authority, or close Phase-19
 - **Current Consistency Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` records bounded post-merge consistency and authority-drift PASS; it does not grant general RFC conformance or authorize the next implementation slice
 - **Current Reference Integrity Candidate Boundary:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` defines canonical contract/schema/subject binding, SHA-256 recomputation, and exact stage-order evidence requirements without authorizing implementation
+- **Current Reference Integrity Implementation Decision Boundary:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` permits one later separate draft source PR after decision-record remote PASS; it does not accept source, evidence, merge, or runtime activation
 - **Verification Layer:** `COMPLETE` (MVP delivered 2026-04-25)
 - **Closure Index:** `reports/phase17_official_closure_candidate/closure_index.json`
 - **Phase-19 Authority Note:** `CURRENT_PHASE=19` activates only Runtime MVP planning, validation-integration, admission-record, and receipt-boundary authority; runtime implementation still requires a separate decision.
@@ -361,6 +363,7 @@ Phase 12 trust layer kapsamında tamamlananlar:
 - **Phase-19 Runtime Implementation Main Exact-SHA Evidence Sync:** `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`
 - **Phase-19 Runtime Implementation Post-Merge Consistency Review:** `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`
 - **Phase-19 Reference Integrity Validation Decision Candidate:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`
+- **Phase-19 Reference Integrity Validation Implementation Decision:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`
 - **Documentation Index:** `docs/development/DOCUMENTATION_INDEX.md`
 - **Ring3 User-Leaf Rule:** `docs/governance/RING3_USER_LEAF_ALLOCATION_RULE.md`
 - **Ring3 Runtime Closure Note:** `docs/governance/RING3_RUNTIME_CLOSURE_NOTE.md`
@@ -429,6 +432,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 - Phase-19 main exact-SHA evidence sync: `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`; PR #181 merge commit/main SHA `ed7e2798` icin post-merge `ci-freeze` ve full Dev Loop PASS'i baglar, runtime activation veya Phase-19 closure vermez.
 - Phase-19 post-merge consistency review: `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`; bounded subject icin contract/authority-drift PASS kaydeder, ancak general RFC conformance veya yeni implementation authority vermez.
 - Phase-19 reference integrity validation decision candidate: `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`; typed test-owned reference content, canonical contract/schema/subject binding, SHA-256 recomputation ve exact stage-order evidence sinirini aday olarak kaydeder, implementation authority vermez.
+- Phase-19 reference integrity validation implementation decision: `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`; yalnız ayrı bir draft source PR icin tek-dosya typed test-owned implementation sinirini kabul eder, source/evidence/acceptance/merge veya runtime activation vermez.
 - Phase-19 runtime MVP icin ayri implementation RFC/evidence plan/evidence matrix/closure boundary hazirlanmadikca package installer, workspace runtime, plugin loader, capability issuer veya trust issuer yazilmaz.
 
 **Orta Vadeli:**
@@ -444,7 +448,7 @@ AykenOS iki lisans modeli ile dağıtılır:
 
 ---
 
-**Son Güncelleme:** 20 Haziran 2026 - CURRENT_PHASE=19 planning/admission/receipt boundary olarak korunur. Bounded implementation subject `0a067dba`, PR #181 ile main SHA `ed7e2798` üzerinde merge edildi; post-merge `ci-freeze` run `27869414821` ve full Dev Loop run `27869414805` PASS sonucu `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` ile bağlandı. `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` bounded consistency/authority-drift PASS ve deferred general reference-integrity obligations kaydını ekledi. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` sonraki dar typed test-owned reference-integrity karar adayini ve candidate matrix delta'sini kaydeder; implementation authority vermez. Runtime activation, general runtime authority ve Phase-19 closure verilmedi.
+**Son Güncelleme:** 21 Haziran 2026 - CURRENT_PHASE=19 planning/admission/receipt boundary olarak korunur. Bounded implementation subject `0a067dba`, PR #181 ile main SHA `ed7e2798` üzerinde merge edildi; post-merge evidence sync ve consistency review tamamlandı. Reference-integrity candidate PR #185 ile main SHA `194d5e3e` üzerinde kabul edildi ve post-merge remote PASS aldı. `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` yalnız ayrı bir draft one-file source PR sinirini karar altina alir; source, evidence, acceptance, merge, runtime activation, general runtime authority ve Phase-19 closure verilmedi.
 **Düzenleyen / Geliştiren / Oluşturan / Mimari Sorumlu:** Kenan AY *(metadata only; runtime/karar yetkisi değildir).*
 
 **© 2026 Kenan AY — AykenOS Project**

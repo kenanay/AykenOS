@@ -178,6 +178,12 @@ contract/schema/subject binding, SHA-256 recomputation, and exact Phase-18
 stage-order verification. It does not authorize source changes, general
 parsing, loading, installation, execution, runtime activation, or closure.
 
+`../../../PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`
+accepts that candidate only for one later separate draft source PR limited to
+`userspace/phase19-admission-receipt/src/lib.rs`. Source is not included;
+evidence, acceptance, merge, runtime activation, general parsing, loading,
+installation, execution, and closure remain separate and unauthorized.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
