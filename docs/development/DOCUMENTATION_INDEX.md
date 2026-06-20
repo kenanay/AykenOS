@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-14
+**Last Updated:** 2026-06-20
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=19` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
@@ -26,6 +26,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Current Reason-Class Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`; records updated implementation subject `64fa4762` without granting acceptance
 - **Current Evidence Re-Bind Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`; re-binds evidence for updated subject `64fa4762` without granting acceptance by itself
 - **Current Final Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`; grants bounded implementation acceptance for subject `64fa4762` without merge authority or runtime activation
+- **Current Merge Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md`; reviews PR #181 merge-decision readiness without granting merge authority
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize general runtime behavior; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -71,14 +72,15 @@ Current repo truth icin once su dosyalari referans alin:
 38. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — **Phase-19 reason-class implementation update; final acceptance review separate**
 39. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` — **Phase-19 implementation evidence re-bind; not acceptance by itself**
 40. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` — **Phase-19 final bounded acceptance review; merge not authorized**
-41. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-42. `reports/phase15_official_closure/closure_index.json`
-43. `reports/phase13_official_closure_candidate/closure_index.json`
-44. `reports/phase12_official_closure_candidate/closure_manifest.json`
-45. `reports/phase10_phase11_official_closure_index.json`
-46. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-47. `Makefile`
-48. `.github/workflows/ci-freeze.yml`
+41. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` — **Phase-19 merge review; merge decision not granted**
+42. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+43. `reports/phase15_official_closure/closure_index.json`
+44. `reports/phase13_official_closure_candidate/closure_index.json`
+45. `reports/phase12_official_closure_candidate/closure_manifest.json`
+46. `reports/phase10_phase11_official_closure_index.json`
+47. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+48. `Makefile`
+49. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -141,13 +143,14 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 34. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — Phase-19 reason-class implementation update; not evidence package, acceptance review, or merge authority
 35. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` — Phase-19 implementation evidence re-bind; not acceptance review or merge authority
 36. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` — Phase-19 final bounded acceptance review; not merge authority or runtime activation
-37. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-38. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-39. `docs/specs/phase16-ayken-orchestration/README.md`
-40. `docs/specs/authority-lineage-v1/README.md`
-41. `docs/specs/phase14-distributed-observability/README.md`
-42. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-43. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+37. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` — Phase-19 merge review; not merge decision or merge authority
+38. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+39. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+40. `docs/specs/phase16-ayken-orchestration/README.md`
+41. `docs/specs/authority-lineage-v1/README.md`
+42. `docs/specs/phase14-distributed-observability/README.md`
+43. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+44. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -224,6 +227,9 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 25. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` —
     final bounded acceptance review; grants exact-SHA scoped acceptance for
     subject `64fa4762` and does not authorize merge or runtime activation.
+26. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` —
+    merge review; reviews PR #181 merge-decision readiness and does not
+    authorize merge, runtime activation, or Phase-19 closure.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

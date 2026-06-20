@@ -211,6 +211,12 @@ workspace runtime authority, issuer authority, Semantic CLI authority, AI
 Runtime authority, syscall authority, kernel ABI expansion, or Phase-19
 closure authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` records the later merge
+review for PR #181. It reviews whether the bounded acceptance chain may
+proceed to a separate merge decision after the merge-review subject receives
+remote PASS. It is not a merge decision, merge authority, runtime activation,
+general runtime authority, or Phase-19 closure authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

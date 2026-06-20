@@ -126,6 +126,12 @@ installer authority, workspace runtime authority, issuer authority, Semantic
 CLI authority, AI Runtime authority, syscall authority, kernel ABI expansion,
 or Phase-19 closure authority.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` records the merge
+review for PR #181 after final bounded acceptance and ready-for-review
+transition. It is not a merge decision, merge authority, runtime activation,
+general runtime authority, or Phase-19 closure authority. A separate merge
+decision remains required.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -146,14 +152,16 @@ additional transcript evidence != acceptance
 reason-class update != evidence package
 evidence re-bind != acceptance review
 final acceptance review != merge authority
+merge review != merge decision
 bounded acceptance != runtime activation
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
 the Phase-19 Runtime MVP boundary is active as planning authority. The final
 acceptance review grants only exact-SHA bounded admission/receipt
-implementation acceptance; merge, runtime activation, general runtime source
-code authority, loader, installer, workspace runtime, issuer, Semantic CLI
+implementation acceptance; the merge review only permits a later merge
+decision discussion. Merge, runtime activation, general runtime source code
+authority, loader, installer, workspace runtime, issuer, Semantic CLI
 authority and AI Runtime authority remain separate and closed.
 
 ## MVP Boundary
