@@ -71,8 +71,8 @@ subject `0a067dba`.
 PR #181 is conditionally authorized for bounded merge only when all of the
 following are simultaneously true:
 
-1. The commit adding this merge decision update receives required remote
-   exact-head PASS.
+1. The live PR head containing this merge decision update receives required
+   remote exact-head PASS.
 2. The live PR contains implementation subject `0a067dba` without later
    implementation source changes.
 3. The live base still contains baseline renewal `bb712923`.
