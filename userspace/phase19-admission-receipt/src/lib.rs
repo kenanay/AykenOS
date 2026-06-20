@@ -18,6 +18,7 @@ pub const WORKSPACE_ADMISSION_SCHEMA_ID: &str = "ayken.phase19.workspace_admissi
 pub const RUNTIME_RECEIPT_SCHEMA_ID: &str = "ayken.phase19.runtime.receipt.v1";
 pub const PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID: &str =
     "ayken.phase18.platform_abi_validation.receipt.v1";
+pub const PLATFORM_VALIDATION_RECEIPT_SCHEMA_VERSION: &str = "1";
 pub const FROZEN_SYSCALL_RANGE: &str = "1000-1011";
 pub const FROZEN_SYSCALL_COUNT: u16 = 12;
 pub const FROZEN_ABI_VERSION: &str = "0x00010001";
@@ -217,10 +218,13 @@ pub enum DenialReason {
     StaleManifestDigest,
     MissingValidationPolicyReference,
     MissingWorkspaceDeclaration,
+    StaleWorkspaceDeclaration,
+    WorkspaceDeclarationSubjectMismatch,
     SubjectMismatch,
     MissingPlatformValidation,
     PlatformValidationFailed,
     ValidationAuthorityDenied,
+    UnknownValidationSchemaVersion,
     ValidationStaleDigest,
     UnknownValidationStage,
     RealMountDenied,
@@ -287,6 +291,21 @@ pub fn run_harness(
         return denied_before_input(DenialReason::MissingWorkspaceDeclaration);
     }
 
+    let workspace_declaration_ref = bundle
+        .workspace_admission_request
+        .declaration_ref
+        .as_ref()
+        .expect("workspace declaration_ref checked above");
+    if workspace_declaration_ref.stale {
+        return denied_before_input(DenialReason::StaleWorkspaceDeclaration);
+    }
+
+    if let Some(subject) = &workspace_declaration_ref.subject {
+        if subject != &bundle.subject {
+            return denied_before_input(DenialReason::WorkspaceDeclarationSubjectMismatch);
+        }
+    }
+
     let manifest_ref = bundle
         .manifest_ref
         .as_ref()
@@ -328,6 +347,14 @@ pub fn run_harness(
             DenialReason::MissingPlatformValidation,
         );
     };
+
+    if validation.schema_version != PLATFORM_VALIDATION_RECEIPT_SCHEMA_VERSION {
+        return denied_after_input(
+            input_bound_transcript,
+            Some(input_bundle_digest),
+            DenialReason::UnknownValidationSchemaVersion,
+        );
+    }
 
     if validation.contract_id != PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID
         || validation.subject != bundle.subject
@@ -841,6 +868,15 @@ mod tests {
             Some(true),
         );
 
+        let mut unknown_schema = valid_validation(&bundle.subject);
+        unknown_schema.schema_version = "2".to_string();
+        assert_denied(
+            &bundle,
+            Some(&unknown_schema),
+            DenialReason::UnknownValidationSchemaVersion,
+            Some(true),
+        );
+
         let mut stale_validation = valid_validation(&bundle.subject);
         stale_validation.stale_digest = true;
         assert_denied(
@@ -857,6 +893,45 @@ mod tests {
             Some(&unknown_stage),
             DenialReason::UnknownValidationStage,
             Some(true),
+        );
+    }
+
+    #[test]
+    fn workspace_declaration_binding_fail_closed() {
+        let base = valid_bundle();
+        let validation = valid_validation(&base.subject);
+
+        let stale = with_bundle(&base, |bundle| {
+            bundle
+                .workspace_admission_request
+                .declaration_ref
+                .as_mut()
+                .expect("workspace declaration")
+                .stale = true;
+        });
+        assert_denied(
+            &stale,
+            Some(&validation),
+            DenialReason::StaleWorkspaceDeclaration,
+            None,
+        );
+
+        let mismatched = with_bundle(&base, |bundle| {
+            bundle
+                .workspace_admission_request
+                .declaration_ref
+                .as_mut()
+                .expect("workspace declaration")
+                .subject
+                .as_mut()
+                .expect("workspace declaration subject")
+                .digest = "sha256:workspace-subject-mismatch".to_string();
+        });
+        assert_denied(
+            &mismatched,
+            Some(&validation),
+            DenialReason::WorkspaceDeclarationSubjectMismatch,
+            None,
         );
     }
 
