@@ -111,6 +111,11 @@
 > contract/schema/subject binding, typed test-owned SHA-256 content binding,
 > and exact validation stage order. It does not authorize implementation,
 > parsing, loading, installation, execution, runtime activation, or closure.
+> `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`
+> accepts only one later separate draft source PR within the frozen one-file
+> typed test-owned boundary. It contains no source code and does not grant
+> evidence PASS, acceptance, merge, parsing, loading, execution, runtime
+> activation, general runtime authority, or closure.
 > `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` maps
 > future artifact/evidence rows for a later implementation decision; it is
 > not evidence PASS, a CI gate, or implementation authority.
@@ -135,6 +140,7 @@
 | Phase-19 review-fix update | `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` | Subject `0a067dba` bounded accepted; PR #181 main SHA `ed7e2798` uzerinde merge edildi; post-merge strict freeze ve full Dev Loop PASS exact-SHA baglandi |
 | Phase-19 post-merge consistency | `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` | Bounded contract/authority-drift PASS; general parser, full reference-integrity validation, general RFC conformance ve yeni implementation authority yoktur |
 | Phase-19 reference-integrity candidate | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` | Typed test-owned canonical reference binding, SHA-256 recomputation ve exact stage-order evidence adayi; implementation authority, parser, loader, installer veya execution yoktur |
+| Phase-19 reference-integrity implementation decision | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` | Yalniz ayri draft one-file source PR siniri; source acceptance, evidence, acceptance review, merge, parser, loader, execution veya runtime activation yoktur |
 | Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Review-fixed subject `0a067dba` PR #181 ile merge ve post-merge verified; runtime activation, general runtime authority, authority drift review guard ve terminology audit ayrik kalir |
 | Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Governed PR #182 baseline renewal `bb712923` ile `main`e kabul edildi; refreshed PR #181 head `d42c1d18` icin locked performance run `27855137608` ve `ci-freeze` run `27855137588` PASS |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
@@ -340,9 +346,10 @@ reference set olarak korunur; Phase-19 pointer transition yalnız
 planning/admission/receipt boundary kurar; review-fixed subject `0a067dba`
 PR #181 ile main SHA `ed7e2798` uzerinde merge ve post-merge verified;
 post-merge bounded consistency PASS kaydedildi. General reference-integrity
-validation icin typed test-owned decision candidate ve candidate matrix delta
-acildi; source code authority, runtime activation, general runtime authority
-ve Phase-19 closure ayri ve kapali kalir.
+validation candidate PR #185 ile main SHA `194d5e3e` uzerinde kabul edildi.
+Implementation decision yalniz ayri draft one-file source PR sinirini acar;
+source acceptance, evidence, merge, runtime activation, general runtime
+authority ve Phase-19 closure ayri ve kapali kalir.
 
 ---
 

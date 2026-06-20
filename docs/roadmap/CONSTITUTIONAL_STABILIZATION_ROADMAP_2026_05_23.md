@@ -555,6 +555,13 @@ Phase-18 stage-order verification karar adayini ve candidate evidence matrix
 delta'sini kaydeder. Source code, implementation decision, evidence PASS,
 runtime activation, general runtime authority veya Phase-19 closure kurmaz.
 
+`PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`, candidate
+sinirini yalniz bir sonraki ayri draft source PR icin tek dosya, mevcut
+dependency seti, typed test-owned content, canonical contract map, SHA-256
+recomputation, exact stage order, denial precedence ve matrix binding ile
+dondurur. Belge source code, evidence PASS, acceptance, merge authority,
+runtime activation, general runtime authority veya Phase-19 closure kurmaz.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -689,6 +696,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Main Exact-SHA Evidence Sync | PR #181 MERGED / POST-MERGE EXACT-SHA REMOTE PASS / RUNTIME NOT ACTIVATED | Merge commit/main SHA `ed7e2798` icin strict freeze ve full Dev Loop sonucunu baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` | Sync runtime activation, general runtime authority, loader, installer, executor veya Phase-19 closure grant degildir |
 | Phase-19 Runtime Implementation Post-Merge Consistency Review | BOUNDED CONSISTENCY PASS / AUTHORITY DRIFT NOT OBSERVED / GENERAL RFC CONFORMANCE NOT GRANTED | Merged bounded subject'i Phase-18/19 contract ve terminology sinirlarina karsi review etmek | `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` | Review yeni implementation decision, general parser, full reference-integrity validation, runtime activation veya Phase-19 closure grant degildir |
 | Phase-19 Reference Integrity Validation Decision Candidate | CANDIDATE / MATRIX DELTA CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Typed test-owned reference content icin canonical contract/schema/subject binding, SHA-256 recomputation ve exact stage-order evidence sinirini daraltmak | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` | Candidate source code, parser, loader, installer, execution, evidence PASS, runtime activation veya Phase-19 closure grant degildir |
+| Phase-19 Reference Integrity Validation Implementation Decision | IMPLEMENTATION DECISION / SEPARATE SOURCE PR ONLY / SOURCE NOT INCLUDED | Candidate sinirini tek-dosya typed test-owned source PR, denial precedence ve exact-SHA evidence kosullariyla dondurmak | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` | Decision source acceptance, evidence PASS, acceptance, merge, parser, loader, execution, runtime activation veya Phase-19 closure grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1406,7 +1414,8 @@ Bu roadmap su olaylarda guncellenir:
 54. Phase-19 Runtime Implementation Main Exact-SHA Evidence Sync sonucu.
 55. Phase-19 Runtime Implementation Post-Merge Consistency Review sonucu.
 56. Phase-19 Reference Integrity Validation Decision Candidate sonucu.
-57. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+57. Phase-19 Reference Integrity Validation Implementation Decision sonucu.
+58. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1471,6 +1480,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`
 - `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`
+- `PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`

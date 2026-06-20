@@ -270,6 +270,14 @@ an implementation decision, source code authority, evidence PASS, acceptance,
 merge authority, runtime activation, general RFC conformance, or Phase-19
 closure.
 
+`PHASE19_REFERENCE_INTEGRITY_VALIDATION_IMPLEMENTATION_DECISION.md` accepts
+that candidate only as the boundary for one separate draft source PR. It
+freezes the one-file source scope, typed data shape, canonical contract map,
+digest rules, exact stage sequence, denial classes and precedence, and
+evidence obligations. It contains no source code and does not grant evidence
+PASS, acceptance, merge authority, general parsing, runtime activation,
+general runtime authority, or Phase-19 closure.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
