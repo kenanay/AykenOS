@@ -133,7 +133,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 41. `../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`:
    updated subject icin conditional merge decision kaydidir; kendi remote
    PASS'i, resolved review threads ve current maintainer action gerektirir.
-42. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+42. `../../PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`:
+   PR #181 merge commit/main SHA `ed7e2798` ve post-merge exact-SHA remote
+   PASS kaydidir; runtime activation veya Phase-19 closure kurmaz.
+43. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -142,12 +145,12 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
-| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; review-fixed subject `0a067dba` bounded accepted; updated conditional merge decision recorded; PR merge, runtime activation and general runtime remain separate |
+| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; review-fixed subject `0a067dba` PR #181 ile main SHA `ed7e2798` uzerinde merge ve post-merge verified; runtime activation and general runtime remain separate |
 | Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin historical evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir; `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` bounded subject `64fa4762` kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` updated subject evidence girdilerini re-bind eder; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` bounded acceptance grant eder; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` merge decision'a gecis review kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` decision-record remote PASS ve canli maintainer action kosuluyla bounded merge authorization kaydeder, ancak PR'i merge etmez veya runtime'i aktive etmez |
-| Current review-fix boundary | `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` subject `0a067dba` kaydidir; evidence re-bind ve post-review acceptance ayri kayitlidir; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` onceki merge decision'i changed subject icin supersede eder ve halen PR'i merge etmez |
+| Current review-fix boundary | `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` subject `0a067dba` kaydidir; evidence re-bind, post-review acceptance ve merge decision update ayri kayitlidir; `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` PR #181 merge commit `ed7e2798` icin post-merge strict freeze ve full Dev Loop PASS'i baglar |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
-| Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; bounded admission/receipt implementation accepted exact-SHA scoped; merge and general runtime authority remain separate |
+| Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; bounded admission/receipt PR #181 merged and post-merge verified at `ed7e2798`; runtime activation, general runtime authority and Phase-19 closure remain closed |
 
 ## Active Execution Rule
 
@@ -181,12 +184,10 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`
-PR #181 updated subject `0a067dba` icin conditional bounded merge
-authorization kaydini tutar. Bu karar-update head'i remote PASS, resolved
-review threads ve canli maintainer action olmadan kullanilamaz; merge
-completion, runtime activation ve main exact-SHA sync ayri governance
-adimlaridir.
+**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`
+PR #181 updated subject `0a067dba` merge commit/main SHA `ed7e2798` ve
+post-merge strict freeze/full Dev Loop PASS kaydini tutar. Merge completion
+runtime activation, general runtime authority veya Phase-19 closure degildir.
 `CURRENT_PHASE=19` general runtime source code authority, loader, installer,
 workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI
 authority veya AI Runtime authority vermez. High-risk vocabulary
