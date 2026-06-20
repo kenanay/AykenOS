@@ -261,6 +261,15 @@ explicitly denying general parser, full reference-integrity validation,
 general RFC conformance, new implementation authority, runtime activation,
 general runtime authority, and Phase-19 closure.
 
+`PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` records the
+narrowest candidate for a later typed, test-owned reference-integrity
+validation slice. It contains its own candidate evidence-matrix delta and
+limits the proposal to canonical contract/schema/subject binding, SHA-256
+content recomputation, and structured Phase-18 stage-order checks. It is not
+an implementation decision, source code authority, evidence PASS, acceptance,
+merge authority, runtime activation, general RFC conformance, or Phase-19
+closure.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

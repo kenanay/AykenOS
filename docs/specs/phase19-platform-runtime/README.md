@@ -171,6 +171,13 @@ complete reference contract/schema binding, validation-stage-order
 verification, general RFC conformance, and runtime activation remain unproven
 and unauthorized.
 
+`../../../PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`
+records the next narrow decision candidate and its candidate evidence-matrix
+delta. It is limited to typed test-owned reference content, canonical
+contract/schema/subject binding, SHA-256 recomputation, and exact Phase-18
+stage-order verification. It does not authorize source changes, general
+parsing, loading, installation, execution, runtime activation, or closure.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
