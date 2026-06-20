@@ -140,6 +140,24 @@ review/merge action must be recorded before merge; runtime activation,
 general runtime authority, loader/installer/executor authority, and Phase-19
 closure remain unauthorized.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` records
+updated implementation subject `0a067dba` after stale/mismatched workspace
+declaration and unknown validation-schema review findings were confirmed. The
+prior merge decision fails closed for the changed subject.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`
+re-binds exact-SHA evidence for `0a067dba` without granting acceptance or
+merge authority.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`
+grants only bounded implementation acceptance for `0a067dba`.
+
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` records the
+conditional merge decision for the updated subject. Its own remote PASS,
+resolved review threads, and a current maintainer action remain mandatory;
+merge completion, runtime activation, general runtime authority, and Phase-19
+closure remain separate.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -163,16 +181,18 @@ final acceptance review != merge authority
 merge review != merge decision
 merge decision != merge completion
 merge decision != runtime activation
+source change != inherited merge decision
+review finding closure != merge authority
 bounded acceptance != runtime activation
 ```
 
 The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
 the Phase-19 Runtime MVP boundary is active as planning authority. The final
 acceptance review grants only exact-SHA bounded admission/receipt
-implementation acceptance; the merge review only permits a later merge
-decision discussion. The merge decision records only a conditional bounded
-authorization that still requires decision-record remote PASS and a live
-maintainer action. Merge completion, runtime activation, general runtime
+implementation acceptance. The post-review acceptance is bound to subject
+`0a067dba`; the merge decision update records only a conditional bounded
+authorization that still requires decision-update remote PASS, resolved
+review threads, and a live maintainer action. Merge completion, runtime activation, general runtime
 source code authority, loader, installer, executor, workspace runtime,
 issuer, Semantic CLI authority and AI Runtime authority remain separate and
 closed.

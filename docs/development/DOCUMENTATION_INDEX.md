@@ -28,6 +28,10 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Current Final Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`; grants bounded implementation acceptance for subject `64fa4762` without merge authority or runtime activation
 - **Current Merge Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md`; reviews PR #181 merge-decision readiness without granting merge authority
 - **Current Merge Decision Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md`; conditionally authorizes bounded PR #181 merge only after decision-record remote PASS and recorded maintainer action, without runtime activation or Phase-19 closure
+- **Current Review Findings Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md`; records updated implementation subject `0a067dba` and invalidates inherited merge authority
+- **Current Review Findings Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`; re-binds exact-SHA evidence without granting acceptance by itself
+- **Current Post-Review Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`; grants bounded acceptance for `0a067dba` without merge authority
+- **Current Merge Decision Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`; supersedes the prior merge decision for the updated subject and remains conditional on remote PASS, resolved threads, and maintainer action
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize general runtime behavior; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -75,7 +79,11 @@ Current repo truth icin once su dosyalari referans alin:
 40. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` — **Phase-19 final bounded acceptance review; merge not authorized**
 41. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` — **Phase-19 merge review; merge decision not granted**
 42. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` — **Phase-19 conditional bounded merge decision; PR not merged and runtime not activated**
-43. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+43. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` — **Phase-19 review findings implementation update; new subject requires re-bind**
+44. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` — **Phase-19 review findings evidence re-bind; not acceptance by itself**
+45. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` — **Phase-19 post-review bounded acceptance; merge separate**
+46. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` — **Phase-19 updated conditional merge decision; PR not merged**
+47. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
 44. `reports/phase15_official_closure/closure_index.json`
 45. `reports/phase13_official_closure_candidate/closure_index.json`
 46. `reports/phase12_official_closure_candidate/closure_manifest.json`
@@ -237,6 +245,16 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
     conditional bounded merge decision; requires decision-record remote PASS
     and recorded maintainer action and does not activate runtime or close
     Phase-19.
+28. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` —
+    records bounded subject `0a067dba` and makes the prior merge decision
+    inapplicable to the changed source.
+29. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` —
+    re-binds local and remote evidence for `0a067dba` without acceptance.
+30. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` —
+    grants bounded acceptance for `0a067dba` without merge authority.
+31. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` —
+    records the updated conditional merge decision without merge completion,
+    runtime activation, or Phase-19 closure.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

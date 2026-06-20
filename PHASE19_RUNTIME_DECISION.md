@@ -225,6 +225,27 @@ review/merge action is recorded. It is not merge completion, runtime
 activation, general runtime authority, loader/installer/executor authority,
 or Phase-19 closure authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` records the later
+bounded implementation subject `0a067dba` after two unresolved review
+findings were confirmed. It makes the prior merge decision inapplicable to
+the updated source and does not grant acceptance or merge authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` re-binds
+local, matrix, ABI/default, and remote exact-SHA evidence to subject
+`0a067dba`. It is not acceptance review, merge authority, runtime activation,
+general runtime authority, or Phase-19 closure.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` grants
+bounded implementation acceptance for subject `0a067dba` after reviewing the
+workspace-declaration and validation-schema fixes. It is not merge authority,
+runtime activation, general runtime authority, or Phase-19 closure.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` supersedes the
+prior merge decision only for the updated PR #181 subject. It conditionally
+authorizes bounded merge after its own record head passes remotely, addressed
+review threads are resolved, and a current maintainer action is recorded. It
+does not merge the PR or activate runtime authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
