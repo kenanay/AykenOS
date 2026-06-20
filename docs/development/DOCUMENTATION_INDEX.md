@@ -1,7 +1,7 @@
 # AykenOS Documentation Index
 This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict, Phase 0 prevails.
 
-**Last Updated:** 2026-06-13
+**Last Updated:** 2026-06-20
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution Boundary:** Human-readable documentation metadata only; not runtime authority or execution evidence.
 **Current Authority Basis:** `phase17-official-closure` + `CURRENT_PHASE=19` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md`
@@ -17,9 +17,22 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=19`
 - **Active Phase:** Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only
-- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority without runtime implementation
-- **Accepted Decision Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`; source code remains unauthorized until a separate implementation PR, evidence package, remote PASS, and acceptance review
-- **Scope Boundary:** `CURRENT_PHASE=19` does not authorize runtime implementation; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
+- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority with exact-SHA bounded implementation acceptance and conditional merge decision, without runtime activation or authority expansion
+- **Accepted Decision Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`; bounded implementation acceptance is exact-SHA scoped and merge remains separate
+- **Current Evidence Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`; records historical draft PR #181 subject `22d5e86a` evidence
+- **Current Acceptance Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`; acceptance is not granted and PR #181 remains draft
+- **Current Additional Transcript Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`; binds missing denial transcript evidence without granting acceptance
+- **Current Acceptance Review Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`; accepts additional transcript evidence as input but requires a new implementation subject before acceptance
+- **Current Reason-Class Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`; records updated implementation subject `64fa4762` without granting acceptance
+- **Current Evidence Re-Bind Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`; re-binds evidence for updated subject `64fa4762` without granting acceptance by itself
+- **Current Final Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`; grants bounded implementation acceptance for subject `64fa4762` without merge authority or runtime activation
+- **Current Merge Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md`; reviews PR #181 merge-decision readiness without granting merge authority
+- **Current Merge Decision Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md`; conditionally authorizes bounded PR #181 merge only after decision-record remote PASS and recorded maintainer action, without runtime activation or Phase-19 closure
+- **Current Review Findings Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md`; records updated implementation subject `0a067dba` and invalidates inherited merge authority
+- **Current Review Findings Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`; re-binds exact-SHA evidence without granting acceptance by itself
+- **Current Post-Review Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`; grants bounded acceptance for `0a067dba` without merge authority
+- **Current Merge Decision Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`; supersedes the prior merge decision for the updated subject and remains conditional on remote PASS, resolved threads, and maintainer action
+- **Scope Boundary:** `CURRENT_PHASE=19` does not authorize general runtime behavior; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
 Current repo truth icin once su dosyalari referans alin:
@@ -57,14 +70,27 @@ Current repo truth icin once su dosyalari referans alin:
 31. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` — **Phase-19 implementation decision package candidate; runtime source code not authorized**
 32. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` — **Phase-19 implementation decision package draft; runtime source code not authorized**
 33. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` — **Phase-19 implementation decision package boundary; runtime source code not authorized**
-34. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-35. `reports/phase15_official_closure/closure_index.json`
-36. `reports/phase13_official_closure_candidate/closure_index.json`
-37. `reports/phase12_official_closure_candidate/closure_manifest.json`
-38. `reports/phase10_phase11_official_closure_index.json`
-39. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-40. `Makefile`
-41. `.github/workflows/ci-freeze.yml`
+34. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` — **Phase-19 implementation evidence package; not acceptance**
+35. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` — **Phase-19 implementation acceptance review; acceptance not granted**
+36. `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` — **Phase-19 additional transcript evidence; acceptance not granted**
+37. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` — **Phase-19 acceptance review update; new implementation subject required**
+38. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — **Phase-19 reason-class implementation update; final acceptance review separate**
+39. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` — **Phase-19 implementation evidence re-bind; not acceptance by itself**
+40. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` — **Phase-19 final bounded acceptance review; merge not authorized**
+41. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` — **Phase-19 merge review; merge decision not granted**
+42. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` — **Phase-19 conditional bounded merge decision; PR not merged and runtime not activated**
+43. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` — **Phase-19 review findings implementation update; new subject requires re-bind**
+44. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` — **Phase-19 review findings evidence re-bind; not acceptance by itself**
+45. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` — **Phase-19 post-review bounded acceptance; merge separate**
+46. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` — **Phase-19 updated conditional merge decision; PR not merged**
+47. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+44. `reports/phase15_official_closure/closure_index.json`
+45. `reports/phase13_official_closure_candidate/closure_index.json`
+46. `reports/phase12_official_closure_candidate/closure_manifest.json`
+47. `reports/phase10_phase11_official_closure_index.json`
+48. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+49. `Makefile`
+50. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -120,13 +146,22 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 27. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` — Phase-19 implementation decision package candidate; not implementation authority
 28. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` — Phase-19 implementation decision package draft; not implementation authority
 29. `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` — Phase-19 implementation decision package boundary; not implementation authority
-30. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
-31. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
-32. `docs/specs/phase16-ayken-orchestration/README.md`
-33. `docs/specs/authority-lineage-v1/README.md`
-34. `docs/specs/phase14-distributed-observability/README.md`
-35. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
-36. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
+30. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` — Phase-19 implementation evidence package; not acceptance review or merge authority
+31. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` — Phase-19 implementation acceptance review; acceptance not granted and PR #181 remains draft
+32. `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` — Phase-19 implementation additional transcript evidence; not acceptance review update or merge authority
+33. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` — Phase-19 acceptance review update; acceptance not granted and new implementation subject required
+34. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` — Phase-19 reason-class implementation update; not evidence package, acceptance review, or merge authority
+35. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` — Phase-19 implementation evidence re-bind; not acceptance review or merge authority
+36. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` — Phase-19 final bounded acceptance review; not merge authority or runtime activation
+37. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` — Phase-19 merge review; not merge decision or merge authority
+38. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` — Phase-19 conditional bounded merge decision; not merge completion, runtime activation, or Phase-19 closure
+39. `PHASE18_ROADMAP.md` — historical pre-closure runtime-validation roadmap
+40. `docs/roadmap/overview.md` — historical 2026-04-24 snapshot only
+41. `docs/specs/phase16-ayken-orchestration/README.md`
+42. `docs/specs/authority-lineage-v1/README.md`
+43. `docs/specs/phase14-distributed-observability/README.md`
+44. `docs/specs/phase14-distributed-observability/PHASE14_ARCHITECTURE_MAP.md`
+44. `docs/specs/phase14-distributed-observability/PHASE14_DEVELOPMENT_TRACKER.md`
 
 ## Phase-18 Reference Set
 1. `PHASE18_TRANSITION_DECISION.md`
@@ -179,6 +214,47 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
     implementation decision package boundary; accepts the exact-SHA package
     boundary and does not authorize implementation PR, evidence package,
     acceptance review, or runtime source code.
+19. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` —
+    implementation evidence package; records draft PR #181 subject evidence
+    and does not authorize acceptance review, merge, or runtime authority.
+20. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` —
+    implementation acceptance review; does not grant acceptance and keeps PR
+    #181 draft.
+21. `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` —
+    additional transcript evidence; binds missing denial transcript surfaces
+    and does not grant acceptance, acceptance review update, merge, or runtime
+    authority.
+22. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` —
+    acceptance review update; accepts additional transcript evidence as input,
+    rejects current reason-class granularity for final acceptance, and
+    requires a new implementation subject without granting merge or runtime
+    authority.
+23. `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` —
+    reason-class implementation update; records subject `64fa4762` and
+    does not authorize acceptance, merge, or runtime authority.
+24. `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` —
+    evidence package re-bind; records updated subject `64fa4762` evidence
+    inputs and does not authorize acceptance, merge, or runtime authority.
+25. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` —
+    final bounded acceptance review; grants exact-SHA scoped acceptance for
+    subject `64fa4762` and does not authorize merge or runtime activation.
+26. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` —
+    merge review; reviews PR #181 merge-decision readiness and does not
+    authorize merge, runtime activation, or Phase-19 closure.
+27. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` —
+    conditional bounded merge decision; requires decision-record remote PASS
+    and recorded maintainer action and does not activate runtime or close
+    Phase-19.
+28. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` —
+    records bounded subject `0a067dba` and makes the prior merge decision
+    inapplicable to the changed source.
+29. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` —
+    re-binds local and remote evidence for `0a067dba` without acceptance.
+30. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` —
+    grants bounded acceptance for `0a067dba` without merge authority.
+31. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` —
+    records the updated conditional merge decision without merge completion,
+    runtime activation, or Phase-19 closure.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

@@ -2,7 +2,7 @@
 This document is subordinate to `ARCHITECTURE_FREEZE.md`. In case of conflict,
 the freeze contract prevails.
 
-**Last authority sync:** 2026-06-13 (Phase-19 Runtime Implementation Decision Package)
+**Last authority sync:** 2026-06-20 (Phase-19 Runtime Implementation Merge Decision Update)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Attribution boundary:** Documentation metadata only; not runtime or merge authority.
 
@@ -87,7 +87,53 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
    implementation decision package; exact-SHA package boundary'sini kabul
    eder, implementation PR, evidence package, acceptance review veya runtime
    source code authority kurmaz.
-29. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+29. `../../PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`:
+   implementation evidence package; draft PR #181 subject `22d5e86a` icin
+   evidence record'dur, acceptance review, merge authority veya runtime
+   authority kurmaz.
+30. `../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`:
+   implementation acceptance review; acceptance grant etmez, PR #181'i draft
+   tutar ve merge/runtime authority kurmaz.
+31. `../../PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md`:
+   additional transcript evidence; missing denial transcript evidence'i
+   baglar, acceptance review update veya merge/runtime authority kurmaz.
+32. `../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md`:
+   acceptance review update; additional transcript evidence'i yeterli input
+   sayar, ancak validation stale/unknown-stage reason granularity icin yeni
+   implementation subject gerektirir ve merge/runtime authority kurmaz.
+33. `../../PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md`:
+   reason-class implementation update; bounded subject `64fa4762` ile
+   validation stale digest ve unknown validation stage reason class'larini
+   ayirir, ancak evidence package, acceptance review, acceptance veya
+   merge/runtime authority kurmaz.
+34. `../../PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md`:
+   evidence package re-bind; updated subject `64fa4762` icin evidence
+   girdilerini yeniden baglar, ancak acceptance review, acceptance veya
+   merge/runtime authority kurmaz.
+35. `../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md`:
+   final bounded acceptance review; updated subject `64fa4762` icin exact-SHA
+   scoped acceptance grant eder, ancak merge/runtime activation authority
+   kurmaz.
+36. `../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md`:
+   merge review; PR #181 icin merge decision'a gecis review kaydidir, ancak
+   merge decision, merge authority veya runtime activation authority kurmaz.
+37. `../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md`:
+   conditional bounded merge decision; decision-record remote PASS ve canli
+   maintainer action olmadan kullanilamaz, merge completion, runtime
+   activation veya Phase-19 closure authority kurmaz.
+38. `../../PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md`:
+   confirmed review findings icin bounded implementation subject `0a067dba`
+   kaydidir; acceptance veya merge authority kurmaz.
+39. `../../PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`:
+   updated subject evidence re-bind kaydidir; acceptance veya merge authority
+   kurmaz.
+40. `../../PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`:
+   subject `0a067dba` icin bounded acceptance grant eder; merge veya runtime
+   activation authority kurmaz.
+41. `../../PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`:
+   updated subject icin conditional merge decision kaydidir; kendi remote
+   PASS'i, resolved review threads ve current maintainer action gerektirir.
+42. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -96,11 +142,12 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 |---|---|
 | Son resmi kapanis | Phase-17 OFFICIALLY CLOSED (`phase17-official-closure` at `416a5392`) |
 | Aktif faz | Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only |
-| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; runtime implementation remains out of scope |
-| Current docs-only boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; source code remains unauthorized until a separate implementation PR, evidence package, remote PASS and acceptance review |
+| Aktif odak | Phase-19 planning/admission/receipt authority maintenance; review-fixed subject `0a067dba` bounded accepted; updated conditional merge decision recorded; PR merge, runtime activation and general runtime remain separate |
+| Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin historical evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir; `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` bounded subject `64fa4762` kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` updated subject evidence girdilerini re-bind eder; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` bounded acceptance grant eder; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` merge decision'a gecis review kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` decision-record remote PASS ve canli maintainer action kosuluyla bounded merge authorization kaydeder, ancak PR'i merge etmez veya runtime'i aktive etmez |
+| Current review-fix boundary | `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` subject `0a067dba` kaydidir; evidence re-bind ve post-review acceptance ayri kayitlidir; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` onceki merge decision'i changed subject icin supersede eder ve halen PR'i merge etmez |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
-| Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; implementation forbidden until a separate decision |
+| Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; bounded admission/receipt implementation accepted exact-SHA scoped; merge and general runtime authority remain separate |
 
 ## Active Execution Rule
 
@@ -134,12 +181,13 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`
-exact-SHA implementation decision package boundary'sini docs-only olarak kabul
-eder. Gercek Phase-19 runtime implementation ancak ayri implementation PR,
-ayri evidence package, remote PASS ve acceptance review ile
-degerlendirilebilir.
-`CURRENT_PHASE=19` runtime source code, loader, installer, workspace runtime,
-plugin host, capability issuer, trust issuer, Semantic CLI authority veya AI
-Runtime authority vermez. High-risk vocabulary `TERMINOLOGY_AUDIT.md` kaydina
-gore denetlenir.
+**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`
+PR #181 updated subject `0a067dba` icin conditional bounded merge
+authorization kaydini tutar. Bu karar-update head'i remote PASS, resolved
+review threads ve canli maintainer action olmadan kullanilamaz; merge
+completion, runtime activation ve main exact-SHA sync ayri governance
+adimlaridir.
+`CURRENT_PHASE=19` general runtime source code authority, loader, installer,
+workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI
+authority veya AI Runtime authority vermez. High-risk vocabulary
+`TERMINOLOGY_AUDIT.md` kaydina gore denetlenir.

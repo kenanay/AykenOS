@@ -166,6 +166,86 @@ implementation decision package boundary. It is not an implementation PR,
 evidence package, remote PASS result, acceptance review, or runtime source
 code authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` records evidence for the
+draft PR #181 bounded admission/receipt implementation subject. It is not
+acceptance review, merge authority, runtime activation, or general runtime
+authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` records the first
+acceptance review for that evidence package. Acceptance is not granted and PR
+#181 remains draft.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` records
+additional denial transcript evidence for the missing-reference, stale-digest,
+subject-mismatch, validation-authority, validation-stale, validation-unknown,
+and denial-repeat surfaces identified by the first acceptance review. It is
+not an acceptance review update, acceptance, merge authority, runtime
+activation, or general runtime authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` records the
+second-layer review of that additional transcript evidence. It accepts the
+additional transcript evidence as sufficient review input, but does not grant
+acceptance because validation stale digest and validation unknown stage still
+collapse to the existing `subject_mismatch` reason class. It requires a new
+implementation subject before PR #181 can leave draft status.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` records the bounded
+implementation subject update that separates validation stale digest from
+unknown validation stage as distinct denial reason classes. It is not an
+evidence package, acceptance review, acceptance, merge authority, or general
+runtime authority. Evidence re-binding is recorded separately and acceptance
+review remains required for the updated subject.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` records
+evidence re-binding for the updated bounded implementation subject
+`64fa4762`. It is not an acceptance review, acceptance, merge authority,
+runtime activation, or general runtime authority. Final bounded acceptance is
+recorded separately and does not convert the re-bind record into merge
+authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` records final
+bounded implementation acceptance for updated subject `64fa4762`. It is
+exact-SHA scoped to the admission/receipt harness and is not merge authority,
+runtime activation, parser authority, loader authority, installer authority,
+workspace runtime authority, issuer authority, Semantic CLI authority, AI
+Runtime authority, syscall authority, kernel ABI expansion, or Phase-19
+closure authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` records the later merge
+review for PR #181. It reviews whether the bounded acceptance chain may
+proceed to a separate merge decision after the merge-review subject receives
+remote PASS. It is not a merge decision, merge authority, runtime activation,
+general runtime authority, or Phase-19 closure authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` records the conditional
+bounded merge decision for PR #181 after baseline-renewal PR #182 merged and
+the refreshed PR head received remote PASS. The decision can be exercised
+only after its own record head receives remote PASS and a live maintainer
+review/merge action is recorded. It is not merge completion, runtime
+activation, general runtime authority, loader/installer/executor authority,
+or Phase-19 closure authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` records the later
+bounded implementation subject `0a067dba` after two unresolved review
+findings were confirmed. It makes the prior merge decision inapplicable to
+the updated source and does not grant acceptance or merge authority.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` re-binds
+local, matrix, ABI/default, and remote exact-SHA evidence to subject
+`0a067dba`. It is not acceptance review, merge authority, runtime activation,
+general runtime authority, or Phase-19 closure.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` grants
+bounded implementation acceptance for subject `0a067dba` after reviewing the
+workspace-declaration and validation-schema fixes. It is not merge authority,
+runtime activation, general runtime authority, or Phase-19 closure.
+
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` supersedes the
+prior merge decision only for the updated PR #181 subject. It conditionally
+authorizes bounded merge after its own record head passes remotely, addressed
+review threads are resolved, and a current maintainer action is recorded. It
+does not merge the PR or activate runtime authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
