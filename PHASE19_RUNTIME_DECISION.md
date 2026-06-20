@@ -217,6 +217,14 @@ proceed to a separate merge decision after the merge-review subject receives
 remote PASS. It is not a merge decision, merge authority, runtime activation,
 general runtime authority, or Phase-19 closure authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` records the conditional
+bounded merge decision for PR #181 after baseline-renewal PR #182 merged and
+the refreshed PR head received remote PASS. The decision can be exercised
+only after its own record head receives remote PASS and a live maintainer
+review/merge action is recorded. It is not merge completion, runtime
+activation, general runtime authority, loader/installer/executor authority,
+or Phase-19 closure authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part

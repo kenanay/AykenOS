@@ -2,7 +2,7 @@
 
 **Durum tarihi:** 2026-05-23
 **Uygulama ek kaydi:** 2026-05-24/26 (Phase-17 S1.E2E, PR-2B fixture worker completion, PR-3 IRQ timeout-race, PR-4 local performance readiness, PR-4A/PR-4B variance isolation, full-freeze timer witness integration repair, validation flag matrix, issue #145 tek-maintainer authority giderimi, PR #142/#144 merge, PR #148 performance authority onarimi, accepted-main exact-SHA remote evidence PASS ve Phase-17 closure-candidate kaydi)
-**Authority sync:** 2026-06-14 (`CURRENT_PHASE=19`; Phase-19 active as Platform Runtime MVP planning/admission/receipt boundary only)
+**Authority sync:** 2026-06-20 (`CURRENT_PHASE=19`; Phase-19 active as Platform Runtime MVP planning/admission/receipt boundary only)
 **Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu:** Kenan AY
 **Dijital imza siniri:** Bu atif yalnizca insan-okunur dokumantasyon ve metadata icindir; runtime log, karar veya yetki kaynagi degildir.
 
@@ -78,6 +78,12 @@
 > `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` records the merge review
 > for PR #181; it is not merge decision, merge authority, runtime activation,
 > general runtime authority, or Phase-19 closure authority.
+> `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` records the conditional
+> bounded merge decision for PR #181 after baseline-renewal PR #182 merged and
+> refreshed head `d42c1d18` received remote PASS. It does not merge PR #181;
+> its own record head still requires remote PASS and a live maintainer action.
+> It is not runtime activation, general runtime authority,
+> loader/installer/executor authority, or Phase-19 closure authority.
 > `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` maps
 > future artifact/evidence rows for a later implementation decision; it is
 > not evidence PASS, a CI gate, or implementation authority.
@@ -98,9 +104,9 @@
 | Phase-17 kapanisi | `reports/phase17_official_closure_candidate/` official closure package ve verified tag mevcut | Closure authority exact-SHA subject ile sinirlidir; Phase-18'i aktive etmez |
 | Phase-17.5 | PR #142, PR #144, PR #148, PR #149/#151/#150, PR #152 ve closure decision package `main`e kabul edildi | Accepted subject SHA `416a5392` icin bounded evidence resmi closure'a baglandi |
 | Phase-18 | `PHASE18_TRANSITION_DECISION.md` + `PHASE18_ACTIVATION_DECISION.md` + `AUTHORITY_DRIFT_GUARD.md` + `TERMINOLOGY_AUDIT.md` | Accepted Platform Constitution reference set; runtime implementation yetkisi degildir |
-| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` + `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` | Runtime MVP planning/admission/receipt boundary active; evidence matrix, implementation candidate, decision package candidate, draft, package, evidence package, acceptance review, additional transcript evidence, review update, reason-class update, evidence re-bind, final bounded acceptance review and merge review are bounded records; subject `64fa4762` accepted exact-SHA scoped; merge decision, merge authority and general runtime authority yoktur |
-| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Bounded admission/receipt subject `64fa4762` exact-SHA scoped accepted; merge review acildi; merge decision, runtime activation, general runtime authority, authority drift review guard ve terminology audit ayrik kalir |
-| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Accepted `main` SHA `416a5392`: standalone Performance Gate `26715068398` ve scoped Phase-17 acceptance `26712374737` PASS; closure tag dogrulandi |
+| Phase-19 | `PHASE19_RUNTIME_DECISION.md` + `docs/specs/phase19-platform-runtime/README.md` + `docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md` + `docs/specs/phase19-platform-runtime/CROSS_CONSISTENCY_REVIEW.md` + `PHASE19_POINTER_TRANSITION_CANDIDATE.md` + `PHASE19_ACTIVATION_PRECONDITIONS_REVIEW.md` + `PHASE19_POINTER_TRANSITION_DECISION.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_CANDIDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE_DRAFT.md` + `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` + `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` + `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` + `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` + `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` | Runtime MVP planning/admission/receipt boundary active; subject `64fa4762` bounded accepted; refreshed PR head `d42c1d18` remote PASS; conditional merge decision recorded, but decision-record head remote PASS, live maintainer action, merge completion and main exact-SHA sync remain separate; general runtime authority yoktur |
+| Aktif execution roadmap | `docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md` + Phase-18 Platform Constitution reference set + Phase-19 Runtime MVP planning boundary | Bounded admission/receipt subject `64fa4762` exact-SHA scoped accepted; conditional merge decision recorded; PR merge, runtime activation, general runtime authority, authority drift review guard ve terminology audit ayrik kalir |
+| Canonical performance baseline | `scripts/ci/perf-baseline.lock.json` | Governed PR #182 baseline renewal `bb712923` ile `main`e kabul edildi; refreshed PR #181 head `d42c1d18` icin locked performance run `27855137608` ve `ci-freeze` run `27855137588` PASS |
 | Review enforcement | Issue #145 tek-maintainer ADR'i, `@kenanay` CODEOWNERS accountability metadata'si ve canli `main` `freeze` protection paritesi ile kapatildi | Bagimsiz self-review iddiasi yoktur; remote CI ve kayitli maintainer karari merge siniridir |
 
 ## Bu Degisiklikte Uygulanan Eksikler
@@ -302,7 +308,8 @@ Runtime authority bu pointer ile baslatilmaz.
 - Phase-17 official closure dogrulandi; Phase-18 Platform Constitution
 reference set olarak korunur; Phase-19 pointer transition yalnız
 planning/admission/receipt boundary kurar; bounded subject `64fa4762`
-accepted exact-SHA scoped, merge ve general runtime authority pending/closed.
+accepted exact-SHA scoped, conditional merge decision recorded, PR merge ve
+general runtime authority ayri ve kapali kalir.
 
 ---
 
