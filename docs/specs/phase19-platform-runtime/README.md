@@ -158,6 +158,12 @@ resolved review threads, and a current maintainer action remain mandatory;
 merge completion, runtime activation, general runtime authority, and Phase-19
 closure remain separate.
 
+`../../../PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`
+records PR #181 merged at main SHA `ed7e2798` and binds post-merge strict
+freeze run `27869414821` and full Dev Loop run `27869414805` to that exact
+subject. Merge completion does not activate runtime behavior, grant general
+runtime authority, or close Phase-19.
+
 `RUNTIME_EVIDENCE_MATRIX.md` maps accepted evidence obligations to future
 proof rows. It is not a CI gate, evidence PASS, implementation decision, or
 runtime authority.
@@ -190,12 +196,10 @@ The existence of these RFCs and the `CURRENT_PHASE=19` pointer means only that
 the Phase-19 Runtime MVP boundary is active as planning authority. The final
 acceptance review grants only exact-SHA bounded admission/receipt
 implementation acceptance. The post-review acceptance is bound to subject
-`0a067dba`; the merge decision update records only a conditional bounded
-authorization that still requires decision-update remote PASS, resolved
-review threads, and a live maintainer action. Merge completion, runtime activation, general runtime
-source code authority, loader, installer, executor, workspace runtime,
-issuer, Semantic CLI authority and AI Runtime authority remain separate and
-closed.
+`0a067dba`; PR #181 is merged and post-merge verified at main SHA `ed7e2798`.
+Runtime activation, general runtime source code authority, loader, installer,
+executor, workspace runtime, issuer, Semantic CLI authority, AI Runtime
+authority, and Phase-19 closure remain separate and closed.
 
 ## MVP Boundary
 

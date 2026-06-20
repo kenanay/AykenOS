@@ -17,7 +17,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Execution Pipeline:** `Phase-17` officially closed — tag `phase17-official-closure` at `416a5392`
 - **Formal Governance Pointer:** `CURRENT_PHASE=19`
 - **Active Phase:** Phase-19 ACTIVE / Platform Runtime MVP planning, admission, and receipt boundary only
-- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority with exact-SHA bounded implementation acceptance and conditional merge decision, without runtime activation or authority expansion
+- **Active Execution Priority:** Maintain Phase-19 planning/admission/receipt authority after PR #181 bounded merge and main exact-SHA post-merge PASS, without runtime activation or authority expansion
 - **Accepted Decision Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md`; bounded implementation acceptance is exact-SHA scoped and merge remains separate
 - **Current Evidence Package Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md`; records historical draft PR #181 subject `22d5e86a` evidence
 - **Current Acceptance Review Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md`; acceptance is not granted and PR #181 remains draft
@@ -32,6 +32,7 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH. In case of conflict
 - **Current Review Findings Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md`; re-binds exact-SHA evidence without granting acceptance by itself
 - **Current Post-Review Acceptance Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md`; grants bounded acceptance for `0a067dba` without merge authority
 - **Current Merge Decision Update Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`; supersedes the prior merge decision for the updated subject and remains conditional on remote PASS, resolved threads, and maintainer action
+- **Current Main Exact-SHA Evidence Boundary:** `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`; records PR #181 merged at main SHA `ed7e2798` with post-merge strict freeze and full Dev Loop PASS, without runtime activation or Phase-19 closure
 - **Scope Boundary:** `CURRENT_PHASE=19` does not authorize general runtime behavior; kernel expansion, new syscalls, Ring0 policy and AI Runtime authority remain forbidden
 
 ## Primary Truth Sources
@@ -83,14 +84,15 @@ Current repo truth icin once su dosyalari referans alin:
 44. `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_EVIDENCE_REBIND.md` — **Phase-19 review findings evidence re-bind; not acceptance by itself**
 45. `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_POST_REVIEW.md` — **Phase-19 post-review bounded acceptance; merge separate**
 46. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` — **Phase-19 updated conditional merge decision; PR not merged**
-47. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
-44. `reports/phase15_official_closure/closure_index.json`
-45. `reports/phase13_official_closure_candidate/closure_index.json`
-46. `reports/phase12_official_closure_candidate/closure_manifest.json`
-47. `reports/phase10_phase11_official_closure_index.json`
-48. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
-49. `Makefile`
-50. `.github/workflows/ci-freeze.yml`
+47. `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` — **Phase-19 PR #181 merged main exact-SHA evidence sync; runtime not activated**
+48. `reports/phase15_official_closure/PHASE15_CLOSURE_REPORT.md`
+49. `reports/phase15_official_closure/closure_index.json`
+50. `reports/phase13_official_closure_candidate/closure_index.json`
+51. `reports/phase12_official_closure_candidate/closure_manifest.json`
+52. `reports/phase10_phase11_official_closure_index.json`
+53. `userspace/minimal/minimal_bcib_first_retire_probe.S` — **historical Ring3 breakthrough evidence**
+54. `Makefile`
+55. `.github/workflows/ci-freeze.yml`
 
 Phase-14 workstream numbering ve aktif durum yorumu icin canonical truth source:
 
@@ -255,6 +257,10 @@ README/spec dili ve architecture map bu tracker ile hizali okunmalidir.
 31. `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` —
     records the updated conditional merge decision without merge completion,
     runtime activation, or Phase-19 closure.
+32. `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` —
+    records PR #181 merge commit `ed7e2798` and post-merge exact-SHA remote
+    PASS without runtime activation, general runtime authority, or Phase-19
+    closure.
 
 ## Phase-14 Reference Set
 ### Architecture and Observability Surfaces

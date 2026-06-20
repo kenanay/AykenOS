@@ -246,6 +246,14 @@ authorizes bounded merge after its own record head passes remotely, addressed
 review threads are resolved, and a current maintainer action is recorded. It
 does not merge the PR or activate runtime authority.
 
+`PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` records PR
+#181 merge completion at main subject `ed7e2798` and binds post-merge strict
+freeze run `27869414821` and full Dev Loop run `27869414805` to that exact
+SHA. It is not runtime activation, general runtime authority, loader,
+installer, executor, workspace runtime, issuer, Semantic CLI authority, AI
+Runtime authority, syscall authority, kernel ABI expansion, or Phase-19
+closure authority.
+
 `MODULE_LOADING_MODEL.md`, `PLUGIN_INSTANTIATION_MODEL.md`, package
 execution, real workspace mounts, capability issuance, trust assignment,
 Semantic CLI authority, AI Runtime authority, and agent behavior are not part
