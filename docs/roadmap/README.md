@@ -139,7 +139,10 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 43. `../../PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`:
    bounded post-merge contract ve authority-drift PASS kaydidir; general RFC
    conformance veya yeni implementation authority kurmaz.
-44. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
+44. `../../PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`:
+   typed test-owned reference-integrity karar adayi ve candidate evidence
+   matrix delta kaydidir; implementation authority kurmaz.
+45. `../../PHASE18_ROADMAP.md`: tarihsel pre-closure runtime-validation
    planlamasi; aktif Phase-18 otoritesi degildir.
 
 ## Current Status
@@ -152,6 +155,7 @@ tarihsel roadmap snapshot'larini ayri otorite sinirlarinda tutar.
 | Current docs/evidence boundary | `PHASE19_RUNTIME_IMPLEMENTATION_DECISION_PACKAGE.md` exact-SHA implementation decision package boundary'sini kabul eder; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE.md` PR #181 subject `22d5e86a` icin historical evidence record'dur; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW.md` acceptance grant etmez; `PHASE19_RUNTIME_IMPLEMENTATION_ADDITIONAL_TRANSCRIPT_EVIDENCE.md` eksik denial transcript evidence'i baglar; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_UPDATE.md` transcript evidence'i yeterli input sayar fakat yeni implementation subject gerektirir; `PHASE19_RUNTIME_IMPLEMENTATION_REASON_CLASS_UPDATE.md` bounded subject `64fa4762` kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_EVIDENCE_PACKAGE_REBIND.md` updated subject evidence girdilerini re-bind eder; `PHASE19_RUNTIME_IMPLEMENTATION_ACCEPTANCE_REVIEW_FINAL.md` bounded acceptance grant eder; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_REVIEW.md` merge decision'a gecis review kaydidir; `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION.md` decision-record remote PASS ve canli maintainer action kosuluyla bounded merge authorization kaydeder, ancak PR'i merge etmez veya runtime'i aktive etmez |
 | Current review-fix boundary | `PHASE19_RUNTIME_IMPLEMENTATION_REVIEW_FINDINGS_UPDATE.md` subject `0a067dba` kaydidir; evidence re-bind, post-review acceptance ve merge decision update ayri kayitlidir; `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` PR #181 merge commit `ed7e2798` icin post-merge strict freeze ve full Dev Loop PASS'i baglar |
 | Current consistency boundary | `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` bounded contract/authority-drift PASS kaydidir; general parser, full reference-integrity validation, general RFC conformance ve sonraki implementation authority vermez |
+| Current next-decision boundary | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` canonical contract/schema/subject binding, test-owned SHA-256 recomputation ve exact stage-order evidence adayini tanimlar; source code veya implementation authority vermez |
 | ABI | Canonical `1000-1011` / 12 syscall, ABI version `0x00010001` |
 | Phase-18 | ACCEPTED PLATFORM CONSTITUTION REFERENCE SET; kernel expansion, runtime implementation and new syscalls forbidden unless a separate phase RFC/closure authority exists |
 | Phase-19 | ACTIVE AS PLANNING / VALIDATION-INTEGRATION / ADMISSION-RECORD / RECEIPT BOUNDARY; bounded admission/receipt PR #181 merged and post-merge verified at `ed7e2798`; runtime activation, general runtime authority and Phase-19 closure remain closed |
@@ -188,10 +192,11 @@ current execution priority otoritesi degildir:
 
 ---
 
-**Current action:** `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`
-Merged subject `0a067dba` icin bounded contract/authority-drift PASS ve
-deferred general reference-integrity obligations kaydini tutar. Bu review
-general RFC conformance, yeni implementation authority, runtime activation,
+**Current action:** `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`
+Post-merge review'da deferred kalan contract/schema/subject binding,
+test-owned content digest recomputation ve exact validation-stage order
+sinirini karar adayi ve candidate matrix delta olarak kaydeder. Bu candidate
+source code, evidence PASS, implementation authority, runtime activation,
 general runtime authority veya Phase-19 closure degildir.
 `CURRENT_PHASE=19` general runtime source code authority, loader, installer,
 workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI

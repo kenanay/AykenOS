@@ -548,6 +548,13 @@ General parser, independent reference-content digest verification, tum
 reference contract/schema binding, validation-stage-order verification,
 general RFC conformance veya yeni implementation authority kurmaz.
 
+`PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`, bu deferred
+yuzeylerin en dar alt kumesi icin typed test-owned reference content,
+canonical contract/schema/subject binding, SHA-256 recomputation ve exact
+Phase-18 stage-order verification karar adayini ve candidate evidence matrix
+delta'sini kaydeder. Source code, implementation decision, evidence PASS,
+runtime activation, general runtime authority veya Phase-19 closure kurmaz.
+
 Phase-19 karar siniri su kurallari korur:
 
 1. Runtime decision runtime implementation degildir.
@@ -681,6 +688,7 @@ Phase-19 karar siniri su kurallari korur:
 | Phase-19 Runtime Implementation Merge Decision Update | CONDITIONAL BOUNDED MERGE DECISION / PR NOT MERGED | Changed subject icin onceki merge decision'i supersede etmek | `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md` | Kendi remote PASS'i, resolved review threads ve current maintainer action olmadan kullanilamaz |
 | Phase-19 Runtime Implementation Main Exact-SHA Evidence Sync | PR #181 MERGED / POST-MERGE EXACT-SHA REMOTE PASS / RUNTIME NOT ACTIVATED | Merge commit/main SHA `ed7e2798` icin strict freeze ve full Dev Loop sonucunu baglamak | `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md` | Sync runtime activation, general runtime authority, loader, installer, executor veya Phase-19 closure grant degildir |
 | Phase-19 Runtime Implementation Post-Merge Consistency Review | BOUNDED CONSISTENCY PASS / AUTHORITY DRIFT NOT OBSERVED / GENERAL RFC CONFORMANCE NOT GRANTED | Merged bounded subject'i Phase-18/19 contract ve terminology sinirlarina karsi review etmek | `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md` | Review yeni implementation decision, general parser, full reference-integrity validation, runtime activation veya Phase-19 closure grant degildir |
+| Phase-19 Reference Integrity Validation Decision Candidate | CANDIDATE / MATRIX DELTA CANDIDATE / IMPLEMENTATION NOT AUTHORIZED | Typed test-owned reference content icin canonical contract/schema/subject binding, SHA-256 recomputation ve exact stage-order evidence sinirini daraltmak | `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md` | Candidate source code, parser, loader, installer, execution, evidence PASS, runtime activation veya Phase-19 closure grant degildir |
 
 PR koordinasyon kurallari:
 
@@ -1395,7 +1403,10 @@ Bu roadmap su olaylarda guncellenir:
 51. Phase-19 Runtime Implementation Review Findings Evidence Re-Bind sonucu.
 52. Phase-19 Runtime Implementation Post-Review Acceptance sonucu.
 53. Phase-19 Runtime Implementation Merge Decision Update sonucu.
-54. Yeni feature/ABI/authority surface onerisinin incelenmesi.
+54. Phase-19 Runtime Implementation Main Exact-SHA Evidence Sync sonucu.
+55. Phase-19 Runtime Implementation Post-Merge Consistency Review sonucu.
+56. Phase-19 Reference Integrity Validation Decision Candidate sonucu.
+57. Yeni feature/ABI/authority surface onerisinin incelenmesi.
 
 ## References
 
@@ -1459,6 +1470,7 @@ Bu roadmap su olaylarda guncellenir:
 - `PHASE19_RUNTIME_IMPLEMENTATION_MERGE_DECISION_UPDATE.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_MAIN_EXACT_SHA_EVIDENCE_SYNC.md`
 - `PHASE19_RUNTIME_IMPLEMENTATION_POST_MERGE_CONSISTENCY_REVIEW.md`
+- `PHASE19_REFERENCE_INTEGRITY_VALIDATION_DECISION_CANDIDATE.md`
 - `PHASE18_ROADMAP.md`
 - `shared/abi/syscall_v2.h`
 - `shared/abi/ayken_abi.h`
