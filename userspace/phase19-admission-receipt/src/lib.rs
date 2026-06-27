@@ -16,12 +16,31 @@ pub const VALIDATION_INTEGRATION_RECORD_SCHEMA_ID: &str =
     "ayken.phase19.platform_validation.integration.record.v1";
 pub const WORKSPACE_ADMISSION_SCHEMA_ID: &str = "ayken.phase19.workspace_admission.runtime.v1";
 pub const RUNTIME_RECEIPT_SCHEMA_ID: &str = "ayken.phase19.runtime.receipt.v1";
-pub const PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID: &str =
-    "ayken.phase18.platform_abi_validation.receipt.v1";
+pub const PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID: &str = "ayken.platform.abi.validation.gate.v1";
 pub const PLATFORM_VALIDATION_RECEIPT_SCHEMA_VERSION: &str = "1";
+pub const MODULE_MANIFEST_CONTRACT_ID: &str = "ayken.platform.module.manifest.v1";
+pub const PACKAGE_METADATA_CONTRACT_ID: &str = "ayken.platform.package.metadata.v1";
+pub const PLATFORM_VALIDATION_POLICY_CONTRACT_ID: &str = "ayken.platform.abi.validation.gate.v1";
+pub const WORKSPACE_DECLARATION_CONTRACT_ID: &str = "ayken.platform.workspace.lifecycle.v1";
+pub const RUNTIME_EVIDENCE_MATRIX_CONTRACT_ID: &str = "ayken.phase19.runtime.evidence_matrix.v1";
+pub const REFERENCE_ENVELOPE_SCHEMA_VERSION: &str = "1";
+pub const REFERENCE_DIGEST_ALGORITHM: &str = "sha256";
 pub const FROZEN_SYSCALL_RANGE: &str = "1000-1011";
 pub const FROZEN_SYSCALL_COUNT: u16 = 12;
 pub const FROZEN_ABI_VERSION: &str = "0x00010001";
+
+const VALIDATION_STAGE_ORDER: [(&str, u8); 10] = [
+    ("kernel_freeze_guard", 0),
+    ("manifest_validation", 1),
+    ("package_metadata_validation", 2),
+    ("package_manifest_binding", 3),
+    ("trust_classification_validation", 4),
+    ("capability_contract_validation", 5),
+    ("workspace_lifecycle_validation", 6),
+    ("plugin_boundary_validation", 7),
+    ("cross_contract_separation", 8),
+    ("validation_receipt_emission", 9),
+];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Subject {
@@ -42,6 +61,36 @@ pub struct DigestReference {
     pub subject: Option<Subject>,
     #[serde(default)]
     pub stale: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReferenceClass {
+    ModuleManifest,
+    PackageMetadata,
+    PlatformValidationPolicy,
+    WorkspaceDeclaration,
+    RuntimeEvidenceMatrix,
+}
+
+impl ReferenceClass {
+    fn contract_id(self) -> &'static str {
+        match self {
+            Self::ModuleManifest => MODULE_MANIFEST_CONTRACT_ID,
+            Self::PackageMetadata => PACKAGE_METADATA_CONTRACT_ID,
+            Self::PlatformValidationPolicy => PLATFORM_VALIDATION_POLICY_CONTRACT_ID,
+            Self::WorkspaceDeclaration => WORKSPACE_DECLARATION_CONTRACT_ID,
+            Self::RuntimeEvidenceMatrix => RUNTIME_EVIDENCE_MATRIX_CONTRACT_ID,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TestOwnedReferenceContent {
+    pub path_or_uri: String,
+    pub reference_class: ReferenceClass,
+    pub subject: Subject,
+    pub content_bytes: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -123,7 +172,7 @@ pub struct PlatformValidationEvidence {
     pub schema_version: String,
     pub subject: Subject,
     pub receipt_digest: String,
-    pub stage_result_digests: Vec<String>,
+    pub stage_results: Vec<ValidationStageReference>,
     pub status: PlatformValidationStatus,
     #[serde(default)]
     pub declares_authority_grant: bool,
@@ -131,6 +180,15 @@ pub struct PlatformValidationEvidence {
     pub unknown_stage_observed: bool,
     #[serde(default)]
     pub stale_digest: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ValidationStageReference {
+    pub stage_id: String,
+    pub stage_index: u8,
+    pub digest_algorithm: String,
+    pub digest_value: String,
+    pub content_bytes: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -227,6 +285,22 @@ pub enum DenialReason {
     UnknownValidationSchemaVersion,
     ValidationStaleDigest,
     UnknownValidationStage,
+    UnknownReferenceContract,
+    UnknownReferenceSchemaVersion,
+    MissingReferenceSubject,
+    ReferenceSubjectMismatch,
+    UnsupportedReferenceDigestAlgorithm,
+    MalformedReferenceDigest,
+    MissingReferenceContent,
+    DuplicateReferenceContent,
+    UnexpectedReferenceContent,
+    ReferenceDigestMismatch,
+    ValidationContractMismatch,
+    ValidationStageCountMismatch,
+    UnknownValidationStageId,
+    ValidationStageIndexMismatch,
+    ValidationStageOrderMismatch,
+    ValidationStageDigestMismatch,
     RealMountDenied,
     WorkspaceHandleDenied,
     CapabilityIssuanceDenied,
@@ -262,6 +336,7 @@ pub enum HarnessError {
 pub fn run_harness(
     bundle: &StaticInputBundle,
     validation: Option<&PlatformValidationEvidence>,
+    reference_contents: &[TestOwnedReferenceContent],
 ) -> Result<HarnessOutcome, HarnessError> {
     if bundle.schema_id != INPUT_BUNDLE_SCHEMA_ID {
         return denied_before_input(DenialReason::InputSchemaDenied);
@@ -291,6 +366,10 @@ pub fn run_harness(
         return denied_before_input(DenialReason::MissingWorkspaceDeclaration);
     }
 
+    if let Some(reason) = validate_reference_integrity(bundle, reference_contents) {
+        return denied_before_input(reason);
+    }
+
     let workspace_declaration_ref = bundle
         .workspace_admission_request
         .declaration_ref
@@ -298,12 +377,6 @@ pub fn run_harness(
         .expect("workspace declaration_ref checked above");
     if workspace_declaration_ref.stale {
         return denied_before_input(DenialReason::StaleWorkspaceDeclaration);
-    }
-
-    if let Some(subject) = &workspace_declaration_ref.subject {
-        if subject != &bundle.subject {
-            return denied_before_input(DenialReason::WorkspaceDeclarationSubjectMismatch);
-        }
     }
 
     let manifest_ref = bundle
@@ -314,20 +387,9 @@ pub fn run_harness(
         return denied_before_input(DenialReason::StaleManifestDigest);
     }
 
-    if let Some(subject) = &manifest_ref.subject {
-        if subject != &bundle.subject {
-            return denied_before_input(DenialReason::SubjectMismatch);
-        }
-    }
-
     if let Some(package_ref) = &bundle.package_ref {
         if package_ref.stale {
             return denied_before_input(DenialReason::StaleManifestDigest);
-        }
-        if let Some(subject) = &package_ref.subject {
-            if subject != &bundle.subject {
-                return denied_before_input(DenialReason::SubjectMismatch);
-            }
         }
     }
 
@@ -348,6 +410,14 @@ pub fn run_harness(
         );
     };
 
+    if validation.contract_id != PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID {
+        return denied_after_input(
+            input_bound_transcript,
+            Some(input_bundle_digest),
+            DenialReason::ValidationContractMismatch,
+        );
+    }
+
     if validation.schema_version != PLATFORM_VALIDATION_RECEIPT_SCHEMA_VERSION {
         return denied_after_input(
             input_bound_transcript,
@@ -356,14 +426,16 @@ pub fn run_harness(
         );
     }
 
-    if validation.contract_id != PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID
-        || validation.subject != bundle.subject
-    {
+    if validation.subject != bundle.subject {
         return denied_after_input(
             input_bound_transcript,
             Some(input_bundle_digest),
             DenialReason::SubjectMismatch,
         );
+    }
+
+    if let Some(reason) = validate_stage_integrity(validation) {
+        return denied_after_input(input_bound_transcript, Some(input_bundle_digest), reason);
     }
 
     if validation.stale_digest {
@@ -533,6 +605,195 @@ pub fn run_harness(
     })
 }
 
+fn validate_reference_integrity(
+    bundle: &StaticInputBundle,
+    contents: &[TestOwnedReferenceContent],
+) -> Option<DenialReason> {
+    let references = declared_references(bundle);
+
+    for (reference, class) in &references {
+        if reference.contract_id != class.contract_id() {
+            return Some(DenialReason::UnknownReferenceContract);
+        }
+    }
+
+    for content in contents {
+        for (_, class) in references
+            .iter()
+            .filter(|(reference, _)| reference.path_or_uri == content.path_or_uri)
+        {
+            if content.reference_class != *class {
+                return Some(DenialReason::UnknownReferenceContract);
+            }
+        }
+    }
+
+    for (reference, _) in &references {
+        if reference.schema_version != REFERENCE_ENVELOPE_SCHEMA_VERSION {
+            return Some(DenialReason::UnknownReferenceSchemaVersion);
+        }
+    }
+
+    for (reference, _) in &references {
+        let Some(subject) = &reference.subject else {
+            return Some(DenialReason::MissingReferenceSubject);
+        };
+        if subject != &bundle.subject {
+            return Some(DenialReason::ReferenceSubjectMismatch);
+        }
+    }
+
+    for content in contents {
+        if content.subject != bundle.subject {
+            return Some(DenialReason::ReferenceSubjectMismatch);
+        }
+    }
+
+    for (reference, _) in &references {
+        if reference.digest_algorithm != REFERENCE_DIGEST_ALGORITHM {
+            return Some(DenialReason::UnsupportedReferenceDigestAlgorithm);
+        }
+    }
+
+    for (reference, _) in &references {
+        if !is_well_formed_sha256(&reference.digest_value) {
+            return Some(DenialReason::MalformedReferenceDigest);
+        }
+    }
+
+    for (reference, _) in &references {
+        if !contents
+            .iter()
+            .any(|content| content.path_or_uri == reference.path_or_uri)
+        {
+            return Some(DenialReason::MissingReferenceContent);
+        }
+    }
+
+    for (reference, _) in &references {
+        let declaration_count = references
+            .iter()
+            .filter(|(candidate, _)| candidate.path_or_uri == reference.path_or_uri)
+            .count();
+        let content_count = contents
+            .iter()
+            .filter(|content| content.path_or_uri == reference.path_or_uri)
+            .count();
+        if declaration_count > 1 || content_count > 1 {
+            return Some(DenialReason::DuplicateReferenceContent);
+        }
+    }
+
+    for (index, content) in contents.iter().enumerate() {
+        if contents[..index]
+            .iter()
+            .any(|candidate| candidate.path_or_uri == content.path_or_uri)
+        {
+            return Some(DenialReason::DuplicateReferenceContent);
+        }
+    }
+
+    for content in contents {
+        if !references
+            .iter()
+            .any(|(reference, _)| reference.path_or_uri == content.path_or_uri)
+        {
+            return Some(DenialReason::UnexpectedReferenceContent);
+        }
+    }
+
+    for (reference, _) in references {
+        let content = contents
+            .iter()
+            .find(|content| content.path_or_uri == reference.path_or_uri)
+            .expect("reference content cardinality checked above");
+        if hash_bytes_prefixed(&content.content_bytes) != reference.digest_value {
+            return Some(DenialReason::ReferenceDigestMismatch);
+        }
+    }
+
+    None
+}
+
+fn declared_references(bundle: &StaticInputBundle) -> Vec<(&DigestReference, ReferenceClass)> {
+    let mut references = Vec::with_capacity(4 + bundle.evidence_refs.len());
+
+    if let Some(reference) = &bundle.manifest_ref {
+        references.push((reference, ReferenceClass::ModuleManifest));
+    }
+    if let Some(reference) = &bundle.package_ref {
+        references.push((reference, ReferenceClass::PackageMetadata));
+    }
+    if let Some(reference) = &bundle.platform_validation_policy_ref {
+        references.push((reference, ReferenceClass::PlatformValidationPolicy));
+    }
+    if let Some(reference) = &bundle.workspace_admission_request.declaration_ref {
+        references.push((reference, ReferenceClass::WorkspaceDeclaration));
+    }
+    for reference in &bundle.evidence_refs {
+        references.push((reference, ReferenceClass::RuntimeEvidenceMatrix));
+    }
+
+    references
+}
+
+fn validate_stage_integrity(validation: &PlatformValidationEvidence) -> Option<DenialReason> {
+    if validation.stage_results.len() != VALIDATION_STAGE_ORDER.len() {
+        return Some(DenialReason::ValidationStageCountMismatch);
+    }
+
+    for stage in &validation.stage_results {
+        if canonical_stage_index(&stage.stage_id).is_none() {
+            return Some(DenialReason::UnknownValidationStageId);
+        }
+    }
+
+    for stage in &validation.stage_results {
+        if canonical_stage_index(&stage.stage_id) != Some(stage.stage_index) {
+            return Some(DenialReason::ValidationStageIndexMismatch);
+        }
+    }
+
+    for (position, stage) in validation.stage_results.iter().enumerate() {
+        if stage.stage_index as usize != position {
+            return Some(DenialReason::ValidationStageOrderMismatch);
+        }
+    }
+
+    for stage in &validation.stage_results {
+        if stage.digest_algorithm != REFERENCE_DIGEST_ALGORITHM
+            || !is_well_formed_sha256(&stage.digest_value)
+            || hash_bytes_prefixed(&stage.content_bytes) != stage.digest_value
+        {
+            return Some(DenialReason::ValidationStageDigestMismatch);
+        }
+    }
+
+    None
+}
+
+fn canonical_stage_index(stage_id: &str) -> Option<u8> {
+    VALIDATION_STAGE_ORDER
+        .iter()
+        .find_map(|(candidate, index)| (*candidate == stage_id).then_some(*index))
+}
+
+fn is_well_formed_sha256(value: &str) -> bool {
+    let Some(hex) = value.strip_prefix("sha256:") else {
+        return false;
+    };
+    hex.len() == 64
+        && hex
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn hash_bytes_prefixed(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("sha256:{}", encode_lower_hex(&hasher.finalize()))
+}
+
 fn build_validation_record(
     input_bundle_digest: &str,
     validation: &PlatformValidationEvidence,
@@ -547,23 +808,30 @@ fn build_validation_record(
         decision_status: &'a str,
     }
 
+    let stage_result_digests: Vec<String> = validation
+        .stage_results
+        .iter()
+        .map(|stage| stage.digest_value.clone())
+        .collect();
+
     let seed = ValidationRecordSeed {
         schema_id: VALIDATION_INTEGRATION_RECORD_SCHEMA_ID,
         input_bundle_digest,
         validation_receipt_digest: &validation.receipt_digest,
-        stage_count: validation.stage_result_digests.len(),
-        stage_result_digests: &validation.stage_result_digests,
+        stage_count: stage_result_digests.len(),
+        stage_result_digests: &stage_result_digests,
         decision_status: "recordable",
     };
+    let digest = canonical_hash_prefixed(&seed)?;
 
     Ok(ValidationIntegrationRecord {
         schema_id: VALIDATION_INTEGRATION_RECORD_SCHEMA_ID.to_string(),
         input_bundle_digest: input_bundle_digest.to_string(),
         validation_receipt_digest: validation.receipt_digest.clone(),
-        stage_count: validation.stage_result_digests.len(),
-        stage_result_digests: validation.stage_result_digests.clone(),
+        stage_count: stage_result_digests.len(),
+        stage_result_digests,
         decision_status: "recordable".to_string(),
-        digest: canonical_hash_prefixed(&seed)?,
+        digest,
     })
 }
 
@@ -769,13 +1037,31 @@ fn encode_lower_hex(bytes: &[u8]) -> String {
 mod tests {
     use super::*;
 
+    const MANIFEST_PATH: &str =
+        "docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md";
+    const PACKAGE_PATH: &str =
+        "docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md";
+    const VALIDATION_POLICY_PATH: &str =
+        "docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md";
+    const WORKSPACE_PATH: &str =
+        "docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md";
+    const EVIDENCE_MATRIX_PATH: &str =
+        "docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md";
+
+    const MANIFEST_BYTES: &[u8] = b"phase19-test-owned-module-manifest-v1";
+    const PACKAGE_BYTES: &[u8] = b"phase19-test-owned-package-metadata-v1";
+    const VALIDATION_POLICY_BYTES: &[u8] = b"phase19-test-owned-validation-policy-v1";
+    const WORKSPACE_BYTES: &[u8] = b"phase19-test-owned-workspace-declaration-v1";
+    const EVIDENCE_MATRIX_BYTES: &[u8] = b"phase19-test-owned-evidence-matrix-v1";
+
     #[test]
     fn positive_flow_emits_inert_deterministic_records() {
         let bundle = valid_bundle();
         let validation = valid_validation(&bundle.subject);
+        let contents = valid_reference_contents(&bundle.subject);
 
-        let first = run_harness(&bundle, Some(&validation)).expect("first run");
-        let second = run_harness(&bundle, Some(&validation)).expect("second run");
+        let first = run_harness(&bundle, Some(&validation), &contents).expect("first run");
+        let second = run_harness(&bundle, Some(&validation), &contents).expect("second run");
 
         assert_eq!(first, second);
         assert_eq!(first.status, HarnessStatus::AdmittedRecorded);
@@ -799,6 +1085,44 @@ mod tests {
         assert_eq!(receipt.receipt_status, "admitted_recorded");
         assert!(receipt.digest.starts_with("sha256:"));
         assert!(receipt.receipt_id.starts_with("phase19-runtime-receipt:"));
+        let validation_record = first
+            .validation_integration_record
+            .as_ref()
+            .expect("validation integration record");
+        assert_eq!(validation_record.stage_count, VALIDATION_STAGE_ORDER.len());
+        assert_eq!(validation_record.stage_result_digests.len(), 10);
+    }
+
+    #[test]
+    fn canonical_reference_map_and_stage_order_are_exact() {
+        assert_eq!(
+            ReferenceClass::ModuleManifest.contract_id(),
+            "ayken.platform.module.manifest.v1"
+        );
+        assert_eq!(
+            ReferenceClass::PackageMetadata.contract_id(),
+            "ayken.platform.package.metadata.v1"
+        );
+        assert_eq!(
+            ReferenceClass::PlatformValidationPolicy.contract_id(),
+            "ayken.platform.abi.validation.gate.v1"
+        );
+        assert_eq!(
+            ReferenceClass::WorkspaceDeclaration.contract_id(),
+            "ayken.platform.workspace.lifecycle.v1"
+        );
+        assert_eq!(
+            ReferenceClass::RuntimeEvidenceMatrix.contract_id(),
+            "ayken.phase19.runtime.evidence_matrix.v1"
+        );
+
+        let validation = valid_validation(&valid_bundle().subject);
+        let actual: Vec<(&str, u8)> = validation
+            .stage_results
+            .iter()
+            .map(|stage| (stage.stage_id.as_str(), stage.stage_index))
+            .collect();
+        assert_eq!(actual, VALIDATION_STAGE_ORDER);
     }
 
     #[test]
@@ -930,7 +1254,7 @@ mod tests {
         assert_denied(
             &mismatched,
             Some(&validation),
-            DenialReason::WorkspaceDeclarationSubjectMismatch,
+            DenialReason::ReferenceSubjectMismatch,
             None,
         );
     }
@@ -1036,28 +1360,20 @@ mod tests {
     fn changed_static_bundle_changes_success_digest() {
         let first_bundle = valid_bundle();
         let first_validation = valid_validation(&first_bundle.subject);
-        let first = run_harness(&first_bundle, Some(&first_validation)).expect("first");
+        let first_contents = valid_reference_contents(&first_bundle.subject);
+        let first =
+            run_harness(&first_bundle, Some(&first_validation), &first_contents).expect("first");
 
-        let mut second_bundle = valid_bundle();
-        second_bundle.subject.version = "1.0.1".to_string();
-        second_bundle.subject.digest = "sha256:subject-digest-v101".to_string();
-        second_bundle.manifest_ref = Some(digest_ref_with_subject(
-            "docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md",
-            "ayken.phase18.module_manifest.schema.v1",
-            &second_bundle.subject,
-        ));
-        second_bundle.package_ref = Some(digest_ref_with_subject(
-            "docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md",
-            "ayken.phase18.package_metadata.schema.v1",
-            &second_bundle.subject,
-        ));
-        second_bundle.workspace_admission_request.declaration_ref = Some(digest_ref_with_subject(
-            "docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md",
-            "ayken.phase18.workspace_lifecycle.specification.v1",
-            &second_bundle.subject,
-        ));
+        let second_subject = Subject {
+            version: "1.0.1".to_string(),
+            digest: hash_bytes_prefixed(b"phase19-subject-v1.0.1"),
+            ..first_bundle.subject.clone()
+        };
+        let second_bundle = bundle_for_subject(second_subject);
         let second_validation = valid_validation(&second_bundle.subject);
-        let second = run_harness(&second_bundle, Some(&second_validation)).expect("second");
+        let second_contents = valid_reference_contents(&second_bundle.subject);
+        let second = run_harness(&second_bundle, Some(&second_validation), &second_contents)
+            .expect("second");
 
         assert_ne!(first.input_bundle_digest, second.input_bundle_digest);
         assert_ne!(
@@ -1074,23 +1390,397 @@ mod tests {
         );
     }
 
+    #[test]
+    fn reference_contract_and_version_fail_closed() {
+        let base = valid_bundle();
+        let validation = valid_validation(&base.subject);
+
+        let unknown_contract = with_bundle(&base, |bundle| {
+            bundle.manifest_ref.as_mut().expect("manifest").contract_id =
+                "ayken.platform.module.manifest.v2".to_string();
+        });
+        assert_denied(
+            &unknown_contract,
+            Some(&validation),
+            DenialReason::UnknownReferenceContract,
+            None,
+        );
+
+        let unknown_version = with_bundle(&base, |bundle| {
+            bundle
+                .manifest_ref
+                .as_mut()
+                .expect("manifest")
+                .schema_version = "2".to_string();
+        });
+        assert_denied(
+            &unknown_version,
+            Some(&validation),
+            DenialReason::UnknownReferenceSchemaVersion,
+            None,
+        );
+
+        let mut contents = valid_reference_contents(&base.subject);
+        contents[0].reference_class = ReferenceClass::PackageMetadata;
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &contents,
+            DenialReason::UnknownReferenceContract,
+            None,
+        );
+    }
+
+    #[test]
+    fn reference_subject_binding_fail_closed() {
+        let base = valid_bundle();
+        let validation = valid_validation(&base.subject);
+
+        let missing_subject = with_bundle(&base, |bundle| {
+            bundle.manifest_ref.as_mut().expect("manifest").subject = None;
+        });
+        assert_denied(
+            &missing_subject,
+            Some(&validation),
+            DenialReason::MissingReferenceSubject,
+            None,
+        );
+
+        let mismatched_subject = with_bundle(&base, |bundle| {
+            bundle
+                .manifest_ref
+                .as_mut()
+                .expect("manifest")
+                .subject
+                .as_mut()
+                .expect("manifest subject")
+                .digest = hash_bytes_prefixed(b"different-subject");
+        });
+        assert_denied(
+            &mismatched_subject,
+            Some(&validation),
+            DenialReason::ReferenceSubjectMismatch,
+            None,
+        );
+
+        let mut contents = valid_reference_contents(&base.subject);
+        contents[0].subject.digest = hash_bytes_prefixed(b"different-content-subject");
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &contents,
+            DenialReason::ReferenceSubjectMismatch,
+            None,
+        );
+    }
+
+    #[test]
+    fn reference_digest_shape_and_content_fail_closed() {
+        let base = valid_bundle();
+        let validation = valid_validation(&base.subject);
+
+        let unsupported_algorithm = with_bundle(&base, |bundle| {
+            bundle
+                .manifest_ref
+                .as_mut()
+                .expect("manifest")
+                .digest_algorithm = "sha512".to_string();
+        });
+        assert_denied(
+            &unsupported_algorithm,
+            Some(&validation),
+            DenialReason::UnsupportedReferenceDigestAlgorithm,
+            None,
+        );
+
+        let malformed = with_bundle(&base, |bundle| {
+            bundle.manifest_ref.as_mut().expect("manifest").digest_value =
+                "sha256:NOT-LOWER-HEX".to_string();
+        });
+        assert_denied(
+            &malformed,
+            Some(&validation),
+            DenialReason::MalformedReferenceDigest,
+            None,
+        );
+
+        let mut contents = valid_reference_contents(&base.subject);
+        contents[0].content_bytes.push(b'!');
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &contents,
+            DenialReason::ReferenceDigestMismatch,
+            None,
+        );
+    }
+
+    #[test]
+    fn reference_content_cardinality_fail_closed() {
+        let base = valid_bundle();
+        let validation = valid_validation(&base.subject);
+
+        let mut missing = valid_reference_contents(&base.subject);
+        missing.remove(0);
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &missing,
+            DenialReason::MissingReferenceContent,
+            None,
+        );
+
+        let mut duplicate = valid_reference_contents(&base.subject);
+        duplicate.push(duplicate[0].clone());
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &duplicate,
+            DenialReason::DuplicateReferenceContent,
+            None,
+        );
+
+        let mut duplicate_unexpected = valid_reference_contents(&base.subject);
+        let unexpected = TestOwnedReferenceContent {
+            path_or_uri: "test-owned://duplicate-undeclared-reference".to_string(),
+            reference_class: ReferenceClass::ModuleManifest,
+            subject: base.subject.clone(),
+            content_bytes: b"duplicate-undeclared-content".to_vec(),
+        };
+        duplicate_unexpected.push(unexpected.clone());
+        duplicate_unexpected.push(unexpected);
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &duplicate_unexpected,
+            DenialReason::DuplicateReferenceContent,
+            None,
+        );
+
+        let mut unexpected = valid_reference_contents(&base.subject);
+        unexpected.push(TestOwnedReferenceContent {
+            path_or_uri: "test-owned://undeclared-reference".to_string(),
+            reference_class: ReferenceClass::ModuleManifest,
+            subject: base.subject.clone(),
+            content_bytes: b"undeclared-content".to_vec(),
+        });
+        assert_denied_with_contents(
+            &base,
+            Some(&validation),
+            &unexpected,
+            DenialReason::UnexpectedReferenceContent,
+            None,
+        );
+    }
+
+    #[test]
+    fn validation_contract_and_stage_structure_fail_closed() {
+        let bundle = valid_bundle();
+
+        let mut contract = valid_validation(&bundle.subject);
+        contract.contract_id = "ayken.platform.abi.validation.gate.v2".to_string();
+        assert_denied(
+            &bundle,
+            Some(&contract),
+            DenialReason::ValidationContractMismatch,
+            Some(true),
+        );
+
+        let mut count = valid_validation(&bundle.subject);
+        count.stage_results.pop();
+        assert_denied(
+            &bundle,
+            Some(&count),
+            DenialReason::ValidationStageCountMismatch,
+            Some(true),
+        );
+
+        let mut unknown_id = valid_validation(&bundle.subject);
+        unknown_id.stage_results[3].stage_id = "unknown_stage".to_string();
+        assert_denied(
+            &bundle,
+            Some(&unknown_id),
+            DenialReason::UnknownValidationStageId,
+            Some(true),
+        );
+
+        let mut index = valid_validation(&bundle.subject);
+        index.stage_results[3].stage_index = 4;
+        assert_denied(
+            &bundle,
+            Some(&index),
+            DenialReason::ValidationStageIndexMismatch,
+            Some(true),
+        );
+
+        let mut order = valid_validation(&bundle.subject);
+        order.stage_results.swap(2, 3);
+        assert_denied(
+            &bundle,
+            Some(&order),
+            DenialReason::ValidationStageOrderMismatch,
+            Some(true),
+        );
+    }
+
+    #[test]
+    fn validation_stage_digest_fail_closed() {
+        let bundle = valid_bundle();
+
+        let mut algorithm = valid_validation(&bundle.subject);
+        algorithm.stage_results[0].digest_algorithm = "sha512".to_string();
+        assert_denied(
+            &bundle,
+            Some(&algorithm),
+            DenialReason::ValidationStageDigestMismatch,
+            Some(true),
+        );
+
+        let mut malformed = valid_validation(&bundle.subject);
+        malformed.stage_results[0].digest_value = "sha256:bad".to_string();
+        assert_denied(
+            &bundle,
+            Some(&malformed),
+            DenialReason::ValidationStageDigestMismatch,
+            Some(true),
+        );
+
+        let mut recomputation = valid_validation(&bundle.subject);
+        recomputation.stage_results[0].content_bytes.push(b'!');
+        assert_denied(
+            &bundle,
+            Some(&recomputation),
+            DenialReason::ValidationStageDigestMismatch,
+            Some(true),
+        );
+    }
+
+    #[test]
+    fn reference_integrity_denial_precedence_is_stable() {
+        let base = valid_bundle();
+        let mut validation = valid_validation(&base.subject);
+
+        let contract_first = with_bundle(&base, |bundle| {
+            let manifest = bundle.manifest_ref.as_mut().expect("manifest");
+            manifest.contract_id = "unknown-contract".to_string();
+            manifest.schema_version = "2".to_string();
+            manifest.subject = None;
+            manifest.digest_algorithm = "sha512".to_string();
+            manifest.digest_value = "malformed".to_string();
+        });
+        assert_denied(
+            &contract_first,
+            Some(&validation),
+            DenialReason::UnknownReferenceContract,
+            None,
+        );
+
+        let version_first = with_bundle(&base, |bundle| {
+            let manifest = bundle.manifest_ref.as_mut().expect("manifest");
+            manifest.schema_version = "2".to_string();
+            manifest.subject = None;
+            manifest.digest_algorithm = "sha512".to_string();
+        });
+        assert_denied(
+            &version_first,
+            Some(&validation),
+            DenialReason::UnknownReferenceSchemaVersion,
+            None,
+        );
+
+        let classification_first = with_bundle(&base, |bundle| {
+            let manifest = bundle.manifest_ref.as_mut().expect("manifest");
+            manifest.schema_version = "2".to_string();
+            manifest.digest_algorithm = "sha512".to_string();
+        });
+        let mut classification_contents = valid_reference_contents(&base.subject);
+        classification_contents[0].reference_class = ReferenceClass::PackageMetadata;
+        classification_contents[0].subject.digest = hash_bytes_prefixed(b"different-subject");
+        classification_contents.remove(1);
+        assert_denied_with_contents(
+            &classification_first,
+            Some(&validation),
+            &classification_contents,
+            DenialReason::UnknownReferenceContract,
+            None,
+        );
+
+        let subject_first = with_bundle(&base, |bundle| {
+            bundle
+                .manifest_ref
+                .as_mut()
+                .expect("manifest")
+                .digest_algorithm = "sha512".to_string();
+        });
+        let mut subject_contents = valid_reference_contents(&base.subject);
+        subject_contents[0].subject.digest = hash_bytes_prefixed(b"different-subject");
+        subject_contents.remove(1);
+        assert_denied_with_contents(
+            &subject_first,
+            Some(&validation),
+            &subject_contents,
+            DenialReason::ReferenceSubjectMismatch,
+            None,
+        );
+
+        validation.stage_results[0].stage_id = "unknown_stage".to_string();
+        validation.stage_results[0].stage_index = 9;
+        validation.stage_results[1].content_bytes.push(b'!');
+        validation.stale_digest = true;
+        assert_denied(
+            &base,
+            Some(&validation),
+            DenialReason::UnknownValidationStageId,
+            Some(true),
+        );
+    }
+
+    #[test]
+    fn reference_integrity_denial_is_deterministic() {
+        let bundle = valid_bundle();
+        let validation = valid_validation(&bundle.subject);
+        let mut contents = valid_reference_contents(&bundle.subject);
+        contents[0].content_bytes.push(b'!');
+
+        let first = run_harness(&bundle, Some(&validation), &contents).expect("first denial");
+        let second = run_harness(&bundle, Some(&validation), &contents).expect("second denial");
+
+        assert_eq!(first, second);
+        assert_eq!(first.status, HarnessStatus::Denied);
+        assert_eq!(
+            first.denial_record.as_ref().expect("denial").reason,
+            DenialReason::ReferenceDigestMismatch
+        );
+    }
+
     fn assert_denied(
         bundle: &StaticInputBundle,
         validation: Option<&PlatformValidationEvidence>,
         reason: DenialReason,
         input_digest_present: Option<bool>,
     ) {
-        let outcome = run_harness(bundle, validation).expect("harness run");
-        assert_eq!(outcome.status, HarnessStatus::Denied);
-        assert!(outcome.validation_integration_record.is_none());
-        assert!(outcome.workspace_admission_record.is_none());
-        assert!(outcome.runtime_receipt.is_none());
-        assert_eq!(
-            outcome.denial_record.as_ref().expect("denial").reason,
-            reason
-        );
+        let contents = valid_reference_contents(&bundle.subject);
+        assert_denied_with_contents(bundle, validation, &contents, reason, input_digest_present);
+    }
+
+    fn assert_denied_with_contents(
+        bundle: &StaticInputBundle,
+        validation: Option<&PlatformValidationEvidence>,
+        contents: &[TestOwnedReferenceContent],
+        reason: DenialReason,
+        input_digest_present: Option<bool>,
+    ) {
+        let first = run_harness(bundle, validation, contents).expect("first harness run");
+        let second = run_harness(bundle, validation, contents).expect("second harness run");
+
+        assert_eq!(first, second, "denial fixture must be deterministic");
+        assert_eq!(first.status, HarnessStatus::Denied);
+        assert!(first.validation_integration_record.is_none());
+        assert!(first.workspace_admission_record.is_none());
+        assert!(first.runtime_receipt.is_none());
+        assert_eq!(first.denial_record.as_ref().expect("denial").reason, reason);
         if let Some(expected) = input_digest_present {
-            assert_eq!(outcome.input_bundle_digest.is_some(), expected);
+            assert_eq!(first.input_bundle_digest.is_some(), expected);
         }
     }
 
@@ -1108,33 +1798,42 @@ mod tests {
             kind: "phase19_static_test_bundle".to_string(),
             id: "bundle-alpha".to_string(),
             version: "1.0.0".to_string(),
-            digest: "sha256:subject-digest-v100".to_string(),
+            digest: hash_bytes_prefixed(b"phase19-subject-v1.0.0"),
         };
 
+        bundle_for_subject(subject)
+    }
+
+    fn bundle_for_subject(subject: Subject) -> StaticInputBundle {
         StaticInputBundle {
             schema_id: INPUT_BUNDLE_SCHEMA_ID.to_string(),
             bundle_id: "phase19-static-bundle-alpha".to_string(),
             bundle_version: "1".to_string(),
             subject: subject.clone(),
             manifest_ref: Some(digest_ref_with_subject(
-                "docs/specs/phase18-platform-constitution/MODULE_MANIFEST_SCHEMA.md",
-                "ayken.phase18.module_manifest.schema.v1",
+                MANIFEST_PATH,
+                MODULE_MANIFEST_CONTRACT_ID,
+                MANIFEST_BYTES,
                 &subject,
             )),
             package_ref: Some(digest_ref_with_subject(
-                "docs/specs/phase18-platform-constitution/PACKAGE_METADATA_SCHEMA.md",
-                "ayken.phase18.package_metadata.schema.v1",
+                PACKAGE_PATH,
+                PACKAGE_METADATA_CONTRACT_ID,
+                PACKAGE_BYTES,
                 &subject,
             )),
-            platform_validation_policy_ref: Some(digest_ref(
-                "docs/specs/phase18-platform-constitution/PLATFORM_ABI_VALIDATION_GATE.md",
-                "ayken.phase18.platform_abi_validation_gate.v1",
+            platform_validation_policy_ref: Some(digest_ref_with_subject(
+                VALIDATION_POLICY_PATH,
+                PLATFORM_VALIDATION_POLICY_CONTRACT_ID,
+                VALIDATION_POLICY_BYTES,
+                &subject,
             )),
             workspace_admission_request: WorkspaceAdmissionRequest {
                 profile: "inert-record-only".to_string(),
                 declaration_ref: Some(digest_ref_with_subject(
-                    "docs/specs/phase18-platform-constitution/WORKSPACE_LIFECYCLE_SPECIFICATION.md",
-                    "ayken.phase18.workspace_lifecycle.specification.v1",
+                    WORKSPACE_PATH,
+                    WORKSPACE_DECLARATION_CONTRACT_ID,
+                    WORKSPACE_BYTES,
                     &subject,
                 )),
                 requests_real_mount: false,
@@ -1149,9 +1848,11 @@ mod tests {
                 profile_version: "1".to_string(),
                 declares_token_authority: false,
             },
-            evidence_refs: vec![digest_ref(
-                "docs/specs/phase19-platform-runtime/RUNTIME_EVIDENCE_MATRIX.md",
-                "ayken.phase19.runtime.evidence_matrix.v1",
+            evidence_refs: vec![digest_ref_with_subject(
+                EVIDENCE_MATRIX_PATH,
+                RUNTIME_EVIDENCE_MATRIX_CONTRACT_ID,
+                EVIDENCE_MATRIX_BYTES,
+                &subject,
             )],
             shape: StaticBundleShape::default(),
             authority_claims: AuthorityClaims::default(),
@@ -1159,16 +1860,26 @@ mod tests {
     }
 
     fn valid_validation(subject: &Subject) -> PlatformValidationEvidence {
+        let stage_results = VALIDATION_STAGE_ORDER
+            .iter()
+            .map(|(stage_id, stage_index)| {
+                let content_bytes = format!("{stage_index}:{stage_id}:pass").into_bytes();
+                ValidationStageReference {
+                    stage_id: (*stage_id).to_string(),
+                    stage_index: *stage_index,
+                    digest_algorithm: REFERENCE_DIGEST_ALGORITHM.to_string(),
+                    digest_value: hash_bytes_prefixed(&content_bytes),
+                    content_bytes,
+                }
+            })
+            .collect();
+
         PlatformValidationEvidence {
             contract_id: PLATFORM_VALIDATION_RECEIPT_CONTRACT_ID.to_string(),
-            schema_version: "1".to_string(),
+            schema_version: PLATFORM_VALIDATION_RECEIPT_SCHEMA_VERSION.to_string(),
             subject: subject.clone(),
-            receipt_digest: "sha256:platform-validation-receipt-alpha".to_string(),
-            stage_result_digests: vec![
-                "sha256:manifest-stage".to_string(),
-                "sha256:workspace-stage".to_string(),
-                "sha256:receipt-boundary-stage".to_string(),
-            ],
+            receipt_digest: hash_bytes_prefixed(b"platform-validation-receipt-alpha"),
+            stage_results,
             status: PlatformValidationStatus::Pass,
             declares_authority_grant: false,
             unknown_stage_observed: false,
@@ -1176,26 +1887,69 @@ mod tests {
         }
     }
 
-    fn digest_ref(path: &str, contract_id: &str) -> DigestReference {
-        DigestReference {
+    fn valid_reference_contents(subject: &Subject) -> Vec<TestOwnedReferenceContent> {
+        vec![
+            test_owned_content(
+                MANIFEST_PATH,
+                ReferenceClass::ModuleManifest,
+                subject,
+                MANIFEST_BYTES,
+            ),
+            test_owned_content(
+                PACKAGE_PATH,
+                ReferenceClass::PackageMetadata,
+                subject,
+                PACKAGE_BYTES,
+            ),
+            test_owned_content(
+                VALIDATION_POLICY_PATH,
+                ReferenceClass::PlatformValidationPolicy,
+                subject,
+                VALIDATION_POLICY_BYTES,
+            ),
+            test_owned_content(
+                WORKSPACE_PATH,
+                ReferenceClass::WorkspaceDeclaration,
+                subject,
+                WORKSPACE_BYTES,
+            ),
+            test_owned_content(
+                EVIDENCE_MATRIX_PATH,
+                ReferenceClass::RuntimeEvidenceMatrix,
+                subject,
+                EVIDENCE_MATRIX_BYTES,
+            ),
+        ]
+    }
+
+    fn test_owned_content(
+        path: &str,
+        reference_class: ReferenceClass,
+        subject: &Subject,
+        bytes: &[u8],
+    ) -> TestOwnedReferenceContent {
+        TestOwnedReferenceContent {
             path_or_uri: path.to_string(),
-            digest_algorithm: "sha256".to_string(),
-            digest_value: format!("sha256:{}", path.replace('/', "_")),
-            contract_id: contract_id.to_string(),
-            schema_version: "1".to_string(),
-            subject: None,
-            stale: false,
+            reference_class,
+            subject: subject.clone(),
+            content_bytes: bytes.to_vec(),
         }
     }
 
     fn digest_ref_with_subject(
         path: &str,
         contract_id: &str,
+        bytes: &[u8],
         subject: &Subject,
     ) -> DigestReference {
         DigestReference {
+            path_or_uri: path.to_string(),
+            digest_algorithm: REFERENCE_DIGEST_ALGORITHM.to_string(),
+            digest_value: hash_bytes_prefixed(bytes),
+            contract_id: contract_id.to_string(),
+            schema_version: REFERENCE_ENVELOPE_SCHEMA_VERSION.to_string(),
             subject: Some(subject.clone()),
-            ..digest_ref(path, contract_id)
+            stale: false,
         }
     }
 }
