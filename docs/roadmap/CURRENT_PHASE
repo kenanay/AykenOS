@@ -1,13 +1,14 @@
-CURRENT_PHASE=19
-# Status authority synchronized: 2026-06-06 (Phase-19 pointer transition decision)
+CURRENT_PHASE=20
+# Status authority synchronized: 2026-06-28 (Phase-20 pointer transition decision)
 # Phase-16 OFFICIALLY CLOSED - 2026-04-25 - tag: phase16-official-closure
 # Phase-17 OFFICIALLY CLOSED - 2026-05-31 - tag: phase17-official-closure at 416a5392.
 # Phase-17 closure evidence remains bounded to the reviewed exact-SHA runtime/QEMU, freeze, and performance runs.
 # Phase-18 remains the accepted Platform Constitution reference set.
-# Phase-19 is ACTIVE only as Platform Runtime MVP planning, validation-integration, admission-record, and receipt-boundary phase.
-# CURRENT_PHASE=19 does not authorize runtime implementation.
-# Runtime source code, loader, installer, workspace runtime, plugin host, capability issuer, trust issuer, Semantic CLI authority, AI Runtime authority, new syscall, kernel ABI expansion, and Ring0 policy remain unauthorized.
+# Phase-19 is CLOSED for the exact subject recorded by PHASE19_CLOSURE_DECISION.md.
+# Phase-20 is ACTIVE only as capability and registry ecosystem planning/governance.
+# CURRENT_PHASE=20 does not authorize runtime activation, general runtime authority, or implementation authority.
+# Runtime source code, loader, installer, package execution, module loading, workspace runtime, plugin host, capability issuer, trust issuer, registry publication, Semantic CLI authority, AI Runtime authority, agent authority, new syscall, kernel ABI expansion, and Ring0 policy remain unauthorized.
 # Active execution roadmap: docs/roadmap/CONSTITUTIONAL_STABILIZATION_ROADMAP_2026_05_23.md
 # Remote evidence: ci-freeze 26712333892, Performance Gate 26715068398, Phase-17 lifecycle/determinism/public-e2e/worker/timeout/performance lanes all PASS on 416a5392.
-# Immediate work package: maintain Phase-19 planning/admission/receipt authority boundary; any runtime implementation remains a separate reviewed decision and evidence package.
+# Immediate work package: maintain Phase-20 planning/governance boundary; any Phase-20 implementation remains a separate reviewed decision and evidence package.
 # Duzenleyen / Gelistiren / Olusturan / Mimari Sorumlu: Kenan AY (informational metadata only).
