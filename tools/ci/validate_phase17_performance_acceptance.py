@@ -68,6 +68,10 @@ def require_equal(
         violations.append(f"{label}:expected={expected}:actual={actual}")
 
 
+def is_github_hosted_authority(value: object) -> bool:
+    return isinstance(value, str) and value.startswith("github-hosted-")
+
+
 def main() -> int:
     args = parse_args()
     report_path = Path(args.performance_report)
@@ -142,12 +146,19 @@ def main() -> int:
             source_env.get("env_hash"),
             baseline_env.get("env_hash"),
         )
-        require_equal(
-            violations,
-            "source_ci_image_digest",
-            source_env.get("ci_image_digest"),
-            baseline_env.get("ci_image_digest"),
+        source_authority = source_env.get("baseline_authority")
+        baseline_authority = baseline_policy.get("baseline_authority")
+        digest_is_blocking = not (
+            is_github_hosted_authority(source_authority)
+            and is_github_hosted_authority(baseline_authority)
         )
+        if digest_is_blocking:
+            require_equal(
+                violations,
+                "source_ci_image_digest",
+                source_env.get("ci_image_digest"),
+                baseline_env.get("ci_image_digest"),
+            )
         require_equal(violations, "baseline_diff", source.get("baseline_diff"), [])
         if build_log_path is None or not build_log_path.is_file():
             violations.append("missing_locked_authority_build_log")

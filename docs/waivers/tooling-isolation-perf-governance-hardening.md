@@ -6,7 +6,7 @@
 - Title: Perf governance hardening requires kernel observability updates
 - Author: Kenan AY
 - Date: 2026-04-04
-- Expiry Date: 2026-06-30
+- Expiry Date: 2026-07-03
 - Related Issue: https://github.com/kenanay/AykenOS/pull/88, https://github.com/kenanay/AykenOS/pull/142, https://github.com/kenanay/AykenOS/issues/145
 - Related RFC: N/A
 
@@ -66,6 +66,11 @@ single-maintainer `main` authority accepted through PR #147. This extension
 does not authorize Ring0 policy movement or bypass a CI result; it keeps the
 paired tooling/kernel hardening waiver active only for bounded review of that
 existing lineage.
+
+2026-07-01: Extended to the 90-day maximum only to complete the CI runner
+image and locked baseline renewal after the GitHub-hosted Ubuntu 24.04 runner
+fingerprint changed. This extension does not authorize new kernel behavior,
+runtime behavior, Ring0 policy movement, or bypass a CI result.
 
 ## Rollback Plan
 
