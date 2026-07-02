@@ -1,0 +1,27 @@
+{
+  "fixture_id": "ayken.phase21.first_bounded.fixture.denied_runtime_authority.v1",
+  "fixture_type": "static_denied_authority_example",
+  "non_executing": true,
+  "runtime_authority": false,
+  "denied_request": {
+    "runtime_implementation_procedure": true,
+    "code_execution": true,
+    "process_start": true,
+    "runtime_state_creation": true,
+    "package_loading": true,
+    "package_execution": true
+  },
+  "expected_static_reading": "fail_closed",
+  "denied_authorities": [
+    "runtime_implementation_procedure",
+    "code_execution",
+    "process_start",
+    "runtime_state_creation",
+    "package_loading",
+    "package_execution",
+    "capability_issuance",
+    "registry_publication",
+    "trust_assignment",
+    "source_merge_authority"
+  ]
+}
