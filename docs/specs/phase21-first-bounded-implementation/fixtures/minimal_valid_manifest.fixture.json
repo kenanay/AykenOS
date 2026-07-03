@@ -1,0 +1,24 @@
+{
+  "fixture_id": "ayken.phase21.first_bounded.fixture.minimal_valid_manifest.v1",
+  "fixture_type": "static_validation_input_example",
+  "non_executing": true,
+  "package_loading_authority": false,
+  "runtime_authority": false,
+  "manifest": {
+    "name": "phase21-minimal-static-example",
+    "version": "0.0.0",
+    "kind": "static-skeleton-example"
+  },
+  "denied_authorities": [
+    "runtime_implementation_procedure",
+    "code_execution",
+    "process_start",
+    "runtime_state_creation",
+    "package_loading",
+    "package_execution",
+    "capability_issuance",
+    "registry_publication",
+    "trust_assignment",
+    "source_merge_authority"
+  ]
+}
