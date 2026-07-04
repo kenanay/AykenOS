@@ -22,12 +22,15 @@ acceptance boundary clean recovery record for the exact subject identified
 below.
 
 **Status:** PHASE-22 STATIC PACKAGE ACCEPTANCE BOUNDARY CLEAN RECOVERY RFC /
-CLEAN RECOVERY EVIDENCE RECORD ONLY / PR #241 BOUNDARY LANDED EARLIER /
-PR #241 ORIGINAL POST-MERGE CI-FREEZE FAILED / EXPIRED WAIVER REMEDIATION
-COMPLETED / WAIVER REVIEW RECORD CLEAN-FIXED / BOUNDARY CLEAN RECOVERY
-RECORDED ONLY FOR EXACT RECOVERY SUBJECT / NO PACKAGE ACCEPTANCE / NO
-PACKAGE REVIEW RESULT / NO STATIC PACKAGE ACCEPTANCE DECISION / NO RECEIPT
-EVIDENCE ACCEPTANCE / NO ACCEPTED EVIDENCE / NO VALIDATOR AUTHORITY / NO
+CLEAN RECOVERY EVIDENCE RECORD ONLY / POST-PR-244 PUBLICATION METADATA SYNC
+UPDATE / PR #244 REFERENCED ONLY AS PRIOR CLEAN RECOVERY PUBLICATION EVENT /
+PR #241 BOUNDARY LANDED EARLIER / PR #241 ORIGINAL POST-MERGE CI-FREEZE
+FAILED / EXPIRED WAIVER REMEDIATION COMPLETED / WAIVER REVIEW RECORD
+CLEAN-FIXED / BOUNDARY CLEAN RECOVERY RECORDED ONLY FOR EXACT RECOVERY
+INPUT SUBJECT AND REFERENCED PR #244 PUBLICATION EVENT / NO PACKAGE
+ACCEPTANCE / NO PACKAGE REVIEW RESULT / NO STATIC PACKAGE ACCEPTANCE
+DECISION / NO RECEIPT EVIDENCE ACCEPTANCE / NO ACCEPTED EVIDENCE / NO
+VALIDATOR AUTHORITY / NO
 VALIDATOR OUTPUT ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO
 SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO
 PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE AUTHORITY / NO
@@ -37,8 +40,12 @@ PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE MERGE AUTHORITY / NO
 SOURCE ACCEPTANCE / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Recovery date:** 2026-07-04
 **Recovery id:** `ayken.phase22.static_package_acceptance_boundary_clean_recovery.v1`
-**Recovery base main SHA:** `d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe`
-**Recovery subject SHA:** `d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe`
+**Recovery input main SHA:** `d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe`
+**Recovery input subject SHA:** `d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe`
+**Referenced PR #244 publication event SHA:**
+`6daa7d7ea1ffd24832d516c30edd5b92872085e8`
+**Referenced PR #244 publication event PR:** PR #244
+**Metadata sync publication subject:** pending separate reviewed publication
 **Recovered boundary publication SHA:** `5725491257b3a83aae313ce94d9543b2a0358075`
 **Reviewed boundary file:** `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY.md`
 **Reviewed boundary PR:** PR #241
@@ -51,10 +58,15 @@ SOURCE ACCEPTANCE / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Original boundary post-merge ci-freeze run:** `28697974795`
 **Original boundary post-merge ci-freeze job:** `freeze / 85110902000`
 **Original boundary post-merge ci-freeze result:** FAIL
-**Recovery exact-main ci-freeze run:** `28699689523`
-**Recovery exact-main ci-freeze job:** `freeze / 85115527226`
-**Recovery exact-main ci-freeze result:** PASS
-**Recovery exact-main Dev Loop CI run:** `28699689535`
+**Recovery input exact-main ci-freeze run:** `28699689523`
+**Recovery input exact-main ci-freeze job:** `freeze / 85115527226`
+**Recovery input exact-main ci-freeze result:** PASS
+**Recovery input exact-main Dev Loop CI run:** `28699689535`
+**Recovery input exact-main Dev Loop CI result:** PASS
+**PR #244 publication event exact-main ci-freeze run:** `28705800625`
+**PR #244 publication event exact-main ci-freeze result:** PASS
+**PR #244 publication event exact-main Dev Loop CI run:** `28705800612`
+**PR #244 publication event exact-main Dev Loop CI result:** PASS
 **Current phase pointer:** `CURRENT_PHASE=22`
 **Phase-22 governance theme:** Actual Skeleton Review And Static Package
 Acceptance Boundary
@@ -88,10 +100,16 @@ The originally blocked boundary publication subject is:
 5725491257b3a83aae313ce94d9543b2a0358075
 ```
 
-The current recovery subject is:
+The recovery input subject is:
 
 ```text
 d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe
+```
+
+The referenced PR #244 publication event subject is:
+
+```text
+6daa7d7ea1ffd24832d516c30edd5b92872085e8
 ```
 
 This recovery record consumes:
@@ -101,6 +119,10 @@ This recovery record consumes:
 3. The PR #242 waiver review record.
 4. Post-remediation exact-main `ci-freeze` PASS evidence.
 5. Post-remediation exact-main AykenOS Dev Loop CI PASS evidence.
+6. PR #244 clean recovery publication event metadata.
+7. PR #244 post-merge exact-main `ci-freeze` PASS evidence.
+8. PR #244 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
+9. This post-PR-244 metadata sync update as a separate correction record.
 
 It answers only:
 
@@ -132,15 +154,42 @@ How is source accepted or merged?
 Those questions require later separate reviewed decision paths if ever
 authorized.
 
-## Exact Subject
+## Exact Subjects
 
-This recovery record is bound to exact main SHA:
+This post-PR-244 metadata sync update is not bound to PR #244 as its own
+publication subject.
+
+It references PR #244 as the prior clean recovery publication event at exact
+main SHA:
+
+```text
+6daa7d7ea1ffd24832d516c30edd5b92872085e8
+```
+
+That exact subject is the squash merge of PR #244:
+
+```text
+Phase-22 static package acceptance boundary clean recovery
+```
+
+PR #244 added only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md
+```
+
+This metadata sync update was not present in the PR #244 merge commit.
+
+This metadata sync update requires a later separate reviewed publication
+subject if it is merged.
+
+The recovery input exact main SHA remains:
 
 ```text
 d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe
 ```
 
-That exact subject is the squash merge of PR #242:
+That recovery input subject is the squash merge of PR #242:
 
 ```text
 Phase-22 tooling isolation perf waiver review
@@ -179,8 +228,17 @@ It records later exact-main clean recovery after:
    d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe
    ```
 
-3. The recovery subject produced exact-main `ci-freeze` PASS and AykenOS
-   Dev Loop CI PASS.
+3. The recovery input subject produced exact-main `ci-freeze` PASS and
+   AykenOS Dev Loop CI PASS.
+
+4. The clean recovery publication event occurred in PR #244 at:
+
+   ```text
+   6daa7d7ea1ffd24832d516c30edd5b92872085e8
+   ```
+
+5. The PR #244 publication event subject produced exact-main `ci-freeze`
+   PASS and AykenOS Dev Loop CI PASS.
 
 Missing, stale, ambiguous, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
@@ -219,6 +277,13 @@ PR #241 original ci-freeze FAIL != PASS
 later recovery PASS != retroactive original PASS
 boundary clean-recovered != boundary content changed
 boundary clean-recovered != acceptance decision
+PR #244 publication event != package acceptance
+PR #244 publication event != package review result
+PR #244 publication event != static package acceptance decision
+PR #244 ci-freeze PASS != package acceptance
+PR #244 Dev Loop PASS != package acceptance
+PR #244 publication event != metadata sync publication subject
+post-PR-244 metadata sync update != text present in PR #244 merge commit
 ```
 
 The safe default remains no package acceptance, no package review result,
@@ -243,6 +308,8 @@ clean-recovery-record-only
 PR-241-boundary-publication-recovery-only
 exact-SHA-evidence-oriented
 post-remediation-ci-evidence-oriented
+publication-sync-evidence-oriented
+post-publication-metadata-sync-oriented
 static
 governance-only
 non-runtime
@@ -259,7 +326,12 @@ This recovery record may record:
 5. The PR #242 waiver review clean-fixed SHA.
 6. The recovery exact-main `ci-freeze` PASS evidence.
 7. The recovery exact-main AykenOS Dev Loop CI PASS evidence.
-8. The conclusion that the PR #241 boundary blocker has been cleanly
+8. The PR #244 clean recovery publication event SHA.
+9. The PR #244 post-merge exact-main `ci-freeze` PASS evidence.
+10. The PR #244 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
+11. The fact that this metadata sync update is post-PR-244 and was not
+    present in the PR #244 merge commit.
+12. The conclusion that the PR #241 boundary blocker has been cleanly
    recovered by later exact-main evidence.
 
 This recovery record must not:
@@ -472,9 +544,22 @@ The recovery evidence chain is:
 
 7. PR #242 post-merge exact-main `ci-freeze` passed.
 8. PR #242 post-merge exact-main AykenOS Dev Loop CI passed.
+9. PR #244 served as the prior clean recovery publication event at:
+
+   ```text
+   6daa7d7ea1ffd24832d516c30edd5b92872085e8
+   ```
+
+10. PR #244 post-merge exact-main `ci-freeze` passed.
+11. PR #244 post-merge exact-main AykenOS Dev Loop CI passed.
 
 The recovery evidence shows that the original PR #241 clean-fixed blocker
-has been remediated on later exact main.
+has been remediated on later exact main and that the PR #244 clean recovery
+publication event has its own post-merge exact-main PASS evidence.
+
+This metadata sync update records the PR #244 event after the PR #244 merge.
+
+This metadata sync update was not present in the PR #244 merge commit.
 
 This recovery evidence is not package acceptance.
 
@@ -506,17 +591,27 @@ The recovered boundary publication SHA is:
 5725491257b3a83aae313ce94d9543b2a0358075
 ```
 
-The recovery subject SHA is:
+The recovery input subject SHA is:
 
 ```text
 d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe
+```
+
+The referenced PR #244 clean recovery publication event SHA is:
+
+```text
+6daa7d7ea1ffd24832d516c30edd5b92872085e8
 ```
 
 The correct recovered expression is:
 
 ```text
 Boundary file landed on main at PR #241 and is clean-recovered by later
-exact-main remediation evidence at d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe.
+exact-main remediation evidence at d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe,
+then PR #244 served as the clean recovery publication event at
+6daa7d7ea1ffd24832d516c30edd5b92872085e8; this post-PR-244 metadata sync
+update records that event separately and was not present in the PR #244
+merge commit.
 ```
 
 This does not convert the original PR #241 failed `ci-freeze` run into a
@@ -712,30 +807,54 @@ infer runtime authority.
 Any reading that conflicts with Phase-19 runtime authority records,
 Phase-20 closure, or Phase-21 closure fails closed.
 
-## Post-Merge Verification Expectations
+## PR #244 Publication Event Verification
 
-If this recovery record is merged, post-merge exact-main verification must
-record:
+PR #244 is referenced as the prior clean recovery publication event at exact
+main SHA:
 
-1. `ci-freeze` PASS for this recovery record publication subject.
-2. AykenOS Dev Loop CI PASS for this recovery record publication subject.
-3. Exact changed-file list confirmation.
-4. No `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY.md` content change.
-5. No waiver file update.
-6. No `docs/roadmap/CURRENT_PHASE` change.
-7. No CI workflow change.
-8. No baseline change.
-9. No dependency change.
-10. No runtime source or kernel source change.
-11. No syscall or kernel ABI change.
-12. No package loader, module loader, workspace runtime, plugin host,
-    capability issuer, registry publication, trust issuer, deployment, or
-    distribution execution change.
+```text
+6daa7d7ea1ffd24832d516c30edd5b92872085e8
+```
+
+PR #244 merged the pre-sync clean recovery record and changed only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md
+```
+
+The PR #244 post-merge exact-main verification recorded:
+
+| Evidence | Run | Result |
+|---|---|---|
+| `ci-freeze` | run `28705800625` | PASS |
+| AykenOS Dev Loop CI | run `28705800612` | PASS |
+
+This metadata sync update records only the exact-main verification state of
+the PR #244 publication event.
+
+This metadata sync update was not present in the PR #244 merge commit.
+
+This metadata sync update requires its own later separate reviewed
+publication subject if it is merged.
+
+It does not convert PR #244 into package acceptance.
+
+It does not convert PR #244 into package review result.
+
+It does not convert PR #244 into static package acceptance decision.
+
+It does not accept receipt evidence.
+
+It does not authorize runtime implementation procedure, package loading,
+package execution, source acceptance, source merge, registry publication,
+capability issuance, trust assignment, deployment, distribution, kernel ABI
+expansion, or syscall expansion.
 
 Historical PASS results may be cited as recovery context only.
 
-They cannot be inherited as evidence for this recovery record publication
-subject.
+They cannot be inherited as package acceptance evidence or runtime authority
+for the PR #244 publication event or for this metadata sync update's later
+publication subject.
 
 ## Recovery Invariants
 
@@ -774,29 +893,38 @@ boundary clean recovery invariants:
 29. Later recovery PASS is not retroactive original PASS.
 30. Boundary clean-recovered is not boundary content changed.
 31. Boundary clean-recovered is not acceptance decision.
-32. Phase-21 remains closed as first bounded actual skeleton landed and
+32. PR #244 publication event is not package acceptance.
+33. PR #244 publication event is not package review result.
+34. PR #244 publication event is not static package acceptance decision.
+35. PR #244 `ci-freeze` PASS is not package acceptance.
+36. PR #244 Dev Loop PASS is not package acceptance.
+37. PR #244 publication event is not this metadata sync update's publication
+    subject.
+38. This metadata sync update was not present in the PR #244 merge commit.
+39. Phase-21 remains closed as first bounded actual skeleton landed and
     recorded only.
-33. This recovery record does not broaden Phase-19 runtime authority.
-34. This recovery record does not reopen Phase-20.
-35. This recovery record does not reopen Phase-21.
-36. This recovery record does not expand kernel ABI or syscalls.
-37. Ambiguity fails closed.
+40. This recovery record does not broaden Phase-19 runtime authority.
+41. This recovery record does not reopen Phase-20.
+42. This recovery record does not reopen Phase-21.
+43. This recovery record does not expand kernel ABI or syscalls.
+44. Ambiguity fails closed.
 
 Violation of any invariant fails closed.
 
 ## Publication Boundary
 
-If this recovery record is merged, the landing SHA publishes only this
-Phase-22 static package acceptance boundary clean recovery record. The
-landing SHA must not be read as package acceptance, package review result,
-static package acceptance decision, receipt evidence acceptance, accepted
-evidence, validator authority, validator output acceptance, runtime
-implementation procedure, source modification authority, code
-implementation authority, code execution authority, process start
-authority, runtime state authority, package loading authority, package
-execution authority, capability issuance, registry publication, trust
-assignment, source merge authority, implementation acceptance, general
-runtime authority, or kernel ABI/syscall expansion.
+The PR #244 landing SHA published only the pre-sync Phase-22 static package
+acceptance boundary clean recovery record. This post-PR-244 metadata sync
+update does not broaden the PR #244 publication event. The PR #244 landing
+SHA must not be read as package acceptance, package review result, static
+package acceptance decision, receipt evidence acceptance, accepted evidence,
+validator authority, validator output acceptance, runtime implementation
+procedure, source modification authority, code implementation authority,
+code execution authority, process start authority, runtime state authority,
+package loading authority, package execution authority, capability issuance,
+registry publication, trust assignment, source merge authority,
+implementation acceptance, general runtime authority, or kernel ABI/syscall
+expansion.
 
 Any later package acceptance, package review result, static package
 acceptance decision, receipt evidence acceptance, runtime implementation
@@ -809,8 +937,8 @@ separate reviewed decision path.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-22 RFC
-**Architecture status:** Draft clean recovery record / pending
-architectural review
+**Architecture status:** Draft post-PR-244 metadata sync update / pending
+separate reviewed publication
 **Authority notice:** This signature identifies the architectural authorship
 of this recovery record. It grants no package acceptance authority, package
 review result authority, static package acceptance decision authority,
@@ -827,8 +955,20 @@ authority, or Ring0 authority.
 
 ## Conclusion
 
-This Phase-22 static package acceptance boundary clean recovery record is
-bound to exact main SHA:
+This post-PR-244 metadata sync update references PR #244 as the prior clean
+recovery publication event at exact main SHA:
+
+```text
+6daa7d7ea1ffd24832d516c30edd5b92872085e8
+```
+
+This metadata sync update is not itself published by PR #244 and must not be
+read as text present in the PR #244 merge commit.
+
+The publication subject for this metadata sync update must be a later
+separate reviewed PR or commit.
+
+The recovery input exact main SHA is:
 
 ```text
 d9ffc050e989ee994bbc30f53a0b4bb8b6a3a7fe
@@ -855,6 +995,11 @@ The recovery basis is:
 4. PR #242 waiver review record clean-fixed.
 5. PR #242 post-merge exact-main `ci-freeze` PASS.
 6. PR #242 post-merge exact-main AykenOS Dev Loop CI PASS.
+7. PR #244 clean recovery publication event.
+8. PR #244 post-merge exact-main `ci-freeze` PASS.
+9. PR #244 post-merge exact-main AykenOS Dev Loop CI PASS.
+10. This post-PR-244 metadata sync update, pending separate reviewed
+    publication.
 
 This recovery record does not accept packages, record package review
 result, define static package acceptance decision, accept receipt evidence,
