@@ -31,11 +31,13 @@ In case of conflict, those documents prevail unless this closure decision is
 the narrower Phase-22 closure decision for the exact completed Phase-22
 subject identified below.
 
-**Status:** PHASE-22 CLOSURE DECISION RFC / LOCAL DRAFT PENDING SEPARATE
-REVIEWED PUBLICATION / CLOSURE PROPOSED ONLY FOR ACTUAL SKELETON REVIEWED,
-STATIC PACKAGE ACCEPTANCE BOUNDARY DEFINED AND CLEAN-RECOVERED, AND PHASE-21
-FIRST BOUNDED IMPLEMENTATION ACTUAL SKELETON EXACT 12-FILE SET ACCEPTED AS A
-STATIC PACKAGE SUBJECT ONLY / NO PHASE-23 POINTER TRANSITION / NO RUNTIME
+**Status:** PHASE-22 CLOSURE DECISION RFC / PR #249 CLOSURE DECISION
+PUBLICATION RECORDED / POST-PR-249 PUBLICATION STATUS SYNC UPDATE / CLOSURE
+GRANTED ONLY FOR ACTUAL SKELETON REVIEWED, STATIC PACKAGE ACCEPTANCE
+BOUNDARY DEFINED AND CLEAN-RECOVERED, AND PHASE-21 FIRST BOUNDED
+IMPLEMENTATION ACTUAL SKELETON EXACT 12-FILE SET ACCEPTED AS A STATIC
+PACKAGE SUBJECT ONLY / THIS POST-PR-249 STATUS SYNC TEXT WAS NOT PRESENT IN
+THE PR #249 MERGE COMMIT / NO PHASE-23 POINTER TRANSITION / NO RUNTIME
 IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE IMPLEMENTATION /
 NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE
 INSTALLATION / NO PACKAGE LOADING / NO PACKAGE EXECUTION / NO ACCEPTED
@@ -47,9 +49,21 @@ NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Closure decision id:** `ayken.phase22.closure_decision.v1`
 **Closure decision base main SHA:**
 `2a18c516e50a804c482c59ac36897f9cfbe2510b`
-**Closure publication subject:** pending separate reviewed publication
-**Completed Phase-22 subject under closure:**
+**Closure decision publication subject:**
+`9b19c94a01170d105bd7a7e9fb198df05be17fdf`
+**Closure decision publication PR:** PR #249
+**Closure decision publication exact-main ci-freeze run:** `28716904934`
+**Closure decision publication exact-main ci-freeze job:**
+`freeze / 85159817005`
+**Closure decision publication exact-main ci-freeze result:** PASS
+**Closure decision publication exact-main Dev Loop CI run:** `28716904952`
+**Closure decision publication exact-main Dev Loop CI result:** PASS
+**Post-PR-249 publication status sync update subject:** pending separate
+reviewed publication
+**Pre-closure completed Phase-22 input subject:**
 `2a18c516e50a804c482c59ac36897f9cfbe2510b`
+**Published Phase-22 closure subject:**
+`9b19c94a01170d105bd7a7e9fb198df05be17fdf`
 **Reviewed Phase-22 governance overview SHA:**
 `7e0128fde9f25d4c93ade10b493f4f0de5d34709`
 **Reviewed Phase-22 actual skeleton review plan SHA:**
@@ -93,11 +107,11 @@ baseline, dependency, or Ring0 authority.
 
 ## Purpose
 
-This document records the Phase-22 closure decision for the completed
-Phase-22 subject at exact main SHA:
+This document records the Phase-22 closure decision publication for exact
+main SHA:
 
 ```text
-2a18c516e50a804c482c59ac36897f9cfbe2510b
+9b19c94a01170d105bd7a7e9fb198df05be17fdf
 ```
 
 It closes Phase-22 only as:
@@ -113,9 +127,9 @@ It answers one question:
 
 ```text
 Is Phase-22 closed after its actual skeleton review, static package
-acceptance boundary, clean recovery, decision plan, and package-specific
-static package subject acceptance decision were published and verified on
-exact main?
+acceptance boundary, clean recovery, decision plan, package-specific static
+package subject acceptance decision, and closure decision were published and
+verified on exact main?
 ```
 
 It does not answer:
@@ -143,7 +157,49 @@ grants a specific bounded authority with its own exact-SHA evidence.
 
 ## Exact Subject
 
-This local draft is based on exact main SHA:
+The Phase-22 closure decision publication subject is exact main SHA:
+
+```text
+9b19c94a01170d105bd7a7e9fb198df05be17fdf
+```
+
+That subject is the squash merge of PR #249:
+
+```text
+Phase-22 closure decision
+```
+
+PR #249 published this closure decision and changed only:
+
+```text
+PHASE22_CLOSURE_DECISION.md
+```
+
+PR #249 is the Phase-22 closure decision publication subject.
+
+PR #249 is clean-fixed only for its own exact-main publication subject after
+post-merge `ci-freeze` PASS and AykenOS Dev Loop CI PASS.
+
+PR #249 is not Phase-23 pointer transition.
+
+PR #249 is not runtime authority.
+
+PR #249 is not accepted-evidence authority.
+
+PR #249 is not package loading or package execution authority.
+
+This post-PR-249 publication status sync update records the PR #249
+publication after the PR #249 merge.
+
+This post-PR-249 publication status sync update was not present in the PR
+#249 merge commit.
+
+This post-PR-249 publication status sync update does not become published
+until a later separate reviewed PR or commit publishes it and post-merge
+exact-main evidence is recorded for that sync publication subject.
+
+The pre-closure input subject remains the package-specific static package
+acceptance decision publication at exact main SHA:
 
 ```text
 2a18c516e50a804c482c59ac36897f9cfbe2510b
@@ -166,10 +222,6 @@ PR #248 is not runtime authority.
 PR #248 is not accepted-evidence authority.
 
 PR #248 is not package loading or package execution authority.
-
-This local draft does not become a published Phase-22 closure decision until
-a later separate reviewed PR or commit publishes it and post-merge
-exact-main evidence is recorded for that closure publication subject.
 
 Missing, stale, ambiguous, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
@@ -207,6 +259,12 @@ PR #248 clean-fixed != runtime authority
 PR #248 clean-fixed != accepted-evidence authority
 PR #248 clean-fixed != package loading authority
 PR #248 clean-fixed != package execution authority
+PR #249 closure publication != Phase-23 pointer transition
+PR #249 closure publication != runtime authority
+PR #249 closure publication != accepted-evidence authority
+PR #249 closure publication != package loading authority
+PR #249 closure publication != package execution authority
+post-PR-249 status sync update != text present in PR #249 merge commit
 closure decision record != runtime state
 closure decision record != execution handle
 closure decision record != Phase-23 authority
@@ -245,6 +303,15 @@ The closed Phase-22 scope is limited to:
 10. PR #248 post-merge exact-main `ci-freeze` and AykenOS Dev Loop CI PASS
     recorded as clean-fixed evidence for the PR #248 decision publication
     subject only.
+11. PR #249 published the Phase-22 closure decision at:
+
+    ```text
+    9b19c94a01170d105bd7a7e9fb198df05be17fdf
+    ```
+
+12. PR #249 post-merge exact-main `ci-freeze` and AykenOS Dev Loop CI PASS
+    recorded as clean-fixed evidence for the PR #249 closure decision
+    publication subject only.
 
 This closure decision grants no Phase-23 pointer transition and no
 additional implementation, runtime, package loading, package execution,
@@ -277,6 +344,7 @@ Phase-22 completed the following bounded scope:
 7. Published the static package acceptance decision plan.
 8. Published the package-specific static package acceptance decision for the
    Phase-21 First Bounded Implementation actual skeleton exact 12-file set.
+9. Published the Phase-22 closure decision.
 
 The completed scope is static, userspace-only, non-runtime, non-executing,
 exact-12-file-set-only, fail-closed, and exact-SHA evidence oriented.
@@ -304,6 +372,7 @@ The Phase-22 closure decision consumes the following exact evidence chain:
 | Publication status sync | PR #247 | `fbe72f253c1e515089679e4847019db120467004` |
 | Static package acceptance decision plan | PR #246 | `d90678b9f97ac60cbfa3771ddb5d20b0536b29e2` |
 | Package-specific static package acceptance decision | PR #248 | `2a18c516e50a804c482c59ac36897f9cfbe2510b` |
+| Phase-22 closure decision | PR #249 | `9b19c94a01170d105bd7a7e9fb198df05be17fdf` |
 | Accepted static package subject | PR #232 | `a26a3270d130e8b7f22c3d643d48d37d72ad5eef` |
 
 The PR #248 post-merge exact-main verification recorded:
@@ -320,6 +389,31 @@ The PR #248 post-merge exact-main verification recorded:
 
 Those PASS results establish clean-fixed status only for the exact PR #248
 decision publication subject.
+
+They are not runtime authority.
+
+They are not accepted evidence authority.
+
+They are not package loading or package execution authority.
+
+They are not source merge authority.
+
+The PR #249 post-merge exact-main verification recorded:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28716904934`, job `freeze / 85159817005` | PASS |
+| AykenOS Dev Loop CI | run `28716904952` | PASS |
+| Dev Loop smoke | job `85159816982` | PASS |
+| Dev Loop contract | job `85159884153` | PASS |
+| Dev Loop full | job `85160031542` | PASS |
+| Dev Loop isolation | job `85160191361` | PASS |
+| Dev Loop performance | job `85160340784` | PASS |
+
+Those PASS results establish clean-fixed status only for the exact PR #249
+closure decision publication subject.
+
+They are not Phase-23 pointer transition.
 
 They are not runtime authority.
 
@@ -456,6 +550,43 @@ closure record treats the PR #248 merge metadata and exact-main PASS evidence
 as the publication evidence for PR #248 only. It does not start a new
 status-sync loop and does not broaden PR #248 authority.
 
+## Relationship To PR #249
+
+PR #249 is the Phase-22 closure decision publication subject at:
+
+```text
+9b19c94a01170d105bd7a7e9fb198df05be17fdf
+```
+
+PR #249 changed only:
+
+```text
+PHASE22_CLOSURE_DECISION.md
+```
+
+PR #249 records Phase-22 closure only as actual skeleton reviewed, static
+package acceptance boundary defined and clean-recovered, and the Phase-21
+First Bounded Implementation exact 12-file set accepted as a static package
+subject only.
+
+This post-PR-249 publication status sync update records PR #249 after the
+PR #249 merge.
+
+This post-PR-249 publication status sync update was not present in the PR
+#249 merge commit.
+
+This closure decision does not reinterpret PR #249 as Phase-23 pointer
+transition.
+
+This closure decision does not reinterpret PR #249 as runtime authority.
+
+This closure decision does not reinterpret PR #249 as accepted-evidence
+authority.
+
+This closure decision does not inherit PR #249 CI PASS as package loading,
+package execution, source merge, capability, registry, trust, deployment,
+distribution, kernel ABI, syscall, or Phase-23 authority.
+
 ## Relationship To Phase-23
 
 This closure decision does not open Phase-23.
@@ -505,28 +636,30 @@ unless a separate reviewed scope explicitly authorizes that file.
 
 ## Post-Merge Exact-Main Evidence Rule
 
-If this local draft is later published, the closure publication subject must
-receive its own post-merge exact-main verification:
+If this post-PR-249 publication status sync update is later published, the
+sync publication subject must receive its own post-merge exact-main
+verification:
 
-1. `ci-freeze` PASS for the exact closure publication SHA.
-2. AykenOS Dev Loop CI PASS for the exact closure publication SHA.
+1. `ci-freeze` PASS for the exact sync publication SHA.
+2. AykenOS Dev Loop CI PASS for the exact sync publication SHA.
 3. smoke PASS.
 4. contract PASS.
 5. full PASS.
 6. isolation PASS.
 7. performance PASS.
 
-Until that exact-main post-merge verification exists, this closure decision
-must not be recorded as clean-fixed.
+Until that exact-main post-merge verification exists, this post-PR-249
+publication status sync update must not be recorded as clean-fixed.
 
 Historical PASS results may be cited as context only.
 
-They cannot be inherited as clean-fixed evidence for a later closure
+They cannot be inherited as clean-fixed evidence for a later sync
 publication subject.
 
 ## Publication Boundary
 
-If this draft is later published, the publication may change only this file:
+If this post-PR-249 publication status sync update is later published, the
+publication may change only this file:
 
 ```text
 PHASE22_CLOSURE_DECISION.md
@@ -562,33 +695,39 @@ Every later RFC must preserve these Phase-22 closure invariants:
 5. The package-specific static package acceptance decision publication
    subject remains exactly
    `2a18c516e50a804c482c59ac36897f9cfbe2510b`.
-6. Phase-22 closure is not Phase-23 pointer transition.
-7. Phase-22 closure is not runtime implementation procedure.
-8. Phase-22 closure is not source modification.
-9. Phase-22 closure is not code implementation.
-10. Phase-22 closure is not code execution.
-11. Phase-22 closure is not process start.
-12. Phase-22 closure is not runtime state creation.
-13. Phase-22 closure is not package installation.
-14. Phase-22 closure is not package loading.
-15. Phase-22 closure is not package execution.
-16. Phase-22 closure is not accepted evidence authority.
-17. Phase-22 closure is not receipt evidence acceptance.
-18. Phase-22 closure is not validator output acceptance.
-19. Phase-22 closure is not capability issuance.
-20. Phase-22 closure is not registry publication.
-21. Phase-22 closure is not trust assignment.
-22. Phase-22 closure is not deployment.
-23. Phase-22 closure is not distribution authority.
-24. Phase-22 closure is not source acceptance.
-25. Phase-22 closure is not source merge authority.
-26. Phase-22 closure does not expand kernel ABI.
-27. Phase-22 closure does not expand syscalls.
-28. PR #248 clean-fixed is not runtime authority.
-29. PR #248 clean-fixed is not accepted-evidence authority.
-30. Historical PASS results are not inherited as authority.
-31. Local untracked PR design files are not closure input.
-32. Ambiguity fails closed.
+6. The Phase-22 closure decision publication subject remains exactly
+   `9b19c94a01170d105bd7a7e9fb198df05be17fdf`.
+7. Post-PR-249 status sync update text was not present in the PR #249 merge
+   commit.
+8. Phase-22 closure is not Phase-23 pointer transition.
+9. Phase-22 closure is not runtime implementation procedure.
+10. Phase-22 closure is not source modification.
+11. Phase-22 closure is not code implementation.
+12. Phase-22 closure is not code execution.
+13. Phase-22 closure is not process start.
+14. Phase-22 closure is not runtime state creation.
+15. Phase-22 closure is not package installation.
+16. Phase-22 closure is not package loading.
+17. Phase-22 closure is not package execution.
+18. Phase-22 closure is not accepted evidence authority.
+19. Phase-22 closure is not receipt evidence acceptance.
+20. Phase-22 closure is not validator output acceptance.
+21. Phase-22 closure is not capability issuance.
+22. Phase-22 closure is not registry publication.
+23. Phase-22 closure is not trust assignment.
+24. Phase-22 closure is not deployment.
+25. Phase-22 closure is not distribution authority.
+26. Phase-22 closure is not source acceptance.
+27. Phase-22 closure is not source merge authority.
+28. Phase-22 closure does not expand kernel ABI.
+29. Phase-22 closure does not expand syscalls.
+30. PR #248 clean-fixed is not runtime authority.
+31. PR #248 clean-fixed is not accepted-evidence authority.
+32. PR #249 clean-fixed is not runtime authority.
+33. PR #249 clean-fixed is not accepted-evidence authority.
+34. Historical PASS results are not inherited as authority.
+35. Local untracked PR design files are not closure input.
+36. Ambiguity fails closed.
 
 Violation of any invariant fails closed.
 
@@ -597,8 +736,9 @@ Violation of any invariant fails closed.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-22 RFC
-**Architecture status:** Local draft Phase-22 closure decision / pending
-separate reviewed publication
+**Architecture status:** Published Phase-22 closure decision / PR #249
+publication status recorded / post-PR-249 publication status sync update
+pending separate reviewed publication
 **Authority notice:** This signature identifies the architectural authorship
 of this closure decision record. It grants no Phase-23 pointer transition,
 runtime implementation procedure authority, source modification authority,
@@ -624,14 +764,20 @@ Phase-21 First Bounded Implementation actual skeleton exact 12-file set
 accepted as a static package subject only.
 ```
 
-The completed Phase-22 subject under closure is:
+The Phase-22 closure decision publication subject is:
+
+```text
+9b19c94a01170d105bd7a7e9fb198df05be17fdf
+```
+
+That subject is PR #249, the Phase-22 closure decision publication subject.
+
+The pre-closure package-specific static package acceptance decision
+publication subject remains:
 
 ```text
 2a18c516e50a804c482c59ac36897f9cfbe2510b
 ```
-
-That subject is PR #248, the package-specific static package acceptance
-decision publication subject.
 
 The accepted static package subject remains:
 
@@ -646,6 +792,10 @@ capability issuance, registry publication, trust assignment, deployment,
 distribution, source acceptance, source merge, Phase-23 pointer transition,
 kernel ABI expansion, or syscall expansion.
 
-If this draft is later published, it requires its own reviewed publication
-subject and its own post-merge exact-main `ci-freeze` and AykenOS Dev Loop
-CI PASS evidence before it may be recorded as clean-fixed.
+This post-PR-249 publication status sync update was not present in the PR
+#249 merge commit.
+
+If this sync update is later published, it requires its own reviewed
+publication subject and its own post-merge exact-main `ci-freeze` and
+AykenOS Dev Loop CI PASS evidence before the sync update may be recorded as
+clean-fixed.
