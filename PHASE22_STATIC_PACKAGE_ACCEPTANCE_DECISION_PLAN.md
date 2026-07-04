@@ -22,19 +22,29 @@ unless this plan is the narrower Phase-22 static package acceptance decision
 plan for the exact planning scope identified below.
 
 **Status:** PHASE-22 STATIC PACKAGE ACCEPTANCE DECISION PLAN RFC /
-DECISION PLAN ONLY / NOT A STATIC PACKAGE ACCEPTANCE DECISION / NO PACKAGE
-ACCEPTANCE / NO PACKAGE REVIEW RESULT / NO RECEIPT EVIDENCE ACCEPTANCE / NO
-ACCEPTED EVIDENCE / NO VALIDATOR AUTHORITY / NO VALIDATOR OUTPUT
-ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION /
-NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME
-STATE CREATION / NO PACKAGE AUTHORITY / NO PACKAGE INSTALLATION / NO
-PACKAGE LOADING / NO PACKAGE EXECUTION / NO DEPLOYMENT / NO CAPABILITY
-ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO DISTRIBUTION
-AUTHORITY / NO SOURCE MERGE AUTHORITY / NO SOURCE ACCEPTANCE / NO KERNEL ABI
-EXPANSION / NO SYSCALL EXPANSION
+DECISION PLAN ONLY / PR #246 DECISION PLAN PUBLICATION RECORDED /
+POST-PR-246 PUBLICATION STATUS SYNC UPDATE / NOT A STATIC PACKAGE
+ACCEPTANCE DECISION / NO PACKAGE ACCEPTANCE / NO PACKAGE REVIEW RESULT / NO
+RECEIPT EVIDENCE ACCEPTANCE / NO ACCEPTED EVIDENCE / NO VALIDATOR
+AUTHORITY / NO VALIDATOR OUTPUT ACCEPTANCE / NO RUNTIME IMPLEMENTATION
+PROCEDURE / NO SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE
+EXECUTION / NO PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE
+AUTHORITY / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
+EXECUTION / NO DEPLOYMENT / NO CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT /
+NO REGISTRY PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE MERGE
+AUTHORITY / NO SOURCE ACCEPTANCE / NO KERNEL ABI EXPANSION / NO SYSCALL
+EXPANSION
 **Plan date:** 2026-07-04
 **Plan id:** `ayken.phase22.static_package_acceptance_decision_plan.v1`
 **Plan base main SHA:** `83bed17353719949dbbf0a2aeaba27a415f56503`
+**Decision plan publication subject:** `d90678b9f97ac60cbfa3771ddb5d20b0536b29e2`
+**Decision plan publication PR:** PR #246
+**Decision plan publication exact-main ci-freeze run:** `28708974248`
+**Decision plan publication exact-main ci-freeze job:** `freeze / 85139228298`
+**Decision plan publication exact-main ci-freeze result:** PASS
+**Decision plan publication exact-main Dev Loop CI run:** `28708974218`
+**Decision plan publication exact-main Dev Loop CI result:** PASS
+**Publication status sync update subject:** pending separate reviewed publication
 **Reviewed clean recovery metadata sync SHA:**
 `83bed17353719949dbbf0a2aeaba27a415f56503`
 **Reviewed clean recovery metadata sync PR:** PR #245
@@ -147,6 +157,34 @@ They are not static package acceptance decision.
 
 They are not accepted evidence.
 
+The decision plan publication subject is exact main SHA:
+
+```text
+d90678b9f97ac60cbfa3771ddb5d20b0536b29e2
+```
+
+That exact subject is the squash merge of PR #246:
+
+```text
+Phase-22 static package acceptance decision plan
+```
+
+PR #246 added only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_DECISION_PLAN.md
+```
+
+The PR #246 post-merge exact-main verification recorded `ci-freeze` PASS at
+run `28708974248`, job `freeze / 85139228298`, and AykenOS Dev Loop CI PASS
+at run `28708974218`.
+
+This publication status sync update was not present in the PR #246 merge
+commit.
+
+This publication status sync update requires a later separate reviewed
+publication subject if it is merged.
+
 The referenced PR #244 publication event remains bound to:
 
 ```text
@@ -183,6 +221,12 @@ boundary definition != package acceptance
 boundary clean recovery != package acceptance
 PR #244 publication event != package acceptance
 PR #245 metadata sync != package acceptance
+PR #246 decision plan publication != package acceptance
+PR #246 decision plan publication != static package acceptance decision
+PR #246 ci-freeze PASS != package acceptance
+PR #246 Dev Loop PASS != package acceptance
+PR #246 decision plan publication != publication status sync update subject
+post-PR-246 publication status sync update != text present in PR #246 merge commit
 ci-freeze PASS != package acceptance
 Dev Loop PASS != package acceptance
 test PASS != package acceptance
@@ -513,32 +557,43 @@ Phase-20 closure, or Phase-21 closure fails closed.
 
 ## Post-Merge Verification Expectations
 
-If this plan is merged, post-merge exact-main verification must record:
+The PR #246 post-merge exact-main verification recorded:
 
-1. `ci-freeze` PASS for this plan publication subject.
-2. AykenOS Dev Loop CI PASS for this plan publication subject.
-3. smoke PASS.
-4. contract PASS.
-5. full PASS.
-6. isolation PASS.
-7. performance PASS.
-8. Exact changed-file list confirmation.
-9. No `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY.md` content change.
-10. No `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md`
-    content change.
-11. No `docs/roadmap/CURRENT_PHASE` change.
-12. No CI workflow change.
-13. No baseline change.
-14. No dependency change.
-15. No runtime source or kernel source change.
-16. No syscall or kernel ABI change.
-17. No package loader, module loader, workspace runtime, plugin host,
-    capability issuer, registry publication, trust issuer, deployment, or
-    distribution execution change.
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28708974248`, job `freeze / 85139228298` | PASS |
+| AykenOS Dev Loop CI | run `28708974218` | PASS |
+| smoke | run `28708974218` | PASS |
+| contract | run `28708974218` | PASS |
+| full | run `28708974218` | PASS |
+| isolation | run `28708974218` | PASS |
+| performance | run `28708974218` | PASS |
+
+The PR #246 publication changed only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_DECISION_PLAN.md
+```
+
+The PR #246 publication did not change:
+
+1. `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY.md`.
+2. `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md`.
+3. `docs/roadmap/CURRENT_PHASE`.
+4. CI workflows.
+5. Baselines.
+6. Dependencies.
+7. Runtime source or kernel source.
+8. Syscalls or kernel ABI.
+9. Package loader, module loader, workspace runtime, plugin host,
+   capability issuer, registry publication, trust issuer, deployment, or
+   distribution execution paths.
 
 Historical PASS results may be cited as context only.
 
-They cannot be inherited as evidence for this plan publication subject.
+They cannot be inherited as package acceptance evidence, accepted evidence,
+or runtime authority for the PR #246 publication subject or for this
+publication status sync update's later publication subject.
 
 ## Plan Invariants
 
@@ -576,34 +631,49 @@ decision plan invariants:
 25. Boundary clean recovery is not package acceptance.
 26. PR #244 publication event is not package acceptance.
 27. PR #245 metadata sync is not package acceptance.
-28. `ci-freeze` PASS is not package acceptance.
-29. Dev Loop PASS is not package acceptance.
-30. Test PASS is not package acceptance.
-31. Validator output is not package acceptance.
-32. Receipt schema/template is not receipt evidence acceptance.
-33. Phase-21 remains closed as first bounded actual skeleton landed and
+28. PR #246 decision plan publication is not package acceptance.
+29. PR #246 decision plan publication is not package review result.
+30. PR #246 decision plan publication is not static package acceptance
+    decision.
+31. PR #246 `ci-freeze` PASS is not package acceptance.
+32. PR #246 Dev Loop PASS is not package acceptance.
+33. PR #246 decision plan publication is not this publication status sync
+    update's publication subject.
+34. This publication status sync update was not present in the PR #246 merge
+    commit.
+35. `ci-freeze` PASS is not package acceptance.
+36. Dev Loop PASS is not package acceptance.
+37. Test PASS is not package acceptance.
+38. Validator output is not package acceptance.
+39. Receipt schema/template is not receipt evidence acceptance.
+40. Phase-21 remains closed as first bounded actual skeleton landed and
     recorded only.
-34. This plan does not broaden Phase-19 runtime authority.
-35. This plan does not reopen Phase-20.
-36. This plan does not reopen Phase-21.
-37. This plan does not expand kernel ABI or syscalls.
-38. Ambiguity fails closed.
+41. This plan does not broaden Phase-19 runtime authority.
+42. This plan does not reopen Phase-20.
+43. This plan does not reopen Phase-21.
+44. This plan does not expand kernel ABI or syscalls.
+45. Ambiguity fails closed.
 
 Violation of any invariant fails closed.
 
 ## Publication Boundary
 
-If this plan is merged, the landing SHA publishes only this Phase-22 static
-package acceptance decision plan. The landing SHA must not be read as
-package acceptance, package review result, static package acceptance
-decision, receipt evidence acceptance, accepted evidence, validator
-authority, validator output acceptance, runtime implementation procedure,
-source modification authority, code implementation authority, code
-execution authority, process start authority, runtime state authority,
+The PR #246 landing SHA publishes only this Phase-22 static package
+acceptance decision plan. This publication status sync update does not
+broaden the PR #246 decision plan publication. The PR #246 landing SHA must
+not be read as package acceptance, package review result, static package
+acceptance decision, receipt evidence acceptance, accepted evidence,
+validator authority, validator output acceptance, runtime implementation
+procedure, source modification authority, code implementation authority,
+code execution authority, process start authority, runtime state authority,
 package loading authority, package execution authority, capability
 issuance, registry publication, trust assignment, source merge authority,
 implementation acceptance, general runtime authority, or kernel ABI/syscall
 expansion.
+
+This publication status sync update was not present in the PR #246 merge
+commit and requires its own later separate reviewed publication subject if
+it is merged.
 
 Any later package acceptance, package review result, static package
 acceptance decision, receipt evidence acceptance, runtime implementation
@@ -616,7 +686,9 @@ separate reviewed decision path.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-22 RFC
-**Architecture status:** Draft decision plan / pending architectural review
+**Architecture status:** Published decision plan / PR #246 publication
+recorded / draft post-PR-246 publication status sync update pending
+separate reviewed publication
 **Authority notice:** This signature identifies the architectural authorship
 of this plan. It grants no package acceptance authority, package review
 result authority, static package acceptance decision authority, receipt
@@ -642,6 +714,19 @@ SHA:
 
 It consumes the clean recovery metadata sync correction published by PR
 #245.
+
+It was published by PR #246 at exact main SHA:
+
+```text
+d90678b9f97ac60cbfa3771ddb5d20b0536b29e2
+```
+
+The PR #246 publication produced exact-main `ci-freeze` PASS at run
+`28708974248`, job `freeze / 85139228298`, and AykenOS Dev Loop CI PASS at
+run `28708974218`.
+
+This publication status sync update is not itself published by PR #246 and
+must not be read as text present in the PR #246 merge commit.
 
 It plans a later package-specific static package acceptance decision path.
 
