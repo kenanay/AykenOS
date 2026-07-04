@@ -22,12 +22,14 @@ acceptance boundary clean recovery record for the exact subject identified
 below.
 
 **Status:** PHASE-22 STATIC PACKAGE ACCEPTANCE BOUNDARY CLEAN RECOVERY RFC /
-CLEAN RECOVERY EVIDENCE RECORD ONLY / POST-PR-244 PUBLICATION METADATA SYNC
-UPDATE / PR #244 REFERENCED ONLY AS PRIOR CLEAN RECOVERY PUBLICATION EVENT /
-PR #241 BOUNDARY LANDED EARLIER / PR #241 ORIGINAL POST-MERGE CI-FREEZE
-FAILED / EXPIRED WAIVER REMEDIATION COMPLETED / WAIVER REVIEW RECORD
-CLEAN-FIXED / BOUNDARY CLEAN RECOVERY RECORDED ONLY FOR EXACT RECOVERY
-INPUT SUBJECT AND REFERENCED PR #244 PUBLICATION EVENT / NO PACKAGE
+CLEAN RECOVERY EVIDENCE RECORD ONLY / PR #244 REFERENCED ONLY AS PRIOR CLEAN
+RECOVERY PUBLICATION EVENT / PR #245 RECORDED AS POST-PR-244 METADATA SYNC
+CORRECTION PUBLICATION / POST-PR-245 PUBLICATION STATUS SYNC UPDATE / PR
+#241 BOUNDARY LANDED EARLIER / PR #241 ORIGINAL POST-MERGE CI-FREEZE FAILED /
+EXPIRED WAIVER REMEDIATION COMPLETED / WAIVER REVIEW RECORD CLEAN-FIXED /
+BOUNDARY CLEAN RECOVERY RECORDED ONLY FOR EXACT RECOVERY INPUT SUBJECT,
+REFERENCED PR #244 PUBLICATION EVENT, AND PR #245 METADATA SYNC CORRECTION
+PUBLICATION / NO PACKAGE
 ACCEPTANCE / NO PACKAGE REVIEW RESULT / NO STATIC PACKAGE ACCEPTANCE
 DECISION / NO RECEIPT EVIDENCE ACCEPTANCE / NO ACCEPTED EVIDENCE / NO
 VALIDATOR AUTHORITY / NO
@@ -45,7 +47,15 @@ SOURCE ACCEPTANCE / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Referenced PR #244 publication event SHA:**
 `6daa7d7ea1ffd24832d516c30edd5b92872085e8`
 **Referenced PR #244 publication event PR:** PR #244
-**Metadata sync publication subject:** pending separate reviewed publication
+**Metadata sync correction publication subject:**
+`83bed17353719949dbbf0a2aeaba27a415f56503`
+**Metadata sync correction publication PR:** PR #245
+**Metadata sync correction exact-main ci-freeze run:** `28708290789`
+**Metadata sync correction exact-main ci-freeze job:** `freeze / 85137500865`
+**Metadata sync correction exact-main ci-freeze result:** PASS
+**Metadata sync correction exact-main Dev Loop CI run:** `28708290804`
+**Metadata sync correction exact-main Dev Loop CI result:** PASS
+**Publication status sync update subject:** pending separate reviewed publication
 **Recovered boundary publication SHA:** `5725491257b3a83aae313ce94d9543b2a0358075`
 **Reviewed boundary file:** `PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY.md`
 **Reviewed boundary PR:** PR #241
@@ -122,7 +132,11 @@ This recovery record consumes:
 6. PR #244 clean recovery publication event metadata.
 7. PR #244 post-merge exact-main `ci-freeze` PASS evidence.
 8. PR #244 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
-9. This post-PR-244 metadata sync update as a separate correction record.
+9. PR #245 post-PR-244 metadata sync correction publication metadata.
+10. PR #245 post-merge exact-main `ci-freeze` PASS evidence.
+11. PR #245 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
+12. This post-PR-245 publication status sync update as a separate status
+    correction record.
 
 It answers only:
 
@@ -156,8 +170,33 @@ authorized.
 
 ## Exact Subjects
 
-This post-PR-244 metadata sync update is not bound to PR #244 as its own
-publication subject.
+This post-PR-245 publication status sync update is not bound to PR #245 as
+its own publication subject.
+
+It records PR #245 as the prior post-PR-244 metadata sync correction
+publication at exact main SHA:
+
+```text
+83bed17353719949dbbf0a2aeaba27a415f56503
+```
+
+That exact subject is the squash merge of PR #245:
+
+```text
+Phase-22 clean recovery metadata sync
+```
+
+PR #245 changed only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md
+```
+
+This publication status sync update was not present in the PR #245 merge
+commit.
+
+This publication status sync update requires a later separate reviewed
+publication subject if it is merged.
 
 It references PR #244 as the prior clean recovery publication event at exact
 main SHA:
@@ -180,8 +219,11 @@ PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md
 
 This metadata sync update was not present in the PR #244 merge commit.
 
-This metadata sync update requires a later separate reviewed publication
-subject if it is merged.
+This metadata sync update was later published by PR #245 at:
+
+```text
+83bed17353719949dbbf0a2aeaba27a415f56503
+```
 
 The recovery input exact main SHA remains:
 
@@ -240,6 +282,15 @@ It records later exact-main clean recovery after:
 5. The PR #244 publication event subject produced exact-main `ci-freeze`
    PASS and AykenOS Dev Loop CI PASS.
 
+6. The post-PR-244 metadata sync correction was published by PR #245 at:
+
+   ```text
+   83bed17353719949dbbf0a2aeaba27a415f56503
+   ```
+
+7. The PR #245 metadata sync correction publication subject produced
+   exact-main `ci-freeze` PASS and AykenOS Dev Loop CI PASS.
+
 Missing, stale, ambiguous, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
 
@@ -284,6 +335,12 @@ PR #244 ci-freeze PASS != package acceptance
 PR #244 Dev Loop PASS != package acceptance
 PR #244 publication event != metadata sync publication subject
 post-PR-244 metadata sync update != text present in PR #244 merge commit
+PR #245 metadata sync correction publication != package acceptance
+PR #245 metadata sync correction publication != static package acceptance decision
+PR #245 ci-freeze PASS != package acceptance
+PR #245 Dev Loop PASS != package acceptance
+PR #245 metadata sync correction publication != publication status sync update subject
+post-PR-245 publication status sync update != text present in PR #245 merge commit
 ```
 
 The safe default remains no package acceptance, no package review result,
@@ -329,9 +386,14 @@ This recovery record may record:
 8. The PR #244 clean recovery publication event SHA.
 9. The PR #244 post-merge exact-main `ci-freeze` PASS evidence.
 10. The PR #244 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
-11. The fact that this metadata sync update is post-PR-244 and was not
+11. The PR #245 metadata sync correction publication SHA.
+12. The PR #245 post-merge exact-main `ci-freeze` PASS evidence.
+13. The PR #245 post-merge exact-main AykenOS Dev Loop CI PASS evidence.
+14. The fact that this metadata sync correction is post-PR-244 and was not
     present in the PR #244 merge commit.
-12. The conclusion that the PR #241 boundary blocker has been cleanly
+15. The fact that this publication status sync update is post-PR-245 and
+    was not present in the PR #245 merge commit.
+16. The conclusion that the PR #241 boundary blocker has been cleanly
    recovered by later exact-main evidence.
 
 This recovery record must not:
@@ -552,14 +614,26 @@ The recovery evidence chain is:
 
 10. PR #244 post-merge exact-main `ci-freeze` passed.
 11. PR #244 post-merge exact-main AykenOS Dev Loop CI passed.
+12. PR #245 published the post-PR-244 metadata sync correction at:
+
+   ```text
+   83bed17353719949dbbf0a2aeaba27a415f56503
+   ```
+
+13. PR #245 post-merge exact-main `ci-freeze` passed.
+14. PR #245 post-merge exact-main AykenOS Dev Loop CI passed.
 
 The recovery evidence shows that the original PR #241 clean-fixed blocker
 has been remediated on later exact main and that the PR #244 clean recovery
 publication event has its own post-merge exact-main PASS evidence.
 
-This metadata sync update records the PR #244 event after the PR #244 merge.
+The PR #245 metadata sync correction records the PR #244 event after the PR
+#244 merge.
 
 This metadata sync update was not present in the PR #244 merge commit.
+
+This publication status sync update was not present in the PR #245 merge
+commit.
 
 This recovery evidence is not package acceptance.
 
@@ -834,8 +908,17 @@ the PR #244 publication event.
 
 This metadata sync update was not present in the PR #244 merge commit.
 
-This metadata sync update requires its own later separate reviewed
-publication subject if it is merged.
+The metadata sync update was later published by PR #245 at:
+
+```text
+83bed17353719949dbbf0a2aeaba27a415f56503
+```
+
+This publication status sync update was not present in the PR #245 merge
+commit.
+
+This publication status sync update requires its own later separate
+reviewed publication subject if it is merged.
 
 It does not convert PR #244 into package acceptance.
 
@@ -853,8 +936,45 @@ expansion, or syscall expansion.
 Historical PASS results may be cited as recovery context only.
 
 They cannot be inherited as package acceptance evidence or runtime authority
-for the PR #244 publication event or for this metadata sync update's later
-publication subject.
+for the PR #244 publication event, for the PR #245 metadata sync correction
+publication, or for this publication status sync update's later publication
+subject.
+
+## PR #245 Metadata Sync Correction Publication Verification
+
+PR #245 published the post-PR-244 metadata sync correction at exact main
+SHA:
+
+```text
+83bed17353719949dbbf0a2aeaba27a415f56503
+```
+
+PR #245 changed only:
+
+```text
+PHASE22_STATIC_PACKAGE_ACCEPTANCE_BOUNDARY_CLEAN_RECOVERY.md
+```
+
+The PR #245 post-merge exact-main verification recorded:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28708290789`, job `freeze / 85137500865` | PASS |
+| AykenOS Dev Loop CI | run `28708290804` | PASS |
+
+This publication status sync update records only the exact-main publication
+state of the PR #245 metadata sync correction.
+
+This publication status sync update was not present in the PR #245 merge
+commit.
+
+This publication status sync update does not convert PR #245 into package
+acceptance, package review result, static package acceptance decision,
+receipt evidence acceptance, accepted evidence, runtime implementation
+procedure, execution authority, package loading authority, source
+acceptance, source merge, registry publication, capability issuance, trust
+assignment, deployment, distribution, kernel ABI expansion, or syscall
+expansion.
 
 ## Recovery Invariants
 
@@ -901,13 +1021,24 @@ boundary clean recovery invariants:
 37. PR #244 publication event is not this metadata sync update's publication
     subject.
 38. This metadata sync update was not present in the PR #244 merge commit.
-39. Phase-21 remains closed as first bounded actual skeleton landed and
+39. PR #245 metadata sync correction publication is not package acceptance.
+40. PR #245 metadata sync correction publication is not package review
+    result.
+41. PR #245 metadata sync correction publication is not static package
+    acceptance decision.
+42. PR #245 `ci-freeze` PASS is not package acceptance.
+43. PR #245 Dev Loop PASS is not package acceptance.
+44. PR #245 metadata sync correction publication is not this publication
+    status sync update's publication subject.
+45. This publication status sync update was not present in the PR #245 merge
+    commit.
+46. Phase-21 remains closed as first bounded actual skeleton landed and
     recorded only.
-40. This recovery record does not broaden Phase-19 runtime authority.
-41. This recovery record does not reopen Phase-20.
-42. This recovery record does not reopen Phase-21.
-43. This recovery record does not expand kernel ABI or syscalls.
-44. Ambiguity fails closed.
+47. This recovery record does not broaden Phase-19 runtime authority.
+48. This recovery record does not reopen Phase-20.
+49. This recovery record does not reopen Phase-21.
+50. This recovery record does not expand kernel ABI or syscalls.
+51. Ambiguity fails closed.
 
 Violation of any invariant fails closed.
 
@@ -926,6 +1057,19 @@ registry publication, trust assignment, source merge authority,
 implementation acceptance, general runtime authority, or kernel ABI/syscall
 expansion.
 
+The PR #245 landing SHA published only the post-PR-244 metadata sync
+correction for this clean recovery record. This publication status sync
+update does not broaden the PR #245 metadata sync correction publication.
+The PR #245 landing SHA must not be read as package acceptance, package
+review result, static package acceptance decision, receipt evidence
+acceptance, accepted evidence, validator authority, validator output
+acceptance, runtime implementation procedure, source modification
+authority, code implementation authority, code execution authority, process
+start authority, runtime state authority, package loading authority,
+package execution authority, capability issuance, registry publication,
+trust assignment, source merge authority, implementation acceptance,
+general runtime authority, or kernel ABI/syscall expansion.
+
 Any later package acceptance, package review result, static package
 acceptance decision, receipt evidence acceptance, runtime implementation
 procedure, execution authority, package loading authority, capability,
@@ -937,8 +1081,9 @@ separate reviewed decision path.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-22 RFC
-**Architecture status:** Draft post-PR-244 metadata sync update / pending
-separate reviewed publication
+**Architecture status:** Published post-PR-244 metadata sync correction /
+PR #245 publication recorded / draft post-PR-245 publication status sync
+update pending separate reviewed publication
 **Authority notice:** This signature identifies the architectural authorship
 of this recovery record. It grants no package acceptance authority, package
 review result authority, static package acceptance decision authority,
@@ -955,8 +1100,8 @@ authority, or Ring0 authority.
 
 ## Conclusion
 
-This post-PR-244 metadata sync update references PR #244 as the prior clean
-recovery publication event at exact main SHA:
+This post-PR-244 metadata sync correction references PR #244 as the prior
+clean recovery publication event at exact main SHA:
 
 ```text
 6daa7d7ea1ffd24832d516c30edd5b92872085e8
@@ -965,8 +1110,17 @@ recovery publication event at exact main SHA:
 This metadata sync update is not itself published by PR #244 and must not be
 read as text present in the PR #244 merge commit.
 
-The publication subject for this metadata sync update must be a later
-separate reviewed PR or commit.
+This metadata sync correction was published by PR #245 at exact main SHA:
+
+```text
+83bed17353719949dbbf0a2aeaba27a415f56503
+```
+
+This publication status sync update is not itself published by PR #245 and
+must not be read as text present in the PR #245 merge commit.
+
+The publication subject for this publication status sync update must be a
+later separate reviewed PR or commit.
 
 The recovery input exact main SHA is:
 
@@ -998,8 +1152,11 @@ The recovery basis is:
 7. PR #244 clean recovery publication event.
 8. PR #244 post-merge exact-main `ci-freeze` PASS.
 9. PR #244 post-merge exact-main AykenOS Dev Loop CI PASS.
-10. This post-PR-244 metadata sync update, pending separate reviewed
-    publication.
+10. PR #245 post-PR-244 metadata sync correction publication.
+11. PR #245 post-merge exact-main `ci-freeze` PASS.
+12. PR #245 post-merge exact-main AykenOS Dev Loop CI PASS.
+13. This post-PR-245 publication status sync update, pending separate
+    reviewed publication.
 
 This recovery record does not accept packages, record package review
 result, define static package acceptance decision, accept receipt evidence,
