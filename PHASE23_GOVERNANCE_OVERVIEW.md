@@ -25,22 +25,29 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 unless this overview is the narrower Phase-23 governance overview for the
 exact pointer-governance scope identified below.
 
-**Status:** PHASE-23 GOVERNANCE OVERVIEW / GOVERNANCE OVERVIEW ONLY /
-ACTIVE POINTER BOUNDED GOVERNANCE PLANNING ONLY / CURRENT_PHASE=23
-ALREADY ACTIVE ONLY AS BOUNDED CURRENT-PHASE POINTER STATE / NO PHASE-23
-RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
-IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
-CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
-EXECUTION / NO ACCEPTED EVIDENCE AUTHORITY / NO RECEIPT EVIDENCE
-ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO DEPLOYMENT / NO
-CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO
-DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY
-/ NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
+**Status:** PHASE-23 GOVERNANCE OVERVIEW PUBLISHED / CLEAN-FIXED /
+GOVERNANCE OVERVIEW ONLY / ACTIVE POINTER BOUNDED GOVERNANCE PLANNING ONLY
+/ CURRENT_PHASE=23 ALREADY ACTIVE ONLY AS BOUNDED CURRENT-PHASE POINTER
+STATE / NO PHASE-23 RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE
+MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS
+START / NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO PACKAGE
+LOADING / NO PACKAGE EXECUTION / NO ACCEPTED EVIDENCE AUTHORITY / NO
+RECEIPT EVIDENCE ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO
+DEPLOYMENT / NO CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY
+PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO
+SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Overview date:** 2026-07-05
 **Overview id:** `ayken.phase23.governance_overview.v1`
 **Overview base main SHA:**
 `9b70ee20707023709e906d0200a80a1ac69fa698`
-**Overview publication subject:** pending separate reviewed publication
+**Overview publication subject:**
+`bfd4b07d5332f16b5d0295f3170f795629ca7ca8`
+**Overview publication PR:** PR #254
+**Overview publication exact-main ci-freeze run:** `28741641290`
+**Overview publication exact-main ci-freeze job:** `freeze / 85225357697`
+**Overview publication exact-main ci-freeze result:** PASS
+**Overview publication exact-main Dev Loop CI run:** `28741641312`
+**Overview publication exact-main Dev Loop CI result:** PASS
 **Phase-22 closure decision publication subject:**
 `9b19c94a01170d105bd7a7e9fb198df05be17fdf`
 **Phase-22 closure publication-status sync subject:**
@@ -211,6 +218,49 @@ does not replace, broaden, reinterpret, or supersede them.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Governance Overview was published by PR #254 at exact main
+SHA:
+
+```text
+bfd4b07d5332f16b5d0295f3170f795629ca7ca8
+```
+
+PR #254 changed only:
+
+```text
+PHASE23_GOVERNANCE_OVERVIEW.md
+```
+
+PR #254 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28741641290`, job `freeze / 85225357697` | PASS |
+| AykenOS Dev Loop CI | run `28741641312` | PASS |
+| smoke | job `85225357668` | PASS |
+| contract | job `85225435138` | PASS |
+| full | job `85225581747` | PASS |
+| isolation | job `85225754944` | PASS |
+| performance | job `85225918393` | PASS |
+
+This publication-status sync text was not present in the PR #254 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not authorize runtime implementation procedure, source
+modification, code implementation, code execution, process start, runtime
+state creation, package installation, package loading, package execution,
+accepted evidence authority, receipt evidence acceptance, validator output
+acceptance, source merge, registry publication, trust assignment,
+capability issuance, deployment, distribution, kernel ABI expansion, or
+syscall expansion.
 
 ## Phase-23 Governance Posture
 
@@ -719,6 +769,13 @@ If this overview is merged, post-merge exact-main verification must record:
 Until that exact-main post-merge verification exists, this overview must
 not be recorded as clean-fixed.
 
+For PR #254, this requirement was satisfied by exact-main `ci-freeze` PASS
+run `28741641290` and AykenOS Dev Loop CI PASS run `28741641312` at:
+
+```text
+bfd4b07d5332f16b5d0295f3170f795629ca7ca8
+```
+
 Historical PASS results may be cited as context only.
 
 They cannot be inherited as evidence for this overview publication subject.
@@ -813,8 +870,8 @@ review and fails this overview scope.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 governance overview
-**Architecture status:** Local draft governance overview / pending separate
-reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23 governance
+overview
 **Authority notice:** This signature identifies the architectural authorship
 of this overview. It grants no runtime implementation procedure authority,
 source modification authority, code implementation authority, code
