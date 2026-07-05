@@ -516,7 +516,7 @@ Violation of any invariant fails closed.
 
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
-**Document type:** Phase-23 RFC
+**Document type:** Phase-23 pointer transition candidate
 **Architecture status:** Local draft pointer transition candidate / pending
 separate reviewed publication
 **Authority notice:** This signature identifies the architectural authorship
