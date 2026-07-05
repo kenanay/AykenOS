@@ -26,21 +26,39 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 prevail unless this document is the narrower Phase-23 initial governance
 boundary for the exact governance-only boundary scope identified below.
 
-**Status:** PHASE-23 INITIAL GOVERNANCE BOUNDARY / LOCAL DRAFT /
-GOVERNANCE-ONLY BOUNDARY RECORD TYPES ONLY / NO RUNTIME IMPLEMENTATION
-PROCEDURE / NO SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE
-EXECUTION / NO PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE
-INSTALLATION / NO PACKAGE LOADING / NO PACKAGE EXECUTION / NO ACCEPTED
-EVIDENCE AUTHORITY / NO RECEIPT EVIDENCE ACCEPTANCE / NO VALIDATOR OUTPUT
-ACCEPTANCE / NO DEPLOYMENT / NO CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT
-/ NO REGISTRY PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE
-ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO
-SYSCALL EXPANSION
+**Status:** PHASE-23 INITIAL GOVERNANCE BOUNDARY PUBLISHED /
+CLEAN-FIXED / GOVERNANCE-ONLY BOUNDARY RECORD TYPES ONLY / NO RUNTIME
+IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
+IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
+CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
+EXECUTION / NO ACCEPTED EVIDENCE AUTHORITY / NO RECEIPT EVIDENCE
+ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO DEPLOYMENT / NO
+CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO
+DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY
+/ NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Boundary date:** 2026-07-05
 **Boundary id:** `ayken.phase23.initial_governance_boundary.v1`
 **Boundary base main SHA:**
 `1c34b754a07d4eed1493a4b5d456bf870681362f`
-**Boundary publication subject:** pending separate reviewed publication
+**Boundary publication subject:**
+`3db9a2e740a414b040daa30ee70a54850fdbeb1f`
+**Boundary publication PR:** PR #256
+**Boundary publication exact-main ci-freeze run:** `28746272737`
+**Boundary publication exact-main ci-freeze job:** `freeze / 85237600493`
+**Boundary publication exact-main ci-freeze result:** PASS
+**Boundary publication exact-main Dev Loop CI run:** `28746272758`
+**Boundary publication exact-main Dev Loop CI result:** PASS
+**Boundary publication exact-main smoke job:** `smoke / 85237600523`
+**Boundary publication exact-main smoke result:** PASS
+**Boundary publication exact-main contract job:** `contract / 85237692813`
+**Boundary publication exact-main contract result:** PASS
+**Boundary publication exact-main full job:** `full / 85237837588`
+**Boundary publication exact-main full result:** PASS
+**Boundary publication exact-main isolation job:** `isolation / 85238027858`
+**Boundary publication exact-main isolation result:** PASS
+**Boundary publication exact-main performance job:**
+`performance / 85238185657`
+**Boundary publication exact-main performance result:** PASS
 **Phase-23 governance overview publication-status sync subject:**
 `1c34b754a07d4eed1493a4b5d456bf870681362f`
 **Phase-23 governance overview publication-status sync PR:** PR #255
@@ -210,6 +228,51 @@ does not replace, broaden, reinterpret, or supersede them.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Initial Governance Boundary was published by PR #256 at exact
+main SHA:
+
+```text
+3db9a2e740a414b040daa30ee70a54850fdbeb1f
+```
+
+PR #256 changed only:
+
+```text
+PHASE23_INITIAL_GOVERNANCE_BOUNDARY.md
+```
+
+PR #256 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28746272737`, job `freeze / 85237600493` | PASS |
+| AykenOS Dev Loop CI | run `28746272758` | PASS |
+| smoke | job `85237600523` | PASS |
+| contract | job `85237692813` | PASS |
+| full | job `85237837588` | PASS |
+| isolation | job `85238027858` | PASS |
+| performance | job `85238185657` | PASS |
+
+This publication-status sync text was not present in the PR #256 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not modify `PHASE23_GOVERNANCE_OVERVIEW.md`.
+
+This sync does not authorize runtime implementation procedure, source
+modification, code implementation, code execution, process start, runtime
+state creation, package installation, package loading, package execution,
+accepted evidence authority, receipt evidence acceptance, validator output
+acceptance, source merge, registry publication, trust assignment,
+capability issuance, deployment, distribution, kernel ABI expansion, or
+syscall expansion.
 
 ## Core Rule
 
@@ -599,6 +662,13 @@ record:
 Until that exact-main post-merge verification exists, this boundary must
 not be recorded as clean-fixed.
 
+For PR #256, this requirement was satisfied by exact-main `ci-freeze` PASS
+run `28746272737` and AykenOS Dev Loop CI PASS run `28746272758` at:
+
+```text
+3db9a2e740a414b040daa30ee70a54850fdbeb1f
+```
+
 Historical PASS results may be cited as context only.
 
 They cannot be inherited as evidence for this boundary publication
@@ -675,8 +745,8 @@ review and fails this boundary scope.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 initial governance boundary
-**Architecture status:** Local draft initial governance boundary / pending
-separate reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23 initial
+governance boundary
 **Authority notice:** This signature identifies the architectural authorship
 of this boundary. It grants no runtime implementation procedure authority,
 source modification authority, code implementation authority, code
