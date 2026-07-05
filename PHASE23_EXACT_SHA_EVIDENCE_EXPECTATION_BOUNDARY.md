@@ -28,21 +28,39 @@ documents prevail unless this document is the narrower Phase-23 exact-SHA
 evidence expectation boundary for the exact governance-only evidence
 expectation scope identified below.
 
-**Status:** PHASE-23 EXACT-SHA EVIDENCE EXPECTATION BOUNDARY / LOCAL
-DRAFT / GOVERNANCE-ONLY EVIDENCE EXPECTATION BOUNDARY ONLY / NO ACCEPTED
-EVIDENCE AUTHORITY / NO RECEIPT EVIDENCE ACCEPTANCE / NO VALIDATOR OUTPUT
-ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE
-MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS
-START / NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO PACKAGE
-LOADING / NO PACKAGE EXECUTION / NO DEPLOYMENT / NO CAPABILITY ISSUANCE /
-NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO DISTRIBUTION AUTHORITY
-/ NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI
-EXPANSION / NO SYSCALL EXPANSION
+**Status:** PHASE-23 EXACT-SHA EVIDENCE EXPECTATION BOUNDARY PUBLISHED /
+CLEAN-FIXED / GOVERNANCE-ONLY EVIDENCE EXPECTATION BOUNDARY ONLY / NO
+ACCEPTED EVIDENCE AUTHORITY / NO RECEIPT EVIDENCE ACCEPTANCE / NO
+VALIDATOR OUTPUT ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO
+SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO
+PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO
+PACKAGE LOADING / NO PACKAGE EXECUTION / NO DEPLOYMENT / NO CAPABILITY
+ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO
+DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY
+/ NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Boundary date:** 2026-07-05
 **Boundary id:** `ayken.phase23.exact_sha_evidence_expectation_boundary.v1`
 **Boundary base main SHA:**
 `97aab9383e76fcbdc1dfcf0c3520f7de9e0e7692`
-**Boundary publication subject:** pending separate reviewed publication
+**Boundary publication subject:**
+`22f3f134eb9fd9a0da4d11f9b523ff6ea8c781a2`
+**Boundary publication PR:** PR #258
+**Boundary publication exact-main ci-freeze run:** `28753083283`
+**Boundary publication exact-main ci-freeze job:** `freeze / 85255460025`
+**Boundary publication exact-main ci-freeze result:** PASS
+**Boundary publication exact-main Dev Loop CI run:** `28753083273`
+**Boundary publication exact-main Dev Loop CI result:** PASS
+**Boundary publication exact-main smoke job:** `smoke / 85255460017`
+**Boundary publication exact-main smoke result:** PASS
+**Boundary publication exact-main contract job:** `contract / 85255567123`
+**Boundary publication exact-main contract result:** PASS
+**Boundary publication exact-main full job:** `full / 85255749063`
+**Boundary publication exact-main full result:** PASS
+**Boundary publication exact-main isolation job:** `isolation / 85255935816`
+**Boundary publication exact-main isolation result:** PASS
+**Boundary publication exact-main performance job:**
+`performance / 85256100108`
+**Boundary publication exact-main performance result:** PASS
 **Phase-23 initial governance boundary publication-status sync subject:**
 `97aab9383e76fcbdc1dfcf0c3520f7de9e0e7692`
 **Phase-23 initial governance boundary publication-status sync PR:** PR #257
@@ -152,7 +170,7 @@ Those questions require later reviewed decision paths, if ever authorized.
 
 ## Exact Subject
 
-This boundary draft is based on exact main SHA:
+This boundary record is based on exact main SHA:
 
 ```text
 97aab9383e76fcbdc1dfcf0c3520f7de9e0e7692
@@ -238,6 +256,53 @@ does not replace, broaden, reinterpret, or supersede them.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Exact-SHA Evidence Expectation Boundary was published by PR
+#258 at exact main SHA:
+
+```text
+22f3f134eb9fd9a0da4d11f9b523ff6ea8c781a2
+```
+
+PR #258 changed only:
+
+```text
+PHASE23_EXACT_SHA_EVIDENCE_EXPECTATION_BOUNDARY.md
+```
+
+PR #258 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28753083283`, job `freeze / 85255460025` | PASS |
+| AykenOS Dev Loop CI | run `28753083273` | PASS |
+| smoke | job `85255460017` | PASS |
+| contract | job `85255567123` | PASS |
+| full | job `85255749063` | PASS |
+| isolation | job `85255935816` | PASS |
+| performance | job `85256100108` | PASS |
+
+This publication-status sync text was not present in the PR #258 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not modify `PHASE23_INITIAL_GOVERNANCE_BOUNDARY.md`.
+
+This sync does not modify `PHASE23_GOVERNANCE_OVERVIEW.md`.
+
+This sync does not authorize accepted evidence authority, receipt evidence
+acceptance, validator output acceptance, runtime implementation
+procedure, source modification, code implementation, code execution,
+process start, runtime state creation, package installation, package
+loading, package execution, source acceptance, source merge, registry
+publication, trust assignment, capability issuance, deployment,
+distribution, kernel ABI expansion, or syscall expansion.
 
 ## Core Rule
 
@@ -753,6 +818,13 @@ record:
 Until that exact-main post-merge verification exists, this boundary must
 not be recorded as clean-fixed.
 
+For PR #258, this requirement was satisfied by exact-main `ci-freeze` PASS
+run `28753083283` and AykenOS Dev Loop CI PASS run `28753083273` at:
+
+```text
+22f3f134eb9fd9a0da4d11f9b523ff6ea8c781a2
+```
+
 Historical PASS results may be cited as context only.
 
 They cannot be inherited as evidence for this boundary publication
@@ -830,8 +902,8 @@ review and fails this boundary scope.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 exact-SHA evidence expectation boundary
-**Architecture status:** Local draft exact-SHA evidence expectation
-boundary / pending separate reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23 exact-SHA
+evidence expectation boundary
 **Authority notice:** This signature identifies the architectural
 authorship of this boundary. It grants no accepted evidence authority,
 receipt evidence acceptance authority, validator output acceptance
