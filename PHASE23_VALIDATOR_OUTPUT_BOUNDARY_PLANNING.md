@@ -31,10 +31,10 @@ conflict, those documents prevail unless this document is the narrower
 Phase-23 validator-output boundary planning record for the exact
 governance-only planning scope identified below.
 
-**Status:** PHASE-23 VALIDATOR-OUTPUT BOUNDARY PLANNING / LOCAL DRAFT /
-GOVERNANCE-ONLY VALIDATOR-OUTPUT BOUNDARY PLANNING ONLY / NO VALIDATOR
-OUTPUT ACCEPTANCE / NO ACCEPTED EVIDENCE AUTHORITY / NO EVIDENCE
-ACCEPTANCE / NO RECEIPT EVIDENCE ACCEPTANCE / NO RUNTIME
+**Status:** PHASE-23 VALIDATOR-OUTPUT BOUNDARY PLANNING PUBLISHED /
+CLEAN-FIXED / GOVERNANCE-ONLY VALIDATOR-OUTPUT BOUNDARY PLANNING ONLY /
+NO VALIDATOR OUTPUT ACCEPTANCE / NO ACCEPTED EVIDENCE AUTHORITY / NO
+EVIDENCE ACCEPTANCE / NO RECEIPT EVIDENCE ACCEPTANCE / NO RUNTIME
 IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
 IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
 CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
@@ -47,7 +47,28 @@ CHANGE / NO DEPENDENCY CHANGE / NO RING0 AUTHORITY
 **Planning id:** `ayken.phase23.validator_output_boundary_planning.v1`
 **Planning base main SHA:**
 `9153d858c8ca99b09beb2fa60c6c7bcc565445a9`
-**Planning publication subject:** pending separate reviewed publication
+**Planning publication subject:**
+`08585f64b6088ed9f76a8027daecec6dc70da885`
+**Planning publication PR:** PR #264
+**Planning publication exact-main ci-freeze run:** `28821798878`
+**Planning publication exact-main ci-freeze attempt:** attempt 1
+**Planning publication exact-main ci-freeze job:** `freeze / 85475044677`
+**Planning publication exact-main ci-freeze result:** PASS
+**Planning publication exact-main Dev Loop CI run:** `28821798924`
+**Planning publication exact-main Dev Loop CI result:** PASS
+**Planning publication exact-main smoke job:** `smoke / 85475044764`
+**Planning publication exact-main smoke result:** PASS
+**Planning publication exact-main contract job:** `contract / 85475282997`
+**Planning publication exact-main contract result:** PASS
+**Planning publication exact-main full job:** `full / 85475693145`
+**Planning publication exact-main full result:** PASS
+**Planning publication exact-main isolation job:** `isolation / 85476222410`
+**Planning publication exact-main isolation result:** PASS
+**Planning publication exact-main performance job:**
+`performance / 85476700850`
+**Planning publication exact-main performance result:** PASS
+**Publication status sync update subject:** pending separate reviewed
+publication
 **Phase-23 receipt-evidence boundary planning publication-status sync
 subject:** `9153d858c8ca99b09beb2fa60c6c7bcc565445a9`
 **Phase-23 receipt-evidence boundary planning publication-status sync
@@ -193,7 +214,7 @@ Those questions require later reviewed decision paths, if ever authorized.
 
 ## Exact Subject
 
-This planning draft is based on exact main SHA:
+This planning record is based on exact main SHA:
 
 ```text
 9153d858c8ca99b09beb2fa60c6c7bcc565445a9
@@ -321,6 +342,64 @@ only. It does not replace, broaden, reinterpret, or supersede them.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Validator-Output Boundary Planning record was published by
+PR #264 at exact main SHA:
+
+```text
+08585f64b6088ed9f76a8027daecec6dc70da885
+```
+
+PR #264 changed only:
+
+```text
+PHASE23_VALIDATOR_OUTPUT_BOUNDARY_PLANNING.md
+```
+
+PR #264 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28821798878`, attempt 1, job `freeze / 85475044677` | PASS |
+| AykenOS Dev Loop CI | run `28821798924` | PASS |
+| smoke | job `85475044764` | PASS |
+| contract | job `85475282997` | PASS |
+| full | job `85475693145` | PASS |
+| isolation | job `85476222410` | PASS |
+| performance | job `85476700850` | PASS |
+
+This publication-status sync text was not present in the PR #264 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not modify
+`PHASE23_RECEIPT_EVIDENCE_BOUNDARY_PLANNING.md`.
+
+This sync does not modify
+`PHASE23_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md`.
+
+This sync does not modify
+`PHASE23_EXACT_SHA_EVIDENCE_EXPECTATION_BOUNDARY.md`.
+
+This sync does not modify `PHASE23_INITIAL_GOVERNANCE_BOUNDARY.md`.
+
+This sync does not modify `PHASE23_GOVERNANCE_OVERVIEW.md`.
+
+This sync does not accept validator output, grant accepted evidence
+authority, accept evidence, accept receipt evidence, authorize runtime
+implementation procedure, source modification, code implementation, code
+execution, process start, runtime state creation, package installation,
+package loading, package execution, source acceptance, source merge,
+registry publication, trust assignment, capability issuance, deployment,
+distribution, kernel ABI expansion, syscall expansion,
+workflow-threshold changes, baseline changes, dependency changes, or
+Ring0 authority.
 
 ## Core Rule
 
@@ -1212,6 +1291,13 @@ record:
 Until that exact-main post-merge verification exists, this planning record
 must not be recorded as clean-fixed.
 
+For PR #264, this requirement was satisfied by exact-main `ci-freeze` PASS
+run `28821798878` and AykenOS Dev Loop CI PASS run `28821798924` at:
+
+```text
+08585f64b6088ed9f76a8027daecec6dc70da885
+```
+
 Historical PASS results may be cited as context only.
 
 Failed attempts may be cited as transparent non-clean context only.
@@ -1306,8 +1392,8 @@ review and fails this planning scope.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 validator-output boundary planning
-**Architecture status:** Local draft validator-output boundary planning /
-pending separate reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23
+validator-output boundary planning
 **Authority notice:** This signature identifies the architectural
 authorship of this planning record. It grants no validator output
 acceptance authority, accepted evidence authority, evidence acceptance
