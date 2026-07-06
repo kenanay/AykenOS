@@ -29,21 +29,40 @@ conflict, those documents prevail unless this document is the narrower
 Phase-23 accepted-evidence boundary planning record for the exact
 governance-only planning scope identified below.
 
-**Status:** PHASE-23 ACCEPTED-EVIDENCE BOUNDARY PLANNING / LOCAL DRAFT /
-GOVERNANCE-ONLY ACCEPTED-EVIDENCE BOUNDARY PLANNING ONLY / NO ACCEPTED
-EVIDENCE AUTHORITY / NO EVIDENCE ACCEPTANCE / NO RECEIPT EVIDENCE
-ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO RUNTIME IMPLEMENTATION
-PROCEDURE / NO SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE
-EXECUTION / NO PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE
-INSTALLATION / NO PACKAGE LOADING / NO PACKAGE EXECUTION / NO DEPLOYMENT
-/ NO CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT / NO REGISTRY
-PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO
-SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
+**Status:** PHASE-23 ACCEPTED-EVIDENCE BOUNDARY PLANNING PUBLISHED /
+CLEAN-FIXED / GOVERNANCE-ONLY ACCEPTED-EVIDENCE BOUNDARY PLANNING ONLY /
+NO ACCEPTED EVIDENCE AUTHORITY / NO EVIDENCE ACCEPTANCE / NO RECEIPT
+EVIDENCE ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO RUNTIME
+IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
+IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
+CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
+EXECUTION / NO DEPLOYMENT / NO CAPABILITY ISSUANCE / NO TRUST
+ASSIGNMENT / NO REGISTRY PUBLICATION / NO DISTRIBUTION AUTHORITY / NO
+SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION /
+NO SYSCALL EXPANSION
 **Planning date:** 2026-07-05
 **Planning id:** `ayken.phase23.accepted_evidence_boundary_planning.v1`
 **Planning base main SHA:**
 `1c6148a7dd1655d6281cdc20489026871c6e3975`
-**Planning publication subject:** pending separate reviewed publication
+**Planning publication subject:**
+`bc56d0baada3becdc3c820c4a5a167d7859abbbd`
+**Planning publication PR:** PR #260
+**Planning publication exact-main ci-freeze run:** `28755445907`
+**Planning publication exact-main ci-freeze job:** `freeze / 85261689127`
+**Planning publication exact-main ci-freeze result:** PASS
+**Planning publication exact-main Dev Loop CI run:** `28755445860`
+**Planning publication exact-main Dev Loop CI result:** PASS
+**Planning publication exact-main smoke job:** `smoke / 85261689007`
+**Planning publication exact-main smoke result:** PASS
+**Planning publication exact-main contract job:** `contract / 85261756517`
+**Planning publication exact-main contract result:** PASS
+**Planning publication exact-main full job:** `full / 85261921239`
+**Planning publication exact-main full result:** PASS
+**Planning publication exact-main isolation job:** `isolation / 85262102183`
+**Planning publication exact-main isolation result:** PASS
+**Planning publication exact-main performance job:**
+`performance / 85262266833`
+**Planning publication exact-main performance result:** PASS
 **Phase-23 exact-SHA evidence expectation boundary publication-status
 sync subject:** `1c6148a7dd1655d6281cdc20489026871c6e3975`
 **Phase-23 exact-SHA evidence expectation boundary publication-status
@@ -165,7 +184,7 @@ Those questions require later reviewed decision paths, if ever authorized.
 
 ## Exact Subject
 
-This planning draft is based on exact main SHA:
+This planning record is based on exact main SHA:
 
 ```text
 1c6148a7dd1655d6281cdc20489026871c6e3975
@@ -265,6 +284,57 @@ only. It does not replace, broaden, reinterpret, or supersede them.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Accepted-Evidence Boundary Planning record was published by
+PR #260 at exact main SHA:
+
+```text
+bc56d0baada3becdc3c820c4a5a167d7859abbbd
+```
+
+PR #260 changed only:
+
+```text
+PHASE23_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
+```
+
+PR #260 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28755445907`, job `freeze / 85261689127` | PASS |
+| AykenOS Dev Loop CI | run `28755445860` | PASS |
+| smoke | job `85261689007` | PASS |
+| contract | job `85261756517` | PASS |
+| full | job `85261921239` | PASS |
+| isolation | job `85262102183` | PASS |
+| performance | job `85262266833` | PASS |
+
+This publication-status sync text was not present in the PR #260 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not modify
+`PHASE23_EXACT_SHA_EVIDENCE_EXPECTATION_BOUNDARY.md`.
+
+This sync does not modify `PHASE23_INITIAL_GOVERNANCE_BOUNDARY.md`.
+
+This sync does not modify `PHASE23_GOVERNANCE_OVERVIEW.md`.
+
+This sync does not authorize accepted evidence authority, evidence
+acceptance, receipt evidence acceptance, validator output acceptance,
+runtime implementation procedure, source modification, code
+implementation, code execution, process start, runtime state creation,
+package installation, package loading, package execution, source
+acceptance, source merge, registry publication, trust assignment,
+capability issuance, deployment, distribution, kernel ABI expansion, or
+syscall expansion.
 
 ## Core Rule
 
@@ -930,6 +1000,13 @@ record:
 Until that exact-main post-merge verification exists, this planning record
 must not be recorded as clean-fixed.
 
+For PR #260, this requirement was satisfied by exact-main `ci-freeze` PASS
+run `28755445907` and AykenOS Dev Loop CI PASS run `28755445860` at:
+
+```text
+bc56d0baada3becdc3c820c4a5a167d7859abbbd
+```
+
 Historical PASS results may be cited as context only.
 
 They cannot be inherited as evidence for this planning publication
@@ -1013,8 +1090,8 @@ review and fails this planning scope.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 accepted-evidence boundary planning
-**Architecture status:** Local draft accepted-evidence boundary planning /
-pending separate reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23
+accepted-evidence boundary planning
 **Authority notice:** This signature identifies the architectural
 authorship of this planning record. It grants no accepted evidence
 authority, evidence acceptance authority, receipt evidence acceptance
