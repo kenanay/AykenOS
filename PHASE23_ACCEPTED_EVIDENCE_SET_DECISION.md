@@ -40,24 +40,52 @@ Phase-23 accepted-evidence set decision record for the exact
 governance-only bounded accepted-evidence set decision boundary
 identified below.
 
-**Status:** PHASE-23 ACCEPTED-EVIDENCE SET DECISION / LOCAL DRAFT /
-GOVERNANCE-ONLY ACCEPTED-EVIDENCE SET DECISION ONLY / BOUNDED
-ACCEPTED-EVIDENCE SET DECISION BOUNDARY ONLY / NO ACCEPTED EVIDENCE / NO
-ACCEPTED-EVIDENCE SET MEMBERSHIP / NO EVIDENCE ITEM ACCEPTANCE / NO
-VALIDATOR OUTPUT ACCEPTANCE / NO RECEIPT EVIDENCE ACCEPTANCE / NO
-RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
-IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
-CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
-EXECUTION / NO DEPLOYMENT / NO CAPABILITY ISSUANCE / NO TRUST ASSIGNMENT
-/ NO REGISTRY PUBLICATION / NO DISTRIBUTION AUTHORITY / NO SOURCE
-ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO
-SYSCALL EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO BASELINE CHANGE /
-NO DEPENDENCY CHANGE / NO RING0 AUTHORITY
+**Status:** PHASE-23 ACCEPTED-EVIDENCE SET DECISION PUBLISHED /
+CLEAN-FIXED / GOVERNANCE-ONLY ACCEPTED-EVIDENCE SET DECISION ONLY /
+BOUNDED ACCEPTED-EVIDENCE SET DECISION BOUNDARY ONLY / NO ACCEPTED
+EVIDENCE / NO ACCEPTED-EVIDENCE SET MEMBERSHIP / NO EVIDENCE ITEM
+ACCEPTANCE / NO VALIDATOR OUTPUT ACCEPTANCE / NO RECEIPT EVIDENCE
+ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO SOURCE
+MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS
+START / NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO PACKAGE
+LOADING / NO PACKAGE EXECUTION / NO DEPLOYMENT / NO CAPABILITY ISSUANCE
+/ NO TRUST ASSIGNMENT / NO REGISTRY PUBLICATION / NO DISTRIBUTION
+AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL
+ABI EXPANSION / NO SYSCALL EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO
+BASELINE CHANGE / NO DEPENDENCY CHANGE / NO RING0 AUTHORITY
 **Decision date:** 2026-07-08
 **Decision id:** `ayken.phase23.accepted_evidence_set_decision.v1`
 **Decision drafting base main SHA:**
 `206d1a9aff8ba3dd2aaa4a0e258315d5c92379cd`
-**Decision publication subject:** pending separate reviewed publication
+**Decision publication subject:**
+`a39cec2fcdc03c43a6a97de27cad0e16085b17c8`
+**Decision publication PR:** PR #273
+**Decision publication exact-main ci-freeze run:** `28957677721`
+**Decision publication exact-main ci-freeze attempt:** attempt 1
+**Decision publication exact-main ci-freeze job:**
+`freeze / 85920847382`
+**Decision publication exact-main ci-freeze result:** PASS
+**Decision publication exact-main Dev Loop Validation run:** `28957677670`
+**Decision publication exact-main Dev Loop Validation attempt:** attempt 1
+**Decision publication exact-main Dev Loop Validation job:**
+`devloop / 85920847159`
+**Decision publication exact-main Dev Loop Validation result:** PASS
+**Decision publication exact-main Dev Loop CI run:** `28957677639`
+**Decision publication exact-main Dev Loop CI attempt:** attempt 1
+**Decision publication exact-main Dev Loop CI result:** PASS
+**Decision publication exact-main smoke job:** `smoke / 85920847359`
+**Decision publication exact-main smoke result:** PASS
+**Decision publication exact-main contract job:** `contract / 85921129264`
+**Decision publication exact-main contract result:** PASS
+**Decision publication exact-main full job:** `full / 85921618498`
+**Decision publication exact-main full result:** PASS
+**Decision publication exact-main isolation job:** `isolation / 85922215336`
+**Decision publication exact-main isolation result:** PASS
+**Decision publication exact-main performance job:**
+`performance / 85922817980`
+**Decision publication exact-main performance result:** PASS
+**Publication status sync update subject:** pending separate reviewed
+publication
 **Reviewed Phase-23 accepted-evidence set decision candidate publication
 subject:** `206d1a9aff8ba3dd2aaa4a0e258315d5c92379cd`
 **Reviewed Phase-23 accepted-evidence set decision candidate PR:** PR #272
@@ -235,7 +263,7 @@ Those questions require later reviewed decision paths, if ever authorized.
 
 ## Exact Subject
 
-This decision draft is based on exact main SHA:
+This decision record is based on exact main SHA:
 
 ```text
 206d1a9aff8ba3dd2aaa4a0e258315d5c92379cd
@@ -283,6 +311,58 @@ governance boundary.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, or differently
 scoped subject readings fail closed.
+
+## Publication-Status Sync Context
+
+The Phase-23 Accepted-Evidence Set Decision record was published by PR
+#273 at exact main SHA:
+
+```text
+a39cec2fcdc03c43a6a97de27cad0e16085b17c8
+```
+
+PR #273 changed only:
+
+```text
+PHASE23_ACCEPTED_EVIDENCE_SET_DECISION.md
+```
+
+PR #273 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `28957677721`, attempt 1, job `freeze / 85920847382` | PASS |
+| Dev Loop Validation | run `28957677670`, attempt 1, job `devloop / 85920847159` | PASS |
+| AykenOS Dev Loop CI | run `28957677639`, attempt 1 | PASS |
+| smoke | job `85920847359` | PASS |
+| contract | job `85921129264` | PASS |
+| full | job `85921618498` | PASS |
+| isolation | job `85922215336` | PASS |
+| performance | job `85922817980` | PASS |
+
+This publication-status sync text was not present in the PR #273 merge
+commit.
+
+This sync publication is metadata-only and requires its own reviewed
+subject and post-merge exact-main verification.
+
+This sync does not modify `docs/roadmap/CURRENT_PHASE`.
+
+This sync does not modify
+`PHASE23_ACCEPTED_EVIDENCE_SET_DECISION_CANDIDATE.md`.
+
+This sync does not modify `PHASE23_EVIDENCE_ACCEPTANCE_DECISION.md`.
+
+This sync does not accept evidence, create accepted evidence, define
+accepted-evidence set membership, accept an evidence item, accept
+validator output, accept receipt evidence, or authorize runtime
+implementation procedure, source modification, code implementation,
+code execution, process start, runtime state creation, package
+installation, package loading, package execution, source acceptance,
+source merge, registry publication, trust assignment, capability
+issuance, deployment, distribution, kernel ABI expansion, syscall
+expansion, workflow-threshold changes, baseline changes, dependency
+changes, or Ring0 authority.
 
 ## Core Rule
 
@@ -896,6 +976,13 @@ receive its own post-merge exact-main verification:
 Until that exact-main post-merge verification exists, this decision must
 not be recorded as clean-fixed.
 
+For PR #273, this requirement was satisfied by exact-main `ci-freeze`
+PASS run `28957677721` and AykenOS Dev Loop CI PASS run `28957677639` at:
+
+```text
+a39cec2fcdc03c43a6a97de27cad0e16085b17c8
+```
+
 Historical PASS results may be cited as context only.
 
 Failed attempts may be cited as transparent non-clean context only.
@@ -1061,8 +1148,8 @@ Violation of any invariant fails closed.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-23 accepted-evidence set decision
-**Architecture status:** Local draft accepted-evidence set decision /
-pending separate reviewed publication
+**Architecture status:** Published / clean-fixed Phase-23
+accepted-evidence set decision
 **Authority notice:** This signature identifies the architectural
 authorship of this decision. It grants only the bounded
 accepted-evidence set decision boundary defined in this record. It
