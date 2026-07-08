@@ -932,7 +932,8 @@ define:
    prerequisite.
 3. Exact changed-file boundary.
 4. Exact accepted-evidence set membership decision boundary, if any.
-5. Exact membership denial or separate membership scope, if any.
+5. Exact accepted-evidence set membership denial or separate
+   accepted-evidence set membership scope, if any.
 6. Exact evidence item acceptance denial or separate evidence item
    acceptance scope.
 7. Exact accepted-evidence denial or separate accepted-evidence scope.
@@ -1081,7 +1082,9 @@ membership decision candidate invariants:
 58. This decision candidate does not expand kernel ABI or syscalls.
 59. This decision candidate does not change workflow thresholds,
     baselines, or dependencies.
-60. Ambiguity fails closed.
+60. This decision candidate is not an accepted-evidence set.
+61. `CURRENT_PHASE=23` is not an accepted-evidence set.
+62. Ambiguity fails closed.
 
 Violation of any invariant fails closed.
 
