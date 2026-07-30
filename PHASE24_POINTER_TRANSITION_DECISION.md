@@ -13,42 +13,71 @@ set, `docs/specs/phase18-platform-constitution/AUTHORITY_DRIFT_GUARD.md`,
 documents prevail unless this document is the narrower Phase-24
 pointer-transition decision for the exact subject identified below.
 
-**Status:** PHASE-24 POINTER-TRANSITION DECISION / LOCAL DRAFT /
-GOVERNANCE-ONLY / BOUNDED PHASE-24 POINTER-TRANSITION DECISION BOUNDARY
-ONLY / CLEAN-FIXED PHASE-24 POINTER-TRANSITION CANDIDATE PREREQUISITE /
-CURRENT_PHASE=23 / NO CURRENT_PHASE MODIFICATION / NO CURRENT_PHASE=24 /
-NO ACTIVE PHASE-24 POINTER UPDATE / NO PHASE-24 OPENED STATUS / NO
-PHASE-24 ACTIVATION / NO PHASE-24 GOVERNANCE OVERVIEW / NO CONCRETE
-RECEIPT EVIDENCE SUBJECT IDENTIFICATION / NO CONCRETE RECEIPT EVIDENCE
-ITEM ACCEPTANCE / NO BROADER EVIDENCE CONSUMPTION AUTHORITY / NO GENERAL
-RUNTIME AUTHORITY / NO UNBOUNDED EXECUTION AUTHORITY / NO RUNTIME
-IMPLEMENTATION PROCEDURE / NO GENERAL IMPLEMENTATION AUTHORITY / NO
-SOURCE MODIFICATION / NO SOURCE REPOSITORY AUTHORITY / NO CODE
-IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
-CREATION / NO PACKAGE AUTHORITY / NO PACKAGE INSTALLATION / NO PACKAGE
-LOADING / NO PACKAGE EXECUTION / NO SOURCE ACCEPTANCE / NO SOURCE MERGE
-AUTHORITY / NO PUBLICATION AUTHORITY BEYOND THIS DOCUMENT / NO
-CAPABILITY ISSUANCE / NO REGISTRY AUTHORITY / NO REGISTRY PUBLICATION /
-NO AGENT AUTHORITY / NO TRUST ASSIGNMENT / NO DEPLOYMENT / NO
-DISTRIBUTION AUTHORITY / NO SEMANTIC CLI AUTHORITY / NO AI RUNTIME
-AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION / NO
-WORKFLOW-THRESHOLD CHANGE / NO BASELINE CHANGE / NO DEPENDENCY CHANGE /
-NO RING0 AUTHORITY
+**Status:** PHASE-24 POINTER-TRANSITION DECISION / LOCAL CLEAN-RECOVERY
+DRAFT / GOVERNANCE-ONLY / PRIOR PUBLICATION MERGED AND EXACT-MAIN PASS /
+CLEAN-RECOVERY REQUIRED / BOUNDED PHASE-24 POINTER-TRANSITION DECISION
+BOUNDARY ONLY / CLEAN-FIXED PHASE-24 POINTER-TRANSITION CANDIDATE AND
+PHASE-23 CLOSURE-DECISION PREREQUISITES / CURRENT_PHASE=23 / NO
+CURRENT_PHASE MODIFICATION / NO CURRENT_PHASE=24 / NO ACTIVE PHASE-24
+POINTER UPDATE / NO PHASE-24 OPENED STATUS / NO PHASE-24 ACTIVATION / NO
+PHASE-24 GOVERNANCE OVERVIEW / NO CONCRETE RECEIPT EVIDENCE SUBJECT
+IDENTIFICATION / NO CONCRETE RECEIPT EVIDENCE ITEM ACCEPTANCE / NO
+BROADER EVIDENCE CONSUMPTION AUTHORITY / NO GENERAL RUNTIME AUTHORITY /
+NO UNBOUNDED EXECUTION AUTHORITY / NO RUNTIME IMPLEMENTATION PROCEDURE /
+NO GENERAL IMPLEMENTATION AUTHORITY / NO SOURCE MODIFICATION / NO
+SOURCE REPOSITORY AUTHORITY / NO CODE IMPLEMENTATION / NO CODE
+EXECUTION / NO PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE
+AUTHORITY / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
+EXECUTION / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO
+PUBLICATION AUTHORITY BEYOND THIS DOCUMENT / NO CAPABILITY ISSUANCE / NO
+REGISTRY AUTHORITY / NO REGISTRY PUBLICATION / NO AGENT AUTHORITY / NO
+TRUST ASSIGNMENT / NO DEPLOYMENT / NO DISTRIBUTION AUTHORITY / NO
+SEMANTIC CLI AUTHORITY / NO AI RUNTIME AUTHORITY / NO KERNEL ABI
+EXPANSION / NO SYSCALL EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO
+BASELINE CHANGE / NO DEPENDENCY CHANGE / NO RING0 AUTHORITY
 
 **Decision date:** 2026-07-31
 
 **Decision id:** `ayken.phase24.pointer_transition_decision.v1`
 
-**Decision drafting base main SHA:**
+**Original decision drafting base main SHA:**
 `2674cdcdf020a7d16a1545129eaab98d2731ae90`
 
-**Decision publication subject:** pending separate reviewed publication
+**Prior decision publication subject requiring clean recovery:**
+`7083870135a7b14fd880829678e8f53562a12e39`
+
+**Prior approved decision head:**
+`10f526dc49ddbcc5d94370965c1cddb7ae7bc9d6`
+
+**Prior decision publication PR:** PR #313
+
+**Prior decision publication semantic status:** MERGED / EXACT-MAIN PASS
+/ CLEAN-RECOVERY REQUIRED
+
+**Clean-recovery reason:** The prior publication omitted the independent
+exact Phase-23 closure-decision publication prerequisite required by the
+governing candidate. This recovery completes the dependency contract
+only and does not expand authority.
+
+**Clean-recovery drafting base main SHA:**
+`7083870135a7b14fd880829678e8f53562a12e39`
+
+**Clean-recovery publication subject:** pending separate reviewed
+publication
+
+**Current clean-fixed decision publication subject:**
+absent; pending clean-recovery publication
 
 **Exact clean-fixed Phase-24 pointer-transition candidate publication
 subject:**
 `2674cdcdf020a7d16a1545129eaab98d2731ae90`
 
 **Phase-24 pointer-transition candidate publication PR:** PR #312
+
+**Exact clean-fixed Phase-23 closure-decision publication subject:**
+`d8adf862c52b3b26c5aa4098c6059b177daa7d67`
+
+**Phase-23 closure-decision publication PR:** PR #311
 
 **Reviewed candidate exact-main ci-freeze run:** `30583503819`
 
@@ -94,12 +123,14 @@ subject:**
 
 **Phase-24 state before this decision:** unopened
 
-**Accepted decision boundary if separately reviewed, published, and
-clean-fixed:** bounded Phase-24 pointer-transition decision boundary only
+**Accepted decision boundary if the clean recovery is separately
+reviewed, published, and clean-fixed:** bounded Phase-24
+pointer-transition decision boundary only
 
-**Authority boundary:** Decision-only governance record. This local draft
-does not create a decision publication subject and grants no authority.
-If separately reviewed, published, and clean-fixed, the resulting
+**Authority boundary:** Decision-only governance record. The prior
+publication is merged and exact-main PASS but is not clean-fixed. This
+local clean-recovery draft grants no authority. If separately reviewed
+and published as a clean recovery, then clean-fixed, the recovered
 decision grants only the bounded Phase-24 pointer-transition decision
 boundary defined here. It is not a `CURRENT_PHASE` modification, not
 `CURRENT_PHASE=24`, not an active Phase-24 pointer update, not Phase-24
@@ -116,7 +147,9 @@ This document evaluates only:
 ```text
 May the bounded Phase-24 pointer-transition decision be accepted after
 the clean-fixed Phase-24 pointer-transition candidate publication at
-2674cdcdf020a7d16a1545129eaab98d2731ae90?
+2674cdcdf020a7d16a1545129eaab98d2731ae90 and the exact clean-fixed
+Phase-23 closure-decision publication prerequisite at
+d8adf862c52b3b26c5aa4098c6059b177daa7d67?
 ```
 
 The decision under review is limited to:
@@ -125,12 +158,12 @@ The decision under review is limited to:
 bounded Phase-24 pointer-transition decision boundary only
 ```
 
-This local draft does not accept or publish that decision.
+This local clean-recovery draft does not accept or publish that decision.
 
-If this document is separately reviewed, published, and successfully
-verified on its exact-main publication subject, the decision is accepted
-only as the prerequisite for a later separate reviewed active Phase-24
-pointer update.
+If this document is separately reviewed and published as a clean
+recovery, then successfully verified on its exact-main clean-recovery
+publication subject, the decision is accepted only as the prerequisite
+for a later separate reviewed active Phase-24 pointer update.
 
 This document does not modify:
 
@@ -175,16 +208,27 @@ How is kernel ABI or syscall surface expanded?
 Those questions require later separate reviewed records, if ever
 authorized.
 
-## Exact Prerequisite Subject
+## Exact Prerequisite Subjects
 
-This decision draft is based directly and only on:
+This decision draft is based directly on the two exact clean-fixed
+prerequisite subjects required by the governing Phase-24
+pointer-transition candidate.
+
+The Phase-24 pointer-transition candidate publication subject is:
 
 ```text
 2674cdcdf020a7d16a1545129eaab98d2731ae90
 ```
 
-That subject is the squash-merge exact-main publication subject of PR
-#312:
+The Phase-23 closure-decision publication subject is:
+
+```text
+d8adf862c52b3b26c5aa4098c6059b177daa7d67
+```
+
+The Phase-24 pointer-transition candidate publication subject
+`2674cdcdf020a7d16a1545129eaab98d2731ae90` is the squash-merge
+exact-main publication subject of PR #312:
 
 ```text
 Phase-24 pointer transition candidate
@@ -194,6 +238,14 @@ PR #312 published only:
 
 ```text
 PHASE24_POINTER_TRANSITION_CANDIDATE.md
+```
+
+The Phase-23 closure-decision publication subject
+`d8adf862c52b3b26c5aa4098c6059b177daa7d67` is the squash-merge
+exact-main publication subject of PR #311:
+
+```text
+PHASE23_CLOSURE_DECISION.md
 ```
 
 PR #312 produced the following post-merge exact-main evidence on that
@@ -210,13 +262,14 @@ same subject:
 | isolation | job `91010733378` | PASS |
 | performance | job `91011325876` | PASS |
 
-This decision consumes that exact subject as its single direct governance
-prerequisite.
+This decision consumes those two exact subjects as its complete direct
+governance prerequisite set.
 
 The Phase-24 pointer-transition candidate already binds its own Phase-23
-closure-decision prerequisite. This decision does not independently
-import, replace, broaden, reinterpret, or supersede that earlier
-prerequisite.
+closure-decision prerequisite. As required by that candidate, this
+decision also independently records the same exact clean-fixed Phase-23
+closure-decision publication subject. It does not replace, broaden,
+reinterpret, or supersede either prerequisite.
 
 The candidate drafting base role, candidate publication role, decision
 drafting base role, decision prerequisite role, and future decision
@@ -231,18 +284,26 @@ scoped subject readings fail closed.
 ```text
 Phase-24 pointer-transition candidate != Phase-24 pointer-transition decision
 accepted clean-fixed Phase-24 pointer-transition decision == bounded Phase-24 pointer-transition decision boundary only
-local Phase-24 pointer-transition decision draft != decision publication
-local Phase-24 pointer-transition decision draft != accepted clean-fixed Phase-24 pointer-transition decision
-decision drafting base subject != decision publication subject
-decision prerequisite subject != decision publication subject
-Phase-24 pointer-transition decision prerequisite == exact clean-fixed Phase-24 pointer-transition candidate publication subject
-Phase-24 pointer-transition decision prerequisite != Phase-24 pointer-transition candidate id
-prospective decision merge SHA != decision publication subject
-decision publication subject == actual squash-merge exact-main SHA after merge
-decision publication != clean-fixed until exact-main verification
-independent reviewed-head approval != post-merge exact-main evidence
-decision-head mutation after approval == approval invalid
-clean-fixed Phase-24 pointer-transition candidate == decision prerequisite only
+local Phase-24 pointer-transition decision clean-recovery draft != clean-recovery publication
+local Phase-24 pointer-transition decision clean-recovery draft != accepted clean-fixed Phase-24 pointer-transition decision
+clean-recovery drafting base subject != clean-recovery publication subject
+decision prerequisite subject != clean-recovery publication subject
+Phase-24 pointer-transition decision candidate prerequisite == exact clean-fixed Phase-24 pointer-transition candidate publication subject
+Phase-24 pointer-transition decision candidate prerequisite != Phase-24 pointer-transition candidate id
+Phase-24 pointer-transition decision closure prerequisite == exact clean-fixed Phase-23 closure-decision publication subject
+Phase-24 pointer-transition decision prerequisite set == exact candidate publication subject + exact Phase-23 closure-decision publication subject
+prospective clean-recovery merge SHA != clean-recovery publication subject
+clean-recovery publication subject == actual squash-merge exact-main SHA after merge
+clean-recovery publication != clean-fixed decision until exact-main verification
+independent clean-recovery reviewed-head approval != post-merge exact-main evidence
+clean-recovery head mutation after approval == approval invalid
+prior decision publication subject != clean-fixed decision
+prior decision exact-main PASS != clean-recovery publication evidence
+prior approval != clean-recovery approval
+clean-recovery publication requires a new independently approved head
+clean-recovery publication requires its own post-merge exact-main evidence
+clean-recovery dependency-contract completion != authority expansion
+clean-fixed Phase-24 pointer-transition candidate == candidate member of the complete decision prerequisite set only
 clean-fixed Phase-24 pointer-transition candidate != Phase-24 pointer-transition decision
 Phase-24 pointer-transition decision != active Phase-24 pointer update
 Phase-24 pointer-transition decision != CURRENT_PHASE modification
@@ -291,16 +352,16 @@ decision != workflow-threshold change
 decision != baseline change
 decision != dependency change
 decision != Ring0 authority
-historical PASS != decision publication evidence
+historical PASS != clean-recovery publication evidence
 candidate exact-main PASS == prerequisite evidence only
 unknown authority readings == fail closed
 ```
 
 ## Decision Record
 
-Upon separate reviewed publication and successful exact-main clean-fixed
-verification of this document, the Phase-24 pointer-transition decision
-is accepted only as:
+Upon separate reviewed clean-recovery publication and successful
+exact-main clean-fixed verification of that recovery, the Phase-24
+pointer-transition decision is accepted only as:
 
 ```text
 bounded Phase-24 pointer-transition decision boundary
@@ -319,38 +380,52 @@ It does not create Phase-24 opened or active status.
 
 It does not publish the Phase-24 governance overview.
 
-Before separate reviewed publication and exact-main clean-fixed
-verification:
+Before separate reviewed clean-recovery publication and exact-main
+clean-fixed verification:
 
 ```text
-Phase-24 pointer-transition decision publication: absent
-clean-fixed Phase-24 pointer-transition decision: absent
-active Phase-24 pointer update prerequisite: absent
+Prior Phase-24 pointer-transition decision publication: 7083870135a7b14fd880829678e8f53562a12e39
+Prior publication status: MERGED / EXACT-MAIN PASS / CLEAN-RECOVERY REQUIRED
+Clean-recovery publication subject: absent
+Clean-fixed Phase-24 pointer-transition decision: absent
+Active Phase-24 pointer-update prerequisite: absent
 ```
 
 ## Decision Preconditions
 
-The decision may be published only if all of the following remain true:
+The clean recovery may be published only if all of the following remain
+true:
 
 1. The direct prerequisite subject is exactly
    `2674cdcdf020a7d16a1545129eaab98d2731ae90`.
-2. That subject remains the clean-fixed PR #312 candidate publication.
-3. PR #312 changed only
+2. The direct Phase-23 closure-decision prerequisite subject is exactly
+   `d8adf862c52b3b26c5aa4098c6059b177daa7d67`.
+3. The candidate subject remains the clean-fixed PR #312 candidate
+   publication.
+4. The closure subject remains the clean-fixed PR #311 Phase-23
+   closure-decision publication.
+5. PR #312 changed only
    `PHASE24_POINTER_TRANSITION_CANDIDATE.md`.
-4. The recorded PR #312 exact-main ci-freeze, Dev Loop Validation,
+6. The recorded PR #312 exact-main ci-freeze, Dev Loop Validation,
    AykenOS Dev Loop CI, smoke, contract, full, isolation, and performance
    results remain PASS.
-5. `docs/roadmap/CURRENT_PHASE` still records `CURRENT_PHASE=23`.
-6. Phase-24 remains unopened.
-7. No active Phase-24 pointer update has been published.
-8. No Phase-24 governance overview has been published.
-9. The decision publication changes only
+7. `docs/roadmap/CURRENT_PHASE` still records `CURRENT_PHASE=23`.
+8. Phase-24 remains unopened.
+9. No active Phase-24 pointer update has been published.
+10. No Phase-24 governance overview has been published.
+11. The clean-recovery publication changes only
    `PHASE24_POINTER_TRANSITION_DECISION.md`.
-10. The authority and non-authorization boundaries in this document
+12. The authority and non-authorization boundaries in this document
     remain intact.
-11. The exact reviewed decision head has received independent approval.
-12. Any decision-head mutation after approval invalidates that approval
-    and requires a new independent review.
+13. The exact reviewed clean-recovery head has received independent
+    approval.
+14. Any clean-recovery head mutation after approval invalidates that
+    approval and requires a new independent review.
+15. The prior decision publication subject remains
+    `7083870135a7b14fd880829678e8f53562a12e39` with semantic status
+    `MERGED / EXACT-MAIN PASS / CLEAN-RECOVERY REQUIRED`.
+16. Prior PR #313 approval and PASS results remain historical recovery
+    context only and are not inherited by the clean recovery.
 
 If any precondition is missing, ambiguous, stale, inherited, or
 contradicted, this decision fails closed.
@@ -361,10 +436,12 @@ This decision scope is limited to:
 
 1. Evaluating the bounded Phase-24 pointer-transition decision after the
    exact clean-fixed candidate publication.
-2. Binding the decision to the PR #312 publication subject as its single
-   direct prerequisite.
+2. Binding the decision to the PR #312 candidate publication subject and
+   the PR #311 Phase-23 closure-decision publication subject as its exact
+   direct prerequisite set.
 3. Accepting only a decision-only pointer-transition boundary after
-   separate reviewed publication and exact-main verification.
+   separate reviewed clean-recovery publication and exact-main
+   verification.
 4. Preserving `CURRENT_PHASE=23` until a separate reviewed active pointer
    update.
 5. Preserving Phase-24 unopened status until that separate active pointer
@@ -372,7 +449,7 @@ This decision scope is limited to:
 6. Preserving the candidate non-authorization boundary.
 7. Defining what the decision does not authorize.
 8. Establishing the exact-main verification requirements for this
-   decision publication.
+   clean-recovery publication.
 9. Defining the dependency contract for a possible later active pointer
    update.
 
@@ -390,8 +467,12 @@ deployment, or distribution authority.
 
 ## Candidate Input
 
-This decision consumes only the clean-fixed Phase-24 Pointer Transition
-Candidate as its direct governance prerequisite.
+This decision consumes the clean-fixed Phase-24 Pointer Transition
+Candidate as one member of its complete two-subject direct governance
+prerequisite set.
+
+The second member is the exact clean-fixed Phase-23 closure-decision
+publication subject defined in the Phase-23 Closure Input section.
 
 The candidate remains bound to:
 
@@ -417,6 +498,50 @@ registry authority, trust assignment, deployment, distribution, kernel
 ABI expansion, syscall expansion, or Ring0 authority.
 
 Any candidate conflict fails closed.
+
+## Phase-23 Closure Input
+
+This decision independently consumes the exact clean-fixed Phase-23
+closure-decision publication subject required by the governing
+Phase-24 pointer-transition candidate:
+
+```text
+d8adf862c52b3b26c5aa4098c6059b177daa7d67
+```
+
+That subject remains the clean-fixed publication subject of PR #311:
+
+```text
+PHASE23_CLOSURE_DECISION.md
+```
+
+PR #311 changed only `PHASE23_CLOSURE_DECISION.md` and produced the
+following post-merge exact-main evidence on that same subject:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30579925303`, attempt `1`, job `freeze / 90997329957` | PASS |
+| Dev Loop Validation | run `30579925348`, attempt `1`, job `devloop / 90997330150` | PASS |
+| AykenOS Dev Loop CI | run `30579925455`, attempt `1` | PASS |
+| smoke | job `90997330412` | PASS |
+| contract | job `90997574886` | PASS |
+| full | job `90998113868` | PASS |
+| isolation | job `90998768755` | PASS |
+| performance | job `90999344157` | PASS |
+
+This decision does not reopen, broaden, reinterpret, or supersede the
+Phase-23 closure decision.
+
+The Phase-23 lifecycle remains closed only for:
+
+```text
+ayken.phase23.bounded_governance_scope.v1
+```
+
+The retained `CURRENT_PHASE=23` pointer does not reopen Phase-23
+governance authority.
+
+Any Phase-23 closure conflict fails closed.
 
 ## Current Phase Pointer Boundary
 
@@ -483,6 +608,65 @@ The only new dependency created by a clean-fixed decision is:
 clean-fixed decision == active pointer-update prerequisite only
 ```
 
+## Prior Publication Recovery Context
+
+PR #313 published the prior decision record at:
+
+```text
+7083870135a7b14fd880829678e8f53562a12e39
+```
+
+The independently approved reviewed head was:
+
+```text
+10f526dc49ddbcc5d94370965c1cddb7ae7bc9d6
+```
+
+The reviewer was `kenanay2020-hub`.
+
+PR #313 changed only:
+
+```text
+PHASE24_POINTER_TRANSITION_DECISION.md
+```
+
+The prior publication recorded the candidate publication subject as its
+only direct prerequisite and did not independently record the exact
+Phase-23 closure-decision publication subject required by the governing
+candidate.
+
+That incomplete direct-prerequisite set is the sole semantic defect
+targeted by this recovery.
+
+Completing the exact two-subject prerequisite set does not alter the
+bounded decision-only authority boundary and does not grant new
+authority.
+
+The prior publication produced the following post-merge exact-main
+results:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30587411661`, attempt `1`, job `freeze / 91021965527` | PASS |
+| Dev Loop Validation | run `30587411647`, attempt `1`, job `devloop / 91021965099` | PASS |
+| AykenOS Dev Loop CI | run `30587411720`, attempt `1` | PASS |
+| smoke | job `91021965855` | PASS |
+| contract | job `91022209550` | PASS |
+| full | job `91022659717` | PASS |
+| isolation | job `91023125910` | PASS |
+| performance | job `91023565179` | PASS |
+
+Those approval and PASS results are transparent historical recovery
+context only.
+
+They do not make the prior publication clean-fixed.
+
+They are not inherited as clean-recovery approval or clean-recovery
+post-merge exact-main evidence.
+
+The clean-recovery publication requires a new independently approved
+reviewed head and its own exact-main post-merge evidence.
+
 ## Decision Non-Authorization Boundary
 
 This decision does not authorize:
@@ -540,7 +724,8 @@ Unknown authority readings fail closed.
 
 ## Publication Boundary
 
-If this decision is later published, the publication may change only:
+If this clean-recovery is later published, the publication may change
+only:
 
 ```text
 PHASE24_POINTER_TRANSITION_DECISION.md
@@ -570,12 +755,13 @@ review and fails this decision scope.
 
 ## Post-Merge Exact-Main Evidence Rule
 
-If this decision is later published, the decision publication subject
-must receive its own post-merge exact-main verification:
+If this clean-recovery is later published, the clean-recovery
+publication subject must receive its own post-merge exact-main
+verification:
 
-1. `ci-freeze` PASS for the exact decision publication SHA.
-2. Dev Loop Validation PASS for the exact decision publication SHA.
-3. AykenOS Dev Loop CI PASS for the exact decision publication SHA.
+1. `ci-freeze` PASS for the exact clean-recovery publication SHA.
+2. Dev Loop Validation PASS for the exact clean-recovery publication SHA.
+3. AykenOS Dev Loop CI PASS for the exact clean-recovery publication SHA.
 4. smoke PASS.
 5. contract PASS.
 6. full PASS.
@@ -596,14 +782,14 @@ must receive its own post-merge exact-main verification:
 20. No package loader, module loader, workspace runtime, plugin host,
     capability issuer, registry publication, trust issuer, deployment,
     or distribution execution change.
-21. Confirmation that the independently approved reviewed decision head
-    is the exact head that was squash-merged to produce the decision
-    publication subject.
+21. Confirmation that the independently approved reviewed
+    clean-recovery head is the exact head that was squash-merged to
+    produce the clean-recovery publication subject.
 
 Until that exact-main post-merge verification exists:
 
 ```text
-decision publication != clean-fixed decision
+clean-recovery publication != clean-fixed decision
 Phase-24 pointer-transition decision authority: absent
 active Phase-24 pointer update prerequisite: absent
 ```
@@ -622,7 +808,7 @@ Historical PASS results may be cited as prerequisite context only.
 
 Failed attempts may be cited as transparent non-clean context only.
 
-They cannot be inherited as decision publication evidence, active
+They cannot be inherited as clean-recovery publication evidence, active
 Phase-24 pointer authority, general runtime authority, unbounded
 execution authority, implementation authority, source authority, package
 authority, source-merge authority, publication authority, capability
@@ -661,9 +847,10 @@ A later active pointer update, if ever proposed, must define:
 
 That future pointer update must consume the exact clean-fixed Phase-24
 pointer-transition decision publication subject, the exact-main SHA
-produced by the separately reviewed decision publication.
+produced by the separately reviewed clean-recovery publication.
 
-It must not consume the decision id, decision drafting base, candidate
+It must not consume the decision id, original decision drafting base,
+prior decision publication subject requiring recovery, candidate
 publication subject, or a prospective merge SHA as a substitute.
 
 Until such a later active pointer update is published and clean-fixed:
@@ -722,12 +909,16 @@ invariants:
 
 1. This document defines only a bounded decision-only pointer-transition
    boundary.
-2. This local draft is not a decision publication subject.
-3. Decision publication is not clean-fixed without its own exact-main
-   post-merge evidence.
-4. The exact clean-fixed PR #312 candidate publication is the single
-   direct prerequisite.
-5. Candidate publication is not the decision publication.
+2. This local clean-recovery draft is not a clean-recovery publication
+   subject.
+3. The prior decision publication is not clean-fixed; the clean-recovery
+   publication is not clean-fixed without its own exact-main post-merge
+   evidence.
+4. The exact clean-fixed PR #312 candidate publication and exact
+   clean-fixed PR #311 Phase-23 closure-decision publication are the
+   complete direct prerequisite set.
+5. Candidate publication is neither the prior decision publication nor
+   the clean-recovery publication.
 6. Candidate is not the decision.
 7. Decision is not an active Phase-24 pointer update.
 8. Decision does not modify `docs/roadmap/CURRENT_PHASE`.
@@ -759,7 +950,8 @@ invariants:
 31. Decision does not expand kernel ABI or syscalls.
 32. Decision does not change workflow thresholds, baselines,
     dependencies, or Ring0 authority.
-33. Historical PASS results are prerequisite context only.
+33. Prior PR #313 approval and PASS results are historical recovery
+    context only and are not inherited by the clean recovery.
 34. Local untracked PR design files are not decision input.
 35. Ambiguity fails closed.
 
@@ -771,50 +963,72 @@ Violation of any invariant fails closed.
 
 **Role:** AykenOS Architecture Steward
 
-**Document type:** Phase-24 pointer-transition decision
+**Document type:** Phase-24 pointer-transition decision clean recovery
 
-**Architecture status:** Local draft pointer-transition decision /
-pending separate reviewed publication
+**Architecture status:** Local clean-recovery draft / prior decision
+publication merged and exact-main PASS / clean recovery pending separate
+reviewed publication
 
 **Authority notice:** This signature identifies the architectural
-authorship of this decision record. This local draft grants no authority.
-If separately reviewed, published, and clean-fixed, this document grants
-only the bounded Phase-24 pointer-transition decision boundary defined
-here. It grants no active pointer-update authority, no `CURRENT_PHASE`
-modification authority, no `CURRENT_PHASE=24` authority, no Phase-24
-opened status, no Phase-24 activation, no Phase-24 governance-overview
-authority, no concrete receipt artifact acceptance, no broader evidence
-consumption authority, no general runtime authority, no unbounded
-execution authority, no runtime implementation-procedure authority, no
-general implementation authority, no source-modification authority, no
-source repository authority, no source-acceptance authority, no
-source-merge authority, no code-implementation authority, no
-code-execution authority, no process-start authority, no runtime-state
-authority, no package authority, no publication authority beyond this
-document, no capability authority, no registry authority, no agent
-authority, no trust authority, no deployment authority, no distribution
-authority, no Semantic CLI authority, no AI Runtime authority, no kernel
-ABI authority, no syscall authority, no workflow-threshold authority, no
+authorship of this decision record. This local clean-recovery draft
+grants no authority. If separately reviewed and published as a clean
+recovery, then clean-fixed, this document grants only the bounded
+Phase-24 pointer-transition decision boundary defined here. It grants no
+active pointer-update authority, no `CURRENT_PHASE` modification
+authority, no `CURRENT_PHASE=24` authority, no Phase-24 opened status,
+no Phase-24 activation, no Phase-24 governance-overview authority, no
+concrete receipt artifact acceptance, no broader evidence consumption
+authority, no general runtime authority, no unbounded execution
+authority, no runtime implementation-procedure authority, no general
+implementation
+authority, no source-modification authority, no source repository
+authority, no source-acceptance authority, no source-merge authority, no
+code-implementation authority, no code-execution authority, no
+process-start authority, no runtime-state authority, no package
+authority, no publication authority beyond this document, no capability
+authority, no registry authority, no agent authority, no trust
+authority, no deployment authority, no distribution authority, no
+Semantic CLI authority, no AI Runtime authority, no kernel ABI
+authority, no syscall authority, no workflow-threshold authority, no
 baseline authority, no dependency authority, and no Ring0 authority.
 
 ## Conclusion
 
-This Phase-24 pointer-transition decision draft is based directly and
-only on the exact clean-fixed Phase-24 pointer-transition candidate
-publication subject:
+This Phase-24 pointer-transition decision clean-recovery draft repairs
+the prior publication at:
+
+```text
+7083870135a7b14fd880829678e8f53562a12e39
+```
+
+That prior publication is `MERGED / EXACT-MAIN PASS /
+CLEAN-RECOVERY REQUIRED`.
+
+The recovery completes the exact two-subject prerequisite contract
+required by the governing candidate. It does not expand the bounded
+decision-only authority boundary.
+
+The clean recovery is based directly on the exact clean-fixed Phase-24
+pointer-transition candidate publication subject:
 
 ```text
 2674cdcdf020a7d16a1545129eaab98d2731ae90
 ```
 
-It may be published only as:
+and the exact clean-fixed Phase-23 closure-decision publication subject:
+
+```text
+d8adf862c52b3b26c5aa4098c6059b177daa7d67
+```
+
+The clean recovery may publish the recovered decision only as:
 
 ```text
 bounded Phase-24 pointer-transition decision boundary
 ```
 
-Before separate review, publication, and exact-main clean-fixed
-verification, no decision authority exists.
+Before separate review, clean-recovery publication, and exact-main
+clean-fixed verification, no decision authority exists.
 
 If clean-fixed, the decision becomes only the prerequisite for a later
 separate reviewed active Phase-24 pointer update.
