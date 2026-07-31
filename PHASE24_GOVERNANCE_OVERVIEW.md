@@ -18,11 +18,11 @@ This document is subordinate to PHASE 0 - FOUNDATIONAL OATH,
 unless this overview is the narrower Phase-24 governance overview for the
 exact governance-only scope identified below.
 
-**Status:** PHASE-24 GOVERNANCE OVERVIEW / LOCAL DRAFT / NON-AUTHORITATIVE
-/ PENDING SEPARATE REVIEWED PUBLICATION / PENDING EXACT-MAIN CLEAN-FIXED
-VERIFICATION / PENDING SEPARATE PUBLICATION-STATUS SYNC / GOVERNANCE
-OVERVIEW BOUNDARY ONLY / CURRENT_PHASE=24 ALREADY ACTIVE ONLY AS BOUNDED
-CURRENT-PHASE POINTER STATE / NO RUNTIME
+**Status:** PHASE-24 GOVERNANCE OVERVIEW INITIAL PUBLICATION PUBLISHED /
+CLEAN-FIXED / PUBLICATION-STATUS SYNC LOCAL DRAFT / SYNC NOT PUBLISHED /
+SYNCHRONIZED CLEAN-FIXED STATUS ABSENT / METADATA SYNCHRONIZATION ONLY /
+GOVERNANCE OVERVIEW BOUNDARY ONLY / CURRENT_PHASE=24 ALREADY ACTIVE ONLY
+AS BOUNDED CURRENT-PHASE POINTER STATE / NO RUNTIME
 IMPLEMENTATION PROCEDURE / NO SOURCE MODIFICATION / NO CODE
 IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START / NO RUNTIME STATE
 CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO PACKAGE
@@ -32,6 +32,7 @@ CAPABILITY ISSUANCE / NO REGISTRY PUBLICATION / NO TRUST ASSIGNMENT / NO
 DEPLOYMENT / NO DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE
 MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Overview date:** 2026-07-31
+**Publication-status sync draft date:** 2026-08-01
 **Overview id:** `ayken.phase24.governance_overview.v1`
 **Overview drafting base subject:**
 `2fe35bdebc7c571f8a4d8adaccc4eb80c5f4fb61`
@@ -39,12 +40,49 @@ MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 `2fe35bdebc7c571f8a4d8adaccc4eb80c5f4fb61`
 **Overview direct prerequisite role:** exact clean-fixed Phase-24 bounded
 current-phase pointer-update publication subject
-**Overview publication subject:** absent; pending separate reviewed
-publication
-**Overview publication PR:** absent
-**Overview clean-fixed status:** absent
-**Overview publication-status sync subject:** absent
+**Initial overview publication subject:**
+`003d1cdeb9785d49542ed739c60390e08b1c47a8`
+**Initial overview publication PR:** PR #316
+**Initial overview publication approved head:**
+`0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de`
+**Initial overview publication independent reviewer:** `kenanay2020-hub`
+**Initial overview publication clean-fixed status:** CLEAN-FIXED
+**Initial overview publication exact-main ci-freeze run:** `30638410391`
+**Initial overview publication exact-main ci-freeze job:**
+`freeze / 91181833811`
+**Initial overview publication exact-main ci-freeze result:** PASS
+**Initial overview publication exact-main Dev Loop Validation run:**
+`30638411010`
+**Initial overview publication exact-main Dev Loop Validation job:**
+`devloop / 91181835540`
+**Initial overview publication exact-main Dev Loop Validation result:** PASS
+**Initial overview publication exact-main AykenOS Dev Loop CI run:**
+`30638410432`
+**Initial overview publication exact-main AykenOS Dev Loop CI result:** PASS
+**Initial overview publication exact-main smoke job:**
+`smoke / 91181834072`
+**Initial overview publication exact-main smoke result:** PASS
+**Initial overview publication exact-main contract job:**
+`contract / 91182112486`
+**Initial overview publication exact-main contract result:** PASS
+**Initial overview publication exact-main full job:** `full / 91182834830`
+**Initial overview publication exact-main full result:** PASS
+**Initial overview publication exact-main isolation job:**
+`isolation / 91183542703`
+**Initial overview publication exact-main isolation result:** PASS
+**Initial overview publication exact-main performance job:**
+`performance / 91184131841`
+**Initial overview publication exact-main performance result:** PASS
+**Publication-status sync drafting base subject:**
+`003d1cdeb9785d49542ed739c60390e08b1c47a8`
+**Publication-status sync direct prerequisite subject:**
+`003d1cdeb9785d49542ed739c60390e08b1c47a8`
+**Publication-status sync direct prerequisite role:** exact clean-fixed
+initial Phase-24 governance overview publication subject
+**Overview publication-status sync subject:** absent; pending separate
+reviewed sync publication
 **Overview publication-status sync PR:** absent
+**Overview publication-status sync status:** LOCAL DRAFT / NOT PUBLISHED
 **Overview synchronized clean-fixed status:** absent
 **Current phase pointer:** `CURRENT_PHASE=24`
 **Phase-23 lifecycle state:** CLOSED for
@@ -53,12 +91,15 @@ publication
 state
 **Phase-24 governance theme:** Bounded Governance Planning After
 Clean-Fixed Phase-24 Pointer Activation
-**Initial bounded work package:** evaluate a later separate Phase-24
+**Initial bounded work package:** after a separate publication-status sync
+is published and verified clean-fixed, evaluate a later separate Phase-24
 initial governance-boundary record; no such record is created or accepted
-by this overview draft
-**Authority boundary:** If separately reviewed, published, and verified
-clean-fixed on its actual exact-main publication subject, this document
-records only the bounded Phase-24 governance overview boundary. It is not
+by this metadata sync draft
+**Authority boundary:** The clean-fixed initial publication at
+`003d1cdeb9785d49542ed739c60390e08b1c47a8` records only the bounded
+Phase-24 governance overview boundary. This local publication-status sync
+draft performs metadata synchronization only and grants no authority
+expansion. The overview and sync are not
 runtime implementation procedure, not general runtime authority, not
 unbounded execution authority, not source modification, not source
 repository authority, not code implementation, not code execution, not
@@ -79,8 +120,17 @@ authority.
 
 ## Purpose
 
-This local draft defines the proposed Phase-24 governance overview after
-the clean-fixed bounded Phase-24 current-phase pointer update.
+The Phase-24 governance overview was initially published by PR #316 and
+verified clean-fixed at exact-main subject:
+
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
+
+This working-tree revision is only a local publication-status sync draft.
+
+It records the completed initial publication metadata without creating a
+sync publication subject before merge.
 
 It answers one question:
 
@@ -91,37 +141,42 @@ evidence-consumption, source, package, registry, trust, deployment, kernel,
 or execution authority?
 ```
 
-If separately reviewed, published, and verified clean-fixed, the answer is:
+The clean-fixed initial overview publication records the answer as:
 
 ```text
 Bounded Governance Planning After Clean-Fixed Phase-24 Pointer Activation
 ```
 
-This local draft is not a reviewed publication.
+The initial overview publication is clean-fixed.
 
-This local draft is not a clean-fixed governance overview.
+The local publication-status sync draft is not a reviewed sync publication.
 
-This local draft does not create Phase-24 governance-overview authority.
+The local sync draft is not a synchronized canonical overview reference.
 
-This local draft does not modify `docs/roadmap/CURRENT_PHASE`.
+The local sync draft does not create or expand Phase-24 governance-overview
+authority.
 
-This local draft does not define runtime implementation procedure.
+The local sync draft does not modify `docs/roadmap/CURRENT_PHASE`.
 
-This local draft does not authorize source modification.
+The local sync draft does not define runtime implementation procedure.
 
-This local draft does not authorize code implementation or code execution.
+The local sync draft does not authorize source modification.
 
-This local draft does not authorize process start or runtime state creation.
+The local sync draft does not authorize code implementation or code
+execution.
 
-This local draft does not authorize package installation, package loading,
+The local sync draft does not authorize process start or runtime state
+creation.
+
+The local sync draft does not authorize package installation, package loading,
 or package execution.
 
-This local draft does not grant accepted-evidence authority.
+The local sync draft does not grant accepted-evidence authority.
 
-This local draft does not accept an evidence item, validator output, or
+The local sync draft does not accept an evidence item, validator output, or
 receipt evidence.
 
-This local draft does not authorize capability issuance, registry
+The local sync draft does not authorize capability issuance, registry
 publication, trust assignment, deployment, distribution, source
 acceptance, source merge, kernel ABI expansion, or syscall expansion.
 
@@ -146,9 +201,10 @@ How is kernel ABI or syscall surface expanded?
 Those questions require later separate reviewed decision paths, if ever
 authorized.
 
-## Direct Prerequisite
+## Initial Overview Direct Prerequisite
 
-This overview draft has exactly one direct authority prerequisite:
+The initial overview publication had exactly one direct authority
+prerequisite:
 
 ```text
 2fe35bdebc7c571f8a4d8adaccc4eb80c5f4fb61
@@ -195,6 +251,16 @@ trust, deployment, distribution, kernel ABI, or syscall authority.
 Missing, ambiguous, stale, inherited, aliased, superseded, prospective, or
 differently scoped prerequisite readings fail closed.
 
+This local publication-status sync draft has a separate direct
+prerequisite:
+
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
+
+The pointer-update subject remains the initial overview prerequisite. It is
+not the sync direct prerequisite.
+
 ## Exact Identity Rule
 
 ```text
@@ -206,8 +272,19 @@ overview direct prerequisite subject != Phase-24 pointer-transition decision id
 overview direct prerequisite subject != Phase-23 closure subject id
 overview drafting base subject != overview publication subject
 overview direct prerequisite subject != overview publication subject
-local overview draft != reviewed overview publication
-reviewed overview publication != clean-fixed overview
+initial overview publication subject == 003d1cdeb9785d49542ed739c60390e08b1c47a8
+initial overview approved head == 0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de
+initial overview approved head != initial overview publication subject
+initial overview publication == clean-fixed bounded governance overview only
+publication-status sync drafting base subject == 003d1cdeb9785d49542ed739c60390e08b1c47a8
+publication-status sync direct prerequisite subject == 003d1cdeb9785d49542ed739c60390e08b1c47a8
+publication-status sync direct prerequisite role == exact clean-fixed initial overview publication subject
+publication-status sync direct prerequisite subject != pointer-update subject
+publication-status sync direct prerequisite subject != overview id
+publication-status sync direct prerequisite subject != initial overview approved head
+local publication-status sync draft != reviewed sync publication
+reviewed sync publication without complete post-merge exact-main PASS
+!= synchronized clean-fixed overview reference
 prospective overview merge SHA != overview publication subject
 overview publication subject == actual squash-merge exact-main SHA after merge
 overview publication subject != overview publication-status sync subject
@@ -220,11 +297,17 @@ overview publication-status sync subject == actual squash-merge exact-main SHA o
 The drafting base and direct prerequisite currently have the same SHA.
 Their governance roles remain distinct.
 
-The future overview publication subject must be a new actual exact-main
+The initial overview publication subject is the actual exact-main SHA:
+
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
+
+The future publication-status sync subject must be a new actual exact-main
 SHA produced by a separate reviewed squash merge.
 
-No SHA shown by GitHub before merge may be recorded as the overview
-publication subject.
+No SHA shown by GitHub before the sync merge may be recorded as the
+publication-status sync subject.
 
 ## PR #315 Exact-Main Evidence Context
 
@@ -277,8 +360,63 @@ It is not accepted-evidence authority.
 
 It is not evidence-item, validator-output, or receipt-evidence acceptance.
 
-It cannot be inherited as post-merge evidence for the future overview
-publication subject.
+It did not substitute for the initial overview publication's own
+post-merge evidence.
+
+## PR #316 Initial Overview Publication Evidence
+
+The initial overview publication subject is:
+
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
+
+PR #316 changed only:
+
+```text
+PHASE24_GOVERNANCE_OVERVIEW.md
+```
+
+PR #316 was independently approved against unchanged reviewed head:
+
+```text
+0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+PR #316 produced post-merge exact-main verification:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30638410391`, attempt `1`, job `freeze / 91181833811` | PASS |
+| Dev Loop Validation | run `30638411010`, attempt `1`, job `devloop / 91181835540` | PASS |
+| AykenOS Dev Loop CI | run `30638410432`, attempt `1` | PASS |
+| smoke | job `91181834072` | PASS |
+| contract | job `91182112486` | PASS |
+| full | job `91182834830` | PASS |
+| isolation | job `91183542703` | PASS |
+| performance | job `91184131841` | PASS |
+
+All mandatory results are bound to the same initial overview exact-main
+publication subject and completed on attempt `1` without rerun.
+
+This evidence makes the initial overview publication clean-fixed.
+
+It does not make this local publication-status sync draft published.
+
+It does not create a sync exact-main subject.
+
+It does not create a synchronized canonical overview reference.
+
+It does not authorize runtime, implementation, evidence consumption,
+source, package, source merge, capability, registry, trust, deployment,
+distribution, kernel ABI, syscall, workflow-threshold, baseline,
+dependency, or Ring0 authority.
 
 ## Provenance Context, Not Direct Prerequisites
 
@@ -323,22 +461,27 @@ deployment, distribution, kernel ABI, or syscall authority.
 Current state:
 
 ```text
-PHASE24_GOVERNANCE_OVERVIEW.md: local draft
-reviewed overview publication head: absent
-overview publication independent approval: absent
-overview publication subject: absent
-overview publication post-merge evidence: absent
-clean-fixed overview publication: absent
-overview publication-status sync subject: absent
+initial overview publication: PUBLISHED / CLEAN-FIXED
+initial overview publication PR: PR #316
+initial overview approved head: 0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de
+initial overview publication subject: 003d1cdeb9785d49542ed739c60390e08b1c47a8
+initial overview publication post-merge evidence: PASS
+PHASE24_GOVERNANCE_OVERVIEW.md publication-status sync: local draft
+reviewed sync head: absent
+sync independent approval: absent
+overview publication-status sync subject: absent; pending separate reviewed sync publication
 overview sync post-merge evidence: absent
 synchronized clean-fixed Phase-24 governance overview: absent
 ```
 
-The local file does not create authority.
+The initial overview publication is clean-fixed for the bounded governance
+overview authority recorded by this document.
+
+The local metadata changes do not create authority.
 
 A branch does not create authority.
 
-A commit does not create authority.
+A commit by itself does not create authority.
 
 An open PR does not create authority.
 
@@ -348,21 +491,17 @@ Independent approval does not create authority by itself.
 
 Merge without complete post-merge exact-main evidence is not clean-fixed.
 
-Only a separate reviewed one-file overview publication followed by complete
-mandatory PASS results on its actual exact-main publication subject may
-create a clean-fixed overview publication.
+The initial clean-fixed overview publication did not update its own
+local-draft metadata with the actual publication subject that did not exist
+before merge.
 
-That first publication does not update its own local-draft metadata with an
-actual publication subject that did not exist before merge.
-
-A later separate one-file publication-status sync and its own actual
+This separate one-file publication-status sync and its own actual
 exact-main PASS chain are required before the overview has a synchronized
 canonical clean-fixed reference for downstream governance records.
 
 ## Phase-24 Governance Posture
 
-If this overview is separately reviewed, published, and verified
-clean-fixed, Phase-24 may use this posture:
+The clean-fixed initial overview publication records this Phase-24 posture:
 
 ```text
 ACTIVE POINTER / BOUNDED GOVERNANCE PLANNING ONLY
@@ -443,9 +582,10 @@ CURRENT_PHASE=24 != validator-output acceptance
 CURRENT_PHASE=24 != receipt-evidence acceptance
 CURRENT_PHASE=24 != source merge authority
 Phase-24 pointer update != Phase-24 governance overview
-local Phase-24 governance overview draft != reviewed publication
-local Phase-24 governance overview draft != clean-fixed overview
-accepted clean-fixed Phase-24 governance overview == bounded governance overview boundary only
+clean-fixed initial Phase-24 governance overview publication == bounded governance overview boundary only
+local publication-status sync draft != reviewed sync publication
+local publication-status sync draft != synchronized clean-fixed overview reference
+reviewed sync publication != synchronized clean-fixed overview without its own exact-main PASS
 overview publication subject != overview publication-status sync subject
 overview publication PASS != synchronized overview metadata publication
 clean-fixed overview publication != synchronized canonical overview reference
@@ -500,7 +640,7 @@ one exact bounded authority with its own actual exact-main evidence.
 
 ## Phase-24 Governance Theme
 
-The proposed Phase-24 governance theme is:
+The clean-fixed initial Phase-24 governance theme is:
 
 ```text
 Bounded Governance Planning After Clean-Fixed Phase-24 Pointer Activation
@@ -559,9 +699,8 @@ Any theme reading that implies broader authority fails closed.
 
 ## Phase-24 Initial Bounded Work Package
 
-If this overview is separately reviewed, published, and verified
-clean-fixed, the first Phase-24 work package may evaluate only a later
-separate governance record for:
+The clean-fixed initial overview publication identifies the first Phase-24
+work package as a later separate governance record for:
 
 ```text
 Phase-24 initial governance-boundary definition
@@ -579,6 +718,10 @@ This overview does not accept that boundary.
 
 This overview does not authorize any authority named or evaluated by that
 future boundary.
+
+The work package must not begin until this publication-status sync is
+separately reviewed, published, and verified clean-fixed on its own actual
+exact-main subject.
 
 The initial work package is limited to:
 
@@ -772,9 +915,9 @@ It must not be staged, committed, or included in any Phase-24 governance
 overview PR unless a separate reviewed scope explicitly authorizes that
 file.
 
-## Overview Publication Preconditions
+## Initial Overview Publication Preconditions
 
-Before this overview may be published:
+The initial overview publication required:
 
 1. The direct prerequisite remains exactly
    `2fe35bdebc7c571f8a4d8adaccc4eb80c5f4fb61`.
@@ -796,9 +939,14 @@ Independent reviewed-head approval is not post-merge exact-main evidence.
 
 Pre-merge PASS is not post-merge exact-main evidence.
 
-Historical prerequisite PASS is not overview publication evidence.
+Historical prerequisite PASS was not overview publication evidence.
 
-Any unmet precondition fails closed.
+PR #316 satisfied these preconditions against unchanged reviewed head
+`0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de` and actual exact-main
+publication subject `003d1cdeb9785d49542ed739c60390e08b1c47a8`.
+
+These satisfied initial-publication preconditions do not satisfy the later
+publication-status sync preconditions.
 
 ## Not Authorized By This Overview
 
@@ -851,15 +999,16 @@ This overview does not authorize:
 
 Unknown or unlisted authority readings fail closed.
 
-## Publication Boundary
+## Initial Publication And Sync File Boundary
 
-The only file permitted in a Phase-24 governance overview publication is:
+The only file permitted in either the initial Phase-24 governance overview
+publication or its separate publication-status sync is:
 
 ```text
 PHASE24_GOVERNANCE_OVERVIEW.md
 ```
 
-The publication must not change:
+Neither publication may change:
 
 1. `docs/roadmap/CURRENT_PHASE`.
 2. `PHASE24_POINTER_TRANSITION_CANDIDATE.md`.
@@ -877,10 +1026,11 @@ The publication must not change:
     distribution execution paths.
 13. `PHASE21_FIRST_BOUNDED_IMPLEMENTATION_ACTUAL_SKELETON_PR_DESIGN.md`.
 
-The landing SHA publishes only the bounded Phase-24 governance overview
-record.
+The initial landing SHA publishes only the bounded Phase-24 governance
+overview record.
 
-The landing SHA must not be read as runtime implementation procedure,
+Neither the initial publication landing SHA nor the later sync landing SHA
+may be read as runtime implementation procedure,
 source modification authority, code implementation authority, code
 execution authority, process-start authority, runtime-state authority,
 package authority, evidence-consumption authority, capability authority,
@@ -889,68 +1039,85 @@ authority, distribution authority, general runtime authority, general
 implementation authority, or kernel ABI/syscall expansion.
 
 Any changed-file expansion beyond this overview record requires separate
-review and fails this publication scope.
+review and fails both the initial-publication and sync scopes.
 
-This initial overview publication must not claim a publication-status sync
-subject that does not yet exist.
+The initial overview publication did not claim a publication-status sync
+subject that did not yet exist.
 
-The later publication-status sync is a separate reviewed one-file PR. It
-must not be included in the initial overview publication PR.
+This local publication-status sync draft is a separate one-file change. It
+was not included in the initial overview publication PR.
 
-## Post-Merge Exact-Main Evidence Rule
+## Initial Overview Publication Exact-Main Evidence
 
-After squash merge, the actual overview publication subject must record:
+PR #316 was squash-merged from independently approved unchanged head:
 
-1. `ci-freeze` PASS.
-2. Dev Loop Validation PASS.
-3. AykenOS Dev Loop CI PASS.
-4. smoke PASS.
-5. contract PASS.
-6. full PASS.
-7. isolation PASS.
-8. performance PASS.
-9. Exact changed-file confirmation for
-   `PHASE24_GOVERNANCE_OVERVIEW.md` only.
-10. No `docs/roadmap/CURRENT_PHASE` change.
-11. No `PHASE24_POINTER_TRANSITION_CANDIDATE.md` change.
-12. No `PHASE24_POINTER_TRANSITION_DECISION.md` change.
-13. No `PHASE23_CLOSURE_DECISION.md` change.
-14. No Phase-23 governance, evidence, closure, or pointer-transition file
-    change.
-15. No Phase-24 initial-governance-boundary or later governance file
-    change.
-16. No CI workflow change.
-17. No baseline change.
-18. No dependency change.
-19. No runtime source or kernel source change.
-20. No syscall or kernel ABI change.
-21. No package-loader, module-loader, workspace-runtime, plugin-host,
-    capability-issuer, registry-publication, trust-issuer, deployment, or
-    distribution-execution path change.
-22. Confirmation that the independently approved reviewed overview head is
-    the exact head squash-merged to produce the overview publication
-    subject.
-23. Confirmation that the publication subject is the actual exact-main SHA
-    after merge and not a prospective merge SHA.
+```text
+0b3e7e8eb0566c56f47504e20f5b0ffb9f7833de
+```
 
-Until all mandatory results are PASS on the same actual exact-main subject,
-the overview is not clean-fixed.
+The actual initial overview publication subject is:
 
-Failed attempts may be recorded only as transparent non-clean context.
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
 
-A later PASS attempt does not erase an earlier failed attempt.
+The exact-main mandatory evidence is:
 
-Historical prerequisite PASS results cannot substitute for this overview's
-own publication evidence.
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30638410391`, attempt `1`, job `freeze / 91181833811` | PASS |
+| Dev Loop Validation | run `30638411010`, attempt `1`, job `devloop / 91181835540` | PASS |
+| AykenOS Dev Loop CI | run `30638410432`, attempt `1` | PASS |
+| smoke | job `91181834072` | PASS |
+| contract | job `91182112486` | PASS |
+| full | job `91182834830` | PASS |
+| isolation | job `91183542703` | PASS |
+| performance | job `91184131841` | PASS |
+
+Changed-file confirmation is:
+
+```text
+PHASE24_GOVERNANCE_OVERVIEW.md only
+```
+
+The initial publication changed no pointer, Phase-23 record, Phase-24
+pointer-transition record, later Phase-24 governance record, CI workflow,
+baseline, dependency, runtime source, kernel source, syscall, kernel ABI,
+loader, capability, registry, trust, deployment, or distribution path.
+
+All mandatory evidence completed on attempt `1` without rerun.
+
+The initial overview publication is therefore clean-fixed.
+
+This initial publication evidence does not substitute for the separate
+publication-status sync's own approval, actual exact-main subject, or
+post-merge mandatory PASS evidence.
 
 ## Publication-Status Sync Dependency
 
-The initial overview publication cannot know its own actual squash-merge
+The initial overview publication could not know its own actual squash-merge
 exact-main subject before merge.
 
-Therefore, after the initial overview publication is merged and its own
-post-merge mandatory PASS chain completes, a separate publication-status
-sync is required.
+The initial publication is now merged and clean-fixed at:
+
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
+
+This working-tree revision is the required local publication-status sync
+draft.
+
+Current sync state:
+
+```text
+publication-status sync: LOCAL DRAFT / NOT PUBLISHED
+sync direct prerequisite: 003d1cdeb9785d49542ed739c60390e08b1c47a8
+sync reviewed head: absent
+sync independent approval: absent
+sync publication subject: absent
+sync post-merge evidence: absent
+synchronized canonical overview reference: absent
+```
 
 The sync must update only:
 
@@ -958,7 +1125,7 @@ The sync must update only:
 PHASE24_GOVERNANCE_OVERVIEW.md
 ```
 
-The sync must record at least:
+This local sync draft records:
 
 1. The initial overview publication subject.
 2. The initial overview publication PR.
@@ -972,14 +1139,20 @@ The sync must record at least:
 8. The fact that the sync itself remains metadata-only and does not expand
    authority.
 
-The publication-status sync direct prerequisite must be the actual
-clean-fixed initial overview publication subject.
+The publication-status sync direct prerequisite is exactly the clean-fixed
+initial overview publication subject:
 
-The sync must not use the overview id, drafting base, pointer-update
-prerequisite, reviewed branch head, or prospective merge SHA as a
-substitute for that actual publication subject.
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
 
-The sync requires its own:
+The sync must not use the overview id, original overview drafting base,
+pointer-update prerequisite, PR #316 number, approved initial overview head,
+historical CI evidence, or prospective sync merge SHA as a substitute for
+that actual publication subject.
+
+Before this sync can become the synchronized canonical overview reference,
+it requires its own:
 
 1. Independent approval of the exact unchanged sync head.
 2. One-file changed-file confirmation.
@@ -1022,56 +1195,62 @@ Every later Phase-24 record must preserve these invariants:
 2. That direct prerequisite is the clean-fixed pointer-update publication
    subject at `2fe35bdebc7c571f8a4d8adaccc4eb80c5f4fb61`.
 3. Candidate, decision, and Phase-23 subjects are provenance only.
-4. A local overview draft is not a reviewed publication.
-5. A reviewed publication is not clean-fixed without its own exact-main
-   post-merge PASS evidence.
-6. `CURRENT_PHASE=24` is only the bounded current-phase pointer state.
-7. `CURRENT_PHASE=24` is not overview publication authority.
-8. Phase-24 governance overview is not runtime implementation procedure.
-9. Phase-24 governance overview is not general runtime authority.
-10. Phase-24 governance overview is not general implementation authority.
-11. Phase-24 governance overview is not source modification.
-12. Phase-24 governance overview is not source repository authority.
-13. Phase-24 governance overview is not code implementation.
-14. Phase-24 governance overview is not code execution.
-15. Phase-24 governance overview is not process start.
-16. Phase-24 governance overview is not runtime state creation.
-17. Phase-24 governance overview is not package authority.
-18. Phase-24 governance overview is not package loading or execution.
-19. Phase-24 governance overview is not accepted-evidence authority.
-20. Phase-24 governance overview is not evidence-item acceptance.
-21. Phase-24 governance overview is not validator-output acceptance.
-22. Phase-24 governance overview is not receipt-evidence acceptance.
-23. Phase-24 governance overview is not broader evidence consumption
+4. The initial overview publication is clean-fixed at
+   `003d1cdeb9785d49542ed739c60390e08b1c47a8`.
+5. A local publication-status sync draft is not a reviewed sync
+   publication.
+6. A reviewed sync publication is not a synchronized canonical overview
+   reference without its own exact-main post-merge PASS evidence.
+7. `CURRENT_PHASE=24` is only the bounded current-phase pointer state.
+8. `CURRENT_PHASE=24` is not overview publication authority.
+9. Phase-24 governance overview is not runtime implementation procedure.
+10. Phase-24 governance overview is not general runtime authority.
+11. Phase-24 governance overview is not general implementation authority.
+12. Phase-24 governance overview is not source modification.
+13. Phase-24 governance overview is not source repository authority.
+14. Phase-24 governance overview is not code implementation.
+15. Phase-24 governance overview is not code execution.
+16. Phase-24 governance overview is not process start.
+17. Phase-24 governance overview is not runtime state creation.
+18. Phase-24 governance overview is not package authority.
+19. Phase-24 governance overview is not package loading or execution.
+20. Phase-24 governance overview is not accepted-evidence authority.
+21. Phase-24 governance overview is not evidence-item acceptance.
+22. Phase-24 governance overview is not validator-output acceptance.
+23. Phase-24 governance overview is not receipt-evidence acceptance.
+24. Phase-24 governance overview is not broader evidence consumption
     authority.
-24. Phase-24 governance overview is not capability issuance.
-25. Phase-24 governance overview is not registry authority or publication.
-26. Phase-24 governance overview is not trust assignment.
-27. Phase-24 governance overview is not deployment or distribution
+25. Phase-24 governance overview is not capability issuance.
+26. Phase-24 governance overview is not registry authority or publication.
+27. Phase-24 governance overview is not trust assignment.
+28. Phase-24 governance overview is not deployment or distribution
     authority.
-28. Phase-24 governance overview is not source acceptance or source merge
+29. Phase-24 governance overview is not source acceptance or source merge
     authority.
-29. Phase-24 governance overview is not Semantic CLI, AI Runtime, or agent
+30. Phase-24 governance overview is not Semantic CLI, AI Runtime, or agent
     authority.
-30. Phase-24 governance overview does not expand kernel ABI or syscalls.
-31. Phase-24 governance overview does not change workflow thresholds,
+31. Phase-24 governance overview does not expand kernel ABI or syscalls.
+32. Phase-24 governance overview does not change workflow thresholds,
     baselines, dependencies, or Ring0 policy.
-32. Phase-23 remains closed for its exact bounded governance scope.
-33. This overview does not reopen or broaden Phase-23.
-34. The initial bounded work package does not exist until separately
-    reviewed and published.
-35. A future initial governance-boundary record is not the authority it may
+33. Phase-23 remains closed for its exact bounded governance scope.
+34. This overview does not reopen or broaden Phase-23.
+35. The future initial governance-boundary record is absent from the current
+    canonical state and must not begin before the overview
+    publication-status sync is separately published and verified clean-fixed.
+36. A future initial governance-boundary record is not the authority it may
     evaluate.
-36. Unlisted or ambiguous authority fails closed.
-37. The initial overview publication subject is not the later
+37. Unlisted or ambiguous authority fails closed.
+38. The initial overview publication subject is not the later
     publication-status sync subject.
-38. Initial overview publication PASS is not synchronized overview metadata
+39. Initial overview publication PASS is not synchronized overview metadata
     publication.
-39. A clean-fixed initial overview publication is not the synchronized
+40. A clean-fixed initial overview publication is not the synchronized
     canonical overview reference.
-40. The publication-status sync is metadata-only.
-41. The publication-status sync does not expand authority.
-42. A downstream initial governance-boundary record requires the actual
+41. The publication-status sync direct prerequisite is exactly
+    `003d1cdeb9785d49542ed739c60390e08b1c47a8`.
+42. The publication-status sync is metadata-only.
+43. The publication-status sync does not expand authority.
+44. A downstream initial governance-boundary record requires the actual
     clean-fixed overview publication-status sync subject.
 
 Violation of any invariant fails closed.
@@ -1122,14 +1301,16 @@ one such authority.
 
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
-**Document type:** Phase-24 governance overview local draft
-**Architecture status:** Local draft / non-authoritative / pending initial
-reviewed publication, exact-main verification, and later separate
-publication-status sync
-**Authority notice:** If separately reviewed, published, and verified
-clean-fixed, this signature identifies only the architectural authorship of
-the bounded Phase-24 governance overview. It grants no runtime
-implementation-procedure authority, general runtime authority, unbounded
+**Document type:** Phase-24 governance overview publication-status sync
+local draft
+**Architecture status:** Initial overview publication published and
+clean-fixed / publication-status sync local draft and not published /
+synchronized clean-fixed status absent
+**Authority notice:** The clean-fixed initial publication identifies only
+the architectural authorship of the bounded Phase-24 governance overview.
+This local metadata sync draft grants no authority expansion. Neither
+grants runtime implementation-procedure authority, general runtime
+authority, unbounded
 execution authority, source-modification authority, source-repository
 authority, code-implementation authority, code-execution authority,
 process-start authority, runtime-state authority, general implementation
@@ -1163,28 +1344,34 @@ Phase-24 is active only as:
 bounded current-phase pointer state
 ```
 
-The proposed Phase-24 governance theme is:
+The clean-fixed initial Phase-24 governance theme is:
 
 ```text
 Bounded Governance Planning After Clean-Fixed Phase-24 Pointer Activation
 ```
 
-This file is currently a local draft.
+The initial overview publication is published and clean-fixed at:
 
-It is not a reviewed overview publication.
+```text
+003d1cdeb9785d49542ed739c60390e08b1c47a8
+```
 
-It is not a clean-fixed Phase-24 governance overview.
+This working-tree revision is currently a local publication-status sync
+draft.
+
+It is not a reviewed sync publication.
 
 It has no publication-status sync subject.
 
 It has no synchronized canonical clean-fixed overview reference.
 
-If separately reviewed, published, and verified clean-fixed, the initial
-publication records only the bounded Phase-24 governance overview boundary.
+The initial publication records only the bounded Phase-24 governance
+overview boundary.
 
-A later separate publication-status sync and its own post-merge exact-main
-PASS chain must complete before an initial governance-boundary record may
-consume the synchronized canonical overview reference.
+This publication-status sync draft must be separately reviewed, published,
+and verified by its own post-merge exact-main PASS chain before an initial
+governance-boundary record may consume the synchronized canonical overview
+reference.
 
 It does not define runtime implementation procedure, grant runtime or
 implementation authority, authorize source modification, authorize code
