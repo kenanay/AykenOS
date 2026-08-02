@@ -20,9 +20,11 @@ documents prevail unless this document is the narrower Phase-24
 exact-subject and evidence-expectation boundary for the exact
 governance-only scope identified below.
 
-**Status:** PHASE-24 EXACT-SUBJECT AND EVIDENCE-EXPECTATION BOUNDARY LOCAL
-DRAFT / NOT PUBLISHED / NOT CLEAN-FIXED / GOVERNANCE-ONLY IDENTITY AND
-EVIDENCE EXPECTATION BOUNDARY ONLY / NO EVIDENCE ACCEPTANCE / NO ACCEPTED
+**Status:** PHASE-24 EXACT-SUBJECT AND EVIDENCE-EXPECTATION BOUNDARY INITIAL
+PUBLICATION PUBLISHED / CLEAN-FIXED / PUBLICATION-STATUS SYNC LOCAL DRAFT /
+SYNC NOT PUBLISHED / SYNCHRONIZED CLEAN-FIXED STATUS ABSENT / METADATA
+SYNCHRONIZATION ONLY / GOVERNANCE-ONLY IDENTITY AND EVIDENCE EXPECTATION
+BOUNDARY ONLY / NO EVIDENCE ACCEPTANCE / NO ACCEPTED
 EVIDENCE AUTHORITY / NO VALIDATOR-OUTPUT ACCEPTANCE / NO RECEIPT-EVIDENCE
 ACCEPTANCE / NO AUTHORITY GRANT / NO SEQUENCING APPROVAL / CURRENT_PHASE=24
 UNCHANGED / NO RUNTIME IMPLEMENTATION PROCEDURE / NO GENERAL RUNTIME
@@ -33,6 +35,7 @@ ISSUANCE / NO REGISTRY PUBLICATION / NO TRUST ASSIGNMENT / NO DEPLOYMENT /
 NO DISTRIBUTION AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE
 AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 **Boundary date:** 2026-08-02
+**Publication-status sync draft date:** 2026-08-02
 **Boundary id:**
 `ayken.phase24.exact_subject_evidence_expectation_boundary.v1`
 **Boundary drafting base subject:**
@@ -41,16 +44,44 @@ AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL EXPANSION
 `f58c89d01bb54c9680fa316b50b07e3d3062ff27`
 **Boundary direct prerequisite role:** exact clean-fixed Phase-24 initial
 governance-boundary publication-status sync subject
-**Initial record publication subject:** absent; pending separate reviewed
-publication
-**Initial record publication PR:** absent
-**Initial record reviewed head:** absent
-**Initial record independent approval:** absent
-**Initial record post-merge exact-main evidence:** absent
-**Initial record clean-fixed status:** absent
-**Record publication-status sync subject:** absent
+**Initial record publication subject:**
+`8941d88c3e6636e0c809ef2002b201686a07fd72`
+**Initial record publication PR:** PR #320
+**Initial record reviewed head:**
+`83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad`
+**Initial record independent reviewer:** `kenanay2020-hub`
+**Initial record post-merge exact-main evidence:** PASS
+**Initial record clean-fixed status:** CLEAN-FIXED
+**Initial record exact-main ci-freeze run:** `30747976037`
+**Initial record exact-main ci-freeze job:** `freeze / 91496784481`
+**Initial record exact-main ci-freeze result:** PASS
+**Initial record exact-main Dev Loop Validation run:** `30747976047`
+**Initial record exact-main Dev Loop Validation job:**
+`devloop / 91496784444`
+**Initial record exact-main Dev Loop Validation result:** PASS
+**Initial record exact-main AykenOS Dev Loop CI run:** `30747976024`
+**Initial record exact-main AykenOS Dev Loop CI result:** PASS
+**Initial record exact-main smoke job:** `smoke / 91496784379`
+**Initial record exact-main smoke result:** PASS
+**Initial record exact-main contract job:** `contract / 91496898353`
+**Initial record exact-main contract result:** PASS
+**Initial record exact-main full job:** `full / 91497105215`
+**Initial record exact-main full result:** PASS
+**Initial record exact-main isolation job:** `isolation / 91497356571`
+**Initial record exact-main isolation result:** PASS
+**Initial record exact-main performance job:** `performance / 91497601363`
+**Initial record exact-main performance result:** PASS
+**Record publication-status sync drafting base subject:**
+`8941d88c3e6636e0c809ef2002b201686a07fd72`
+**Record publication-status sync direct prerequisite subject:**
+`8941d88c3e6636e0c809ef2002b201686a07fd72`
+**Record publication-status sync direct prerequisite role:** exact
+clean-fixed initial Phase-24 exact-subject and evidence-expectation boundary
+publication subject
+**Record publication-status sync subject:** absent; pending separate
+reviewed sync publication
 **Record publication-status sync PR:** absent
-**Record publication-status sync status:** absent
+**Record publication-status sync status:** LOCAL DRAFT / NOT PUBLISHED
 **Synchronized canonical record reference:** absent
 **First later Phase-24 prerequisite:** absent
 **Authority expansion:** NONE
@@ -64,8 +95,11 @@ publication
 **Current phase pointer:** `CURRENT_PHASE=24`
 **Boundary theme:** Exact-subject identity, reviewed-head binding, and
 post-merge evidence expectations for later Phase-24 governance records
-**Authority boundary:** This local draft defines only identity and evidence
-expectations for later governance publications. It does not accept
+**Authority boundary:** The clean-fixed initial publication at
+`8941d88c3e6636e0c809ef2002b201686a07fd72` defines only identity and
+evidence expectations for later governance publications. This local
+publication-status sync draft performs metadata synchronization only. The
+initial publication and local sync draft do not accept
 evidence, grant accepted-evidence authority, accept validator output,
 accept receipt evidence, authorize publication of any later record,
 approve sequencing, authorize runtime implementation procedure, create
@@ -80,9 +114,12 @@ workflow thresholds, baselines, dependencies, or Ring0 policy.
 
 ## Purpose
 
-This local draft proposes the first downstream Phase-24 governance-only
-boundary after the clean-fixed Phase-24 Initial Governance Boundary
-publication-status sync.
+The clean-fixed initial publication records the first downstream Phase-24
+governance-only boundary after the clean-fixed Phase-24 Initial Governance
+Boundary publication-status sync.
+
+This working-tree revision is only a local metadata-only
+publication-status sync draft for that initial publication.
 
 It answers one bounded question:
 
@@ -93,25 +130,29 @@ clean-fixed governance publication, without granting any authority
 evaluated by that later record?
 ```
 
-The proposed answer is only an identity and evidence-expectation contract.
+The recorded answer is only an identity and evidence-expectation contract.
 
-This local draft does not create any later record.
+This local publication-status sync draft does not create any later record.
 
-This local draft does not authorize publication of any later record.
+This local publication-status sync draft does not authorize publication of
+any later record.
 
-This local draft does not approve an execution or governance sequence.
+This local publication-status sync draft does not approve an execution or
+governance sequence.
 
-This local draft does not accept evidence.
+This local publication-status sync draft does not accept evidence.
 
-This local draft does not create accepted evidence.
+This local publication-status sync draft does not create accepted evidence.
 
-This local draft does not accept validator output.
+This local publication-status sync draft does not accept validator output.
 
-This local draft does not accept receipt evidence.
+This local publication-status sync draft does not accept receipt evidence.
 
-This local draft is not a clean-fixed boundary publication.
+This local publication-status sync draft is not a reviewed sync publication
+or synchronized canonical record reference.
 
-This local draft does not modify `docs/roadmap/CURRENT_PHASE`.
+This local publication-status sync draft does not modify
+`docs/roadmap/CURRENT_PHASE`.
 
 It does not authorize runtime implementation procedure, source
 modification, code implementation, code execution, process start, runtime
@@ -143,7 +184,8 @@ authorized.
 
 ## Direct Prerequisite
 
-This boundary draft has exactly one direct prerequisite:
+The clean-fixed initial record publication had exactly one direct
+prerequisite:
 
 ```text
 f58c89d01bb54c9680fa316b50b07e3d3062ff27
@@ -186,6 +228,16 @@ prospective merge SHA may not substitute for the direct prerequisite.
 Missing, ambiguous, stale, inherited, aliased, superseded, prospective, or
 differently scoped prerequisite readings fail closed.
 
+This local publication-status sync draft has a separate direct
+prerequisite:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+The initial-governance-boundary sync subject remains the initial record
+prerequisite. It is not the record metadata-sync direct prerequisite.
+
 ## Exact Identity And Lifecycle Rule
 
 ```text
@@ -204,8 +256,28 @@ boundary direct prerequisite subject != boundary id
 boundary direct prerequisite subject != approved PR head
 boundary drafting base subject != initial record publication subject
 boundary direct prerequisite subject != initial record publication subject
-local boundary draft != reviewed initial record publication
-local boundary draft != clean-fixed initial record publication
+initial record publication subject
+== 8941d88c3e6636e0c809ef2002b201686a07fd72
+initial record approved head
+== 83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad
+initial record approved head != initial record publication subject
+initial record publication
+== clean-fixed governance-only identity and evidence expectation boundary
+record publication-status sync drafting base subject
+== 8941d88c3e6636e0c809ef2002b201686a07fd72
+record publication-status sync direct prerequisite subject
+== 8941d88c3e6636e0c809ef2002b201686a07fd72
+record publication-status sync direct prerequisite role
+== exact clean-fixed initial Phase-24 exact-subject and evidence-expectation
+boundary publication subject
+record publication-status sync direct prerequisite subject != boundary id
+record publication-status sync direct prerequisite subject
+!= initial record approved head
+record publication-status sync direct prerequisite subject
+!= initial-governance-boundary sync prerequisite
+local publication-status sync draft != reviewed sync publication
+reviewed sync publication without complete post-merge exact-main PASS
+!= synchronized canonical record reference
 independent approval binds only to the exact reviewed head
 head mutation after approval == approval invalid
 approved exact head != initial record publication subject
@@ -223,12 +295,30 @@ record eligibility != publication authorization
 evaluation-map order != sequencing approval
 ```
 
-The drafting base and direct prerequisite currently have the same SHA.
-Their governance roles remain distinct.
+The initial record drafting base and initial record direct prerequisite
+both equal:
 
-The initial record publication subject is absent before merge.
+```text
+f58c89d01bb54c9680fa316b50b07e3d3062ff27
+```
 
-The later publication-status sync subject is absent before its own merge.
+The publication-status sync drafting base and sync direct prerequisite both
+equal:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+Each equality preserves distinct governance roles.
+
+The initial record publication subject is the actual exact-main SHA:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+The future publication-status sync subject must be a new actual exact-main
+SHA produced by a separate reviewed squash merge.
 
 The synchronized canonical record reference is absent until the separate
 sync publication completes its own mandatory exact-main PASS chain.
@@ -294,6 +384,70 @@ It does not grant runtime, implementation, source, package, source-merge,
 capability, registry, trust, deployment, distribution, kernel ABI, or
 syscall authority.
 
+## PR #320 Initial Record Publication Evidence
+
+The initial record publication subject is:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+PR #320 changed only:
+
+```text
+PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md
+```
+
+PR #320 was independently approved against unchanged reviewed head:
+
+```text
+83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+PR #320 produced post-merge exact-main verification on attempt `1`:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30747976037`, job `freeze / 91496784481` | PASS |
+| Dev Loop Validation | run `30747976047`, job `devloop / 91496784444` | PASS |
+| AykenOS Dev Loop CI | run `30747976024` | PASS |
+| smoke | job `91496784379` | PASS |
+| contract | job `91496898353` | PASS |
+| full | job `91497105215` | PASS |
+| isolation | job `91497356571` | PASS |
+| performance | job `91497601363` | PASS |
+
+All mandatory results are bound to the same initial record exact-main
+publication subject and completed on attempt `1` without rerun.
+
+The expected skipped jobs were:
+
+| Job | Job id | Result |
+|---|---|---|
+| `init_perf_baseline` | `91496784950` | SKIPPED |
+| `auto-bisect` | `91497712617` | SKIPPED |
+
+This evidence makes the initial record publication clean-fixed.
+
+It does not make this local publication-status sync draft published.
+
+It does not create a sync exact-main subject.
+
+It does not create a synchronized canonical record reference.
+
+It does not create a first later Phase-24 prerequisite.
+
+It does not authorize evidence acceptance, runtime, implementation,
+source, package, source merge, capability, registry, trust, deployment,
+distribution, kernel ABI, syscall, workflow-threshold, baseline,
+dependency, or Ring0 authority.
+
 ## Provenance Context, Not Direct Prerequisites
 
 The following subjects are provenance only:
@@ -319,10 +473,18 @@ The following subjects are provenance only:
 **Phase-23 closure-decision publication subject:**
 `d8adf862c52b3b26c5aa4098c6059b177daa7d67`
 
-These subjects do not replace the direct prerequisite at:
+These subjects do not replace the initial record publication direct
+prerequisite at:
 
 ```text
 f58c89d01bb54c9680fa316b50b07e3d3062ff27
+```
+
+They also do not replace the publication-status sync direct prerequisite
+at:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
 ```
 
 They do not independently grant publication or downstream authority.
@@ -334,18 +496,27 @@ They do not provide current-record post-merge evidence.
 Current state:
 
 ```text
-PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md: local draft
-reviewed initial record head: absent
-initial record independent approval: absent
-initial record publication subject: absent
-initial record post-merge evidence: absent
-clean-fixed initial record publication: absent
+initial record publication: PUBLISHED / CLEAN-FIXED
+initial record publication PR: PR #320
+initial record approved head: 83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad
+initial record publication subject: 8941d88c3e6636e0c809ef2002b201686a07fd72
+initial record publication post-merge evidence: PASS
+record publication-status sync file:
+PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md
+record publication-status sync: local draft
+reviewed sync head: absent
+sync independent approval: absent
 record publication-status sync subject: absent
+record publication-status sync publication: pending separate review
+record sync post-merge evidence: absent
 synchronized canonical record reference: absent
 first later Phase-24 prerequisite: absent
 ```
 
-The local file does not create authority.
+The initial record publication is clean-fixed for the governance-only
+identity and evidence expectation boundary recorded by this document.
+
+The local metadata changes do not create authority.
 
 A branch does not create authority.
 
@@ -359,15 +530,13 @@ Independent approval does not create authority by itself.
 
 Merge without complete post-merge exact-main evidence is not clean-fixed.
 
-Only a separate reviewed one-file publication followed by complete
-mandatory PASS results on its actual exact-main subject may create a
-clean-fixed initial publication of this record.
+The initial clean-fixed record publication did not update its own
+local-draft metadata with the actual publication subject that did not exist
+before merge.
 
-That first publication does not create a synchronized canonical reference.
-
-A later metadata-only publication-status sync and its own mandatory
-exact-main PASS chain are required before another Phase-24 record may use
-the synchronized canonical reference as its direct prerequisite.
+This separate one-file publication-status sync and its own actual
+exact-main PASS chain are required before the record has a synchronized
+canonical clean-fixed reference for later Phase-24 governance records.
 
 ## Core Rule
 
@@ -663,7 +832,7 @@ The current phase pointer remains:
 CURRENT_PHASE=24
 ```
 
-This local draft does not modify:
+This local publication-status sync draft does not modify:
 
 ```text
 docs/roadmap/CURRENT_PHASE
@@ -681,7 +850,8 @@ merge, kernel ABI expansion, or syscall expansion.
 
 ## Relationship To Phase-24 Initial Governance Boundary
 
-This local draft consumes exactly one clean-fixed direct prerequisite:
+The clean-fixed initial record publication consumed exactly one direct
+prerequisite:
 
 ```text
 f58c89d01bb54c9680fa316b50b07e3d3062ff27
@@ -705,7 +875,8 @@ Evaluation-map inclusion is not publication authorization.
 
 Evaluation-map order is not sequencing approval.
 
-This local draft must complete its own separate lifecycle.
+This initial record completed its own clean-fixed publication lifecycle.
+The local publication-status sync draft must complete a separate lifecycle.
 
 ## Relationship To Phase-24 Governance Overview
 
@@ -728,7 +899,8 @@ distribution, kernel ABI, or syscall authority.
 Phase-23 remains closed for the exact bounded governance scope recorded by
 `PHASE23_CLOSURE_DECISION.md`.
 
-This local draft does not reopen or broaden Phase-23.
+This local publication-status sync draft does not reopen or broaden
+Phase-23.
 
 Phase-23 evidence or publication subjects do not substitute for this
 record's direct prerequisite or publication evidence.
@@ -759,7 +931,7 @@ reviewed scope explicitly authorizes that file.
 
 ## Initial Publication Preconditions
 
-Before this boundary may be initially published:
+The initial record publication required:
 
 1. The direct prerequisite remains exactly
    `f58c89d01bb54c9680fa316b50b07e3d3062ff27`.
@@ -785,7 +957,12 @@ Pre-merge PASS is not post-merge exact-main evidence.
 
 Historical prerequisite PASS is not current record publication evidence.
 
-Any unmet precondition fails closed.
+PR #320 satisfied these preconditions against unchanged reviewed head
+`83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad` and actual exact-main
+publication subject `8941d88c3e6636e0c809ef2002b201686a07fd72`.
+
+These satisfied initial-publication preconditions do not satisfy the later
+publication-status sync preconditions.
 
 ## Not Authorized By This Boundary
 
@@ -839,15 +1016,16 @@ This boundary does not authorize:
 
 Unknown or unlisted authority readings fail closed.
 
-## Initial Publication Boundary
+## Initial Publication And Sync File Boundary
 
-If this boundary is initially published, the publication may change only:
+The initial record publication and its separate publication-status sync may
+each change only:
 
 ```text
 PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md
 ```
 
-The publication must not change:
+Neither publication may change:
 
 1. `docs/roadmap/CURRENT_PHASE`.
 2. `PHASE24_INITIAL_GOVERNANCE_BOUNDARY.md`.
@@ -867,11 +1045,13 @@ The publication must not change:
     distribution-execution paths.
 15. `PHASE21_FIRST_BOUNDED_IMPLEMENTATION_ACTUAL_SKELETON_PR_DESIGN.md`.
 
-The landing SHA may publish only the bounded Phase-24 exact-subject and
-evidence-expectation boundary.
+The initial landing SHA published only the bounded Phase-24 exact-subject
+and evidence-expectation boundary. The later sync landing SHA may publish
+only metadata synchronization for that same boundary.
 
-It may not be read as evidence acceptance, publication authorization for
-another record, sequencing approval, runtime implementation procedure,
+Neither landing SHA may be read as evidence acceptance, publication
+authorization for another record, sequencing approval, runtime
+implementation procedure,
 source modification authority, code implementation authority, execution
 authority, package authority, capability authority, registry authority,
 trust authority, source-merge authority, deployment authority,
@@ -879,12 +1059,56 @@ distribution authority, general runtime authority, general implementation
 authority, or kernel ABI/syscall expansion.
 
 Any changed-file expansion beyond this record requires separate review and
-fails this publication scope.
+fails both the initial-publication and sync scopes.
 
-## Post-Merge Exact-Main Evidence Rule
+## Initial Record Publication Exact-Main Evidence
 
-After squash merge, the actual initial record publication subject must
-record:
+PR #320 was squash-merged from independently approved unchanged head:
+
+```text
+83c162529b8d9a0a5e978d70440ffe8c1c5ac1ad
+```
+
+The actual initial record publication subject is:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+The exact-main mandatory evidence is:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30747976037`, attempt `1`, job `freeze / 91496784481` | PASS |
+| Dev Loop Validation | run `30747976047`, job `devloop / 91496784444` | PASS |
+| AykenOS Dev Loop CI | run `30747976024`, attempt `1` | PASS |
+| smoke | job `91496784379` | PASS |
+| contract | job `91496898353` | PASS |
+| full | job `91497105215` | PASS |
+| isolation | job `91497356571` | PASS |
+| performance | job `91497601363` | PASS |
+
+Changed-file confirmation is:
+
+```text
+PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md only
+```
+
+The initial publication changed no pointer, initial governance boundary,
+overview, Phase-24 pointer-transition record, Phase-23 governance record,
+later Phase-24 governance record, CI workflow, baseline, dependency,
+runtime source, kernel source, syscall, kernel ABI, loader, capability,
+registry, trust, deployment, or distribution path.
+
+All mandatory evidence completed on attempt `1` without rerun.
+
+The initial record publication is therefore clean-fixed.
+
+This initial publication evidence does not substitute for the separate
+publication-status sync's own approval, actual exact-main subject, or
+post-merge mandatory PASS evidence.
+
+The initial publication required:
 
 1. `ci-freeze` PASS.
 2. Dev Loop Validation PASS.
@@ -916,8 +1140,7 @@ record:
 23. Confirmation that the publication subject is the actual exact-main SHA
     after merge and not a prospective merge SHA.
 
-Until all mandatory results are PASS on the same actual exact-main subject,
-the initial record publication is not clean-fixed.
+These requirements were satisfied on the same actual exact-main subject.
 
 Failed attempts must be recorded as transparent non-clean context.
 
@@ -928,29 +1151,51 @@ own evidence.
 
 ## Publication-Status Sync Dependency
 
-The initial record publication cannot know its own actual squash-merge
+The initial record publication could not know its own actual squash-merge
 exact-main subject before merge.
 
-Therefore, after the initial publication is merged and its own mandatory
-post-merge PASS chain completes, a separate metadata-only
-publication-status sync is required before another Phase-24 record may
-consume a synchronized canonical reference.
+The initial publication is now merged and clean-fixed at:
 
-The future sync must update only:
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+This working-tree revision is the required local publication-status sync
+draft.
+
+Current sync state:
+
+```text
+publication-status sync: LOCAL DRAFT / NOT PUBLISHED
+sync direct prerequisite: 8941d88c3e6636e0c809ef2002b201686a07fd72
+sync reviewed head: absent
+sync independent approval: absent
+sync publication subject: absent
+sync post-merge evidence: absent
+synchronized clean-fixed exact-subject boundary reference: absent
+first later Phase-24 prerequisite: absent
+```
+
+The sync must update only:
 
 ```text
 PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md
 ```
 
-The future sync direct prerequisite must be the actual clean-fixed initial
-record publication subject.
+The sync direct prerequisite is exactly the actual clean-fixed initial
+record publication subject:
 
-The future sync must not use the boundary id, original drafting base,
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
+
+The sync must not use the boundary id, original drafting base,
 initial-governance-boundary sync prerequisite, reviewed branch head, PR
 number, historical CI evidence, or prospective sync merge SHA as a
 substitute for the initial record publication subject.
 
-The future sync requires its own:
+Before this sync can become the synchronized canonical record reference,
+it requires its own:
 
 1. Independent approval of the exact unchanged sync head.
 2. One-file changed-file confirmation.
@@ -964,7 +1209,14 @@ The future sync requires its own:
 10. isolation PASS.
 11. performance PASS.
 
-Until that future sync and its own mandatory post-merge PASS chain are
+Any sync-head mutation after independent approval invalidates that approval
+and requires a new independent review.
+
+Independent sync-head approval is not post-merge exact-main evidence.
+
+Initial record publication PASS is not sync publication evidence.
+
+Until this sync publication and its mandatory post-merge PASS chain are
 complete:
 
 ```text
@@ -972,7 +1224,7 @@ synchronized canonical exact-subject boundary reference: absent
 first later Phase-24 prerequisite: absent
 ```
 
-The future publication-status sync is metadata synchronization only.
+This publication-status sync is metadata synchronization only.
 
 It must not reopen or broaden this boundary.
 
@@ -991,7 +1243,8 @@ Every later Phase-24 record must preserve these invariants:
    `f58c89d01bb54c9680fa316b50b07e3d3062ff27`.
 3. The initial-boundary publication subject and governance-overview sync
    subject are provenance only.
-4. A local draft is not a reviewed initial publication.
+4. The initial record publication subject is
+   `8941d88c3e6636e0c809ef2002b201686a07fd72`.
 5. A reviewed initial publication is not clean-fixed without complete
    post-merge exact-main PASS evidence.
 6. Approved exact head is not the initial record publication subject.
@@ -1030,7 +1283,13 @@ Every later Phase-24 record must preserve these invariants:
 35. Phase-23 remains closed for its exact bounded governance scope.
 36. This boundary does not reopen or broaden Phase-23.
 37. Unknown or ambiguous authority fails closed.
-38. A later Phase-24 record requires this boundary's future actual
+38. The publication-status sync direct prerequisite is exactly the
+    clean-fixed initial record publication subject at
+    `8941d88c3e6636e0c809ef2002b201686a07fd72`.
+39. A local publication-status sync draft is not a reviewed sync
+    publication.
+40. Initial record publication PASS is not sync publication evidence.
+41. A later Phase-24 record requires this boundary's future actual
     clean-fixed publication-status sync subject before using a synchronized
     canonical reference.
 
@@ -1038,7 +1297,8 @@ Violation of any invariant fails closed.
 
 ## Later Governance Record Dependency
 
-This local draft does not publish any later Phase-24 governance record.
+This local publication-status sync draft does not publish any later
+Phase-24 governance record.
 
 Even after the initial publication of this boundary becomes clean-fixed,
 another Phase-24 record must not begin by consuming the initial publication
@@ -1072,12 +1332,14 @@ This dependency does not authorize a later record or sequencing choice.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-24 exact-subject and evidence-expectation boundary
-local draft
-**Architecture status:** Local draft / not published / not clean-fixed /
-initial record publication subject absent / publication-status sync absent /
+publication-status sync local draft
+**Architecture status:** Initial record publication published and
+clean-fixed / publication-status sync local draft and not published /
 synchronized canonical record reference absent
-**Authority notice:** This signature identifies the architectural
-authorship of this local draft. It grants no evidence acceptance,
+**Authority notice:** The clean-fixed initial publication identifies the
+architectural authorship of the governance-only identity and evidence
+expectation boundary. This local metadata sync draft grants no evidence
+acceptance,
 accepted-evidence authority, validator-output acceptance, receipt-evidence
 acceptance, publication authorization for another record, sequencing
 approval, runtime implementation procedure authority, source modification
@@ -1093,18 +1355,25 @@ dependency authority, or Ring0 authority.
 
 ## Conclusion
 
-This Phase-24 exact-subject and evidence-expectation boundary local draft is
-based on the exact clean-fixed Phase-24 Initial Governance Boundary
-publication-status sync subject:
+The Phase-24 exact-subject and evidence-expectation boundary was published
+and verified clean-fixed at:
 
 ```text
-f58c89d01bb54c9680fa316b50b07e3d3062ff27
+8941d88c3e6636e0c809ef2002b201686a07fd72
 ```
 
-It defines only exact-subject identity, reviewed-head approval binding,
+That initial publication defines only exact-subject identity, reviewed-head
+approval binding,
 changed-file scope, mandatory post-merge evidence, no-inheritance,
 failure-transparency, and publication-status sync expectations for later
 Phase-24 governance records.
+
+This working-tree revision is a local publication-status sync draft based
+directly on the clean-fixed initial record publication subject:
+
+```text
+8941d88c3e6636e0c809ef2002b201686a07fd72
+```
 
 It does not accept evidence.
 
@@ -1114,7 +1383,7 @@ It does not authorize publication of another record.
 
 It does not approve sequencing.
 
-It has no initial record publication subject.
+It is not a reviewed sync publication.
 
 It has no publication-status sync subject.
 
