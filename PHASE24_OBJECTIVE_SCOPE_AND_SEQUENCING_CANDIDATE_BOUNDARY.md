@@ -22,37 +22,64 @@ Phase-24 objective, scope, and sequencing candidate boundary for the exact
 governance-only scope identified below.
 
 **Status:** PHASE-24 OBJECTIVE, SCOPE, AND SEQUENCING CANDIDATE BOUNDARY
-LOCAL DRAFT / NOT PUBLISHED / NOT CLEAN-FIXED / GOVERNANCE-ONLY CANDIDATE
-BOUNDARY ONLY / NO APPROVED OBJECTIVE / NO AUTHORIZED SCOPE / NO SEQUENCING
-APPROVAL / NO DOWNSTREAM PUBLICATION AUTHORIZATION / NO AUTHORITY GRANT /
-CURRENT_PHASE=24 UNCHANGED / NO EVIDENCE ACCEPTANCE / NO ACCEPTED-EVIDENCE
-AUTHORITY / NO VALIDATOR-OUTPUT ACCEPTANCE / NO RECEIPT-EVIDENCE ACCEPTANCE /
-NO RUNTIME IMPLEMENTATION PROCEDURE / NO GENERAL RUNTIME AUTHORITY / NO
-SOURCE MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO
-PROCESS START / NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO
-PACKAGE LOADING / NO PACKAGE EXECUTION / NO CAPABILITY ISSUANCE / NO
-REGISTRY PUBLICATION / NO TRUST ASSIGNMENT / NO DEPLOYMENT / NO DISTRIBUTION
-AUTHORITY / NO SOURCE ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI
-EXPANSION / NO SYSCALL EXPANSION
+INITIAL PUBLICATION PUBLISHED / CLEAN-FIXED / PUBLICATION-STATUS SYNC LOCAL
+DRAFT / SYNC NOT PUBLISHED / SYNCHRONIZED CLEAN-FIXED STATUS ABSENT /
+METADATA SYNCHRONIZATION ONLY / GOVERNANCE-ONLY CANDIDATE BOUNDARY ONLY /
+NO APPROVED OBJECTIVE / NO AUTHORIZED SCOPE / NO SEQUENCING APPROVAL / NO
+DOWNSTREAM PUBLICATION AUTHORIZATION / NO AUTHORITY GRANT / CURRENT_PHASE=24
+UNCHANGED / NO EVIDENCE ACCEPTANCE / NO ACCEPTED-EVIDENCE AUTHORITY / NO
+VALIDATOR-OUTPUT ACCEPTANCE / NO RECEIPT-EVIDENCE ACCEPTANCE / NO RUNTIME
+IMPLEMENTATION PROCEDURE / NO GENERAL RUNTIME AUTHORITY / NO SOURCE
+MODIFICATION / NO CODE IMPLEMENTATION / NO CODE EXECUTION / NO PROCESS START /
+NO RUNTIME STATE CREATION / NO PACKAGE INSTALLATION / NO PACKAGE LOADING / NO
+PACKAGE EXECUTION / NO CAPABILITY ISSUANCE / NO REGISTRY PUBLICATION / NO
+TRUST ASSIGNMENT / NO DEPLOYMENT / NO DISTRIBUTION AUTHORITY / NO SOURCE
+ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO SYSCALL
+EXPANSION
 **Boundary date:** 2026-08-02
+**Publication-status sync draft date:** 2026-08-02
 **Boundary id:**
 `ayken.phase24.objective_scope_sequencing_candidate_boundary.v1`
-**Candidate drafting base subject:**
+**Initial candidate drafting base subject:**
 `f94440ac1015b5946988667effbaac1b46a83dc8`
-**Candidate direct prerequisite subject:**
+**Initial candidate direct prerequisite subject:**
 `f94440ac1015b5946988667effbaac1b46a83dc8`
-**Candidate direct prerequisite role:** synchronized canonical Phase-24
+**Initial candidate direct prerequisite role:** synchronized canonical Phase-24
 exact-subject and evidence-expectation boundary reference
-**Candidate publication subject:** absent; pending separate reviewed
-publication
-**Candidate publication PR:** absent
-**Candidate reviewed head:** absent
-**Candidate independent approval:** absent
-**Candidate post-merge exact-main evidence:** absent
-**Clean-fixed candidate publication:** absent
+**Initial candidate publication subject:**
+`9e7b50693c8be32243a73dd301ef550b7c7f32e9`
+**Initial candidate publication PR:** PR #322
+**Initial candidate reviewed head:**
+`29125500ea1d4ccc0b6c9d982e675bad05e1130a`
+**Initial candidate independent reviewer:** `kenanay2020-hub`
+**Initial candidate post-merge exact-main evidence:** PASS / ATTEMPT-1
+**Initial candidate clean-fixed status:** CLEAN-FIXED
+**Initial candidate exact-main ci-freeze run:** `30760310175`
+**Initial candidate exact-main ci-freeze job:** `freeze / 91529513644`
+**Initial candidate exact-main Dev Loop Validation run:** `30760310139`
+**Initial candidate exact-main Dev Loop Validation job:**
+`devloop / 91529513532`
+**Initial candidate exact-main AykenOS Dev Loop CI run:** `30760310186`
+**Initial candidate exact-main smoke job:** `smoke / 91529513711`
+**Initial candidate exact-main contract job:** `contract / 91529636895`
+**Initial candidate exact-main full job:** `full / 91529850819`
+**Initial candidate exact-main isolation job:** `isolation / 91530109046`
+**Initial candidate exact-main performance job:**
+`performance / 91530339076`
+**Candidate publication-status sync drafting base subject:**
+`9e7b50693c8be32243a73dd301ef550b7c7f32e9`
+**Candidate publication-status sync direct prerequisite subject:**
+`9e7b50693c8be32243a73dd301ef550b7c7f32e9`
+**Candidate publication-status sync direct prerequisite role:** exact
+clean-fixed initial Phase-24 objective, scope, and sequencing candidate
+boundary publication subject
 **Candidate publication-status sync subject:** absent
 **Candidate publication-status sync PR:** absent
-**Candidate publication-status sync status:** absent
+**Candidate publication-status sync reviewed head:** absent
+**Candidate publication-status sync independent approval:** absent
+**Candidate publication-status sync post-merge evidence:** absent
+**Candidate publication-status sync status:** LOCAL DRAFT / NOT PUBLISHED
+**Clean-fixed candidate publication-status sync:** absent
 **Synchronized canonical candidate reference:** absent
 **Approved objective:** absent
 **Authorized scope:** absent
@@ -68,25 +95,30 @@ publication
 **Current phase pointer:** `CURRENT_PHASE=24`
 **Boundary theme:** One bounded Phase-24 objective candidate, scope
 candidate, and candidate sequencing map without approval or authority
-**Authority boundary:** This local draft makes only one bounded objective,
-scope, and sequencing candidate reviewable. It does not approve the
-objective, authorize the scope, approve sequencing, create or publish a
-later record, accept evidence, grant accepted-evidence authority, accept
-validator output, accept receipt evidence, authorize runtime
-implementation procedure, create general runtime authority, authorize
-source modification, create source repository authority, authorize code
-implementation or execution, start a process, create runtime state,
-authorize package installation, loading, or execution, accept source,
-authorize source merge, issue capability, publish registry state, assign
-trust, authorize deployment or distribution, grant Semantic CLI, AI
-Runtime, or agent authority, expand kernel ABI or syscalls, or change
+**Authority boundary:** The clean-fixed initial publication at
+`9e7b50693c8be32243a73dd301ef550b7c7f32e9` records only one bounded
+objective, scope, and sequencing candidate. This local publication-status
+sync draft performs metadata synchronization only. Neither approves the
+objective, authorizes the scope, approves sequencing, creates or publishes
+a later record, accepts evidence, grants accepted-evidence authority,
+accepts validator output, accepts receipt evidence, authorizes runtime
+implementation procedure, creates general runtime authority, authorizes
+source modification, creates source repository authority, authorizes code
+implementation or execution, starts a process, creates runtime state,
+authorizes package installation, loading, or execution, accepts source,
+authorizes source merge, issues capability, publishes registry state,
+assigns trust, authorizes deployment or distribution, grants Semantic CLI,
+AI Runtime, or agent authority, expands kernel ABI or syscalls, or changes
 workflow thresholds, baselines, dependencies, or Ring0 policy.
 
 ## Purpose
 
-This local draft proposes the second downstream Phase-24 governance-only
-boundary after the synchronized canonical Phase-24 exact-subject and
-evidence-expectation boundary reference.
+The clean-fixed initial publication records the second downstream Phase-24
+governance-only boundary after the synchronized canonical Phase-24
+exact-subject and evidence-expectation boundary reference.
+
+This working-tree revision is only a local metadata-only
+publication-status sync draft for that initial candidate publication.
 
 It answers one bounded question:
 
@@ -97,27 +129,30 @@ evidence-expectation boundary, without approving sequencing or granting
 authority to create, publish, implement, or execute any later record?
 ```
 
-The proposed answer is only an objective, scope, and sequencing candidate.
+The recorded answer is only an objective, scope, and sequencing candidate.
 
-This local draft does not approve an objective.
+This local publication-status sync draft does not approve an objective.
 
-This local draft does not authorize a scope.
+This local publication-status sync draft does not authorize a scope.
 
-This local draft does not approve sequencing.
+This local publication-status sync draft does not approve sequencing.
 
-This local draft does not create or publish any downstream record.
+This local publication-status sync draft does not create or publish any
+downstream record.
 
-This local draft does not accept evidence.
+This local publication-status sync draft does not accept evidence.
 
-This local draft does not create accepted evidence.
+This local publication-status sync draft does not create accepted evidence.
 
-This local draft does not accept validator output.
+This local publication-status sync draft does not accept validator output.
 
-This local draft does not accept receipt evidence.
+This local publication-status sync draft does not accept receipt evidence.
 
-This local draft is not a clean-fixed candidate publication.
+This local publication-status sync draft is not a reviewed sync publication
+or synchronized canonical candidate reference.
 
-This local draft does not modify `docs/roadmap/CURRENT_PHASE`.
+This local publication-status sync draft does not modify
+`docs/roadmap/CURRENT_PHASE`.
 
 It does not authorize runtime implementation procedure, source
 modification, code implementation, code execution, process start, runtime
@@ -128,7 +163,8 @@ expansion, or syscall expansion.
 
 ## Direct Prerequisite
 
-This candidate draft has exactly one direct prerequisite:
+The clean-fixed initial candidate publication had exactly one direct
+prerequisite:
 
 ```text
 f94440ac1015b5946988667effbaac1b46a83dc8
@@ -148,7 +184,7 @@ PR #321 changed only:
 PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md
 ```
 
-The direct prerequisite role is:
+The initial candidate direct prerequisite role is:
 
 ```text
 synchronized canonical Phase-24 exact-subject and
@@ -161,46 +197,79 @@ The exact-subject boundary initial publication subject at
 The PR #321 approved head at
 `64a6e92418e51b7ec018b840c8388cfa5bfe6ada` is provenance only.
 
-Neither subject may replace the direct prerequisite at
+Neither subject may replace the initial candidate publication direct
+prerequisite at
 `f94440ac1015b5946988667effbaac1b46a83dc8`.
 
-The boundary id, initial publication subject, approved head, PR number,
-historical CI evidence, branch name, commit message, tag, moving reference,
-or prospective merge SHA may not substitute for the direct prerequisite.
+The exact-subject boundary id, its initial publication subject, its approved
+head, PR number, historical CI evidence, branch name, commit message, tag,
+moving reference, or prospective merge SHA may not substitute for the
+initial candidate publication direct prerequisite.
 
 Missing, ambiguous, stale, inherited, aliased, superseded, prospective, or
 differently scoped prerequisite readings fail closed.
+
+This local publication-status sync draft has a separate sole direct
+prerequisite:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+That subject is the clean-fixed initial candidate publication subject
+produced by PR #322.
+
+The exact-subject boundary sync subject remains the initial candidate
+publication prerequisite. It is not the candidate metadata-sync direct
+prerequisite.
 
 ## Exact Identity And Lifecycle Rule
 
 ```text
 candidate boundary id
 == ayken.phase24.objective_scope_sequencing_candidate_boundary.v1
-candidate drafting base subject
+initial candidate drafting base subject
 == f94440ac1015b5946988667effbaac1b46a83dc8
-candidate direct prerequisite subject
+initial candidate direct prerequisite subject
 == f94440ac1015b5946988667effbaac1b46a83dc8
-candidate direct prerequisite role
+initial candidate direct prerequisite role
 == synchronized canonical Phase-24 exact-subject and
 evidence-expectation boundary reference
-candidate direct prerequisite subject != exact-subject initial publication
-candidate direct prerequisite subject != exact-subject sync approved head
-candidate direct prerequisite subject != candidate boundary id
-candidate direct prerequisite subject != candidate publication subject
-local candidate draft != reviewed candidate publication
-local candidate draft != clean-fixed candidate publication
+initial candidate direct prerequisite != exact-subject initial publication
+initial candidate direct prerequisite != exact-subject sync approved head
+initial candidate direct prerequisite != candidate boundary id
+initial candidate direct prerequisite
+!= initial candidate publication subject
+initial candidate publication subject
+== 9e7b50693c8be32243a73dd301ef550b7c7f32e9
+initial candidate approved head
+== 29125500ea1d4ccc0b6c9d982e675bad05e1130a
+candidate sync drafting base subject
+== 9e7b50693c8be32243a73dd301ef550b7c7f32e9
+candidate sync direct prerequisite subject
+== 9e7b50693c8be32243a73dd301ef550b7c7f32e9
+candidate sync direct prerequisite
+!= initial candidate direct prerequisite
+candidate sync direct prerequisite != candidate sync publication subject
+local publication-status sync draft != reviewed sync publication
+local publication-status sync draft != clean-fixed sync publication
+independent sync approval binds only to the exact reviewed sync head
+sync-head mutation after approval == sync approval invalid
+approved sync head != candidate sync publication subject
+prospective sync merge SHA != actual sync publication subject
 independent approval binds only to the exact reviewed head
 head mutation after approval == approval invalid
-approved exact head != candidate publication subject
+approved exact head != initial candidate publication subject
 approval != post-merge exact-main evidence
 pre-merge PASS != post-merge exact-main evidence
-prospective merge SHA != actual candidate publication subject
-candidate publication subject
-== actual squash-merge exact-main SHA after merge
-candidate publication subject != later publication-status sync subject
-candidate publication subject != synchronized canonical candidate reference
+prospective merge SHA != actual initial candidate publication subject
+initial candidate publication subject
+!= later publication-status sync subject
+initial candidate publication subject
+!= synchronized canonical candidate reference
 clean-fixed candidate publication-status sync subject
-== synchronized canonical candidate reference
+== synchronized canonical candidate reference only after its own
+post-merge exact-main PASS
 objective candidate != approved objective
 scope candidate != authorized scope
 sequencing candidate != sequencing approval
@@ -209,13 +278,30 @@ candidate publication != downstream publication authorization
 record eligibility != authority grant
 ```
 
-The drafting base and direct prerequisite currently have the same SHA.
-Their governance roles remain distinct.
+The initial candidate drafting base and initial candidate direct prerequisite
+both equal:
 
-The candidate publication subject is absent before merge.
+```text
+f94440ac1015b5946988667effbaac1b46a83dc8
+```
 
-The later candidate publication-status sync subject is absent before its
-own merge.
+The publication-status sync drafting base and sync direct prerequisite both
+equal:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+Each equality preserves distinct governance roles.
+
+The clean-fixed initial candidate publication subject is:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+The candidate publication-status sync subject remains absent before its own
+merge.
 
 The synchronized canonical candidate reference is absent until the
 separate metadata-only sync publication completes its own mandatory
@@ -291,6 +377,73 @@ It does not grant runtime, implementation, source, package, source-merge,
 capability, registry, trust, deployment, distribution, kernel ABI, or
 syscall authority.
 
+## PR #322 Initial Candidate Publication Evidence
+
+The initial candidate publication subject is:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+PR #322 was independently approved against unchanged reviewed head:
+
+```text
+29125500ea1d4ccc0b6c9d982e675bad05e1130a
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+PR #322 produced post-merge exact-main verification on attempt `1`:
+
+| Evidence | Run / job | Result |
+|---|---|---|
+| `ci-freeze` | run `30760310175`, job `freeze / 91529513644` | PASS |
+| Dev Loop Validation | run `30760310139`, job `devloop / 91529513532` | PASS |
+| AykenOS Dev Loop CI | run `30760310186` | PASS |
+| smoke | job `91529513711` | PASS |
+| contract | job `91529636895` | PASS |
+| full | job `91529850819` | PASS |
+| isolation | job `91530109046` | PASS |
+| performance | job `91530339076` | PASS |
+
+All mandatory results are bound to the same initial candidate exact-main
+publication subject and completed on attempt `1` without rerun.
+
+The expected skipped jobs were:
+
+| Job | Job id | Result |
+|---|---|---|
+| `init_perf_baseline` | `91529513986` | SKIPPED |
+| `auto-bisect` | `91530435692` | SKIPPED |
+
+Changed-file confirmation is:
+
+```text
+PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md only
+```
+
+This evidence makes the initial candidate publication clean-fixed.
+
+It does not make this local publication-status sync draft published.
+
+It does not create a sync exact-main subject.
+
+It does not create a synchronized canonical candidate reference.
+
+It does not approve the objective, authorize the scope, or approve
+sequencing.
+
+It does not create a next downstream prerequisite.
+
+It does not authorize evidence acceptance, runtime, implementation,
+source, package, source merge, capability, registry, trust, deployment,
+distribution, kernel ABI, syscall, workflow-threshold, baseline,
+dependency, or Ring0 authority.
+
 ## Canonical Post-Merge Lifecycle Note
 
 The content of
@@ -308,7 +461,8 @@ Its mandatory post-merge PASS chain makes that subject the synchronized
 canonical exact-subject boundary reference for this candidate.
 
 This post-merge lifecycle binding does not require changing the prior
-record in this local draft or broadening this candidate's file scope.
+exact-subject record in this local sync draft or broadening this
+candidate's file scope.
 
 The binding is not downstream publication authorization, sequencing
 approval, evidence acceptance, or authority grant.
@@ -322,6 +476,9 @@ The following subjects are provenance only:
 
 **Exact-subject boundary publication-status sync approved head:**
 `64a6e92418e51b7ec018b840c8388cfa5bfe6ada`
+
+**Initial candidate publication approved head:**
+`29125500ea1d4ccc0b6c9d982e675bad05e1130a`
 
 **Phase-24 initial-governance-boundary publication-status sync subject:**
 `f58c89d01bb54c9680fa316b50b07e3d3062ff27`
@@ -338,29 +495,43 @@ The following subjects are provenance only:
 **Phase-23 closure-decision publication subject:**
 `d8adf862c52b3b26c5aa4098c6059b177daa7d67`
 
-These subjects do not replace the sole direct prerequisite at:
+These subjects do not replace the initial candidate publication direct
+prerequisite at:
 
 ```text
 f94440ac1015b5946988667effbaac1b46a83dc8
 ```
 
+They also do not replace the publication-status sync direct prerequisite
+at:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
 They do not independently grant publication, sequencing, or downstream
 authority.
 
-They do not provide current candidate publication evidence.
+They do not provide current sync publication evidence.
 
 ## Publication State
 
 Current state:
 
 ```text
-PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md: local draft
-reviewed candidate head: absent
-candidate independent approval: absent
-candidate publication subject: absent
-candidate post-merge evidence: absent
-clean-fixed candidate publication: absent
+initial candidate publication: PUBLISHED / CLEAN-FIXED
+initial candidate publication PR: PR #322
+initial candidate approved head: 29125500ea1d4ccc0b6c9d982e675bad05e1130a
+initial candidate publication subject: 9e7b50693c8be32243a73dd301ef550b7c7f32e9
+initial candidate publication post-merge evidence: ATTEMPT-1 PASS
+candidate publication-status sync file:
+PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md
+candidate publication-status sync: LOCAL DRAFT / NOT PUBLISHED
+reviewed sync head: absent
+sync independent approval: absent
 candidate publication-status sync subject: absent
+sync post-merge exact-main evidence: absent
+clean-fixed candidate publication-status sync: absent
 synchronized canonical candidate reference: absent
 approved objective: absent
 authorized scope: absent
@@ -368,7 +539,11 @@ approved sequencing: absent
 next downstream prerequisite: absent
 ```
 
-The local file does not create authority.
+The initial candidate publication is clean-fixed for the governance-only
+objective, scope, and sequencing candidate boundary recorded by this
+document.
+
+The local metadata changes do not create authority.
 
 A branch does not create authority.
 
@@ -382,16 +557,13 @@ Independent approval does not create authority by itself.
 
 Merge without complete post-merge exact-main evidence is not clean-fixed.
 
-Only a separate reviewed one-file publication followed by complete
-mandatory PASS results on its actual exact-main subject may create a
-clean-fixed initial publication of this candidate boundary.
+The initial clean-fixed candidate publication did not update its own
+local-draft metadata with the actual publication subject that did not exist
+before merge.
 
-That initial publication does not create a synchronized canonical candidate
-reference.
-
-A later metadata-only publication-status sync and its own mandatory
-exact-main PASS chain are required before another Phase-24 record may use
-the synchronized canonical candidate reference as a direct prerequisite.
+This separate one-file publication-status sync and its own actual exact-main
+PASS chain are required before the candidate has a synchronized canonical
+reference for a later Phase-24 objective, scope, and sequencing decision.
 
 Neither publication approves the objective, scope, or sequencing.
 
@@ -420,6 +592,10 @@ post-merge exact-main verification != accepted-evidence authority
 post-merge exact-main verification != runtime authority
 clean-fixed claim != authority grant
 publication-status sync != authority expansion
+initial candidate publication subject != publication-status sync subject
+initial candidate publication subject != synchronized candidate reference
+local publication-status sync draft != reviewed sync publication
+sync direct prerequisite != initial candidate direct prerequisite
 CURRENT_PHASE=24 != approved objective
 CURRENT_PHASE=24 != authorized scope
 CURRENT_PHASE=24 != sequencing approval
@@ -537,10 +713,12 @@ It does not authorize creating a later decision record.
 The following lifecycle stages remain separate:
 
 ```text
-local candidate draft
-!= reviewed candidate publication
-!= clean-fixed candidate publication
-!= candidate publication-status sync
+initial candidate draft
+!= reviewed initial candidate publication
+!= clean-fixed initial candidate publication
+!= local candidate publication-status sync draft
+!= reviewed candidate publication-status sync
+!= clean-fixed candidate publication-status sync
 != synchronized canonical candidate reference
 != objective/scope/sequencing decision
 != approved objective
@@ -549,46 +727,64 @@ local candidate draft
 != downstream record publication
 ```
 
-A candidate publication may make this candidate reviewable.
+The initial candidate publication is clean-fixed at:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
 
 It does not accept the candidate.
 
-A clean-fixed candidate publication may become the direct prerequisite for
-a separate metadata-only sync.
+That clean-fixed initial publication is the sole direct prerequisite for
+this separate metadata-only sync draft.
 
 It does not become a sequencing decision.
 
 A clean-fixed candidate sync may become a synchronized canonical candidate
-reference.
+reference only after its own exact-main post-merge PASS chain.
 
 It does not approve the candidate or authorize another record.
 
 ## Approval And Publication Binding
 
-Independent approval binds only to the exact reviewed candidate head.
+PR #322 independent approval bound only to the exact reviewed initial
+candidate head:
+
+```text
+29125500ea1d4ccc0b6c9d982e675bad05e1130a
+```
 
 Any head mutation after approval invalidates that approval and requires a
 new independent review.
 
-The approved head is not the publication subject.
+The approved initial candidate head is not the initial candidate
+publication subject.
 
 Approval is not post-merge exact-main evidence.
 
 Pre-merge PASS is not post-merge exact-main evidence.
 
-The actual candidate publication subject exists only after squash merge.
+The actual initial candidate publication subject produced after squash
+merge is:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
 
 A prospective merge SHA shown while a PR is open is not the candidate
 publication subject.
 
-The candidate publication subject does not by itself make the candidate
-clean-fixed. Mandatory post-merge PASS on that exact subject remains
-required.
+The initial candidate publication became clean-fixed only after mandatory
+post-merge PASS completed on that exact subject.
 
-## Mandatory Post-Merge Evidence Expectation
+The local sync draft has no reviewed head or independent approval.
 
-This candidate must not claim clean-fixed initial-publication status until
-these results are PASS on its own actual exact-main publication subject:
+It requires its own unchanged-head independent approval before merge.
+
+## Initial Candidate Publication Evidence Expectation
+
+The initial candidate publication required these results to be PASS on its
+own actual exact-main publication subject:
 
 1. `ci-freeze`.
 2. Dev Loop Validation.
@@ -599,16 +795,21 @@ these results are PASS on its own actual exact-main publication subject:
 7. isolation.
 8. performance.
 
-The workflow-level and job-level results must be bound to the same exact
-publication subject.
+The workflow-level and job-level results were bound to the same exact
+publication subject at
+`9e7b50693c8be32243a73dd301ef550b7c7f32e9`.
 
 Expected skipped jobs are not mandatory PASS evidence.
 
 Historical runs may be cited as provenance only.
 
-PR #321 evidence is prerequisite evidence only.
+PR #321 evidence was prerequisite evidence only.
 
-It is not this candidate publication's evidence.
+It was not the initial candidate publication's evidence.
+
+PR #322 satisfied the initial candidate publication evidence expectation.
+
+Initial candidate publication PASS is not sync publication evidence.
 
 CI output is not accepted evidence.
 
@@ -653,7 +854,7 @@ The current phase pointer remains:
 CURRENT_PHASE=24
 ```
 
-This local draft does not modify:
+This local publication-status sync draft does not modify:
 
 ```text
 docs/roadmap/CURRENT_PHASE
@@ -673,14 +874,27 @@ expansion, or syscall expansion.
 
 ## Relationship To Phase-24 Exact-Subject Boundary
 
-This local draft consumes exactly one clean-fixed direct prerequisite:
+The clean-fixed initial candidate publication consumed exactly one direct
+prerequisite:
 
 ```text
 f94440ac1015b5946988667effbaac1b46a83dc8
 ```
 
 That subject is the synchronized canonical exact-subject boundary reference
-and the sole direct prerequisite for this candidate.
+and the sole direct prerequisite for the initial candidate publication.
+
+This local publication-status sync draft consumes exactly one separate
+direct prerequisite:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+That subject is the clean-fixed initial candidate publication subject.
+
+The exact-subject sync subject is not this metadata-sync draft's direct
+prerequisite.
 
 The exact-subject boundary initial publication subject remains:
 
@@ -711,7 +925,8 @@ Evaluation-map order is not approved execution sequence.
 
 The initial governance boundary sync subject is provenance only.
 
-It is not this candidate's direct prerequisite.
+It is neither the initial candidate publication direct prerequisite nor
+this publication-status sync draft's direct prerequisite.
 
 ## Relationship To Phase-24 Governance Overview
 
@@ -725,17 +940,19 @@ approve sequencing.
 
 The overview sync subject is provenance only.
 
-It is not this candidate's direct prerequisite.
+It is neither the initial candidate publication direct prerequisite nor
+this publication-status sync draft's direct prerequisite.
 
 ## Relationship To Phase-23 Closure
 
 Phase-23 remains closed for the exact bounded governance scope recorded by
 `PHASE23_CLOSURE_DECISION.md`.
 
-This local draft does not reopen or broaden Phase-23.
+This local publication-status sync draft does not reopen or broaden
+Phase-23.
 
-Phase-23 evidence or publication subjects do not substitute for this
-candidate's direct prerequisite or publication evidence.
+Phase-23 evidence or publication subjects do not substitute for either
+candidate lifecycle prerequisite or either publication's evidence.
 
 ## Excluded Local Draft
 
@@ -761,9 +978,9 @@ It must not be staged, committed, or included in any Phase-24 objective,
 scope, and sequencing candidate boundary PR unless a separate reviewed
 scope explicitly authorizes that file.
 
-## Initial Publication Preconditions
+## Initial Candidate Publication Preconditions
 
-Before this candidate boundary may be initially published:
+The initial candidate publication required:
 
 1. The direct prerequisite remains exactly
    `f94440ac1015b5946988667effbaac1b46a83dc8`.
@@ -792,7 +1009,12 @@ Pre-merge PASS is not post-merge exact-main evidence.
 Historical prerequisite PASS is not current candidate publication
 evidence.
 
-Any unmet precondition fails closed.
+PR #322 satisfied these preconditions against unchanged reviewed head
+`29125500ea1d4ccc0b6c9d982e675bad05e1130a` and actual exact-main
+publication subject `9e7b50693c8be32243a73dd301ef550b7c7f32e9`.
+
+These satisfied initial-publication preconditions do not satisfy the later
+publication-status sync preconditions.
 
 ## Not Authorized By This Candidate Boundary
 
@@ -849,16 +1071,16 @@ This candidate boundary does not authorize:
 
 Unknown or unlisted authority readings fail closed.
 
-## Initial Publication Boundary
+## Initial Publication And Sync File Boundary
 
-If this candidate boundary is initially published, the publication may
-change only:
+The initial candidate publication and its separate publication-status sync
+may each change only:
 
 ```text
 PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md
 ```
 
-The publication must not change:
+Neither publication may change:
 
 1. `docs/roadmap/CURRENT_PHASE`.
 2. `PHASE24_EXACT_SUBJECT_AND_EVIDENCE_EXPECTATION_BOUNDARY.md`.
@@ -879,12 +1101,13 @@ The publication must not change:
     distribution-execution paths.
 16. `PHASE21_FIRST_BOUNDED_IMPLEMENTATION_ACTUAL_SKELETON_PR_DESIGN.md`.
 
-The landing SHA may publish only the bounded Phase-24 objective, scope, and
-sequencing candidate boundary.
+The initial landing SHA published only the bounded Phase-24 objective,
+scope, and sequencing candidate boundary. The later sync landing SHA may
+publish only metadata synchronization for that same boundary.
 
-It may not be read as an approved objective, authorized scope, sequencing
-approval, publication authorization for another record, evidence
-acceptance, runtime implementation procedure, source modification
+Neither landing SHA may be read as an approved objective, authorized scope,
+sequencing approval, publication authorization for another record,
+evidence acceptance, runtime implementation procedure, source modification
 authority, code implementation authority, execution authority, package
 authority, capability authority, registry authority, trust authority,
 source-merge authority, deployment authority, distribution authority,
@@ -892,11 +1115,11 @@ general runtime authority, general implementation authority, or kernel
 ABI/syscall expansion.
 
 Any changed-file expansion beyond this candidate record requires separate
-review and fails this publication scope.
+review and fails both the initial-publication and sync scopes.
 
-## Post-Merge Exact-Main Evidence Rule
+## Initial Candidate Publication Exact-Main Evidence
 
-After squash merge, the actual candidate publication subject must record:
+The initial candidate publication recorded:
 
 1. `ci-freeze` PASS.
 2. Dev Loop Validation PASS.
@@ -928,8 +1151,14 @@ After squash merge, the actual candidate publication subject must record:
 23. Confirmation that the publication subject is the actual exact-main SHA
     after merge and not a prospective merge SHA.
 
-Until all mandatory results are PASS on the same actual exact-main subject,
-the candidate publication is not clean-fixed.
+These requirements were satisfied on the same actual exact-main subject:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+The exact run and job evidence is recorded under
+`PR #322 Initial Candidate Publication Evidence`.
 
 Failed attempts must be recorded as transparent non-clean context.
 
@@ -940,29 +1169,55 @@ own evidence.
 
 ## Publication-Status Sync Dependency
 
-The initial candidate publication cannot know its own actual squash-merge
+The initial candidate publication could not know its own actual squash-merge
 exact-main subject before merge.
 
-Therefore, after the candidate publication is merged and its own mandatory
-post-merge PASS chain completes, a separate metadata-only
-publication-status sync is required before another Phase-24 record may
-consume a synchronized canonical candidate reference.
+The initial candidate publication is now merged and clean-fixed at:
 
-The future sync must update only:
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
+
+This working-tree revision is the required local publication-status sync
+draft.
+
+Current sync state:
+
+```text
+publication-status sync: LOCAL DRAFT / NOT PUBLISHED
+sync direct prerequisite: 9e7b50693c8be32243a73dd301ef550b7c7f32e9
+sync reviewed head: absent
+sync independent approval: absent
+sync publication subject: absent
+sync post-merge exact-main evidence: absent
+clean-fixed sync: absent
+synchronized canonical candidate reference: absent
+approved objective: absent
+authorized scope: absent
+approved sequencing: absent
+next downstream prerequisite: absent
+```
+
+The sync must update only:
 
 ```text
 PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md
 ```
 
-The future sync direct prerequisite must be the actual clean-fixed candidate
-publication subject.
+The sync direct prerequisite is exactly the actual clean-fixed initial
+candidate publication subject:
 
-The future sync must not use the candidate id, original drafting base,
-exact-subject sync prerequisite, reviewed branch head, PR number,
-historical CI evidence, or prospective sync merge SHA as a substitute for
-the candidate publication subject.
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
 
-The future sync requires its own:
+The sync must not use the candidate id, original initial-candidate drafting
+base, exact-subject sync prerequisite, PR #322 number, approved initial
+candidate head, historical CI evidence, or prospective sync merge SHA as a
+substitute for the initial candidate publication subject.
+
+Before this sync can become the synchronized canonical candidate reference,
+it requires its own:
 
 1. Independent approval of the exact unchanged sync head.
 2. One-file changed-file confirmation.
@@ -976,7 +1231,14 @@ The future sync requires its own:
 10. isolation PASS.
 11. performance PASS.
 
-Until that future sync and its own mandatory post-merge PASS chain are
+Any sync-head mutation after independent approval invalidates that approval
+and requires a new independent review.
+
+Independent sync-head approval is not post-merge exact-main evidence.
+
+Initial candidate publication PASS is not sync publication evidence.
+
+Until this sync publication and its mandatory post-merge PASS chain are
 complete:
 
 ```text
@@ -987,7 +1249,7 @@ approved sequencing: absent
 next downstream prerequisite: absent
 ```
 
-The future publication-status sync is metadata synchronization only.
+This publication-status sync is metadata synchronization only.
 
 It must not approve the objective, scope, or sequencing.
 
@@ -1002,23 +1264,26 @@ dependency, or Ring0 authority.
 
 Every later Phase-24 record must preserve these invariants:
 
-1. This candidate boundary has exactly one direct prerequisite subject.
-2. That direct prerequisite is the synchronized canonical exact-subject
-   boundary reference at
+1. The initial candidate publication had exactly one direct prerequisite.
+2. That initial direct prerequisite is the synchronized canonical
+   exact-subject boundary reference at
    `f94440ac1015b5946988667effbaac1b46a83dc8`.
 3. The exact-subject initial publication subject and sync approved head are
    provenance only.
-4. A local candidate draft is not a reviewed candidate publication.
-5. A reviewed candidate publication is not clean-fixed without complete
-   post-merge exact-main PASS evidence.
-6. Approved exact head is not the candidate publication subject.
+4. The initial candidate publication subject is
+   `9e7b50693c8be32243a73dd301ef550b7c7f32e9`.
+5. A reviewed initial candidate publication is not clean-fixed without
+   complete post-merge exact-main PASS evidence.
+6. The approved initial head is not the initial candidate publication
+   subject.
 7. Head mutation after approval invalidates approval.
 8. Approval is not post-merge exact-main evidence.
 9. Pre-merge PASS is not post-merge exact-main evidence.
 10. A prospective merge SHA is not the actual publication subject.
-11. The candidate publication subject is not the later status-sync subject.
-12. The candidate publication subject is not the synchronized canonical
-    candidate reference.
+11. The initial candidate publication subject is not the later status-sync
+    subject.
+12. The initial candidate publication subject is not the synchronized
+    canonical candidate reference.
 13. A clean-fixed candidate status-sync subject is the synchronized
     canonical candidate reference only after its own mandatory post-merge
     PASS.
@@ -1047,24 +1312,30 @@ Every later Phase-24 record must preserve these invariants:
 35. Phase-23 remains closed for its exact bounded governance scope.
 36. This candidate does not reopen or broaden Phase-23.
 37. Unknown or ambiguous authority fails closed.
-38. A later Phase-24 record requires this candidate's future actual
-    clean-fixed publication-status sync subject before using a synchronized
-    canonical candidate reference.
+38. The publication-status sync direct prerequisite is exactly the
+    clean-fixed initial candidate publication subject at
+    `9e7b50693c8be32243a73dd301ef550b7c7f32e9`.
+39. A local publication-status sync draft is not a reviewed sync
+    publication.
+40. Initial candidate publication PASS is not sync publication evidence.
+41. A later objective, scope, and sequencing decision requires this
+    candidate's future actual clean-fixed publication-status sync subject
+    before using a synchronized canonical candidate reference.
 
 Violation of any invariant fails closed.
 
 ## Later Decision Dependency
 
-This local draft does not publish an objective, scope, and sequencing
-decision.
+This local publication-status sync draft does not publish an objective,
+scope, and sequencing decision.
 
-Even after the initial publication of this candidate becomes clean-fixed,
-a later decision must not consume the initial candidate publication subject
+Even though the initial publication of this candidate is clean-fixed, a
+later decision must not consume the initial candidate publication subject
 directly.
 
 A later decision that relies directly on this candidate must consume the
 actual exact clean-fixed candidate publication-status sync subject produced
-by the future metadata-only sync.
+by this metadata-only sync after its own complete lifecycle.
 
 It must not consume:
 
@@ -1094,38 +1365,46 @@ authority unless one exact narrower authority is separately reviewed.
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
 **Document type:** Phase-24 objective, scope, and sequencing candidate
-boundary local draft
-**Architecture status:** Local draft / not published / not clean-fixed /
-candidate publication subject absent / publication-status sync absent /
+boundary publication-status sync local draft
+**Architecture status:** Initial candidate publication published and
+clean-fixed / publication-status sync local draft and not published /
 synchronized canonical candidate reference absent / approved objective
 absent / authorized scope absent / approved sequencing absent
-**Authority notice:** This signature identifies the architectural
-authorship of this local draft. It grants no objective approval, scope
-authorization, sequencing approval, downstream publication authorization,
-evidence acceptance, accepted-evidence authority, validator-output
-acceptance, receipt-evidence acceptance, runtime implementation procedure
-authority, source modification authority, code implementation authority,
-code execution authority, process start authority, general runtime
-authority, unbounded execution authority, runtime state authority, package
-installation authority, package loading authority, package execution
-authority, source merge authority, capability issuance authority, registry
-authority, trust authority, deployment authority, distribution authority,
-Semantic CLI authority, AI Runtime authority, agent authority, kernel ABI
-authority, syscall authority, workflow-threshold authority, baseline
-authority, dependency authority, or Ring0 authority.
+**Authority notice:** The clean-fixed initial publication identifies the
+architectural authorship of the governance-only objective, scope, and
+sequencing candidate boundary. This local metadata sync draft grants no
+objective approval, scope authorization, sequencing approval, downstream
+publication authorization, evidence acceptance, accepted-evidence
+authority, validator-output acceptance, receipt-evidence acceptance,
+runtime implementation procedure authority, source modification authority,
+code implementation authority, code execution authority, process start
+authority, general runtime authority, unbounded execution authority,
+runtime state authority, package installation authority, package loading
+authority, package execution authority, source merge authority, capability
+issuance authority, registry authority, trust authority, deployment
+authority, distribution authority, Semantic CLI authority, AI Runtime
+authority, agent authority, kernel ABI authority, syscall authority,
+workflow-threshold authority, baseline authority, dependency authority, or
+Ring0 authority.
 
 ## Conclusion
 
-This Phase-24 objective, scope, and sequencing candidate boundary local
-draft is based on the synchronized canonical Phase-24 exact-subject and
-evidence-expectation boundary reference:
+The Phase-24 objective, scope, and sequencing candidate boundary was
+published and verified clean-fixed at:
 
 ```text
-f94440ac1015b5946988667effbaac1b46a83dc8
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
 ```
 
-It makes only one bounded objective candidate, one scope candidate, and one
-candidate sequencing map reviewable.
+That initial publication records only one bounded objective candidate, one
+scope candidate, and one candidate sequencing map.
+
+This working-tree revision is a local publication-status sync draft based
+directly on the clean-fixed initial candidate publication subject:
+
+```text
+9e7b50693c8be32243a73dd301ef550b7c7f32e9
+```
 
 It does not approve the objective.
 
@@ -1138,8 +1417,6 @@ It does not authorize publication or creation of another record.
 It does not accept evidence.
 
 It does not accept validator output or receipt evidence.
-
-It has no candidate publication subject.
 
 It has no publication-status sync subject.
 
