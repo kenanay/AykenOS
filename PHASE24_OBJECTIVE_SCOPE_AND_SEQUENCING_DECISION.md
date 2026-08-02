@@ -22,12 +22,14 @@ conflict, those documents prevail unless this document is the narrower
 Phase-24 objective, scope, and sequencing decision for the exact
 governance-only boundary identified below.
 
-**Status:** PHASE-24 OBJECTIVE, SCOPE, AND SEQUENCING DECISION / LOCAL
-DRAFT / NOT PUBLISHED / NOT CLEAN-FIXED / DECISION NOT EFFECTIVE / NO
-APPROVED OBJECTIVE IN CURRENT CANONICAL STATE / NO AUTHORIZED SCOPE IN
-CURRENT CANONICAL STATE / NO APPROVED SEQUENCING IN CURRENT CANONICAL
-STATE / NO DOWNSTREAM PUBLICATION AUTHORIZATION / NO AUTHORITY GRANT /
-CURRENT_PHASE=24 UNCHANGED / NO EVIDENCE ACCEPTANCE / NO
+**Status:** PHASE-24 OBJECTIVE, SCOPE, AND SEQUENCING DECISION / INITIAL
+DECISION PUBLICATION PUBLISHED / CLEAN-FIXED / OBJECTIVE APPROVED WITH
+NARROWING / SCOPE AUTHORIZED FOR GOVERNANCE-ONLY PLANNING / SEQUENCING
+APPROVED WITH NARROWING / FIRST TOPIC SELECTED / PUBLICATION-STATUS SYNC
+LOCAL DRAFT / SYNC NOT PUBLISHED / SYNCHRONIZED CANONICAL DECISION
+REFERENCE ABSENT / FIRST DOWNSTREAM PREREQUISITE ABSENT / NO DOWNSTREAM
+PUBLICATION AUTHORIZATION / NO AUTHORITY GRANT / CURRENT_PHASE=24
+UNCHANGED / NO EVIDENCE ACCEPTANCE / NO
 ACCEPTED-EVIDENCE AUTHORITY / NO VALIDATOR-OUTPUT ACCEPTANCE / NO
 RECEIPT-EVIDENCE ACCEPTANCE / NO RUNTIME IMPLEMENTATION PROCEDURE / NO
 GENERAL RUNTIME AUTHORITY / NO SOURCE MODIFICATION / NO CODE
@@ -39,23 +41,34 @@ ACCEPTANCE / NO SOURCE MERGE AUTHORITY / NO KERNEL ABI EXPANSION / NO
 SYSCALL EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO BASELINE CHANGE /
 NO DEPENDENCY CHANGE / NO RING0 AUTHORITY
 **Decision date:** 2026-08-03
+**Publication-status sync draft date:** 2026-08-03
 **Decision id:**
 `ayken.phase24.objective_scope_sequencing_decision.v1`
-**Decision drafting base subject:**
+**Initial decision drafting base subject:**
 `6b295887efd8dd6233cb728fc907b6cf53bb01b8`
-**Decision drafting base role:** exact repository subject used to prepare
-this local decision draft
-**Decision sole direct prerequisite subject:**
+**Initial decision drafting base role:** exact repository subject used to
+prepare the initial decision publication
+**Initial decision sole direct prerequisite subject:**
 `6b295887efd8dd6233cb728fc907b6cf53bb01b8`
-**Decision sole direct prerequisite role:** synchronized canonical Phase-24
-objective, scope, and sequencing candidate reference
-**Decision publication PR:** absent
-**Reviewed decision head:** absent
-**Independent decision approval:** absent
-**Initial decision publication subject:** absent
-**Initial decision post-merge exact-main evidence:** absent
-**Clean-fixed initial decision publication:** absent
-**Decision publication-status sync direct prerequisite:** absent
+**Initial decision sole direct prerequisite role:** synchronized canonical
+Phase-24 objective, scope, and sequencing candidate reference
+**Initial decision publication PR:** PR #324
+**Approved initial decision head:**
+`a26f2b2c7cc42b1eabfc8ecbc963804d35866d95`
+**Independent initial decision reviewer:** `kenanay2020-hub`
+**Initial decision publication subject:**
+`836d843fcc1c580dc1932afce38d6174f450da01`
+**Initial decision post-merge exact-main evidence:** PASS / ATTEMPT-1
+**Clean-fixed initial decision publication:** CLEAN-FIXED
+**Decision publication-status sync drafting base subject:**
+`836d843fcc1c580dc1932afce38d6174f450da01`
+**Decision publication-status sync drafting base role:** exact repository
+subject used to prepare this metadata-only sync draft
+**Decision publication-status sync sole direct prerequisite:**
+`836d843fcc1c580dc1932afce38d6174f450da01`
+**Decision publication-status sync prerequisite role:** exact clean-fixed
+initial Phase-24 objective, scope, and sequencing decision publication
+subject
 **Decision publication-status sync PR:** absent
 **Decision publication-status sync reviewed head:** absent
 **Decision publication-status sync independent approval:** absent
@@ -63,12 +76,14 @@ objective, scope, and sequencing candidate reference
 **Decision publication-status sync post-merge evidence:** absent
 **Clean-fixed decision publication-status sync:** absent
 **Synchronized canonical decision reference:** absent
-**Approved objective in current canonical state:** absent
-**Authorized scope in current canonical state:** absent
-**Approved sequencing in current canonical state:** absent
-**Approved first downstream governance topic:** absent
+**Approved objective in current canonical state:** APPROVED WITH NARROWING
+**Authorized scope in current canonical state:** AUTHORIZED FOR
+GOVERNANCE-ONLY PLANNING
+**Approved sequencing in current canonical state:** APPROVED WITH NARROWING
+**Approved first downstream governance topic:** Phase-24 accepted-evidence
+boundary planning
 **First downstream prerequisite:** absent
-**Authority expansion in current local-draft state:** NONE
+**Authority expansion by this metadata-only sync draft:** NONE
 **Candidate initial publication subject provenance:**
 `9e7b50693c8be32243a73dd301ef550b7c7f32e9`
 **Candidate sync approved-head provenance:**
@@ -79,15 +94,17 @@ attempt 2 PASS on unchanged exact head
 **Candidate publication-status sync post-merge evidence:** PASS /
 ATTEMPT-1 on the direct prerequisite subject
 **Current phase pointer:** `CURRENT_PHASE=24`
-**Decision theme:** One bounded governance-only objective decision, one
-governance-only scope decision, and one narrowed sequencing decision
-without evidence acceptance, implementation, execution, or broader
-authority
-**Authority boundary:** This local draft defines proposed decision content
-only. It grants no objective approval, scope authorization, sequencing
-approval, record-creation authority, publication authorization, evidence
-acceptance, accepted-evidence authority, validator-output acceptance,
-receipt-evidence acceptance, runtime implementation procedure, source
+**Decision theme:** One effective bounded governance-only objective
+decision, one effective governance-only scope decision, and one effective
+narrowed sequencing decision without evidence acceptance, implementation,
+execution, or broader authority
+**Authority boundary:** The clean-fixed initial decision publication makes
+only the bounded decision outcomes recorded here effective. This local
+metadata-only sync draft grants no additional objective approval, scope
+authorization, sequencing approval, record-creation authority,
+publication authorization, evidence acceptance, accepted-evidence
+authority, validator-output acceptance, receipt-evidence acceptance,
+runtime implementation procedure, source
 modification, code implementation, code execution, process start, runtime
 state creation, package installation, loading, or execution, source
 acceptance, source merge, capability issuance, registry publication, trust
@@ -97,8 +114,8 @@ authority.
 
 ## Purpose
 
-This document proposes one Phase-24 governance-only objective, scope, and
-sequencing decision after the clean-fixed synchronized canonical candidate
+This document records one clean-fixed Phase-24 governance-only objective,
+scope, and sequencing decision after the synchronized canonical candidate
 reference at:
 
 ```text
@@ -115,55 +132,68 @@ without granting evidence, runtime, source, package, implementation, or
 execution authority?
 ```
 
-The proposed answer is:
+The clean-fixed initial decision answer is:
 
 ```text
-YES, but only upon separate reviewed publication and successful exact-main
-clean-fixed verification of this decision, and only within the bounded
-decision outcomes and denials recorded below.
+YES, only within the bounded decision outcomes and denials recorded below.
 ```
 
-The local draft itself does not make that answer effective.
+PR #324 made that answer effective through reviewed publication and
+successful exact-main clean-fixed verification at:
 
-The local draft itself does not approve an objective.
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
 
-The local draft itself does not authorize a scope.
+This working-tree revision is a local metadata-only publication-status sync
+draft.
 
-The local draft itself does not approve sequencing.
+The sync draft does not alter the effective objective.
 
-The local draft itself does not select an effective downstream topic.
+The sync draft does not broaden the authorized governance-only scope.
 
-The local draft itself does not create or publish a downstream record.
+The sync draft does not alter the narrowed sequencing or selected first
+topic.
 
-The local draft itself does not accept evidence or grant authority.
+The sync draft does not create or publish a downstream record.
+
+The sync draft does not accept evidence or grant authority.
 
 ## Current Canonical State
 
-The current canonical state remains:
+The current canonical state is:
 
 ```text
-objective approved: absent
-scope authorized: absent
-sequencing approved: absent
-first downstream topic approved: absent
-decision publication subject: absent
+initial decision publication: clean-fixed
+initial decision publication subject:
+  836d843fcc1c580dc1932afce38d6174f450da01
+objective: approved with narrowing
+scope: authorized for governance-only planning
+sequencing: approved with narrowing
+first downstream topic: Phase-24 accepted-evidence boundary planning
 decision sync subject: absent
 synchronized canonical decision reference: absent
 first downstream prerequisite: absent
 authority expansion: none
 ```
 
-The candidate publication-status sync is clean-fixed outside this local
-draft and provides only the decision prerequisite.
+The initial decision publication is clean-fixed outside this local sync
+draft and provides the sync's sole direct prerequisite.
 
-The prerequisite does not make this local draft a decision publication.
+The selected first topic does not create or authorize a downstream record.
 
-The prerequisite does not authorize this file to be staged, committed,
-published, or merged without the separate lifecycle below.
+The initial decision publication subject is not the synchronized canonical
+decision reference.
 
-## Sole Direct Prerequisite
+The sync prerequisite does not make this local draft a reviewed sync
+publication.
 
-This decision draft has exactly one direct prerequisite:
+The sync prerequisite does not authorize this file to be staged,
+committed, published, or merged without the separate sync lifecycle below.
+
+## Initial Decision Publication Direct Prerequisite
+
+The initial decision publication had exactly one direct prerequisite:
 
 ```text
 6b295887efd8dd6233cb728fc907b6cf53bb01b8
@@ -189,9 +219,10 @@ The direct prerequisite is not PR #323 as a number.
 The direct prerequisite is not a branch name, tag, workflow run id, or
 prospective merge SHA.
 
-No other subject is a direct prerequisite of this decision draft.
+No other subject was a direct prerequisite of the initial decision
+publication.
 
-## Direct-Prerequisite Publication Evidence
+## Initial Decision Prerequisite Evidence
 
 The direct prerequisite was published by PR #323 from the unchanged
 approved head:
@@ -229,9 +260,11 @@ The post-merge mandatory evidence completed on attempt 1.
 
 The expected `init_perf_baseline` and `auto-bisect` jobs were skipped.
 
-This evidence establishes prerequisite cleanliness only.
+This evidence established initial-decision prerequisite cleanliness only.
 
-It is not decision-publication evidence.
+It is not initial decision publication evidence.
+
+It is not publication-status sync evidence.
 
 It is not evidence acceptance.
 
@@ -307,25 +340,131 @@ provenance only.
 
 Historical provenance does not create inherited authority.
 
+## Initial Decision Publication Record
+
+The initial decision publication was reviewed and published by PR #324.
+
+The unchanged approved initial decision head was:
+
+```text
+a26f2b2c7cc42b1eabfc8ecbc963804d35866d95
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+The actual squash-merge exact-main initial decision publication subject
+was:
+
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+PR #324 changed only:
+
+```text
+PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_DECISION.md
+```
+
+The post-merge exact-main evidence on that subject was:
+
+| Evidence | Run | Job | Result |
+| --- | --- | --- | --- |
+| ci-freeze | `30771303257` | `freeze / 91558820439` | PASS |
+| Dev Loop Validation | `30771303269` | `devloop / 91558820246` | PASS |
+| AykenOS Dev Loop CI | `30771303275` | workflow | PASS |
+| smoke | `30771303275` | `smoke / 91558820325` | PASS |
+| contract | `30771303275` | `contract / 91558950320` | PASS |
+| full | `30771303275` | `full / 91559170936` | PASS |
+| isolation | `30771303275` | `isolation / 91559502923` | PASS |
+| performance | `30771303275` | `performance / 91559714135` | PASS |
+
+Freeze suite and Spec Validation Gate passed.
+
+The mandatory post-merge evidence completed on attempt 1.
+
+The expected `init_perf_baseline` and `auto-bisect` jobs were skipped.
+
+This evidence makes the bounded initial decision publication clean-fixed.
+
+It does not satisfy the publication-status sync evidence requirement.
+
+It does not create a synchronized canonical decision reference.
+
+It does not authorize a downstream record.
+
+## Publication-Status Sync Sole Direct Prerequisite
+
+This metadata-only publication-status sync draft has exactly one direct
+prerequisite:
+
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+That subject is the actual clean-fixed initial decision publication
+subject produced by PR #324.
+
+Its exact governance role is:
+
+```text
+exact clean-fixed initial Phase-24 objective, scope, and sequencing
+decision publication subject
+```
+
+The sync direct prerequisite is not the decision id.
+
+The sync direct prerequisite is not the initial decision drafting base.
+
+The sync direct prerequisite is not the initial decision direct
+prerequisite.
+
+The sync direct prerequisite is not the approved initial decision head.
+
+The sync direct prerequisite is not PR #324 as a number.
+
+The sync direct prerequisite is not a branch name, tag, workflow run id,
+or prospective sync merge SHA.
+
+No other subject is a direct prerequisite of this sync draft.
+
+The initial decision drafting base and initial decision direct
+prerequisite both equal:
+
+```text
+6b295887efd8dd6233cb728fc907b6cf53bb01b8
+```
+
+The sync drafting base and sync direct prerequisite both equal:
+
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+Each equality preserves distinct governance roles.
+
 ## Exact Identity And Lifecycle Rule
 
 ```text
-decision drafting base subject
+initial decision drafting base subject
 == synchronized canonical candidate reference in value
 
-decision drafting base role
-!= decision direct prerequisite role
+initial decision drafting base role
+!= initial decision direct prerequisite role
 
-decision direct prerequisite
+initial decision direct prerequisite
 == exact clean-fixed candidate publication-status sync subject
 
-decision direct prerequisite
+initial decision direct prerequisite
 != candidate initial publication subject
 
-decision direct prerequisite
+initial decision direct prerequisite
 != approved candidate sync head
 
-local decision draft
+initial local decision draft
 != reviewed decision publication
 
 reviewed decision head
@@ -338,6 +477,15 @@ initial decision publication subject
 == actual squash-merge exact-main SHA after merge
 
 initial decision publication subject
+== publication-status sync drafting base in value
+
+initial decision publication subject
+== publication-status sync direct prerequisite in value
+
+initial decision publication subject role
+!= publication-status sync direct prerequisite role
+
+initial decision publication subject
 != later decision publication-status sync subject
 
 initial decision publication subject
@@ -346,12 +494,21 @@ initial decision publication subject
 clean-fixed decision publication-status sync subject
 == synchronized canonical decision reference
 
+local decision publication-status sync draft
+!= reviewed decision publication-status sync
+
+reviewed decision publication-status sync without complete post-merge PASS
+!= synchronized canonical decision reference
+
+prospective decision sync merge SHA
+!= actual decision publication-status sync subject
+
 synchronized canonical decision reference
 != downstream governance record
 ```
 
-The final equality requires the sync publication's own complete exact-main
-post-merge PASS chain.
+The clean-fixed-subject equality requires the sync publication's own
+complete exact-main post-merge PASS chain.
 
 No prospective or descriptive identity may substitute for an actual
 publication subject.
@@ -359,8 +516,13 @@ publication subject.
 ## Core Rule
 
 ```text
-local decision draft != effective decision
+initial local decision draft != effective decision
 decision publication without post-merge PASS != clean-fixed decision
+clean-fixed initial decision publication == bounded decision effectiveness
+local decision status-sync draft != clean-fixed decision status-sync
+initial decision publication PASS != decision status-sync publication PASS
+metadata synchronization != decision-content alteration
+metadata synchronization != authority expansion
 objective candidate != approved objective
 scope candidate != authorized scope
 sequencing candidate != sequencing approval
@@ -391,15 +553,16 @@ CURRENT_PHASE=24 != runtime authority
 unknown authority reading == fail closed
 ```
 
-The decision may make effective only the exact bounded governance decision
-content recorded below after its own clean-fixed initial publication.
+The clean-fixed initial decision publication made effective only the exact
+bounded governance decision content recorded below.
 
-It may not infer or inherit any authority from the candidate prerequisite.
+The current sync draft may not alter that content or infer authority from
+either lifecycle prerequisite.
 
 ## Decision Effectiveness Rule
 
-The proposed decision content becomes effective only when all of the
-following conditions are satisfied:
+The proposed decision content could become effective only when all of the
+following conditions were satisfied:
 
 1. This exact file is reviewed through a separate one-file PR.
 2. The exact reviewed decision head receives independent approval.
@@ -414,28 +577,32 @@ following conditions are satisfied:
 9. Changed-file scope remains this decision file only.
 10. Failure and rerun history remains transparent.
 
-Before all conditions are satisfied:
+PR #324 satisfied all conditions on the unchanged approved head and actual
+exact-main subject recorded above.
+
+The effective bounded decision outcomes are:
 
 ```text
-approved objective: absent
-authorized scope: absent
-approved sequencing: absent
-approved first downstream topic: absent
+objective: APPROVED WITH NARROWING
+scope: AUTHORIZED FOR GOVERNANCE-ONLY PLANNING
+sequencing: APPROVED WITH NARROWING
+first downstream topic: Phase-24 accepted-evidence boundary planning
 ```
 
 No separate implicit activation event exists after clean-fixed initial
 decision publication.
 
-The later metadata sync does not change the decision content. It creates
-the synchronized canonical decision reference required by downstream
-records.
+The current local metadata sync draft does not change the decision content.
 
-## Proposed Objective Decision
+Only a later clean-fixed sync publication may create the synchronized
+canonical decision reference required by downstream records.
 
-The proposed objective outcome is:
+## Bounded Objective Decision
+
+The clean-fixed objective outcome is:
 
 ```text
-APPROVED WITH NARROWING upon clean-fixed initial decision publication
+APPROVED WITH NARROWING
 ```
 
 The exact bounded objective is:
@@ -458,13 +625,12 @@ It does not authorize a downstream record to be created or published.
 
 It does not accept evidence.
 
-## Proposed Scope Decision
+## Bounded Scope Decision
 
-The proposed scope outcome is:
+The clean-fixed scope outcome is:
 
 ```text
-AUTHORIZED FOR GOVERNANCE-ONLY PLANNING upon clean-fixed initial decision
-publication
+AUTHORIZED FOR GOVERNANCE-ONLY PLANNING
 ```
 
 The exact in-scope topic classes are:
@@ -506,12 +672,12 @@ The exact out-of-scope areas are:
 
 Out-of-scope areas remain unauthorized.
 
-## Proposed Sequencing Decision
+## Bounded Sequencing Decision
 
-The proposed sequencing outcome is:
+The clean-fixed sequencing outcome is:
 
 ```text
-APPROVED WITH NARROWING upon clean-fixed initial decision publication
+APPROVED WITH NARROWING
 ```
 
 The narrowed sequence is:
@@ -532,15 +698,15 @@ This is not approval of a second downstream topic.
 
 The sequencing decision selects exactly one first topic class and no more.
 
-## Proposed First Downstream Topic Selection
+## Bounded First Downstream Topic Selection
 
-The proposed first downstream governance topic is:
+The clean-fixed first downstream governance topic is:
 
 ```text
 Phase-24 accepted-evidence boundary planning
 ```
 
-The selection becomes effective only with a clean-fixed initial decision
+The selection became effective with the clean-fixed initial decision
 publication.
 
 Even when effective:
@@ -590,7 +756,7 @@ its own synchronized prerequisite and exact-main evidence.
 ## Decision Stage Separation
 
 ```text
-local decision draft
+initial local decision draft
 != reviewed initial decision publication
 != clean-fixed initial decision publication
 != local decision publication-status sync draft
@@ -601,20 +767,41 @@ local decision draft
 != first downstream record publication
 ```
 
-The initial decision publication may establish only the bounded objective,
-scope, sequencing, and first-topic decisions recorded here.
+The initial decision publication is clean-fixed at:
+
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+It established only the bounded objective, scope, sequencing, and
+first-topic decisions recorded here.
 
 It does not create the synchronized canonical decision reference.
 
-The publication-status sync may synchronize metadata only.
+The current publication-status sync remains a local draft.
+
+The publication-status sync may synchronize metadata only after its own
+reviewed publication and exact-main PASS.
 
 It does not broaden or alter the decision.
 
 ## Approval Binding
 
-Independent approval binds only to the exact reviewed decision head.
+The independent initial decision approval bound only to the exact reviewed
+head:
 
-Any decision-head mutation after approval invalidates that approval and
+```text
+a26f2b2c7cc42b1eabfc8ecbc963804d35866d95
+```
+
+The reviewer was `kenanay2020-hub`.
+
+Independent sync approval is absent in the current local-draft state.
+
+A future independent sync approval must bind only to the exact reviewed
+sync head.
+
+Any sync-head mutation after approval invalidates that approval and
 requires a new independent review.
 
 The approval must cover exactly one changed file:
@@ -623,7 +810,8 @@ The approval must cover exactly one changed file:
 PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_DECISION.md
 ```
 
-Approval of the reviewed head is not approval of a prospective merge SHA.
+Approval of either reviewed head is not approval of a prospective merge
+SHA.
 
 Approval is not post-merge exact-main evidence.
 
@@ -633,7 +821,7 @@ Approval is not evidence acceptance or broader authority.
 
 ## Initial Decision Publication Preconditions
 
-The initial decision publication may proceed only if:
+The initial decision publication was permitted only if:
 
 1. The drafting base remains the exact synchronized canonical candidate
    reference at `6b295887efd8dd6233cb728fc907b6cf53bb01b8`.
@@ -652,17 +840,19 @@ The initial decision publication may proceed only if:
     merge.
 13. The actual publication subject completes mandatory post-merge PASS.
 
-Any unmet precondition fails closed.
+PR #324 satisfied these preconditions without expanding changed-file scope.
+
+Any contradictory historical claim fails closed.
 
 ## Initial Decision Publication Boundary
 
-The only permitted file in the initial decision publication is:
+The only permitted file in the initial decision publication was:
 
 ```text
 PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_DECISION.md
 ```
 
-The initial publication must not modify:
+The initial publication did not modify:
 
 1. `docs/roadmap/CURRENT_PHASE`.
 2. `PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md`.
@@ -679,8 +869,8 @@ Any broader changed-file scope fails closed.
 
 ## Initial Decision Exact-Main Evidence Rule
 
-A clean-fixed initial decision publication requires all of the following on
-one actual exact-main decision publication subject:
+A clean-fixed initial decision publication required all of the following
+on one actual exact-main decision publication subject:
 
 1. ci-freeze PASS.
 2. Dev Loop Validation PASS.
@@ -694,7 +884,8 @@ one actual exact-main decision publication subject:
 10. One-file changed-file confirmation.
 11. Failure and rerun transparency.
 
-The actual run and job identifiers are absent until publication.
+The actual run and job identifiers are recorded under `Initial Decision
+Publication Record`.
 
 The candidate prerequisite evidence cannot satisfy this rule.
 
@@ -704,17 +895,19 @@ Different-subject or different-scope evidence cannot satisfy this rule.
 
 ## No Inherited Evidence Rule
 
-The decision inherits no PASS result as its own publication evidence.
+Neither decision lifecycle inherits a PASS result as its own publication
+evidence.
 
 ```text
 candidate sync PASS != decision publication PASS
 candidate initial publication PASS != decision publication PASS
+initial decision publication PASS != decision status-sync publication PASS
 historical Phase-24 PASS != decision publication PASS
 same workflow name != same evidence subject
 ```
 
-Every decision publication claim must bind to its own actual exact-main
-subject.
+Every initial or sync publication claim must bind to its own actual
+exact-main subject.
 
 ## Failed Attempt And Rerun Transparency Rule
 
@@ -732,11 +925,15 @@ attempt and the clean-fixed classification must disclose the history.
 
 ## Decision Publication-Status Sync Dependency
 
-After a clean-fixed initial decision publication, a separate metadata-only
-publication-status sync must update this same file.
+The clean-fixed initial decision publication now requires a separate
+metadata-only publication-status sync of this same file.
 
-The sync direct prerequisite must be the actual clean-fixed initial
-decision publication subject.
+The current local sync draft consumes exactly this sole direct
+prerequisite:
+
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
 
 The sync must record:
 
@@ -747,7 +944,11 @@ The sync must record:
 5. Initial decision post-merge run and job evidence.
 6. Initial decision clean-fixed status.
 
-The sync must keep its own lifecycle fields absent until they exist.
+The sync has recorded all six required initial-publication facts.
+
+The sync keeps its own PR, reviewed head, approval, publication subject,
+post-merge evidence, clean-fixed status, synchronized reference, and
+downstream prerequisite absent until they exist.
 
 The sync changed-file scope must remain this file only.
 
@@ -759,6 +960,78 @@ decision reference.
 
 Only the clean-fixed sync subject may become the synchronized canonical
 decision reference.
+
+## Decision Publication-Status Sync Preconditions
+
+The metadata-only sync publication may proceed only if:
+
+1. The drafting base remains the exact clean-fixed initial decision
+   publication subject at
+   `836d843fcc1c580dc1932afce38d6174f450da01`.
+2. The sync has exactly one direct prerequisite at the same SHA.
+3. The initial publication PR, approved head, reviewer, subject, evidence,
+   and clean-fixed status remain exact.
+4. The bounded decision content remains unchanged.
+5. This file remains the only changed file.
+6. No candidate, pointer, overview, boundary, accepted-evidence, CI,
+   baseline, dependency, runtime, kernel, source, or package file changes.
+7. The exact sync head completes all pre-merge required checks.
+8. The exact sync head receives independent approval.
+9. Any post-approval sync-head mutation receives a new independent review.
+10. The actual sync squash-merge exact-main subject is captured only after
+    merge.
+11. The actual sync publication subject completes mandatory post-merge
+    PASS.
+
+Any unmet sync precondition fails closed.
+
+## Decision Publication-Status Sync Boundary
+
+The only permitted file in the publication-status sync is:
+
+```text
+PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_DECISION.md
+```
+
+The sync must not modify:
+
+1. `docs/roadmap/CURRENT_PHASE`.
+2. `PHASE24_OBJECTIVE_SCOPE_AND_SEQUENCING_CANDIDATE_BOUNDARY.md`.
+3. Any Phase-24 exact-subject, initial-boundary, overview, pointer, or
+   closure file.
+4. Any accepted-evidence, receipt-evidence, validator-output, package,
+   source, runtime-procedure, or non-authorization record.
+5. Any Phase-23 governance file.
+6. Any CI workflow, baseline, dependency, runtime, kernel, loader,
+   capability, registry, trust, deployment, or distribution file.
+7. `PHASE21_FIRST_BOUNDED_IMPLEMENTATION_ACTUAL_SKELETON_PR_DESIGN.md`.
+
+Any broader sync changed-file scope fails closed.
+
+## Decision Publication-Status Sync Exact-Main Evidence Rule
+
+A clean-fixed decision publication-status sync requires all of the
+following on one actual exact-main sync publication subject:
+
+1. ci-freeze PASS.
+2. Dev Loop Validation PASS.
+3. AykenOS Dev Loop CI PASS.
+4. Smoke PASS.
+5. Contract PASS.
+6. Full PASS.
+7. Isolation PASS.
+8. Performance PASS.
+9. Exact approved sync-head to squash-merged-head provenance confirmation.
+10. One-file changed-file confirmation.
+11. Failure and rerun transparency.
+
+The sync run and job identifiers are absent until sync publication.
+
+The initial decision publication evidence cannot satisfy this rule.
+
+Pre-merge evidence cannot satisfy this rule.
+
+Different-subject or different-scope evidence cannot satisfy this rule.
 
 ## First Downstream Dependency
 
@@ -775,9 +1048,9 @@ publication-status sync subject
 
 It must not consume:
 
-1. This local decision draft.
+1. This local publication-status sync draft.
 2. The decision id.
-3. The decision drafting base.
+3. The initial decision drafting base.
 4. The candidate initial publication subject.
 5. The candidate sync approved head.
 6. The initial decision publication subject.
@@ -795,10 +1068,11 @@ This dependency does not create or authorize the downstream record.
 
 `CURRENT_PHASE=24` remains unchanged.
 
-The current-phase pointer does not approve this local decision draft.
+The current-phase pointer does not publish this local sync draft.
 
-The current-phase pointer does not approve the objective, scope, sequence,
-or first downstream topic.
+The current-phase pointer did not approve the objective, scope, sequence,
+or first downstream topic; the clean-fixed initial decision publication
+did so within the bounded terms recorded here.
 
 The current-phase pointer does not grant runtime, source, package,
 implementation, execution, evidence, capability, registry, trust,
@@ -807,8 +1081,8 @@ dependency, or Ring0 authority.
 
 ## Relationship To Candidate Boundary
 
-The synchronized canonical candidate reference makes this decision draft
-eligible for review.
+The synchronized canonical candidate reference made the initial decision
+draft eligible for review.
 
 It does not predetermine the decision outcome.
 
@@ -819,7 +1093,7 @@ This decision narrows the candidate by:
 3. Selecting only accepted-evidence boundary planning as the first topic.
 4. Leaving every remaining topic unselected and unordered.
 
-The candidate file is not modified by this local draft.
+The candidate file is not modified by this metadata-only sync draft.
 
 ## Relationship To Exact-Subject Boundary
 
@@ -869,8 +1143,8 @@ authority relationship.
 
 ## Not Authorized By This Decision
 
-Neither this local draft nor a future clean-fixed decision publication
-authorizes:
+Neither the clean-fixed initial decision publication nor this local or
+future publication-status sync authorizes:
 
 1. Accepted evidence.
 2. Accepted-evidence authority.
@@ -924,64 +1198,85 @@ Unknown or ambiguous authority readings fail closed.
 
 Every publication and descendant must preserve these invariants:
 
-1. The decision has exactly one direct prerequisite.
-2. The direct prerequisite is exactly
+1. The initial decision publication had exactly one direct prerequisite.
+2. The initial decision direct prerequisite is exactly
    `6b295887efd8dd6233cb728fc907b6cf53bb01b8`.
-3. The direct prerequisite role is the synchronized canonical candidate
-   reference.
+3. The initial decision prerequisite role is the synchronized canonical
+   candidate reference.
 4. The candidate initial publication subject is provenance only.
 5. The candidate sync approved head is provenance only.
 6. PR #323 and its workflow identifiers are provenance only.
-7. The local draft is not an effective decision.
-8. The current canonical objective approval remains absent before
-   clean-fixed initial decision publication.
-9. The current canonical scope authorization remains absent before
-   clean-fixed initial decision publication.
-10. The current canonical sequencing approval remains absent before
-    clean-fixed initial decision publication.
-11. The first downstream topic remains absent before clean-fixed initial
-    decision publication.
-12. The decision publication subject is absent before squash merge.
-13. A prospective merge SHA is not a publication subject.
-14. Independent approval binds only to the exact reviewed head.
-15. Head mutation after approval invalidates approval.
-16. Approval is not post-merge exact-main evidence.
-17. Pre-merge PASS is not post-merge exact-main evidence.
-18. Historical PASS is not current publication evidence.
-19. Prerequisite PASS is not decision publication evidence.
-20. Different-subject PASS is not current publication evidence.
-21. Different-scope PASS is not current publication evidence.
-22. A later rerun PASS does not erase an earlier failure.
-23. The initial decision publication subject is not the status-sync
+7. PR #324 published the initial decision from the unchanged approved head
+   `a26f2b2c7cc42b1eabfc8ecbc963804d35866d95`.
+8. The initial decision publication subject is exactly
+   `836d843fcc1c580dc1932afce38d6174f450da01`.
+9. The initial decision publication completed mandatory post-merge PASS on
+   attempt 1.
+10. The clean-fixed initial publication made the bounded objective
+    effective.
+11. The clean-fixed initial publication made the governance-only scope
+    effective.
+12. The clean-fixed initial publication made the narrowed sequencing
+    effective.
+13. The selected first topic is Phase-24 accepted-evidence boundary
+    planning.
+14. The publication-status sync has exactly one direct prerequisite.
+15. The sync direct prerequisite is exactly
+    `836d843fcc1c580dc1932afce38d6174f450da01`.
+16. The sync prerequisite role is the exact clean-fixed initial decision
+    publication subject.
+17. The initial decision direct prerequisite is not the sync direct
+    prerequisite.
+18. The current metadata-only sync remains a local draft.
+19. The sync PR is absent before a separate draft PR is opened.
+20. The reviewed sync head is absent before review.
+21. Independent sync approval is absent before exact-head approval.
+22. The sync publication subject is absent before squash merge.
+23. Sync post-merge evidence is absent before actual exact-main runs.
+24. The synchronized canonical decision reference remains absent before
+    clean-fixed sync publication.
+25. The first downstream prerequisite remains absent before clean-fixed
+    sync publication.
+26. A prospective sync merge SHA is not a sync publication subject.
+27. Independent approval binds only to the exact reviewed head.
+28. Head mutation after approval invalidates approval.
+29. Approval is not post-merge exact-main evidence.
+30. Pre-merge PASS is not post-merge exact-main evidence.
+31. Historical PASS is not current publication evidence.
+32. Initial decision publication PASS is not sync publication PASS.
+33. Different-subject PASS is not current publication evidence.
+34. Different-scope PASS is not current publication evidence.
+35. A later rerun PASS does not erase an earlier failure.
+36. The initial decision publication subject is not the status-sync
     subject.
-24. The initial decision publication subject is not the synchronized
+37. The initial decision publication subject is not the synchronized
     canonical decision reference.
-25. The clean-fixed status-sync subject is the synchronized canonical
+38. The clean-fixed status-sync subject is the synchronized canonical
     decision reference only after its own post-merge PASS.
-26. Objective approval remains governance-evaluation only.
-27. Scope authorization remains governance-only planning scope.
-28. Sequencing approval selects exactly one first topic.
-29. The selected first topic is accepted-evidence boundary planning.
-30. First-topic selection is not downstream record creation.
-31. First-topic selection is not publication authorization.
-32. First-topic selection is not evidence acceptance.
-33. Remaining topics stay unselected and unordered.
-34. Evaluation-map order is not an approved total execution sequence.
-35. Package review and source review remain separate topic classes.
-36. No runtime implementation procedure is authorized.
-37. No source modification or source merge authority is authorized.
-38. No package loading or package execution is authorized.
-39. No accepted-evidence authority is authorized.
-40. No validator-output or receipt-evidence acceptance is authorized.
-41. No capability, registry, or trust authority is authorized.
-42. No deployment or distribution authority is authorized.
-43. No kernel ABI or syscall expansion is authorized.
-44. No workflow-threshold, baseline, dependency, or Ring0 change is
+39. Metadata synchronization does not alter the bounded decision outcomes.
+40. Objective approval remains governance-evaluation only.
+41. Scope authorization remains governance-only planning scope.
+42. Sequencing approval selects exactly one first topic.
+43. First-topic selection is not downstream record creation.
+44. First-topic selection is not publication authorization.
+45. First-topic selection is not evidence acceptance.
+46. Remaining topics stay unselected and unordered.
+47. Evaluation-map order is not an approved total execution sequence.
+48. Package review and source review remain separate topic classes.
+49. No runtime implementation procedure is authorized.
+50. No source modification or source merge authority is authorized.
+51. No package loading or package execution is authorized.
+52. No accepted-evidence authority is authorized.
+53. No validator-output or receipt-evidence acceptance is authorized.
+54. No capability, registry, or trust authority is authorized.
+55. No deployment or distribution authority is authorized.
+56. No kernel ABI or syscall expansion is authorized.
+57. No workflow-threshold, baseline, dependency, or Ring0 change is
     authorized.
-45. `CURRENT_PHASE=24` remains only the bounded current-phase pointer state.
-46. Phase-23 remains closed for its exact bounded governance scope.
-47. The Phase-21 local draft remains excluded and PR-disjoint.
-48. Unknown or ambiguous authority readings fail closed.
+58. `CURRENT_PHASE=24` remains only the bounded current-phase pointer state.
+59. Phase-23 remains closed for its exact bounded governance scope.
+60. The Phase-21 local draft remains excluded and PR-disjoint.
+61. Unknown or ambiguous authority readings fail closed.
 
 Violation of any invariant fails closed.
 
@@ -989,17 +1284,19 @@ Violation of any invariant fails closed.
 
 **Prepared by:** Kenan AY
 **Role:** AykenOS Architecture Steward
-**Document type:** Phase-24 objective, scope, and sequencing decision local
-draft
-**Architecture status:** Local draft / not published / not clean-fixed /
-decision not effective / approved objective absent / authorized scope
-absent / approved sequencing absent / synchronized canonical decision
-reference absent / first downstream prerequisite absent
-**Authority notice:** This local draft proposes one bounded
-governance-evaluation objective, one governance-only planning scope, and
-one narrowed first-topic sequencing decision. It grants no current
-objective approval, scope authorization, sequencing approval, downstream
-publication authorization, evidence acceptance, accepted-evidence
+**Document type:** Phase-24 objective, scope, and sequencing decision
+publication-status sync local draft
+**Architecture status:** Initial decision publication clean-fixed /
+objective approved with narrowing / scope authorized for governance-only
+planning / sequencing approved with narrowing / first topic selected /
+publication-status sync local draft / sync not published / synchronized
+canonical decision reference absent / first downstream prerequisite absent
+**Authority notice:** The clean-fixed initial decision publication made
+effective one bounded governance-evaluation objective, one governance-only
+planning scope, and one narrowed first-topic sequencing decision. This
+metadata-only sync draft grants no additional objective approval, scope
+authorization, sequencing approval, downstream publication authorization,
+evidence acceptance, accepted-evidence
 authority, validator-output acceptance, receipt-evidence acceptance,
 runtime implementation procedure authority, source modification authority,
 code implementation authority, code execution authority, process-start
@@ -1010,7 +1307,8 @@ dependency, or Ring0 authority.
 
 ## Conclusion
 
-This local decision draft consumes exactly one direct prerequisite:
+The clean-fixed initial decision publication consumed exactly one direct
+prerequisite:
 
 ```text
 6b295887efd8dd6233cb728fc907b6cf53bb01b8
@@ -1019,26 +1317,36 @@ This local decision draft consumes exactly one direct prerequisite:
 That subject is the synchronized canonical Phase-24 objective, scope, and
 sequencing candidate reference.
 
-The local draft proposes:
+PR #324 published the bounded decision at:
 
 ```text
-objective: APPROVED WITH NARROWING upon clean-fixed publication
-scope: AUTHORIZED FOR GOVERNANCE-ONLY PLANNING upon clean-fixed publication
-sequencing: APPROVED WITH NARROWING upon clean-fixed publication
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+The effective bounded outcomes are:
+
+```text
+objective: APPROVED WITH NARROWING
+scope: AUTHORIZED FOR GOVERNANCE-ONLY PLANNING
+sequencing: APPROVED WITH NARROWING
 first topic: Phase-24 accepted-evidence boundary planning
 ```
 
-None of those outcomes is effective in the current local-draft state.
+This metadata-only publication-status sync local draft consumes exactly
+one direct prerequisite:
 
-Even after a clean-fixed initial decision publication, the selected first
-topic must not begin until a separate metadata-only decision status sync is
-published and verified clean-fixed.
+```text
+836d843fcc1c580dc1932afce38d6174f450da01
+```
+
+The selected first topic must not begin until this separate metadata-only
+decision status sync is published and verified clean-fixed.
 
 The future clean-fixed decision sync subject may become the synchronized
 canonical decision reference and the sole direct prerequisite for the
 future first downstream record.
 
-This local draft does not create that reference or downstream record.
+This local sync draft does not create that reference or downstream record.
 
 It does not accept evidence or authorize runtime, implementation, source,
 package, execution, capability, registry, trust, deployment, distribution,
