@@ -20,10 +20,13 @@ those records prevail unless this document is the narrower Phase-24
 accepted-evidence boundary planning record for the exact planning scope
 identified below.
 
-**Status:** LOCAL GOVERNANCE PLANNING DRAFT / NOT PUBLISHED / NOT
-CLEAN-FIXED / NON-AUTHORITATIVE / ACCEPTED-EVIDENCE BOUNDARY PLANNING
-ONLY / NO ACCEPTED EVIDENCE / NO EVIDENCE ACCEPTANCE / NO
-ACCEPTED-EVIDENCE AUTHORITY / NO ACCEPTED-EVIDENCE SET / NO
+**Status:** LOCAL POST-PUBLICATION PRECISION-CORRECTION DRAFT / NOT
+PUBLISHED / NOT CLEAN-FIXED / INITIAL PLANNING PUBLICATION MERGED /
+TECHNICALLY CLEAN-FIXED / POST-PUBLICATION P2 ADJUDICATED VALID /
+STATUS-SYNC BLOCKED PENDING CLEAN-FIXED CORRECTION / NON-AUTHORITATIVE /
+ACCEPTED-EVIDENCE BOUNDARY PLANNING ONLY / NO ACCEPTED EVIDENCE / NO
+EVIDENCE ACCEPTANCE / NO ACCEPTED-EVIDENCE AUTHORITY / NO
+ACCEPTED-EVIDENCE SET / NO
 EVIDENCE-ITEM MEMBERSHIP ASSIGNMENT / NO VALIDATOR-OUTPUT ACCEPTANCE / NO
 RECEIPT-EVIDENCE ACCEPTANCE / NO RUNTIME AUTHORITY / NO IMPLEMENTATION
 AUTHORITY / NO SOURCE MODIFICATION OR MERGE / NO PACKAGE INSTALLATION /
@@ -32,21 +35,41 @@ TRUST AUTHORITY / NO DEPLOYMENT OR DISTRIBUTION / NO KERNEL ABI OR SYSCALL
 EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO BASELINE CHANGE / NO
 DEPENDENCY CHANGE / NO RING0 AUTHORITY
 **Planning date:** 2026-08-03
+**Precision-correction date:** 2026-08-03
 **Planning id:** `ayken.phase24.accepted_evidence_boundary_planning.v1`
-**Planning drafting base:**
+**Initial planning drafting base:**
 `e04e16233977e5c52e2072e4e0c35f13de7b0206`
-**Planning drafting-base role:** exact repository subject used to prepare
-this local Phase-24 accepted-evidence boundary planning draft
-**Planning sole direct prerequisite:**
+**Initial planning drafting-base role:** exact repository subject used to
+prepare the initial Phase-24 accepted-evidence boundary planning draft
+**Initial planning sole direct prerequisite:**
 `e04e16233977e5c52e2072e4e0c35f13de7b0206`
-**Direct-prerequisite role:** synchronized canonical Phase-24 objective,
-scope, and sequencing decision reference
-**Initial planning publication PR:** absent
-**Initial planning reviewed head:** absent
-**Initial planning independent approval:** absent
-**Initial planning publication subject:** absent
-**Initial planning post-merge exact-main evidence:** absent
-**Initial planning clean-fixed status:** absent
+**Initial direct-prerequisite role:** synchronized canonical Phase-24
+objective, scope, and sequencing decision reference
+**Initial planning publication PR:** PR #326
+**Initial planning reviewed head:**
+`fea1d92740be8ab32154c944a2cd4e28e149c467`
+**Initial planning independent reviewer:** `kenanay2020-hub`
+**Initial planning publication subject:**
+`ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
+**Initial planning post-merge exact-main evidence:** attempt 1 / PASS
+**Initial planning technical status:** MERGED / TECHNICALLY CLEAN-FIXED
+**Post-publication semantic review:** P2 / VALID / BLOCKING FOR STATUS-SYNC
+/ THREAD UNRESOLVED / NOT OUTDATED
+**Precision-correction drafting base:**
+`ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
+**Precision-correction drafting-base role:** exact technically clean-fixed
+initial planning publication subject used to prepare this correction draft
+**Precision-correction sole direct prerequisite:**
+`ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
+**Precision-correction direct-prerequisite role:** exact technically
+clean-fixed initial planning publication subject requiring correction after
+the valid post-publication P2 adjudication
+**Precision-correction publication PR:** absent
+**Precision-correction reviewed head:** absent
+**Precision-correction independent approval:** absent
+**Precision-correction publication subject:** absent
+**Precision-correction post-merge exact-main evidence:** absent
+**Precision-correction clean-fixed status:** absent
 **Planning publication-status sync PR:** absent
 **Planning publication-status sync reviewed head:** absent
 **Planning publication-status sync independent approval:** absent
@@ -54,7 +77,7 @@ scope, and sequencing decision reference
 **Planning publication-status sync post-merge evidence:** absent
 **Synchronized canonical planning reference:** absent
 **Future accepted-evidence record class:** absent; no future record class is
-selected or authorized by this local planning draft
+selected or authorized by the initial publication or this correction draft
 **Next downstream prerequisite:** absent
 **Current phase pointer:** `CURRENT_PHASE=24`
 **Authority expansion:** NONE
@@ -66,8 +89,11 @@ selected or authorized by this local planning draft
 
 ## Purpose
 
-This document prepares one governance-only Phase-24 planning boundary after
-the clean-fixed objective, scope, and sequencing decision status sync.
+This document preserves one governance-only Phase-24 planning boundary
+after the clean-fixed objective, scope, and sequencing decision status sync.
+
+This local precision-correction draft narrows the published planning duty
+identified by the valid post-publication P2 review.
 
 It answers one bounded question:
 
@@ -108,8 +134,13 @@ It does not create an accepted-evidence set.
 
 It does not assign membership to any set.
 
-It does not determine that a candidate, decision, or other record must be
-the next record class.
+It defines the governance conditions under which a later separately
+authorized and reviewed record may determine whether another
+accepted-evidence governance record is necessary and which record class,
+if any, is appropriate.
+
+It does not make that determination, select a future record class, or
+authorize downstream publication.
 
 It does not authorize implementation or execution.
 
@@ -117,7 +148,7 @@ Unknown authority readings fail closed.
 
 ## Current Canonical State
 
-The current canonical Phase-24 state relevant to this planning draft is:
+The current canonical Phase-24 state relevant to this correction draft is:
 
 ```text
 CURRENT_PHASE=24
@@ -127,64 +158,86 @@ Phase-24 initial governance boundary: synchronized and clean-fixed
 Phase-24 exact-subject boundary: synchronized and clean-fixed
 objective, scope, and sequencing decision: synchronized and clean-fixed
 first selected topic: Phase-24 accepted-evidence boundary planning
-accepted-evidence planning record: absent from canonical publication state
+initial accepted-evidence planning publication: merged / technically clean-fixed
+initial planning publication subject: ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+post-publication semantic review: P2 / valid / status-sync blocking
+precision-correction publication: absent
+planning publication-status sync: absent
+synchronized canonical planning reference: absent
 accepted evidence: absent
 evidence acceptance: absent
 accepted-evidence authority: absent
 authority expansion: none
 ```
 
-The synchronized canonical decision reference is:
+The synchronized canonical decision reference consumed by the initial
+planning publication was:
 
 ```text
 e04e16233977e5c52e2072e4e0c35f13de7b0206
 ```
 
-That reference makes this local planning draft eligible to be authored and
-reviewed through a separate lifecycle.
+That reference made the initial planning publication eligible for its
+separate lifecycle.
 
-It does not publish this file.
+The current precision-correction drafting base and sole direct prerequisite
+are:
 
-It does not make the planning boundary clean-fixed.
+```text
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
+
+That subject makes this correction draft eligible to be authored and
+reviewed through a separate one-file lifecycle.
+
+It does not publish this correction.
+
+It does not make the planning boundary semantically corrected.
 
 It does not accept evidence.
 
 It does not authorize a future record.
 
-## Sole Direct Prerequisite
+## Precision-Correction Sole Direct Prerequisite
 
-This planning draft has exactly one direct prerequisite:
+This precision-correction draft has exactly one direct prerequisite:
 
 ```text
-e04e16233977e5c52e2072e4e0c35f13de7b0206
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 ```
 
 Its exact role is:
 
 ```text
-synchronized canonical Phase-24 objective, scope, and sequencing decision
-reference
+exact technically clean-fixed initial Phase-24 accepted-evidence boundary
+planning publication subject requiring correction after valid P2
+adjudication
 ```
 
-The planning drafting base and direct prerequisite currently have the same
-SHA.
+The precision-correction drafting base and direct prerequisite have the
+same SHA.
 
 Their governance roles remain distinct.
 
 The direct prerequisite is not:
 
-1. The decision id.
-2. The decision initial-publication subject.
-3. The decision sync approved head.
-4. PR #325 as a number.
-5. A workflow run or job id.
-6. A branch name or tag.
-7. A prospective merge SHA.
-8. Historical evidence.
-9. A Phase-23 record.
-10. The Phase-23 structural precedent for this planning class.
+1. The planning id.
+2. The initial planning drafting base.
+3. The initial planning direct prerequisite.
+4. The initial planning approved head.
+5. PR #326 as a number.
+6. The decision id.
+7. The decision initial-publication subject.
+8. The decision sync approved head.
+9. PR #325 as a number.
+10. A workflow run or job id.
+11. A branch name or tag.
+12. A prospective merge SHA.
+13. Historical evidence.
+14. A Phase-23 record.
+15. The Phase-23 structural precedent for this planning class.
 
-No other subject is a direct prerequisite of this local planning draft.
+No other subject is a direct prerequisite of this correction draft.
 
 The direct prerequisite is necessary but not sufficient for publication.
 
@@ -192,8 +245,72 @@ It supplies no inherited authority.
 
 ## Prerequisite Evidence And Provenance
 
-The sole direct prerequisite is the actual squash-merge exact-main subject
-of PR #325.
+The correction sole direct prerequisite is the actual squash-merge
+exact-main subject of PR #326.
+
+PR #326 published only:
+
+```text
+PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
+```
+
+The independently approved unchanged initial planning head was:
+
+```text
+fea1d92740be8ab32154c944a2cd4e28e149c467
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+The actual initial planning publication subject was:
+
+```text
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
+
+The post-merge exact-main evidence on that subject was:
+
+| Evidence | Run | Job | Result |
+| --- | --- | --- | --- |
+| ci-freeze | `30804253000` | `freeze / 91655805032` | PASS |
+| Dev Loop Validation | `30804253034` | `devloop / 91655804753` | PASS |
+| AykenOS Dev Loop CI | `30804253160` | workflow | PASS |
+| smoke | `30804253160` | `smoke / 91655805220` | PASS |
+| contract | `30804253160` | `contract / 91656029384` | PASS |
+| full | `30804253160` | `full / 91656570896` | PASS |
+| isolation | `30804253160` | `isolation / 91657166038` | PASS |
+| performance | `30804253160` | `performance / 91657689044` | PASS |
+
+The mandatory post-merge evidence completed on attempt 1.
+
+That evidence established the initial publication's technical clean-fixed
+status.
+
+It does not resolve the valid post-publication P2 finding.
+
+It is not evidence for the precision-correction publication.
+
+The P2 finding was adjudicated as:
+
+```text
+VALID / BLOCKING FOR STATUS-SYNC
+```
+
+The review thread remains unresolved and not outdated until the correction
+is clean-fixed.
+
+The initial planning publication sole direct prerequisite was the actual
+squash-merge exact-main subject of PR #325:
+
+```text
+e04e16233977e5c52e2072e4e0c35f13de7b0206
+```
+
+That subject is upstream provenance for this correction draft.
 
 PR #325 published a metadata-only status sync for:
 
@@ -236,9 +353,9 @@ The mandatory post-merge evidence completed on attempt 1.
 
 The expected `init_perf_baseline` and `auto-bisect` jobs were skipped.
 
-This evidence established prerequisite cleanliness only.
+This evidence established initial-planning prerequisite cleanliness only.
 
-It is not evidence for this planning draft's future publication.
+It is not evidence for the precision-correction publication.
 
 The decision initial-publication subject was:
 
@@ -257,10 +374,11 @@ reference was:
 
 That subject is earlier-chain provenance only.
 
-Neither provenance subject replaces the sole direct prerequisite at:
+No upstream provenance subject replaces the correction sole direct
+prerequisite at:
 
 ```text
-e04e16233977e5c52e2072e4e0c35f13de7b0206
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 ```
 
 Historical provenance does not create an additional prerequisite.
@@ -272,16 +390,23 @@ Historical PASS does not become current publication evidence.
 The following identity rules are binding:
 
 ```text
-planning id != planning drafting base
-planning id != planning direct prerequisite
+planning id != initial planning drafting base
+planning id != initial planning direct prerequisite
 planning id != initial planning publication subject
-planning drafting base != initial planning publication subject
-planning direct prerequisite != initial planning publication subject
-approved exact head != actual initial planning publication subject
-prospective merge SHA != actual initial planning publication subject
-initial planning publication subject
+initial planning drafting base != initial planning publication subject
+initial planning direct prerequisite != initial planning publication subject
+approved initial exact head != actual initial planning publication subject
+prospective initial merge SHA != actual initial planning publication subject
+initial planning publication subject == correction drafting base value
+initial planning publication subject == correction direct prerequisite value
+correction drafting-base role != correction direct-prerequisite role
+correction drafting base != correction publication subject
+correction direct prerequisite != correction publication subject
+approved correction exact head != correction publication subject
+prospective correction merge SHA != correction publication subject
+clean-fixed correction publication subject
 != later planning publication-status sync subject
-initial planning publication subject
+clean-fixed correction publication subject
 != synchronized canonical planning reference
 clean-fixed planning publication-status sync subject
 == synchronized canonical planning reference
@@ -294,9 +419,12 @@ and complete mandatory post-merge PASS evidence.
 The following lifecycle stages remain distinct:
 
 ```text
-local planning draft
-!= reviewed initial planning publication
-!= clean-fixed initial planning publication
+reviewed initial planning publication
+!= technically clean-fixed initial planning publication
+!= valid post-publication semantic finding
+!= local post-publication precision-correction draft
+!= reviewed precision-correction publication
+!= clean-fixed corrected planning publication
 != local planning publication-status sync draft
 != reviewed planning publication-status sync
 != clean-fixed planning publication-status sync
@@ -305,9 +433,15 @@ local planning draft
 != accepted evidence
 ```
 
-The current state is the first line only.
+The current state is the local post-publication precision-correction line.
 
-No publication subject may be written before actual merge.
+The initial publication remains technically clean-fixed.
+
+The valid P2 finding blocks status synchronization until the correction is
+separately published and verified clean-fixed.
+
+No future precision-correction or planning status-sync publication subject
+may be assigned or recorded before that stage's own actual squash merge.
 
 No synchronized reference may be claimed before sync exact-main PASS.
 
@@ -326,6 +460,14 @@ validator output != accepted validator output
 receipt evidence != accepted receipt evidence
 planning boundary != authority grant
 local draft != reviewed publication
+technically clean-fixed initial planning publication
+!= clean-fixed corrected planning publication
+valid post-publication P2 finding
+== planning publication-status sync blocked pending clean-fixed correction
+initial planning publication subject
+!= planning publication-status sync direct prerequisite after valid P2
+clean-fixed correction publication subject
+== future planning publication-status sync direct prerequisite only
 clean-fixed planning publication != accepted-evidence decision
 clean-fixed planning publication != evidence acceptance
 CI PASS != authority grant
@@ -334,10 +476,19 @@ evaluation-map inclusion != sequencing approval
 direct prerequisite != inherited authority
 ```
 
-The sole direct prerequisite relationship is:
+The current correction sole direct prerequisite relationship is:
 
 ```text
-Phase-24 accepted-evidence boundary planning direct prerequisite
+Phase-24 accepted-evidence boundary planning precision-correction
+direct prerequisite
+== exact technically clean-fixed initial planning publication subject
+```
+
+The initial planning publication direct prerequisite relationship remains
+historical provenance:
+
+```text
+initial planning publication direct prerequisite
 == synchronized canonical Phase-24 objective, scope, and sequencing
 decision reference
 ```
@@ -587,7 +738,8 @@ This planning record performs none of these events.
 
 This planning record does not preselect the future record topology.
 
-A later review may determine that one or more of the following are needed:
+A later separately authorized and reviewed record may determine that one or
+more of the following record classes are needed:
 
 1. An accepted-evidence boundary candidate.
 2. An accepted-evidence scope or membership candidate.
@@ -600,7 +752,8 @@ The list is illustrative and non-exhaustive.
 
 The list is evaluative, not authorizing.
 
-Future record-class eligibility remains a later reviewed planning outcome.
+Future record-class eligibility remains an outcome for a later separately
+authorized and reviewed record.
 
 ```text
 planning record != future candidate
@@ -650,16 +803,16 @@ historical subject != current publication subject
 Aliases, prefixes, branch names, tags, PR numbers, run ids, and human labels
 cannot replace a full exact subject.
 
-The direct prerequisite of this planning draft must remain exactly:
+The direct prerequisite of this correction draft must remain exactly:
 
 ```text
-e04e16233977e5c52e2072e4e0c35f13de7b0206
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 ```
 
 ## Mandatory Publication Evidence Expectation
 
-Any future initial publication of this planning record must produce all of
-the following on its actual exact-main subject:
+The precision-correction publication must produce all of the following on
+its actual exact-main subject:
 
 1. `ci-freeze` PASS.
 2. Dev Loop Validation PASS.
@@ -677,8 +830,8 @@ The results must be bound to the same actual exact-main subject.
 The status-sync publication must later satisfy the same expectation on its
 own actual exact-main subject.
 
-The prerequisite evidence recorded above cannot satisfy either future
-publication.
+The initial publication and upstream prerequisite evidence recorded above
+cannot satisfy either future publication.
 
 ## No Inherited Evidence Rule
 
@@ -688,7 +841,9 @@ prerequisite PASS != current planning publication evidence
 pre-merge PASS != post-merge exact-main evidence
 different-subject PASS != current publication evidence
 different-scope PASS != current publication evidence
+initial planning publication PASS != correction publication evidence
 initial planning publication PASS != planning sync publication evidence
+correction publication PASS != planning sync publication evidence
 ```
 
 No evidence result is inherited merely because it is newer, broader, or
@@ -720,27 +875,45 @@ An earlier failure cannot be relabeled as skipped or absent.
 
 ## Publication Lifecycle
 
-The only valid initial planning publication lifecycle is:
+The completed initial planning publication lifecycle was:
 
 ```text
-local planning draft
+local planning draft based on e04e16233977e5c52e2072e4e0c35f13de7b0206
 -> one-file draft PR
 -> complete pre-merge PASS on one exact head
 -> independent approval of that unchanged exact head
 -> final one-file scope and head verification
 -> squash merge
--> actual initial planning exact-main publication subject
+-> ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 -> mandatory post-merge exact-main PASS
--> clean-fixed initial planning publication
+-> technically clean-fixed initial planning publication
+-> post-publication P2 finding
+-> P2 adjudicated valid and status-sync blocking
 ```
 
 The initial publication does not create a synchronized canonical planning
 reference.
 
-The required metadata-only sync lifecycle is:
+The required precision-correction lifecycle is:
 
 ```text
-clean-fixed initial planning publication subject
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+-> local post-publication precision-correction draft
+-> one-file draft PR
+-> complete pre-merge PASS on one exact head
+-> independent approval of that unchanged exact head
+-> final one-file scope and head verification
+-> squash merge
+-> actual precision-correction exact-main subject
+-> mandatory post-merge exact-main PASS
+-> clean-fixed corrected planning publication
+```
+
+Only that future clean-fixed correction subject may start the required
+metadata-only sync lifecycle:
+
+```text
+clean-fixed corrected planning publication subject
 -> local metadata-only planning status-sync draft
 -> one-file draft PR
 -> complete pre-merge PASS on one exact head
@@ -758,32 +931,41 @@ line exists.
 
 Even the final line does not accept evidence.
 
-## Initial Publication Preconditions
+## Precision-Correction Publication Preconditions
 
-The initial planning publication may be reviewed only if:
+The precision-correction publication may be merged and published only if:
 
 1. The direct prerequisite remains exactly
-   `e04e16233977e5c52e2072e4e0c35f13de7b0206`.
-2. The prerequisite remains the clean-fixed synchronized decision
-   reference.
-3. `CURRENT_PHASE=24` remains unchanged.
-4. The bounded planning question remains unchanged.
-5. No concrete evidence item is named for selection or acceptance.
-6. No accepted-evidence set or membership assignment is created.
-7. Candidate, decision, and acceptance stages remain separate.
-8. The publication changes only this file.
-9. The exact reviewed head receives independent approval.
-10. Any post-approval head mutation invalidates that approval.
-11. All mandatory pre-merge checks pass with failure history preserved.
-12. The Phase-21 local draft remains outside publication scope.
+   `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`.
+2. The prerequisite remains the technically clean-fixed PR #326 initial
+   planning publication subject.
+3. The P2 finding remains adjudicated valid and status-sync blocking.
+4. The substantive planning correction is limited to resolving and
+   hardening the adjudicated P2 planning-duty contradiction. Accompanying
+   changes may record or clarify correction-specific prerequisite,
+   lifecycle, publication-stage, and provenance rules without changing the
+   bounded planning outcome or opening authority.
+5. The corrected text defines conditions for a later separately authorized
+   and reviewed record to make the future necessity/class determination.
+6. This planning record does not make that determination.
+7. `CURRENT_PHASE=24` remains unchanged.
+8. The bounded planning question remains unchanged.
+9. No concrete evidence item is named for selection or acceptance.
+10. No accepted-evidence set or membership assignment is created.
+11. Candidate, decision, and acceptance stages remain separate.
+12. The publication changes only this file.
+13. The exact reviewed correction head receives independent approval.
+14. Any post-approval head mutation invalidates that approval.
+15. All mandatory pre-merge checks pass with failure history preserved.
+16. The Phase-21 local draft remains outside publication scope.
 
 A violation fails closed.
 
-## Initial Publication Exact-Main Evidence
+## Precision-Correction Exact-Main Evidence
 
-The current local draft has no initial publication subject.
+The current local correction draft has no correction publication subject.
 
-Therefore all initial planning publication evidence is absent.
+Therefore all correction publication evidence is absent.
 
 After a future squash merge, the actual exact-main subject must satisfy:
 
@@ -807,19 +989,28 @@ After a future squash merge, the actual exact-main subject must satisfy:
 Until every item passes:
 
 ```text
-initial planning publication != clean-fixed initial planning publication
+precision-correction publication
+!= clean-fixed corrected planning publication
 ```
 
 ## Publication-Status Sync Dependency
 
-A clean-fixed initial planning publication must be followed by a separate
-metadata-only publication-status sync before it can become a synchronized
-canonical planning reference.
+A metadata-only planning publication-status sync is blocked until the
+precision correction is separately published and verified clean-fixed.
 
-The sync direct prerequisite must be exactly:
+The initial planning publication subject at:
 
 ```text
-actual clean-fixed initial planning publication subject
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
+
+is not eligible to be the sync direct prerequisite after the valid P2
+adjudication.
+
+The sync direct prerequisite must instead be exactly:
+
+```text
+future actual clean-fixed precision-correction publication subject
 ```
 
 The sync must record:
@@ -830,7 +1021,15 @@ The sync must record:
 4. The actual initial planning publication subject.
 5. The initial publication attempt history.
 6. The initial publication mandatory post-merge evidence.
-7. The initial planning clean-fixed status.
+7. The initial planning technical clean-fixed status.
+8. The valid P2 adjudication.
+9. The precision-correction publication PR.
+10. The independently approved correction head.
+11. The correction independent reviewer.
+12. The actual precision-correction publication subject.
+13. The correction attempt history.
+14. The correction mandatory post-merge evidence.
+15. The corrected planning clean-fixed status.
 
 The sync must not alter the bounded planning question or planning outcomes.
 
@@ -842,9 +1041,9 @@ The sync requires its own actual exact-main subject and mandatory
 post-merge PASS.
 
 ```text
-initial planning publication subject
+clean-fixed correction publication subject
 != planning status-sync publication subject
-initial planning publication subject
+clean-fixed correction publication subject
 != synchronized canonical planning reference
 clean-fixed planning status-sync publication subject
 == synchronized canonical planning reference
@@ -852,26 +1051,30 @@ clean-fixed planning status-sync publication subject
 
 ## Future Record Dependencies
 
-This planning record must determine, through reviewed planning outcomes,
-whether any later accepted-evidence record is necessary and which record
-class is appropriate.
+This planning record defines the governance conditions under which a later
+separately authorized and reviewed record may determine whether any further
+accepted-evidence governance record is necessary and which record class, if
+any, is appropriate.
 
-The current local draft does not decide that question.
+This planning record does not make that determination, select a future
+record class, or authorize downstream publication.
 
 No later record may use:
 
-1. This local draft.
+1. This local correction draft.
 2. The planning id.
-3. The planning drafting base.
+3. The initial planning drafting base.
 4. The decision initial-publication subject.
 5. The decision sync approved head.
-6. The current planning initial-publication subject, which is absent.
-7. A prospective planning or sync merge SHA.
-8. An unapproved or mutated branch head.
-9. Historical evidence as its own publication evidence.
+6. The initial planning publication subject.
+7. The future correction reviewed head.
+8. A prospective correction or sync merge SHA.
+9. An unapproved or mutated branch head.
+10. Historical evidence as its own publication evidence.
 
 If a later record is authorized to begin, its sole direct prerequisite must
-be the future clean-fixed planning publication-status sync subject.
+be the future clean-fixed corrected-planning publication-status sync
+subject.
 
 That later record requires its own bounded question, one-file scope,
 independent unchanged-head approval, actual publication subject,
@@ -918,7 +1121,22 @@ It did not publish this file.
 
 It did not accept evidence.
 
-The decision reference is this planning draft's sole direct prerequisite.
+The decision reference was the initial planning publication's sole direct
+prerequisite:
+
+```text
+e04e16233977e5c52e2072e4e0c35f13de7b0206
+```
+
+For this precision-correction draft, that decision reference remains
+upstream provenance only.
+
+The sole direct prerequisite of this precision-correction draft is the
+technically clean-fixed initial planning publication subject:
+
+```text
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
 
 The decision's earlier initial-publication subject and approved sync head
 remain provenance only.
@@ -928,7 +1146,8 @@ remain provenance only.
 The Phase-24 exact-subject and evidence-expectation boundary remains an
 inherited governance constraint through the synchronized decision chain.
 
-It is not an additional direct prerequisite of this planning draft.
+It is not an additional direct prerequisite of this precision-correction
+draft.
 
 This planning record preserves its exact-head approval, actual publication
 subject, no-prospective-SHA, no-inherited-evidence, and failure-transparency
@@ -971,7 +1190,14 @@ It supplies no inherited authority.
 
 It supplies no current publication evidence.
 
-It cannot substitute for the Phase-24 synchronized decision reference.
+It cannot substitute for the correction direct prerequisite at:
+
+```text
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
+
+It also cannot replace the upstream synchronized decision reference retained
+as initial-publication provenance.
 
 Phase-23 remains closed for its exact bounded governance scope.
 
@@ -1046,10 +1272,9 @@ status sync authorizes:
 
 Unknown authority readings fail closed.
 
-## Initial Publication And Sync File Boundary
+## Precision-Correction And Sync File Boundary
 
-The only file permitted in an initial publication PR for this planning
-record is:
+The only file permitted in the precision-correction publication PR is:
 
 ```text
 PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
@@ -1058,7 +1283,8 @@ PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
 The only file permitted in a later metadata-only planning status-sync PR is
 the same file.
 
-The following must remain unchanged in both publications:
+The following must remain unchanged in the correction and sync
+publications:
 
 1. `docs/roadmap/CURRENT_PHASE`.
 2. `PHASE24_POINTER_TRANSITION_CANDIDATE.md`.
@@ -1083,54 +1309,68 @@ Any additional changed file is out of scope and fails closed.
 ## Governance Planning Invariants
 
 1. `CURRENT_PHASE=24` remains unchanged.
-2. This file remains a local non-authoritative draft until reviewed
-   publication.
-3. The sole direct prerequisite remains exactly
-   `e04e16233977e5c52e2072e4e0c35f13de7b0206`.
-4. The direct prerequisite role remains the synchronized canonical
-   objective, scope, and sequencing decision reference.
+2. This file remains a local non-authoritative precision-correction draft
+   until reviewed correction publication.
+3. The correction sole direct prerequisite remains exactly
+   `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`.
+4. The correction direct prerequisite role remains the technically
+   clean-fixed PR #326 initial planning publication subject requiring
+   correction after valid P2 adjudication.
 5. No other exact subject becomes a direct prerequisite.
-6. Historical subjects remain provenance only.
-7. The Phase-23 planning record remains structural precedent only.
-8. The bounded question remains limited to accepted-evidence boundary
+6. The original initial-planning direct prerequisite at
+   `e04e16233977e5c52e2072e4e0c35f13de7b0206` remains provenance only.
+7. Historical subjects remain provenance only.
+8. The Phase-23 planning record remains structural precedent only.
+9. The bounded question remains limited to accepted-evidence boundary
    planning.
-9. Planning does not select or accept evidence.
-10. Evidence identification does not accept evidence.
-11. Evidence eligibility does not accept evidence.
-12. Evidence candidate selection does not accept evidence.
-13. Membership planning does not assign membership.
-14. Validator output does not become accepted validator output.
-15. Receipt evidence does not become accepted receipt evidence.
-16. CI PASS does not grant authority.
-17. The future record class remains unselected by this local draft.
-18. Evaluation order does not become approved execution sequence.
-19. Initial publication and metadata sync remain separate subjects.
-20. Initial publication does not create a synchronized reference.
-21. Only a clean-fixed status-sync subject may become the synchronized
+10. The planning record defines conditions for a later separately
+    authorized and reviewed record to make the future necessity/class
+    determination.
+11. This planning record does not make that determination.
+12. Planning does not select or accept evidence.
+13. Evidence identification does not accept evidence.
+14. Evidence eligibility does not accept evidence.
+15. Evidence candidate selection does not accept evidence.
+16. Membership planning does not assign membership.
+17. Validator output does not become accepted validator output.
+18. Receipt evidence does not become accepted receipt evidence.
+19. CI PASS does not grant authority.
+20. The future record class remains unselected by this correction draft.
+21. Evaluation order does not become approved execution sequence.
+22. Initial publication, correction publication, and metadata sync remain
+    separate subjects.
+23. The technically clean-fixed initial publication does not create a
+    synchronized reference.
+24. The valid P2 finding blocks status sync until the correction is
+    clean-fixed.
+25. The initial publication subject is not the status-sync prerequisite.
+26. Only a clean-fixed correction subject may become the status-sync direct
+    prerequisite.
+27. Only a clean-fixed status-sync subject may become the synchronized
     canonical planning reference.
-22. Independent approval binds only to an exact unchanged reviewed head.
-23. Head mutation after approval invalidates that approval.
-24. A prospective merge SHA never becomes a publication subject.
-25. Pre-merge PASS does not replace post-merge exact-main evidence.
-26. Historical PASS does not become current publication evidence.
-27. Different-subject PASS does not become current publication evidence.
-28. Different-scope PASS does not become current publication evidence.
-29. A rerun PASS does not erase an earlier failure.
-30. Failure and rerun history remains transparent.
-31. The initial publication changes only this file.
-32. The status-sync publication changes only this file.
-33. The Phase-21 local draft remains untracked and PR-disjoint.
-34. No accepted-evidence set exists through this planning record.
-35. No evidence-item membership is assigned through this planning record.
-36. No validator output is accepted through this planning record.
-37. No receipt evidence is accepted through this planning record.
-38. No runtime or implementation authority is granted.
-39. No source or package authority is granted.
-40. No capability, registry, trust, deployment, or distribution authority
+28. Independent approval binds only to an exact unchanged reviewed head.
+29. Head mutation after approval invalidates that approval.
+30. A prospective merge SHA never becomes a publication subject.
+31. Pre-merge PASS does not replace post-merge exact-main evidence.
+32. Historical PASS does not become current publication evidence.
+33. Different-subject PASS does not become current publication evidence.
+34. Different-scope PASS does not become current publication evidence.
+35. A rerun PASS does not erase an earlier failure.
+36. Failure and rerun history remains transparent.
+37. The correction publication changes only this file.
+38. The status-sync publication changes only this file.
+39. The Phase-21 local draft remains untracked and PR-disjoint.
+40. No accepted-evidence set exists through this planning record.
+41. No evidence-item membership is assigned through this planning record.
+42. No validator output is accepted through this planning record.
+43. No receipt evidence is accepted through this planning record.
+44. No runtime or implementation authority is granted.
+45. No source or package authority is granted.
+46. No capability, registry, trust, deployment, or distribution authority
     is granted.
-41. No kernel ABI, syscall, workflow, baseline, dependency, or Ring0
+47. No kernel ABI, syscall, workflow, baseline, dependency, or Ring0
     authority is granted.
-42. Unknown authority readings fail closed.
+48. Unknown authority readings fail closed.
 
 ## Architecture Signature
 
@@ -1139,7 +1379,16 @@ Phase-24 synchronized objective/scope/sequencing decision reference
   e04e16233977e5c52e2072e4e0c35f13de7b0206
         |
         v
-Phase-24 accepted-evidence boundary planning local draft
+initial Phase-24 accepted-evidence boundary planning publication
+  ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+  technically clean-fixed
+        |
+        v
+post-publication P2 adjudication
+  valid / status-sync blocking
+        |
+        v
+local post-publication precision-correction draft
         |
         | no evidence selection
         | no evidence acceptance
@@ -1149,10 +1398,10 @@ Phase-24 accepted-evidence boundary planning local draft
         | no receipt-evidence acceptance
         | no runtime/source/package/implementation authority
         v
-separate one-file reviewed initial planning publication
+separate one-file reviewed precision-correction publication
         |
         v
-actual initial planning exact-main subject + mandatory PASS
+actual precision-correction exact-main subject + mandatory PASS
         |
         v
 separate metadata-only planning publication-status sync
@@ -1170,14 +1419,16 @@ later record-class evaluation, if separately authorized
 
 ## Conclusion
 
-This local draft consumes exactly one direct prerequisite:
+This local precision-correction draft consumes exactly one direct
+prerequisite:
 
 ```text
-e04e16233977e5c52e2072e4e0c35f13de7b0206
+ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 ```
 
-That subject is the synchronized canonical Phase-24 objective, scope, and
-sequencing decision reference.
+That subject is the technically clean-fixed initial Phase-24
+accepted-evidence boundary planning publication subject requiring
+correction after the valid P2 adjudication.
 
 This document plans only the governance boundaries, identity rules,
 prerequisite relationships, evidence expectations, denial conditions, and
@@ -1191,7 +1442,11 @@ It does not create an accepted-evidence set or assign membership.
 
 It does not accept validator output or receipt evidence.
 
-It does not decide the next record class.
+It defines the conditions under which a later separately authorized and
+reviewed record may decide whether a further record is necessary and which
+record class, if any, is appropriate.
+
+It does not make that determination or decide the next record class.
 
 It does not authorize runtime, implementation, execution, source, package,
 capability, registry, trust, deployment, distribution, kernel ABI, syscall,
@@ -1200,8 +1455,11 @@ workflow, baseline, dependency, or Ring0 authority.
 The current state remains:
 
 ```text
-planning record: local draft only
-initial planning publication subject: absent
+initial planning publication: merged / technically clean-fixed
+initial planning publication subject: ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+post-publication P2: valid / status-sync blocking
+precision-correction draft: local / not published / not clean-fixed
+precision-correction publication subject: absent
 planning publication-status sync subject: absent
 synchronized canonical planning reference: absent
 future accepted-evidence record class: absent
