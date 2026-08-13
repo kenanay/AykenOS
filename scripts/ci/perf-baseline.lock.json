@@ -1,10 +1,10 @@
 {
-  "created_at_utc": "2026-06-27T01:49:25Z",
+  "created_at_utc": "2026-08-09T01:25:13Z",
   "env": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
-    "ci_image_digest": "gha-ubuntu24-20260622.220.1-X64",
+    "ci_image_digest": "gha-ubuntu24-20260720.247.2-X64",
     "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
-    "env_hash": "79424490b83a96fff8ddaf716a9420b9dfc7a9590c9c109085c18ea824b1208b",
+    "env_hash": "9fd03c55c882b249fb18b1db5f06979f3226442fbde72fc696ce2d650a9400d8",
     "host_arch": "x86_64",
     "host_os": "Linux",
     "kernel_profile": "validation",
@@ -23,14 +23,14 @@
     },
     "nasm_version": "NASM version 2.16.01",
     "qemu_timeout_seconds": 30,
-    "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.17)",
+    "qemu_version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
     "target_triple": "x86_64-elf"
   },
-  "git_sha": "342559bdb9dd17a962ab5d75f25692507d7afa8f",
+  "git_sha": "d8018a2c963fafc2fab015a536da71fe1343d290",
   "metrics": {
     "boot_time_ms": 10697,
-    "context_switch_latency_ms_proxy": 171.688525,
-    "syscall_latency_ms_proxy": 171.688525
+    "context_switch_latency_ms_proxy": 171.245902,
+    "syscall_latency_ms_proxy": 171.245902
   },
   "policy": {
     "baseline_authority": "github-hosted-ubuntu-24.04-x64",
@@ -55,29 +55,29 @@
   },
   "raw_metrics": {
     "boot_time_ms": 10697,
-    "context_switch_latency_ms_proxy": 171.688525,
+    "context_switch_latency_ms_proxy": 171.245902,
     "entry_latency_ticks": {
       "available": true,
-      "ticks": 21901799
+      "ticks": 22215571
     },
     "mailbox_phase_breakdown_ticks": {
       "consume_trace": {
-        "count": 23,
+        "count": 24,
         "latest": {
-          "candidate_epoch": 2850,
-          "new_last_epoch": 2850,
-          "old_last_epoch": 2601,
+          "candidate_epoch": 1012,
+          "new_last_epoch": 1012,
+          "old_last_epoch": 749,
           "reason": "timer_validate_accept_consume",
           "site": "timer_validate_irq",
           "tick_valid": 2,
-          "ticks": 25453542698
+          "ticks": 25384032422
         },
         "reason_counts": {
           "gate45_self_keep_running_bypass": 0,
           "gate4_epoch1_pending_bypass": 0,
           "scheduler_keep_running_consume": 0,
           "scheduler_switch_consume": 1,
-          "timer_validate_accept_consume": 22,
+          "timer_validate_accept_consume": 23,
           "timer_validate_accept_deferred": 0
         },
         "site_counts": {
@@ -85,41 +85,41 @@
           "IRQ": 0,
           "START": 0,
           "YIELD": 0,
-          "timer_validate_irq": 22
+          "timer_validate_irq": 23
         }
       },
       "durations": {
         "arbiter": {
           "available": true,
-          "ticks": 8917975
+          "ticks": 9269698
         },
         "arbiter_candidate_lookup": {
           "available": true,
-          "ticks": 491838
+          "ticks": 469984
         },
         "arbiter_decision": {
           "available": true,
-          "ticks": 4513561
+          "ticks": 4432417
         },
         "arbiter_owner_lookup": {
           "available": true,
-          "ticks": 498624
+          "ticks": 495096
         },
         "extract": {
           "available": true,
-          "ticks": 2290162
+          "ticks": 2590091
         },
         "handoff": {
           "available": true,
-          "ticks": 480053
+          "ticks": 331558
         },
         "snapshot": {
           "available": true,
-          "ticks": 468587
+          "ticks": 586113
         },
         "validate": {
           "available": true,
-          "ticks": 1091353
+          "ticks": 1156106
         }
       },
       "events": {
@@ -129,7 +129,7 @@
         },
         "arbiter_candidate_accept_switch": {
           "available": true,
-          "ticks": 25267114554
+          "ticks": 25197560398
         },
         "arbiter_candidate_reject": {
           "available": false,
@@ -137,7 +137,7 @@
         },
         "arbiter_decision_path_fallback": {
           "available": true,
-          "ticks": 25305711217
+          "ticks": 25235935704
         },
         "arbiter_decision_path_keep_running": {
           "available": false,
@@ -149,11 +149,11 @@
         },
         "arbiter_decision_path_switch": {
           "available": true,
-          "ticks": 25266772485
+          "ticks": 25197206863
         },
         "arbiter_keep_running_fallback": {
           "available": true,
-          "ticks": 25306058896
+          "ticks": 25236394221
         },
         "arbiter_ready_head_fallback": {
           "available": false,
@@ -187,8 +187,8 @@
           "epoch_lte_owner_last_epoch_count": 61,
           "epoch_zero_count": 0,
           "latest_candidate_pid": 2,
-          "latest_epoch": 2850,
-          "latest_owner_last_epoch": 2850
+          "latest_epoch": 1012,
+          "latest_owner_last_epoch": 1012
         }
       },
       "fallback_reasons": {
@@ -215,10 +215,10 @@
           "count": 61,
           "enter_count": 61,
           "exit_count": 61,
-          "max_ticks": 1287328,
-          "mean_ticks": 330351,
-          "min_ticks": 274670,
-          "total_ticks": 20151446
+          "max_ticks": 1301415,
+          "mean_ticks": 327796,
+          "min_ticks": 286086,
+          "total_ticks": 19995603
         },
         "keep_running": {
           "available": false,
@@ -245,10 +245,10 @@
           "count": 1,
           "enter_count": 1,
           "exit_count": 1,
-          "max_ticks": 2342715,
-          "mean_ticks": 2342715,
-          "min_ticks": 2342715,
-          "total_ticks": 2342715
+          "max_ticks": 2294033,
+          "mean_ticks": 2294033,
+          "min_ticks": 2294033,
+          "total_ticks": 2294033
         }
       },
       "raw_markers": {
@@ -258,15 +258,15 @@
         },
         "arbiter_candidate_accept_switch": {
           "tick_valid": true,
-          "ticks": 25267114554
+          "ticks": 25197560398
         },
         "arbiter_candidate_lookup_enter": {
           "tick_valid": true,
-          "ticks": 25263787086
+          "ticks": 25194227614
         },
         "arbiter_candidate_lookup_exit": {
           "tick_valid": true,
-          "ticks": 25264278924
+          "ticks": 25194697598
         },
         "arbiter_candidate_reject": {
           "tick_valid": false,
@@ -274,15 +274,15 @@
         },
         "arbiter_decision_enter": {
           "tick_valid": true,
-          "ticks": 25263436810
+          "ticks": 25193869449
         },
         "arbiter_decision_exit": {
           "tick_valid": true,
-          "ticks": 25267950371
+          "ticks": 25198301866
         },
         "arbiter_decision_path_fallback": {
           "tick_valid": true,
-          "ticks": 25305711217
+          "ticks": 25235935704
         },
         "arbiter_decision_path_keep_running": {
           "tick_valid": false,
@@ -294,27 +294,27 @@
         },
         "arbiter_decision_path_switch": {
           "tick_valid": true,
-          "ticks": 25266772485
+          "ticks": 25197206863
         },
         "arbiter_enter": {
           "tick_valid": true,
-          "ticks": 25259360843
+          "ticks": 25189361277
         },
         "arbiter_exit": {
           "tick_valid": true,
-          "ticks": 25268278818
+          "ticks": 25198630975
         },
         "arbiter_keep_running_fallback": {
           "tick_valid": true,
-          "ticks": 25306058896
+          "ticks": 25236394221
         },
         "arbiter_owner_lookup_enter": {
           "tick_valid": true,
-          "ticks": 25259861598
+          "ticks": 25189946141
         },
         "arbiter_owner_lookup_exit": {
           "tick_valid": true,
-          "ticks": 25260360222
+          "ticks": 25190441237
         },
         "arbiter_ready_head_fallback": {
           "tick_valid": false,
@@ -326,35 +326,35 @@
         },
         "extract_enter": {
           "tick_valid": true,
-          "ticks": 25260819548
+          "ticks": 25190944198
         },
         "extract_exit": {
           "tick_valid": true,
-          "ticks": 25263109710
+          "ticks": 25193534289
         },
         "handoff_enter": {
           "tick_valid": true,
-          "ticks": 25268745396
+          "ticks": 25199097700
         },
         "handoff_exit": {
           "tick_valid": true,
-          "ticks": 25269225449
+          "ticks": 25199429258
         },
         "snapshot_enter": {
           "tick_valid": true,
-          "ticks": 25261185701
+          "ticks": 25191322037
         },
         "snapshot_exit": {
           "tick_valid": true,
-          "ticks": 25261654288
+          "ticks": 25191908150
         },
         "validate_enter": {
           "tick_valid": true,
-          "ticks": 25292608788
+          "ticks": 25223132151
         },
         "validate_exit": {
           "tick_valid": true,
-          "ticks": 25293700141
+          "ticks": 25224288257
         }
       }
     },
@@ -395,89 +395,89 @@
       "durations": {
         "boot_start_to_core_ready": {
           "available": true,
-          "ticks": 121617779
+          "ticks": 121608861
         },
         "core_ready_to_first_sched_activity": {
           "available": true,
-          "ticks": 826140
+          "ticks": 820187
         },
         "first_sched_activity_to_first_user_entry": {
           "available": true,
-          "ticks": 19798377
+          "ticks": 19721128
         },
         "first_syscall_gate_entry_to_first_syscall_entry": {
           "available": true,
-          "ticks": 1920433
+          "ticks": 1987979
         },
         "first_syscall_gate_entry_to_first_syscall_exit": {
           "available": true,
-          "ticks": 3080459
+          "ticks": 2999780
         },
         "first_syscall_gate_entry_to_first_syscall_gate_return": {
           "available": true,
-          "ticks": 3574501
+          "ticks": 3507567
         },
         "first_user_entry_to_first_syscall_entry": {
           "available": true,
-          "ticks": 23822232
+          "ticks": 24203550
         },
         "first_user_entry_to_first_syscall_exit": {
           "available": true,
-          "ticks": 24982258
+          "ticks": 25215351
         },
         "first_user_entry_to_first_syscall_gate_entry": {
           "available": true,
-          "ticks": 21901799
+          "ticks": 22215571
         }
       },
       "raw_markers": {
         "boot_start": {
           "tick_valid": true,
-          "ticks": 25131648909
+          "ticks": 25061977472
         },
         "core_ready": {
           "tick_valid": true,
-          "ticks": 25253266688
+          "ticks": 25183586333
         },
         "first_sched_activity": {
           "tick_valid": true,
-          "ticks": 25254092828
+          "ticks": 25184406520
         },
         "first_syscall_entry": {
           "tick_valid": true,
-          "ticks": 25297713437
+          "ticks": 25228331198
         },
         "first_syscall_exit": {
           "tick_valid": true,
-          "ticks": 25298873463
+          "ticks": 25229342999
         },
         "first_syscall_gate_entry": {
           "tick_valid": true,
-          "ticks": 25295793004
+          "ticks": 25226343219
         },
         "first_syscall_gate_return": {
           "tick_valid": true,
-          "ticks": 25299367505
+          "ticks": 25229850786
         },
         "first_user_entry": {
           "tick_valid": true,
-          "ticks": 25273891205
+          "ticks": 25204127648
         }
       }
     },
     "preempt_iret_count": 61,
-    "preempt_qemu_run_time_ms": 10473,
-    "preempt_run_time_ms": 10473,
+    "preempt_qemu_run_time_ms": 10446,
+    "preempt_run_time_ms": 10446,
     "preempt_sw_count": 61,
-    "preempt_wall_time_ms": 10638,
+    "preempt_wall_time_ms": 10612,
     "syscall_gate_return_latency_ticks": {
       "available": true,
-      "ticks": 3574501
+      "ticks": 3507567
     },
-    "syscall_latency_ms_proxy": 171.688525,
+    "syscall_latency_ms_proxy": 171.245902,
     "syscall_latency_ticks_pure": {
       "available": true,
-      "ticks": 3080459
+      "ticks": 2999780
     }
   },
   "schema_version": 1
