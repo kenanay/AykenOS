@@ -20,12 +20,17 @@ those records prevail unless this document is the narrower Phase-24
 accepted-evidence boundary planning record for the exact planning scope
 identified below.
 
-**Status:** LOCAL POST-PUBLICATION PRECISION-CORRECTION DRAFT / NOT
+**Status:** LOCAL SECOND POST-PUBLICATION PRECISION-CORRECTION DRAFT / NOT
 PUBLISHED / NOT CLEAN-FIXED / INITIAL PLANNING PUBLICATION MERGED /
-TECHNICALLY CLEAN-FIXED / POST-PUBLICATION P2 ADJUDICATED VALID /
-STATUS-SYNC BLOCKED PENDING CLEAN-FIXED CORRECTION / NON-AUTHORITATIVE /
-ACCEPTED-EVIDENCE BOUNDARY PLANNING ONLY / NO ACCEPTED EVIDENCE / NO
-EVIDENCE ACCEPTANCE / NO ACCEPTED-EVIDENCE AUTHORITY / NO
+TECHNICALLY CLEAN-FIXED / FIRST PRECISION-CORRECTION PUBLICATION MERGED /
+GATE-LEVEL CLEAN-FIXED WITH TRANSPARENT RERUN HISTORY / SECOND
+POST-PUBLICATION P2 ADJUDICATED VALID / STATUS-SYNC BLOCKED PENDING
+TERMINAL SEMANTICALLY AND TECHNICALLY CLEAN-FIXED CORRECTION SUBJECT,
+RECORDED REMEDIATION EVIDENCE, AND BLOCKING-THREAD RESOLUTION / PR #328
+PRE-PUBLICATION P2 ADJUDICATED VALID / PR #328 MERGE BLOCKED PENDING A NEW
+EXACT HEAD / NON-AUTHORITATIVE /
+ACCEPTED-EVIDENCE BOUNDARY PLANNING ONLY / NO ACCEPTED
+EVIDENCE / NO EVIDENCE ACCEPTANCE / NO ACCEPTED-EVIDENCE AUTHORITY / NO
 ACCEPTED-EVIDENCE SET / NO
 EVIDENCE-ITEM MEMBERSHIP ASSIGNMENT / NO VALIDATOR-OUTPUT ACCEPTANCE / NO
 RECEIPT-EVIDENCE ACCEPTANCE / NO RUNTIME AUTHORITY / NO IMPLEMENTATION
@@ -35,7 +40,9 @@ TRUST AUTHORITY / NO DEPLOYMENT OR DISTRIBUTION / NO KERNEL ABI OR SYSCALL
 EXPANSION / NO WORKFLOW-THRESHOLD CHANGE / NO BASELINE CHANGE / NO
 DEPENDENCY CHANGE / NO RING0 AUTHORITY
 **Planning date:** 2026-08-03
-**Precision-correction date:** 2026-08-03
+**First precision-correction date:** 2026-08-03
+**Second precision-correction date:** 2026-08-09
+**PR #328 pre-publication precision date:** 2026-08-13
 **Planning id:** `ayken.phase24.accepted_evidence_boundary_planning.v1`
 **Initial planning drafting base:**
 `e04e16233977e5c52e2072e4e0c35f13de7b0206`
@@ -53,31 +60,79 @@ objective, scope, and sequencing decision reference
 `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
 **Initial planning post-merge exact-main evidence:** attempt 1 / PASS
 **Initial planning technical status:** MERGED / TECHNICALLY CLEAN-FIXED
-**Post-publication semantic review:** P2 / VALID / BLOCKING FOR STATUS-SYNC
-/ THREAD UNRESOLVED / NOT OUTDATED
-**Precision-correction drafting base:**
+**Initial post-publication semantic review:** P2 / VALID / CORRECTED BY PR
+#327 / THREAD RESOLVED
+**First precision-correction drafting base:**
 `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
-**Precision-correction drafting-base role:** exact technically clean-fixed
-initial planning publication subject used to prepare this correction draft
-**Precision-correction sole direct prerequisite:**
+**First precision-correction drafting-base role:** exact technically
+clean-fixed initial planning publication subject used to prepare the first
+correction draft
+**First precision-correction sole direct prerequisite:**
 `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`
-**Precision-correction direct-prerequisite role:** exact technically
+**First precision-correction direct-prerequisite role:** exact technically
 clean-fixed initial planning publication subject requiring correction after
-the valid post-publication P2 adjudication
-**Precision-correction publication PR:** absent
-**Precision-correction reviewed head:** absent
-**Precision-correction independent approval:** absent
-**Precision-correction publication subject:** absent
-**Precision-correction post-merge exact-main evidence:** absent
-**Precision-correction clean-fixed status:** absent
+the valid initial post-publication P2 adjudication
+**First precision-correction publication PR:** PR #327
+**First precision-correction reviewed head:**
+`aa9178d444d0cc6a092c6814587128c4abced931`
+**First precision-correction independent reviewer:** `kenanay2020-hub`
+**First precision-correction publication subject:**
+`d8018a2c963fafc2fab015a536da71fe1343d290`
+**First precision-correction post-merge exact-main evidence:** ci-freeze
+attempt 1 / FAIL and attempt 2 / PASS; all other mandatory signals attempt 1
+/ PASS
+**First precision-correction technical status:** MERGED / GATE-LEVEL
+CLEAN-FIXED WITH TRANSPARENT RERUN HISTORY
+**First precision-correction semantic status:** NOT CLEAN-FIXED / SECOND P2
+VALID / BLOCKING FOR STATUS-SYNC
+**Second post-publication semantic review:** P2 / VALID / BLOCKING FOR
+STATUS-SYNC / THREAD UNRESOLVED / NOT OUTDATED
+**Second precision-correction drafting base:**
+`d8018a2c963fafc2fab015a536da71fe1343d290`
+**Second precision-correction drafting-base role:** exact merged and
+gate-level clean-fixed first precision-correction publication subject used
+to prepare this second correction draft
+**Second precision-correction sole direct prerequisite:**
+`d8018a2c963fafc2fab015a536da71fe1343d290`
+**Second precision-correction direct-prerequisite role:** exact merged and
+gate-level clean-fixed first precision-correction publication subject
+requiring correction after the valid second P2 adjudication
+**Second precision-correction publication PR:** PR #328 / OPEN / READY / NOT
+MERGED
+**Superseded PR #328 candidate head:**
+`bfb7493c2b54f957f60d8fabe5933eb6ee75ab99`
+**Superseded candidate pre-merge evidence:** PASS on current-main merge-test
+context; historical after head mutation
+**Superseded candidate independent approval:** `kenanay2020-hub`; historical
+after head mutation
+**Superseded candidate merge authorization:** bound only to
+`bfb7493c2b54f957f60d8fabe5933eb6ee75ab99`; historical and inapplicable
+after head mutation
+**PR #328 pre-publication semantic review:** P2 / VALID / BLOCKING FOR PR #328
+MERGE / THREAD UNRESOLVED / NOT OUTDATED
+**Corrected second precision-correction reviewed head:** absent
+**Corrected second precision-correction independent approval:** absent
+**Second precision-correction publication subject:** absent
+**Second precision-correction post-merge exact-main evidence:** absent
+**Second precision-correction gate-level technical status:** absent
+**Second precision-correction post-publication semantic review:** absent
+**Second precision-correction semantic finding adjudication:** absent
+**Second precision-correction semantic and technical clean-fixed status:**
+absent
 **Planning publication-status sync PR:** absent
 **Planning publication-status sync reviewed head:** absent
 **Planning publication-status sync independent approval:** absent
 **Planning publication-status sync subject:** absent
 **Planning publication-status sync post-merge evidence:** absent
+**Planning publication-status sync gate-level technical status:** absent
+**Planning publication-status sync post-publication semantic review:** absent
+**Planning publication-status sync semantic finding adjudication:** absent
+**Planning publication-status sync semantic and technical clean-fixed
+status:** absent
 **Synchronized canonical planning reference:** absent
 **Future accepted-evidence record class:** absent; no future record class is
-selected or authorized by the initial publication or this correction draft
+selected or authorized by the initial publication, the first correction
+publication, or this second correction draft
 **Next downstream prerequisite:** absent
 **Current phase pointer:** `CURRENT_PHASE=24`
 **Authority expansion:** NONE
@@ -92,8 +147,11 @@ selected or authorized by the initial publication or this correction draft
 This document preserves one governance-only Phase-24 planning boundary
 after the clean-fixed objective, scope, and sequencing decision status sync.
 
-This local precision-correction draft narrows the published planning duty
-identified by the valid post-publication P2 review.
+This local second precision-correction draft removes the remaining
+future-class decision duty identified by the valid second post-publication
+P2 review. Its pre-publication PR #328 precision update also removes the
+numbered-correction identity deadlock identified by the valid PR #328 P2
+review.
 
 It answers one bounded question:
 
@@ -148,7 +206,8 @@ Unknown authority readings fail closed.
 
 ## Current Canonical State
 
-The current canonical Phase-24 state relevant to this correction draft is:
+The current canonical Phase-24 state relevant to this second correction
+draft is:
 
 ```text
 CURRENT_PHASE=24
@@ -160,9 +219,23 @@ objective, scope, and sequencing decision: synchronized and clean-fixed
 first selected topic: Phase-24 accepted-evidence boundary planning
 initial accepted-evidence planning publication: merged / technically clean-fixed
 initial planning publication subject: ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
-post-publication semantic review: P2 / valid / status-sync blocking
-precision-correction publication: absent
+initial post-publication P2: valid / corrected by PR #327 / thread resolved
+first precision-correction publication: merged / gate-level clean-fixed
+first precision-correction subject: d8018a2c963fafc2fab015a536da71fe1343d290
+first correction semantic status: not clean-fixed
+second post-publication P2: valid / status-sync blocking / thread unresolved
+second precision-correction publication: PR #328 candidate / not merged
+superseded PR #328 candidate head: bfb7493c2b54f957f60d8fabe5933eb6ee75ab99
+PR #328 pre-publication P2: valid / merge blocking / thread unresolved
+second correction gate-level technical status: absent
+second correction post-publication semantic review: absent
+second correction semantic finding adjudication: absent
+second correction semantic and technical clean-fixed status: absent
 planning publication-status sync: absent
+planning status-sync gate-level technical status: absent
+planning status-sync post-publication semantic review: absent
+planning status-sync semantic finding adjudication: absent
+planning status-sync semantic and technical clean-fixed status: absent
 synchronized canonical planning reference: absent
 accepted evidence: absent
 evidence acceptance: absent
@@ -180,17 +253,17 @@ e04e16233977e5c52e2072e4e0c35f13de7b0206
 That reference made the initial planning publication eligible for its
 separate lifecycle.
 
-The current precision-correction drafting base and sole direct prerequisite
-are:
+The current second precision-correction drafting base and sole direct
+prerequisite are:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
-That subject makes this correction draft eligible to be authored and
-reviewed through a separate one-file lifecycle.
+That subject makes this second correction draft eligible to be authored
+and reviewed through a separate one-file lifecycle.
 
-It does not publish this correction.
+It does not publish this second correction.
 
 It does not make the planning boundary semantically corrected.
 
@@ -198,24 +271,24 @@ It does not accept evidence.
 
 It does not authorize a future record.
 
-## Precision-Correction Sole Direct Prerequisite
+## Second Precision-Correction Sole Direct Prerequisite
 
-This precision-correction draft has exactly one direct prerequisite:
+This second precision-correction draft has exactly one direct prerequisite:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
 Its exact role is:
 
 ```text
-exact technically clean-fixed initial Phase-24 accepted-evidence boundary
-planning publication subject requiring correction after valid P2
-adjudication
+exact merged and gate-level clean-fixed first Phase-24 accepted-evidence
+boundary planning precision-correction publication subject requiring a
+second correction after valid second P2 adjudication
 ```
 
-The precision-correction drafting base and direct prerequisite have the
-same SHA.
+The second precision-correction drafting base and direct prerequisite have
+the same SHA.
 
 Their governance roles remain distinct.
 
@@ -226,18 +299,21 @@ The direct prerequisite is not:
 3. The initial planning direct prerequisite.
 4. The initial planning approved head.
 5. PR #326 as a number.
-6. The decision id.
-7. The decision initial-publication subject.
-8. The decision sync approved head.
-9. PR #325 as a number.
-10. A workflow run or job id.
-11. A branch name or tag.
-12. A prospective merge SHA.
-13. Historical evidence.
-14. A Phase-23 record.
-15. The Phase-23 structural precedent for this planning class.
+6. The initial planning publication subject.
+7. The first correction approved head.
+8. PR #327 as a number.
+9. The decision id.
+10. The decision initial-publication subject.
+11. The decision sync approved head.
+12. PR #325 as a number.
+13. A workflow run or job id.
+14. A branch name or tag.
+15. A prospective merge SHA.
+16. Historical evidence.
+17. A Phase-23 record.
+18. The Phase-23 structural precedent for this planning class.
 
-No other subject is a direct prerequisite of this correction draft.
+No other subject is a direct prerequisite of this second correction draft.
 
 The direct prerequisite is necessary but not sufficient for publication.
 
@@ -245,7 +321,82 @@ It supplies no inherited authority.
 
 ## Prerequisite Evidence And Provenance
 
-The correction sole direct prerequisite is the actual squash-merge
+The second correction sole direct prerequisite is the actual squash-merge
+exact-main subject of PR #327.
+
+PR #327 changed only:
+
+```text
+PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
+```
+
+The independently approved unchanged first correction head was:
+
+```text
+aa9178d444d0cc6a092c6814587128c4abced931
+```
+
+The independent reviewer was:
+
+```text
+kenanay2020-hub
+```
+
+The actual first correction publication subject was:
+
+```text
+d8018a2c963fafc2fab015a536da71fe1343d290
+```
+
+The post-merge exact-main evidence on that subject was:
+
+| Evidence | Run | Job | Attempt | Result |
+| --- | --- | --- | --- | --- |
+| ci-freeze | `30840520901` | `freeze / 91776135730` | 1 | FAIL |
+| ci-freeze | `30840520901` | `freeze / 91778796152` | 2 | PASS |
+| Dev Loop Validation | `30840520890` | `devloop / 91776135403` | 1 | PASS |
+| AykenOS Dev Loop CI | `30840520917` | workflow | 1 | PASS |
+| smoke | `30840520917` | `smoke / 91776135848` | 1 | PASS |
+| contract | `30840520917` | `contract / 91776446958` | 1 | PASS |
+| full | `30840520917` | `full / 91776985428` | 1 | PASS |
+| isolation | `30840520917` | `isolation / 91777604481` | 1 | PASS |
+| performance | `30840520917` | `performance / 91778197793` | 1 | PASS |
+
+The ci-freeze attempt 1 failure occurred at `ci-gate-alias-proof`.
+
+Attempt 2 passed on the same exact-main subject.
+
+The failed attempt remains permanent publication provenance.
+
+The other mandatory post-merge evidence completed on attempt 1.
+
+That evidence established the first correction publication's gate-level
+technical clean-fixed status with transparent rerun history.
+
+It did not establish semantic clean-fixed status.
+
+It is not evidence for the second precision-correction publication.
+
+The second P2 finding was adjudicated as:
+
+```text
+VALID / BLOCKING FOR STATUS-SYNC
+```
+
+The second P2 review thread must remain unresolved while the
+planning-remediation chain has no terminal semantically and technically
+clean-fixed correction publication.
+
+After that status is established, the thread must remain unresolved until
+the terminal correction subject and required remediation evidence are
+recorded in the PR #327 second P2 thread.
+
+Only after that evidence reply is recorded may the thread be resolved.
+
+Planning status sync remains blocked until that evidence reply and thread
+resolution are recorded.
+
+The first correction sole direct prerequisite was the actual squash-merge
 exact-main subject of PR #326.
 
 PR #326 published only:
@@ -290,18 +441,18 @@ The mandatory post-merge evidence completed on attempt 1.
 That evidence established the initial publication's technical clean-fixed
 status.
 
-It does not resolve the valid post-publication P2 finding.
+It is not evidence for either precision-correction publication.
 
-It is not evidence for the precision-correction publication.
-
-The P2 finding was adjudicated as:
+The initial post-publication P2 finding was adjudicated as:
 
 ```text
 VALID / BLOCKING FOR STATUS-SYNC
 ```
 
-The review thread remains unresolved and not outdated until the correction
-is clean-fixed.
+The initial P2 finding was corrected by PR #327.
+
+Its review thread was resolved after the first correction publication
+evidence was recorded.
 
 The initial planning publication sole direct prerequisite was the actual
 squash-merge exact-main subject of PR #325:
@@ -310,7 +461,7 @@ squash-merge exact-main subject of PR #325:
 e04e16233977e5c52e2072e4e0c35f13de7b0206
 ```
 
-That subject is upstream provenance for this correction draft.
+That subject is upstream provenance for this second correction draft.
 
 PR #325 published a metadata-only status sync for:
 
@@ -355,7 +506,7 @@ The expected `init_perf_baseline` and `auto-bisect` jobs were skipped.
 
 This evidence established initial-planning prerequisite cleanliness only.
 
-It is not evidence for the precision-correction publication.
+It is not evidence for either precision-correction publication.
 
 The decision initial-publication subject was:
 
@@ -374,12 +525,16 @@ reference was:
 
 That subject is earlier-chain provenance only.
 
-No upstream provenance subject replaces the correction sole direct
+No upstream provenance subject replaces the second correction sole direct
 prerequisite at:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
+
+The initial planning publication subject at
+`ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2` remains first-correction
+prerequisite provenance only.
 
 Historical provenance does not create an additional prerequisite.
 
@@ -397,53 +552,79 @@ initial planning drafting base != initial planning publication subject
 initial planning direct prerequisite != initial planning publication subject
 approved initial exact head != actual initial planning publication subject
 prospective initial merge SHA != actual initial planning publication subject
-initial planning publication subject == correction drafting base value
-initial planning publication subject == correction direct prerequisite value
-correction drafting-base role != correction direct-prerequisite role
-correction drafting base != correction publication subject
-correction direct prerequisite != correction publication subject
-approved correction exact head != correction publication subject
-prospective correction merge SHA != correction publication subject
-clean-fixed correction publication subject
+initial planning publication subject == first correction drafting base value
+initial planning publication subject == first correction prerequisite value
+first correction drafting-base role
+!= first correction direct-prerequisite role
+first correction publication subject == second correction drafting base value
+first correction publication subject == second correction prerequisite value
+second correction drafting-base role
+!= second correction direct-prerequisite role
+second correction drafting base != second correction publication subject
+second correction direct prerequisite != second correction publication subject
+approved second correction exact head != second correction publication subject
+prospective second correction merge SHA
+!= second correction publication subject
+terminal semantically and technically clean-fixed correction publication
+subject in the completed planning-remediation chain
 != later planning publication-status sync subject
-clean-fixed correction publication subject
+terminal semantically and technically clean-fixed correction publication
+subject in the completed planning-remediation chain
 != synchronized canonical planning reference
-clean-fixed planning publication-status sync subject
+semantically and technically clean-fixed planning publication-status sync
+subject
 == synchronized canonical planning reference
 ```
 
 The final equality becomes valid only after the sync publication has its own
 independent unchanged-head approval, actual squash-merge exact-main subject,
-and complete mandatory post-merge PASS evidence.
+complete mandatory post-merge PASS evidence, and recorded semantic closure
+with no valid unresolved blocking semantic finding.
 
 The following lifecycle stages remain distinct:
 
 ```text
 reviewed initial planning publication
 != technically clean-fixed initial planning publication
-!= valid post-publication semantic finding
-!= local post-publication precision-correction draft
-!= reviewed precision-correction publication
-!= clean-fixed corrected planning publication
+!= valid initial post-publication semantic finding
+!= reviewed first precision-correction publication
+!= gate-level clean-fixed first precision-correction publication
+!= valid second post-publication semantic finding
+!= local second post-publication precision-correction draft
+!= reviewed second precision-correction publication
+!= gate-level technically clean-fixed second correction publication
+!= recorded post-publication semantic review and adjudication
+!= semantically and technically clean-fixed corrected planning publication
+!= recorded PR #327 second-P2 evidence reply and thread resolution
 != local planning publication-status sync draft
 != reviewed planning publication-status sync
-!= clean-fixed planning publication-status sync
+!= gate-level technically clean-fixed planning publication-status sync
+!= recorded planning status-sync post-publication semantic review
+!= semantically and technically clean-fixed planning publication-status sync
 != synchronized canonical planning reference
 != later accepted-evidence governance record
 != accepted evidence
 ```
 
-The current state is the local post-publication precision-correction line.
+The current state is the local second post-publication
+precision-correction line.
 
 The initial publication remains technically clean-fixed.
 
-The valid P2 finding blocks status synchronization until the correction is
-separately published and verified clean-fixed.
+The first correction publication remains gate-level clean-fixed with
+transparent rerun history.
 
-No future precision-correction or planning status-sync publication subject
-may be assigned or recorded before that stage's own actual squash merge.
+The valid second P2 finding blocks status synchronization until the
+planning-remediation chain produces a terminal correction publication that
+is semantically and technically clean-fixed and is followed by the required
+remediation evidence replies and blocking-thread resolutions.
 
-No synchronized reference may be claimed before sync exact-main PASS.
+No future second precision-correction or planning status-sync publication
+subject may be assigned or recorded before that stage's own actual squash
+merge.
+
+No synchronized reference may be claimed before sync exact-main PASS and
+recorded semantic closure.
 
 ## Core Rule
 
@@ -462,12 +643,30 @@ planning boundary != authority grant
 local draft != reviewed publication
 technically clean-fixed initial planning publication
 != clean-fixed corrected planning publication
-valid post-publication P2 finding
-== planning publication-status sync blocked pending clean-fixed correction
+gate-level clean-fixed first correction publication
+!= semantically clean-fixed corrected planning publication
+mandatory second correction post-merge technical PASS
+!= semantic clean-fixed status
+gate-level technically clean-fixed second correction publication
+!= semantically and technically clean-fixed corrected planning publication
+valid blocking planning-remediation finding
+== planning publication-status sync blocked pending a terminal clean-fixed
+correction subject, recorded remediation evidence, and blocking-thread
+resolution
 initial planning publication subject
-!= planning publication-status sync direct prerequisite after valid P2
-clean-fixed correction publication subject
-== future planning publication-status sync direct prerequisite only
+!= planning publication-status sync direct prerequisite after valid P2 findings
+first correction publication subject
+!= planning publication-status sync direct prerequisite after second P2
+only the actual exact-main subject of the terminal semantically and
+technically clean-fixed correction publication in the completed
+planning-remediation chain may become the future planning
+publication-status sync direct prerequisite
+required remediation evidence replies and blocking-thread resolutions
+== prerequisite eligibility conditions only
+mandatory planning status-sync post-merge technical PASS
+!= semantic clean-fixed status
+gate-level technically clean-fixed planning publication-status sync
+!= semantically and technically clean-fixed planning publication-status sync
 clean-fixed planning publication != accepted-evidence decision
 clean-fixed planning publication != evidence acceptance
 CI PASS != authority grant
@@ -476,11 +675,19 @@ evaluation-map inclusion != sequencing approval
 direct prerequisite != inherited authority
 ```
 
-The current correction sole direct prerequisite relationship is:
+The current second correction sole direct prerequisite relationship is:
 
 ```text
-Phase-24 accepted-evidence boundary planning precision-correction
+Phase-24 accepted-evidence boundary planning second precision-correction
 direct prerequisite
+== exact merged and gate-level clean-fixed first correction publication subject
+```
+
+The first correction direct prerequisite relationship remains historical
+provenance:
+
+```text
+first precision-correction direct prerequisite
 == exact technically clean-fixed initial planning publication subject
 ```
 
@@ -525,8 +732,12 @@ It may not decide that an item is accepted.
 
 It may not approve a set.
 
-It may not select the next record class before review of the planning
-outcome.
+It does not select the next record class before or after review of this
+planning outcome.
+
+Only a later separately authorized and reviewed record may determine
+whether another accepted-evidence governance record is necessary and which
+record class, if any, is appropriate.
 
 ## In-Scope Planning Dimensions
 
@@ -549,14 +760,19 @@ Only the following planning dimensions are in scope:
 12. The treatment of failures, reruns, stale subjects, and historical PASS.
 13. The changed-file scope required for any later one-file publication.
 14. The denial surface that must remain closed before a later decision.
-15. Whether a later candidate, decision candidate, decision, or another
-    governance record class must be evaluated next.
 
 In-scope planning does not authorize any planned action.
 
 The order above is not an approved execution sequence.
 
 The list does not predetermine a future record class.
+
+Whether another accepted-evidence governance record is necessary and which
+record class, if any, is appropriate is outside this planning record's
+determination authority.
+
+Only a later separately authorized and reviewed record may make that
+determination.
 
 ## Out-Of-Scope Authority Areas
 
@@ -746,14 +962,20 @@ more of the following record classes are needed:
 3. An accepted-evidence decision candidate.
 4. An accepted-evidence boundary decision.
 5. A non-acceptance reinforcement record.
-6. No further accepted-evidence record.
 
-The list is illustrative and non-exhaustive.
+It may instead determine the following no-further-record outcome:
+
+```text
+no further accepted-evidence record is necessary
+```
+
+The record-class list and no-further-record outcome are illustrative and
+non-exhaustive.
 
 The list is evaluative, not authorizing.
 
-Future record-class eligibility remains an outcome for a later separately
-authorized and reviewed record.
+Future record-class eligibility or the no-further-record outcome remains a
+determination for a later separately authorized and reviewed record.
 
 ```text
 planning record != future candidate
@@ -803,16 +1025,17 @@ historical subject != current publication subject
 Aliases, prefixes, branch names, tags, PR numbers, run ids, and human labels
 cannot replace a full exact subject.
 
-The direct prerequisite of this correction draft must remain exactly:
+The direct prerequisite of this second correction draft must remain
+exactly:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
 ## Mandatory Publication Evidence Expectation
 
-The precision-correction publication must produce all of the following on
-its actual exact-main subject:
+The second precision-correction publication must produce all of the
+following on its actual exact-main subject:
 
 1. `ci-freeze` PASS.
 2. Dev Loop Validation PASS.
@@ -827,11 +1050,18 @@ Every result must identify its run and, where applicable, job.
 
 The results must be bound to the same actual exact-main subject.
 
+These signals establish gate-level technical cleanliness only.
+
+They do not establish semantic clean-fixed status.
+
 The status-sync publication must later satisfy the same expectation on its
 own actual exact-main subject.
 
-The initial publication and upstream prerequisite evidence recorded above
-cannot satisfy either future publication.
+Those status-sync signals also establish gate-level technical cleanliness
+only and do not establish semantic clean-fixed status.
+
+The initial publication, first correction, and upstream prerequisite
+evidence recorded above cannot satisfy either future publication.
 
 ## No Inherited Evidence Rule
 
@@ -841,9 +1071,11 @@ prerequisite PASS != current planning publication evidence
 pre-merge PASS != post-merge exact-main evidence
 different-subject PASS != current publication evidence
 different-scope PASS != current publication evidence
-initial planning publication PASS != correction publication evidence
+initial planning publication PASS != first or second correction evidence
 initial planning publication PASS != planning sync publication evidence
-correction publication PASS != planning sync publication evidence
+first correction publication PASS != second correction publication evidence
+first correction publication PASS != planning sync publication evidence
+second correction publication PASS != planning sync publication evidence
 ```
 
 No evidence result is inherited merely because it is newer, broader, or
@@ -873,6 +1105,86 @@ independent approval.
 
 An earlier failure cannot be relabeled as skipped or absent.
 
+## Post-Publication Semantic Review Evidence
+
+Every required post-publication semantic review must record:
+
+1. The actual exact-main subject reviewed.
+2. The semantic reviewer or review-mechanism identity.
+3. The review artifact or durable review reference.
+4. The bounded semantic review scope.
+5. Every semantic finding, if any.
+6. The adjudication of every finding.
+7. The final semantic review outcome.
+
+A human semantic reviewer must be independent of the publication author.
+
+A non-human review mechanism must be separately identified and produce an
+auditable artifact bound to the actual exact-main subject.
+
+A self-authored or unidentified semantic-closure assertion is not semantic
+review evidence.
+
+```text
+publication approval != post-publication semantic review
+technical PASS != post-publication semantic review
+thread resolution != semantic correction
+```
+
+A semantic finding adjudicated `VALID / BLOCKING` cannot be cleared by
+adjudication, comment resolution, or thread resolution alone.
+
+It requires a subsequent correction publication on a new actual exact-main
+subject and that publication's own complete technical and semantic closure
+lifecycle.
+
+Thread resolution may record completed remediation.
+
+Thread resolution does not create that remediation.
+
+## Terminal Correction Identity
+
+A correction publication is terminal for the current planning-remediation
+chain only when:
+
+1. Its identity is its actual squash-merge exact-main subject.
+2. It has satisfied every mandatory post-merge technical evidence
+   requirement on that exact subject.
+3. Its required post-publication semantic review is recorded against that
+   exact subject.
+4. Every semantic finding is adjudicated.
+5. No valid unresolved blocking semantic finding remains.
+6. No further correction publication is required by the remediation chain.
+
+Terminal identity is established by completed technical and semantic
+closure, not by chronology or numbering.
+
+```text
+terminal correction publication
+!= latest publication merely by time
+terminal correction publication
+!= highest-numbered correction
+terminal correction publication
+!= most recently merged correction without complete closure
+```
+
+If the second correction completes technical and semantic closure without a
+valid unresolved blocking finding, its actual subject is terminal.
+
+If that subject receives a valid blocking semantic finding, it is not
+terminal. A subsequent correction publication is required and may become
+terminal only after its own complete technical and semantic closure.
+
+The same rule repeats for every further correction required by a valid
+blocking finding.
+
+The terminal correction subject identity remains separate from status-sync
+eligibility.
+
+Required remediation evidence replies and blocking-thread resolutions are
+eligibility conditions. They are not components of the terminal subject
+identity.
+
 ## Publication Lifecycle
 
 The completed initial planning publication lifecycle was:
@@ -887,33 +1199,64 @@ local planning draft based on e04e16233977e5c52e2072e4e0c35f13de7b0206
 -> ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 -> mandatory post-merge exact-main PASS
 -> technically clean-fixed initial planning publication
--> post-publication P2 finding
--> P2 adjudicated valid and status-sync blocking
+-> initial post-publication P2 finding
+-> initial P2 adjudicated valid and status-sync blocking
 ```
 
 The initial publication does not create a synchronized canonical planning
 reference.
 
-The required precision-correction lifecycle is:
+The completed first precision-correction lifecycle was:
 
 ```text
 ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
--> local post-publication precision-correction draft
+-> local first post-publication precision-correction draft
 -> one-file draft PR
 -> complete pre-merge PASS on one exact head
 -> independent approval of that unchanged exact head
 -> final one-file scope and head verification
 -> squash merge
--> actual precision-correction exact-main subject
--> mandatory post-merge exact-main PASS
--> clean-fixed corrected planning publication
+-> d8018a2c963fafc2fab015a536da71fe1343d290
+-> mandatory post-merge exact-main evidence
+-> ci-freeze attempt 1 FAIL / attempt 2 PASS
+-> all other mandatory signals attempt 1 PASS
+-> gate-level clean-fixed first correction publication
+-> second post-publication P2 finding
+-> second P2 adjudicated valid and status-sync blocking
 ```
 
-Only that future clean-fixed correction subject may start the required
-metadata-only sync lifecycle:
+The required second precision-correction lifecycle is:
 
 ```text
-clean-fixed corrected planning publication subject
+d8018a2c963fafc2fab015a536da71fe1343d290
+-> local second post-publication precision-correction draft
+-> one-file draft PR
+-> complete pre-merge PASS on one exact head
+-> independent approval of that unchanged exact head
+-> final one-file scope and head verification
+-> squash merge
+-> actual second precision-correction exact-main subject
+-> mandatory post-merge exact-main PASS
+-> gate-level technically clean-fixed second correction publication
+-> recorded post-publication semantic review of the actual subject
+-> adjudication of every semantic finding
+-> no valid unresolved blocking finding: second correction becomes terminal
+-> valid blocking finding: subsequent correction publication required
+-> repeat technical and semantic closure for each required correction
+-> no valid unresolved blocking semantic finding remains on the terminal subject
+-> semantically and technically clean-fixed terminal correction publication
+-> required remediation evidence replies with actual correction subjects
+-> related blocking-thread resolutions
+```
+
+Only the actual exact-main subject of the terminal correction publication in
+the completed planning-remediation chain may become the sync direct
+prerequisite after all required remediation evidence replies and related
+blocking-thread resolutions are recorded:
+
+```text
+terminal semantically and technically clean-fixed correction publication
+subject in the completed planning-remediation chain
 -> local metadata-only planning status-sync draft
 -> one-file draft PR
 -> complete pre-merge PASS on one exact head
@@ -922,7 +1265,11 @@ clean-fixed corrected planning publication subject
 -> squash merge
 -> actual planning status-sync exact-main subject
 -> mandatory post-merge exact-main PASS
--> clean-fixed planning status sync
+-> gate-level technically clean-fixed planning status-sync publication
+-> recorded post-publication semantic review of the actual sync subject
+-> adjudication of every semantic finding
+-> no valid unresolved blocking semantic finding remains
+-> semantically and technically clean-fixed planning status sync
 -> synchronized canonical planning reference
 ```
 
@@ -931,41 +1278,81 @@ line exists.
 
 Even the final line does not accept evidence.
 
-## Precision-Correction Publication Preconditions
+## PR #328 Pre-Publication P2 Remediation
 
-The precision-correction publication may be merged and published only if:
+The PR #328 candidate head at:
+
+```text
+bfb7493c2b54f957f60d8fabe5933eb6ee75ab99
+```
+
+was never a publication subject.
+
+Its pre-merge PASS, independent approval, and merge authorization are
+historical provenance after this correction changes the exact head.
+
+```text
+superseded candidate PASS != corrected-head PASS
+superseded candidate approval != corrected-head approval
+superseded merge authorization != corrected-head merge authorization
+```
+
+The PR #328 P2 thread must remain unresolved until:
+
+1. The corrected exact head is recorded.
+2. Mandatory pre-merge checks pass on that exact head.
+3. Independent approval binds to that unchanged exact head.
+4. A remediation reply records the corrected head and review evidence.
+
+The thread may then be resolved before publication because the finding was
+detected and corrected before merge.
+
+Thread resolution does not publish the corrected head and does not create
+authority.
+
+## Second Precision-Correction Publication Preconditions
+
+The second precision-correction publication may be merged and published
+only if:
 
 1. The direct prerequisite remains exactly
-   `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`.
-2. The prerequisite remains the technically clean-fixed PR #326 initial
-   planning publication subject.
-3. The P2 finding remains adjudicated valid and status-sync blocking.
-4. The substantive planning correction is limited to resolving and
-   hardening the adjudicated P2 planning-duty contradiction. Accompanying
-   changes may record or clarify correction-specific prerequisite,
-   lifecycle, publication-stage, and provenance rules without changing the
-   bounded planning outcome or opening authority.
-5. The corrected text defines conditions for a later separately authorized
+   `d8018a2c963fafc2fab015a536da71fe1343d290`.
+2. The prerequisite remains the merged and gate-level clean-fixed PR #327
+   first correction publication subject.
+3. The second P2 finding remains adjudicated valid and status-sync
+   blocking.
+4. The PR #328 pre-publication P2 remains adjudicated valid and merge
+   blocking until corrected exact-head evidence is recorded.
+5. The substantive planning correction is limited to resolving and
+   hardening the adjudicated second P2 future-class decision-duty
+   contradiction and the adjudicated PR #328 numbered-correction
+   status-sync identity deadlock. Accompanying changes may record or clarify
+   correction-specific prerequisite, terminal-remediation-chain, lifecycle,
+   publication-stage, and provenance rules without changing the bounded
+   planning outcome or opening authority.
+6. The corrected text defines conditions for a later separately authorized
    and reviewed record to make the future necessity/class determination.
-6. This planning record does not make that determination.
-7. `CURRENT_PHASE=24` remains unchanged.
-8. The bounded planning question remains unchanged.
-9. No concrete evidence item is named for selection or acceptance.
-10. No accepted-evidence set or membership assignment is created.
-11. Candidate, decision, and acceptance stages remain separate.
-12. The publication changes only this file.
-13. The exact reviewed correction head receives independent approval.
-14. Any post-approval head mutation invalidates that approval.
-15. All mandatory pre-merge checks pass with failure history preserved.
-16. The Phase-21 local draft remains outside publication scope.
+7. This planning record does not make that determination.
+8. `CURRENT_PHASE=24` remains unchanged.
+9. The bounded planning question remains unchanged.
+10. No concrete evidence item is named for selection or acceptance.
+11. No accepted-evidence set or membership assignment is created.
+12. Candidate, decision, and acceptance stages remain separate.
+13. The publication changes only this file.
+14. The exact reviewed second correction head receives independent
+    approval.
+15. Any post-approval head mutation invalidates that approval.
+16. All mandatory pre-merge checks pass with failure history preserved.
+17. The Phase-21 local draft remains outside publication scope.
 
 A violation fails closed.
 
-## Precision-Correction Exact-Main Evidence
+## Second Precision-Correction Exact-Main Evidence
 
-The current local correction draft has no correction publication subject.
+The current local second correction draft has no second correction
+publication subject.
 
-Therefore all correction publication evidence is absent.
+Therefore all second correction publication evidence is absent.
 
 After a future squash merge, the actual exact-main subject must satisfy:
 
@@ -982,21 +1369,58 @@ After a future squash merge, the actual exact-main subject must satisfy:
 11. performance passes.
 12. Attempt and rerun history is recorded without erasure.
 13. No current-phase pointer file changes.
-14. No prior Phase-24 governance file changes.
-15. No accepted-evidence, validator, receipt, runtime, source, package,
-    workflow, baseline, dependency, kernel, or Ring0 file changes.
+14. No other Phase-24 governance file changes.
+15. No accepted-evidence candidate, decision, set, item, validator, receipt,
+    runtime, source, package, workflow, baseline, dependency, kernel, or
+    Ring0 file changes.
 
-Until every item passes:
+Until every technical item passes:
 
 ```text
-precision-correction publication
-!= clean-fixed corrected planning publication
+second precision-correction publication
+!= gate-level technically clean-fixed second correction publication
 ```
+
+Technical completion does not establish semantic completion.
+
+## Second Precision-Correction Semantic Closure
+
+After gate-level technical clean-fixed status is established:
+
+1. The actual second-correction exact-main subject must undergo a
+   post-publication semantic review satisfying the semantic-review evidence
+   requirements above.
+2. The semantic review scope and outcome must be recorded against that
+   actual subject.
+3. Every semantic finding must be adjudicated.
+4. Any valid unresolved blocking semantic finding blocks semantic
+   clean-fixed status.
+5. Technical PASS alone does not establish semantic clean-fixed status.
+6. A recorded semantic review outcome must establish that no valid
+   unresolved blocking semantic finding remains.
+7. If a valid blocking finding exists, this subject is non-terminal and a
+   subsequent correction publication with its own exact-subject technical
+   and semantic closure is required.
+8. Only a correction subject with no valid unresolved blocking finding may
+   be classified as semantically and technically clean-fixed and terminal
+   for the current remediation chain.
+
+```text
+gate-level technically clean-fixed second correction publication
+!= semantically and technically clean-fixed corrected planning publication
+```
+
+Required remediation evidence replies and related blocking-thread
+resolutions are status-sync prerequisite eligibility conditions. They are
+not part of the terminal correction subject identity.
 
 ## Publication-Status Sync Dependency
 
 A metadata-only planning publication-status sync is blocked until the
-precision correction is separately published and verified clean-fixed.
+planning-remediation chain has a terminal correction publication verified
+semantically and technically clean-fixed, every required remediation reply
+records the applicable actual subject and evidence, and every related
+blocking thread is resolved.
 
 The initial planning publication subject at:
 
@@ -1004,13 +1428,36 @@ The initial planning publication subject at:
 ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
 ```
 
-is not eligible to be the sync direct prerequisite after the valid P2
-adjudication.
+is not eligible to be the sync direct prerequisite after the valid initial
+P2 adjudication.
 
-The sync direct prerequisite must instead be exactly:
+The first precision-correction publication subject at:
 
 ```text
-future actual clean-fixed precision-correction publication subject
+d8018a2c963fafc2fab015a536da71fe1343d290
+```
+
+is not eligible to be the sync direct prerequisite after the valid second
+P2 adjudication.
+
+The sync direct prerequisite identity must instead be exactly:
+
+```text
+actual exact-main subject of the terminal correction publication in the
+completed planning-remediation chain that has independently satisfied every
+required technical and semantic clean-fixed condition
+```
+
+That subject becomes eligible for use only after all required remediation
+evidence replies and related blocking-thread resolutions are recorded.
+
+```text
+terminal correction subject identity
+!= status-sync eligibility
+remediation evidence reply
+!= component of terminal correction subject identity
+blocking-thread resolution
+!= component of terminal correction subject identity
 ```
 
 The sync must record:
@@ -1022,14 +1469,29 @@ The sync must record:
 5. The initial publication attempt history.
 6. The initial publication mandatory post-merge evidence.
 7. The initial planning technical clean-fixed status.
-8. The valid P2 adjudication.
-9. The precision-correction publication PR.
-10. The independently approved correction head.
-11. The correction independent reviewer.
-12. The actual precision-correction publication subject.
-13. The correction attempt history.
-14. The correction mandatory post-merge evidence.
-15. The corrected planning clean-fixed status.
+8. The valid initial P2 adjudication.
+9. The first precision-correction publication PR.
+10. The independently approved first correction head.
+11. The first correction independent reviewer.
+12. The actual first precision-correction publication subject.
+13. The first correction attempt and rerun history.
+14. The first correction mandatory post-merge evidence.
+15. The valid second P2 adjudication.
+16. The second precision-correction publication PR.
+17. The independently approved second correction head.
+18. The second correction independent reviewer.
+19. The actual second precision-correction publication subject.
+20. The second correction attempt history.
+21. The second correction mandatory post-merge evidence.
+22. The recorded post-publication semantic review and any finding
+    adjudications.
+23. Every subsequent correction publication required by a valid blocking
+    semantic finding, including its PR, approved head, reviewer, actual
+    subject, technical evidence, semantic review, and finding adjudications.
+24. The terminal correction publication identity and its semantic and
+    technical clean-fixed status.
+25. Every required remediation evidence reply and related blocking-thread
+    resolution.
 
 The sync must not alter the bounded planning question or planning outcomes.
 
@@ -1041,11 +1503,48 @@ The sync requires its own actual exact-main subject and mandatory
 post-merge PASS.
 
 ```text
-clean-fixed correction publication subject
+terminal semantically and technically clean-fixed correction publication
+subject in the completed planning-remediation chain
 != planning status-sync publication subject
-clean-fixed correction publication subject
+terminal semantically and technically clean-fixed correction publication
+subject in the completed planning-remediation chain
 != synchronized canonical planning reference
-clean-fixed planning status-sync publication subject
+semantically and technically clean-fixed planning status-sync publication
+subject
+== synchronized canonical planning reference
+```
+
+## Planning Publication-Status Sync Semantic Closure
+
+After the status-sync publication satisfies its mandatory post-merge
+technical evidence:
+
+1. It may be classified only as gate-level technically clean-fixed.
+2. Its actual exact-main subject must undergo a post-publication semantic
+   review satisfying the semantic-review evidence requirements above.
+3. Every semantic finding must be adjudicated.
+4. A finding adjudicated `VALID / BLOCKING` requires a subsequent correction
+   publication on a new actual exact-main subject and cannot be cleared by
+   thread resolution alone.
+   The defective status-sync subject remains non-canonical.
+5. A recorded outcome must establish that no valid unresolved blocking
+   semantic finding remains.
+6. Only then may the status sync be classified as semantically and
+   technically clean-fixed.
+7. Only that semantically and technically clean-fixed status-sync subject
+   may become the synchronized canonical planning reference.
+
+If a status-sync correction is required, the exact semantically and
+technically clean-fixed correction subject replaces the defective
+status-sync subject as the only subject eligible for canonicalization after
+its own complete technical and semantic closure.
+
+```text
+mandatory planning status-sync post-merge technical PASS
+!= semantic clean-fixed status
+gate-level technically clean-fixed planning status-sync publication
+!= semantically and technically clean-fixed planning status sync
+semantically and technically clean-fixed planning status-sync subject
 == synchronized canonical planning reference
 ```
 
@@ -1061,20 +1560,21 @@ record class, or authorize downstream publication.
 
 No later record may use:
 
-1. This local correction draft.
+1. This local second correction draft.
 2. The planning id.
 3. The initial planning drafting base.
 4. The decision initial-publication subject.
 5. The decision sync approved head.
 6. The initial planning publication subject.
-7. The future correction reviewed head.
-8. A prospective correction or sync merge SHA.
-9. An unapproved or mutated branch head.
-10. Historical evidence as its own publication evidence.
+7. The first precision-correction publication subject.
+8. The future second correction reviewed head.
+9. A prospective second correction or sync merge SHA.
+10. An unapproved or mutated branch head.
+11. Historical evidence as its own publication evidence.
 
 If a later record is authorized to begin, its sole direct prerequisite must
-be the future clean-fixed corrected-planning publication-status sync
-subject.
+be the future semantically and technically clean-fixed corrected-planning
+publication-status sync subject.
 
 That later record requires its own bounded question, one-file scope,
 independent unchanged-head approval, actual publication subject,
@@ -1128,14 +1628,21 @@ prerequisite:
 e04e16233977e5c52e2072e4e0c35f13de7b0206
 ```
 
-For this precision-correction draft, that decision reference remains
+For this second precision-correction draft, that decision reference remains
 upstream provenance only.
 
-The sole direct prerequisite of this precision-correction draft is the
-technically clean-fixed initial planning publication subject:
+The initial planning publication subject remains first-correction
+prerequisite provenance only:
 
 ```text
 ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+```
+
+The sole direct prerequisite of this second precision-correction draft is
+the merged and gate-level clean-fixed first correction publication subject:
+
+```text
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
 The decision's earlier initial-publication subject and approved sync head
@@ -1146,8 +1653,8 @@ remain provenance only.
 The Phase-24 exact-subject and evidence-expectation boundary remains an
 inherited governance constraint through the synchronized decision chain.
 
-It is not an additional direct prerequisite of this precision-correction
-draft.
+It is not an additional direct prerequisite of this second
+precision-correction draft.
 
 This planning record preserves its exact-head approval, actual publication
 subject, no-prospective-SHA, no-inherited-evidence, and failure-transparency
@@ -1190,10 +1697,10 @@ It supplies no inherited authority.
 
 It supplies no current publication evidence.
 
-It cannot substitute for the correction direct prerequisite at:
+It cannot substitute for the second correction direct prerequisite at:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
 It also cannot replace the upstream synchronized decision reference retained
@@ -1272,9 +1779,10 @@ status sync authorizes:
 
 Unknown authority readings fail closed.
 
-## Precision-Correction And Sync File Boundary
+## Second Precision-Correction And Sync File Boundary
 
-The only file permitted in the precision-correction publication PR is:
+The only file permitted in the second precision-correction publication PR
+is:
 
 ```text
 PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
@@ -1283,7 +1791,7 @@ PHASE24_ACCEPTED_EVIDENCE_BOUNDARY_PLANNING.md
 The only file permitted in a later metadata-only planning status-sync PR is
 the same file.
 
-The following must remain unchanged in the correction and sync
+The following must remain unchanged in the second correction and sync
 publications:
 
 1. `docs/roadmap/CURRENT_PHASE`.
@@ -1309,68 +1817,112 @@ Any additional changed file is out of scope and fails closed.
 ## Governance Planning Invariants
 
 1. `CURRENT_PHASE=24` remains unchanged.
-2. This file remains a local non-authoritative precision-correction draft
-   until reviewed correction publication.
-3. The correction sole direct prerequisite remains exactly
-   `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2`.
-4. The correction direct prerequisite role remains the technically
-   clean-fixed PR #326 initial planning publication subject requiring
-   correction after valid P2 adjudication.
+2. This file remains a local non-authoritative second precision-correction
+   draft until reviewed second correction publication.
+3. The second correction sole direct prerequisite remains exactly
+   `d8018a2c963fafc2fab015a536da71fe1343d290`.
+4. The second correction direct prerequisite role remains the merged and
+   gate-level clean-fixed PR #327 first correction publication subject
+   requiring correction after valid second P2 adjudication.
 5. No other exact subject becomes a direct prerequisite.
-6. The original initial-planning direct prerequisite at
+6. The first correction direct prerequisite at
+   `ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2` remains provenance only.
+7. The original initial-planning direct prerequisite at
    `e04e16233977e5c52e2072e4e0c35f13de7b0206` remains provenance only.
-7. Historical subjects remain provenance only.
-8. The Phase-23 planning record remains structural precedent only.
-9. The bounded question remains limited to accepted-evidence boundary
+8. Historical subjects remain provenance only.
+9. The Phase-23 planning record remains structural precedent only.
+10. The bounded question remains limited to accepted-evidence boundary
    planning.
-10. The planning record defines conditions for a later separately
+11. The planning record defines conditions for a later separately
     authorized and reviewed record to make the future necessity/class
     determination.
-11. This planning record does not make that determination.
-12. Planning does not select or accept evidence.
-13. Evidence identification does not accept evidence.
-14. Evidence eligibility does not accept evidence.
-15. Evidence candidate selection does not accept evidence.
-16. Membership planning does not assign membership.
-17. Validator output does not become accepted validator output.
-18. Receipt evidence does not become accepted receipt evidence.
-19. CI PASS does not grant authority.
-20. The future record class remains unselected by this correction draft.
-21. Evaluation order does not become approved execution sequence.
-22. Initial publication, correction publication, and metadata sync remain
-    separate subjects.
-23. The technically clean-fixed initial publication does not create a
+12. This planning record does not make that determination before or after
+    review of its planning outcome.
+13. Future record necessity/class is outside this planning record's
+    determination authority.
+14. Planning does not select or accept evidence.
+15. Evidence identification does not accept evidence.
+16. Evidence eligibility does not accept evidence.
+17. Evidence candidate selection does not accept evidence.
+18. Membership planning does not assign membership.
+19. Validator output does not become accepted validator output.
+20. Receipt evidence does not become accepted receipt evidence.
+21. CI PASS does not grant authority.
+22. The future record class remains unselected by this second correction
+    draft.
+23. Evaluation order does not become approved execution sequence.
+24. Initial publication, first correction, second correction, every required
+    subsequent correction, and metadata sync remain separate subjects.
+25. The technically clean-fixed initial publication does not create a
     synchronized reference.
-24. The valid P2 finding blocks status sync until the correction is
-    clean-fixed.
-25. The initial publication subject is not the status-sync prerequisite.
-26. Only a clean-fixed correction subject may become the status-sync direct
-    prerequisite.
-27. Only a clean-fixed status-sync subject may become the synchronized
-    canonical planning reference.
-28. Independent approval binds only to an exact unchanged reviewed head.
-29. Head mutation after approval invalidates that approval.
-30. A prospective merge SHA never becomes a publication subject.
-31. Pre-merge PASS does not replace post-merge exact-main evidence.
-32. Historical PASS does not become current publication evidence.
-33. Different-subject PASS does not become current publication evidence.
-34. Different-scope PASS does not become current publication evidence.
-35. A rerun PASS does not erase an earlier failure.
-36. Failure and rerun history remains transparent.
-37. The correction publication changes only this file.
-38. The status-sync publication changes only this file.
-39. The Phase-21 local draft remains untracked and PR-disjoint.
-40. No accepted-evidence set exists through this planning record.
-41. No evidence-item membership is assigned through this planning record.
-42. No validator output is accepted through this planning record.
-43. No receipt evidence is accepted through this planning record.
-44. No runtime or implementation authority is granted.
-45. No source or package authority is granted.
-46. No capability, registry, trust, deployment, or distribution authority
+26. The gate-level clean-fixed first correction does not create a
+    synchronized reference.
+27. Mandatory post-merge technical PASS does not establish semantic
+    clean-fixed status.
+28. A gate-level technically clean-fixed correction is not a semantically
+    and technically clean-fixed terminal correction publication.
+29. The actual second-correction subject requires a recorded
+    post-publication semantic review.
+30. Every semantic finding requires adjudication, and any valid unresolved
+    blocking finding blocks semantic clean-fixed status.
+31. Only a recorded outcome with no valid unresolved blocking semantic
+    finding may establish semantic and technical clean-fixed status and
+    terminal correction identity.
+32. The valid blocking findings block status sync until the remediation
+    chain has a terminal semantically and technically clean-fixed correction
+    subject and every required remediation evidence reply and related
+    blocking-thread resolution are recorded.
+33. The initial publication subject is not the status-sync prerequisite.
+34. The first correction subject is not the status-sync prerequisite.
+35. Only the actual exact-main subject of the terminal correction
+    publication in the completed planning-remediation chain may become the
+    status-sync direct prerequisite identity.
+36. Required remediation evidence replies and blocking-thread resolutions
+    are prerequisite eligibility conditions, not components of the
+    prerequisite identity.
+37. Only a semantically and technically clean-fixed status-sync subject may
+    become the synchronized canonical planning reference.
+38. Independent approval binds only to an exact unchanged reviewed head.
+39. Head mutation after approval invalidates that approval.
+40. A prospective merge SHA never becomes a publication subject.
+41. Pre-merge PASS does not replace post-merge exact-main evidence.
+42. Historical PASS does not become current publication evidence.
+43. Different-subject PASS does not become current publication evidence.
+44. Different-scope PASS does not become current publication evidence.
+45. A rerun PASS does not erase an earlier failure.
+46. Failure and rerun history remains transparent.
+47. The second correction publication changes only this file.
+48. The status-sync publication changes only this file.
+49. The Phase-21 local draft remains untracked and PR-disjoint.
+50. No accepted-evidence set exists through this planning record.
+51. No evidence-item membership is assigned through this planning record.
+52. No validator output is accepted through this planning record.
+53. No receipt evidence is accepted through this planning record.
+54. No runtime or implementation authority is granted.
+55. No source or package authority is granted.
+56. No capability, registry, trust, deployment, or distribution authority
     is granted.
-47. No kernel ABI, syscall, workflow, baseline, dependency, or Ring0
+57. No kernel ABI, syscall, workflow, baseline, dependency, or Ring0
     authority is granted.
-48. Unknown authority readings fail closed.
+58. A semantic finding adjudicated `VALID / BLOCKING` cannot be cleared by
+    adjudication, comment resolution, or thread resolution alone.
+59. A valid blocking finding requires a subsequent correction publication
+    on a new exact-main subject and that publication's own technical and
+    semantic closure.
+60. Every semantic review records the actual subject, reviewer or mechanism,
+    review artifact, bounded scope, findings, adjudications, and outcome.
+61. An unidentified or self-authored semantic-closure assertion fails
+    closed.
+62. Mandatory status-sync post-merge technical PASS does not establish
+    semantic clean-fixed status.
+63. A gate-level technically clean-fixed status sync is not a semantically
+    and technically clean-fixed planning status sync.
+64. The actual status-sync subject requires recorded post-publication
+    semantic review and finding adjudication.
+65. Only a recorded status-sync semantic outcome with no valid unresolved
+    blocking finding may establish the synchronized canonical planning
+    reference.
+66. Unknown authority readings fail closed.
 
 ## Architecture Signature
 
@@ -1384,11 +1936,27 @@ initial Phase-24 accepted-evidence boundary planning publication
   technically clean-fixed
         |
         v
-post-publication P2 adjudication
+initial post-publication P2 adjudication
   valid / status-sync blocking
         |
         v
-local post-publication precision-correction draft
+first one-file precision-correction publication
+  d8018a2c963fafc2fab015a536da71fe1343d290
+  gate-level clean-fixed with transparent rerun history
+        |
+        v
+second post-publication P2 adjudication
+  valid / status-sync blocking
+        |
+        v
+local second post-publication precision-correction draft
+        |
+        v
+PR #328 pre-publication P2 adjudication
+  valid / merge blocking / bfb7493c... superseded
+        |
+        v
+corrected PR #328 exact head + new pre-merge PASS + independent approval
         |
         | no evidence selection
         | no evidence acceptance
@@ -1398,16 +1966,41 @@ local post-publication precision-correction draft
         | no receipt-evidence acceptance
         | no runtime/source/package/implementation authority
         v
-separate one-file reviewed precision-correction publication
+separate one-file reviewed second precision-correction publication
         |
         v
-actual precision-correction exact-main subject + mandatory PASS
+actual second correction exact-main subject + mandatory PASS
+  gate-level technically clean-fixed
+        |
+        v
+recorded post-publication semantic review + finding adjudication
+        | VALID / BLOCKING: subsequent correction publication
+        |                    + own technical and semantic closure
+        |                    + repeat as required
+        | no blocking finding: continue
+        v
+terminal correction publication exact-main subject
+  no valid unresolved blocking semantic finding
+  semantically and technically clean-fixed
+        |
+        v
+required remediation evidence replies + blocking-thread resolutions
         |
         v
 separate metadata-only planning publication-status sync
         |
         v
 actual sync exact-main subject + mandatory PASS
+  gate-level technically clean-fixed
+        |
+        v
+recorded sync semantic review + finding adjudication
+        | VALID / BLOCKING: new correction subject + own closure
+        | no blocking finding: continue
+        |
+        v
+no valid unresolved blocking semantic finding
+  semantically and technically clean-fixed
         |
         v
 synchronized canonical planning reference
@@ -1419,16 +2012,17 @@ later record-class evaluation, if separately authorized
 
 ## Conclusion
 
-This local precision-correction draft consumes exactly one direct
+This local second precision-correction draft consumes exactly one direct
 prerequisite:
 
 ```text
-ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
+d8018a2c963fafc2fab015a536da71fe1343d290
 ```
 
-That subject is the technically clean-fixed initial Phase-24
-accepted-evidence boundary planning publication subject requiring
-correction after the valid P2 adjudication.
+That subject is the merged and gate-level clean-fixed first Phase-24
+accepted-evidence boundary planning precision-correction publication
+subject requiring a second correction after the valid second P2
+adjudication.
 
 This document plans only the governance boundaries, identity rules,
 prerequisite relationships, evidence expectations, denial conditions, and
@@ -1448,6 +2042,30 @@ record class, if any, is appropriate.
 
 It does not make that determination or decide the next record class.
 
+A future second-correction post-merge technical PASS may establish only
+gate-level technical cleanliness.
+
+Semantic clean-fixed status additionally requires a recorded
+post-publication semantic review of the actual correction subject,
+adjudication of every finding, and no valid unresolved blocking semantic
+finding.
+
+The status-sync direct prerequisite is not hard-coded to a correction number.
+
+It is the actual exact-main subject of the terminal correction publication in
+the completed planning-remediation chain that has independently satisfied
+every required technical and semantic clean-fixed condition.
+
+Required remediation evidence replies and blocking-thread resolutions govern
+eligibility to use that identity. They do not form part of the identity.
+
+A future planning status-sync post-merge technical PASS likewise may
+establish only gate-level technical cleanliness.
+
+The synchronized canonical planning reference requires a separately
+recorded semantic review of the actual status-sync subject, adjudication of
+every finding, and no valid unresolved blocking semantic finding.
+
 It does not authorize runtime, implementation, execution, source, package,
 capability, registry, trust, deployment, distribution, kernel ABI, syscall,
 workflow, baseline, dependency, or Ring0 authority.
@@ -1457,10 +2075,20 @@ The current state remains:
 ```text
 initial planning publication: merged / technically clean-fixed
 initial planning publication subject: ceed55b6f9cb9367b74fb2acdea2a05bc39ea5a2
-post-publication P2: valid / status-sync blocking
-precision-correction draft: local / not published / not clean-fixed
-precision-correction publication subject: absent
+initial P2: valid / corrected by PR #327 / thread resolved
+first correction publication: merged / gate-level clean-fixed
+first correction subject: d8018a2c963fafc2fab015a536da71fe1343d290
+second P2: valid / status-sync blocking / thread unresolved
+second correction candidate: PR #328 / not published / not clean-fixed
+superseded PR #328 candidate head: bfb7493c2b54f957f60d8fabe5933eb6ee75ab99
+PR #328 pre-publication P2: valid / merge blocking / thread unresolved
+second correction publication subject: absent
+terminal correction publication subject: absent
 planning publication-status sync subject: absent
+planning status-sync gate-level technical status: absent
+planning status-sync post-publication semantic review: absent
+planning status-sync semantic finding adjudication: absent
+planning status-sync semantic and technical clean-fixed status: absent
 synchronized canonical planning reference: absent
 future accepted-evidence record class: absent
 accepted evidence: absent
